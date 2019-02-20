@@ -7,5 +7,17 @@ Version 2.0. See the file "[LICENSE](LICENSE)" for more information.
 
 ## Introduction
 
-TODO
+This is the Invoice business logic module.
 
+## Additional information
+
+### Issue tracker
+
+See project [MODINVOICE](https://issues.folio.org/browse/MODINVOICE)
+at the [FOLIO issue tracker](https://dev.folio.org/guidelines/issue-tracker).
+
+### Other documentation
+
+Other [modules](https://dev.folio.org/source-code/#server-side) are described,
+with further FOLIO Developer documentation at
+[dev.folio.org](https://dev.folio.org/)

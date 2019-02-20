@@ -1,0 +1,33 @@
+{
+  "id": "${artifactId}-${version}",
+  "name": "Invoice business logic module",
+  "provides": [
+    {
+      "id": "_tenant",
+      "version": "1.0",
+      "interfaceType": "system",
+      "handlers": [
+        {
+          "methods": [ "POST", "DELETE" ],
+          "pathPattern": "/_/tenant"
+        }
+      ]
+    }
+  ],
+  "permissionSets" : [
+    {
+      "permissionName" : "invoice.module.all",
+      "displayName" : "All invoice-module perms",
+      "description" : "All permissions for the mod-invoice module",
+      "subPermissions" : [
+      ]
+    }
+  ],
+  "launchDescriptor": {
+    "dockerImage": "${artifactId}:${version}",
+    "dockerArgs": {
+      "HostConfig": { "PortBindings": { "8081/tcp":  [{ "HostPort": "%p" }] } }
+    },
+    "dockerPull" : false
+  }
+}
