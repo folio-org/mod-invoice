@@ -1,26 +1,97 @@
 {
   "id": "${artifactId}-${version}",
   "name": "Invoice business logic module",
+  "requires": [],
   "provides": [
+    {
+      "id": "invoice",
+      "version": "1.0",
+      "handlers": [
+        {
+          "methods": ["GET"],
+          "pathPattern": "/invoice",
+          "permissionsRequired": ["invoice.collection.get"]
+        },
+        {
+          "methods": ["POST"],
+          "pathPattern": "/invoice",
+          "permissionsRequired": ["invoice.item.post"]
+        },
+        {
+          "methods": ["GET"],
+          "pathPattern": "/invoice/{id}",
+          "permissionsRequired": ["invoice.item.get"]
+        },
+        {
+          "methods": ["PUT"],
+          "pathPattern": "/invoice/{id}",
+          "permissionsRequired": ["invoice.item.put"]
+        },
+        {
+          "methods": ["DELETE"],
+          "pathPattern": "/invoice/{id}",
+          "permissionsRequired": ["invoice.item.delete"]
+        }
+      ]
+    },
     {
       "id": "_tenant",
       "version": "1.0",
       "interfaceType": "system",
       "handlers": [
         {
-          "methods": [ "POST", "DELETE" ],
+          "methods": [
+            "POST"
+          ],
+          "pathPattern": "/_/tenant"
+        },
+        {
+          "methods": [
+            "DELETE"
+          ],
           "pathPattern": "/_/tenant"
         }
       ]
     }
   ],
-  "permissionSets" : [
+  "permissionSets": [
     {
-      "permissionName" : "invoice.module.all",
-      "displayName" : "All invoice-module perms",
-      "description" : "All permissions for the mod-invoice module",
-      "subPermissions" : [
-      ]
+      "permissionName": "invoice.collection.get",
+      "displayName": "Invoice - get invoice collection",
+      "description": "Get invoice collection"
+    },
+    {
+      "permissionName": "invoice.item.get",
+      "displayName": "Invoice - get individual invoice",
+      "description": "Get individual pet"
+    },
+    {
+      "permissionName": "invoice.item.post",
+      "displayName": "Invoice - create invoice",
+      "description": "Create invoice"
+    },
+    {
+      "permissionName": "invoice.item.put",
+      "displayName": "Invoice - modify invoice",
+      "description": "Modify invoice"
+    },
+    {
+      "permissionName": "invoice.item.delete",
+      "displayName": "Invoice - delete invoice",
+      "description": "Delete invoice"
+    },
+    {
+      "permissionName": "invoice.all",
+      "displayName": "Invoice module - all permissions",
+      "description": "Entire set of permissions needed to use the invoice module",
+      "subPermissions": [
+        "invoice.collection.get",
+        "invoice.item.get",
+        "invoice.item.post",
+        "invoice.item.put",
+        "invoice.item.delete"
+      ],
+      "visible": false
     }
   ],
   "launchDescriptor": {
