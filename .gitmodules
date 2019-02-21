@@ -1,6 +1,6 @@
 [submodule "ramls/raml-util"]
 	path = ramls/raml-util
-	url = https://github.com/folio-org/raml
+	url = https://github.com/folio-org/raml.git
         branch = raml1.0
 [submodule "ramls/acq-models"]
 	path = ramls/acq-models
