@@ -7,28 +7,35 @@ import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
+
+import org.apache.commons.io.IOUtils;
 import org.folio.rest.RestVerticle;
-import org.folio.rest.persist.PostgresClient;
+import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.tools.client.test.HttpClientMock2;
 import org.folio.rest.tools.utils.NetworkUtils;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.Locale;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.stream.Stream;
 
 import static io.restassured.RestAssured.given;
 import static org.folio.rest.RestVerticle.OKAPI_HEADER_TENANT;
 
 public class InvoicesTest {
   private static final Logger logger = LoggerFactory.getLogger(InvoicesTest.class);
-  public static final String INVOICE_ID_PATH = "/invoices/{id}";
+  public static final String INVOICE_ID_PATH = "/invoicing/invoices/{id}";
 
   private static Vertx vertx;
   private static int port = NetworkUtils.nextFreePort();
@@ -81,7 +88,7 @@ public class InvoicesTest {
     given()
       .header(TENANT_HEADER)
       .contentType(ContentType.JSON)
-      .get(storageUrl("/invoices"))
+      .get(storageUrl("/invoicing/invoices"))
         .then()
           .statusCode(500);
   }
@@ -98,10 +105,13 @@ public class InvoicesTest {
   }
 
   @Test
-  public void putInvoicesByIdTest() throws MalformedURLException {
+  public void putInvoicesByIdTest() throws Exception {
+  	Invoice reqData = getMockDraftOrder().mapTo(Invoice.class);
+  	String jsonBody = JsonObject.mapFrom(reqData).encode();
+  	
     given()
-      .pathParam("id", "1")
-      .body("{}")
+      .pathParam("id", reqData.getId())
+      .body(jsonBody)
       .header(TENANT_HEADER)
       .contentType(ContentType.JSON)
       .put(storageUrl(INVOICE_ID_PATH))
@@ -121,14 +131,36 @@ public class InvoicesTest {
   }
 
   @Test
-  public void postInvoicesTest() throws MalformedURLException {
+  public void postInvoicesTest() throws Exception {
+  	Invoice reqData = getMockDraftOrder().mapTo(Invoice.class);
+  	String jsonBody = JsonObject.mapFrom(reqData).encode();
+  	
     given()
-      .body("{}")
+      .body(jsonBody)
       .header(TENANT_HEADER)
       .contentType(ContentType.JSON)
-      .post(storageUrl("/invoices"))
+      .post(storageUrl("/invoicing/invoices"))
         .then()
           .statusCode(500);
   }
 
+  private JsonObject getMockDraftOrder() throws Exception {
+    JsonObject invoice = new JsonObject(getMockData("invoice.json"));
+    return invoice;
+  }
+
+  public static String getMockData(String path) throws IOException {
+    logger.info("Using mock datafile: {}", path);
+    try (InputStream resourceAsStream = InvoicesTest.class.getClassLoader().getResourceAsStream(path)) {
+      if (resourceAsStream != null) {
+        return IOUtils.toString(resourceAsStream, StandardCharsets.UTF_8);
+      } else {
+        StringBuilder sb = new StringBuilder();
+        try (Stream<String> lines = Files.lines(Paths.get(path))) {
+          lines.forEach(sb::append);
+        }
+        return sb.toString();
+      }
+    }
+  }
 }

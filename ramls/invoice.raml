@@ -10,9 +10,14 @@ documentation:
     content: This documents the API calls that can be made to manage invoices
 
 types:
-  invoice: !include invoice.json
-  invoiceCollection: !include ./invoiceCollection.json
+  invoice: !include acq-models/mod-invoice-storage/schemas/invoice.json
+  invoiceCollection: !include acq-models/mod-invoice-storage/schemas/invoice_collection.json
+  invoiceLine: !include acq-models/mod-invoice-storage/schemas/invoice_line.json
+  invoiceLineCollection: !include acq-models/mod-invoice-storage/schemas/invoice_line_collection.json
   errors: !include raml-util/schemas/errors.schema
+  UUID:
+    type: string
+    pattern: ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$
 
 traits:
   validate: !include raml-util/traits/validation.raml
@@ -23,30 +28,100 @@ traits:
 resourceTypes:
   collection: !include raml-util/rtypes/collection.raml
   collection-item: !include raml-util/rtypes/item-collection.raml
+  get-only: !include raml-util/rtypes/get-only.raml
 
-/invoices:
-  displayName: Invoice
-  description: Invoice
-  type:
-    collection:
-      schemaCollection: invoiceCollection
-      schemaItem: invoice
-      exampleCollection: !include examples/invoiceCollection.sample
-      exampleItem: !include examples/invoice.sample
-
-  post:
-    is: [validate]
-  get:
-    is: [
-      pageable,
-      validate
-    ]
-  /{id}:
+/invoicing:
+  /invoices:
     displayName: Invoice
-    description: Get, Delete or Update a specific invoice
+    description: Manage Invoices
     type:
-      collection-item:
-        schema: invoice
-        exampleItem: !include examples/invoice.sample
-    put:
+      collection:
+        schemaCollection: invoiceCollection
+        schemaItem: invoice
+        exampleCollection: !include acq-models/mod-invoice-storage/examples/invoice_collection.sample
+        exampleItem: !include acq-models/mod-invoice-storage/examples/invoice.sample
+  
+    post:
+      description: Post invoice and number of invoice lines;
       is: [validate]
+    get:
+      is: [ pageable, validate ]
+    /{id}:
+      displayName: Invoice
+      description: Get, Delete or Update a specific invoice
+      type:
+        collection-item:
+          schema: invoice
+          exampleItem: !include examples/invoice.sample
+      get:
+        description: Return an invoice with given {id}
+      put:
+        is: [validate]
+      delete:
+        description: Delete an invoice with given {id}
+  /invoice-lines:
+    displayName: Invoice Lines
+    description: Manage Invoice lines
+    type:
+      collection:
+        schemaCollection: invoiceLineCollection
+        schemaItem: invoiceLine
+        exampleCollection: !include acq-models/mod-invoice-storage/examples/invoice_line_collection.sample
+        exampleItem: !include acq-models/mod-invoice-storage/examples/invoice_line.sample
+    is: [validate]
+    get:
+      is: [validate]
+    post:
+      description: Post an invoice lines to corresponding invoice
+    /{id}:
+      displayName: Invoice Line
+      description: Manage invoice line by id
+      uriParameters:
+        id:
+          description: The UUID of a invoice line
+          type: UUID
+      type:
+        collection-item:
+          exampleItem: !include acq-models/mod-invoice-storage/examples/invoice_line.sample
+          schema: invoiceLine
+      is: [validate]
+      get:
+        description: Return an invoice line with given {id}
+      put:
+        description: Update an invoice line with given {id}
+      delete:
+        description: Delete an invoice line with given {id}
+  /invoice-number:
+    displayName: Invoice Number
+    description: Manage Invoice Number
+    type:
+      get-only:
+        schema: invoiceCollection
+        exampleCollection: !include acq-models/mod-invoice-storage/examples/invoice_collection.sample
+    get:
+      description: Get system generated Invoice Number
+      is: [validate]
+    /validate:
+      displayName: Invoice Number Validation     
+      post:
+        description: validate if Invoice Number is unique and matches the pattern specified
+        is: [validate, language]
+        body:
+          application/json:
+        responses:
+          204:
+            description: "Valid Invoice Number"
+          400:
+            description: "Bad request, e.g. existing Invoice Number. Details of the error provided in the response."
+            body:
+              application/json:
+                example:
+                  strict: false
+                  value: !include raml-util/examples/errors.sample
+          500:
+            description: "Internal server error, e.g. due to misconfiguration"
+            body:
+              application/json:
+                example:
+                  strict: false
+                  value: !include raml-util/examples/errors.sample        
