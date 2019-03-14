@@ -35,7 +35,10 @@ import static org.folio.rest.RestVerticle.OKAPI_HEADER_TENANT;
 
 public class InvoicesTest {
   private static final Logger logger = LoggerFactory.getLogger(InvoicesTest.class);
-  public static final String INVOICE_ID_PATH = "/invoicing/invoices/{id}";
+  private static final String INVOICE_ID_PATH = "/invoicing/invoices/{id}";
+  private static final String INVOICE_PATH = "/invoicing/invoices";
+  private static final String INVOICE_SAMPLE_PATH = "invoice.json";
+  private static final String ID = "id";
 
   private static Vertx vertx;
   private static int port = NetworkUtils.nextFreePort();
@@ -88,7 +91,7 @@ public class InvoicesTest {
     given()
       .header(TENANT_HEADER)
       .contentType(ContentType.JSON)
-      .get(storageUrl("/invoicing/invoices"))
+      .get(storageUrl(INVOICE_PATH))
         .then()
           .statusCode(500);
   }
@@ -110,7 +113,7 @@ public class InvoicesTest {
   	String jsonBody = JsonObject.mapFrom(reqData).encode();
   	
     given()
-      .pathParam("id", reqData.getId())
+      .pathParam(ID, reqData.getId())
       .body(jsonBody)
       .header(TENANT_HEADER)
       .contentType(ContentType.JSON)
@@ -122,7 +125,7 @@ public class InvoicesTest {
   @Test
   public void deleteInvoicesByIdTest() throws MalformedURLException {
     given()
-      .pathParam("id", "1")
+      .pathParam(ID, "1")
       .header(TENANT_HEADER)
       .contentType(ContentType.JSON)
       .delete(storageUrl(INVOICE_ID_PATH))
@@ -139,13 +142,13 @@ public class InvoicesTest {
       .body(jsonBody)
       .header(TENANT_HEADER)
       .contentType(ContentType.JSON)
-      .post(storageUrl("/invoicing/invoices"))
+      .post(storageUrl(INVOICE_PATH))
         .then()
           .statusCode(500);
   }
 
   private JsonObject getMockDraftOrder() throws Exception {
-    JsonObject invoice = new JsonObject(getMockData("invoice.json"));
+    JsonObject invoice = new JsonObject(getMockData(INVOICE_SAMPLE_PATH));
     return invoice;
   }
 

@@ -5,7 +5,6 @@ import io.vertx.core.Context;
 import io.vertx.core.Handler;
 import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.jaxrs.model.InvoiceLine;
-import org.folio.rest.jaxrs.model.PoNumber;
 import org.folio.rest.jaxrs.resource.Invoicing;
 
 import javax.ws.rs.core.Response;
