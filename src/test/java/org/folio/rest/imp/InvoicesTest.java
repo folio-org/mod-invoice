@@ -11,6 +11,7 @@ import io.vertx.core.logging.LoggerFactory;
 import org.apache.commons.io.IOUtils;
 import org.folio.rest.RestVerticle;
 import org.folio.rest.jaxrs.model.Invoice;
+import org.folio.rest.jaxrs.model.InvoiceLine;
 import org.folio.rest.tools.client.test.HttpClientMock2;
 import org.folio.rest.tools.utils.NetworkUtils;
 import org.junit.BeforeClass;
@@ -36,8 +37,13 @@ import static org.folio.rest.RestVerticle.OKAPI_HEADER_TENANT;
 public class InvoicesTest {
   private static final Logger logger = LoggerFactory.getLogger(InvoicesTest.class);
   private static final String INVOICE_ID_PATH = "/invoicing/invoices/{id}";
+  private static final String INVOICE_LINE_ID_PATH = "/invoicing/invoice-lines/{id}";
   private static final String INVOICE_PATH = "/invoicing/invoices";
+  private static final String INVOICE_LINES_PATH = "/invoicing/invoice-lines";
+  private static final String INVOICE_NUMBER_PATH = "/invoicing/invoice-number";
+  private static final String INVOICE_NUMBER_VALIDATE_PATH = "/invoicing/invoice-number/validate";
   private static final String INVOICE_SAMPLE_PATH = "invoice.json";
+  private static final String INVOICE_LINE_SAMPLE_PATH = "invoice_line.json";
   private static final String ID = "id";
 
   private static Vertx vertx;
@@ -87,7 +93,7 @@ public class InvoicesTest {
   }
 
   @Test
-  public void getInvoicesTest() throws MalformedURLException {
+  public void getInvoicingInvoicesTest() throws MalformedURLException {
     given()
       .header(TENANT_HEADER)
       .contentType(ContentType.JSON)
@@ -97,7 +103,27 @@ public class InvoicesTest {
   }
 
   @Test
-  public void getInvoicesByIdTest() throws MalformedURLException {
+  public void getInvoicingInvoiceLinesTest() throws MalformedURLException {
+    given()
+      .header(TENANT_HEADER)
+      .contentType(ContentType.JSON)
+      .get(storageUrl(INVOICE_LINES_PATH))
+        .then()
+          .statusCode(500);
+  }
+  
+  @Test
+  public void getInvoicingInvoiceNumberTest() throws MalformedURLException {
+    given()
+      .header(TENANT_HEADER)
+      .contentType(ContentType.JSON)
+      .get(storageUrl(INVOICE_NUMBER_PATH))
+        .then()
+          .statusCode(500);
+  }
+  
+  @Test
+  public void getInvoicingInvoicesByIdTest() throws MalformedURLException {
     given()
       .pathParam("id", "1")
       .header(TENANT_HEADER)
@@ -108,8 +134,19 @@ public class InvoicesTest {
   }
 
   @Test
-  public void putInvoicesByIdTest() throws Exception {
-  	Invoice reqData = getMockDraftOrder().mapTo(Invoice.class);
+  public void getInvoicingInvoiceLinesByIdTest() throws MalformedURLException {
+    given()
+      .pathParam("id", "1")
+      .header(TENANT_HEADER)
+      .contentType(ContentType.JSON)
+      .get(storageUrl(INVOICE_LINE_ID_PATH))
+        .then()
+          .statusCode(500);
+  }
+  
+  @Test
+  public void putInvoicingInvoicesByIdTest() throws Exception {
+  	Invoice reqData = getMockDraftInvoice().mapTo(Invoice.class);
   	String jsonBody = JsonObject.mapFrom(reqData).encode();
   	
     given()
@@ -123,7 +160,22 @@ public class InvoicesTest {
   }
 
   @Test
-  public void deleteInvoicesByIdTest() throws MalformedURLException {
+  public void putInvoicingInvoiceLinesByIdTest() throws Exception {
+  	InvoiceLine reqData = getMockDraftInvoiceLine().mapTo(InvoiceLine.class);
+  	String jsonBody = JsonObject.mapFrom(reqData).encode();
+  	
+    given()
+      .pathParam(ID, reqData.getId())
+      .body(jsonBody)
+      .header(TENANT_HEADER)
+      .contentType(ContentType.JSON)
+      .put(storageUrl(INVOICE_LINE_ID_PATH))
+        .then()
+          .statusCode(500);
+  }
+  
+  @Test
+  public void deleteInvoicingInvoicesByIdTest() throws MalformedURLException {
     given()
       .pathParam(ID, "1")
       .header(TENANT_HEADER)
@@ -134,8 +186,19 @@ public class InvoicesTest {
   }
 
   @Test
-  public void postInvoicesTest() throws Exception {
-  	Invoice reqData = getMockDraftOrder().mapTo(Invoice.class);
+  public void deleteInvoicingInvoiceLinesByIdTest() throws MalformedURLException {
+    given()
+      .pathParam(ID, "1")
+      .header(TENANT_HEADER)
+      .contentType(ContentType.JSON)
+      .delete(storageUrl(INVOICE_LINE_ID_PATH))
+        .then()
+          .statusCode(500);
+  }
+  
+  @Test
+  public void postInvoicingInvoicesTest() throws Exception {
+  	Invoice reqData = getMockDraftInvoice().mapTo(Invoice.class);
   	String jsonBody = JsonObject.mapFrom(reqData).encode();
   	
     given()
@@ -147,11 +210,44 @@ public class InvoicesTest {
           .statusCode(500);
   }
 
-  private JsonObject getMockDraftOrder() throws Exception {
+  @Test
+  public void postInvoicingInvoiceNumberValidateTest() throws Exception {
+  	Invoice reqData = getMockDraftInvoice().mapTo(Invoice.class);
+  	String jsonBody = JsonObject.mapFrom(reqData).encode();
+  	
+    given()
+      .body(jsonBody)
+      .header(TENANT_HEADER)
+      .contentType(ContentType.JSON)
+      .post(storageUrl(INVOICE_NUMBER_VALIDATE_PATH))
+        .then()
+          .statusCode(500);
+  }
+  
+  @Test
+  public void postInvoicingInvoiceLinesTest() throws Exception {
+  	InvoiceLine reqData = getMockDraftInvoiceLine().mapTo(InvoiceLine.class);
+  	String jsonBody = JsonObject.mapFrom(reqData).encode();
+  	
+    given()
+      .body(jsonBody)
+      .header(TENANT_HEADER)
+      .contentType(ContentType.JSON)
+      .post(storageUrl(INVOICE_LINES_PATH))
+        .then()
+          .statusCode(500);
+  }
+  
+  private JsonObject getMockDraftInvoice() throws Exception {
     JsonObject invoice = new JsonObject(getMockData(INVOICE_SAMPLE_PATH));
     return invoice;
   }
 
+  private JsonObject getMockDraftInvoiceLine() throws Exception {
+    JsonObject invoiceLine = new JsonObject(getMockData(INVOICE_LINE_SAMPLE_PATH));
+    return invoiceLine;
+  }
+  
   public static String getMockData(String path) throws IOException {
     logger.info("Using mock datafile: {}", path);
     try (InputStream resourceAsStream = InvoicesTest.class.getClassLoader().getResourceAsStream(path)) {
