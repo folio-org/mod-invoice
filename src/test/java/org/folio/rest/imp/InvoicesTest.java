@@ -45,6 +45,7 @@ public class InvoicesTest {
   private static final String INVOICE_SAMPLE_PATH = "invoice.json";
   private static final String INVOICE_LINE_SAMPLE_PATH = "invoice_line.json";
   private static final String ID = "id";
+  private static final String UUID = "8d3881f6-dd93-46f0-b29d-1c36bdb5c9f9";
 
   private static Vertx vertx;
   private static int port = NetworkUtils.nextFreePort();
@@ -125,7 +126,7 @@ public class InvoicesTest {
   @Test
   public void getInvoicingInvoicesByIdTest() throws MalformedURLException {
     given()
-      .pathParam("id", "1")
+      .pathParam(ID, UUID)
       .header(TENANT_HEADER)
       .contentType(ContentType.JSON)
       .get(storageUrl(INVOICE_ID_PATH))
@@ -136,7 +137,7 @@ public class InvoicesTest {
   @Test
   public void getInvoicingInvoiceLinesByIdTest() throws MalformedURLException {
     given()
-      .pathParam("id", "1")
+      .pathParam(ID, UUID)
       .header(TENANT_HEADER)
       .contentType(ContentType.JSON)
       .get(storageUrl(INVOICE_LINE_ID_PATH))
@@ -177,7 +178,7 @@ public class InvoicesTest {
   @Test
   public void deleteInvoicingInvoicesByIdTest() throws MalformedURLException {
     given()
-      .pathParam(ID, "1")
+      .pathParam(ID, UUID)
       .header(TENANT_HEADER)
       .contentType(ContentType.JSON)
       .delete(storageUrl(INVOICE_ID_PATH))
@@ -188,7 +189,7 @@ public class InvoicesTest {
   @Test
   public void deleteInvoicingInvoiceLinesByIdTest() throws MalformedURLException {
     given()
-      .pathParam(ID, "1")
+      .pathParam(ID, UUID)
       .header(TENANT_HEADER)
       .contentType(ContentType.JSON)
       .delete(storageUrl(INVOICE_LINE_ID_PATH))
