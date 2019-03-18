@@ -10,27 +10,27 @@
         {
           "methods": ["GET"],
           "pathPattern": "/invoicing/invoices",
-          "permissionsRequired": ["invoicing.collection.get"]
+          "permissionsRequired": ["invoicing.invoice.collection.get"]
         },
         {
           "methods": ["POST"],
           "pathPattern": "/invoicing/invoices",
-          "permissionsRequired": ["invoicing.item.post"]
+          "permissionsRequired": ["invoicing.invoice.item.post"]
         },
         {
           "methods": ["GET"],
           "pathPattern": "/invoicing/invoices/{id}",
-          "permissionsRequired": ["invoicing.item.get"]
+          "permissionsRequired": ["invoicing.invoice.item.get"]
         },
         {
           "methods": ["PUT"],
           "pathPattern": "/invoicing/invoices/{id}",
-          "permissionsRequired": ["invoicing.item.put"]
+          "permissionsRequired": ["invoicing.invoice.item.put"]
         },
         {
           "methods": ["DELETE"],
           "pathPattern": "/invoicing/invoices/{id}",
-          "permissionsRequired": ["invoicing.item.delete"]
+          "permissionsRequired": ["invoicing.invoice.item.delete"]
         },
         {
           "methods": ["GET"],
@@ -91,27 +91,27 @@
   ],
   "permissionSets": [
     {
-      "permissionName": "invoicing.collection.get",
+      "permissionName": "invoicing.invoice.collection.get",
       "displayName": "Invoice - get collection of Invoice",
       "description": "Get collection of Invoice"
     },
     {
-      "permissionName": "invoicing.item.get",
+      "permissionName": "invoicing.invoice.item.get",
       "displayName": "Invoice - get an existing Invoice",
       "description": "Get an existing Invoice"
     },
     {
-      "permissionName": "invoicing.item.post",
+      "permissionName": "invoicing.invoice.item.post",
       "displayName": "Invoice - create a new Invoice",
       "description": "Create a new invoice"
     },
     {
-      "permissionName": "invoicing.item.put",
+      "permissionName": "invoicing.invoice.item.put",
       "displayName": "Invoice - modify invoice",
       "description": "Modify an existing Invoice"
     },
     {
-      "permissionName": "invoicing.item.delete",
+      "permissionName": "invoicing.invoice.item.delete",
       "displayName": "Invoice - delete an existing Invoice",
       "description": "Delete an existing Invoice"
     },
@@ -155,11 +155,11 @@
       "displayName": "Invoice module - all permissions",
       "description": "Entire set of permissions needed to use the invoice module",
       "subPermissions": [
-        "invoicing.collection.get",
-        "invoicing.item.get",
-        "invoicing.item.post",
-        "invoicing.item.put",
-        "invoicing.item.delete",
+        "invoicing.invoice.collection.get",
+        "invoicing.invoice.item.get",
+        "invoicing.invoice.item.post",
+        "invoicing.invoice.item.put",
+        "invoicing.invoice.item.delete",
         "invoicing.invoice-line.collection.get",
         "invoicing.invoice-line.item.get",
         "invoicing.invoice-line.item.post",
