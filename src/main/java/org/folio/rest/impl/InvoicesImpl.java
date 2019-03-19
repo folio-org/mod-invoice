@@ -1,105 +1,105 @@
 package org.folio.rest.impl;
 
-import io.vertx.core.AsyncResult;
-import io.vertx.core.Context;
-import io.vertx.core.Handler;
+import static io.vertx.core.Future.succeededFuture;
+
+import java.util.Map;
+
+import javax.ws.rs.core.Response;
 
 import org.folio.rest.annotations.Validate;
 import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.jaxrs.model.InvoiceLine;
-import org.folio.rest.jaxrs.resource.Invoicing;
 
-import javax.ws.rs.core.Response;
-import java.util.Map;
-
-import static io.vertx.core.Future.succeededFuture;
+import io.vertx.core.AsyncResult;
+import io.vertx.core.Context;
+import io.vertx.core.Handler;
 
 
-public class InvoicesImpl implements Invoicing {
+public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
 
   private static final String NOT_SUPPORTED = "Not supported";	// To overcome sonarcloud warning
   
   @Validate
 	@Override
-	public void postInvoicingInvoices(String lang, Invoice entity, Map<String, String> okapiHeaders,
+	public void postInvoiceInvoices(String lang, Invoice entity, Map<String, String> okapiHeaders,
 	    Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
-		asyncResultHandler.handle(succeededFuture(PostInvoicingInvoicesResponse.respond500WithTextPlain(NOT_SUPPORTED)));
+		asyncResultHandler.handle(succeededFuture(PostInvoiceInvoicesResponse.respond500WithTextPlain(NOT_SUPPORTED)));
 	}
 
   @Validate
 	@Override
-	public void getInvoicingInvoices(int offset, int limit, String lang, Map<String, String> okapiHeaders,
+	public void getInvoiceInvoices(int offset, int limit, String lang, Map<String, String> okapiHeaders,
 	    Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
-		asyncResultHandler.handle(succeededFuture(GetInvoicingInvoicesResponse.respond500WithTextPlain(NOT_SUPPORTED)));
+		asyncResultHandler.handle(succeededFuture(GetInvoiceInvoicesResponse.respond500WithTextPlain(NOT_SUPPORTED)));
 	}
 
   @Validate
 	@Override
-	public void getInvoicingInvoicesById(String id, String lang, Map<String, String> okapiHeaders,
+	public void getInvoiceInvoicesById(String id, String lang, Map<String, String> okapiHeaders,
 	    Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
-		asyncResultHandler.handle(succeededFuture(GetInvoicingInvoicesByIdResponse.respond500WithTextPlain(NOT_SUPPORTED)));
+		asyncResultHandler.handle(succeededFuture(GetInvoiceInvoicesByIdResponse.respond500WithTextPlain(NOT_SUPPORTED)));
 	}
 
   @Validate
 	@Override
-	public void putInvoicingInvoicesById(String id, String lang, Invoice entity, Map<String, String> okapiHeaders,
+	public void putInvoiceInvoicesById(String id, String lang, Invoice entity, Map<String, String> okapiHeaders,
 	    Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
-		asyncResultHandler.handle(succeededFuture(PutInvoicingInvoicesByIdResponse.respond500WithTextPlain(NOT_SUPPORTED)));
+		asyncResultHandler.handle(succeededFuture(PutInvoiceInvoicesByIdResponse.respond500WithTextPlain(NOT_SUPPORTED)));
 	}
 
   @Validate
 	@Override
-	public void deleteInvoicingInvoicesById(String id, String lang, Map<String, String> okapiHeaders,
+	public void deleteInvoiceInvoicesById(String id, String lang, Map<String, String> okapiHeaders,
 	    Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
-		asyncResultHandler.handle(succeededFuture(DeleteInvoicingInvoicesByIdResponse.respond500WithTextPlain(NOT_SUPPORTED)));
+		asyncResultHandler.handle(succeededFuture(DeleteInvoiceInvoicesByIdResponse.respond500WithTextPlain(NOT_SUPPORTED)));
 	}
 
   @Validate
 	@Override
-	public void getInvoicingInvoiceLines(String lang, Map<String, String> okapiHeaders,
+	public void getInvoiceInvoiceLines(String lang, Map<String, String> okapiHeaders,
 	    Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
-		asyncResultHandler.handle(succeededFuture(GetInvoicingInvoiceLinesResponse.respond500WithTextPlain(NOT_SUPPORTED)));
+		asyncResultHandler.handle(succeededFuture(GetInvoiceInvoiceLinesResponse.respond500WithTextPlain(NOT_SUPPORTED)));
 	}
 
   @Validate
 	@Override
-	public void postInvoicingInvoiceLines(String lang, InvoiceLine entity, Map<String, String> okapiHeaders,
+	public void postInvoiceInvoiceLines(String lang, InvoiceLine entity, Map<String, String> okapiHeaders,
 	    Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
-		asyncResultHandler.handle(succeededFuture(PostInvoicingInvoiceLinesResponse.respond500WithTextPlain(NOT_SUPPORTED)));
+		asyncResultHandler.handle(succeededFuture(PostInvoiceInvoiceLinesResponse.respond500WithTextPlain(NOT_SUPPORTED)));
 	}
 
   @Validate
 	@Override
-	public void getInvoicingInvoiceLinesById(String id, String lang, Map<String, String> okapiHeaders,
+	public void getInvoiceInvoiceLinesById(String id, String lang, Map<String, String> okapiHeaders,
 	    Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
-		asyncResultHandler.handle(succeededFuture(GetInvoicingInvoiceLinesByIdResponse.respond500WithTextPlain(NOT_SUPPORTED)));
+		asyncResultHandler.handle(succeededFuture(GetInvoiceInvoiceLinesByIdResponse.respond500WithTextPlain(NOT_SUPPORTED)));
 	}
 
   @Validate
 	@Override
-	public void putInvoicingInvoiceLinesById(String id, String lang, InvoiceLine entity, Map<String, String> okapiHeaders,
+	public void putInvoiceInvoiceLinesById(String id, String lang, InvoiceLine entity, Map<String, String> okapiHeaders,
 	    Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
-		asyncResultHandler.handle(succeededFuture(PutInvoicingInvoiceLinesByIdResponse.respond500WithTextPlain(NOT_SUPPORTED)));
+		asyncResultHandler.handle(succeededFuture(PutInvoiceInvoiceLinesByIdResponse.respond500WithTextPlain(NOT_SUPPORTED)));
 	}
 
   @Validate
 	@Override
-	public void deleteInvoicingInvoiceLinesById(String id, String lang, Map<String, String> okapiHeaders,
+	public void deleteInvoiceInvoiceLinesById(String id, String lang, Map<String, String> okapiHeaders,
 	    Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
-		asyncResultHandler.handle(succeededFuture(DeleteInvoicingInvoiceLinesByIdResponse.respond500WithTextPlain(NOT_SUPPORTED)));
+		asyncResultHandler.handle(succeededFuture(DeleteInvoiceInvoiceLinesByIdResponse.respond500WithTextPlain(NOT_SUPPORTED)));
 	}
 
   @Validate
 	@Override
-	public void getInvoicingInvoiceNumber(String lang, Map<String, String> okapiHeaders,
+	public void getInvoiceInvoiceNumber(String lang, Map<String, String> okapiHeaders,
 	    Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
-		asyncResultHandler.handle(succeededFuture(GetInvoicingInvoiceNumberResponse.respond500WithTextPlain(NOT_SUPPORTED)));
+		asyncResultHandler.handle(succeededFuture(GetInvoiceInvoiceNumberResponse.respond500WithTextPlain(NOT_SUPPORTED)));
 	}
 
   @Validate
 	@Override
-	public void postInvoicingInvoiceNumberValidate(String lang, Object entity, Map<String, String> okapiHeaders,
+	public void postInvoiceInvoiceNumberValidate(String lang, Object entity, Map<String, String> okapiHeaders,
 	    Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
-		asyncResultHandler.handle(succeededFuture(PostInvoicingInvoiceNumberValidateResponse.respond500WithApplicationJson(NOT_SUPPORTED)));
+		asyncResultHandler.handle(succeededFuture(PostInvoiceInvoiceNumberValidateResponse.respond500WithApplicationJson(NOT_SUPPORTED)));
 	}
 }

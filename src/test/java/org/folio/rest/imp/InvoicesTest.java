@@ -36,12 +36,12 @@ import static org.folio.rest.RestVerticle.OKAPI_HEADER_TENANT;
 
 public class InvoicesTest {
   private static final Logger logger = LoggerFactory.getLogger(InvoicesTest.class);
-  private static final String INVOICE_ID_PATH = "/invoicing/invoices/{id}";
-  private static final String INVOICE_LINE_ID_PATH = "/invoicing/invoice-lines/{id}";
-  private static final String INVOICE_PATH = "/invoicing/invoices";
-  private static final String INVOICE_LINES_PATH = "/invoicing/invoice-lines";
-  private static final String INVOICE_NUMBER_PATH = "/invoicing/invoice-number";
-  private static final String INVOICE_NUMBER_VALIDATE_PATH = "/invoicing/invoice-number/validate";
+  private static final String INVOICE_ID_PATH = "/invoice/invoices/{id}";
+  private static final String INVOICE_LINE_ID_PATH = "/invoice/invoice-lines/{id}";
+  private static final String INVOICE_PATH = "/invoice/invoices";
+  private static final String INVOICE_LINES_PATH = "/invoice/invoice-lines";
+  private static final String INVOICE_NUMBER_PATH = "/invoice/invoice-number";
+  private static final String INVOICE_NUMBER_VALIDATE_PATH = "/invoice/invoice-number/validate";
   private static final String INVOICE_SAMPLE_PATH = "invoice.json";
   private static final String INVOICE_LINE_SAMPLE_PATH = "invoice_line.json";
   private static final String ID = "id";
