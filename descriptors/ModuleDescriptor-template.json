@@ -9,62 +9,62 @@
       "handlers": [
         {
           "methods": ["GET"],
-          "pathPattern": "/invoicing/invoices",
+          "pathPattern": "/invoice/invoices",
           "permissionsRequired": ["invoice.invoices.collection.get"]
         },
         {
           "methods": ["POST"],
-          "pathPattern": "/invoicing/invoices",
+          "pathPattern": "/invoice/invoices",
           "permissionsRequired": ["invoice.invoices.item.post"]
         },
         {
           "methods": ["GET"],
-          "pathPattern": "/invoicing/invoices/{id}",
+          "pathPattern": "/invoice/invoices/{id}",
           "permissionsRequired": ["invoice.invoices.item.get"]
         },
         {
           "methods": ["PUT"],
-          "pathPattern": "/invoicing/invoices/{id}",
+          "pathPattern": "/invoice/invoices/{id}",
           "permissionsRequired": ["invoice.invoices.item.put"]
         },
         {
           "methods": ["DELETE"],
-          "pathPattern": "/invoicing/invoices/{id}",
+          "pathPattern": "/invoice/invoices/{id}",
           "permissionsRequired": ["invoice.invoices.item.delete"]
         },
         {
           "methods": ["GET"],
-          "pathPattern": "/invoicing/invoice-lines",
+          "pathPattern": "/invoice/invoice-lines",
           "permissionsRequired": ["invoice.invoice-lines.collection.get"]
         },
         {
           "methods": ["POST"],
-          "pathPattern": "/invoicing/invoice-lines",
+          "pathPattern": "/invoice/invoice-lines",
           "permissionsRequired": ["invoice.invoice-lines.item.post"]
         },
         {
           "methods": ["GET"],
-          "pathPattern": "/invoicing/invoice-lines/{id}",
+          "pathPattern": "/invoice/invoice-lines/{id}",
           "permissionsRequired": ["invoice.invoice-lines.item.get"]
         },
         {
           "methods": ["PUT"],
-          "pathPattern": "/invoicing/invoice-lines/{id}",
+          "pathPattern": "/invoice/invoice-lines/{id}",
           "permissionsRequired": ["invoice.invoice-lines.item.put"]
         },
         {
           "methods": ["DELETE"],
-          "pathPattern": "/invoicing/invoice-lines/{id}",
+          "pathPattern": "/invoice/invoice-lines/{id}",
           "permissionsRequired": ["invoice.invoice-lines.item.delete"]
         },
         {
           "methods": ["GET"],
-          "pathPattern": "/invoicing/invoice-number",
+          "pathPattern": "/invoice/invoice-number",
           "permissionsRequired": ["invoice.invoice-number.item.get"]
         },
         {
           "methods": ["POST"],
-          "pathPattern": "/invoicing/invoice-number/validate",
+          "pathPattern": "/invoice/invoice-number/validate",
           "permissionsRequired": ["invoice.invoice-number.item.post"]
         }                      
       ]
