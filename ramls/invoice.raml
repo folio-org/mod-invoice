@@ -70,7 +70,7 @@ resourceTypes:
         exampleItem: !include acq-models/mod-invoice-storage/examples/invoice_line.sample
     is: [validate]
     get:
-      is: [validate]
+      is: [ pageable, validate ]
     post:
       description: Post an invoice lines to corresponding invoice
     /{id}:
