@@ -30,7 +30,7 @@ public class HelperUtils {
   public static JsonObject verifyAndExtractBody(Response response) {
     if (!Response.isSuccess(response.getCode())) {
       throw new CompletionException(
-          new HttpException(response.getCode(), response.getError().getString("errorMessage")));
+        new HttpException(response.getCode(), response.getError().getString("errorMessage")));
     }
     return response.getBody();
   }
@@ -76,10 +76,9 @@ public class HelperUtils {
           return null;
         });
     } catch (Exception e) {
-      logger.error(EXCEPTION_CALLING_ENDPOINT_MSG, e, HttpMethod.GET, endpoint);
-      future.completeExceptionally(e);
+        logger.error(EXCEPTION_CALLING_ENDPOINT_MSG, e, HttpMethod.GET, endpoint);
+        future.completeExceptionally(e);
     }
     return future;
   }
-
 }

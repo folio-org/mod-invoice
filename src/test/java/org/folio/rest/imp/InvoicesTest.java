@@ -57,74 +57,73 @@ import io.vertx.ext.web.handler.BodyHandler;
 
 @RunWith(VertxUnitRunner.class)
 public class InvoicesTest {
-  private static final Logger logger = LoggerFactory.getLogger(InvoicesTest.class);
-  private static final String INVOICE_ID_PATH = "/invoice/invoices/{id}";
-  private static final String INVOICE_LINE_ID_PATH = "/invoice/invoice-lines/{id}";
-  private static final String INVOICE_PATH = "/invoice/invoices";
-  private static final String INVOICE_LINES_PATH = "/invoice/invoice-lines";
-  private static final String INVOICE_NUMBER_PATH = "/invoice/invoice-number";
-  private static final String INVOICE_NUMBER_VALIDATE_PATH = "/invoice/invoice-number/validate";
-  private static final String INVOICE_SAMPLE_PATH = "invoice.json";
-  private static final String INVOICE_LINE_SAMPLE_PATH = "invoice_line.json";
-  private static final String ID = "id";
-  private static final String UUID = "8d3881f6-dd93-46f0-b29d-1c36bdb5c9f9";
+	private static final Logger logger = LoggerFactory.getLogger(InvoicesTest.class);
 
-  private static final String EXIST_CONFIG_TENANT_LIMIT_10 = "test_diku_limit_10";
-  private static final Header EXIST_CONFIG_X_OKAPI_TENANT_LIMIT_10 = new Header(OKAPI_HEADER_TENANT, EXIST_CONFIG_TENANT_LIMIT_10);
-  private static final String BAD_QUERY = "unprocessableQuery";
-  private static final String APPLICATION_JSON = "application/json";
-  private static final String ID_FOR_INTERNAL_SERVER_ERROR = "168f8a86-d26c-406e-813f-c7527f241ac3";
-  
-  private static Vertx vertx;
-  private static final String TENANT_NAME = "diku";
-  static final Header TENANT_HEADER = new Header(OKAPI_HEADER_TENANT, TENANT_NAME);
+	private static final String INVOICE_ID_PATH = "/invoice/invoices/{id}";
+	private static final String INVOICE_LINE_ID_PATH = "/invoice/invoice-lines/{id}";
+	private static final String INVOICE_PATH = "/invoice/invoices";
+	private static final String INVOICE_LINES_PATH = "/invoice/invoice-lines";
+	private static final String INVOICE_NUMBER_PATH = "/invoice/invoice-number";
+	private static final String INVOICE_NUMBER_VALIDATE_PATH = "/invoice/invoice-number/validate";
+	private static final String INVOICE_SAMPLE_PATH = "invoice.json";
+	private static final String INVOICE_LINE_SAMPLE_PATH = "invoice_line.json";
+	private static final String ID = "id";
+	private static final String UUID = "8d3881f6-dd93-46f0-b29d-1c36bdb5c9f9";
+	private static final String EXIST_CONFIG_TENANT_LIMIT_10 = "test_diku_limit_10";
+	private static final String BAD_QUERY = "unprocessableQuery";
+	private static final String APPLICATION_JSON = "application/json";
+	private static final String ID_FOR_INTERNAL_SERVER_ERROR = "168f8a86-d26c-406e-813f-c7527f241ac3";
+	private static final String TENANT_NAME = "diku";
 
+	private static final int mockPort = NetworkUtils.nextFreePort();
+	private static final int okapiPort = NetworkUtils.nextFreePort();
 
-  private static final int mockPort = NetworkUtils.nextFreePort();
-  private static final int okapiPort = NetworkUtils.nextFreePort();
-  private static MockServer mockServer;
-  
-  private static final Header X_OKAPI_URL = new Header("X-Okapi-Url", "http://localhost:" + mockPort);
-  
-  @BeforeClass
-  public static void setUpOnce(TestContext context) {
-    vertx = Vertx.vertx();
+	private static Vertx vertx;
+	private static MockServer mockServer;
 
-    mockServer = new MockServer(mockPort);
-    mockServer.start(context);
+	private static final Header EXIST_CONFIG_X_OKAPI_TENANT_LIMIT_10 = new Header(OKAPI_HEADER_TENANT, EXIST_CONFIG_TENANT_LIMIT_10);
+	private static final Header X_OKAPI_URL = new Header("X-Okapi-Url", "http://localhost:" + mockPort);
+	static final Header TENANT_HEADER = new Header(OKAPI_HEADER_TENANT, TENANT_NAME);
 
-    RestAssured.baseURI = "http://localhost:" + okapiPort;
-    RestAssured.port = okapiPort;
-    RestAssured.enableLoggingOfRequestAndResponseIfValidationFails();
+	@BeforeClass
+	public static void setUpOnce(TestContext context) {
+		vertx = Vertx.vertx();
 
-    final JsonObject conf = new JsonObject();
-    conf.put("http.port", okapiPort);
+		mockServer = new MockServer(mockPort);
+		mockServer.start(context);
 
-    final DeploymentOptions opt = new DeploymentOptions().setConfig(conf);
-    vertx.deployVerticle(RestVerticle.class.getName(), opt, context.asyncAssertSuccess());
-  }
-  
-  @AfterClass
-  public static void tearDownOnce(TestContext context) {
-    vertx.close(context.asyncAssertSuccess());
-    mockServer.close();
-  }
+		RestAssured.baseURI = "http://localhost:" + okapiPort;
+		RestAssured.port = okapiPort;
+		RestAssured.enableLoggingOfRequestAndResponseIfValidationFails();
 
-  @Before
-  public void setUp() {
-    MockServer.serverRqRs.clear();
-  }
+		final JsonObject conf = new JsonObject();
+		conf.put("http.port", okapiPort);
+
+		final DeploymentOptions opt = new DeploymentOptions().setConfig(conf);
+		vertx.deployVerticle(RestVerticle.class.getName(), opt, context.asyncAssertSuccess());
+	}
+
+	@AfterClass
+	public static void tearDownOnce(TestContext context) {
+		vertx.close(context.asyncAssertSuccess());
+		mockServer.close();
+	}
+
+	@Before
+	public void setUp() {
+		MockServer.serverRqRs.clear();
+	}
 
   @Test
   public void getInvoicingInvoicesTest() throws MalformedURLException {
   	Response resp = RestAssured.with()
   			.header(X_OKAPI_URL)
   			.header(EXIST_CONFIG_X_OKAPI_TENANT_LIMIT_10)
-  			.get(INVOICE_PATH)
-        .then()
-        .statusCode(200)
-        .extract()
-        .response();
+  			  .get(INVOICE_PATH)
+            .then()
+              .statusCode(200)
+              .extract()
+              .response();
 
   	assertEquals(3, resp.getBody().as(InvoiceCollection.class).getTotalRecords().intValue());
   }
@@ -290,89 +289,87 @@ public class InvoicesTest {
     }
   }
   
-  public static class MockServer {
-  	 private static final String TOTAL_RECORDS = "totalRecords";
-     static Table<String, HttpMethod, List<JsonObject>> serverRqRs = HashBasedTable.create();
-     private static final Logger logger = LoggerFactory.getLogger(MockServer.class);
+	public static class MockServer {
+		private static final String TOTAL_RECORDS = "totalRecords";
+		static Table<String, HttpMethod, List<JsonObject>> serverRqRs = HashBasedTable.create();
+		private static final Logger logger = LoggerFactory.getLogger(MockServer.class);
 
-     final int port;
-     final Vertx vertx;
-     
-     MockServer(int port) {
-       this.port = port;
-       this.vertx = Vertx.vertx();
-     }
+		final int port;
+		final Vertx vertx;
 
-     void start(TestContext context) {
-       // Setup Mock Server...
-       HttpServer server = vertx.createHttpServer();
+		MockServer(int port) {
+			this.port = port;
+			this.vertx = Vertx.vertx();
+		}
 
-       final Async async = context.async();
-       server.requestHandler(defineRoutes()::accept).listen(port, result -> {
-         if (result.failed()) {
-           logger.warn(result.cause());
-         }
-         context.assertTrue(result.succeeded());
-         async.complete();
-       });
-     }
-     
-     void close() {
-       vertx.close(res -> {
-         if (res.failed()) {
-           logger.error("Failed to shut down mock server", res.cause());
-           fail(res.cause().getMessage());
-         } else {
-           logger.info("Successfully shut down mock server");
-         }
-       });
-     }
-     
-     Router defineRoutes() {
-       Router router = Router.router(vertx);
+		void start(TestContext context) {
+			// Setup Mock Server...
+			HttpServer server = vertx.createHttpServer();
 
-       router.route().handler(BodyHandler.create());
-       router.route(HttpMethod.GET, resourcesPath(INVOICES)).handler(this::handleGetInvoices);
-       return router;
-     }
-     
-     private void serverResponse(RoutingContext ctx, int statusCode, String contentType, String body) {
-       ctx.response()
-          .setStatusCode(statusCode)
-          .putHeader(HttpHeaders.CONTENT_TYPE, contentType)
-          .end(body);
-     }
-     
-     private void addServerRqRsData(HttpMethod method, String objName, JsonObject data) {
-       List<JsonObject> entries = serverRqRs.get(objName, method);
-       if (entries == null) {
-         entries = new ArrayList<>();
-       }
-       entries.add(data);
-       serverRqRs.put(objName, method, entries);
-     }
-     
-     private void handleGetInvoices(RoutingContext ctx) {
+			final Async async = context.async();
+			server.requestHandler(defineRoutes()::accept).listen(port, result -> {
+				if (result.failed()) {
+					logger.warn(result.cause());
+				}
+				context.assertTrue(result.succeeded());
+				async.complete();
+			});
+		}
 
-       String queryParam = StringUtils.trimToEmpty(ctx.request().getParam("query"));
-       if (queryParam.contains(BAD_QUERY)) {
-         serverResponse(ctx, 400, APPLICATION_JSON, Status.BAD_REQUEST.getReasonPhrase());
-       } else if (queryParam.contains(ID_FOR_INTERNAL_SERVER_ERROR)) {
-         serverResponse(ctx, 500, APPLICATION_JSON, Status.INTERNAL_SERVER_ERROR.getReasonPhrase());
-       } else {
-         JsonObject invoice = new JsonObject();
-         addServerRqRsData(HttpMethod.GET, INVOICES, invoice);
-         switch (queryParam) {
-           case EMPTY:
-          	 invoice.put(TOTAL_RECORDS, 3);
-             break;
-           default:
-             //modify later as needed
-          	 invoice.put(TOTAL_RECORDS, 0);
-         }
-         addServerRqRsData(HttpMethod.GET, INVOICES, invoice);
-         serverResponse(ctx, 200, APPLICATION_JSON, invoice.encodePrettily());
-       }
-     }
+		void close() {
+			vertx.close(res -> {
+				if (res.failed()) {
+					logger.error("Failed to shut down mock server", res.cause());
+					fail(res.cause().getMessage());
+				} else {
+					logger.info("Successfully shut down mock server");
+				}
+			});
+		}
+
+		Router defineRoutes() {
+			Router router = Router.router(vertx);
+			router.route().handler(BodyHandler.create());
+			router.route(HttpMethod.GET, resourcesPath(INVOICES)).handler(this::handleGetInvoices);
+			return router;
+		}
+     
+    private void serverResponse(RoutingContext ctx, int statusCode, String contentType, String body) {
+      ctx.response()
+           .setStatusCode(statusCode)
+             .putHeader(HttpHeaders.CONTENT_TYPE, contentType)
+             .end(body);
+    }
+
+		private void addServerRqRsData(HttpMethod method, String objName, JsonObject data) {
+			List<JsonObject> entries = serverRqRs.get(objName, method);
+			if (entries == null) {
+				entries = new ArrayList<>();
+			}
+			entries.add(data);
+			serverRqRs.put(objName, method, entries);
+		}
+
+		private void handleGetInvoices(RoutingContext ctx) {
+			String queryParam = StringUtils.trimToEmpty(ctx.request().getParam("query"));
+			if (queryParam.contains(BAD_QUERY)) {
+				serverResponse(ctx, 400, APPLICATION_JSON, Status.BAD_REQUEST.getReasonPhrase());
+			} else if (queryParam.contains(ID_FOR_INTERNAL_SERVER_ERROR)) {
+				serverResponse(ctx, 500, APPLICATION_JSON, Status.INTERNAL_SERVER_ERROR.getReasonPhrase());
+			} else {
+				JsonObject invoice = new JsonObject();
+				addServerRqRsData(HttpMethod.GET, INVOICES, invoice);
+				switch (queryParam) {
+				case EMPTY:
+					invoice.put(TOTAL_RECORDS, 3);
+					break;
+				default:
+					// modify later as needed
+					invoice.put(TOTAL_RECORDS, 0);
+				}
+				addServerRqRsData(HttpMethod.GET, INVOICES, invoice);
+				serverResponse(ctx, 200, APPLICATION_JSON, invoice.encodePrettily());
+			}
+		}
   }
 }
