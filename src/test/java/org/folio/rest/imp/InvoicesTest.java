@@ -1,39 +1,61 @@
 package org.folio.rest.imp;
 
-import io.restassured.http.ContentType;
-import io.restassured.http.Header;
-import io.vertx.core.DeploymentOptions;
-import io.vertx.core.Vertx;
-import io.vertx.core.json.JsonObject;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
-
-import org.apache.commons.io.IOUtils;
-import org.folio.rest.RestVerticle;
-import org.folio.rest.jaxrs.model.Invoice;
-import org.folio.rest.jaxrs.model.InvoiceLine;
-import org.folio.rest.tools.client.test.HttpClientMock2;
-import org.folio.rest.tools.utils.NetworkUtils;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import static io.restassured.RestAssured.given;
+import static org.apache.commons.lang3.StringUtils.EMPTY;
+import static org.folio.invoices.utils.ResourcePathResolver.INVOICES;
+import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
+import static org.folio.rest.RestVerticle.OKAPI_HEADER_TENANT;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.MalformedURLException;
-import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.Locale;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.stream.Stream;
 
-import static io.restassured.RestAssured.given;
-import static org.folio.rest.RestVerticle.OKAPI_HEADER_TENANT;
+import javax.ws.rs.core.Response.Status;
 
+import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang3.StringUtils;
+import org.folio.rest.RestVerticle;
+import org.folio.rest.jaxrs.model.Invoice;
+import org.folio.rest.jaxrs.model.InvoiceCollection;
+import org.folio.rest.jaxrs.model.InvoiceLine;
+import org.folio.rest.tools.utils.NetworkUtils;
+import org.junit.AfterClass;
+import org.junit.Before;
+import org.junit.BeforeClass;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+
+import com.google.common.collect.HashBasedTable;
+import com.google.common.collect.Table;
+
+import io.restassured.RestAssured;
+import io.restassured.http.ContentType;
+import io.restassured.http.Header;
+import io.restassured.response.Response;
+import io.vertx.core.DeploymentOptions;
+import io.vertx.core.Vertx;
+import io.vertx.core.http.HttpHeaders;
+import io.vertx.core.http.HttpMethod;
+import io.vertx.core.http.HttpServer;
+import io.vertx.core.json.JsonObject;
+import io.vertx.core.logging.Logger;
+import io.vertx.core.logging.LoggerFactory;
+import io.vertx.ext.unit.Async;
+import io.vertx.ext.unit.TestContext;
+import io.vertx.ext.unit.junit.VertxUnitRunner;
+import io.vertx.ext.web.Router;
+import io.vertx.ext.web.RoutingContext;
+import io.vertx.ext.web.handler.BodyHandler;
+
+@RunWith(VertxUnitRunner.class)
 public class InvoicesTest {
   private static final Logger logger = LoggerFactory.getLogger(InvoicesTest.class);
   private static final String INVOICE_ID_PATH = "/invoice/invoices/{id}";
@@ -47,60 +69,64 @@ public class InvoicesTest {
   private static final String ID = "id";
   private static final String UUID = "8d3881f6-dd93-46f0-b29d-1c36bdb5c9f9";
 
+  private static final String EXIST_CONFIG_TENANT_LIMIT_10 = "test_diku_limit_10";
+  private static final Header EXIST_CONFIG_X_OKAPI_TENANT_LIMIT_10 = new Header(OKAPI_HEADER_TENANT, EXIST_CONFIG_TENANT_LIMIT_10);
+  private static final String BAD_QUERY = "unprocessableQuery";
+  private static final String APPLICATION_JSON = "application/json";
+  private static final String ID_FOR_INTERNAL_SERVER_ERROR = "168f8a86-d26c-406e-813f-c7527f241ac3";
+  
   private static Vertx vertx;
-  private static int port = NetworkUtils.nextFreePort();
   private static final String TENANT_NAME = "diku";
   static final Header TENANT_HEADER = new Header(OKAPI_HEADER_TENANT, TENANT_NAME);
 
+
+  private static final int mockPort = NetworkUtils.nextFreePort();
+  private static final int okapiPort = NetworkUtils.nextFreePort();
+  private static MockServer mockServer;
+  
+  private static final Header X_OKAPI_URL = new Header("X-Okapi-Url", "http://localhost:" + mockPort);
+  
   @BeforeClass
-  public static void before() throws InterruptedException, ExecutionException, TimeoutException {
-
-    // tests expect English error messages only, no Danish/German/...
-    Locale.setDefault(Locale.US);
-
-
+  public static void setUpOnce(TestContext context) {
     vertx = Vertx.vertx();
 
-    DeploymentOptions options = new DeploymentOptions();
+    mockServer = new MockServer(mockPort);
+    mockServer.start(context);
 
-    options.setConfig(new JsonObject().put("http.port", port).put(HttpClientMock2.MOCK_MODE, "true"));
-    options.setWorker(true);
+    RestAssured.baseURI = "http://localhost:" + okapiPort;
+    RestAssured.port = okapiPort;
+    RestAssured.enableLoggingOfRequestAndResponseIfValidationFails();
 
-    startVerticle(options);
+    final JsonObject conf = new JsonObject();
+    conf.put("http.port", okapiPort);
 
+    final DeploymentOptions opt = new DeploymentOptions().setConfig(conf);
+    vertx.deployVerticle(RestVerticle.class.getName(), opt, context.asyncAssertSuccess());
+  }
+  
+  @AfterClass
+  public static void tearDownOnce(TestContext context) {
+    vertx.close(context.asyncAssertSuccess());
+    mockServer.close();
   }
 
-  private static void startVerticle(DeploymentOptions options)
-    throws InterruptedException, ExecutionException, TimeoutException {
-
-    logger.info("Start verticle");
-
-    CompletableFuture<String> deploymentComplete = new CompletableFuture<>();
-
-    vertx.deployVerticle(RestVerticle.class.getName(), options, res -> {
-      if(res.succeeded()) {
-        deploymentComplete.complete(res.result());
-      }
-      else {
-        deploymentComplete.completeExceptionally(res.cause());
-      }
-    });
-
-    deploymentComplete.get(60, TimeUnit.SECONDS);
-  }
-
-  public static URL storageUrl(String path) throws MalformedURLException {
-    return new URL("http", "localhost", port, path);
+  @Before
+  public void setUp() {
+    MockServer.serverRqRs.clear();
   }
 
   @Test
   public void getInvoicingInvoicesTest() throws MalformedURLException {
-    given()
-      .header(TENANT_HEADER)
-      .contentType(ContentType.JSON)
-      .get(storageUrl(INVOICE_PATH))
+  	Response resp = RestAssured.with()
+  			.header(X_OKAPI_URL)
+  			.header(EXIST_CONFIG_X_OKAPI_TENANT_LIMIT_10)
+  			.get(INVOICE_PATH)
         .then()
-          .statusCode(500);
+        .statusCode(200)
+        .extract()
+        .response();
+
+  	assertEquals(3, resp.getBody().as(InvoiceCollection.class).getTotalRecords().intValue());
   }
 
   @Test
@@ -108,7 +134,7 @@ public class InvoicesTest {
     given()
       .header(TENANT_HEADER)
       .contentType(ContentType.JSON)
-      .get(storageUrl(INVOICE_LINES_PATH))
+      .get(INVOICE_LINES_PATH)
         .then()
           .statusCode(500);
   }
@@ -118,7 +144,7 @@ public class InvoicesTest {
     given()
       .header(TENANT_HEADER)
       .contentType(ContentType.JSON)
-      .get(storageUrl(INVOICE_NUMBER_PATH))
+      .get(INVOICE_NUMBER_PATH)
         .then()
           .statusCode(500);
   }
@@ -129,7 +155,7 @@ public class InvoicesTest {
       .pathParam(ID, UUID)
       .header(TENANT_HEADER)
       .contentType(ContentType.JSON)
-      .get(storageUrl(INVOICE_ID_PATH))
+      .get(INVOICE_ID_PATH)
         .then()
           .statusCode(500);
   }
@@ -140,7 +166,7 @@ public class InvoicesTest {
       .pathParam(ID, UUID)
       .header(TENANT_HEADER)
       .contentType(ContentType.JSON)
-      .get(storageUrl(INVOICE_LINE_ID_PATH))
+      .get(INVOICE_LINE_ID_PATH)
         .then()
           .statusCode(500);
   }
@@ -155,7 +181,7 @@ public class InvoicesTest {
       .body(jsonBody)
       .header(TENANT_HEADER)
       .contentType(ContentType.JSON)
-      .put(storageUrl(INVOICE_ID_PATH))
+      .put(INVOICE_ID_PATH)
         .then()
           .statusCode(500);
   }
@@ -170,7 +196,7 @@ public class InvoicesTest {
       .body(jsonBody)
       .header(TENANT_HEADER)
       .contentType(ContentType.JSON)
-      .put(storageUrl(INVOICE_LINE_ID_PATH))
+      .put(INVOICE_LINE_ID_PATH)
         .then()
           .statusCode(500);
   }
@@ -181,7 +207,7 @@ public class InvoicesTest {
       .pathParam(ID, UUID)
       .header(TENANT_HEADER)
       .contentType(ContentType.JSON)
-      .delete(storageUrl(INVOICE_ID_PATH))
+      .delete(INVOICE_ID_PATH)
         .then()
           .statusCode(500);
   }
@@ -192,7 +218,7 @@ public class InvoicesTest {
       .pathParam(ID, UUID)
       .header(TENANT_HEADER)
       .contentType(ContentType.JSON)
-      .delete(storageUrl(INVOICE_LINE_ID_PATH))
+      .delete(INVOICE_LINE_ID_PATH)
         .then()
           .statusCode(500);
   }
@@ -206,7 +232,7 @@ public class InvoicesTest {
       .body(jsonBody)
       .header(TENANT_HEADER)
       .contentType(ContentType.JSON)
-      .post(storageUrl(INVOICE_PATH))
+      .post(INVOICE_PATH)
         .then()
           .statusCode(500);
   }
@@ -220,7 +246,7 @@ public class InvoicesTest {
       .body(jsonBody)
       .header(TENANT_HEADER)
       .contentType(ContentType.JSON)
-      .post(storageUrl(INVOICE_NUMBER_VALIDATE_PATH))
+      .post(INVOICE_NUMBER_VALIDATE_PATH)
         .then()
           .statusCode(500);
   }
@@ -234,7 +260,7 @@ public class InvoicesTest {
       .body(jsonBody)
       .header(TENANT_HEADER)
       .contentType(ContentType.JSON)
-      .post(storageUrl(INVOICE_LINES_PATH))
+      .post(INVOICE_LINES_PATH)
         .then()
           .statusCode(500);
   }
@@ -262,5 +288,91 @@ public class InvoicesTest {
         return sb.toString();
       }
     }
+  }
+  
+  public static class MockServer {
+  	 private static final String TOTAL_RECORDS = "totalRecords";
+     static Table<String, HttpMethod, List<JsonObject>> serverRqRs = HashBasedTable.create();
+     private static final Logger logger = LoggerFactory.getLogger(MockServer.class);
+
+     final int port;
+     final Vertx vertx;
+     
+     MockServer(int port) {
+       this.port = port;
+       this.vertx = Vertx.vertx();
+     }
+
+     void start(TestContext context) {
+       // Setup Mock Server...
+       HttpServer server = vertx.createHttpServer();
+
+       final Async async = context.async();
+       server.requestHandler(defineRoutes()::accept).listen(port, result -> {
+         if (result.failed()) {
+           logger.warn(result.cause());
+         }
+         context.assertTrue(result.succeeded());
+         async.complete();
+       });
+     }
+     
+     void close() {
+       vertx.close(res -> {
+         if (res.failed()) {
+           logger.error("Failed to shut down mock server", res.cause());
+           fail(res.cause().getMessage());
+         } else {
+           logger.info("Successfully shut down mock server");
+         }
+       });
+     }
+     
+     Router defineRoutes() {
+       Router router = Router.router(vertx);
+
+       router.route().handler(BodyHandler.create());
+       router.route(HttpMethod.GET, resourcesPath(INVOICES)).handler(this::handleGetInvoices);
+       return router;
+     }
+     
+     private void serverResponse(RoutingContext ctx, int statusCode, String contentType, String body) {
+       ctx.response()
+          .setStatusCode(statusCode)
+          .putHeader(HttpHeaders.CONTENT_TYPE, contentType)
+          .end(body);
+     }
+     
+     private void addServerRqRsData(HttpMethod method, String objName, JsonObject data) {
+       List<JsonObject> entries = serverRqRs.get(objName, method);
+       if (entries == null) {
+         entries = new ArrayList<>();
+       }
+       entries.add(data);
+       serverRqRs.put(objName, method, entries);
+     }
+     
+     private void handleGetInvoices(RoutingContext ctx) {
+
+       String queryParam = StringUtils.trimToEmpty(ctx.request().getParam("query"));
+       if (queryParam.contains(BAD_QUERY)) {
+         serverResponse(ctx, 400, APPLICATION_JSON, Status.BAD_REQUEST.getReasonPhrase());
+       } else if (queryParam.contains(ID_FOR_INTERNAL_SERVER_ERROR)) {
+         serverResponse(ctx, 500, APPLICATION_JSON, Status.INTERNAL_SERVER_ERROR.getReasonPhrase());
+       } else {
+         JsonObject invoice = new JsonObject();
+         addServerRqRsData(HttpMethod.GET, INVOICES, invoice);
+         switch (queryParam) {
+           case EMPTY:
+          	 invoice.put(TOTAL_RECORDS, 3);
+             break;
+           default:
+             //modify later as needed
+          	 invoice.put(TOTAL_RECORDS, 0);
+         }
+         addServerRqRsData(HttpMethod.GET, INVOICES, invoice);
+         serverResponse(ctx, 200, APPLICATION_JSON, invoice.encodePrettily());
+       }
+     }
   }
 }

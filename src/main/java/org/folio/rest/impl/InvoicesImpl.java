@@ -13,10 +13,15 @@ import org.folio.rest.jaxrs.model.InvoiceLine;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Context;
 import io.vertx.core.Handler;
+import io.vertx.core.json.JsonObject;
+import io.vertx.core.logging.Logger;
+import io.vertx.core.logging.LoggerFactory;
 
 
 public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
 
+	 private static final Logger logger = LoggerFactory.getLogger(InvoicesImpl.class);
+	 
   private static final String NOT_SUPPORTED = "Not supported";	// To overcome sonarcloud warning
   
   @Validate
@@ -28,9 +33,17 @@ public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
 
   @Validate
 	@Override
-	public void getInvoiceInvoices(int offset, int limit, String lang, Map<String, String> okapiHeaders,
-	    Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
-		asyncResultHandler.handle(succeededFuture(GetInvoiceInvoicesResponse.respond500WithTextPlain(NOT_SUPPORTED)));
+	public void getInvoiceInvoices(int offset, int limit, String query, String lang, Map<String, String> okapiHeaders,
+			Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+  	InvoiceHelper helper = new InvoiceHelper(okapiHeaders, vertxContext, lang);
+    helper
+    .getInvoices(limit, offset, query)
+	    .thenAccept(invoices -> {
+	      if (logger.isInfoEnabled()) {
+	        logger.info("Successfully retrieved invoices: " + JsonObject.mapFrom(invoices).encodePrettily());
+	      }
+	      asyncResultHandler.handle(succeededFuture(helper.buildOkResponse(invoices)));
+	    });
 	}
 
   @Validate
