@@ -20,8 +20,7 @@ import io.vertx.core.logging.LoggerFactory;
 
 public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
 
-	 private static final Logger logger = LoggerFactory.getLogger(InvoicesImpl.class);
-	 
+  private static final Logger logger = LoggerFactory.getLogger(InvoicesImpl.class);
   private static final String NOT_SUPPORTED = "Not supported";	// To overcome sonarcloud warning
   
   @Validate
