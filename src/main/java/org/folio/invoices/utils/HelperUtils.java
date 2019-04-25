@@ -64,7 +64,10 @@ public class HelperUtils {
           logger.debug("Validating response for GET {}", endpoint);
           return verifyAndExtractBody(response);
         })
-        .thenAccept(body -> future.complete(body))
+        .thenAccept(body -> {
+          logger.debug("The response body for GET {}: {}", endpoint, nonNull(body) ? body.encodePrettily() : null);
+          future.complete(body);
+        })
         .exceptionally(t -> {
           logger.error(EXCEPTION_CALLING_ENDPOINT_MSG, t, HttpMethod.GET, endpoint);
           future.completeExceptionally(t);
