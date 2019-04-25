@@ -76,6 +76,8 @@ public class InvoicesTest {
 	private static final String ID_FOR_INTERNAL_SERVER_ERROR = "168f8a86-d26c-406e-813f-c7527f241ac3";
 	private static final String TENANT_NAME = "diku";
   private static final String QUERY_PARAM_NAME = "query";
+	private static final String EXISTING_VENDOR_INV_NO =  "existingVendorInvoiceNo";
+	private static final String VENDOR_INVOICE_NUMBER_FIELD = "vendorInvoiceNo";
 
 	private static final int mockPort = NetworkUtils.nextFreePort();
 	private static final int okapiPort = NetworkUtils.nextFreePort();
@@ -118,7 +120,7 @@ public class InvoicesTest {
 
   @Test
   public void getInvoicingInvoicesTest() throws MalformedURLException {
-  	logger.info("=== Test Get Invoices by query - get 200 by successful retrieval of invoices ===");
+  	logger.info("=== Test Get Invoices by without query - get 200 by successful retrieval of invoices ===");
   	final Response resp = RestAssured
       .with()
        .header(X_OKAPI_URL)
@@ -131,7 +133,25 @@ public class InvoicesTest {
 
   	assertEquals(3, resp.getBody().as(InvoiceCollection.class).getTotalRecords().intValue());
   }
+  
+  @Test
+  public void getInvoicingInvoicesWithQueryParamTest() throws MalformedURLException {
+  	logger.info("=== Test Get Invoices with query - get 200 by successful retrieval of invoices by query ===");
 
+  	final Response resp = RestAssured
+      .with()
+       .header(X_OKAPI_URL)
+       .header(EXIST_CONFIG_X_OKAPI_TENANT_LIMIT_10)
+       .param(QUERY_PARAM_NAME, VENDOR_INVOICE_NUMBER_FIELD + "==" + EXISTING_VENDOR_INV_NO)
+     .get(INVOICE_PATH)
+       .then()
+         .statusCode(200)
+         .extract()
+         .response();
+
+  	assertEquals(1, resp.getBody().as(InvoiceCollection.class).getTotalRecords().intValue());
+  }
+  
   @Test
   public void testGetInvoicesBadQuery() {
     logger.info("=== Test Get Invoices by query - unprocessable query to emulate 400 from storage ===");
@@ -401,12 +421,15 @@ public class InvoicesTest {
 			} else {
 				JsonObject invoice = new JsonObject();
 				addServerRqRsData(HttpMethod.GET, INVOICES, invoice);
+				final String VENDOR_INVOICE_NUMBER_QUERY = "vendorInvoiceNo==";
 				switch (queryParam) {
+		     case VENDOR_INVOICE_NUMBER_QUERY + EXISTING_VENDOR_INV_NO:
+		    	invoice.put(TOTAL_RECORDS, 1);
+		      break;			
 				case EMPTY:
 					invoice.put(TOTAL_RECORDS, 3);
 					break;
 				default:
-					// modify later as needed
 					invoice.put(TOTAL_RECORDS, 0);
 				}
 				addServerRqRsData(HttpMethod.GET, INVOICES, invoice);

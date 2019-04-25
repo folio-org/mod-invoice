@@ -47,14 +47,6 @@ public abstract class AbstractHelper {
 		setDefaultHeaders();
 	}
 
-	AbstractHelper(Map<String, String> okapiHeaders, Context ctx, String lang) {
-		this.httpClient = getHttpClient(okapiHeaders);
-		this.okapiHeaders = okapiHeaders;
-		this.ctx = ctx;
-		this.lang = lang;
-		setDefaultHeaders();
-	}
-
   protected void addProcessingError(Error error) {
     processingErrors.getErrors().add(error);
   }
