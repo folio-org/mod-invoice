@@ -1,7 +1,10 @@
 package org.folio.rest.impl;
 
+import static javax.ws.rs.core.HttpHeaders.CONTENT_TYPE;
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 import static javax.ws.rs.core.MediaType.TEXT_PLAIN;
+import static javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
+import static org.folio.invoices.utils.ErrorCodes.GENERIC_ERROR_CODE;
 import static org.folio.rest.RestVerticle.OKAPI_HEADER_TENANT;
 
 import java.util.HashMap;
@@ -10,6 +13,7 @@ import java.util.Map;
 
 import javax.ws.rs.core.Response;
 
+import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.rest.jaxrs.model.Error;
 import org.folio.rest.jaxrs.model.Errors;
 import org.folio.rest.tools.client.HttpClientFactory;
@@ -23,6 +27,7 @@ import io.vertx.core.logging.LoggerFactory;
 
 public abstract class AbstractHelper {
 	public static final String ID = "id";
+  public static final String ERROR_CAUSE = "cause";
 	public static final String OKAPI_URL = "X-Okapi-Url";
 
 	protected final Logger logger = LoggerFactory.getLogger(this.getClass());
@@ -50,6 +55,19 @@ public abstract class AbstractHelper {
 		setDefaultHeaders();
 	}
 
+  protected void addProcessingError(Error error) {
+    processingErrors.getErrors().add(error);
+  }
+
+  protected void addProcessingErrors(List<Error> errors) {
+    processingErrors.getErrors().addAll(errors);
+  }
+  
+  protected Errors getProcessingErrors() {
+    processingErrors.setTotalRecords(processingErrors.getErrors().size());
+    return processingErrors;
+  }
+  
 	/**
 	 * Some requests do not have body and in happy flow do not produce response
 	 * body. The Accept header is required for calls to storage
@@ -67,6 +85,50 @@ public abstract class AbstractHelper {
 		return HttpClientFactory.getHttpClient(okapiURL, tenantId);
 	}
 
+  public Response buildErrorResponse(Throwable throwable) {
+    return buildErrorResponse(handleProcessingError(throwable));
+  }
+
+  protected int handleProcessingError(Throwable throwable) {
+    final Throwable cause = throwable.getCause();
+    logger.error("Exception encountered", cause);
+    final Error error;
+    final int code;
+
+    if (cause instanceof HttpException) {
+      code = ((HttpException) cause).getCode();
+      error = new Error();
+      error.withCode(((HttpException) cause).getErrorCode());
+      error.withMessage(cause.getMessage());
+    } else {
+      code = INTERNAL_SERVER_ERROR.getStatusCode();
+      error = GENERIC_ERROR_CODE.toError().withAdditionalProperty(ERROR_CAUSE, cause.getMessage());
+    }
+
+    addProcessingError(error);
+
+    return code;
+  }
+  
+  public Response buildErrorResponse(int code) {
+    final Response.ResponseBuilder responseBuilder;
+    switch (code) {
+      case 400:
+      case 404:
+      case 422:
+        responseBuilder = Response.status(code);
+        break;
+      default:
+        responseBuilder = Response.status(INTERNAL_SERVER_ERROR);
+    }
+    closeHttpClient();
+
+    return responseBuilder
+      .header(CONTENT_TYPE, APPLICATION_JSON)
+      .entity(getProcessingErrors())
+      .build();
+  }
+  
 	public Response buildOkResponse(Object body) {
 		closeHttpClient();
 		return Response.ok(body, APPLICATION_JSON).build();

@@ -42,9 +42,16 @@ public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
 	        logger.info("Successfully retrieved invoices: " + JsonObject.mapFrom(invoices).encodePrettily());
 	      }
 	      asyncResultHandler.handle(succeededFuture(helper.buildOkResponse(invoices)));
-	    });
+	    })
+	    .exceptionally(t -> handleErrorResponse(asyncResultHandler, helper, t));
 	}
 
+  private Void handleErrorResponse(Handler<AsyncResult<Response>> asyncResultHandler, AbstractHelper helper,
+      Throwable t) {
+    asyncResultHandler.handle(succeededFuture(helper.buildErrorResponse(t)));
+    return null;
+  }
+  
   @Validate
 	@Override
 	public void getInvoiceInvoicesById(String id, String lang, Map<String, String> okapiHeaders,

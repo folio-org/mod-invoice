@@ -74,6 +74,7 @@ public class InvoicesTest {
 	private static final String APPLICATION_JSON = "application/json";
 	private static final String ID_FOR_INTERNAL_SERVER_ERROR = "168f8a86-d26c-406e-813f-c7527f241ac3";
 	private static final String TENANT_NAME = "diku";
+  private static final String QUERY_PARAM_NAME = "query";
 
 	private static final int mockPort = NetworkUtils.nextFreePort();
 	private static final int okapiPort = NetworkUtils.nextFreePort();
@@ -128,6 +129,36 @@ public class InvoicesTest {
   	assertEquals(3, resp.getBody().as(InvoiceCollection.class).getTotalRecords().intValue());
   }
 
+  @Test
+  public void testGetInvoicesBadQuery() {
+    logger.info("=== Test Get Invoices by query - unprocessable query to emulate 400 from storage ===");
+
+    RestAssured
+      .with()
+        .header(X_OKAPI_URL)
+        .header(EXIST_CONFIG_X_OKAPI_TENANT_LIMIT_10)
+        .param(QUERY_PARAM_NAME, BAD_QUERY)
+      .get(INVOICE_PATH)
+        .then()
+          .statusCode(400)
+          .contentType(APPLICATION_JSON);
+  }
+  
+  @Test
+  public void testGetInvoicesInternalServerError() {
+    logger.info("=== Test Get Invoices by query - emulating 500 from storage ===");
+
+    RestAssured
+      .with()
+        .header(X_OKAPI_URL)
+        .header(EXIST_CONFIG_X_OKAPI_TENANT_LIMIT_10)
+        .param(QUERY_PARAM_NAME, ID_FOR_INTERNAL_SERVER_ERROR)
+      .get(INVOICE_PATH)
+        .then()
+          .statusCode(500)
+          .contentType(APPLICATION_JSON);
+  }
+  
   @Test
   public void getInvoicingInvoiceLinesTest() throws MalformedURLException {
     given()
