@@ -65,6 +65,7 @@ public class InvoicesTest {
 	private static final String INVOICE_LINES_PATH = "/invoice/invoice-lines";
 	private static final String INVOICE_NUMBER_PATH = "/invoice/invoice-number";
 	private static final String INVOICE_NUMBER_VALIDATE_PATH = "/invoice/invoice-number/validate";
+  private static final String INVOICE_PATH_BAD = "/invoice/bad";
 	private static final String INVOICE_SAMPLE_PATH = "invoice.json";
 	private static final String INVOICE_LINE_SAMPLE_PATH = "invoice_line.json";
 	private static final String ID = "id";
@@ -117,14 +118,16 @@ public class InvoicesTest {
 
   @Test
   public void getInvoicingInvoicesTest() throws MalformedURLException {
-  	Response resp = RestAssured.with()
-  			.header(X_OKAPI_URL)
-  			.header(EXIST_CONFIG_X_OKAPI_TENANT_LIMIT_10)
-  			  .get(INVOICE_PATH)
-            .then()
-              .statusCode(200)
-              .extract()
-              .response();
+  	logger.info("=== Test Get Invoices by query - get 200 by successful retrieval of invoices ===");
+  	final Response resp = RestAssured
+      .with()
+       .header(X_OKAPI_URL)
+       .header(EXIST_CONFIG_X_OKAPI_TENANT_LIMIT_10)
+     .get(INVOICE_PATH)
+       .then()
+         .statusCode(200)
+         .extract()
+         .response();
 
   	assertEquals(3, resp.getBody().as(InvoiceCollection.class).getTotalRecords().intValue());
   }
@@ -132,7 +135,6 @@ public class InvoicesTest {
   @Test
   public void testGetInvoicesBadQuery() {
     logger.info("=== Test Get Invoices by query - unprocessable query to emulate 400 from storage ===");
-
     RestAssured
       .with()
         .header(X_OKAPI_URL)
@@ -140,14 +142,12 @@ public class InvoicesTest {
         .param(QUERY_PARAM_NAME, BAD_QUERY)
       .get(INVOICE_PATH)
         .then()
-          .statusCode(400)
-          .contentType(APPLICATION_JSON);
+          .statusCode(400);
   }
   
   @Test
   public void testGetInvoicesInternalServerError() {
     logger.info("=== Test Get Invoices by query - emulating 500 from storage ===");
-
     RestAssured
       .with()
         .header(X_OKAPI_URL)
@@ -155,8 +155,19 @@ public class InvoicesTest {
         .param(QUERY_PARAM_NAME, ID_FOR_INTERNAL_SERVER_ERROR)
       .get(INVOICE_PATH)
         .then()
-          .statusCode(500)
-          .contentType(APPLICATION_JSON);
+          .statusCode(500);
+  }
+  
+  @Test
+  public void getInvoicingInvoicesBadRequestUrlTest() throws MalformedURLException {
+  	logger.info("=== Test Get Invoices by query - emulating 400 by sending bad request Url ===");
+  	RestAssured
+  	  .with()
+  			.header(X_OKAPI_URL)
+  			.header(EXIST_CONFIG_X_OKAPI_TENANT_LIMIT_10)
+  	  .get(INVOICE_PATH_BAD)
+        .then()
+          .statusCode(400);
   }
   
   @Test
