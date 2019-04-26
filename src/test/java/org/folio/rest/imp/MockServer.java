@@ -104,17 +104,16 @@ public class MockServer {
       serverResponse(ctx, 500, APPLICATION_JSON, Status.INTERNAL_SERVER_ERROR.getReasonPhrase());
     } else {
       JsonObject invoice = new JsonObject();
-      addServerRqRsData(HttpMethod.GET, INVOICES, invoice);
       final String VENDOR_INVOICE_NUMBER_QUERY = "vendorInvoiceNo==";
       switch (queryParam) {
-      case VENDOR_INVOICE_NUMBER_QUERY + EXISTING_VENDOR_INV_NO:
-        invoice.put(TOTAL_RECORDS, 1);
-        break;
-      case EMPTY:
-        invoice.put(TOTAL_RECORDS, 3);
-        break;
-      default:
-        invoice.put(TOTAL_RECORDS, 0);
+        case VENDOR_INVOICE_NUMBER_QUERY + EXISTING_VENDOR_INV_NO:
+          invoice.put(TOTAL_RECORDS, 1);
+          break;
+        case EMPTY:
+          invoice.put(TOTAL_RECORDS, 3);
+          break;
+        default:
+          invoice.put(TOTAL_RECORDS, 0);
       }
       addServerRqRsData(HttpMethod.GET, INVOICES, invoice);
       serverResponse(ctx, 200, APPLICATION_JSON, invoice.encodePrettily());
