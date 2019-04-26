@@ -21,13 +21,12 @@ public class InvoiceHelper extends AbstractHelper {
 		super(getHttpClient(okapiHeaders), okapiHeaders, ctx, lang);
 	}
   
-	public CompletableFuture<InvoiceCollection> getInvoices(int limit, int offset, String query) {
-		CompletableFuture<InvoiceCollection> future = new VertxCompletableFuture<>(ctx);
-
-		try {
-			String queryParam = getEndpointWithQuery(query, logger);
-			String endpoint = String.format(GET_INVOICES_BY_QUERY, limit, offset, queryParam, lang);
-			handleGetRequest(endpoint, httpClient, ctx, okapiHeaders, logger)
+  public CompletableFuture<InvoiceCollection> getInvoices(int limit, int offset, String query) {
+    CompletableFuture<InvoiceCollection> future = new VertxCompletableFuture<>(ctx);
+    try {
+      String queryParam = getEndpointWithQuery(query, logger);
+      String endpoint = String.format(GET_INVOICES_BY_QUERY, limit, offset, queryParam, lang);
+      handleGetRequest(endpoint, httpClient, ctx, okapiHeaders, logger)
       .thenAccept(jsonInvoices -> {
         logger.info("Successfully retrieved invoices: " + jsonInvoices.encodePrettily());
         future.complete(jsonInvoices.mapTo(InvoiceCollection.class));
