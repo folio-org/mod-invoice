@@ -15,12 +15,12 @@ import io.vertx.core.Context;
 
 public class InvoiceHelper extends AbstractHelper {
 
-	private static final String GET_INVOICES_BY_QUERY = resourcesPath(INVOICES) + "?limit=%s&offset=%s%s&lang=%s";
+  private static final String GET_INVOICES_BY_QUERY = resourcesPath(INVOICES) + "?limit=%s&offset=%s%s&lang=%s";
 
-	InvoiceHelper(Map<String, String> okapiHeaders, Context ctx, String lang) {
-		super(getHttpClient(okapiHeaders), okapiHeaders, ctx, lang);
-	}
-  
+  InvoiceHelper(Map<String, String> okapiHeaders, Context ctx, String lang) {
+    super(getHttpClient(okapiHeaders), okapiHeaders, ctx, lang);
+  }
+
   public CompletableFuture<InvoiceCollection> getInvoices(int limit, int offset, String query) {
     CompletableFuture<InvoiceCollection> future = new VertxCompletableFuture<>(ctx);
     try {

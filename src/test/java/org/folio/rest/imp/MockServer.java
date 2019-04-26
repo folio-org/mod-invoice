@@ -31,55 +31,55 @@ import io.vertx.ext.web.handler.BodyHandler;
 
 @RunWith(VertxUnitRunner.class)
 public class MockServer {
-	private static final String TOTAL_RECORDS = "totalRecords";
-	private static final String BAD_QUERY = "unprocessableQuery";
-	private static final String APPLICATION_JSON = "application/json";
-	private static final String ID_FOR_INTERNAL_SERVER_ERROR = "168f8a86-d26c-406e-813f-c7527f241ac3";
-	private static final String EXISTING_VENDOR_INV_NO = "existingVendorInvoiceNo";
+  private static final String TOTAL_RECORDS = "totalRecords";
+  private static final String BAD_QUERY = "unprocessableQuery";
+  private static final String APPLICATION_JSON = "application/json";
+  private static final String ID_FOR_INTERNAL_SERVER_ERROR = "168f8a86-d26c-406e-813f-c7527f241ac3";
+  private static final String EXISTING_VENDOR_INV_NO = "existingVendorInvoiceNo";
 
-	static Table<String, HttpMethod, List<JsonObject>> serverRqRs = HashBasedTable.create();
-	private static final Logger logger = LoggerFactory.getLogger(MockServer.class);
+  static Table<String, HttpMethod, List<JsonObject>> serverRqRs = HashBasedTable.create();
+  private static final Logger logger = LoggerFactory.getLogger(MockServer.class);
 
-	final int port;
-	final Vertx vertx;
+  final int port;
+  final Vertx vertx;
 
-	MockServer(int port) {
-		this.port = port;
-		this.vertx = Vertx.vertx();
-	}
+  MockServer(int port) {
+    this.port = port;
+    this.vertx = Vertx.vertx();
+  }
 
-	void start(TestContext context) {
-		// Setup Mock Server...
-		HttpServer server = vertx.createHttpServer();
+  void start(TestContext context) {
+    // Setup Mock Server...
+    HttpServer server = vertx.createHttpServer();
 
-		final Async async = context.async();
-		server.requestHandler(defineRoutes()::accept).listen(port, result -> {
-			if (result.failed()) {
-				logger.warn(result.cause());
-			}
-			context.assertTrue(result.succeeded());
-			async.complete();
-		});
-	}
-	
-	void close() {
-		vertx.close(res -> {
-			if (res.failed()) {
-				logger.error("Failed to shut down mock server", res.cause());
-				fail(res.cause().getMessage());
-			} else {
-				logger.info("Successfully shut down mock server");
-			}
-		});
-	}
-  
-	Router defineRoutes() {
-		Router router = Router.router(vertx);
-		router.route().handler(BodyHandler.create());
-		router.route(HttpMethod.GET, resourcesPath(INVOICES)).handler(this::handleGetInvoices);
-		return router;
-	}
-	
+    final Async async = context.async();
+    server.requestHandler(defineRoutes()::accept).listen(port, result -> {
+      if (result.failed()) {
+        logger.warn(result.cause());
+      }
+      context.assertTrue(result.succeeded());
+      async.complete();
+    });
+  }
+
+  void close() {
+    vertx.close(res -> {
+      if (res.failed()) {
+        logger.error("Failed to shut down mock server", res.cause());
+        fail(res.cause().getMessage());
+      } else {
+        logger.info("Successfully shut down mock server");
+      }
+    });
+  }
+
+  Router defineRoutes() {
+    Router router = Router.router(vertx);
+    router.route().handler(BodyHandler.create());
+    router.route(HttpMethod.GET, resourcesPath(INVOICES)).handler(this::handleGetInvoices);
+    return router;
+  }
+
   private void serverResponse(RoutingContext ctx, int statusCode, String contentType, String body) {
     ctx.response()
          .setStatusCode(statusCode)
@@ -87,37 +87,37 @@ public class MockServer {
            .end(body);
   }
 
-	private void addServerRqRsData(HttpMethod method, String objName, JsonObject data) {
-		List<JsonObject> entries = serverRqRs.get(objName, method);
-		if (entries == null) {
-			entries = new ArrayList<>();
-		}
-		entries.add(data);
-		serverRqRs.put(objName, method, entries);
-	}
+  private void addServerRqRsData(HttpMethod method, String objName, JsonObject data) {
+    List<JsonObject> entries = serverRqRs.get(objName, method);
+    if (entries == null) {
+      entries = new ArrayList<>();
+    }
+    entries.add(data);
+    serverRqRs.put(objName, method, entries);
+  }
 
-	private void handleGetInvoices(RoutingContext ctx) {
-		String queryParam = StringUtils.trimToEmpty(ctx.request().getParam("query"));
-		if (queryParam.contains(BAD_QUERY)) {
-			serverResponse(ctx, 400, APPLICATION_JSON, Status.BAD_REQUEST.getReasonPhrase());
-		} else if (queryParam.contains(ID_FOR_INTERNAL_SERVER_ERROR)) {
-			serverResponse(ctx, 500, APPLICATION_JSON, Status.INTERNAL_SERVER_ERROR.getReasonPhrase());
-		} else {
-			JsonObject invoice = new JsonObject();
-			addServerRqRsData(HttpMethod.GET, INVOICES, invoice);
-			final String VENDOR_INVOICE_NUMBER_QUERY = "vendorInvoiceNo==";
-			switch (queryParam) {
-			  case VENDOR_INVOICE_NUMBER_QUERY + EXISTING_VENDOR_INV_NO:
-				  invoice.put(TOTAL_RECORDS, 1);
-				  break;
-			  case EMPTY:
-				  invoice.put(TOTAL_RECORDS, 3);
-				  break;
-			  default:
-				  invoice.put(TOTAL_RECORDS, 0);
-			}
-			addServerRqRsData(HttpMethod.GET, INVOICES, invoice);
-			serverResponse(ctx, 200, APPLICATION_JSON, invoice.encodePrettily());
-		}
-	}
+  private void handleGetInvoices(RoutingContext ctx) {
+    String queryParam = StringUtils.trimToEmpty(ctx.request().getParam("query"));
+    if (queryParam.contains(BAD_QUERY)) {
+      serverResponse(ctx, 400, APPLICATION_JSON, Status.BAD_REQUEST.getReasonPhrase());
+    } else if (queryParam.contains(ID_FOR_INTERNAL_SERVER_ERROR)) {
+      serverResponse(ctx, 500, APPLICATION_JSON, Status.INTERNAL_SERVER_ERROR.getReasonPhrase());
+    } else {
+      JsonObject invoice = new JsonObject();
+      addServerRqRsData(HttpMethod.GET, INVOICES, invoice);
+      final String VENDOR_INVOICE_NUMBER_QUERY = "vendorInvoiceNo==";
+      switch (queryParam) {
+      case VENDOR_INVOICE_NUMBER_QUERY + EXISTING_VENDOR_INV_NO:
+        invoice.put(TOTAL_RECORDS, 1);
+        break;
+      case EMPTY:
+        invoice.put(TOTAL_RECORDS, 3);
+        break;
+      default:
+        invoice.put(TOTAL_RECORDS, 0);
+      }
+      addServerRqRsData(HttpMethod.GET, INVOICES, invoice);
+      serverResponse(ctx, 200, APPLICATION_JSON, invoice.encodePrettily());
+    }
+  }
 }

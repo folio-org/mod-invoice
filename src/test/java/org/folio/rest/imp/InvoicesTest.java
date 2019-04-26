@@ -37,70 +37,70 @@ import io.vertx.ext.unit.junit.VertxUnitRunner;
 
 @RunWith(VertxUnitRunner.class)
 public class InvoicesTest {
-	private static final Logger logger = LoggerFactory.getLogger(InvoicesTest.class);
+  private static final Logger logger = LoggerFactory.getLogger(InvoicesTest.class);
 
-	private static final String INVOICE_ID_PATH = "/invoice/invoices/{id}";
-	private static final String INVOICE_LINE_ID_PATH = "/invoice/invoice-lines/{id}";
-	private static final String INVOICE_PATH = "/invoice/invoices";
-	private static final String INVOICE_LINES_PATH = "/invoice/invoice-lines";
-	private static final String INVOICE_NUMBER_PATH = "/invoice/invoice-number";
-	private static final String INVOICE_NUMBER_VALIDATE_PATH = "/invoice/invoice-number/validate";
+  private static final String INVOICE_ID_PATH = "/invoice/invoices/{id}";
+  private static final String INVOICE_LINE_ID_PATH = "/invoice/invoice-lines/{id}";
+  private static final String INVOICE_PATH = "/invoice/invoices";
+  private static final String INVOICE_LINES_PATH = "/invoice/invoice-lines";
+  private static final String INVOICE_NUMBER_PATH = "/invoice/invoice-number";
+  private static final String INVOICE_NUMBER_VALIDATE_PATH = "/invoice/invoice-number/validate";
   private static final String INVOICE_PATH_BAD = "/invoice/bad";
-	private static final String INVOICE_SAMPLE_PATH = "invoice.json";
-	private static final String INVOICE_LINE_SAMPLE_PATH = "invoice_line.json";
-	private static final String ID = "id";
-	private static final String UUID = "8d3881f6-dd93-46f0-b29d-1c36bdb5c9f9";
-	private static final String EXIST_CONFIG_TENANT_LIMIT_10 = "test_diku_limit_10";
-	private static final String BAD_QUERY = "unprocessableQuery";
-	private static final String ID_FOR_INTERNAL_SERVER_ERROR = "168f8a86-d26c-406e-813f-c7527f241ac3";
-	private static final String TENANT_NAME = "diku";
+  private static final String INVOICE_SAMPLE_PATH = "invoice.json";
+  private static final String INVOICE_LINE_SAMPLE_PATH = "invoice_line.json";
+  private static final String ID = "id";
+  private static final String UUID = "8d3881f6-dd93-46f0-b29d-1c36bdb5c9f9";
+  private static final String EXIST_CONFIG_TENANT_LIMIT_10 = "test_diku_limit_10";
+  private static final String BAD_QUERY = "unprocessableQuery";
+  private static final String ID_FOR_INTERNAL_SERVER_ERROR = "168f8a86-d26c-406e-813f-c7527f241ac3";
+  private static final String TENANT_NAME = "diku";
   private static final String QUERY_PARAM_NAME = "query";
-	private static final String EXISTING_VENDOR_INV_NO =  "existingVendorInvoiceNo";
-	private static final String VENDOR_INVOICE_NUMBER_FIELD = "vendorInvoiceNo";
+  private static final String EXISTING_VENDOR_INV_NO = "existingVendorInvoiceNo";
+  private static final String VENDOR_INVOICE_NUMBER_FIELD = "vendorInvoiceNo";
 
-	private static final int mockPort = NetworkUtils.nextFreePort();
-	private static final int okapiPort = NetworkUtils.nextFreePort();
+  private static final int mockPort = NetworkUtils.nextFreePort();
+  private static final int okapiPort = NetworkUtils.nextFreePort();
 
-	private static Vertx vertx;
-	private static MockServer mockServer;
+  private static Vertx vertx;
+  private static MockServer mockServer;
 
-	private static final Header EXIST_CONFIG_X_OKAPI_TENANT_LIMIT_10 = new Header(OKAPI_HEADER_TENANT, EXIST_CONFIG_TENANT_LIMIT_10);
-	private static final Header X_OKAPI_URL = new Header("X-Okapi-Url", "http://localhost:" + mockPort);
-	static final Header TENANT_HEADER = new Header(OKAPI_HEADER_TENANT, TENANT_NAME);
+  private static final Header EXIST_CONFIG_X_OKAPI_TENANT_LIMIT_10 = new Header(OKAPI_HEADER_TENANT, EXIST_CONFIG_TENANT_LIMIT_10);
+  private static final Header X_OKAPI_URL = new Header("X-Okapi-Url", "http://localhost:" + mockPort);
+  static final Header TENANT_HEADER = new Header(OKAPI_HEADER_TENANT, TENANT_NAME);
 
-	@BeforeClass
-	public static void setUpOnce(TestContext context) {
-		vertx = Vertx.vertx();
+  @BeforeClass
+  public static void setUpOnce(TestContext context) {
+    vertx = Vertx.vertx();
 
-		mockServer = new MockServer(mockPort);
-		mockServer.start(context);
+    mockServer = new MockServer(mockPort);
+    mockServer.start(context);
 
-		RestAssured.baseURI = "http://localhost:" + okapiPort;
-		RestAssured.port = okapiPort;
-		RestAssured.enableLoggingOfRequestAndResponseIfValidationFails();
+    RestAssured.baseURI = "http://localhost:" + okapiPort;
+    RestAssured.port = okapiPort;
+    RestAssured.enableLoggingOfRequestAndResponseIfValidationFails();
 
-		final JsonObject conf = new JsonObject();
-		conf.put("http.port", okapiPort);
+    final JsonObject conf = new JsonObject();
+    conf.put("http.port", okapiPort);
 
-		final DeploymentOptions opt = new DeploymentOptions().setConfig(conf);
-		vertx.deployVerticle(RestVerticle.class.getName(), opt, context.asyncAssertSuccess());
-	}
+    final DeploymentOptions opt = new DeploymentOptions().setConfig(conf);
+    vertx.deployVerticle(RestVerticle.class.getName(), opt, context.asyncAssertSuccess());
+  }
 
-	@AfterClass
-	public static void tearDownOnce(TestContext context) {
-		vertx.close(context.asyncAssertSuccess());
-		mockServer.close();
-	}
+  @AfterClass
+  public static void tearDownOnce(TestContext context) {
+    vertx.close(context.asyncAssertSuccess());
+    mockServer.close();
+  }
 
-	@Before
-	public void setUp() {
-		MockServer.serverRqRs.clear();
-	}
+  @Before
+  public void setUp() {
+    MockServer.serverRqRs.clear();
+  }
 
   @Test
   public void getInvoicingInvoicesTest() throws MalformedURLException {
-  	logger.info("=== Test Get Invoices by without query - get 200 by successful retrieval of invoices ===");
-  	final Response resp = RestAssured
+    logger.info("=== Test Get Invoices by without query - get 200 by successful retrieval of invoices ===");
+    final Response resp = RestAssured
       .with()
        .header(X_OKAPI_URL)
        .header(EXIST_CONFIG_X_OKAPI_TENANT_LIMIT_10)
@@ -110,14 +110,14 @@ public class InvoicesTest {
          .extract()
          .response();
 
-  	assertEquals(3, resp.getBody().as(InvoiceCollection.class).getTotalRecords().intValue());
+    assertEquals(3, resp.getBody().as(InvoiceCollection.class).getTotalRecords().intValue());
   }
-  
+
   @Test
   public void getInvoicingInvoicesWithQueryParamTest() throws MalformedURLException {
-  	logger.info("=== Test Get Invoices with query - get 200 by successful retrieval of invoices by query ===");
+    logger.info("=== Test Get Invoices with query - get 200 by successful retrieval of invoices by query ===");
 
-  	final Response resp = RestAssured
+    final Response resp = RestAssured
       .with()
        .header(X_OKAPI_URL)
        .header(EXIST_CONFIG_X_OKAPI_TENANT_LIMIT_10)
@@ -130,7 +130,7 @@ public class InvoicesTest {
 
   	assertEquals(1, resp.getBody().as(InvoiceCollection.class).getTotalRecords().intValue());
   }
-  
+
   @Test
   public void testGetInvoicesBadQuery() {
     logger.info("=== Test Get Invoices by query - unprocessable query to emulate 400 from storage ===");
@@ -143,7 +143,7 @@ public class InvoicesTest {
         .then()
           .statusCode(400);
   }
-  
+
   @Test
   public void testGetInvoicesInternalServerError() {
     logger.info("=== Test Get Invoices by query - emulating 500 from storage ===");
@@ -156,19 +156,19 @@ public class InvoicesTest {
         .then()
           .statusCode(500);
   }
-  
+
   @Test
   public void getInvoicingInvoicesBadRequestUrlTest() throws MalformedURLException {
-  	logger.info("=== Test Get Invoices by query - emulating 400 by sending bad request Url ===");
-  	RestAssured
-  	  .with()
-  			.header(X_OKAPI_URL)
-  			.header(EXIST_CONFIG_X_OKAPI_TENANT_LIMIT_10)
-  	  .get(INVOICE_PATH_BAD)
+    logger.info("=== Test Get Invoices by query - emulating 400 by sending bad request Url ===");
+    RestAssured
+      .with()
+        .header(X_OKAPI_URL)
+          .header(EXIST_CONFIG_X_OKAPI_TENANT_LIMIT_10)
+        .get(INVOICE_PATH_BAD)
         .then()
           .statusCode(400);
   }
-  
+
   @Test
   public void getInvoicingInvoiceLinesTest() throws MalformedURLException {
     given()
@@ -178,7 +178,7 @@ public class InvoicesTest {
         .then()
           .statusCode(500);
   }
-  
+
   @Test
   public void getInvoicingInvoiceNumberTest() throws MalformedURLException {
     given()
@@ -188,7 +188,7 @@ public class InvoicesTest {
         .then()
           .statusCode(500);
   }
-  
+
   @Test
   public void getInvoicingInvoicesByIdTest() throws MalformedURLException {
     given()
@@ -210,12 +210,12 @@ public class InvoicesTest {
         .then()
           .statusCode(500);
   }
-  
+
   @Test
   public void putInvoicingInvoicesByIdTest() throws Exception {
-  	Invoice reqData = getMockDraftInvoice().mapTo(Invoice.class);
-  	String jsonBody = JsonObject.mapFrom(reqData).encode();
-  	
+    Invoice reqData = getMockDraftInvoice().mapTo(Invoice.class);
+    String jsonBody = JsonObject.mapFrom(reqData).encode();
+
     given()
       .pathParam(ID, reqData.getId())
       .body(jsonBody)
@@ -228,9 +228,9 @@ public class InvoicesTest {
 
   @Test
   public void putInvoicingInvoiceLinesByIdTest() throws Exception {
-  	InvoiceLine reqData = getMockDraftInvoiceLine().mapTo(InvoiceLine.class);
-  	String jsonBody = JsonObject.mapFrom(reqData).encode();
-  	
+    InvoiceLine reqData = getMockDraftInvoiceLine().mapTo(InvoiceLine.class);
+    String jsonBody = JsonObject.mapFrom(reqData).encode();
+
     given()
       .pathParam(ID, reqData.getId())
       .body(jsonBody)
@@ -240,7 +240,7 @@ public class InvoicesTest {
         .then()
           .statusCode(500);
   }
-  
+
   @Test
   public void deleteInvoicingInvoicesByIdTest() throws MalformedURLException {
     given()
@@ -262,12 +262,12 @@ public class InvoicesTest {
         .then()
           .statusCode(500);
   }
-  
+
   @Test
   public void postInvoicingInvoicesTest() throws Exception {
-  	Invoice reqData = getMockDraftInvoice().mapTo(Invoice.class);
-  	String jsonBody = JsonObject.mapFrom(reqData).encode();
-  	
+    Invoice reqData = getMockDraftInvoice().mapTo(Invoice.class);
+    String jsonBody = JsonObject.mapFrom(reqData).encode();
+
     given()
       .body(jsonBody)
       .header(TENANT_HEADER)
@@ -279,9 +279,9 @@ public class InvoicesTest {
 
   @Test
   public void postInvoicingInvoiceNumberValidateTest() throws Exception {
-  	Invoice reqData = getMockDraftInvoice().mapTo(Invoice.class);
-  	String jsonBody = JsonObject.mapFrom(reqData).encode();
-  	
+    Invoice reqData = getMockDraftInvoice().mapTo(Invoice.class);
+    String jsonBody = JsonObject.mapFrom(reqData).encode();
+
     given()
       .body(jsonBody)
       .header(TENANT_HEADER)
@@ -290,12 +290,12 @@ public class InvoicesTest {
         .then()
           .statusCode(500);
   }
-  
+
   @Test
   public void postInvoicingInvoiceLinesTest() throws Exception {
-  	InvoiceLine reqData = getMockDraftInvoiceLine().mapTo(InvoiceLine.class);
-  	String jsonBody = JsonObject.mapFrom(reqData).encode();
-  	
+    InvoiceLine reqData = getMockDraftInvoiceLine().mapTo(InvoiceLine.class);
+    String jsonBody = JsonObject.mapFrom(reqData).encode();
+
     given()
       .body(jsonBody)
       .header(TENANT_HEADER)
@@ -304,7 +304,7 @@ public class InvoicesTest {
         .then()
           .statusCode(500);
   }
-  
+
   private JsonObject getMockDraftInvoice() throws Exception {
     JsonObject invoice = new JsonObject(getMockData(INVOICE_SAMPLE_PATH));
     return invoice;
@@ -314,7 +314,7 @@ public class InvoicesTest {
     JsonObject invoiceLine = new JsonObject(getMockData(INVOICE_LINE_SAMPLE_PATH));
     return invoiceLine;
   }
-  
+
   public static String getMockData(String path) throws IOException {
     logger.info("Using mock datafile: {}", path);
     try (InputStream resourceAsStream = InvoicesTest.class.getClassLoader().getResourceAsStream(path)) {
