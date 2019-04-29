@@ -25,20 +25,16 @@ public class InvoiceHelper extends AbstractHelper {
 
   public CompletableFuture<Invoice> getInvoice(String id) {
     CompletableFuture<Invoice> future = new VertxCompletableFuture<>(ctx);
-    try {
-      getInvoiceById(id, lang, httpClient, ctx, okapiHeaders, logger)
-      .thenAccept(invoice -> {
-        logger.info("Successfully retrieved invoice by id: " + invoice.encodePrettily());
-        future.complete(invoice.mapTo(Invoice.class));
-      })
-      .exceptionally(t -> {
-        logger.error("Failed to build an Invoice", t.getCause());
-        future.completeExceptionally(t);
-        return null;
-      });
-    } catch(Exception e) {
-        future.completeExceptionally(e);
-    }
+    getInvoiceById(id, lang, httpClient, ctx, okapiHeaders, logger)
+    .thenAccept(invoice -> {
+      logger.info("Successfully retrieved invoice by id: " + invoice.encodePrettily());
+      future.complete(invoice.mapTo(Invoice.class));
+    })
+    .exceptionally(t -> {
+      logger.error("Failed to build an Invoice", t.getCause());
+      future.completeExceptionally(t);
+      return null;
+    });
     return future;
   }
 
