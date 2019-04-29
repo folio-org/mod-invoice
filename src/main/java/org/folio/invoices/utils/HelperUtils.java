@@ -4,7 +4,6 @@ import static java.util.Objects.nonNull;
 import static org.apache.commons.lang3.StringUtils.EMPTY;
 import static org.apache.commons.lang3.StringUtils.isEmpty;
 import static org.folio.invoices.utils.ResourcePathResolver.*;
-import static org.folio.invoices.utils.ResourcePathResolver.resourceByIdPath;
 
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
