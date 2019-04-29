@@ -14,7 +14,7 @@
   </licenses>
 
   <properties>
-    <raml-module-builder.version>23.3.0</raml-module-builder.version>
+    <raml-module-builder.version>24.0.0</raml-module-builder.version>
     <vertx.version>3.5.4</vertx.version>
     <junit.version>4.12</junit.version>
     <rest-assured.version>3.1.1</rest-assured.version>
@@ -28,6 +28,11 @@
       <artifactId>domain-models-runtime</artifactId>
       <version>${raml-module-builder.version}</version>
     </dependency>
+    <dependency>
+      <groupId>me.escoffier.vertx</groupId>
+      <artifactId>vertx-completable-future</artifactId>
+      <version>0.1.2</version>
+    </dependency>    
     <dependency>
       <groupId>io.vertx</groupId>
       <artifactId>vertx-core</artifactId>
@@ -333,7 +338,18 @@
 
     </plugins>
   </build>
-
+  <dependencyManagement>
+    <dependencies>
+      <dependency>
+        <groupId>com.fasterxml.jackson</groupId>
+        <artifactId>jackson-bom</artifactId>
+        <version>2.9.3</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
+  
   <scm>
     <url>https://github.com/folio-org/mod-invoice</url>
     <connection>scm:git:git://github.com/folio-org/mod-invoice</connection>
