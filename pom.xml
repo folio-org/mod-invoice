@@ -14,6 +14,7 @@
   </licenses>
 
   <properties>
+    <jsonschema_paths>acq-models/mod-invoice-storage/schemas,raml-util/schemas,acq-models/common/schemas/</jsonschema_paths>
     <raml-module-builder.version>24.0.0</raml-module-builder.version>
     <vertx.version>3.5.4</vertx.version>
     <junit.version>4.12</junit.version>
@@ -142,6 +143,10 @@
                 <systemProperty>
                   <key>raml_files</key>
                   <value>${ramlfiles_path}</value>
+                </systemProperty>
+                <systemProperty>
+                  <key>schema_paths</key>
+                  <value>${jsonschema_paths}</value>
                 </systemProperty>
               </systemProperties>
             </configuration>
