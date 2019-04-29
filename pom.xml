@@ -19,6 +19,8 @@
     <vertx.version>3.5.4</vertx.version>
     <junit.version>4.12</junit.version>
     <rest-assured.version>3.1.1</rest-assured.version>
+    <generated_sources_dir>${project.build.directory}/generated-sources</generated_sources_dir>    
+    <jsonschema2pojo_output_dir>${generated_sources_dir}/jsonschema2pojo</jsonschema2pojo_output_dir>
     <ramlfiles_path>${basedir}/ramls</ramlfiles_path>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
   </properties>
@@ -100,6 +102,39 @@
         </configuration>
       </plugin>
 
+     <plugin>
+        <groupId>org.jsonschema2pojo</groupId>
+        <artifactId>jsonschema2pojo-maven-plugin</artifactId>
+        <version>0.4.37</version>
+        <configuration>
+          <includes>*.json</includes>
+          <outputDirectory>${jsonschema2pojo_output_dir}</outputDirectory>
+        </configuration>
+        <executions>
+          <execution>
+            <id>invoice-storage</id>
+            <goals>
+              <goal>generate</goal>
+            </goals>
+            <configuration>
+              <sourceDirectory>${basedir}/ramls/acq-models/mod-invoice-storage/schemas</sourceDirectory>
+              <targetPackage>org.folio.rest.acq.model</targetPackage>
+              <generateBuilders>true</generateBuilders>
+            </configuration>
+          </execution>
+          <execution>
+            <id>common</id>
+            <goals>
+              <goal>generate</goal>
+            </goals>
+            <configuration>
+              <sourceDirectory>${basedir}/ramls/acq-models/common/schemas</sourceDirectory>
+              <targetPackage>org.folio.rest.acq.model</targetPackage>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+      
       <plugin>
         <groupId>org.codehaus.mojo</groupId>
         <artifactId>build-helper-maven-plugin</artifactId>

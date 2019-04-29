@@ -39,6 +39,8 @@ import io.vertx.ext.unit.junit.VertxUnitRunner;
 public class InvoicesTest {
   private static final Logger logger = LoggerFactory.getLogger(InvoicesTest.class);
 
+  public static final String BASE_MOCK_DATA_PATH = "mockdata/";
+  
   private static final String INVOICE_ID_PATH = "/invoice/invoices/{id}";
   private static final String INVOICE_LINE_ID_PATH = "/invoice/invoice-lines/{id}";
   private static final String INVOICE_PATH = "/invoice/invoices";
@@ -47,6 +49,7 @@ public class InvoicesTest {
   private static final String INVOICE_NUMBER_VALIDATE_PATH = "/invoice/invoice-number/validate";
   private static final String INVOICE_PATH_BAD = "/invoice/bad";
   private static final String INVOICE_SAMPLE_PATH = "invoice.json";
+  private static final String INVOICE_MOCK_DATA_PATH = BASE_MOCK_DATA_PATH + "invoices.json";
   private static final String INVOICE_LINE_SAMPLE_PATH = "invoice_line.json";
   private static final String ID = "id";
   private static final String UUID = "8d3881f6-dd93-46f0-b29d-1c36bdb5c9f9";
@@ -190,14 +193,26 @@ public class InvoicesTest {
   }
 
   @Test
-  public void getInvoicingInvoicesByIdTest() throws MalformedURLException {
-    given()
-      .pathParam(ID, UUID)
-      .header(TENANT_HEADER)
-      .contentType(ContentType.JSON)
-      .get(INVOICE_ID_PATH)
-        .then()
-          .statusCode(500);
+  public void getInvoicingInvoicesByIdTest() throws IOException {
+    logger.info("=== Test Get Invoice By Id ===");
+    
+    JsonObject invoicesList = new JsonObject(getMockData(INVOICE_MOCK_DATA_PATH));
+    String id = invoicesList.getJsonArray("invoices").getJsonObject(0).getString(ID);
+    logger.info(String.format("using mock datafile: %s%s.json", INVOICE_MOCK_DATA_PATH, id));
+    
+    final Invoice resp = RestAssured
+        .with()
+        .header(X_OKAPI_URL)
+        .header(EXIST_CONFIG_X_OKAPI_TENANT_LIMIT_10)
+        .get(INVOICE_PATH + "/" + id)
+         .then()
+           .statusCode(200)
+           .extract()
+           .response()
+           .as(Invoice.class);
+    
+    logger.info(JsonObject.mapFrom(resp).encodePrettily());
+    assertEquals(id, resp.getId());
   }
 
   @Test
