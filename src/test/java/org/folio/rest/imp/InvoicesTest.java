@@ -41,7 +41,7 @@ public class InvoicesTest {
   private static final Logger logger = LoggerFactory.getLogger(InvoicesTest.class);
 
   public static final String BASE_MOCK_DATA_PATH = "mockdata/";
-  
+
   private static final String INVOICE_ID_PATH = "/invoice/invoices/{id}";
   private static final String INVOICE_LINE_ID_PATH = "/invoice/invoice-lines/{id}";
   private static final String INVOICE_PATH = "/invoice/invoices";
@@ -185,7 +185,7 @@ public class InvoicesTest {
   }
 
   @Test
-  public void testGetInvoicingInvoiceNumberTest() throws MalformedURLException {
+  public void testGetInvoicingInvoiceNumber() throws MalformedURLException {
     given()
       .header(TENANT_HEADER)
       .contentType(ContentType.JSON)

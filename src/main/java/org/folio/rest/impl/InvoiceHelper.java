@@ -23,12 +23,18 @@ public class InvoiceHelper extends AbstractHelper {
     super(getHttpClient(okapiHeaders), okapiHeaders, ctx, lang);
   }
 
+  /**
+   * Gets invoice by id
+   *
+   * @param id invoice uuid
+   * @return completable future with {@link Invoice} on success or an exception if processing fails
+   */
   public CompletableFuture<Invoice> getInvoice(String id) {
     CompletableFuture<Invoice> future = new VertxCompletableFuture<>(ctx);
     getInvoiceById(id, lang, httpClient, ctx, okapiHeaders, logger)
-    .thenAccept(invoice -> {
-      logger.info("Successfully retrieved invoice by id: " + invoice.encodePrettily());
-      future.complete(invoice.mapTo(Invoice.class));
+    .thenAccept(jsonInvoice -> {
+      logger.info("Successfully retrieved invoice by id: " + jsonInvoice.encodePrettily());
+      future.complete(jsonInvoice.mapTo(Invoice.class));
     })
     .exceptionally(t -> {
       logger.error("Failed to build an Invoice", t.getCause());
@@ -37,7 +43,15 @@ public class InvoiceHelper extends AbstractHelper {
     });
     return future;
   }
-
+  
+  /**
+   * Gets list of invoice
+   *
+   * @param limit Limit the number of elements returned in the response
+   * @param offset Skip over a number of elements by specifying an offset value for the query
+   * @param query A query expressed as a CQL string using valid searchable fields
+   * @return completable future with {@link InvoiceCollection} on success or an exception if processing fails
+   */
   public CompletableFuture<InvoiceCollection> getInvoices(int limit, int offset, String query) {
     CompletableFuture<InvoiceCollection> future = new VertxCompletableFuture<>(ctx);
     try {
