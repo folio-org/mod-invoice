@@ -1,18 +1,18 @@
 package org.folio.rest.impl;
 
-import static io.vertx.core.Future.succeededFuture;
-
-import java.util.Map;
-
-import javax.ws.rs.core.Response;
-
+import io.vertx.core.AsyncResult;
+import io.vertx.core.Context;
+import io.vertx.core.Handler;
+import io.vertx.core.logging.Logger;
+import io.vertx.core.logging.LoggerFactory;
 import org.folio.rest.annotations.Validate;
 import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.jaxrs.model.InvoiceLine;
 
-import io.vertx.core.AsyncResult;
-import io.vertx.core.Context;
-import io.vertx.core.Handler;
+import javax.ws.rs.core.Response;
+import java.util.Map;
+
+import static io.vertx.core.Future.succeededFuture;
 
 
 public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
@@ -21,17 +21,22 @@ public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
   
   @Validate
 	@Override
-	public void postInvoiceInvoices(String lang, Invoice entity, Map<String, String> okapiHeaders,
+	public void postInvoiceInvoices(String lang, Invoice invoice, Map<String, String> okapiHeaders,
 	    Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
-		asyncResultHandler.handle(succeededFuture(PostInvoiceInvoicesResponse.respond500WithTextPlain(NOT_SUPPORTED)));
+
+		InvoiceHelper helper = new InvoiceHelper(okapiHeaders, vertxContext, lang);
+
+		helper.createPurchaseOrder(invoice)
+      .thenAccept(invoiceWithId -> asyncResultHandler.handle(succeededFuture(helper.buildOkResponse(invoiceWithId))))
+      .exceptionally(t -> handleErrorResponse(asyncResultHandler, helper, t));
 	}
 
   @Validate
-	@Override
-	public void getInvoiceInvoices(int offset, int limit, String lang, Map<String, String> okapiHeaders,
-	    Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
-		asyncResultHandler.handle(succeededFuture(GetInvoiceInvoicesResponse.respond500WithTextPlain(NOT_SUPPORTED)));
-	}
+  @Override
+  public void getInvoiceInvoices(int offset, int limit, String lang, Map<String, String> okapiHeaders,
+                                 Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+    asyncResultHandler.handle(succeededFuture(GetInvoiceInvoicesResponse.respond500WithTextPlain(NOT_SUPPORTED)));
+  }
 
   @Validate
 	@Override
@@ -89,17 +94,9 @@ public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
 		asyncResultHandler.handle(succeededFuture(DeleteInvoiceInvoiceLinesByIdResponse.respond500WithTextPlain(NOT_SUPPORTED)));
 	}
 
-  @Validate
-	@Override
-	public void getInvoiceInvoiceNumber(String lang, Map<String, String> okapiHeaders,
-	    Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
-		asyncResultHandler.handle(succeededFuture(GetInvoiceInvoiceNumberResponse.respond500WithTextPlain(NOT_SUPPORTED)));
-	}
-
-  @Validate
-	@Override
-	public void postInvoiceInvoiceNumberValidate(String lang, Object entity, Map<String, String> okapiHeaders,
-	    Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
-		asyncResultHandler.handle(succeededFuture(PostInvoiceInvoiceNumberValidateResponse.respond500WithApplicationJson(NOT_SUPPORTED)));
-	}
+  private Void handleErrorResponse(Handler<AsyncResult<Response>> asyncResultHandler, AbstractHelper helper,
+                                   Throwable t) {
+    asyncResultHandler.handle(succeededFuture(helper.buildErrorResponse(t)));
+    return null;
+  }
 }

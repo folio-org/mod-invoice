@@ -56,17 +56,7 @@
           "methods": ["DELETE"],
           "pathPattern": "/invoice/invoice-lines/{id}",
           "permissionsRequired": ["invoice.invoice-lines.item.delete"]
-        },
-        {
-          "methods": ["GET"],
-          "pathPattern": "/invoice/invoice-number",
-          "permissionsRequired": ["invoice.invoice-number.item.get"]
-        },
-        {
-          "methods": ["POST"],
-          "pathPattern": "/invoice/invoice-number/validate",
-          "permissionsRequired": ["invoice.invoice-number.item.post"]
-        }                      
+        }
       ]
     },
     {
@@ -140,16 +130,7 @@
       "displayName": "Invoice - delete an existing Invoice line",
       "description": "Delete an existing Invoice line"
     }, 
-    {
-      "permissionName": "invoice.invoice-number.item.get",
-      "displayName": "Invoice - generate a Invoice Number",
-      "description": "Generate a Invoice Number"
-    },
-    {
-      "permissionName": "invoice.invoice-number.item.post",
-      "displayName": "Invoice - validate a Invoice Number",
-      "description": "Validate a Invoice Number"
-    },          
+
     {
       "permissionName": "invoice.all",
       "displayName": "Invoice module - all permissions",
@@ -164,9 +145,7 @@
         "invoice.invoice-lines.item.get",
         "invoice.invoice-lines.item.post",
         "invoice.invoice-lines.item.put",
-        "invoice.invoice-lines.item.delete",
-        "invoice.invoice-number.item.get",
-        "invoice.invoice-number.item.post"
+        "invoice.invoice-lines.item.delete"
       ],
       "visible": false
     }
