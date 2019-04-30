@@ -45,7 +45,8 @@
         {
           "methods": ["GET"],
           "pathPattern": "/invoice/invoice-lines/{id}",
-          "permissionsRequired": ["invoice.invoice-lines.item.get"]
+          "permissionsRequired": ["invoice.invoice-lines.item.get"],
+          "modulePermissions": ["invoice-storage.invoice-lines.item.get"]
         },
         {
           "methods": ["PUT"],
