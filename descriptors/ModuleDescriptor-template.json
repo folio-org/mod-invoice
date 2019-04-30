@@ -1,7 +1,6 @@
 {
   "id": "${artifactId}-${version}",
   "name": "Invoice business logic module",
-  "requires": [],
   "provides": [
     {
       "id": "invoice",
@@ -21,9 +20,11 @@
           "methods": ["GET"],
           "pathPattern": "/invoice/invoices/{id}",
           "permissionsRequired": [
-            "invoice.invoices.item.get",
+            "invoice.invoices.item.get"
+          ],
+          "modulePermissions": [
             "invoice-storage.invoices.item.get"
-          ]
+          ]          
         },
         {
           "methods": ["PUT"],
@@ -84,6 +85,12 @@
       ]
     }
   ],
+  "requires": [
+    {
+      "id": "invoice-storage.invoices",
+      "version": "1.0"
+    }    
+  ],  
   "permissionSets": [
     {
       "permissionName": "invoice.invoices.collection.get",
@@ -161,7 +168,8 @@
         "invoice.invoice-lines.item.put",
         "invoice.invoice-lines.item.delete",
         "invoice.invoice-number.item.get",
-        "invoice.invoice-number.item.post"
+        "invoice.invoice-number.item.post",
+        "invoice-storage.invoices.item.get"
       ],
       "visible": false
     }
