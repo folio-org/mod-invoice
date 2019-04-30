@@ -12,7 +12,6 @@ public class InvoiceLinesApiTest extends ApiTestBase {
   private static final String INVOICE_LINES_PATH = "/invoice/invoice-lines";
   private static final String INVOICE_LINE_SAMPLE_PATH = "mockdata/invoiceLines/invoice_line.json";
 
-
   @Test
   public void getInvoicingInvoiceLinesTest() {
     verifyGet(INVOICE_LINES_PATH, TEXT_PLAIN, 500);
@@ -43,6 +42,5 @@ public class InvoiceLinesApiTest extends ApiTestBase {
     String jsonBody = getMockData(INVOICE_LINE_SAMPLE_PATH);
 
     verifyPostResponse(INVOICE_LINES_PATH, jsonBody, prepareHeaders(X_OKAPI_TENANT), TEXT_PLAIN, 500);
-
   }
 }
