@@ -168,8 +168,7 @@
         "invoice.invoice-lines.item.put",
         "invoice.invoice-lines.item.delete",
         "invoice.invoice-number.item.get",
-        "invoice.invoice-number.item.post",
-        "invoice-storage.invoices.item.get"
+        "invoice.invoice-number.item.post"
       ],
       "visible": false
     }
