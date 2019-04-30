@@ -13,10 +13,12 @@ import io.vertx.core.logging.LoggerFactory;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
 import io.vertx.ext.web.handler.BodyHandler;
+import org.apache.commons.lang3.StringUtils;
 import org.folio.invoices.utils.ResourcePathResolver;
 import org.folio.rest.acq.model.SequenceNumber;
 import org.folio.rest.jaxrs.model.Invoice;
 
+import javax.ws.rs.core.Response;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -28,11 +30,16 @@ import java.util.concurrent.TimeoutException;
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 import static javax.ws.rs.core.MediaType.TEXT_PLAIN;
 import static javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
+import static org.apache.commons.lang3.StringUtils.EMPTY;
 import static org.folio.invoices.utils.ResourcePathResolver.FOLIO_INVOICE_NUMBER;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICES;
+import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
 import static org.folio.rest.RestVerticle.OKAPI_HEADER_TENANT;
 import static org.folio.rest.impl.AbstractHelper.ID;
 import static org.folio.rest.impl.ApiTestBase.FOLIO_INVOICE_NUMBER_VALUE;
+import static org.folio.rest.impl.InvoicesApiTest.BAD_QUERY;
+import static org.folio.rest.impl.InvoicesApiTest.EXISTING_VENDOR_INV_NO;
+import static org.folio.rest.impl.InvoicesApiTest.ID_FOR_INTERNAL_SERVER_ERROR;
 import static org.junit.Assert.fail;
 
 public class MockServer {
@@ -44,6 +51,8 @@ public class MockServer {
   private static final String ERROR_TENANT = "error_tenant";
   static final Header INVOICE_NUMBER_ERROR_X_OKAPI_TENANT = new Header(OKAPI_HEADER_TENANT, INVOICE_NUMBER_ERROR_TENANT);
   static final Header ERROR_X_OKAPI_TENANT = new Header(OKAPI_HEADER_TENANT, ERROR_TENANT);
+
+  private static final String TOTAL_RECORDS = "totalRecords";
 
 
   private final int port;
@@ -84,6 +93,8 @@ public class MockServer {
     Router router = Router.router(vertx);
     router.route().handler(BodyHandler.create());
     router.route(HttpMethod.POST, ResourcePathResolver.resourcesPath(INVOICES)).handler(this::handlePostInvoice);
+
+    router.route(HttpMethod.GET, resourcesPath(INVOICES)).handler(this::handleGetInvoices);
     router.route(HttpMethod.GET, ResourcePathResolver.resourcesPath(FOLIO_INVOICE_NUMBER)).handler(this::handleGetFolioInvoiceNumber);
     return router;
   }
@@ -100,6 +111,30 @@ public class MockServer {
       addServerRqRsData(HttpMethod.POST, INVOICES, body);
 
       serverResponse(ctx, 201, APPLICATION_JSON, JsonObject.mapFrom(po).encodePrettily());
+    }
+  }
+
+  private void handleGetInvoices(RoutingContext ctx) {
+    String queryParam = StringUtils.trimToEmpty(ctx.request().getParam("query"));
+    if (queryParam.contains(BAD_QUERY)) {
+      serverResponse(ctx, 400, APPLICATION_JSON, Response.Status.BAD_REQUEST.getReasonPhrase());
+    } else if (queryParam.contains(ID_FOR_INTERNAL_SERVER_ERROR)) {
+      serverResponse(ctx, 500, APPLICATION_JSON, Response.Status.INTERNAL_SERVER_ERROR.getReasonPhrase());
+    } else {
+      JsonObject invoice = new JsonObject();
+      final String VENDOR_INVOICE_NUMBER_QUERY = "vendorInvoiceNo==";
+      switch (queryParam) {
+        case VENDOR_INVOICE_NUMBER_QUERY + EXISTING_VENDOR_INV_NO:
+          invoice.put(TOTAL_RECORDS, 1);
+          break;
+        case EMPTY:
+          invoice.put(TOTAL_RECORDS, 3);
+          break;
+        default:
+          invoice.put(TOTAL_RECORDS, 0);
+      }
+      addServerRqRsData(HttpMethod.GET, INVOICES, invoice);
+      serverResponse(ctx, 200, APPLICATION_JSON, invoice.encodePrettily());
     }
   }
 

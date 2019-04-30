@@ -6,8 +6,8 @@ import java.util.Map;
 
 public class ResourcePathResolver {
 
-	private ResourcePathResolver() {
-	}
+  private ResourcePathResolver() {
+  }
 
 	public static final String INVOICES = "invoices";
   public static final String FOLIO_INVOICE_NUMBER = "folioInvoiceNo";

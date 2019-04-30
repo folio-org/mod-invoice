@@ -1,13 +1,17 @@
 package org.folio.rest.impl;
 
+import io.restassured.RestAssured;
+import io.restassured.response.Response;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import org.folio.rest.jaxrs.model.Invoice;
+import org.folio.rest.jaxrs.model.InvoiceCollection;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.net.MalformedURLException;
 
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 import static javax.ws.rs.core.MediaType.TEXT_PLAIN;
@@ -17,6 +21,7 @@ import static org.folio.rest.impl.MockServer.INVOICE_NUMBER_ERROR_X_OKAPI_TENANT
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.notNullValue;
+import static org.junit.Assert.assertEquals;
 
 public class InvoicesApiTest extends ApiTestBase {
 
@@ -24,13 +29,60 @@ public class InvoicesApiTest extends ApiTestBase {
 
 	private static final String INVOICE_ID_PATH = "/invoice/invoices/%s";
 	private static final String INVOICE_PATH = "/invoice/invoices";
+  private static final String INVOICE_PATH_BAD = "/invoice/bad";
 
 	private static final String INVOICE_SAMPLE_PATH = "mockdata/invoices/invoice.json";
 
+  static final String BAD_QUERY = "unprocessableQuery";
+  private static final String VENDOR_INVOICE_NUMBER_FIELD = "vendorInvoiceNo";
+  static final String EXISTING_VENDOR_INV_NO = "existingVendorInvoiceNo";
+  static final String ID_FOR_INTERNAL_SERVER_ERROR = "168f8a86-d26c-406e-813f-c7527f241ac3";
+
   @Test
   public void getInvoicingInvoicesTest() {
+    logger.info("=== Test Get Invoices by without query - get 200 by successful retrieval of invoices ===");
 
-    verifyGet(INVOICE_PATH, TEXT_PLAIN, 500);
+    final InvoiceCollection resp = verifySuccessGet(INVOICE_PATH, InvoiceCollection.class);
+
+    assertEquals(3, resp.getTotalRecords().intValue());
+  }
+
+  @Test
+  public void getInvoicingInvoicesWithQueryParamTest() {
+    logger.info("=== Test Get Invoices with query - get 200 by successful retrieval of invoices by query ===");
+
+    String endpointQuery = String.format("%s?query=%s", INVOICE_PATH,  VENDOR_INVOICE_NUMBER_FIELD + "==" + EXISTING_VENDOR_INV_NO);
+
+    final InvoiceCollection resp = verifySuccessGet(endpointQuery, InvoiceCollection.class);
+
+    assertEquals(1, resp.getTotalRecords().intValue());
+  }
+
+  @Test
+  public void testGetInvoicesBadQuery() {
+    logger.info("=== Test Get Invoices by query - unprocessable query to emulate 400 from storage ===");
+
+    String endpointQuery = String.format("%s?query=%s", INVOICE_PATH,  BAD_QUERY);
+
+    verifyGet(endpointQuery, APPLICATION_JSON, 400);
+  }
+
+  @Test
+  public void testGetInvoicesInternalServerError() {
+    logger.info("=== Test Get Invoices by query - emulating 500 from storage ===");
+
+    String endpointQuery = String.format("%s?query=%s", INVOICE_PATH,  ID_FOR_INTERNAL_SERVER_ERROR);
+
+    verifyGet(endpointQuery, APPLICATION_JSON, 500);
+
+  }
+
+  @Test
+  public void getInvoicingInvoicesBadRequestUrlTest() {
+    logger.info("=== Test Get Invoices by query - emulating 400 by sending bad request Url ===");
+
+    verifyGet(INVOICE_PATH_BAD, TEXT_PLAIN, 400);
+
   }
 
   @Test

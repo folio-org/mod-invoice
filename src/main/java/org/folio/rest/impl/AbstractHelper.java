@@ -100,12 +100,12 @@ public abstract class AbstractHelper {
   protected void addProcessingErrors(List<Error> errors) {
     processingErrors.getErrors().addAll(errors);
   }
-  
+
   protected Errors getProcessingErrors() {
     processingErrors.setTotalRecords(processingErrors.getErrors().size());
     return processingErrors;
   }
-  
+
 	/**
 	 * Some requests do not have body and in happy flow do not produce response
 	 * body. The Accept header is required for calls to storage
@@ -116,12 +116,12 @@ public abstract class AbstractHelper {
 		httpClient.setDefaultHeaders(customHeader);
 	}
 
-	public static HttpClientInterface getHttpClient(Map<String, String> okapiHeaders) {
-		final String okapiURL = okapiHeaders.getOrDefault(OKAPI_URL, "");
-		final String tenantId = TenantTool.calculateTenantId(okapiHeaders.get(OKAPI_HEADER_TENANT));
+  public static HttpClientInterface getHttpClient(Map<String, String> okapiHeaders) {
+    final String okapiURL = okapiHeaders.getOrDefault(OKAPI_URL, "");
+    final String tenantId = TenantTool.calculateTenantId(okapiHeaders.get(OKAPI_HEADER_TENANT));
 
-		return HttpClientFactory.getHttpClient(okapiURL, tenantId);
-	}
+    return HttpClientFactory.getHttpClient(okapiURL, tenantId);
+  }
 
   public Response buildErrorResponse(Throwable throwable) {
     return buildErrorResponse(handleProcessingError(throwable));
@@ -166,7 +166,7 @@ public abstract class AbstractHelper {
       .entity(getProcessingErrors())
       .build();
   }
-  
+
 	public Response buildOkResponse(Object body) {
 		closeHttpClient();
 		return Response.ok(body, APPLICATION_JSON).build();

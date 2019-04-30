@@ -60,21 +60,13 @@
       ]
     },
     {
-      "id": "_tenant",
-      "version": "1.2",
-      "interfaceType": "system",
-      "handlers": [
+      "id": "_jsonSchemas",
+      "version": "1.0",
+      "interfaceType" : "multiple",
+      "handlers" : [
         {
-          "methods": [
-            "POST"
-          ],
-          "pathPattern": "/_/tenant"
-        },
-        {
-          "methods": [
-            "DELETE"
-          ],
-          "pathPattern": "/_/tenant"
+          "methods" : [ "GET" ],
+          "pathPattern" : "/_/jsonSchemas"
         }
       ]
     }
