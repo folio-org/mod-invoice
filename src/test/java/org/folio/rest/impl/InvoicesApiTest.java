@@ -43,7 +43,7 @@ public class InvoicesApiTest extends ApiTestBase {
   private static final String BAD_INVOICE_ID = "5a34ae0e-5a11-4337-be95-1a20cfdc3161";
 
   @Test
-  public void getInvoicingInvoicesTest() {
+  public void testGetInvoicingInvoices() {
     logger.info("=== Test Get Invoices by without query - get 200 by successful retrieval of invoices ===");
 
     final InvoiceCollection resp = verifySuccessGet(INVOICE_PATH, InvoiceCollection.class);
@@ -52,7 +52,7 @@ public class InvoicesApiTest extends ApiTestBase {
   }
 
   @Test
-  public void getInvoicingInvoicesWithQueryParamTest() {
+  public void testGetInvoicingInvoicesWithQueryParam() {
     logger.info("=== Test Get Invoices with query - get 200 by successful retrieval of invoices by query ===");
 
     String endpointQuery = String.format("%s?query=%s", INVOICE_PATH,  VENDOR_INVOICE_NUMBER_FIELD + "==" + EXISTING_VENDOR_INV_NO);
@@ -82,7 +82,7 @@ public class InvoicesApiTest extends ApiTestBase {
   }
 
   @Test
-  public void getInvoicingInvoicesBadRequestUrlTest() {
+  public void TestGetInvoicingInvoicesBadRequestUrl() {
     logger.info("=== Test Get Invoices by query - emulating 400 by sending bad request Url ===");
 
     verifyGet(INVOICE_PATH_BAD, TEXT_PLAIN, 400);
@@ -95,8 +95,6 @@ public class InvoicesApiTest extends ApiTestBase {
     JsonObject invoicesList = new JsonObject(getMockData(INVOICES_LIST_PATH));
     String id = invoicesList.getJsonArray("invoices").getJsonObject(0).getString(ID);
     logger.info(String.format("using mock datafile: %s%s.json", INVOICES_LIST_PATH, id));
-
-
 
     final Invoice resp = verifySuccessGet(INVOICE_PATH + "/" + id, Invoice.class);
 
@@ -117,7 +115,7 @@ public class InvoicesApiTest extends ApiTestBase {
   }
 
   @Test
-  public void putInvoicingInvoicesByIdTest() {
+  public void testPutInvoicingInvoicesById() {
     logger.info("=== Test update invoice by id ===");
 
   	Invoice reqData = getMockAsJson(INVOICE_SAMPLE_PATH).mapTo(Invoice.class);
@@ -128,14 +126,14 @@ public class InvoicesApiTest extends ApiTestBase {
   }
 
   @Test
-  public void deleteInvoicingInvoicesByIdTest() {
+  public void testDeleteInvoicingInvoicesById() {
     logger.info("=== Test delete invoice by id ===");
 
     verifyDeleteResponse(String.format(INVOICE_ID_PATH, UUID), TEXT_PLAIN, 500);
   }
 
   @Test
-  public void postInvoicingInvoicesTest() throws Exception {
+  public void testPostInvoicingInvoices() throws Exception {
     logger.info("=== Test create invoice without id and folioInvoiceNo ===");
 
     Invoice reqData = getMockAsJson(INVOICE_SAMPLE_PATH).mapTo(Invoice.class);
@@ -154,7 +152,7 @@ public class InvoicesApiTest extends ApiTestBase {
   }
 
   @Test
-  public void postInvoicingInvoicesTestErrorFromStorage() throws Exception {
+  public void testPostInvoicingInvoicesErrorFromStorage() throws Exception {
     logger.info("=== Test create invoice without with error from storage on saving invoice  ===");
 
     Invoice reqData = getMockAsJson(INVOICE_SAMPLE_PATH).mapTo(Invoice.class);
@@ -168,7 +166,7 @@ public class InvoicesApiTest extends ApiTestBase {
   }
 
   @Test
-  public void postInvoicingInvoicesWithInvoiceNumberGenerationFail() throws IOException {
+  public void testPostInvoicingInvoicesWithInvoiceNumberGenerationFail() throws IOException {
     logger.info("=== Test create invoice without with error from storage on folioInvoiceNo generation  ===");
 
     Invoice reqData = getMockAsJson(INVOICE_SAMPLE_PATH).mapTo(Invoice.class);

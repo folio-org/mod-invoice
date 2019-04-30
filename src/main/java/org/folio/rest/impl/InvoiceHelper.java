@@ -27,13 +27,12 @@ public class InvoiceHelper extends AbstractHelper {
     super(getHttpClient(okapiHeaders), okapiHeaders, ctx, lang);
   }
 
-  public CompletableFuture<Invoice> createPurchaseOrder(Invoice invoice) {
+  public CompletableFuture<Invoice> createInvoice(Invoice invoice) {
     return generateFolioInvoiceNumber()
-      .thenCompose(folioInvoiceNumber -> createInvoice(invoice.withFolioInvoiceNo(folioInvoiceNumber)));
-  }
-
-  private CompletableFuture<Invoice> createInvoice(Invoice invoice) {
-    return createRecordInStorage(JsonObject.mapFrom(invoice), resourcesPath(INVOICES))
+      .thenCompose(folioInvoiceNumber -> {
+        JsonObject jsonInvoice = JsonObject.mapFrom (invoice.withFolioInvoiceNo(folioInvoiceNumber));
+        return createRecordInStorage(jsonInvoice, resourcesPath(INVOICES));
+      })
       .thenApply(invoice::withId);
   }
 

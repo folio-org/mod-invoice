@@ -31,7 +31,7 @@ public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
 
 		InvoiceHelper helper = new InvoiceHelper(okapiHeaders, vertxContext, lang);
 
-		helper.createPurchaseOrder(invoice)
+		helper.createInvoice(invoice)
       .thenAccept(invoiceWithId -> {
         Response response = PostInvoiceInvoicesResponse.respond201WithApplicationJson(invoiceWithId,
           PostInvoiceInvoicesResponse.headersFor201()
