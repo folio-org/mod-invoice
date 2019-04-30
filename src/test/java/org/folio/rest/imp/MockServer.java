@@ -1,8 +1,12 @@
 package org.folio.rest.imp;
 
+import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
+import static javax.ws.rs.core.MediaType.TEXT_PLAIN;
 import static org.apache.commons.lang3.StringUtils.EMPTY;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICES;
+import static org.folio.invoices.utils.ResourcePathResolver.resourceByIdPath;
 import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
+import static org.folio.rest.imp.InvoicesTest.ID;
 import static org.folio.rest.imp.InvoicesTest.getMockData;
 import static org.folio.rest.imp.InvoicesTest.BASE_MOCK_DATA_PATH;
 
@@ -11,10 +15,10 @@ import static org.junit.Assert.fail;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+
 import javax.ws.rs.core.Response.Status;
 
 import org.apache.commons.lang3.StringUtils;
-import org.junit.runner.RunWith;
 
 import com.google.common.collect.HashBasedTable;
 import com.google.common.collect.Table;
@@ -28,19 +32,18 @@ import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
-import io.vertx.ext.unit.junit.VertxUnitRunner;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
 import io.vertx.ext.web.handler.BodyHandler;
 
-@RunWith(VertxUnitRunner.class)
 public class MockServer {
   private static final String TOTAL_RECORDS = "totalRecords";
   private static final String BAD_QUERY = "unprocessableQuery";
-  private static final String APPLICATION_JSON = "application/json";
-  private static final String ID_FOR_INTERNAL_SERVER_ERROR = "168f8a86-d26c-406e-813f-c7527f241ac3";
+  public static final String ID_FOR_INTERNAL_SERVER_ERROR = "168f8a86-d26c-406e-813f-c7527f241ac3";
+  public static final String ID_DOES_NOT_EXIST = "d25498e7-3ae6-45fe-9612-ec99e2700d2f";
   private static final String EXISTING_VENDOR_INV_NO = "existingVendorInvoiceNo";
-  private static final String ID = "id";
+  private static final String ID_PATH_PARAM = ":" + ID;
+
   static Table<String, HttpMethod, List<JsonObject>> serverRqRs = HashBasedTable.create();
   private static final Logger logger = LoggerFactory.getLogger(MockServer.class);
 
@@ -77,11 +80,13 @@ public class MockServer {
     });
   }
 
-  Router defineRoutes() {
+  private Router defineRoutes() {
     Router router = Router.router(vertx);
     router.route().handler(BodyHandler.create());
     router.route(HttpMethod.GET, resourcesPath(INVOICES)).handler(this::handleGetInvoices);
     router.route(HttpMethod.GET, resourcesPath(INVOICES)+"/:id").handler(this::handleGetInvoiceById);
+
+    router.route(HttpMethod.DELETE, resourceByIdPath(INVOICES, ID_PATH_PARAM)).handler(ctx -> handleDeleteRequest(ctx, INVOICES));
     return router;
   }
 
@@ -122,7 +127,7 @@ public class MockServer {
         ctx.response().setStatusCode(404).end(id);
     }
   }
-  
+
   private void handleGetInvoices(RoutingContext ctx) {
     String queryParam = StringUtils.trimToEmpty(ctx.request().getParam("query"));
     if (queryParam.contains(BAD_QUERY)) {
@@ -144,6 +149,24 @@ public class MockServer {
       }
       addServerRqRsData(HttpMethod.GET, INVOICES, invoice);
       serverResponse(ctx, 200, APPLICATION_JSON, invoice.encodePrettily());
+    }
+  }
+
+  private void handleDeleteRequest(RoutingContext ctx, String type) {
+    String id = ctx.request().getParam(ID);
+
+    // Register request
+    addServerRqRsData(HttpMethod.DELETE, type, new JsonObject().put(ID, id));
+
+    if (ID_DOES_NOT_EXIST.equals(id)) {
+      serverResponse(ctx, 404, TEXT_PLAIN, id);
+    } else if (ID_FOR_INTERNAL_SERVER_ERROR.equals(id)) {
+      serverResponse(ctx, 500, APPLICATION_JSON, Status.INTERNAL_SERVER_ERROR.getReasonPhrase());
+    } else {
+      ctx.response()
+         .setStatusCode(204)
+         .putHeader(HttpHeaders.CONTENT_TYPE, APPLICATION_JSON)
+         .end();
     }
   }
 }

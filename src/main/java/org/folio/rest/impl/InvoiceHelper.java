@@ -1,6 +1,8 @@
 package org.folio.rest.impl;
 
+import static org.folio.invoices.utils.HelperUtils.handleDeleteRequest;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICES;
+import static org.folio.invoices.utils.ResourcePathResolver.resourceByIdPath;
 import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
 import static org.folio.invoices.utils.HelperUtils.handleGetRequest;
 import static org.folio.invoices.utils.HelperUtils.getEndpointWithQuery;
@@ -18,6 +20,7 @@ import io.vertx.core.Context;
 public class InvoiceHelper extends AbstractHelper {
 
   private static final String GET_INVOICES_BY_QUERY = resourcesPath(INVOICES) + "?limit=%s&offset=%s%s&lang=%s";
+  private static final String DELETE_INVOICE_BY_ID = resourceByIdPath(INVOICES, "%s") + "?lang=%s";
 
   InvoiceHelper(Map<String, String> okapiHeaders, Context ctx, String lang) {
     super(getHttpClient(okapiHeaders), okapiHeaders, ctx, lang);
@@ -71,5 +74,9 @@ public class InvoiceHelper extends AbstractHelper {
         future.completeExceptionally(e);
     }
     return future;
+  }
+
+  public CompletableFuture<Void> deleteInvoice(String id) {
+    return handleDeleteRequest(String.format(DELETE_INVOICE_BY_ID, id, lang), httpClient, ctx, okapiHeaders, logger);
   }
 }

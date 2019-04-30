@@ -9,7 +9,10 @@
         {
           "methods": ["GET"],
           "pathPattern": "/invoice/invoices",
-          "permissionsRequired": ["invoice.invoices.collection.get"]
+          "permissionsRequired": ["invoice.invoices.collection.get"],
+          "modulePermissions": [
+            "invoice-storage.invoices.collection.get"
+          ]
         },
         {
           "methods": ["POST"],
@@ -34,7 +37,10 @@
         {
           "methods": ["DELETE"],
           "pathPattern": "/invoice/invoices/{id}",
-          "permissionsRequired": ["invoice.invoices.item.delete"]
+          "permissionsRequired": ["invoice.invoices.item.delete"],
+          "modulePermissions": [
+            "invoice-storage.invoices.item.delete"
+          ]
         },
         {
           "methods": ["GET"],

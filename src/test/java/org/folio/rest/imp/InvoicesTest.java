@@ -2,6 +2,7 @@ package org.folio.rest.imp;
 
 import static io.restassured.RestAssured.given;
 import static org.folio.rest.RestVerticle.OKAPI_HEADER_TENANT;
+import static org.folio.rest.imp.MockServer.ID_DOES_NOT_EXIST;
 import static org.junit.Assert.assertEquals;
 import java.io.IOException;
 import java.io.InputStream;
@@ -52,7 +53,12 @@ public class InvoicesTest {
   private static final String INVOICE_SAMPLE_PATH = "invoice.json";
   private static final String INVOICE_MOCK_DATA_PATH = BASE_MOCK_DATA_PATH + "invoices.json";
   private static final String INVOICE_LINE_SAMPLE_PATH = "invoice_line.json";
-  private static final String ID = "id";
+  private static final String INVALID_LANG = "english";
+
+  private static final String LANG_PARAM = "lang";
+
+  public static final String ID = "id";
+  public static final String ID_BAD_FORMAT = "123-45-678-90-abc";
   private static final String UUID = "8d3881f6-dd93-46f0-b29d-1c36bdb5c9f9";
   private static final String EXIST_CONFIG_TENANT_LIMIT_10 = "test_diku_limit_10";
   private static final String BAD_QUERY = "unprocessableQuery";
@@ -197,11 +203,11 @@ public class InvoicesTest {
   @Test
   public void testGetInvoicingInvoicesById() throws IOException {
     logger.info("=== Test Get Invoice By Id ===");
-    
+
     JsonObject invoicesList = new JsonObject(getMockData(INVOICE_MOCK_DATA_PATH));
     String id = invoicesList.getJsonArray("invoices").getJsonObject(0).getString(ID);
     logger.info(String.format("using mock datafile: %s%s.json", INVOICE_MOCK_DATA_PATH, id));
-    
+
     final Invoice resp = RestAssured
         .with()
         .header(X_OKAPI_URL)
@@ -212,7 +218,7 @@ public class InvoicesTest {
            .extract()
            .response()
            .as(Invoice.class);
-    
+
     logger.info(JsonObject.mapFrom(resp).encodePrettily());
     assertEquals(id, resp.getId());
   }
@@ -232,13 +238,13 @@ public class InvoicesTest {
           .statusCode(404)
           .extract()
           .response();
-    
+
     String actual = resp.getBody().as(Errors.class).getErrors().get(0).getMessage();
     logger.info("Id not found: " + actual);
 
     assertEquals(id, actual);
   }
-  
+
   @Test
   public void testGetInvoicingInvoiceLinesById() throws MalformedURLException {
     given()
@@ -281,14 +287,61 @@ public class InvoicesTest {
   }
 
   @Test
-  public void testDeleteInvoicingInvoicesById() throws MalformedURLException {
+  public void testDeleteInvoiceByValidId() {
     given()
       .pathParam(ID, UUID)
       .header(TENANT_HEADER)
-      .contentType(ContentType.JSON)
-      .delete(INVOICE_ID_PATH)
-        .then()
-          .statusCode(500);
+      .header(X_OKAPI_URL)
+    .delete(INVOICE_ID_PATH)
+      .then()
+        .statusCode(204);
+  }
+
+  @Test
+  public void testDeleteInvoiceByIdWithInvalidFormat() {
+    given()
+      .pathParam(ID, ID_BAD_FORMAT)
+      .header(TENANT_HEADER)
+      .header(X_OKAPI_URL)
+    .delete(INVOICE_ID_PATH)
+      .then()
+        .contentType(ContentType.TEXT)
+        .statusCode(400);
+  }
+
+  @Test
+  public void testDeleteNotExistentInvoice() {
+    given()
+      .pathParam(ID, ID_DOES_NOT_EXIST)
+      .header(TENANT_HEADER)
+      .header(X_OKAPI_URL)
+    .delete(INVOICE_ID_PATH)
+      .then()
+        .statusCode(404);
+  }
+
+  @Test
+  public void testDeleteInvoiceInternalErrorOnStorage() {
+    given()
+      .pathParam(ID, ID_FOR_INTERNAL_SERVER_ERROR)
+      .header(TENANT_HEADER)
+      .header(X_OKAPI_URL)
+    .delete(INVOICE_ID_PATH)
+      .then()
+        .statusCode(500);
+  }
+
+  @Test
+  public void testDeleteInvoiceBadLanguage() {
+    given()
+      .pathParam(ID, UUID)
+      .param(LANG_PARAM, INVALID_LANG)
+      .header(TENANT_HEADER)
+      .header(X_OKAPI_URL)
+    .delete(INVOICE_ID_PATH)
+      .then()
+        .contentType(ContentType.TEXT)
+        .statusCode(400);
   }
 
   @Test
