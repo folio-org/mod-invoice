@@ -85,12 +85,7 @@
       ]
     }
   ],
-  "requires": [
-    {
-      "id": "invoice-storage.invoices",
-      "version": "1.0"
-    }    
-  ],  
+  "requires": [],  
   "permissionSets": [
     {
       "permissionName": "invoice.invoices.collection.get",
