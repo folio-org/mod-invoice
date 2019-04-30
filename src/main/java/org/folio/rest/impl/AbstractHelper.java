@@ -32,26 +32,26 @@ import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 
 public abstract class AbstractHelper {
-	public static final String ID = "id";
+  public static final String ID = "id";
   public static final String ERROR_CAUSE = "cause";
-	public static final String OKAPI_URL = "X-Okapi-Url";
+  public static final String OKAPI_URL = "X-Okapi-Url";
 
-	protected final Logger logger = LoggerFactory.getLogger(this.getClass());
+  protected final Logger logger = LoggerFactory.getLogger(this.getClass());
 
-	private final Errors processingErrors = new Errors();
+  private final Errors processingErrors = new Errors();
 
-	protected final HttpClientInterface httpClient;
-	protected final Map<String, String> okapiHeaders;
-	protected final Context ctx;
-	protected final String lang;
+  protected final HttpClientInterface httpClient;
+  protected final Map<String, String> okapiHeaders;
+  protected final Context ctx;
+  protected final String lang;
 
-	AbstractHelper(HttpClientInterface httpClient, Map<String, String> okapiHeaders, Context ctx, String lang) {
-		this.httpClient = httpClient;
-		this.okapiHeaders = okapiHeaders;
-		this.ctx = ctx;
-		this.lang = lang;
-		setDefaultHeaders();
-	}
+  AbstractHelper(HttpClientInterface httpClient, Map<String, String> okapiHeaders, Context ctx, String lang) {
+    this.httpClient = httpClient;
+    this.okapiHeaders = okapiHeaders;
+    this.ctx = ctx;
+    this.lang = lang;
+    setDefaultHeaders();
+  }
 
   protected CompletableFuture<String> createRecordInStorage(JsonObject recordData, String endpoint) {
     CompletableFuture<String> future = new VertxCompletableFuture<>(ctx);
@@ -106,15 +106,15 @@ public abstract class AbstractHelper {
     return processingErrors;
   }
 
-	/**
-	 * Some requests do not have body and in happy flow do not produce response
-	 * body. The Accept header is required for calls to storage
-	 */
-	private void setDefaultHeaders() {
-		Map<String, String> customHeader = new HashMap<>();
-		customHeader.put(HttpHeaders.ACCEPT.toString(), APPLICATION_JSON + ", " + TEXT_PLAIN);
-		httpClient.setDefaultHeaders(customHeader);
-	}
+  /**
+   * Some requests do not have body and in happy flow do not produce response
+   * body. The Accept header is required for calls to storage
+   */
+  private void setDefaultHeaders() {
+    Map<String, String> customHeader = new HashMap<>();
+    customHeader.put(HttpHeaders.ACCEPT.toString(), APPLICATION_JSON + ", " + TEXT_PLAIN);
+    httpClient.setDefaultHeaders(customHeader);
+  }
 
   public static HttpClientInterface getHttpClient(Map<String, String> okapiHeaders) {
     final String okapiURL = okapiHeaders.getOrDefault(OKAPI_URL, "");
@@ -167,16 +167,16 @@ public abstract class AbstractHelper {
       .build();
   }
 
-	public Response buildOkResponse(Object body) {
-		closeHttpClient();
-		return Response.ok(body, APPLICATION_JSON).build();
-	}
+  public Response buildOkResponse(Object body) {
+    closeHttpClient();
+    return Response.ok(body, APPLICATION_JSON).build();
+  }
 
-	public void closeHttpClient() {
-		httpClient.closeClient();
-	}
+  public void closeHttpClient() {
+    httpClient.closeClient();
+  }
 
-	public List<Error> getErrors() {
-		return processingErrors.getErrors();
-	}
+  public List<Error> getErrors() {
+    return processingErrors.getErrors();
+  }
 }

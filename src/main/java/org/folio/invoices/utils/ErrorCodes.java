@@ -4,7 +4,7 @@ import org.folio.rest.jaxrs.model.Error;
 
 public enum ErrorCodes {
 
-	GENERIC_ERROR_CODE("genericError", "Generic error");
+  GENERIC_ERROR_CODE("genericError", "Generic error");
 
   private final String code;
   private final String description;
@@ -27,7 +27,7 @@ public enum ErrorCodes {
     return code + ": " + description;
   }
 
-	public Error toError() {
-		return new Error().withCode(code).withMessage(description);
-	}
+  public Error toError() {
+    return new Error().withCode(code).withMessage(description);
+  }
 }

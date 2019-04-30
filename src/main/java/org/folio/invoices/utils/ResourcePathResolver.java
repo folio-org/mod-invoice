@@ -9,20 +9,20 @@ public class ResourcePathResolver {
   private ResourcePathResolver() {
   }
 
-	public static final String INVOICES = "invoices";
+  public static final String INVOICES = "invoices";
   public static final String FOLIO_INVOICE_NUMBER = "folioInvoiceNo";
 
-	private static final Map<String, String> SUB_OBJECT_COLLECTION_APIS;
+  private static final Map<String, String> SUB_OBJECT_COLLECTION_APIS;
 
-	static {
-		Map<String, String> apis = new HashMap<>();
-		apis.put(INVOICES, "/invoice-storage/invoices");
-		apis.put(FOLIO_INVOICE_NUMBER, "/invoice-storage/invoice-numbers");
+  static {
+    Map<String, String> apis = new HashMap<>();
+    apis.put(INVOICES, "/invoice-storage/invoices");
+    apis.put(FOLIO_INVOICE_NUMBER, "/invoice-storage/invoice-numbers");
 
-		SUB_OBJECT_COLLECTION_APIS = Collections.unmodifiableMap(apis);
-	}
+    SUB_OBJECT_COLLECTION_APIS = Collections.unmodifiableMap(apis);
+  }
 
-	public static String resourcesPath(String field) {
-		return SUB_OBJECT_COLLECTION_APIS.get(field);
-	}
+  public static String resourcesPath(String field) {
+    return SUB_OBJECT_COLLECTION_APIS.get(field);
+  }
 }
