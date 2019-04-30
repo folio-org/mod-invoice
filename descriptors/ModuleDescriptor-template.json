@@ -70,7 +70,6 @@
           "pathPattern": "/invoice/invoice-number/validate",
           "permissionsRequired": ["invoice.invoice-number.item.post"]
         }
-        
       ]
     },
     {
