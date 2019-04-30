@@ -14,7 +14,6 @@ import java.util.List;
 import javax.ws.rs.core.Response.Status;
 
 import org.apache.commons.lang3.StringUtils;
-import org.junit.runner.RunWith;
 
 import com.google.common.collect.HashBasedTable;
 import com.google.common.collect.Table;
@@ -28,12 +27,10 @@ import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
-import io.vertx.ext.unit.junit.VertxUnitRunner;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
 import io.vertx.ext.web.handler.BodyHandler;
 
-@RunWith(VertxUnitRunner.class)
 public class MockServer {
   private static final String TOTAL_RECORDS = "totalRecords";
   private static final String BAD_QUERY = "unprocessableQuery";
