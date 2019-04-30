@@ -19,6 +19,7 @@ import org.folio.rest.acq.model.SequenceNumber;
 import org.folio.rest.jaxrs.model.Invoice;
 
 import javax.ws.rs.core.Response;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -33,13 +34,16 @@ import static javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
 import static org.apache.commons.lang3.StringUtils.EMPTY;
 import static org.folio.invoices.utils.ResourcePathResolver.FOLIO_INVOICE_NUMBER;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICES;
+import static org.folio.invoices.utils.ResourcePathResolver.resourceByIdPath;
 import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
 import static org.folio.rest.RestVerticle.OKAPI_HEADER_TENANT;
 import static org.folio.rest.impl.AbstractHelper.ID;
 import static org.folio.rest.impl.ApiTestBase.FOLIO_INVOICE_NUMBER_VALUE;
+import static org.folio.rest.impl.ApiTestBase.getMockData;
 import static org.folio.rest.impl.InvoicesApiTest.BAD_QUERY;
 import static org.folio.rest.impl.InvoicesApiTest.EXISTING_VENDOR_INV_NO;
 import static org.folio.rest.impl.InvoicesApiTest.ID_FOR_INTERNAL_SERVER_ERROR;
+import static org.folio.rest.impl.InvoicesApiTest.INVOICE_MOCK_DATA_PATH;
 import static org.junit.Assert.fail;
 
 public class MockServer {
@@ -95,6 +99,7 @@ public class MockServer {
     router.route(HttpMethod.POST, ResourcePathResolver.resourcesPath(INVOICES)).handler(this::handlePostInvoice);
 
     router.route(HttpMethod.GET, resourcesPath(INVOICES)).handler(this::handleGetInvoices);
+    router.route(HttpMethod.GET, resourcePath(INVOICES)).handler(this::handleGetInvoiceById);
     router.route(HttpMethod.GET, ResourcePathResolver.resourcesPath(FOLIO_INVOICE_NUMBER)).handler(this::handleGetFolioInvoiceNumber);
     return router;
   }
@@ -111,6 +116,28 @@ public class MockServer {
       addServerRqRsData(HttpMethod.POST, INVOICES, body);
 
       serverResponse(ctx, 201, APPLICATION_JSON, JsonObject.mapFrom(po).encodePrettily());
+    }
+  }
+
+  private void handleGetInvoiceById(RoutingContext ctx) {
+    logger.info("handleGetInvoiceById got: GET " + ctx.request().path());
+    String id = ctx.request().getParam(ID);
+    logger.info("id: " + id);
+
+    try {
+
+      String filePath = String.format("%s%s.json", INVOICE_MOCK_DATA_PATH, id);
+
+      JsonObject invoice = new JsonObject(getMockData(filePath));
+
+      // validate content against schema
+      Invoice invoiceSchema = invoice.mapTo(Invoice.class);
+      invoiceSchema.setId(id);
+      invoice = JsonObject.mapFrom(invoiceSchema);
+      addServerRqRsData(HttpMethod.GET, INVOICES, invoice);
+      serverResponse(ctx, 200, APPLICATION_JSON, invoice.encodePrettily());
+    } catch (IOException e) {
+      ctx.response().setStatusCode(404).end(id);
     }
   }
 
@@ -165,6 +192,10 @@ public class MockServer {
     }
     entries.add(data);
     serverRqRs.put(objName, method, entries);
+  }
+
+  private String resourcePath(String subObjName) {
+    return resourceByIdPath(subObjName) + ":id";
   }
 
 }

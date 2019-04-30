@@ -1,9 +1,11 @@
 package org.folio.rest.impl;
 
+import io.restassured.response.Response;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
+import org.folio.rest.jaxrs.model.Errors;
 import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.jaxrs.model.InvoiceCollection;
 import org.junit.Test;
@@ -13,6 +15,7 @@ import java.io.IOException;
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 import static javax.ws.rs.core.MediaType.TEXT_PLAIN;
 import static org.folio.invoices.utils.ResourcePathResolver.FOLIO_INVOICE_NUMBER;
+import static org.folio.rest.impl.AbstractHelper.ID;
 import static org.folio.rest.impl.MockServer.ERROR_X_OKAPI_TENANT;
 import static org.folio.rest.impl.MockServer.INVOICE_NUMBER_ERROR_X_OKAPI_TENANT;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -28,12 +31,16 @@ public class InvoicesApiTest extends ApiTestBase {
 	private static final String INVOICE_PATH = "/invoice/invoices";
   private static final String INVOICE_PATH_BAD = "/invoice/bad";
 
-	private static final String INVOICE_SAMPLE_PATH = "mockdata/invoices/invoice.json";
+
+	static final String INVOICE_MOCK_DATA_PATH = BASE_MOCK_DATA_PATH + "invoices/";
+  private static final String INVOICES_LIST_PATH = INVOICE_MOCK_DATA_PATH + "invoices.json";
+  private static final String INVOICE_SAMPLE_PATH = INVOICE_MOCK_DATA_PATH + "invoice.json";
 
   static final String BAD_QUERY = "unprocessableQuery";
   private static final String VENDOR_INVOICE_NUMBER_FIELD = "vendorInvoiceNo";
   static final String EXISTING_VENDOR_INV_NO = "existingVendorInvoiceNo";
   static final String ID_FOR_INTERNAL_SERVER_ERROR = "168f8a86-d26c-406e-813f-c7527f241ac3";
+  private static final String BAD_INVOICE_ID = "5a34ae0e-5a11-4337-be95-1a20cfdc3161";
 
   @Test
   public void getInvoicingInvoicesTest() {
@@ -82,10 +89,31 @@ public class InvoicesApiTest extends ApiTestBase {
   }
 
   @Test
-  public void getInvoicingInvoicesByIdTest() {
-    logger.info("=== Test get invoice by id ===");
+  public void testGetInvoicingInvoicesById() throws IOException {
+    logger.info("=== Test Get Invoice By Id ===");
 
-    verifyGet(String.format(INVOICE_ID_PATH, UUID), TEXT_PLAIN, 500);
+    JsonObject invoicesList = new JsonObject(getMockData(INVOICES_LIST_PATH));
+    String id = invoicesList.getJsonArray("invoices").getJsonObject(0).getString(ID);
+    logger.info(String.format("using mock datafile: %s%s.json", INVOICES_LIST_PATH, id));
+
+
+
+    final Invoice resp = verifySuccessGet(INVOICE_PATH + "/" + id, Invoice.class);
+
+    logger.info(JsonObject.mapFrom(resp).encodePrettily());
+    assertEquals(id, resp.getId());
+  }
+
+  @Test
+  public void testGetInvoicingInvoicesByIdNotFound() {
+    logger.info("=== Test Get Invoices by Id - 404 Not found ===");
+
+    final Response resp = verifyGet(INVOICE_PATH + "/" + BAD_INVOICE_ID, APPLICATION_JSON, 404);
+
+    String actual = resp.getBody().as(Errors.class).getErrors().get(0).getMessage();
+    logger.info("Id not found: " + actual);
+
+    assertEquals(BAD_INVOICE_ID, actual);
   }
 
   @Test

@@ -1,7 +1,6 @@
 {
   "id": "${artifactId}-${version}",
   "name": "Invoice business logic module",
-  "requires": [],
   "provides": [
     {
       "id": "invoice",
@@ -25,7 +24,12 @@
         {
           "methods": ["GET"],
           "pathPattern": "/invoice/invoices/{id}",
-          "permissionsRequired": ["invoice.invoices.item.get"]
+          "permissionsRequired": [
+            "invoice.invoices.item.get"
+          ],
+          "modulePermissions": [
+            "invoice-storage.invoices.item.get"
+          ]
         },
         {
           "methods": ["PUT"],
@@ -76,6 +80,7 @@
       ]
     }
   ],
+  "requires": [],
   "permissionSets": [
     {
       "permissionName": "invoice.invoices.collection.get",
