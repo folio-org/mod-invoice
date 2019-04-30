@@ -10,12 +10,17 @@
         {
           "methods": ["GET"],
           "pathPattern": "/invoice/invoices",
-          "permissionsRequired": ["invoice.invoices.collection.get"]
+          "permissionsRequired": ["invoice.invoices.collection.get"],
+          "modulePermissions": ["invoice-storage.invoices.collection.get"]
         },
         {
           "methods": ["POST"],
           "pathPattern": "/invoice/invoices",
-          "permissionsRequired": ["invoice.invoices.item.post"]
+          "permissionsRequired": ["invoice.invoices.item.post"],
+          "modulePermissions": [
+            "invoice-storage.invoices.item.post",
+            "invoice-storage.invoice-number.get"
+          ]
         },
         {
           "methods": ["GET"],
