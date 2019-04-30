@@ -115,7 +115,7 @@ public class InvoicesApiTest extends ApiTestBase {
     reqData.setFolioInvoiceNo(null);
     String body = getMockData(INVOICE_SAMPLE_PATH);
 
-    final Invoice respData = verifyPostResponse(INVOICE_PATH, body, prepareHeaders(X_OKAPI_TENANT), APPLICATION_JSON, 200).as(Invoice.class);
+    final Invoice respData = verifyPostResponse(INVOICE_PATH, body, prepareHeaders(X_OKAPI_TENANT), APPLICATION_JSON, 201).as(Invoice.class);
 
     String poId = respData.getId();
     String folioInvoiceNo = respData.getFolioInvoiceNo();

@@ -22,6 +22,7 @@ public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
 
   private static final Logger logger = LoggerFactory.getLogger(InvoicesImpl.class);
   private static final String NOT_SUPPORTED = "Not supported";	// To overcome sonarcloud warning
+  private static final String INVOICE_LOCATION_PREFIX = "/invoice/invoices/%s";
   
   @Validate
   @Override
@@ -31,7 +32,12 @@ public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
 		InvoiceHelper helper = new InvoiceHelper(okapiHeaders, vertxContext, lang);
 
 		helper.createPurchaseOrder(invoice)
-      .thenAccept(invoiceWithId -> asyncResultHandler.handle(succeededFuture(helper.buildOkResponse(invoiceWithId))))
+      .thenAccept(invoiceWithId -> {
+        Response response = PostInvoiceInvoicesResponse.respond201WithApplicationJson(invoiceWithId,
+          PostInvoiceInvoicesResponse.headersFor201()
+            .withLocation(String.format(INVOICE_LOCATION_PREFIX, invoiceWithId.getId())));
+        asyncResultHandler.handle(succeededFuture(response));
+      })
       .exceptionally(t -> handleErrorResponse(asyncResultHandler, helper, t));
 	}
 
