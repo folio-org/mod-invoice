@@ -55,7 +55,11 @@ public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
   @Override
   public void getInvoiceInvoicesById(String id, String lang, Map<String, String> okapiHeaders,
       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
-    asyncResultHandler.handle(succeededFuture(GetInvoiceInvoicesByIdResponse.respond500WithTextPlain(NOT_SUPPORTED)));
+    InvoiceHelper helper = new InvoiceHelper(okapiHeaders, vertxContext, lang);
+    helper
+      .getInvoice(id)
+      .thenAccept(invoice -> asyncResultHandler.handle(succeededFuture(helper.buildOkResponse(invoice))))
+      .exceptionally(t -> handleErrorResponse(asyncResultHandler, helper, t));
   }
 
   @Validate

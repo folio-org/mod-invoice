@@ -20,7 +20,7 @@ public class InvoiceLinesHelper extends AbstractHelper {
   public CompletableFuture<InvoiceLine> getInvoiceLines(String id) {
     CompletableFuture<InvoiceLine> future = new VertxCompletableFuture<>(ctx);
     try {
-      String endpoint = String.format(resourceByIdPath("invoiceLines", id), lang);
+      String endpoint = String.format(resourceByIdPath("invoiceLines") + id, lang);
       handleGetRequest(endpoint, httpClient, ctx, okapiHeaders, logger)
         .thenAccept(jsonInvoiceLines -> {
           logger.info("Successfully retrieved invoice lines: " + jsonInvoiceLines.encodePrettily());
