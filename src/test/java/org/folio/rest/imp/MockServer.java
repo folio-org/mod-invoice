@@ -146,7 +146,7 @@ public class MockServer {
       ctx.response().setStatusCode(404).end(id);
     }
   }
-  
+
   private void handleGetInvoices(RoutingContext ctx) {
     String queryParam = StringUtils.trimToEmpty(ctx.request().getParam("query"));
     if (queryParam.contains(BAD_QUERY)) {
