@@ -120,7 +120,7 @@ public class InvoicesTest {
   }
 
   @Test
-  public void getInvoicingInvoicesWithQueryParamTest() throws MalformedURLException {
+  public void testGetInvoicingInvoicesWithQueryParam() throws MalformedURLException {
     logger.info("=== Test Get Invoices with query - get 200 by successful retrieval of invoices by query ===");
 
     final Response resp = RestAssured
@@ -164,7 +164,7 @@ public class InvoicesTest {
   }
 
   @Test
-  public void getInvoicingInvoicesBadRequestUrlTest() throws MalformedURLException {
+  public void testGetInvoicingInvoicesBadRequestUrl() throws MalformedURLException {
     logger.info("=== Test Get Invoices by query - emulating 400 by sending bad request Url ===");
     RestAssured
       .with()
@@ -176,7 +176,7 @@ public class InvoicesTest {
   }
 
   @Test
-  public void getInvoicingInvoiceLinesTest() throws MalformedURLException {
+  public void testGetInvoicingInvoiceLines() throws MalformedURLException {
     given()
       .header(TENANT_HEADER)
       .contentType(ContentType.JSON)
@@ -186,7 +186,7 @@ public class InvoicesTest {
   }
 
   @Test
-  public void getInvoicingInvoiceNumberTest() throws MalformedURLException {
+  public void testGetInvoicingInvoiceNumber() throws MalformedURLException {
     given()
       .header(TENANT_HEADER)
       .contentType(ContentType.JSON)
@@ -297,7 +297,7 @@ public class InvoicesTest {
   }
 
   @Test
-  public void putInvoicingInvoiceLinesByIdTest() throws Exception {
+  public void testPutInvoicingInvoiceLinesById() throws Exception {
     InvoiceLine reqData = getMockDraftInvoiceLine().mapTo(InvoiceLine.class);
     String jsonBody = JsonObject.mapFrom(reqData).encode();
 
@@ -312,7 +312,7 @@ public class InvoicesTest {
   }
 
   @Test
-  public void deleteInvoicingInvoicesByIdTest() throws MalformedURLException {
+  public void testDeleteInvoicingInvoicesById() throws MalformedURLException {
     given()
       .pathParam(ID, UUID)
       .header(TENANT_HEADER)
@@ -323,7 +323,7 @@ public class InvoicesTest {
   }
 
   @Test
-  public void deleteInvoicingInvoiceLinesByIdTest() throws MalformedURLException {
+  public void testDeleteInvoicingInvoiceLinesById() throws MalformedURLException {
     given()
       .pathParam(ID, UUID)
       .header(TENANT_HEADER)
@@ -334,7 +334,7 @@ public class InvoicesTest {
   }
 
   @Test
-  public void postInvoicingInvoicesTest() throws Exception {
+  public void testPostInvoicingInvoices() throws Exception {
     Invoice reqData = getMockDraftInvoice().mapTo(Invoice.class);
     String jsonBody = JsonObject.mapFrom(reqData).encode();
 
@@ -348,7 +348,7 @@ public class InvoicesTest {
   }
 
   @Test
-  public void postInvoicingInvoiceNumberValidateTest() throws Exception {
+  public void testPostInvoicingInvoiceNumberValidate() throws Exception {
     Invoice reqData = getMockDraftInvoice().mapTo(Invoice.class);
     String jsonBody = JsonObject.mapFrom(reqData).encode();
 
@@ -362,7 +362,7 @@ public class InvoicesTest {
   }
 
   @Test
-  public void postInvoicingInvoiceLinesTest() throws Exception {
+  public void testPostInvoicingInvoiceLines() throws Exception {
     InvoiceLine reqData = getMockDraftInvoiceLine().mapTo(InvoiceLine.class);
     String jsonBody = JsonObject.mapFrom(reqData).encode();
 
