@@ -2,19 +2,13 @@ package org.folio.rest.imp;
 
 import static org.apache.commons.lang3.StringUtils.EMPTY;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICES;
+import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_LINES;
+import static org.folio.invoices.utils.ResourcePathResolver.resourceByIdPath;
 import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
 import static org.junit.Assert.fail;
 
-import java.util.ArrayList;
-import java.util.List;
-import javax.ws.rs.core.Response.Status;
-
-import org.apache.commons.lang3.StringUtils;
-import org.junit.runner.RunWith;
-
 import com.google.common.collect.HashBasedTable;
 import com.google.common.collect.Table;
-
 import io.vertx.core.Vertx;
 import io.vertx.core.http.HttpHeaders;
 import io.vertx.core.http.HttpMethod;
@@ -28,14 +22,26 @@ import io.vertx.ext.unit.junit.VertxUnitRunner;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
 import io.vertx.ext.web.handler.BodyHandler;
+import java.util.ArrayList;
+import java.util.List;
+import javax.ws.rs.core.Response.Status;
+import org.apache.commons.lang3.StringUtils;
+import org.junit.runner.RunWith;
 
 @RunWith(VertxUnitRunner.class)
 public class MockServer {
+
+  static {
+    System.setProperty(LoggerFactory.LOGGER_DELEGATE_FACTORY_CLASS_NAME, "io.vertx.core.logging.Log4j2LogDelegateFactory");
+  }
   private static final String TOTAL_RECORDS = "totalRecords";
   private static final String BAD_QUERY = "unprocessableQuery";
   private static final String APPLICATION_JSON = "application/json";
   private static final String ID_FOR_INTERNAL_SERVER_ERROR = "168f8a86-d26c-406e-813f-c7527f241ac3";
   private static final String EXISTING_VENDOR_INV_NO = "existingVendorInvoiceNo";
+  private static final String ID_DOES_NOT_EXIST = "d25498e7-3ae6-45fe-9612-ec99e2700d2f";
+  static final String INTERNAL_SERVER_ERROR = "Internal Server Error";
+  static final String ID = "id";
 
   static Table<String, HttpMethod, List<JsonObject>> serverRqRs = HashBasedTable.create();
   private static final Logger logger = LoggerFactory.getLogger(MockServer.class);
@@ -77,6 +83,8 @@ public class MockServer {
     Router router = Router.router(vertx);
     router.route().handler(BodyHandler.create());
     router.route(HttpMethod.GET, resourcesPath(INVOICES)).handler(this::handleGetInvoices);
+
+    router.route(HttpMethod.PUT, resourcePath(INVOICE_LINES)).handler(ctx -> handlePutGenericSubObj(ctx, INVOICE_LINES));
     return router;
   }
 
@@ -119,4 +127,27 @@ public class MockServer {
       serverResponse(ctx, 200, APPLICATION_JSON, invoice.encodePrettily());
     }
   }
+
+  private void handlePutGenericSubObj(RoutingContext ctx, String subObj) {
+    logger.info("handlePutGenericSubObj got: PUT " + ctx.request().path());
+    String id = ctx.request().getParam(ID);
+
+    addServerRqRsData(HttpMethod.PUT, subObj, ctx.getBodyAsJson());
+
+    if (ID_DOES_NOT_EXIST.equals(id)) {
+      serverResponse(ctx, 404, APPLICATION_JSON, id);
+    } else if (ID_FOR_INTERNAL_SERVER_ERROR.equals(id)) {
+      serverResponse(ctx, 500, APPLICATION_JSON, INTERNAL_SERVER_ERROR);
+    } else {
+      ctx.response()
+        .putHeader(HttpHeaders.CONTENT_TYPE, APPLICATION_JSON)
+        .setStatusCode(204)
+        .end();
+    }
+  }
+
+  private String resourcePath(String subObjName) {
+    return resourceByIdPath(subObjName) + ":id";
+  }
+
 }

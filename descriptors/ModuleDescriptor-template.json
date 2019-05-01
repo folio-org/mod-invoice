@@ -50,7 +50,10 @@
         {
           "methods": ["PUT"],
           "pathPattern": "/invoice/invoice-lines/{id}",
-          "permissionsRequired": ["invoice.invoice-lines.item.put"]
+          "permissionsRequired": ["invoice.invoice-lines.item.put"],
+          "modulePermissions": [
+              "invoice-storage.invoice-lines.item.put"
+          ]
         },
         {
           "methods": ["DELETE"],

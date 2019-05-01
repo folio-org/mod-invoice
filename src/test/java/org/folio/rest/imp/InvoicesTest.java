@@ -39,6 +39,10 @@ import io.vertx.ext.unit.junit.VertxUnitRunner;
 public class InvoicesTest {
   private static final Logger logger = LoggerFactory.getLogger(InvoicesTest.class);
 
+  static {
+    System.setProperty(LoggerFactory.LOGGER_DELEGATE_FACTORY_CLASS_NAME, "io.vertx.core.logging.Log4j2LogDelegateFactory");
+  }
+
   private static final String INVOICE_ID_PATH = "/invoice/invoices/{id}";
   private static final String INVOICE_LINE_ID_PATH = "/invoice/invoice-lines/{id}";
   private static final String INVOICE_PATH = "/invoice/invoices";
@@ -57,6 +61,7 @@ public class InvoicesTest {
   private static final String QUERY_PARAM_NAME = "query";
   private static final String EXISTING_VENDOR_INV_NO = "existingVendorInvoiceNo";
   private static final String VENDOR_INVOICE_NUMBER_FIELD = "vendorInvoiceNo";
+  protected static final String ID_DOES_NOT_EXIST = "d25498e7-3ae6-45fe-9612-ec99e2700d2f";
 
   private static final int mockPort = NetworkUtils.nextFreePort();
   private static final int okapiPort = NetworkUtils.nextFreePort();
@@ -227,21 +232,6 @@ public class InvoicesTest {
   }
 
   @Test
-  public void putInvoicingInvoiceLinesByIdTest() throws Exception {
-    InvoiceLine reqData = getMockDraftInvoiceLine().mapTo(InvoiceLine.class);
-    String jsonBody = JsonObject.mapFrom(reqData).encode();
-
-    given()
-      .pathParam(ID, reqData.getId())
-      .body(jsonBody)
-      .header(TENANT_HEADER)
-      .contentType(ContentType.JSON)
-      .put(INVOICE_LINE_ID_PATH)
-        .then()
-          .statusCode(500);
-  }
-
-  @Test
   public void deleteInvoicingInvoicesByIdTest() throws MalformedURLException {
     given()
       .pathParam(ID, UUID)
@@ -303,6 +293,89 @@ public class InvoicesTest {
       .post(INVOICE_LINES_PATH)
         .then()
           .statusCode(500);
+  }
+
+  @Test
+  public void putInvoicingInvoiceLinesByIdTest() throws Exception {
+    InvoiceLine reqData = getMockDraftInvoiceLine().mapTo(InvoiceLine.class);
+    String jsonBody = JsonObject.mapFrom(reqData).encode();
+
+    given()
+      .pathParam(ID, reqData.getId())
+      .body(jsonBody)
+      .header(TENANT_HEADER)
+      .header(X_OKAPI_URL)
+      .contentType(ContentType.JSON)
+     .put(INVOICE_LINE_ID_PATH)
+        .then()
+          .statusCode(204);
+  }
+
+  @Test
+  public void putInvoicingInvoiceLinesByNonExistentId() throws Exception {
+    InvoiceLine reqData = getMockDraftInvoiceLine().mapTo(InvoiceLine.class);
+    reqData.setId(ID_DOES_NOT_EXIST);
+    String jsonBody = JsonObject.mapFrom(reqData).encode();
+
+    given()
+      .pathParam(ID, ID_DOES_NOT_EXIST)
+      .body(jsonBody)
+      .header(TENANT_HEADER)
+      .header(X_OKAPI_URL)
+      .contentType(ContentType.JSON)
+     .put(INVOICE_LINE_ID_PATH)
+        .then()
+          .statusCode(404);
+  }
+
+  @Test
+  public void putInvoicingInvoiceLinesWithError() throws Exception {
+    InvoiceLine reqData = getMockDraftInvoiceLine().mapTo(InvoiceLine.class);
+    reqData.setId(ID_FOR_INTERNAL_SERVER_ERROR);
+    String jsonBody = JsonObject.mapFrom(reqData).encode();
+
+    given()
+      .pathParam(ID, ID_FOR_INTERNAL_SERVER_ERROR)
+      .body(jsonBody)
+      .header(TENANT_HEADER)
+      .header(X_OKAPI_URL)
+      .contentType(ContentType.JSON)
+     .put(INVOICE_LINE_ID_PATH)
+        .then()
+          .statusCode(500);
+  }
+
+  @Test
+  public void putInvoicingInvoiceLinesInvalidIdFormat() throws Exception {
+    InvoiceLine reqData = getMockDraftInvoiceLine().mapTo(InvoiceLine.class);
+    String jsonBody = JsonObject.mapFrom(reqData).encode();
+
+    given()
+      .pathParam(ID, TENANT_NAME)
+      .body(jsonBody)
+      .header(TENANT_HEADER)
+      .header(X_OKAPI_URL)
+      .contentType(ContentType.JSON)
+     .put(INVOICE_LINE_ID_PATH)
+        .then()
+          .statusCode(400);
+  }
+
+  @Test
+  public void putInvoicingInvoiceLinesInvalidLang() throws Exception {
+    InvoiceLine reqData = getMockDraftInvoiceLine().mapTo(InvoiceLine.class);
+    String jsonBody = JsonObject.mapFrom(reqData).encode();
+
+    given()
+      .pathParam(ID, reqData.getId())
+      .body(jsonBody)
+      .header(TENANT_HEADER)
+      .param("lang","english")
+      .header(X_OKAPI_URL)
+      .contentType(ContentType.JSON)
+     .put(INVOICE_LINE_ID_PATH)
+        .then()
+          .statusCode(400);
   }
 
   private JsonObject getMockDraftInvoice() throws Exception {
