@@ -104,7 +104,7 @@ public class InvoicesTest {
   }
 
   @Test
-  public void getInvoicingInvoicesTest() throws MalformedURLException {
+  public void testGetInvoicingInvoices() throws MalformedURLException {
     logger.info("=== Test Get Invoices by without query - get 200 by successful retrieval of invoices ===");
     final Response resp = RestAssured
       .with()
