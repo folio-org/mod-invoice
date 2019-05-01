@@ -262,6 +262,26 @@ public class InvoicesTest {
   }
 
   @Test
+  public void testGetInvoicingInvoiceLinesByIdNotFound() throws MalformedURLException {
+    logger.info("=== Test Get Invoice lines by Id - 404 Not found ===");
+
+    final Response resp = RestAssured
+      .with()
+      .header(X_OKAPI_URL)
+      .header(EXIST_CONFIG_X_OKAPI_TENANT_LIMIT_10)
+      .get(INVOICE_LINES_PATH + "/" + BAD_INVOICE_ID)
+      .then()
+      .statusCode(404)
+      .extract()
+      .response();
+
+    String actual = resp.getBody().as(Errors.class).getErrors().get(0).getMessage();
+    logger.info("Id not found: " + actual);
+
+    assertEquals(BAD_INVOICE_ID, actual);
+  }
+
+  @Test
   public void testPutInvoicingInvoicesById() throws Exception {
     Invoice reqData = getMockDraftInvoice().mapTo(Invoice.class);
     String jsonBody = JsonObject.mapFrom(reqData).encode();
