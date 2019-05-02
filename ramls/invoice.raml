@@ -47,6 +47,10 @@ resourceTypes:
     get:
       is: [ pageable, searchable: {description: "using CQL (indexes for invoice)", example: "status==\"Open\""}, validate ]
     /{id}:
+      uriParameters:
+        id:
+          description: The UUID of an invoice
+          type: UUID
       displayName: Invoice
       description: Get, Delete or Update a specific invoice
       type:
@@ -101,27 +105,3 @@ resourceTypes:
     get:
       description: Get system generated Invoice Number
       is: [validate]
-    /validate:
-      displayName: Invoice Number Validation     
-      post:
-        description: validate if Invoice Number is unique and matches the pattern specified
-        is: [validate, language]
-        body:
-          application/json:
-        responses:
-          204:
-            description: "Valid Invoice Number"
-          400:
-            description: "Bad request, e.g. existing Invoice Number. Details of the error provided in the response."
-            body:
-              application/json:
-                example:
-                  strict: false
-                  value: !include raml-util/examples/errors.sample
-          500:
-            description: "Internal server error, e.g. due to misconfiguration"
-            body:
-              application/json:
-                example:
-                  strict: false
-                  value: !include raml-util/examples/errors.sample        

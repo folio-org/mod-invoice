@@ -1,6 +1,9 @@
 package org.folio.rest.impl;
 
+import static org.folio.invoices.utils.ResourcePathResolver.FOLIO_INVOICE_NUMBER;
+import static org.folio.invoices.utils.HelperUtils.handleDeleteRequest;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICES;
+import static org.folio.invoices.utils.ResourcePathResolver.resourceByIdPath;
 import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
 import static org.folio.invoices.utils.HelperUtils.handleGetRequest;
 import static org.folio.invoices.utils.HelperUtils.getEndpointWithQuery;
@@ -8,8 +11,11 @@ import static org.folio.invoices.utils.HelperUtils.getInvoiceById;
 
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
-import me.escoffier.vertx.completablefuture.VertxCompletableFuture;
 
+import io.vertx.core.json.JsonObject;
+import me.escoffier.vertx.completablefuture.VertxCompletableFuture;
+import org.folio.invoices.utils.HelperUtils;
+import org.folio.rest.acq.model.SequenceNumber;
 import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.jaxrs.model.InvoiceCollection;
 
@@ -18,9 +24,24 @@ import io.vertx.core.Context;
 public class InvoiceHelper extends AbstractHelper {
 
   private static final String GET_INVOICES_BY_QUERY = resourcesPath(INVOICES) + "?limit=%s&offset=%s%s&lang=%s";
+  private static final String DELETE_INVOICE_BY_ID = resourceByIdPath(INVOICES, "%s") + "?lang=%s";
 
   InvoiceHelper(Map<String, String> okapiHeaders, Context ctx, String lang) {
     super(getHttpClient(okapiHeaders), okapiHeaders, ctx, lang);
+  }
+
+  public CompletableFuture<Invoice> createInvoice(Invoice invoice) {
+    return generateFolioInvoiceNumber()
+      .thenCompose(folioInvoiceNumber -> {
+        JsonObject jsonInvoice = JsonObject.mapFrom (invoice.withFolioInvoiceNo(folioInvoiceNumber));
+        return createRecordInStorage(jsonInvoice, resourcesPath(INVOICES));
+      })
+      .thenApply(invoice::withId);
+  }
+
+  private CompletableFuture<String> generateFolioInvoiceNumber() {
+    return HelperUtils.handleGetRequest(resourcesPath(FOLIO_INVOICE_NUMBER), httpClient, ctx, okapiHeaders, logger)
+      .thenApply(seqNumber -> seqNumber.mapTo(SequenceNumber.class).getSequenceNumber());
   }
 
   /**
@@ -71,5 +92,9 @@ public class InvoiceHelper extends AbstractHelper {
         future.completeExceptionally(e);
     }
     return future;
+  }
+
+  public CompletableFuture<Void> deleteInvoice(String id) {
+    return handleDeleteRequest(String.format(DELETE_INVOICE_BY_ID, id, lang), httpClient, ctx, okapiHeaders, logger);
   }
 }

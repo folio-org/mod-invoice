@@ -35,7 +35,7 @@
       <groupId>me.escoffier.vertx</groupId>
       <artifactId>vertx-completable-future</artifactId>
       <version>0.1.2</version>
-    </dependency>    
+    </dependency>
     <dependency>
       <groupId>io.vertx</groupId>
       <artifactId>vertx-core</artifactId>
@@ -91,6 +91,13 @@
         <artifactId>maven-surefire-plugin</artifactId>
         <version>2.22.1</version>
         <configuration>
+          <excludes>
+            <exclude>org/folio/rest/impl/*Test.java</exclude>
+          </excludes>
+          <includes>
+            <include>org/folio/rest/impl/StorageTestSuite.java</include>
+            <include>org/folio/rest/**</include>
+          </includes>
           <systemPropertyVariables>
             <vertx.logger-delegate-factory-class-name>io.vertx.core.logging.Log4j2LogDelegateFactory</vertx.logger-delegate-factory-class-name>
           </systemPropertyVariables>
@@ -134,7 +141,7 @@
           </execution>
         </executions>
       </plugin>
-      
+
       <plugin>
         <groupId>org.codehaus.mojo</groupId>
         <artifactId>build-helper-maven-plugin</artifactId>
@@ -389,7 +396,7 @@
       </dependency>
     </dependencies>
   </dependencyManagement>
-  
+
   <scm>
     <url>https://github.com/folio-org/mod-invoice</url>
     <connection>scm:git:git://github.com/folio-org/mod-invoice</connection>

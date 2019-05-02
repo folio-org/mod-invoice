@@ -11,7 +11,7 @@ public class ResourcePathResolver {
   }
 
   public static final String INVOICES = "invoices";
-  public static final String INVOICE_LINES = "invoice-lines";
+  public static final String FOLIO_INVOICE_NUMBER = "folioInvoiceNo";
 
   private static final Map<String, String> SUB_OBJECT_COLLECTION_APIS;
   private static final Map<String, String> SUB_OBJECT_ITEM_APIS;
@@ -19,7 +19,7 @@ public class ResourcePathResolver {
   static {
     Map<String, String> apis = new HashMap<>();
     apis.put(INVOICES, "/invoice-storage/invoices");
-    apis.put(INVOICE_LINES, "/invoice-storage/invoice-lines");
+    apis.put(FOLIO_INVOICE_NUMBER, "/invoice-storage/invoice-number");
 
     SUB_OBJECT_COLLECTION_APIS = Collections.unmodifiableMap(apis);
     SUB_OBJECT_ITEM_APIS = Collections.unmodifiableMap(
@@ -32,7 +32,11 @@ public class ResourcePathResolver {
   public static String resourceByIdPath(String field) {
     return SUB_OBJECT_ITEM_APIS.get(field);
   }
-  
+
+  public static String resourceByIdPath(String field, String id) {
+    return SUB_OBJECT_ITEM_APIS.get(field) + id;
+  }
+
   public static String resourcesPath(String field) {
     return SUB_OBJECT_COLLECTION_APIS.get(field);
   }
