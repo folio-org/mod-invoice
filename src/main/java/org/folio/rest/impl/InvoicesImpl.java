@@ -106,22 +106,14 @@ public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
     helper
     .createInvoiceLine(invoiceLine)
     .thenAccept(invoiceLineWithId -> {
-      Response response;
-      if (helper.getErrors().isEmpty()) {
-        if (logger.isInfoEnabled()) {
-          logger.info("Successfully added Invoice Line: " + JsonObject.mapFrom(invoiceLine).encodePrettily());
-        }
-        response = PostInvoiceInvoiceLinesResponse.respond201WithApplicationJson(invoiceLineWithId,
+      Response response = PostInvoiceInvoiceLinesResponse.respond201WithApplicationJson(invoiceLineWithId,
             PostInvoiceInvoiceLinesResponse.headersFor201()
               .withLocation(String.format(INVOICE_LINE_LOCATION_PREFIX, invoiceLineWithId.getId())));
-      } else {
-        response = helper.buildErrorResponse(422);
-      }
       asyncResultHandler.handle(succeededFuture(response));
     })
     .exceptionally(t -> handleErrorResponse(asyncResultHandler, helper, t));
   }
-
+  
   @Validate
   @Override
   public void getInvoiceInvoiceLinesById(String id, String lang, Map<String, String> okapiHeaders,
