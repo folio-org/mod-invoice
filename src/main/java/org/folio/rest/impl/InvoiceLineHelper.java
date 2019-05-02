@@ -27,11 +27,11 @@ public class InvoiceLineHelper extends AbstractHelper {
       String queryParam = isEmpty(query) ? EMPTY : "&query=" + encodeQuery(query, logger);
       String endpoint = String.format(GET_INVOICE_LINES_BY_QUERY, limit, offset, queryParam, lang);
       handleGetRequest(endpoint, httpClient, ctx, okapiHeaders, logger)
-        .thenAccept(jsonOrderLines -> {
+        .thenAccept(jsonInvoiceLines -> {
           if (logger.isInfoEnabled()) {
-            logger.info("Successfully retrieved order lines: {}", jsonOrderLines.encodePrettily());
+            logger.info("Successfully retrieved invoice lines: {}", jsonInvoiceLines.encodePrettily());
           }
-          future.complete(jsonOrderLines.mapTo(InvoiceLineCollection.class));
+          future.complete(jsonInvoiceLines.mapTo(InvoiceLineCollection.class));
         })
         .exceptionally(t -> {
           future.completeExceptionally(t);

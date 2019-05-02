@@ -1,12 +1,19 @@
 package org.folio.rest.impl;
 
 import io.vertx.core.json.JsonObject;
+import io.vertx.core.logging.Logger;
+import io.vertx.core.logging.LoggerFactory;
 import org.folio.rest.jaxrs.model.InvoiceLine;
 import org.junit.Test;
 
+import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 import static javax.ws.rs.core.MediaType.TEXT_PLAIN;
+import static org.folio.rest.impl.InvoicesApiTest.BAD_QUERY;
+import static org.folio.rest.impl.InvoicesApiTest.ID_FOR_INTERNAL_SERVER_ERROR;
 
 public class InvoiceLinesApiTest extends ApiTestBase {
+
+  private static final Logger logger = LoggerFactory.getLogger(InvoiceLinesApiTest.class);
 
   private static final String INVOICE_LINE_ID_PATH = "/invoice/invoice-lines/%s";
   private static final String INVOICE_LINES_PATH = "/invoice/invoice-lines";
@@ -14,17 +21,36 @@ public class InvoiceLinesApiTest extends ApiTestBase {
 
   @Test
   public void getInvoicingInvoiceLinesTest() {
-    verifyGet(INVOICE_LINES_PATH, TEXT_PLAIN, 500);
+    verifyGet(INVOICE_LINES_PATH, APPLICATION_JSON, 200);
+  }
+
+  @Test
+  public void testGetOrderLinesInternalServerError() {
+    logger.info("=== Test Get Order Lines by query - emulating 500 from storage ===");
+
+    String endpointQuery = String.format("%s?query=%s", INVOICE_LINES_PATH, ID_FOR_INTERNAL_SERVER_ERROR);
+
+    verifyGet(endpointQuery, APPLICATION_JSON, 500);
+  }
+
+  @Test
+  public void testGetOrderLinesBadQuery() {
+    logger.info("=== Test Get Order Lines by query - unprocessable query to emulate 400 from storage ===");
+
+    String endpointQuery = String.format("%s?query=%s", INVOICE_LINES_PATH, BAD_QUERY);
+
+    verifyGet(endpointQuery, APPLICATION_JSON, 400);
+
   }
 
   @Test
   public void getInvoicingInvoiceLinesByIdTest() {
-    verifyGet(String.format(INVOICE_LINE_ID_PATH, UUID), TEXT_PLAIN, 500);
+    verifyGet(String.format(INVOICE_LINE_ID_PATH, _UUID), TEXT_PLAIN, 500);
   }
 
   @Test
   public void deleteInvoicingInvoiceLinesByIdTest() {
-    verifyDeleteResponse(String.format(INVOICE_LINE_ID_PATH, UUID), TEXT_PLAIN, 500);
+    verifyDeleteResponse(String.format(INVOICE_LINE_ID_PATH, _UUID), TEXT_PLAIN, 500);
   }
 
   @Test

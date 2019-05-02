@@ -17,7 +17,6 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.Stream;
@@ -25,14 +24,13 @@ import java.util.stream.Stream;
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 import static org.folio.rest.RestVerticle.OKAPI_HEADER_TENANT;
 import static org.folio.rest.RestVerticle.OKAPI_HEADER_TOKEN;
-import static org.folio.rest.impl.AbstractHelper.ID;
 import static org.folio.rest.impl.AbstractHelper.OKAPI_URL;
 import static org.folio.rest.impl.ApiTestSuite.mockPort;
 import static org.junit.Assert.fail;
 
 public class ApiTestBase {
 
-  static final String UUID = "8d3881f6-dd93-46f0-b29d-1c36bdb5c9f9";
+  static final String _UUID = "8d3881f6-dd93-46f0-b29d-1c36bdb5c9f9";
   static final String ID_BAD_FORMAT = "123-45-678-90-abc";
   static final String FOLIO_INVOICE_NUMBER_VALUE = "228D126";
   static final Header X_OKAPI_URL = new Header(OKAPI_URL, "http://localhost:" + mockPort);
@@ -138,7 +136,7 @@ public class ApiTestBase {
 
   Response verifyGet(String url, String expectedContentType, int expectedCode) {
     Headers headers = prepareHeaders(X_OKAPI_URL, X_OKAPI_TENANT);
-    return verifyGet(url, headers,expectedContentType, expectedCode);
+    return verifyGet(url, headers, expectedContentType, expectedCode);
   }
 
   Response verifyGet(String url, Headers headers, String expectedContentType, int expectedCode) {
