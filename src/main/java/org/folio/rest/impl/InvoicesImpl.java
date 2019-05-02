@@ -117,6 +117,11 @@ public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
     asyncResultHandler.handle(succeededFuture(DeleteInvoiceInvoiceLinesByIdResponse.respond500WithTextPlain(NOT_SUPPORTED)));
   }
 
+  @Override
+  public void getInvoiceInvoiceNumber(String lang, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+    asyncResultHandler.handle(succeededFuture(GetInvoiceInvoiceNumberResponse.respond500WithTextPlain(NOT_SUPPORTED)));
+  }
+
   private Void handleErrorResponse(Handler<AsyncResult<Response>> asyncResultHandler, AbstractHelper helper,
                                    Throwable t) {
     asyncResultHandler.handle(succeededFuture(helper.buildErrorResponse(t)));

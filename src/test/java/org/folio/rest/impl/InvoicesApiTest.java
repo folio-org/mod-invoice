@@ -31,6 +31,8 @@ public class InvoicesApiTest extends ApiTestBase {
 	private static final String INVOICE_PATH = "/invoice/invoices";
   private static final String INVOICE_PATH_BAD = "/invoice/bad";
 
+  private static final String INVOICE_NUMBER_PATH = "/invoice/invoice-number";
+
 
 	static final String INVOICE_MOCK_DATA_PATH = BASE_MOCK_DATA_PATH + "invoices/";
   private static final String INVOICES_LIST_PATH = INVOICE_MOCK_DATA_PATH + "invoices.json";
@@ -175,6 +177,14 @@ public class InvoicesApiTest extends ApiTestBase {
     String body = getMockData(INVOICE_SAMPLE_PATH);
 
     verifyPostResponse(INVOICE_PATH, body, prepareHeaders(INVOICE_NUMBER_ERROR_X_OKAPI_TENANT), APPLICATION_JSON, 500);
+
+  }
+
+  @Test
+  public void testGetInvoiceNumber() {
+    logger.info("=== Test Get Invoice number - not implemented ===");
+
+    verifyGet(INVOICE_NUMBER_PATH, TEXT_PLAIN, 500);
 
   }
 

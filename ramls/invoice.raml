@@ -91,3 +91,13 @@ resourceTypes:
         description: Update an invoice line with given {id}
       delete:
         description: Delete an invoice line with given {id}
+  /invoice-number:
+    displayName: Invoice Number
+    description: Manage Invoice Number
+    type:
+      get-only:
+        schema: invoiceCollection
+        exampleCollection: !include acq-models/mod-invoice-storage/examples/invoice_collection.sample
+    get:
+      description: Get system generated Invoice Number
+      is: [validate]
