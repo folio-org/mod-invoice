@@ -126,6 +126,11 @@ public abstract class AbstractHelper {
     return Response.ok(body, APPLICATION_JSON).build();
   }
 
+  public Response buildNoContentResponse() {
+    closeHttpClient();
+    return Response.noContent().build();
+  }
+
   public void closeHttpClient() {
     httpClient.closeClient();
   }
