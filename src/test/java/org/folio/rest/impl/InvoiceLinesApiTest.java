@@ -38,7 +38,7 @@ public class InvoiceLinesApiTest extends ApiTestBase {
     logger.info("=== Test Get Invoice line By Id ===");
 
     JsonObject invoicesList = new JsonObject(getMockData(INVOICE_LINES_LIST_PATH));
-    String id = invoicesList.getJsonArray("invoice_lines").getJsonObject(0).getString(ID);
+    String id = invoicesList.getJsonArray("invoiceLines").getJsonObject(0).getString(ID);
     logger.info(String.format("using mock datafile: %s%s.json", INVOICE_LINES_LIST_PATH, id));
 
     final InvoiceLine resp = verifySuccessGet(INVOICE_LINES_PATH + "/" + id, InvoiceLine.class);

@@ -10,9 +10,9 @@ import org.folio.rest.jaxrs.model.InvoiceLine;
 
 import io.vertx.core.Context;
 
-public class InvoiceLinesHelper extends AbstractHelper {
+public class InvoiceLineHelper extends AbstractHelper {
 
-  InvoiceLinesHelper(Map<String, String> okapiHeaders, Context ctx, String lang) {
+  InvoiceLineHelper(Map<String, String> okapiHeaders, Context ctx, String lang) {
     super(getHttpClient(okapiHeaders), okapiHeaders, ctx, lang);
   }
 
@@ -20,12 +20,12 @@ public class InvoiceLinesHelper extends AbstractHelper {
     CompletableFuture<InvoiceLine> future = new VertxCompletableFuture<>(ctx);
     try {
       getInvoiceLineById(id, lang, httpClient, ctx, okapiHeaders, logger)
-        .thenAccept(jsonInvoiceLines -> {
-          logger.info("Successfully retrieved invoice lines: " + jsonInvoiceLines.encodePrettily());
-          future.complete(jsonInvoiceLines.mapTo(InvoiceLine.class));
+        .thenAccept(jsonInvoiceLine -> {
+          logger.info("Successfully retrieved invoice line: " + jsonInvoiceLine.encodePrettily());
+          future.complete(jsonInvoiceLine.mapTo(InvoiceLine.class));
         })
         .exceptionally(t -> {
-          logger.error("Error getting invoice lines", t);
+          logger.error("Error getting invoice line", t);
           future.completeExceptionally(t);
           return null;
         });
