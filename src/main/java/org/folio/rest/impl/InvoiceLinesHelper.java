@@ -1,6 +1,9 @@
 package org.folio.rest.impl;
 
 import static org.folio.invoices.utils.HelperUtils.getInvoiceLineById;
+import static org.folio.invoices.utils.HelperUtils.handleDeleteRequest;
+import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_LINES;
+import static org.folio.invoices.utils.ResourcePathResolver.resourceByIdPath;
 
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -11,6 +14,8 @@ import org.folio.rest.jaxrs.model.InvoiceLine;
 import io.vertx.core.Context;
 
 public class InvoiceLinesHelper extends AbstractHelper {
+
+  private static final String DELETE_INVOICE_LINE_BY_ID = resourceByIdPath(INVOICE_LINES, "%s") + "?lang=%s";
 
   InvoiceLinesHelper(Map<String, String> okapiHeaders, Context ctx, String lang) {
     super(getHttpClient(okapiHeaders), okapiHeaders, ctx, lang);
@@ -33,5 +38,9 @@ public class InvoiceLinesHelper extends AbstractHelper {
       future.completeExceptionally(e);
     }
     return future;
+  }
+
+  public CompletableFuture<Void> deleteInvoiceLine(String id) {
+    return handleDeleteRequest(String.format(DELETE_INVOICE_LINE_BY_ID, id, lang), httpClient, ctx, okapiHeaders, logger);
   }
 }
