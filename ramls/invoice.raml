@@ -45,7 +45,7 @@ resourceTypes:
       description: Post invoice and number of invoice lines;
       is: [validate]
     get:
-      is: [ pageable, searchable: {description: "using CQL (indexes for invoice)", example: "status==\"Open\""}, validate ]
+      is: [ pageable, searchable: {description: "using CQL (indexes for invoice)", example: "invoiceLineStatus==\"Open\""}, validate ]
     /{id}:
       uriParameters:
         id:

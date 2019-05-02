@@ -31,7 +31,8 @@ public class InvoiceLineHelper extends AbstractHelper {
           if (logger.isInfoEnabled()) {
             logger.info("Successfully retrieved invoice lines: {}", jsonInvoiceLines.encodePrettily());
           }
-          future.complete(jsonInvoiceLines.mapTo(InvoiceLineCollection.class));
+          VertxCompletableFuture.supplyBlockingAsync(ctx, () -> jsonInvoiceLines.mapTo(InvoiceLineCollection.class))
+            .thenAccept(future::complete);
         })
         .exceptionally(t -> {
           future.completeExceptionally(t);
