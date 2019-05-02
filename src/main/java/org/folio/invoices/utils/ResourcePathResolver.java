@@ -32,7 +32,11 @@ public class ResourcePathResolver {
   public static String resourceByIdPath(String field) {
     return SUB_OBJECT_ITEM_APIS.get(field);
   }
-  
+
+  public static String resourceByIdPath(String field, String id) {
+    return SUB_OBJECT_ITEM_APIS.get(field) + id;
+  }
+
   public static String resourcesPath(String field) {
     return SUB_OBJECT_COLLECTION_APIS.get(field);
   }
