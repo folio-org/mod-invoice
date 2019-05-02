@@ -241,6 +241,4 @@ public class MockServer {
     entries.add(data);
     serverRqRs.put(objName, method, entries);
   }
-
-
 }

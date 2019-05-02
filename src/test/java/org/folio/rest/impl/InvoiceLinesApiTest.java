@@ -34,7 +34,7 @@ public class InvoiceLinesApiTest extends ApiTestBase {
   }
 
   @Test
-  public void testGetInvoicingInvoiceLinesById() throws Exception {
+  public void getInvoicingInvoiceLinesByIdTest() throws Exception {
     logger.info("=== Test Get Invoice line By Id ===");
 
     JsonObject invoicesList = new JsonObject(getMockData(INVOICE_LINES_LIST_PATH));
@@ -48,7 +48,7 @@ public class InvoiceLinesApiTest extends ApiTestBase {
   }
 
   @Test
-  public void testGetInvoicingInvoiceLinesByIdNotFound() throws MalformedURLException {
+  public void getInvoicingInvoiceLinesByIdNotFoundTest() throws MalformedURLException {
     logger.info("=== Test Get Invoice line by Id - 404 Not found ===");
 
     final Response resp = verifyGet(INVOICE_LINES_PATH + "/" + BAD_INVOICE_LINE_ID, APPLICATION_JSON, 404);
@@ -71,7 +71,6 @@ public class InvoiceLinesApiTest extends ApiTestBase {
     String jsonBody = JsonObject.mapFrom(reqData).encode();
 
     verifyPut(String.format(INVOICE_LINE_ID_PATH, id), jsonBody, prepareHeaders(X_OKAPI_TENANT), TEXT_PLAIN, 500);
-
   }
 
   @Test
