@@ -22,13 +22,24 @@ public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
 
   private static final Logger logger = LoggerFactory.getLogger(InvoicesImpl.class);
   private static final String NOT_SUPPORTED = "Not supported";	// To overcome sonarcloud warning
+  private static final String INVOICE_LOCATION_PREFIX = "/invoice/invoices/%s";
   
   @Validate
   @Override
-  public void postInvoiceInvoices(String lang, Invoice entity, Map<String, String> okapiHeaders,
-      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
-    asyncResultHandler.handle(succeededFuture(PostInvoiceInvoicesResponse.respond500WithTextPlain(NOT_SUPPORTED)));
-  }
+  public void postInvoiceInvoices(String lang, Invoice invoice, Map<String, String> okapiHeaders,
+                                  Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+
+		InvoiceHelper helper = new InvoiceHelper(okapiHeaders, vertxContext, lang);
+
+		helper.createInvoice(invoice)
+      .thenAccept(invoiceWithId -> {
+        Response response = PostInvoiceInvoicesResponse.respond201WithApplicationJson(invoiceWithId,
+          PostInvoiceInvoicesResponse.headersFor201()
+            .withLocation(String.format(INVOICE_LOCATION_PREFIX, invoiceWithId.getId())));
+        asyncResultHandler.handle(succeededFuture(response));
+      })
+      .exceptionally(t -> handleErrorResponse(asyncResultHandler, helper, t));
+	}
 
   @Validate
   @Override
@@ -46,11 +57,6 @@ public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
       .exceptionally(t -> handleErrorResponse(asyncResultHandler, helper, t));
   }
 
-  private Void handleErrorResponse(Handler<AsyncResult<Response>> asyncResultHandler, AbstractHelper helper, Throwable t) {
-    asyncResultHandler.handle(succeededFuture(helper.buildErrorResponse(t)));
-    return null;
-  }
-  
   @Validate
   @Override
   public void getInvoiceInvoicesById(String id, String lang, Map<String, String> okapiHeaders,
@@ -126,15 +132,13 @@ public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
 
   @Validate
   @Override
-  public void getInvoiceInvoiceNumber(String lang, Map<String, String> okapiHeaders,
-      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+  public void getInvoiceInvoiceNumber(String lang, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     asyncResultHandler.handle(succeededFuture(GetInvoiceInvoiceNumberResponse.respond500WithTextPlain(NOT_SUPPORTED)));
   }
 
-  @Validate
-  @Override
-  public void postInvoiceInvoiceNumberValidate(String lang, Object entity, Map<String, String> okapiHeaders,
-      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
-    asyncResultHandler.handle(succeededFuture(PostInvoiceInvoiceNumberValidateResponse.respond500WithApplicationJson(NOT_SUPPORTED)));
+  private Void handleErrorResponse(Handler<AsyncResult<Response>> asyncResultHandler, AbstractHelper helper,
+                                   Throwable t) {
+    asyncResultHandler.handle(succeededFuture(helper.buildErrorResponse(t)));
+    return null;
   }
 }
