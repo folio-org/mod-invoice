@@ -17,7 +17,6 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.Stream;
@@ -25,7 +24,6 @@ import java.util.stream.Stream;
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 import static org.folio.rest.RestVerticle.OKAPI_HEADER_TENANT;
 import static org.folio.rest.RestVerticle.OKAPI_HEADER_TOKEN;
-import static org.folio.rest.impl.AbstractHelper.ID;
 import static org.folio.rest.impl.AbstractHelper.OKAPI_URL;
 import static org.folio.rest.impl.ApiTestSuite.mockPort;
 import static org.junit.Assert.fail;
@@ -124,7 +122,7 @@ public class ApiTestBase {
   }
 
   Response verifyPut(String url, String body, String expectedContentType, int expectedCode) {
-    return verifyPut(url, body, prepareHeaders(X_OKAPI_URL, X_OKAPI_TOKEN), expectedContentType, expectedCode);
+    return verifyPut(url, body, prepareHeaders(X_OKAPI_URL, X_OKAPI_TENANT, X_OKAPI_TOKEN), expectedContentType, expectedCode);
   }
 
   Response verifyPut(String url, String body, Headers headers, String expectedContentType, int expectedCode) {
