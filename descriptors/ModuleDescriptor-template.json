@@ -1,7 +1,6 @@
 {
   "id": "${artifactId}-${version}",
   "name": "Invoice business logic module",
-  "requires": [],
   "provides": [
     {
       "id": "invoice",
@@ -10,17 +9,29 @@
         {
           "methods": ["GET"],
           "pathPattern": "/invoice/invoices",
-          "permissionsRequired": ["invoice.invoices.collection.get"]
+          "permissionsRequired": ["invoice.invoices.collection.get"],
+          "modulePermissions": [
+            "invoice-storage.invoices.collection.get"
+          ]
         },
         {
           "methods": ["POST"],
           "pathPattern": "/invoice/invoices",
-          "permissionsRequired": ["invoice.invoices.item.post"]
+          "permissionsRequired": ["invoice.invoices.item.post"],
+          "modulePermissions": [
+            "invoice-storage.invoices.item.post",
+            "invoice-storage.invoice-number.get"
+          ]
         },
         {
           "methods": ["GET"],
           "pathPattern": "/invoice/invoices/{id}",
-          "permissionsRequired": ["invoice.invoices.item.get"]
+          "permissionsRequired": [
+            "invoice.invoices.item.get"
+          ],
+          "modulePermissions": [
+            "invoice-storage.invoices.item.get"
+          ]
         },
         {
           "methods": ["PUT"],
@@ -30,7 +41,10 @@
         {
           "methods": ["DELETE"],
           "pathPattern": "/invoice/invoices/{id}",
-          "permissionsRequired": ["invoice.invoices.item.delete"]
+          "permissionsRequired": ["invoice.invoices.item.delete"],
+          "modulePermissions": [
+            "invoice-storage.invoices.item.delete"
+          ]
         },
         {
           "methods": ["GET"],
@@ -64,12 +78,7 @@
           "methods": ["GET"],
           "pathPattern": "/invoice/invoice-number",
           "permissionsRequired": ["invoice.invoice-number.item.get"]
-        },
-        {
-          "methods": ["POST"],
-          "pathPattern": "/invoice/invoice-number/validate",
-          "permissionsRequired": ["invoice.invoice-number.item.post"]
-        }                      
+        }
       ]
     },
     {
@@ -84,6 +93,12 @@
       ]
     }
   ],
+  "requires": [
+    {
+      "id": "invoice-storage.invoices",
+      "version": "1.0"
+    }    
+  ],  
   "permissionSets": [
     {
       "permissionName": "invoice.invoices.collection.get",
@@ -140,11 +155,6 @@
       "displayName": "Invoice - generate a Invoice Number",
       "description": "Generate a Invoice Number"
     },
-    {
-      "permissionName": "invoice.invoice-number.item.post",
-      "displayName": "Invoice - validate a Invoice Number",
-      "description": "Validate a Invoice Number"
-    },          
     {
       "permissionName": "invoice.all",
       "displayName": "Invoice module - all permissions",

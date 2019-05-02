@@ -1,18 +1,24 @@
 package org.folio.rest.impl;
 
 import static javax.ws.rs.core.HttpHeaders.CONTENT_TYPE;
+import static javax.ws.rs.core.HttpHeaders.LOCATION;
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 import static javax.ws.rs.core.MediaType.TEXT_PLAIN;
 import static javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
 import static org.folio.invoices.utils.ErrorCodes.GENERIC_ERROR_CODE;
+import static org.folio.invoices.utils.HelperUtils.verifyAndExtractBody;
 import static org.folio.rest.RestVerticle.OKAPI_HEADER_TENANT;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 
 import javax.ws.rs.core.Response;
 
+import io.vertx.core.http.HttpMethod;
+import io.vertx.core.json.JsonObject;
+import me.escoffier.vertx.completablefuture.VertxCompletableFuture;
 import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.rest.jaxrs.model.Error;
 import org.folio.rest.jaxrs.model.Errors;
@@ -45,6 +51,46 @@ public abstract class AbstractHelper {
     this.ctx = ctx;
     this.lang = lang;
     setDefaultHeaders();
+  }
+
+  protected CompletableFuture<String> createRecordInStorage(JsonObject recordData, String endpoint) {
+    CompletableFuture<String> future = new VertxCompletableFuture<>(ctx);
+    try {
+      if (logger.isDebugEnabled()) {
+        logger.debug("Sending 'POST {}' with body: {}", endpoint, recordData.encodePrettily());
+      }
+      httpClient
+        .request(HttpMethod.POST, recordData.toBuffer(), endpoint, okapiHeaders)
+        .thenApply(this::verifyAndExtractRecordId)
+        .thenAccept(id -> {
+          future.complete(id);
+          logger.debug("'POST {}' request successfully processed. Record with '{}' id has been created", endpoint, id);
+        })
+        .exceptionally(throwable -> {
+          future.completeExceptionally(throwable);
+          logger.error("'POST {}' request failed. Request body: {}", throwable, endpoint, recordData.encodePrettily());
+          return null;
+        });
+    } catch (Exception e) {
+      future.completeExceptionally(e);
+    }
+
+    return future;
+  }
+
+  private String verifyAndExtractRecordId(org.folio.rest.tools.client.Response response) {
+    logger.debug("Validating received response");
+
+    JsonObject body = verifyAndExtractBody(response);
+
+    String id;
+    if (body != null && !body.isEmpty() && body.containsKey(ID)) {
+      id = body.getString(ID);
+    } else {
+      String location = response.getHeaders().get(LOCATION);
+      id = location.substring(location.lastIndexOf('/') + 1);
+    }
+    return id;
   }
 
   protected void addProcessingError(Error error) {

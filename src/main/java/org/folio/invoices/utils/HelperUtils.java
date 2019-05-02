@@ -3,13 +3,17 @@ package org.folio.invoices.utils;
 import static java.util.Objects.nonNull;
 import static org.apache.commons.lang3.StringUtils.EMPTY;
 import static org.apache.commons.lang3.StringUtils.isEmpty;
+import static org.folio.invoices.utils.ResourcePathResolver.*;
+
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
+
 import org.folio.invoices.rest.exceptions.HttpException;
+import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.tools.client.Response;
 import org.folio.rest.tools.client.interfaces.HttpClientInterface;
 
@@ -22,17 +26,35 @@ import me.escoffier.vertx.completablefuture.VertxCompletableFuture;
 public class HelperUtils {
 
   private static final String EXCEPTION_CALLING_ENDPOINT_MSG = "Exception calling {} {}";
-  
+  private static final String CALLING_ENDPOINT_MSG = "Sending {} {}";
+
+  public static final String URL_WITH_LANG_PARAM = "%s?lang=%s";
+  private static final String GET_INVOICE_BYID = resourceByIdPath(INVOICES) + URL_WITH_LANG_PARAM;
+
   private HelperUtils() {
 
   }
 
+  public static Invoice convertToInvoice(JsonObject poJson) {
+    return poJson.mapTo(Invoice.class);
+  }
+
+  public static CompletableFuture<JsonObject> getInvoiceById(String id, String lang, HttpClientInterface httpClient, Context ctx,
+      Map<String, String> okapiHeaders, Logger logger) {
+    String endpoint = String.format(GET_INVOICE_BYID, id, lang);
+    return handleGetRequest(endpoint, httpClient, ctx, okapiHeaders, logger);
+  }
+
   public static JsonObject verifyAndExtractBody(Response response) {
+    verifyResponse(response);
+    return response.getBody();
+  }
+
+  public static void verifyResponse(Response response) {
     if (!Response.isSuccess(response.getCode())) {
       throw new CompletionException(
         new HttpException(response.getCode(), response.getError().getString("errorMessage")));
     }
-    return response.getBody();
   }
 
   /**
@@ -57,7 +79,7 @@ public class HelperUtils {
     httpClient, Context ctx, Map<String, String> okapiHeaders, Logger logger) {
     CompletableFuture<JsonObject> future = new VertxCompletableFuture<>(ctx);
     try {
-      logger.debug("Calling GET {}", endpoint);
+      logger.debug(CALLING_ENDPOINT_MSG, HttpMethod.GET, endpoint);
       httpClient
         .request(HttpMethod.GET, endpoint, okapiHeaders)
         .thenApply(response -> {
@@ -79,6 +101,7 @@ public class HelperUtils {
     }
     return future;
   }
+
 
   /**
    * A common method to update an entry in the storage
@@ -109,6 +132,29 @@ public class HelperUtils {
           return null;
         });
     } catch (Exception e) {
+      future.completeExceptionally(e);
+    }
+
+    return future;
+  }
+
+  public static CompletableFuture<Void> handleDeleteRequest(String url, HttpClientInterface httpClient, Context ctx,
+      Map<String, String> okapiHeaders, Logger logger) {
+    CompletableFuture<Void> future = new VertxCompletableFuture<>(ctx);
+
+    logger.debug(CALLING_ENDPOINT_MSG, HttpMethod.DELETE, url);
+
+    try {
+      httpClient.request(HttpMethod.DELETE, url, okapiHeaders)
+        .thenAccept(HelperUtils::verifyResponse)
+        .thenApply(future::complete)
+        .exceptionally(t -> {
+          logger.error(EXCEPTION_CALLING_ENDPOINT_MSG, t, HttpMethod.DELETE, url);
+          future.completeExceptionally(t);
+          return null;
+        });
+    } catch (Exception e) {
+      logger.error(EXCEPTION_CALLING_ENDPOINT_MSG, e, HttpMethod.DELETE, url);
       future.completeExceptionally(e);
     }
 
