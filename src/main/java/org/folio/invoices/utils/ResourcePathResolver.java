@@ -23,6 +23,7 @@ public class ResourcePathResolver {
     apis.put(INVOICES, "/invoice-storage/invoices");
     apis.put(FOLIO_INVOICE_NUMBER, "/invoice-storage/invoice-number");
     apis.put(INVOICE_LINE_NUMBER, "/invoice-storage/invoice-line-number");
+    apis.put(INVOICE_LINES, "/invoice-storage/invoice-lines");
 
     SUB_OBJECT_COLLECTION_APIS = Collections.unmodifiableMap(apis);
     SUB_OBJECT_ITEM_APIS = Collections.unmodifiableMap(

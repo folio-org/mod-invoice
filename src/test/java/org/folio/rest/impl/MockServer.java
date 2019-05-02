@@ -37,10 +37,12 @@ import static org.folio.invoices.utils.ResourcePathResolver.FOLIO_INVOICE_NUMBER
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICES;
 import static org.folio.invoices.utils.ResourcePathResolver.resourceByIdPath;
 import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
+import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_LINE_NUMBER;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_LINES;
 import static org.folio.rest.RestVerticle.OKAPI_HEADER_TENANT;
 import static org.folio.rest.impl.AbstractHelper.ID;
 import static org.folio.rest.impl.ApiTestBase.FOLIO_INVOICE_NUMBER_VALUE;
+import static org.folio.rest.impl.ApiTestBase.INVOICE_LINE_NUMBER_VALUE;
 import static org.folio.rest.impl.ApiTestBase.getMockData;
 import static org.folio.rest.impl.InvoicesApiTest.BAD_QUERY;
 import static org.folio.rest.impl.InvoicesApiTest.EXISTING_VENDOR_INV_NO;
@@ -53,10 +55,12 @@ public class MockServer {
   private static final Logger logger = LoggerFactory.getLogger(MockServer.class);
 
   static Table<String, HttpMethod, List<JsonObject>> serverRqRs = HashBasedTable.create();
-  private static final String INVOICE_NUMBER_ERROR_TENANT = "po_number_error_tenant";
+  private static final String INVOICE_NUMBER_ERROR_TENANT = "invoice_number_error_tenant";
   private static final String ERROR_TENANT = "error_tenant";
   static final Header INVOICE_NUMBER_ERROR_X_OKAPI_TENANT = new Header(OKAPI_HEADER_TENANT, INVOICE_NUMBER_ERROR_TENANT);
   static final Header ERROR_X_OKAPI_TENANT = new Header(OKAPI_HEADER_TENANT, ERROR_TENANT);
+  private static final String INVOICE_LINE_NUMBER_ERROR_TENANT = "invoice_line_number_error_tenant";
+  static final Header INVOICE_LINE_NUMBER_ERROR_X_OKAPI_TENANT = new Header(OKAPI_HEADER_TENANT, INVOICE_LINE_NUMBER_ERROR_TENANT);
 
   private static final String ID_PATH_PARAM = ":" + ID;
   private static final String TOTAL_RECORDS = "totalRecords";
@@ -107,6 +111,7 @@ public class MockServer {
     router.route(HttpMethod.GET, resourcesPath(INVOICES)).handler(this::handleGetInvoices);
     router.route(HttpMethod.GET, resourceByIdPath(INVOICES, ID_PATH_PARAM)).handler(this::handleGetInvoiceById);
     router.route(HttpMethod.GET, resourcesPath(FOLIO_INVOICE_NUMBER)).handler(this::handleGetFolioInvoiceNumber);
+    router.route(HttpMethod.GET, resourcesPath(INVOICE_LINE_NUMBER)).handler(this::handleGetInvoiceLineNumber);
 
     router.route(HttpMethod.DELETE, resourceByIdPath(INVOICES, ID_PATH_PARAM)).handler(ctx -> handleDeleteRequest(ctx, INVOICES));
     return router;
@@ -201,6 +206,22 @@ public class MockServer {
     }
   }
 
+  private void handleGetInvoiceLineNumber(RoutingContext ctx) {
+    if(INVOICE_LINE_NUMBER_ERROR_TENANT.equals(ctx.request().getHeader(OKAPI_HEADER_TENANT))) {
+      ctx.response()
+        .setStatusCode(500)
+        .putHeader(HttpHeaders.CONTENT_TYPE, APPLICATION_JSON)
+        .end();
+    } else {
+      SequenceNumber seqNumber = new SequenceNumber();
+      seqNumber.setSequenceNumber(INVOICE_LINE_NUMBER_VALUE);
+      ctx.response()
+        .setStatusCode(200)
+        .putHeader(HttpHeaders.CONTENT_TYPE, APPLICATION_JSON)
+        .end(JsonObject.mapFrom(seqNumber).encodePrettily());
+    }
+  }
+  
   private void handleDeleteRequest(RoutingContext ctx, String type) {
     String id = ctx.request().getParam(ID);
 

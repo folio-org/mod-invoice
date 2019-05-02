@@ -17,7 +17,6 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.Stream;
@@ -25,7 +24,6 @@ import java.util.stream.Stream;
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 import static org.folio.rest.RestVerticle.OKAPI_HEADER_TENANT;
 import static org.folio.rest.RestVerticle.OKAPI_HEADER_TOKEN;
-import static org.folio.rest.impl.AbstractHelper.ID;
 import static org.folio.rest.impl.AbstractHelper.OKAPI_URL;
 import static org.folio.rest.impl.ApiTestSuite.mockPort;
 import static org.junit.Assert.fail;
@@ -41,6 +39,7 @@ public class ApiTestBase {
 
   static final String BASE_MOCK_DATA_PATH = "mockdata/";
 
+  static final String INVOICE_LINE_NUMBER_VALUE = "1";
   static final String LANG_PARAM = "lang";
   static final String INVALID_LANG = "english";
 
