@@ -17,6 +17,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.folio.invoices.utils.ResourcePathResolver;
 import org.folio.rest.acq.model.SequenceNumber;
 import org.folio.rest.jaxrs.model.Invoice;
+import org.folio.rest.jaxrs.model.InvoiceLine;
 
 import javax.ws.rs.core.Response;
 import java.io.IOException;
@@ -36,6 +37,7 @@ import static org.folio.invoices.utils.ResourcePathResolver.FOLIO_INVOICE_NUMBER
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICES;
 import static org.folio.invoices.utils.ResourcePathResolver.resourceByIdPath;
 import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
+import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_LINES;
 import static org.folio.rest.RestVerticle.OKAPI_HEADER_TENANT;
 import static org.folio.rest.impl.AbstractHelper.ID;
 import static org.folio.rest.impl.ApiTestBase.FOLIO_INVOICE_NUMBER_VALUE;
@@ -100,6 +102,7 @@ public class MockServer {
     Router router = Router.router(vertx);
     router.route().handler(BodyHandler.create());
     router.route(HttpMethod.POST, ResourcePathResolver.resourcesPath(INVOICES)).handler(this::handlePostInvoice);
+    router.route(HttpMethod.POST, resourcesPath(INVOICE_LINES)).handler(this::handlePostInvoiceLine);
 
     router.route(HttpMethod.GET, resourcesPath(INVOICES)).handler(this::handleGetInvoices);
     router.route(HttpMethod.GET, resourceByIdPath(INVOICES, ID_PATH_PARAM)).handler(this::handleGetInvoiceById);
@@ -109,6 +112,21 @@ public class MockServer {
     return router;
   }
 
+  private void handlePostInvoiceLine(RoutingContext ctx) {
+    logger.info("got: " + ctx.getBodyAsString());
+    if (ERROR_TENANT.equals(ctx.request().getHeader(OKAPI_HEADER_TENANT))) {
+      serverResponse(ctx, 500, TEXT_PLAIN, INTERNAL_SERVER_ERROR.getReasonPhrase());
+    } else {
+      String id = UUID.randomUUID().toString();
+      JsonObject body = ctx.getBodyAsJson();
+      body.put(ID, id);
+      InvoiceLine invoiceLine = body.mapTo(InvoiceLine.class);
+      addServerRqRsData(HttpMethod.POST, INVOICE_LINES, body);
+
+      serverResponse(ctx, 201, APPLICATION_JSON, JsonObject.mapFrom(invoiceLine).encodePrettily());
+    }
+  }
+  
   private void handlePostInvoice(RoutingContext ctx) {
     logger.info("got: " + ctx.getBodyAsString());
     if (ERROR_TENANT.equals(ctx.request().getHeader(OKAPI_HEADER_TENANT))) {

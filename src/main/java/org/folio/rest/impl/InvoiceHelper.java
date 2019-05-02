@@ -11,14 +11,13 @@ import static org.folio.invoices.utils.HelperUtils.getInvoiceById;
 
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
-
 import io.vertx.core.json.JsonObject;
 import me.escoffier.vertx.completablefuture.VertxCompletableFuture;
+
 import org.folio.invoices.utils.HelperUtils;
 import org.folio.rest.acq.model.SequenceNumber;
 import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.jaxrs.model.InvoiceCollection;
-
 import io.vertx.core.Context;
 
 public class InvoiceHelper extends AbstractHelper {

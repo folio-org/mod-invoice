@@ -23,6 +23,7 @@ public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
   private static final Logger logger = LoggerFactory.getLogger(InvoicesImpl.class);
   private static final String NOT_SUPPORTED = "Not supported";	// To overcome sonarcloud warning
   private static final String INVOICE_LOCATION_PREFIX = "/invoice/invoices/%s";
+  private static final String INVOICE_LINE_LOCATION_PREFIX = "/invoice/invoice-lines/%s";
   
   @Validate
   @Override
@@ -96,9 +97,29 @@ public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
 
   @Validate
   @Override
-  public void postInvoiceInvoiceLines(String lang, InvoiceLine entity, Map<String, String> okapiHeaders,
+  public void postInvoiceInvoiceLines(String lang, InvoiceLine invoiceLine, Map<String, String> okapiHeaders,
       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
-    asyncResultHandler.handle(succeededFuture(PostInvoiceInvoiceLinesResponse.respond500WithTextPlain(NOT_SUPPORTED)));
+    InvoiceLineHelper helper = new InvoiceLineHelper(okapiHeaders, vertxContext, lang);
+    
+    logger.info("Creating InvoiceLine to an existing invoice...");
+    
+    helper
+    .createInvoiceLine(invoiceLine)
+    .thenAccept(invoiceLineWithId -> {
+      Response response;
+      if (helper.getErrors().isEmpty()) {
+        if (logger.isInfoEnabled()) {
+          logger.info("Successfully added Invoice Line: " + JsonObject.mapFrom(invoiceLine).encodePrettily());
+        }
+        response = PostInvoiceInvoiceLinesResponse.respond201WithApplicationJson(invoiceLineWithId,
+            PostInvoiceInvoiceLinesResponse.headersFor201()
+              .withLocation(String.format(INVOICE_LINE_LOCATION_PREFIX, invoiceLineWithId.getId())));
+      } else {
+        response = helper.buildErrorResponse(422);
+      }
+      asyncResultHandler.handle(succeededFuture(response));
+    })
+    .exceptionally(t -> handleErrorResponse(asyncResultHandler, helper, t));
   }
 
   @Validate

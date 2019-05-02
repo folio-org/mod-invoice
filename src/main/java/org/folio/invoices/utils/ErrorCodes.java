@@ -4,7 +4,8 @@ import org.folio.rest.jaxrs.model.Error;
 
 public enum ErrorCodes {
 
-  GENERIC_ERROR_CODE("genericError", "Generic error");
+  GENERIC_ERROR_CODE("genericError", "Generic error"),
+  INVOICE_NOT_FOUND("invoiceNotFound", "The invoice cannot be found by provided invoice id");
 
   private final String code;
   private final String description;

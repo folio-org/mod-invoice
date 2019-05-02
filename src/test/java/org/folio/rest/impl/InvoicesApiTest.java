@@ -1,18 +1,5 @@
 package org.folio.rest.impl;
 
-import io.restassured.response.Response;
-import io.vertx.core.http.HttpMethod;
-import io.vertx.core.json.JsonObject;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
-import org.folio.rest.jaxrs.model.Errors;
-import org.folio.rest.jaxrs.model.Invoice;
-import org.folio.rest.jaxrs.model.InvoiceCollection;
-import org.junit.Test;
-
-import java.io.IOException;
-
-import static io.restassured.RestAssured.given;
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 import static javax.ws.rs.core.MediaType.TEXT_PLAIN;
 import static org.folio.invoices.utils.ResourcePathResolver.FOLIO_INVOICE_NUMBER;
@@ -25,18 +12,31 @@ import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.junit.Assert.assertEquals;
 
+import java.io.IOException;
+
+import org.folio.rest.jaxrs.model.Errors;
+import org.folio.rest.jaxrs.model.Invoice;
+import org.folio.rest.jaxrs.model.InvoiceCollection;
+import org.junit.Test;
+
+import io.restassured.response.Response;
+import io.vertx.core.http.HttpMethod;
+import io.vertx.core.json.JsonObject;
+import io.vertx.core.logging.Logger;
+import io.vertx.core.logging.LoggerFactory;
+
 public class InvoicesApiTest extends ApiTestBase {
 
-	private static final Logger logger = LoggerFactory.getLogger(InvoicesApiTest.class);
+  private static final Logger logger = LoggerFactory.getLogger(InvoicesApiTest.class);
 
-	private static final String INVOICE_ID_PATH = "/invoice/invoices/%s";
-	private static final String INVOICE_PATH = "/invoice/invoices";
+  private static final String INVOICE_ID_PATH = "/invoice/invoices/%s";
+  private static final String INVOICE_PATH = "/invoice/invoices";
   private static final String INVOICE_PATH_BAD = "/invoice/bad";
 
   private static final String INVOICE_NUMBER_PATH = "/invoice/invoice-number";
 
 
-	static final String INVOICE_MOCK_DATA_PATH = BASE_MOCK_DATA_PATH + "invoices/";
+  static final String INVOICE_MOCK_DATA_PATH = BASE_MOCK_DATA_PATH + "invoices/";
   private static final String INVOICES_LIST_PATH = INVOICE_MOCK_DATA_PATH + "invoices.json";
   private static final String INVOICE_SAMPLE_PATH = INVOICE_MOCK_DATA_PATH + "invoice.json";
 
