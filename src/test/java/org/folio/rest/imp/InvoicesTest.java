@@ -251,11 +251,11 @@ public class InvoicesTest {
       .header(X_OKAPI_URL)
       .header(EXIST_CONFIG_X_OKAPI_TENANT_LIMIT_10)
       .get(INVOICE_LINES_PATH + "/" + id)
-      .then()
-      .statusCode(200)
-      .extract()
-      .response()
-      .as(InvoiceLine.class);
+        .then()
+          .statusCode(200)
+          .extract()
+          .response()
+          .as(InvoiceLine.class);
 
     logger.info(JsonObject.mapFrom(resp).encodePrettily());
     assertEquals(id, resp.getId());

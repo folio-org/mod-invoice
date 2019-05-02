@@ -1,7 +1,6 @@
 package org.folio.rest.impl;
 
-import static org.folio.invoices.utils.HelperUtils.handleGetRequest;
-import static org.folio.invoices.utils.ResourcePathResolver.resourceByIdPath;
+import static org.folio.invoices.utils.HelperUtils.getInvoiceLineById;
 
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -17,11 +16,10 @@ public class InvoiceLinesHelper extends AbstractHelper {
     super(getHttpClient(okapiHeaders), okapiHeaders, ctx, lang);
   }
 
-  public CompletableFuture<InvoiceLine> getInvoiceLines(String id) {
+  public CompletableFuture<InvoiceLine> getInvoiceLine(String id) {
     CompletableFuture<InvoiceLine> future = new VertxCompletableFuture<>(ctx);
     try {
-      String endpoint = String.format(resourceByIdPath("invoiceLines") + id, lang);
-      handleGetRequest(endpoint, httpClient, ctx, okapiHeaders, logger)
+      getInvoiceLineById(id, lang, httpClient, ctx, okapiHeaders, logger)
         .thenAccept(jsonInvoiceLines -> {
           logger.info("Successfully retrieved invoice lines: " + jsonInvoiceLines.encodePrettily());
           future.complete(jsonInvoiceLines.mapTo(InvoiceLine.class));

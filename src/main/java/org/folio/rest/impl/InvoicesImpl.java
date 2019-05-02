@@ -96,7 +96,7 @@ public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     InvoiceLinesHelper invoiceLinesHelper = new InvoiceLinesHelper(okapiHeaders, vertxContext, lang);
     invoiceLinesHelper
-      .getInvoiceLines(id)
+      .getInvoiceLine(id)
       .thenAccept(invoices -> asyncResultHandler.handle(succeededFuture(invoiceLinesHelper.buildOkResponse(invoices))))
       .exceptionally(t -> handleErrorResponse(asyncResultHandler, invoiceLinesHelper, t));
   }
