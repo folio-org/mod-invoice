@@ -13,6 +13,7 @@ import java.net.MalformedURLException;
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 import static javax.ws.rs.core.MediaType.TEXT_PLAIN;
 import static org.folio.rest.impl.AbstractHelper.ID;
+import static org.folio.rest.impl.MockServer.ID_DOES_NOT_EXIST;
 import static org.junit.Assert.assertEquals;
 
 public class InvoiceLinesApiTest extends ApiTestBase {
@@ -27,6 +28,8 @@ public class InvoiceLinesApiTest extends ApiTestBase {
   private static final String INVOICE_LINES_LIST_PATH = INVOICE_LINES_MOCK_DATA_PATH + "invoice_lines.json";
 
   private static final String BAD_INVOICE_LINE_ID = "5a34ae0e-5a11-4337-be95-1a20cfdc3161";
+  static final String ID_FOR_INTERNAL_SERVER_ERROR = "168f8a86-d26c-406e-813f-c7527f241ac3";
+
 
   @Test
   public void getInvoicingInvoiceLinesTest() {
@@ -61,7 +64,32 @@ public class InvoiceLinesApiTest extends ApiTestBase {
 
   @Test
   public void deleteInvoicingInvoiceLinesByIdTest() {
-    verifyDeleteResponse(String.format(INVOICE_LINE_ID_PATH, UUID), TEXT_PLAIN, 500);
+    logger.info("=== Test delete invoice line by id ===");
+
+    verifyDeleteResponse(String.format(INVOICE_LINE_ID_PATH, UUID), "", 204);
+  }
+
+  @Test
+  public void deleteInvoiceLinesByIdWithInvalidFormatTest() {
+    verifyDeleteResponse(String.format(INVOICE_LINE_ID_PATH, ID_BAD_FORMAT), TEXT_PLAIN, 400);
+  }
+
+  @Test
+  public void deleteNotExistentInvoiceLinesTest() {
+    verifyDeleteResponse(String.format(INVOICE_LINE_ID_PATH, ID_DOES_NOT_EXIST), APPLICATION_JSON, 404);
+  }
+
+  @Test
+  public void deleteInvoiceInternalErrorOnStorageTest() {
+    verifyDeleteResponse(String.format(INVOICE_LINE_ID_PATH, ID_FOR_INTERNAL_SERVER_ERROR), APPLICATION_JSON, 500);
+  }
+
+  @Test
+  public void deleteInvoiceBadLanguageTest() {
+
+    String endpoint = String.format(INVOICE_LINE_ID_PATH, UUID) + String.format("?%s=%s", LANG_PARAM, INVALID_LANG) ;
+
+    verifyDeleteResponse(endpoint, TEXT_PLAIN, 400);
   }
 
   @Test

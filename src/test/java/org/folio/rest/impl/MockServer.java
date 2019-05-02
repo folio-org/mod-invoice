@@ -109,6 +109,7 @@ public class MockServer {
     router.route(HttpMethod.GET, resourcesPath(INVOICE_LINES)+"/:id").handler(this::handleGetInvoiceLinesById);
 
     router.route(HttpMethod.DELETE, resourceByIdPath(INVOICES, ID_PATH_PARAM)).handler(ctx -> handleDeleteRequest(ctx, INVOICES));
+    router.route(HttpMethod.DELETE, resourceByIdPath(INVOICE_LINES, ID_PATH_PARAM)).handler(ctx -> handleDeleteRequest(ctx, INVOICE_LINES));
     return router;
   }
 
