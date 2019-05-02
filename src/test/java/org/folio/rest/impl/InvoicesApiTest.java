@@ -12,7 +12,6 @@ import org.junit.Test;
 
 import java.io.IOException;
 
-import static io.restassured.RestAssured.given;
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 import static javax.ws.rs.core.MediaType.TEXT_PLAIN;
 import static org.folio.invoices.utils.ResourcePathResolver.FOLIO_INVOICE_NUMBER;
@@ -29,8 +28,9 @@ public class InvoicesApiTest extends ApiTestBase {
 
 	private static final Logger logger = LoggerFactory.getLogger(InvoicesApiTest.class);
 
-	private static final String INVOICE_ID_PATH = "/invoice/invoices/%s";
-	private static final String INVOICE_PATH = "/invoice/invoices";
+  private static final String INVOICE_PATH = "/invoice/invoices";
+	private static final String INVOICE_ID_PATH = INVOICE_PATH+ "/%s";
+  private static final String INVOICE_ID_WITH_LANG_PATH = INVOICE_ID_PATH + "?lang=%s";
   private static final String INVOICE_PATH_BAD = "/invoice/bad";
 
   private static final String INVOICE_NUMBER_PATH = "/invoice/invoice-number";
@@ -59,7 +59,7 @@ public class InvoicesApiTest extends ApiTestBase {
   public void testGetInvoicingInvoicesWithQueryParam() {
     logger.info("=== Test Get Invoices with query - get 200 by successful retrieval of invoices by query ===");
 
-    String endpointQuery = String.format("%s?query=%s", INVOICE_PATH,  VENDOR_INVOICE_NUMBER_FIELD + "==" + EXISTING_VENDOR_INV_NO);
+    String endpointQuery = String.format("%s?query=%s==%s", INVOICE_PATH,  VENDOR_INVOICE_NUMBER_FIELD, EXISTING_VENDOR_INV_NO);
 
     final InvoiceCollection resp = verifySuccessGet(endpointQuery, InvoiceCollection.class);
 
@@ -100,7 +100,7 @@ public class InvoicesApiTest extends ApiTestBase {
     String id = invoicesList.getJsonArray("invoices").getJsonObject(0).getString(ID);
     logger.info(String.format("using mock datafile: %s%s.json", INVOICES_LIST_PATH, id));
 
-    final Invoice resp = verifySuccessGet(INVOICE_PATH + "/" + id, Invoice.class);
+    final Invoice resp = verifySuccessGet(String.format(INVOICE_ID_PATH, id), Invoice.class);
 
     logger.info(JsonObject.mapFrom(resp).encodePrettily());
     assertEquals(id, resp.getId());
@@ -110,7 +110,7 @@ public class InvoicesApiTest extends ApiTestBase {
   public void testGetInvoicingInvoicesByIdNotFound() {
     logger.info("=== Test Get Invoices by Id - 404 Not found ===");
 
-    final Response resp = verifyGet(INVOICE_PATH + "/" + BAD_INVOICE_ID, APPLICATION_JSON, 404);
+    final Response resp = verifyGet(String.format(INVOICE_ID_PATH, BAD_INVOICE_ID), APPLICATION_JSON, 404);
 
     String actual = resp.getBody().as(Errors.class).getErrors().get(0).getMessage();
     logger.info("Id not found: " + actual);
@@ -119,21 +119,48 @@ public class InvoicesApiTest extends ApiTestBase {
   }
 
   @Test
-  public void testPutInvoicingInvoicesById() {
+  public void testUpdateValidInvoice() {
     logger.info("=== Test update invoice by id ===");
 
   	Invoice reqData = getMockAsJson(INVOICE_SAMPLE_PATH).mapTo(Invoice.class);
     String id = reqData.getId();
   	String jsonBody = JsonObject.mapFrom(reqData).encode();
 
-  	verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, prepareHeaders(X_OKAPI_TENANT), TEXT_PLAIN, 500);
+  	verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, "", 204);
   }
 
   @Test
-  public void testDeleteInvoicingInvoicesById() {
-    logger.info("=== Test delete invoice by id ===");
+  public void testUpdateNotExistentInvoice() throws IOException {
+    logger.info("=== Test update non existent invoice===");
 
-    verifyDeleteResponse(String.format(INVOICE_ID_PATH, UUID), "", 204);
+    String jsonBody  = getMockData(INVOICE_SAMPLE_PATH);
+
+    verifyPut(String.format(INVOICE_ID_PATH, ID_DOES_NOT_EXIST), jsonBody, APPLICATION_JSON, 404);
+  }
+
+  @Test
+  public void testUpdateInvoiceInternalErrorOnStorage() throws IOException {
+    logger.info("=== Test update invoice by id with internal server error from storage ===");
+
+    String jsonBody  = getMockData(INVOICE_SAMPLE_PATH);
+
+    verifyPut(String.format(INVOICE_ID_PATH, ID_FOR_INTERNAL_SERVER_ERROR), jsonBody, APPLICATION_JSON, 500);
+  }
+
+  @Test
+  public void testUpdateInvoiceByIdWithInvalidFormat() throws IOException {
+
+    String jsonBody  = getMockData(INVOICE_SAMPLE_PATH);
+
+    verifyPut(String.format(INVOICE_ID_PATH, ID_BAD_FORMAT), jsonBody, TEXT_PLAIN, 400);
+  }
+
+  @Test
+  public void testUpdateInvoiceBadLanguage() throws IOException {
+    String jsonBody  = getMockData(INVOICE_SAMPLE_PATH);
+    String endpoint = String.format(INVOICE_ID_WITH_LANG_PATH, UUID, INVALID_LANG) ;
+
+    verifyPut(endpoint, jsonBody, TEXT_PLAIN, 400);
   }
 
   @Test
@@ -212,7 +239,7 @@ public class InvoicesApiTest extends ApiTestBase {
   @Test
   public void testDeleteInvoiceBadLanguage() {
 
-    String endpoint = String.format(INVOICE_ID_PATH, UUID) + String.format("?%s=%s", LANG_PARAM, INVALID_LANG) ;
+    String endpoint = String.format(INVOICE_ID_WITH_LANG_PATH, UUID, INVALID_LANG) ;
 
     verifyDeleteResponse(endpoint, TEXT_PLAIN, 400);
   }

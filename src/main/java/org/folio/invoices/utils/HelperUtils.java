@@ -124,4 +124,37 @@ public class HelperUtils {
 
     return future;
   }
+
+  /**
+   * A common method to update an entry in the storage
+   *
+   * @param recordData json to use for update operation
+   * @param endpoint endpoint
+   */
+  public static CompletableFuture<Void> handlePutRequest(String endpoint, JsonObject recordData, HttpClientInterface httpClient,
+                                                         Context ctx, Map<String, String> okapiHeaders, Logger logger) {
+    CompletableFuture<Void> future = new VertxCompletableFuture<>(ctx);
+    try {
+      if (logger.isDebugEnabled()) {
+        logger.debug("Sending 'PUT {}' with body: {}", endpoint, recordData.encodePrettily());
+      }
+      httpClient
+        .request(HttpMethod.PUT, recordData.toBuffer(), endpoint, okapiHeaders)
+        .thenApply(HelperUtils::verifyAndExtractBody)
+        .thenAccept(response -> {
+          logger.debug("'PUT {}' request successfully processed", endpoint);
+          future.complete(null);
+        })
+        .exceptionally(e -> {
+          future.completeExceptionally(e);
+          logger.error("'PUT {}' request failed. Request body: {}", e, endpoint, recordData.encodePrettily());
+          return null;
+        });
+    } catch (Exception e) {
+      future.completeExceptionally(e);
+    }
+
+    return future;
+  }
+
 }

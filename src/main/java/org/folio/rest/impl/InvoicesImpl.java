@@ -1,21 +1,19 @@
 package org.folio.rest.impl;
 
-import static io.vertx.core.Future.succeededFuture;
-
-import java.util.Map;
-
-import javax.ws.rs.core.Response;
-
-import org.folio.rest.annotations.Validate;
-import org.folio.rest.jaxrs.model.Invoice;
-import org.folio.rest.jaxrs.model.InvoiceLine;
-
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Context;
 import io.vertx.core.Handler;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
+import org.folio.rest.annotations.Validate;
+import org.folio.rest.jaxrs.model.Invoice;
+import org.folio.rest.jaxrs.model.InvoiceLine;
+
+import javax.ws.rs.core.Response;
+import java.util.Map;
+
+import static io.vertx.core.Future.succeededFuture;
 
 
 public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
@@ -70,9 +68,16 @@ public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
 
   @Validate
   @Override
-  public void putInvoiceInvoicesById(String id, String lang, Invoice entity, Map<String, String> okapiHeaders,
+  public void putInvoiceInvoicesById(String id, String lang, Invoice invoice, Map<String, String> okapiHeaders,
       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
-    asyncResultHandler.handle(succeededFuture(PutInvoiceInvoicesByIdResponse.respond500WithTextPlain(NOT_SUPPORTED)));
+
+    invoice.setId(id);
+
+    InvoiceHelper helper = new InvoiceHelper(okapiHeaders, vertxContext, lang);
+
+    helper.updateInvoice(invoice)
+      .thenAccept(ok -> asyncResultHandler.handle(succeededFuture(helper.buildNoContentResponse())))
+      .exceptionally(fail -> handleErrorResponse(asyncResultHandler, helper, fail));
   }
 
   @Validate

@@ -106,6 +106,8 @@ public class MockServer {
     router.route(HttpMethod.GET, resourcesPath(FOLIO_INVOICE_NUMBER)).handler(this::handleGetFolioInvoiceNumber);
 
     router.route(HttpMethod.DELETE, resourceByIdPath(INVOICES, ID_PATH_PARAM)).handler(ctx -> handleDeleteRequest(ctx, INVOICES));
+
+    router.route(HttpMethod.PUT, resourceByIdPath(INVOICES, ID_PATH_PARAM)).handler(ctx -> handlePutGenericSubObj(ctx, INVOICES));
     return router;
   }
 
@@ -196,7 +198,23 @@ public class MockServer {
     } else {
       ctx.response()
         .setStatusCode(204)
-        .putHeader(HttpHeaders.CONTENT_TYPE, APPLICATION_JSON)
+        .end();
+    }
+  }
+
+  private void handlePutGenericSubObj(RoutingContext ctx, String subObj) {
+    logger.info("handlePutGenericSubObj got: PUT " + ctx.request().path());
+    String id = ctx.request().getParam(ID);
+
+    addServerRqRsData(HttpMethod.PUT, subObj, ctx.getBodyAsJson());
+
+    if (ID_DOES_NOT_EXIST.equals(id)) {
+      serverResponse(ctx, 404, APPLICATION_JSON, id);
+    } else if (ID_FOR_INTERNAL_SERVER_ERROR.equals(id) || ctx.getBodyAsString().contains("500500500500")) {
+      serverResponse(ctx, 500, APPLICATION_JSON, INTERNAL_SERVER_ERROR.getReasonPhrase());
+    } else {
+      ctx.response()
+        .setStatusCode(204)
         .end();
     }
   }
