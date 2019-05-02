@@ -1,21 +1,19 @@
 package org.folio.rest.impl;
 
-import static io.vertx.core.Future.succeededFuture;
-
-import java.util.Map;
-
-import javax.ws.rs.core.Response;
-
-import org.folio.rest.annotations.Validate;
-import org.folio.rest.jaxrs.model.Invoice;
-import org.folio.rest.jaxrs.model.InvoiceLine;
-
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Context;
 import io.vertx.core.Handler;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
+import org.folio.rest.annotations.Validate;
+import org.folio.rest.jaxrs.model.Invoice;
+import org.folio.rest.jaxrs.model.InvoiceLine;
+
+import javax.ws.rs.core.Response;
+import java.util.Map;
+
+import static io.vertx.core.Future.succeededFuture;
 
 
 public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
@@ -23,7 +21,7 @@ public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
   private static final Logger logger = LoggerFactory.getLogger(InvoicesImpl.class);
   private static final String NOT_SUPPORTED = "Not supported";	// To overcome sonarcloud warning
   private static final String INVOICE_LOCATION_PREFIX = "/invoice/invoices/%s";
-  
+
   @Validate
   @Override
   public void postInvoiceInvoices(String lang, Invoice invoice, Map<String, String> okapiHeaders,
@@ -89,12 +87,14 @@ public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
 
   @Validate
   @Override
-  public void getInvoiceInvoiceLines(int offset, int limit, String query, String lang, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+  public void getInvoiceInvoiceLines(int offset, int limit, String query, String lang, Map<String, String> okapiHeaders,
+                                     Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     InvoiceLineHelper helper = new InvoiceLineHelper(okapiHeaders, vertxContext, lang);
     helper
       .getInvoiceLines(limit, offset, query)
       .thenAccept(lines -> asyncResultHandler.handle(succeededFuture(helper.buildOkResponse(lines))))
-      .exceptionally(t -> handleErrorResponse(asyncResultHandler, helper, t));  }
+      .exceptionally(t -> handleErrorResponse(asyncResultHandler, helper, t));
+  }
 
   @Validate
   @Override
