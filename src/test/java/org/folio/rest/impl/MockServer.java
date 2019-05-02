@@ -56,7 +56,10 @@ public class MockServer {
   static final Header INVOICE_NUMBER_ERROR_X_OKAPI_TENANT = new Header(OKAPI_HEADER_TENANT, INVOICE_NUMBER_ERROR_TENANT);
   static final Header ERROR_X_OKAPI_TENANT = new Header(OKAPI_HEADER_TENANT, ERROR_TENANT);
 
+  private static final String ID_PATH_PARAM = ":" + ID;
   private static final String TOTAL_RECORDS = "totalRecords";
+
+  public static final String ID_DOES_NOT_EXIST = "d25498e7-3ae6-45fe-9612-ec99e2700d2f";
 
 
   private final int port;
@@ -99,8 +102,10 @@ public class MockServer {
     router.route(HttpMethod.POST, ResourcePathResolver.resourcesPath(INVOICES)).handler(this::handlePostInvoice);
 
     router.route(HttpMethod.GET, resourcesPath(INVOICES)).handler(this::handleGetInvoices);
-    router.route(HttpMethod.GET, resourcePath(INVOICES)).handler(this::handleGetInvoiceById);
-    router.route(HttpMethod.GET, ResourcePathResolver.resourcesPath(FOLIO_INVOICE_NUMBER)).handler(this::handleGetFolioInvoiceNumber);
+    router.route(HttpMethod.GET, resourceByIdPath(INVOICES, ID_PATH_PARAM)).handler(this::handleGetInvoiceById);
+    router.route(HttpMethod.GET, resourcesPath(FOLIO_INVOICE_NUMBER)).handler(this::handleGetFolioInvoiceNumber);
+
+    router.route(HttpMethod.DELETE, resourceByIdPath(INVOICES, ID_PATH_PARAM)).handler(ctx -> handleDeleteRequest(ctx, INVOICES));
     return router;
   }
 
@@ -178,6 +183,24 @@ public class MockServer {
     }
   }
 
+  private void handleDeleteRequest(RoutingContext ctx, String type) {
+    String id = ctx.request().getParam(ID);
+
+    // Register request
+    addServerRqRsData(HttpMethod.DELETE, type, new JsonObject().put(ID, id));
+
+    if (ID_DOES_NOT_EXIST.equals(id)) {
+      serverResponse(ctx, 404, TEXT_PLAIN, id);
+    } else if (ID_FOR_INTERNAL_SERVER_ERROR.equals(id)) {
+      serverResponse(ctx, 500, APPLICATION_JSON, Response.Status.INTERNAL_SERVER_ERROR.getReasonPhrase());
+    } else {
+      ctx.response()
+        .setStatusCode(204)
+        .putHeader(HttpHeaders.CONTENT_TYPE, APPLICATION_JSON)
+        .end();
+    }
+  }
+
   private void serverResponse(RoutingContext ctx, int statusCode, String contentType, String body) {
     ctx.response()
       .setStatusCode(statusCode)
@@ -194,8 +217,5 @@ public class MockServer {
     serverRqRs.put(objName, method, entries);
   }
 
-  private String resourcePath(String subObjName) {
-    return resourceByIdPath(subObjName) + ":id";
-  }
 
 }

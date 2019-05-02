@@ -47,6 +47,10 @@ resourceTypes:
     get:
       is: [ pageable, searchable: {description: "using CQL (indexes for invoice)", example: "status==\"Open\""}, validate ]
     /{id}:
+      uriParameters:
+        id:
+          description: The UUID of an invoice
+          type: UUID
       displayName: Invoice
       description: Get, Delete or Update a specific invoice
       type:

@@ -12,11 +12,13 @@ import org.junit.Test;
 
 import java.io.IOException;
 
+import static io.restassured.RestAssured.given;
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 import static javax.ws.rs.core.MediaType.TEXT_PLAIN;
 import static org.folio.invoices.utils.ResourcePathResolver.FOLIO_INVOICE_NUMBER;
 import static org.folio.rest.impl.AbstractHelper.ID;
 import static org.folio.rest.impl.MockServer.ERROR_X_OKAPI_TENANT;
+import static org.folio.rest.impl.MockServer.ID_DOES_NOT_EXIST;
 import static org.folio.rest.impl.MockServer.INVOICE_NUMBER_ERROR_X_OKAPI_TENANT;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasSize;
@@ -131,7 +133,7 @@ public class InvoicesApiTest extends ApiTestBase {
   public void testDeleteInvoicingInvoicesById() {
     logger.info("=== Test delete invoice by id ===");
 
-    verifyDeleteResponse(String.format(INVOICE_ID_PATH, UUID), TEXT_PLAIN, 500);
+    verifyDeleteResponse(String.format(INVOICE_ID_PATH, UUID), "", 204);
   }
 
   @Test
@@ -185,7 +187,34 @@ public class InvoicesApiTest extends ApiTestBase {
     logger.info("=== Test Get Invoice number - not implemented ===");
 
     verifyGet(INVOICE_NUMBER_PATH, TEXT_PLAIN, 500);
+  }
 
+  @Test
+  public void testDeleteInvoiceByValidId() {
+    verifyDeleteResponse(String.format(INVOICE_ID_PATH, UUID), "", 204);
+  }
+
+  @Test
+  public void testDeleteInvoiceByIdWithInvalidFormat() {
+    verifyDeleteResponse(String.format(INVOICE_ID_PATH, ID_BAD_FORMAT), TEXT_PLAIN, 400);
+  }
+
+  @Test
+  public void testDeleteNotExistentInvoice() {
+    verifyDeleteResponse(String.format(INVOICE_ID_PATH, ID_DOES_NOT_EXIST), APPLICATION_JSON, 404);
+  }
+
+  @Test
+  public void testDeleteInvoiceInternalErrorOnStorage() {
+    verifyDeleteResponse(String.format(INVOICE_ID_PATH, ID_FOR_INTERNAL_SERVER_ERROR), APPLICATION_JSON, 500);
+  }
+
+  @Test
+  public void testDeleteInvoiceBadLanguage() {
+
+    String endpoint = String.format(INVOICE_ID_PATH, UUID) + String.format("?%s=%s", LANG_PARAM, INVALID_LANG) ;
+
+    verifyDeleteResponse(endpoint, TEXT_PLAIN, 400);
   }
 
 }

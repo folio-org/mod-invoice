@@ -17,6 +17,7 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.Stream;
@@ -24,6 +25,7 @@ import java.util.stream.Stream;
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 import static org.folio.rest.RestVerticle.OKAPI_HEADER_TENANT;
 import static org.folio.rest.RestVerticle.OKAPI_HEADER_TOKEN;
+import static org.folio.rest.impl.AbstractHelper.ID;
 import static org.folio.rest.impl.AbstractHelper.OKAPI_URL;
 import static org.folio.rest.impl.ApiTestSuite.mockPort;
 import static org.junit.Assert.fail;
@@ -31,12 +33,16 @@ import static org.junit.Assert.fail;
 public class ApiTestBase {
 
   static final String UUID = "8d3881f6-dd93-46f0-b29d-1c36bdb5c9f9";
+  static final String ID_BAD_FORMAT = "123-45-678-90-abc";
   static final String FOLIO_INVOICE_NUMBER_VALUE = "228D126";
   static final Header X_OKAPI_URL = new Header(OKAPI_URL, "http://localhost:" + mockPort);
   static final Header X_OKAPI_TOKEN = new Header(OKAPI_HEADER_TOKEN, "eyJhbGciOiJIUzI1NiJ9");
   static final Header X_OKAPI_TENANT = new Header(OKAPI_HEADER_TENANT, "invoiceimpltest");
 
   static final String BASE_MOCK_DATA_PATH = "mockdata/";
+
+  static final String LANG_PARAM = "lang";
+  static final String INVALID_LANG = "english";
 
 
   static {
@@ -160,12 +166,12 @@ public class ApiTestBase {
     return RestAssured
       .with()
         .headers(headers)
-        .delete(url)
-      .then()
-        .statusCode(expectedCode)
-        .contentType(expectedContentType)
-        .extract()
-          .response();
+      .delete(url)
+        .then()
+          .statusCode(expectedCode)
+          .contentType(expectedContentType)
+          .extract()
+            .response();
   }
 
   Headers prepareHeaders(Header... headers) {
