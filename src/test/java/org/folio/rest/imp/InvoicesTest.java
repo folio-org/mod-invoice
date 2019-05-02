@@ -276,10 +276,10 @@ public class InvoicesTest {
       .header(X_OKAPI_URL)
       .header(EXIST_CONFIG_X_OKAPI_TENANT_LIMIT_10)
       .get(INVOICE_LINES_PATH + "/" + BAD_INVOICE_ID)
-      .then()
-      .statusCode(404)
-      .extract()
-      .response();
+        .then()
+          .statusCode(404)
+          .extract()
+          .response();
 
     String actual = resp.getBody().as(Errors.class).getErrors().get(0).getMessage();
     logger.info("Id not found: " + actual);
