@@ -72,10 +72,6 @@ public class InvoiceLineHelper extends AbstractHelper {
       .thenApply(HelperUtils::convertToInvoice)
       .exceptionally(t -> {
         Throwable cause = t.getCause();
-        // The case when specified order does not exist
-        if (cause instanceof HttpException && ((HttpException) cause).getCode() == Response.Status.NOT_FOUND.getStatusCode()) {
-          throw new HttpException(422, "The invoice cannot be found by provided invoice " + invoiceLine.getInvoiceId());
-        }
         throw t instanceof CompletionException ? (CompletionException) t : new CompletionException(cause);
       });
   }
