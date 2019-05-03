@@ -16,12 +16,9 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.CompletionStage;
 
-import javax.ws.rs.core.Response;
-
 import io.vertx.core.json.JsonObject;
 import me.escoffier.vertx.completablefuture.VertxCompletableFuture;
 
-import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.invoices.utils.HelperUtils;
 import org.folio.rest.acq.model.SequenceNumber;
 import org.folio.rest.jaxrs.model.Invoice;
@@ -33,7 +30,7 @@ public class InvoiceLineHelper extends AbstractHelper {
 
   private static final String INVOICE_ID = "invoiceId";
   private static final String INVOICE_LINE_NUMBER_ENDPOINT = resourcesPath(INVOICE_LINE_NUMBER) + "?" + INVOICE_ID + "=";
-  
+
   InvoiceLineHelper(Map<String, String> okapiHeaders, Context ctx, String lang) {
     super(getHttpClient(okapiHeaders), okapiHeaders, ctx, lang);
   }
@@ -62,8 +59,13 @@ public class InvoiceLineHelper extends AbstractHelper {
       JsonObject.mapFrom(invoiceLine), httpClient, ctx, okapiHeaders, logger);
   }
   
+  /**
+   * Creates Invoice Line if its content is valid
+   * @param invoiceLine {@link InvoiceLine} to be created
+   * @return completable future which might hold {@link InvoiceLine} on success, {@code null} if validation fails or an exception if any issue happens
+   */
   CompletableFuture<InvoiceLine> createInvoiceLine(InvoiceLine invoiceLine) {
-    return getInvoice(invoiceLine)        
+    return getInvoice(invoiceLine)
       .thenCompose(invoice -> createInvoiceLine(invoiceLine, invoice));
   }
   
@@ -76,15 +78,20 @@ public class InvoiceLineHelper extends AbstractHelper {
       });
   }
   
+  /**
+   * Creates Invoice Line assuming its content is valid
+   * @param invoiceLine {@link InvoiceLine} to be created
+   * @param invoice associated {@link Invoice} object
+   * @return completable future which might hold {@link InvoiceLine} on success or an exception if any issue happens
+   */
   CompletableFuture<InvoiceLine> createInvoiceLine(InvoiceLine invoiceLine, Invoice invoice) {
-    // The id is required because sub-objects are being created first
     invoiceLine.setId(UUID.randomUUID().toString());
     invoiceLine.setInvoiceId(invoice.getId());
 
-     JsonObject line = mapFrom(invoiceLine);
+    JsonObject line = mapFrom(invoiceLine);
 
-     return generateLineNumber(invoice)
-      .thenAccept(lineNumber -> line.put("invoiceLineNumber", lineNumber))
+    return generateLineNumber(invoice)
+      .thenAccept(lineNumber -> line.put(INVOICE_LINE_NUMBER, lineNumber))
       .thenCompose(v -> createInvoiceLineSummary(invoiceLine, line));
   }
   

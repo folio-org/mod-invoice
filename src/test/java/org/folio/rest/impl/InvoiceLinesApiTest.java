@@ -20,7 +20,6 @@ import java.net.MalformedURLException;
 import static org.folio.rest.RestVerticle.OKAPI_HEADER_TENANT;
 import static org.folio.rest.impl.AbstractHelper.ID;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThat;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.hasSize;
@@ -36,11 +35,13 @@ public class InvoiceLinesApiTest extends ApiTestBase {
   private static final String INVOICE_LINES_PATH = "/invoice/invoice-lines";
   private static final String INVOICE_LINE_SAMPLE_PATH = "mockdata/invoiceLines/invoice_line.json";
   private static final String INVOICE_LINE_MISSING_ID__PATH = "mockdata/invoiceLines/invoice_line_missing_invoice_id.json";
-
+  private static final String BAD_INVOICE_LINE_ID = "5a34ae0e-5a11-4337-be95-1a20cfdc3161";
+  
+  static final Header NON_EXIST_CONFIG_X_OKAPI_TENANT = new Header(OKAPI_HEADER_TENANT, "invoicetest");
   static final String INVOICE_LINES_MOCK_DATA_PATH = BASE_MOCK_DATA_PATH + "invoiceLines/";
   private static final String INVOICE_LINES_LIST_PATH = INVOICE_LINES_MOCK_DATA_PATH + "invoice_lines.json";
 
-  private static final String BAD_INVOICE_LINE_ID = "5a34ae0e-5a11-4337-be95-1a20cfdc3161";
+
 
   @Test
   public void getInvoicingInvoiceLinesTest() {
@@ -80,6 +81,7 @@ public class InvoiceLinesApiTest extends ApiTestBase {
 
   @Test
   public void postInvoicingInvoiceLinesTest() throws Exception {
+    logger.info("=== Test create invoice line - 201 successfully created ===");
     InvoiceLine reqData = getMockAsJson(INVOICE_LINE_SAMPLE_PATH).mapTo(InvoiceLine.class);
     reqData.setId(null);
     reqData.setInvoiceLineNumber(null);
@@ -105,10 +107,7 @@ public class InvoiceLinesApiTest extends ApiTestBase {
     String body = getMockData(INVOICE_LINE_SAMPLE_PATH);
     verifyPostResponse(INVOICE_LINES_PATH, body, prepareHeaders(INVOICE_LINE_NUMBER_ERROR_X_OKAPI_TENANT), APPLICATION_JSON, 500);
   }
-  
 
-  
-  static final Header NON_EXIST_CONFIG_X_OKAPI_TENANT = new Header(OKAPI_HEADER_TENANT, "invoicetest");
   @Test
   public void testPostInvoiceLinesByIdLineWithoutId() throws IOException {
     logger.info("=== Test Post Invoice Lines By Id (empty id in body) ===");
@@ -117,7 +116,6 @@ public class InvoiceLinesApiTest extends ApiTestBase {
       prepareHeaders(NON_EXIST_CONFIG_X_OKAPI_TENANT), APPLICATION_JSON, 422).as(Errors.class);
 
     assertEquals(1, resp.getErrors().size());
-//    assertEquals(ErrorCodes.MISSING_ORDER_ID_IN_POL.getCode(), resp.getErrors().get(0).getCode());
   }
   
   @Test

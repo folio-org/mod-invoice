@@ -30,25 +30,23 @@ public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
   @Override
   public void postInvoiceInvoices(String lang, Invoice invoice, Map<String, String> okapiHeaders,
                                   Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
-
-		InvoiceHelper helper = new InvoiceHelper(okapiHeaders, vertxContext, lang);
-
-		helper.createInvoice(invoice)
+    InvoiceHelper helper = new InvoiceHelper(okapiHeaders, vertxContext, lang);
+    helper.createInvoice(invoice)
       .thenAccept(invoiceWithId -> {
         Response response = PostInvoiceInvoicesResponse.respond201WithApplicationJson(invoiceWithId,
-          PostInvoiceInvoicesResponse.headersFor201()
-            .withLocation(String.format(INVOICE_LOCATION_PREFIX, invoiceWithId.getId())));
-        asyncResultHandler.handle(succeededFuture(response));
+        PostInvoiceInvoicesResponse.headersFor201()
+          .withLocation(String.format(INVOICE_LOCATION_PREFIX, invoiceWithId.getId())));
+          asyncResultHandler.handle(succeededFuture(response));
       })
       .exceptionally(t -> handleErrorResponse(asyncResultHandler, helper, t));
-	}
+  }
 
   @Validate
   @Override
   public void getInvoiceInvoices(int offset, int limit, String query, String lang, Map<String, String> okapiHeaders,
       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
-  InvoiceHelper helper = new InvoiceHelper(okapiHeaders, vertxContext, lang);
-  helper
+    InvoiceHelper helper = new InvoiceHelper(okapiHeaders, vertxContext, lang);
+    helper
     .getInvoices(limit, offset, query)
       .thenAccept(invoices -> {
         if (logger.isInfoEnabled()) {
@@ -108,7 +106,7 @@ public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
   public void postInvoiceInvoiceLines(String lang, InvoiceLine invoiceLine, Map<String, String> okapiHeaders,
       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     InvoiceLineHelper helper = new InvoiceLineHelper(okapiHeaders, vertxContext, lang);
-    logger.info("Creating InvoiceLine to an existing invoice...");
+    logger.info("== Creating InvoiceLine for an existing invoice ==");
 
     helper
    .createInvoiceLine(invoiceLine)
