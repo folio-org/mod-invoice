@@ -3,19 +3,24 @@ package org.folio.rest.impl;
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 import static javax.ws.rs.core.MediaType.TEXT_PLAIN;
 
+import io.restassured.http.Header;
 import io.restassured.response.Response;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
+
 import org.folio.rest.jaxrs.model.Errors;
 import org.folio.rest.jaxrs.model.InvoiceLine;
 import org.junit.Test;
 
 import java.io.IOException;
 import java.net.MalformedURLException;
+
+import static org.folio.rest.RestVerticle.OKAPI_HEADER_TENANT;
 import static org.folio.rest.impl.AbstractHelper.ID;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThat;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.hasSize;
@@ -30,6 +35,7 @@ public class InvoiceLinesApiTest extends ApiTestBase {
   private static final String INVOICE_LINE_ID_PATH = "/invoice/invoice-lines/%s";
   private static final String INVOICE_LINES_PATH = "/invoice/invoice-lines";
   private static final String INVOICE_LINE_SAMPLE_PATH = "mockdata/invoiceLines/invoice_line.json";
+  private static final String INVOICE_LINE_MISSING_ID__PATH = "mockdata/invoiceLines/invoice_line_missing_invoice_id.json";
 
   static final String INVOICE_LINES_MOCK_DATA_PATH = BASE_MOCK_DATA_PATH + "invoiceLines/";
   private static final String INVOICE_LINES_LIST_PATH = INVOICE_LINES_MOCK_DATA_PATH + "invoice_lines.json";
@@ -98,6 +104,20 @@ public class InvoiceLinesApiTest extends ApiTestBase {
     reqData.setInvoiceLineNumber(null);
     String body = getMockData(INVOICE_LINE_SAMPLE_PATH);
     verifyPostResponse(INVOICE_LINES_PATH, body, prepareHeaders(INVOICE_LINE_NUMBER_ERROR_X_OKAPI_TENANT), APPLICATION_JSON, 500);
+  }
+  
+
+  
+  static final Header NON_EXIST_CONFIG_X_OKAPI_TENANT = new Header(OKAPI_HEADER_TENANT, "invoicetest");
+  @Test
+  public void testPostInvoiceLinesByIdLineWithoutId() throws IOException {
+    logger.info("=== Test Post Invoice Lines By Id (empty id in body) ===");
+
+    Errors resp = verifyPostResponse(INVOICE_LINES_PATH, getMockData(INVOICE_LINE_MISSING_ID__PATH),
+      prepareHeaders(NON_EXIST_CONFIG_X_OKAPI_TENANT), APPLICATION_JSON, 422).as(Errors.class);
+
+    assertEquals(1, resp.getErrors().size());
+//    assertEquals(ErrorCodes.MISSING_ORDER_ID_IN_POL.getCode(), resp.getErrors().get(0).getCode());
   }
   
   @Test
