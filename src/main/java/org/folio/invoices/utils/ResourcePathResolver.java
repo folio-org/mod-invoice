@@ -42,4 +42,5 @@ public class ResourcePathResolver {
   public static String resourcesPath(String field) {
     return SUB_OBJECT_COLLECTION_APIS.get(field);
   }
+
 }

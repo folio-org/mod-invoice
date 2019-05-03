@@ -5,7 +5,7 @@ import static io.vertx.core.Future.succeededFuture;
 import java.util.Map;
 
 import javax.ws.rs.core.Response;
-
+import org.apache.commons.lang3.StringUtils;
 import org.folio.rest.annotations.Validate;
 import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.jaxrs.model.InvoiceLine;
@@ -117,9 +117,16 @@ public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
 
   @Validate
   @Override
-  public void putInvoiceInvoiceLinesById(String id, String lang, InvoiceLine entity, Map<String, String> okapiHeaders,
-                                         Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
-    asyncResultHandler.handle(succeededFuture(PutInvoiceInvoiceLinesByIdResponse.respond500WithTextPlain(NOT_SUPPORTED)));
+  public void putInvoiceInvoiceLinesById(String invoiceLineId, String lang, InvoiceLine invoiceLine,
+      Map<String, String> okapiHeaders,
+      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+    if (StringUtils.isEmpty(invoiceLine.getId())) {
+      invoiceLine.setId(invoiceLineId);
+    }
+    InvoiceLinesHelper invoiceLinesHelper = new InvoiceLinesHelper(okapiHeaders, vertxContext, lang);
+    invoiceLinesHelper.updateInvoiceLine(invoiceLine)
+      .thenAccept(v -> asyncResultHandler.handle(succeededFuture(invoiceLinesHelper.buildNoContentResponse())))
+      .exceptionally(t -> handleErrorResponse(asyncResultHandler, invoiceLinesHelper, t));
   }
 
   @Validate

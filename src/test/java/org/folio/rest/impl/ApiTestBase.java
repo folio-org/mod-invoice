@@ -42,6 +42,8 @@ public class ApiTestBase {
   static final String LANG_PARAM = "lang";
   static final String INVALID_LANG = "english";
 
+  public static final String ID_DOES_NOT_EXIST = "d25498e7-3ae6-45fe-9612-ec99e2700d2f";
+  public static final String ID_FOR_INTERNAL_SERVER_ERROR = "168f8a86-d26c-406e-813f-c7527f241ac3";
 
   static {
     System.setProperty(LoggerFactory.LOGGER_DELEGATE_FACTORY_CLASS_NAME, "io.vertx.core.logging.Log4j2LogDelegateFactory");
@@ -119,11 +121,15 @@ public class ApiTestBase {
             .response();
   }
 
+  Response verifyPut(String url, String body, String expectedContentType, int expectedCode) {
+    return verifyPut(url, body, prepareHeaders(X_OKAPI_URL, X_OKAPI_TENANT, X_OKAPI_TOKEN), expectedContentType, expectedCode);
+  }
 
   Response verifyPut(String url, String body, Headers headers, String expectedContentType, int expectedCode) {
     return RestAssured
       .with()
         .headers(headers)
+        .header(X_OKAPI_URL)
         .body(body)
         .contentType(APPLICATION_JSON)
       .put(url)
