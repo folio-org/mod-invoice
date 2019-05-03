@@ -36,7 +36,11 @@
         {
           "methods": ["PUT"],
           "pathPattern": "/invoice/invoices/{id}",
-          "permissionsRequired": ["invoice.invoices.item.put"]
+          "permissionsRequired": ["invoice.invoices.item.put"],
+          "modulePermissions": [
+            "invoice-storage.invoices.item.put",
+            "invoice-storage.invoices.item.get"
+          ]
         },
         {
           "methods": ["DELETE"],

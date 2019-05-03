@@ -46,6 +46,7 @@ import static org.folio.rest.impl.InvoicesApiTest.INVOICE_MOCK_DATA_PATH;
 import static org.folio.rest.impl.InvoiceLinesApiTest.INVOICE_LINES_MOCK_DATA_PATH;
 import static org.folio.rest.impl.InvoicesApiTest.*;
 import static org.junit.Assert.fail;
+
 public class MockServer {
 
   private static final Logger logger = LoggerFactory.getLogger(MockServer.class);
@@ -107,6 +108,7 @@ public class MockServer {
 
     router.route(HttpMethod.DELETE, resourceByIdPath(INVOICES, ID_PATH_PARAM)).handler(ctx -> handleDeleteRequest(ctx, INVOICES));
 
+    router.route(HttpMethod.PUT, resourceByIdPath(INVOICES, ID_PATH_PARAM)).handler(ctx -> handlePutGenericSubObj(ctx, INVOICES));
     router.route(HttpMethod.PUT, resourceByIdPath(INVOICE_LINES, ID_PATH_PARAM)).handler(ctx -> handlePutGenericSubObj(ctx, INVOICE_LINES));
     return router;
   }
@@ -157,21 +159,24 @@ public class MockServer {
     logger.info("handleGetInvoiceById got: GET " + ctx.request().path());
     String id = ctx.request().getParam(ID);
     logger.info("id: " + id);
+    if (ID_FOR_INTERNAL_SERVER_ERROR.equals(id)) {
+      serverResponse(ctx, 500, APPLICATION_JSON, Response.Status.INTERNAL_SERVER_ERROR.getReasonPhrase());
+    } else {
+      try {
 
-    try {
+        String filePath = String.format("%s%s.json", INVOICE_MOCK_DATA_PATH, id);
 
-      String filePath = String.format("%s%s.json", INVOICE_MOCK_DATA_PATH, id);
+        JsonObject invoice = new JsonObject(getMockData(filePath));
 
-      JsonObject invoice = new JsonObject(getMockData(filePath));
-
-      // validate content against schema
-      Invoice invoiceSchema = invoice.mapTo(Invoice.class);
-      invoiceSchema.setId(id);
-      invoice = JsonObject.mapFrom(invoiceSchema);
-      addServerRqRsData(HttpMethod.GET, INVOICES, invoice);
-      serverResponse(ctx, 200, APPLICATION_JSON, invoice.encodePrettily());
-    } catch (IOException e) {
-      ctx.response().setStatusCode(404).end(id);
+        // validate content against schema
+        Invoice invoiceSchema = invoice.mapTo(Invoice.class);
+        invoiceSchema.setId(id);
+        invoice = JsonObject.mapFrom(invoiceSchema);
+        addServerRqRsData(HttpMethod.GET, INVOICES, invoice);
+        serverResponse(ctx, 200, APPLICATION_JSON, invoice.encodePrettily());
+      } catch (IOException e) {
+        ctx.response().setStatusCode(404).end(id);
+      }
     }
   }
 
@@ -247,7 +252,6 @@ public class MockServer {
     } else {
       ctx.response()
         .setStatusCode(204)
-        .putHeader(HttpHeaders.CONTENT_TYPE, APPLICATION_JSON)
         .end();
     }
   }
@@ -280,7 +284,6 @@ public class MockServer {
       serverResponse(ctx, 500, APPLICATION_JSON, Response.Status.INTERNAL_SERVER_ERROR.getReasonPhrase());
     } else {
       ctx.response()
-        .putHeader(HttpHeaders.CONTENT_TYPE, APPLICATION_JSON)
         .setStatusCode(204)
         .end();
     }

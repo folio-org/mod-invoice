@@ -69,9 +69,16 @@ public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
 
   @Validate
   @Override
-  public void putInvoiceInvoicesById(String id, String lang, Invoice entity, Map<String, String> okapiHeaders,
-                                     Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
-    asyncResultHandler.handle(succeededFuture(PutInvoiceInvoicesByIdResponse.respond500WithTextPlain(NOT_SUPPORTED)));
+  public void putInvoiceInvoicesById(String id, String lang, Invoice invoice, Map<String, String> okapiHeaders,
+      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+
+    invoice.setId(id);
+
+    InvoiceHelper helper = new InvoiceHelper(okapiHeaders, vertxContext, lang);
+
+    helper.updateInvoice(invoice)
+      .thenAccept(ok -> asyncResultHandler.handle(succeededFuture(helper.buildNoContentResponse())))
+      .exceptionally(fail -> handleErrorResponse(asyncResultHandler, helper, fail));
   }
 
   @Validate
@@ -123,7 +130,7 @@ public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
     if (StringUtils.isEmpty(invoiceLine.getId())) {
       invoiceLine.setId(invoiceLineId);
     }
-    InvoiceLinesHelper invoiceLinesHelper = new InvoiceLinesHelper(okapiHeaders, vertxContext, lang);
+    InvoiceLineHelper invoiceLinesHelper = new InvoiceLineHelper(okapiHeaders, vertxContext, lang);
     invoiceLinesHelper.updateInvoiceLine(invoiceLine)
       .thenAccept(v -> asyncResultHandler.handle(succeededFuture(invoiceLinesHelper.buildNoContentResponse())))
       .exceptionally(t -> handleErrorResponse(asyncResultHandler, invoiceLinesHelper, t));
