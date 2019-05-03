@@ -171,7 +171,7 @@ public class InvoicesApiTest extends ApiTestBase {
 
   @Test
   public void testPostInvoicingInvoicesWithInvoiceNumberGenerationFail() throws IOException {
-    logger.info("=== Test create invoice without with error from storage on folioInvoiceNo generation  ===");
+    logger.info("=== Test create invoice with error from storage on folioInvoiceNo generation  ===");
 
     Invoice reqData = getMockAsJson(INVOICE_SAMPLE_PATH).mapTo(Invoice.class);
     reqData.setId(null);

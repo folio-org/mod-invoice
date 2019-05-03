@@ -8,9 +8,12 @@ import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.hasSize;
 import static org.junit.Assert.assertThat;
 
+import java.io.IOException;
+
 import org.folio.rest.jaxrs.model.InvoiceLine;
 import org.junit.Test;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_LINE_NUMBER;
+import static org.folio.rest.impl.MockServer.INVOICE_LINE_NUMBER_ERROR_X_OKAPI_TENANT;
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 import static javax.ws.rs.core.MediaType.TEXT_PLAIN;
 
@@ -61,6 +64,18 @@ public class InvoiceLinesApiTest extends ApiTestBase {
 
     assertThat(invoiceId, notNullValue());
     assertThat(InvoiceLineNo, notNullValue());
-//    assertThat(MockServer.serverRqRs.get(INVOICE_LINE_NUMBER, HttpMethod.GET), hasSize(1));
+    assertThat(MockServer.serverRqRs.get(INVOICE_LINE_NUMBER, HttpMethod.GET), hasSize(1));
+  }
+  
+  @Test
+  public void testPostInvoicingInvoiceLinesWithInvoiceLineNumberGenerationFail() throws IOException {
+    logger.info("=== Test create invoice with error from storage on invoiceLineNo generation  ===");
+
+    InvoiceLine reqData = getMockAsJson(INVOICE_LINE_SAMPLE_PATH).mapTo(InvoiceLine.class);
+    reqData.setId(null);
+    reqData.setInvoiceLineNumber(null);
+    String body = getMockData(INVOICE_LINE_SAMPLE_PATH);
+
+    verifyPostResponse(INVOICE_LINES_PATH, body, prepareHeaders(INVOICE_LINE_NUMBER_ERROR_X_OKAPI_TENANT), APPLICATION_JSON, 500);
   }
 }

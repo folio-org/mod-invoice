@@ -1,13 +1,13 @@
 package org.folio.rest.impl;
 
+import static io.vertx.core.json.JsonObject.mapFrom;
+import static org.folio.invoices.utils.HelperUtils.getInvoiceById;
+import static org.folio.invoices.utils.HelperUtils.handleGetRequest;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_LINES;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_LINE_NUMBER;
 import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
-import static org.folio.invoices.utils.HelperUtils.handleGetRequest;
-import static org.folio.invoices.utils.HelperUtils.getInvoiceById;
 
 import java.util.Map;
-import static io.vertx.core.json.JsonObject.mapFrom;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
@@ -15,7 +15,6 @@ import java.util.concurrent.CompletionStage;
 
 import javax.ws.rs.core.Response;
 
-import io.vertx.core.json.JsonObject;
 import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.invoices.utils.ErrorCodes;
 import org.folio.invoices.utils.HelperUtils;
@@ -24,6 +23,7 @@ import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.jaxrs.model.InvoiceLine;
 
 import io.vertx.core.Context;
+import io.vertx.core.json.JsonObject;
 
 public class InvoiceLineHelper extends AbstractHelper {
 

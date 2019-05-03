@@ -58,9 +58,9 @@ public class MockServer {
   private static final String INVOICE_NUMBER_ERROR_TENANT = "invoice_number_error_tenant";
   private static final String ERROR_TENANT = "error_tenant";
   static final Header INVOICE_NUMBER_ERROR_X_OKAPI_TENANT = new Header(OKAPI_HEADER_TENANT, INVOICE_NUMBER_ERROR_TENANT);
-  static final Header ERROR_X_OKAPI_TENANT = new Header(OKAPI_HEADER_TENANT, ERROR_TENANT);
   private static final String INVOICE_LINE_NUMBER_ERROR_TENANT = "invoice_line_number_error_tenant";
   static final Header INVOICE_LINE_NUMBER_ERROR_X_OKAPI_TENANT = new Header(OKAPI_HEADER_TENANT, INVOICE_LINE_NUMBER_ERROR_TENANT);
+  static final Header ERROR_X_OKAPI_TENANT = new Header(OKAPI_HEADER_TENANT, ERROR_TENANT);
 
   private static final String ID_PATH_PARAM = ":" + ID;
   private static final String TOTAL_RECORDS = "totalRecords";
@@ -215,11 +215,11 @@ public class MockServer {
     } else {
       SequenceNumber seqNumber = new SequenceNumber();
       seqNumber.setSequenceNumber(INVOICE_LINE_NUMBER_VALUE);
-      ctx.response()
-        .setStatusCode(200)
-        .putHeader(HttpHeaders.CONTENT_TYPE, APPLICATION_JSON)
-        .end(JsonObject.mapFrom(seqNumber).encodePrettily());
+      JsonObject jsonSequence = JsonObject.mapFrom(seqNumber);
+      addServerRqRsData(HttpMethod.GET, INVOICE_LINE_NUMBER, jsonSequence);
+      serverResponse(ctx, 200, APPLICATION_JSON, jsonSequence.encodePrettily());
     }
+    
   }
   
   private void handleDeleteRequest(RoutingContext ctx, String type) {
