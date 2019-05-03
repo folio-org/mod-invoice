@@ -46,6 +46,7 @@ import static org.folio.rest.impl.ApiTestBase.ID_FOR_INTERNAL_SERVER_ERROR;
 import static org.folio.rest.impl.InvoicesApiTest.BAD_QUERY;
 import static org.folio.rest.impl.InvoicesApiTest.EXISTING_VENDOR_INV_NO;
 import static org.folio.rest.impl.InvoicesApiTest.INVOICE_MOCK_DATA_PATH;
+import static org.folio.rest.impl.InvoiceLinesApiTest.INVOICE_LINES_MOCK_DATA_PATH;
 import static org.junit.Assert.fail;
 public class MockServer {
 
@@ -102,6 +103,7 @@ public class MockServer {
     router.route(HttpMethod.GET, resourcesPath(INVOICES)).handler(this::handleGetInvoices);
     router.route(HttpMethod.GET, resourceByIdPath(INVOICES, ID_PATH_PARAM)).handler(this::handleGetInvoiceById);
     router.route(HttpMethod.GET, resourcesPath(FOLIO_INVOICE_NUMBER)).handler(this::handleGetFolioInvoiceNumber);
+    router.route(HttpMethod.GET, resourceByIdPath(INVOICE_LINES, ID_PATH_PARAM)).handler(this::handleGetInvoiceLineById);
 
     router.route(HttpMethod.DELETE, resourceByIdPath(INVOICES, ID_PATH_PARAM)).handler(ctx -> handleDeleteRequest(ctx, INVOICES));
 
@@ -141,6 +143,28 @@ public class MockServer {
       invoice = JsonObject.mapFrom(invoiceSchema);
       addServerRqRsData(HttpMethod.GET, INVOICES, invoice);
       serverResponse(ctx, 200, APPLICATION_JSON, invoice.encodePrettily());
+    } catch (IOException e) {
+      ctx.response().setStatusCode(404).end(id);
+    }
+  }
+
+  private void handleGetInvoiceLineById(RoutingContext ctx) {
+    logger.info("handleGetInvoiceLinesById got: GET " + ctx.request().path());
+    String id = ctx.request().getParam(ID);
+    logger.info("id: " + id);
+
+    try {
+      String filePath = null;
+      filePath = String.format("%s%s.json", INVOICE_LINES_MOCK_DATA_PATH, id);
+
+      JsonObject invoiceLine = new JsonObject(getMockData(filePath));
+
+      // validate content against schema
+      org.folio.rest.acq.model.InvoiceLine invoiceSchema = invoiceLine.mapTo(org.folio.rest.acq.model.InvoiceLine.class);
+      invoiceSchema.setId(id);
+      invoiceLine = JsonObject.mapFrom(invoiceSchema);
+      addServerRqRsData(HttpMethod.GET, INVOICE_LINES, invoiceLine);
+      serverResponse(ctx, 200, APPLICATION_JSON, invoiceLine.encodePrettily());
     } catch (IOException e) {
       ctx.response().setStatusCode(404).end(id);
     }
@@ -234,6 +258,4 @@ public class MockServer {
         .end();
     }
   }
-
-
 }
