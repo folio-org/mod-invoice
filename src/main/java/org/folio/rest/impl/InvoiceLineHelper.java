@@ -105,7 +105,7 @@ public class InvoiceLineHelper extends AbstractHelper {
   
   private CompletionStage<InvoiceLine> createInvoiceLineSummary(InvoiceLine invoiceLine, JsonObject line) {
     return createRecordInStorage(line, resourcesPath(INVOICE_LINES))
-      // On success set id and number of the created Invoice Line to composite object
+      // After generating line number, set id and line number of the created Invoice Line
       .thenApply(id -> invoiceLine.withId(id).withInvoiceLineNumber(line.getString(INVOICE_LINE_NUMBER)));
   }
 
