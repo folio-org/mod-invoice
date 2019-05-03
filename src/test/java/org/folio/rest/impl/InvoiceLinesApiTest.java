@@ -4,6 +4,7 @@ import io.restassured.response.Response;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
+import org.folio.rest.jaxrs.model.Errors;
 import org.folio.rest.jaxrs.model.InvoiceLine;
 import org.junit.Test;
 

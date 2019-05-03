@@ -38,6 +38,7 @@ import static org.folio.rest.RestVerticle.OKAPI_HEADER_TENANT;
 import static org.folio.rest.impl.AbstractHelper.ID;
 import static org.folio.rest.impl.ApiTestBase.FOLIO_INVOICE_NUMBER_VALUE;
 import static org.folio.rest.impl.ApiTestBase.getMockData;
+import static org.folio.rest.impl.InvoiceLinesApiTest.INVOICE_LINES_MOCK_DATA_PATH;
 import static org.folio.rest.impl.InvoicesApiTest.*;
 import static org.junit.Assert.fail;
 
