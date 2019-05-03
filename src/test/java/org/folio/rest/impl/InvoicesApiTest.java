@@ -16,7 +16,6 @@ import static javax.ws.rs.core.MediaType.TEXT_PLAIN;
 import static org.folio.invoices.utils.ResourcePathResolver.FOLIO_INVOICE_NUMBER;
 import static org.folio.rest.impl.AbstractHelper.ID;
 import static org.folio.rest.impl.MockServer.ERROR_X_OKAPI_TENANT;
-import static org.folio.rest.impl.MockServer.ID_DOES_NOT_EXIST;
 import static org.folio.rest.impl.MockServer.INVOICE_NUMBER_ERROR_X_OKAPI_TENANT;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasSize;

@@ -11,10 +11,7 @@ import org.folio.rest.jaxrs.model.Errors;
 import org.folio.rest.jaxrs.model.InvoiceLine;
 import org.junit.Test;
 import java.net.MalformedURLException;
-import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
-import static javax.ws.rs.core.MediaType.TEXT_PLAIN;
 import static org.folio.rest.impl.InvoicesApiTest.BAD_QUERY;
-import static org.folio.rest.impl.InvoicesApiTest.ID_FOR_INTERNAL_SERVER_ERROR;
 import static org.folio.rest.impl.AbstractHelper.ID;
 import static org.junit.Assert.assertEquals;
 
@@ -98,7 +95,7 @@ public class InvoiceLinesApiTest extends ApiTestBase {
   public void testPutInvoicingInvoiceLinesByIdTest() throws Exception {
     String reqData = getMockData(INVOICE_LINE_SAMPLE_PATH);
 
-    verifyPut(String.format(INVOICE_LINE_ID_PATH, UUID), reqData, "" , 204);
+    verifyPut(String.format(INVOICE_LINE_ID_PATH, VALID_UUID), reqData, "" , 204);
   }
 
   @Test
@@ -132,7 +129,7 @@ public class InvoiceLinesApiTest extends ApiTestBase {
   @Test
   public void testPutInvoicingInvoiceLinesInvalidLang() throws Exception {
     String reqData = getMockData(INVOICE_LINE_SAMPLE_PATH);
-    String endpoint = String.format(INVOICE_LINE_ID_PATH, UUID)
+    String endpoint = String.format(INVOICE_LINE_ID_PATH, VALID_UUID)
         + String.format("?%s=%s", LANG_PARAM, INVALID_LANG);
 
     verifyPut(endpoint, reqData, TEXT_PLAIN, 400);
