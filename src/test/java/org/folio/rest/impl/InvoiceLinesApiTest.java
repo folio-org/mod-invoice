@@ -34,9 +34,10 @@ public class InvoiceLinesApiTest extends ApiTestBase {
   private static final String INVOICE_LINE_ID_PATH = "/invoice/invoice-lines/%s";
   private static final String INVOICE_LINES_PATH = "/invoice/invoice-lines";
   private static final String INVOICE_LINE_SAMPLE_PATH = "mockdata/invoiceLines/invoice_line.json";
-  private static final String INVOICE_LINE_MISSING_ID__PATH = "mockdata/invoiceLines/invoice_line_missing_invoice_id.json";
+  private static final String INVOICE_LINE_MISSING_ID_PATH = "mockdata/invoiceLines/invoice_line_missing_invoice_id.json";
   private static final String BAD_INVOICE_LINE_ID = "5a34ae0e-5a11-4337-be95-1a20cfdc3161";
-  
+  private static final String INVOICE_ID = "invoiceId";
+  private static final String NULL = "null";
   static final Header NON_EXIST_CONFIG_X_OKAPI_TENANT = new Header(OKAPI_HEADER_TENANT, "invoicetest");
   static final String INVOICE_LINES_MOCK_DATA_PATH = BASE_MOCK_DATA_PATH + "invoiceLines/";
   private static final String INVOICE_LINES_LIST_PATH = INVOICE_LINES_MOCK_DATA_PATH + "invoice_lines.json";
@@ -101,9 +102,6 @@ public class InvoiceLinesApiTest extends ApiTestBase {
   public void testPostInvoicingInvoiceLinesWithInvoiceLineNumberGenerationFail() throws IOException {
     logger.info("=== Test create invoice with error from storage on invoiceLineNo generation  ===");
 
-    InvoiceLine reqData = getMockAsJson(INVOICE_LINE_SAMPLE_PATH).mapTo(InvoiceLine.class);
-    reqData.setId(null);
-    reqData.setInvoiceLineNumber(null);
     String body = getMockData(INVOICE_LINE_SAMPLE_PATH);
     verifyPostResponse(INVOICE_LINES_PATH, body, prepareHeaders(INVOICE_LINE_NUMBER_ERROR_X_OKAPI_TENANT), APPLICATION_JSON, 500);
   }
@@ -112,10 +110,12 @@ public class InvoiceLinesApiTest extends ApiTestBase {
   public void testPostInvoiceLinesByIdLineWithoutId() throws IOException {
     logger.info("=== Test Post Invoice Lines By Id (empty id in body) ===");
 
-    Errors resp = verifyPostResponse(INVOICE_LINES_PATH, getMockData(INVOICE_LINE_MISSING_ID__PATH),
+    Errors resp = verifyPostResponse(INVOICE_LINES_PATH, getMockData(INVOICE_LINE_MISSING_ID_PATH),
       prepareHeaders(NON_EXIST_CONFIG_X_OKAPI_TENANT), APPLICATION_JSON, 422).as(Errors.class);
 
     assertEquals(1, resp.getErrors().size());
+    assertEquals(INVOICE_ID, resp.getErrors().get(0).getParameters().get(0).getKey());
+    assertEquals(NULL, resp.getErrors().get(0).getParameters().get(0).getValue());
   }
   
   @Test
