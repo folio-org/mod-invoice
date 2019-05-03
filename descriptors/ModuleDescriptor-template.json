@@ -181,7 +181,8 @@
         "invoice.invoice-lines.item.delete",
         "invoice.invoice-number.item.get",
         "invoice.invoice-number.item.post",
-        "invoice-storage.invoice-line-number.get"
+        "invoice-storage.invoice-line-number.get",
+        "invoice-storage.invoices.item.get"
       ],
       "visible": false
     }
