@@ -5,20 +5,17 @@ import io.vertx.core.http.HttpMethod;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
+import java.io.IOException;
 import org.folio.rest.jaxrs.model.Errors;
 import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.jaxrs.model.InvoiceCollection;
 import org.junit.Test;
 
-import java.io.IOException;
-
-import static io.restassured.RestAssured.given;
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 import static javax.ws.rs.core.MediaType.TEXT_PLAIN;
 import static org.folio.invoices.utils.ResourcePathResolver.FOLIO_INVOICE_NUMBER;
 import static org.folio.rest.impl.AbstractHelper.ID;
 import static org.folio.rest.impl.MockServer.ERROR_X_OKAPI_TENANT;
-import static org.folio.rest.impl.MockServer.ID_DOES_NOT_EXIST;
 import static org.folio.rest.impl.MockServer.INVOICE_NUMBER_ERROR_X_OKAPI_TENANT;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasSize;
@@ -27,23 +24,19 @@ import static org.junit.Assert.assertEquals;
 
 public class InvoicesApiTest extends ApiTestBase {
 
-	private static final Logger logger = LoggerFactory.getLogger(InvoicesApiTest.class);
+  private static final Logger logger = LoggerFactory.getLogger(InvoicesApiTest.class);
 
-	private static final String INVOICE_ID_PATH = "/invoice/invoices/%s";
-	private static final String INVOICE_PATH = "/invoice/invoices";
+  private static final String INVOICE_ID_PATH = "/invoice/invoices/%s";
+  private static final String INVOICE_PATH = "/invoice/invoices";
   private static final String INVOICE_PATH_BAD = "/invoice/bad";
-
   private static final String INVOICE_NUMBER_PATH = "/invoice/invoice-number";
-
-
-	static final String INVOICE_MOCK_DATA_PATH = BASE_MOCK_DATA_PATH + "invoices/";
+  static final String INVOICE_MOCK_DATA_PATH = BASE_MOCK_DATA_PATH + "invoices/";
   private static final String INVOICES_LIST_PATH = INVOICE_MOCK_DATA_PATH + "invoices.json";
   private static final String INVOICE_SAMPLE_PATH = INVOICE_MOCK_DATA_PATH + "invoice.json";
 
   static final String BAD_QUERY = "unprocessableQuery";
   private static final String VENDOR_INVOICE_NUMBER_FIELD = "vendorInvoiceNo";
   static final String EXISTING_VENDOR_INV_NO = "existingVendorInvoiceNo";
-  static final String ID_FOR_INTERNAL_SERVER_ERROR = "168f8a86-d26c-406e-813f-c7527f241ac3";
   private static final String BAD_INVOICE_ID = "5a34ae0e-5a11-4337-be95-1a20cfdc3161";
 
   @Test
