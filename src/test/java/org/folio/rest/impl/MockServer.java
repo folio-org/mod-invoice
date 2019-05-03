@@ -130,21 +130,24 @@ public class MockServer {
     logger.info("handleGetInvoiceById got: GET " + ctx.request().path());
     String id = ctx.request().getParam(ID);
     logger.info("id: " + id);
+    if (ID_FOR_INTERNAL_SERVER_ERROR.equals(id)) {
+      serverResponse(ctx, 500, APPLICATION_JSON, Response.Status.INTERNAL_SERVER_ERROR.getReasonPhrase());
+    } else {
+      try {
 
-    try {
+        String filePath = String.format("%s%s.json", INVOICE_MOCK_DATA_PATH, id);
 
-      String filePath = String.format("%s%s.json", INVOICE_MOCK_DATA_PATH, id);
+        JsonObject invoice = new JsonObject(getMockData(filePath));
 
-      JsonObject invoice = new JsonObject(getMockData(filePath));
-
-      // validate content against schema
-      Invoice invoiceSchema = invoice.mapTo(Invoice.class);
-      invoiceSchema.setId(id);
-      invoice = JsonObject.mapFrom(invoiceSchema);
-      addServerRqRsData(HttpMethod.GET, INVOICES, invoice);
-      serverResponse(ctx, 200, APPLICATION_JSON, invoice.encodePrettily());
-    } catch (IOException e) {
-      ctx.response().setStatusCode(404).end(id);
+        // validate content against schema
+        Invoice invoiceSchema = invoice.mapTo(Invoice.class);
+        invoiceSchema.setId(id);
+        invoice = JsonObject.mapFrom(invoiceSchema);
+        addServerRqRsData(HttpMethod.GET, INVOICES, invoice);
+        serverResponse(ctx, 200, APPLICATION_JSON, invoice.encodePrettily());
+      } catch (IOException e) {
+        ctx.response().setStatusCode(404).end(id);
+      }
     }
   }
 

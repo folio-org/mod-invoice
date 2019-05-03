@@ -15,13 +15,16 @@ import java.io.IOException;
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 import static javax.ws.rs.core.MediaType.TEXT_PLAIN;
 import static org.folio.invoices.utils.ResourcePathResolver.FOLIO_INVOICE_NUMBER;
+import static org.folio.invoices.utils.ResourcePathResolver.INVOICES;
 import static org.folio.rest.impl.AbstractHelper.ID;
 import static org.folio.rest.impl.MockServer.ERROR_X_OKAPI_TENANT;
 import static org.folio.rest.impl.MockServer.ID_DOES_NOT_EXIST;
 import static org.folio.rest.impl.MockServer.INVOICE_NUMBER_ERROR_X_OKAPI_TENANT;
+import static org.folio.rest.impl.MockServer.serverRqRs;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.notNullValue;
+import static org.hamcrest.core.IsNot.not;
 import static org.junit.Assert.assertEquals;
 
 public class InvoicesApiTest extends ApiTestBase {
@@ -122,11 +125,16 @@ public class InvoicesApiTest extends ApiTestBase {
   public void testUpdateValidInvoice() {
     logger.info("=== Test update invoice by id ===");
 
+     String newInvoiceNumber = "testFolioInvoiceNumber";
+
   	Invoice reqData = getMockAsJson(INVOICE_SAMPLE_PATH).mapTo(Invoice.class);
+  	reqData.setFolioInvoiceNo(newInvoiceNumber);
+
     String id = reqData.getId();
   	String jsonBody = JsonObject.mapFrom(reqData).encode();
 
   	verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, "", 204);
+  	assertThat(serverRqRs.get(INVOICES, HttpMethod.PUT).get(0).getString(FOLIO_INVOICE_NUMBER), not(newInvoiceNumber));
   }
 
   @Test

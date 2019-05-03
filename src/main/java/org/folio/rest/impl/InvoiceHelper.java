@@ -100,7 +100,16 @@ public class InvoiceHelper extends AbstractHelper {
 
   public CompletableFuture<Void> updateInvoice(Invoice invoice) {
     logger.debug("Updating invoice...");
-    JsonObject jsonInvoice = JsonObject.mapFrom(invoice);
-    return handlePutRequest(resourceByIdPath(INVOICES, invoice.getId()), jsonInvoice, httpClient, ctx, okapiHeaders, logger);
+
+    return setSystemGeneratedData(invoice)
+      .thenCompose(updatedInvoice -> {
+        JsonObject jsonInvoice = JsonObject.mapFrom(updatedInvoice);
+        return handlePutRequest(resourceByIdPath(INVOICES, invoice.getId()), jsonInvoice, httpClient, ctx, okapiHeaders, logger);
+      });
+  }
+
+  private CompletableFuture<Invoice> setSystemGeneratedData(Invoice invoice) {
+    return getInvoice(invoice.getId())
+      .thenApply(invoiceFromStorage -> invoice.withFolioInvoiceNo(invoiceFromStorage.getFolioInvoiceNo()));
   }
 }
