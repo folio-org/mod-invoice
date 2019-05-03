@@ -45,12 +45,12 @@ public class InvoiceLinesApiTest extends ApiTestBase {
 
   @Test
   public void getInvoicingInvoiceLinesByIdTest() {
-    verifyGet(String.format(INVOICE_LINE_ID_PATH, _UUID), TEXT_PLAIN, 500);
+    verifyGet(String.format(INVOICE_LINE_ID_PATH, VALID_UUID), TEXT_PLAIN, 500);
   }
 
   @Test
   public void deleteInvoicingInvoiceLinesByIdTest() {
-    verifyDeleteResponse(String.format(INVOICE_LINE_ID_PATH, _UUID), TEXT_PLAIN, 500);
+    verifyDeleteResponse(String.format(INVOICE_LINE_ID_PATH, VALID_UUID), TEXT_PLAIN, 500);
   }
 
   @Test

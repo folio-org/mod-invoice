@@ -132,7 +132,7 @@ public class InvoicesApiTest extends ApiTestBase {
   public void testDeleteInvoicingInvoicesById() {
     logger.info("=== Test delete invoice by id ===");
 
-    verifyDeleteResponse(String.format(INVOICE_ID_PATH, _UUID), "", 204);
+    verifyDeleteResponse(String.format(INVOICE_ID_PATH, VALID_UUID), "", 204);
   }
 
   @Test
@@ -190,7 +190,7 @@ public class InvoicesApiTest extends ApiTestBase {
 
   @Test
   public void testDeleteInvoiceByValidId() {
-    verifyDeleteResponse(String.format(INVOICE_ID_PATH, _UUID), "", 204);
+    verifyDeleteResponse(String.format(INVOICE_ID_PATH, VALID_UUID), "", 204);
   }
 
   @Test
@@ -211,7 +211,7 @@ public class InvoicesApiTest extends ApiTestBase {
   @Test
   public void testDeleteInvoiceBadLanguage() {
 
-    String endpoint = String.format(INVOICE_ID_PATH, _UUID) + String.format("?%s=%s", LANG_PARAM, INVALID_LANG) ;
+    String endpoint = String.format(INVOICE_ID_PATH, VALID_UUID) + String.format("?%s=%s", LANG_PARAM, INVALID_LANG) ;
 
     verifyDeleteResponse(endpoint, TEXT_PLAIN, 400);
   }
