@@ -20,8 +20,8 @@ public class InvoiceLinesApiTest extends ApiTestBase {
 
   private static final Logger logger = LoggerFactory.getLogger(InvoiceLinesApiTest.class);
 
-  private static final String INVOICE_LINE_ID_PATH = "/invoice/invoice-lines/%s";
   private static final String INVOICE_LINES_PATH = "/invoice/invoice-lines";
+  private static final String INVOICE_LINE_ID_PATH = INVOICE_LINES_PATH + "/%s";
   private static final String INVOICE_LINE_SAMPLE_PATH = "mockdata/invoiceLines/invoice_line.json";
 
   static final String INVOICE_LINES_MOCK_DATA_PATH = BASE_MOCK_DATA_PATH + "invoiceLines/";
