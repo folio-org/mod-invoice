@@ -4,23 +4,22 @@ import static org.folio.invoices.utils.HelperUtils.getInvoiceLineById;
 import static org.folio.invoices.utils.HelperUtils.handlePutRequest;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_LINES;
 import static org.folio.invoices.utils.ResourcePathResolver.resourceByIdPath;
+import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
+
+import static org.apache.commons.lang3.StringUtils.EMPTY;
+import static org.apache.commons.lang3.StringUtils.isEmpty;
+import static org.folio.invoices.utils.HelperUtils.*;
 
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
+import io.vertx.core.Context;
 import io.vertx.core.json.JsonObject;
 import me.escoffier.vertx.completablefuture.VertxCompletableFuture;
 import org.folio.rest.jaxrs.model.InvoiceLine;
 import org.folio.rest.jaxrs.model.InvoiceLineCollection;
 
-import java.util.Map;
-import java.util.concurrent.CompletableFuture;
 
-import static org.apache.commons.lang3.StringUtils.EMPTY;
-import static org.apache.commons.lang3.StringUtils.isEmpty;
-import static org.folio.invoices.utils.HelperUtils.*;
-import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_LINES;
-import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
 
 public class InvoiceLineHelper extends AbstractHelper {
 

@@ -161,7 +161,7 @@ public class InvoicesApiTest extends ApiTestBase {
   @Test
   public void testUpdateInvoiceBadLanguage() throws IOException {
     String jsonBody  = getMockData(INVOICE_SAMPLE_PATH);
-    String endpoint = String.format(INVOICE_ID_WITH_LANG_PATH, UUID, INVALID_LANG) ;
+    String endpoint = String.format(INVOICE_ID_WITH_LANG_PATH, VALID_UUID, INVALID_LANG) ;
 
     verifyPut(endpoint, jsonBody, TEXT_PLAIN, 400);
   }
@@ -242,7 +242,7 @@ public class InvoicesApiTest extends ApiTestBase {
   @Test
   public void testDeleteInvoiceBadLanguage() {
 
-    String endpoint = String.format(INVOICE_ID_WITH_LANG_PATH, UUID, INVALID_LANG) ;
+    String endpoint = String.format(INVOICE_ID_WITH_LANG_PATH, VALID_UUID, INVALID_LANG) ;
 
     verifyDeleteResponse(endpoint, TEXT_PLAIN, 400);
   }
