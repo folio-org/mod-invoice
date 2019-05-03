@@ -1,9 +1,14 @@
 package org.folio.rest.impl;
 
 import static org.folio.invoices.utils.HelperUtils.getInvoiceLineById;
+import static org.folio.invoices.utils.HelperUtils.handlePutRequest;
+import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_LINES;
+import static org.folio.invoices.utils.ResourcePathResolver.resourceByIdPath;
 
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+
+import io.vertx.core.json.JsonObject;
 import me.escoffier.vertx.completablefuture.VertxCompletableFuture;
 
 import org.folio.rest.jaxrs.model.InvoiceLine;
@@ -33,5 +38,10 @@ public class InvoiceLineHelper extends AbstractHelper {
       future.completeExceptionally(e);
     }
     return future;
+  }
+
+  public CompletableFuture<Void> updateInvoiceLine(InvoiceLine invoiceLine) {
+    return handlePutRequest(resourceByIdPath(INVOICE_LINES, invoiceLine.getId()),
+      JsonObject.mapFrom(invoiceLine), httpClient, ctx, okapiHeaders, logger);
   }
 }

@@ -122,7 +122,8 @@ public class ApiTestBase {
   }
 
   Response verifyPut(String url, String body, String expectedContentType, int expectedCode) {
-    return verifyPut(url, body, prepareHeaders(X_OKAPI_URL, X_OKAPI_TENANT, X_OKAPI_TOKEN), expectedContentType, expectedCode);
+    Headers headers = prepareHeaders(X_OKAPI_URL, X_OKAPI_TENANT);
+    return verifyPut(url, body, headers,expectedContentType, expectedCode);
   }
 
   Response verifyPut(String url, String body, Headers headers, String expectedContentType, int expectedCode) {
