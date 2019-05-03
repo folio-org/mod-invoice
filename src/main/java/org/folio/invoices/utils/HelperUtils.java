@@ -109,37 +109,18 @@ public class HelperUtils {
     return future;
   }
 
-  public static CompletableFuture<Void> handleDeleteRequest(String url, HttpClientInterface httpClient, Context ctx,
-      Map<String, String> okapiHeaders, Logger logger) {
-    CompletableFuture<Void> future = new VertxCompletableFuture<>(ctx);
-
-    logger.debug(CALLING_ENDPOINT_MSG, HttpMethod.DELETE, url);
-
-    try {
-      httpClient.request(HttpMethod.DELETE, url, okapiHeaders)
-        .thenAccept(HelperUtils::verifyResponse)
-        .thenApply(future::complete)
-        .exceptionally(t -> {
-          logger.error(EXCEPTION_CALLING_ENDPOINT_MSG, t, HttpMethod.DELETE, url);
-          future.completeExceptionally(t);
-          return null;
-        });
-    } catch (Exception e) {
-      logger.error(EXCEPTION_CALLING_ENDPOINT_MSG, e, HttpMethod.DELETE, url);
-      future.completeExceptionally(e);
-    }
-
-    return future;
-  }
 
   /**
    * A common method to update an entry in the storage
    *
-   * @param recordData json to use for update operation
-   * @param endpoint endpoint
+   * @param recordData
+   *          json to use for update operation
+   * @param endpoint
+   *          endpoint
    */
-  public static CompletableFuture<Void> handlePutRequest(String endpoint, JsonObject recordData, HttpClientInterface httpClient,
-                                                         Context ctx, Map<String, String> okapiHeaders, Logger logger) {
+  public static CompletableFuture<Void> handlePutRequest(String endpoint, JsonObject recordData,
+      HttpClientInterface httpClient,
+      Context ctx, Map<String, String> okapiHeaders, Logger logger) {
     CompletableFuture<Void> future = new VertxCompletableFuture<>(ctx);
     try {
       if (logger.isDebugEnabled()) {
@@ -164,4 +145,26 @@ public class HelperUtils {
     return future;
   }
 
+  public static CompletableFuture<Void> handleDeleteRequest(String url, HttpClientInterface httpClient, Context ctx,
+      Map<String, String> okapiHeaders, Logger logger) {
+    CompletableFuture<Void> future = new VertxCompletableFuture<>(ctx);
+
+    logger.debug(CALLING_ENDPOINT_MSG, HttpMethod.DELETE, url);
+
+    try {
+      httpClient.request(HttpMethod.DELETE, url, okapiHeaders)
+        .thenAccept(HelperUtils::verifyResponse)
+        .thenApply(future::complete)
+        .exceptionally(t -> {
+          logger.error(EXCEPTION_CALLING_ENDPOINT_MSG, t, HttpMethod.DELETE, url);
+          future.completeExceptionally(t);
+          return null;
+        });
+    } catch (Exception e) {
+      logger.error(EXCEPTION_CALLING_ENDPOINT_MSG, e, HttpMethod.DELETE, url);
+      future.completeExceptionally(e);
+    }
+
+    return future;
+  }
 }
