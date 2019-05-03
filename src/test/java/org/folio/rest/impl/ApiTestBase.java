@@ -39,6 +39,7 @@ public class ApiTestBase {
 
   static final String BASE_MOCK_DATA_PATH = "mockdata/";
 
+  static final String INVOICE_LINE_NUMBER_VALUE = "1";
   static final String LANG_PARAM = "lang";
   static final String INVALID_LANG = "english";
 
