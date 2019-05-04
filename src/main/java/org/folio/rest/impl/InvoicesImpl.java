@@ -126,10 +126,11 @@ public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
   public void putInvoiceInvoiceLinesById(String invoiceLineId, String lang, InvoiceLine invoiceLine,
       Map<String, String> okapiHeaders,
       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+    InvoiceLineHelper invoiceLinesHelper = new InvoiceLineHelper(okapiHeaders, vertxContext, lang);
+
     if (StringUtils.isEmpty(invoiceLine.getId())) {
       invoiceLine.setId(invoiceLineId);
     }
-    InvoiceLineHelper invoiceLinesHelper = new InvoiceLineHelper(okapiHeaders, vertxContext, lang);
     invoiceLinesHelper.updateInvoiceLine(invoiceLine)
       .thenAccept(v -> asyncResultHandler.handle(succeededFuture(invoiceLinesHelper.buildNoContentResponse())))
       .exceptionally(t -> handleErrorResponse(asyncResultHandler, invoiceLinesHelper, t));
@@ -143,7 +144,7 @@ public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
 
     invoiceLineHelper
       .deleteInvoiceLine(id)
-      .thenAccept(invoices -> asyncResultHandler.handle(succeededFuture(invoiceLineHelper.buildNoContentResponse())))
+      .thenAccept(invoiceLine -> asyncResultHandler.handle(succeededFuture(invoiceLineHelper.buildNoContentResponse())))
       .exceptionally(t -> handleErrorResponse(asyncResultHandler, invoiceLineHelper, t));
   }
 

@@ -79,12 +79,12 @@ public class InvoiceLinesApiTest extends ApiTestBase {
   }
 
   @Test
-  public void deleteInvoiceInternalErrorOnStorageTest() {
+  public void deleteInvoiceLinesInternalErrorOnStorageTest() {
     verifyDeleteResponse(String.format(INVOICE_LINE_ID_PATH, ID_FOR_INTERNAL_SERVER_ERROR), APPLICATION_JSON, 500);
   }
 
   @Test
-  public void deleteInvoiceBadLanguageTest() {
+  public void deleteInvoiceLinesBadLanguageTest() {
     String endpoint = String.format(INVOICE_LINE_ID_PATH, UUID) + String.format("?%s=%s", LANG_PARAM, INVALID_LANG) ;
 
     verifyDeleteResponse(endpoint, TEXT_PLAIN, 400);
