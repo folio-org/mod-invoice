@@ -5,7 +5,7 @@ import static io.vertx.core.Future.succeededFuture;
 import java.util.Map;
 
 import javax.ws.rs.core.Response;
-
+import org.apache.commons.lang3.StringUtils;
 import org.folio.rest.annotations.Validate;
 import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.jaxrs.model.InvoiceLine;
@@ -23,7 +23,7 @@ public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
   private static final Logger logger = LoggerFactory.getLogger(InvoicesImpl.class);
   private static final String NOT_SUPPORTED = "Not supported";	// To overcome sonarcloud warning
   private static final String INVOICE_LOCATION_PREFIX = "/invoice/invoices/%s";
-  
+
   @Validate
   @Override
   public void postInvoiceInvoices(String lang, Invoice invoice, Map<String, String> okapiHeaders,
@@ -71,9 +71,16 @@ public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
 
   @Validate
   @Override
-  public void putInvoiceInvoicesById(String id, String lang, Invoice entity, Map<String, String> okapiHeaders,
+  public void putInvoiceInvoicesById(String id, String lang, Invoice invoice, Map<String, String> okapiHeaders,
       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
-    asyncResultHandler.handle(succeededFuture(PutInvoiceInvoicesByIdResponse.respond500WithTextPlain(NOT_SUPPORTED)));
+
+    invoice.setId(id);
+
+    InvoiceHelper helper = new InvoiceHelper(okapiHeaders, vertxContext, lang);
+
+    helper.updateInvoice(invoice)
+      .thenAccept(ok -> asyncResultHandler.handle(succeededFuture(helper.buildNoContentResponse())))
+      .exceptionally(fail -> handleErrorResponse(asyncResultHandler, helper, fail));
   }
 
   @Validate
@@ -116,9 +123,16 @@ public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
 
   @Validate
   @Override
-  public void putInvoiceInvoiceLinesById(String id, String lang, InvoiceLine entity, Map<String, String> okapiHeaders,
+  public void putInvoiceInvoiceLinesById(String invoiceLineId, String lang, InvoiceLine invoiceLine,
+      Map<String, String> okapiHeaders,
       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
-    asyncResultHandler.handle(succeededFuture(PutInvoiceInvoiceLinesByIdResponse.respond500WithTextPlain(NOT_SUPPORTED)));
+    if (StringUtils.isEmpty(invoiceLine.getId())) {
+      invoiceLine.setId(invoiceLineId);
+    }
+    InvoiceLineHelper invoiceLinesHelper = new InvoiceLineHelper(okapiHeaders, vertxContext, lang);
+    invoiceLinesHelper.updateInvoiceLine(invoiceLine)
+      .thenAccept(v -> asyncResultHandler.handle(succeededFuture(invoiceLinesHelper.buildNoContentResponse())))
+      .exceptionally(t -> handleErrorResponse(asyncResultHandler, invoiceLinesHelper, t));
   }
 
   @Validate

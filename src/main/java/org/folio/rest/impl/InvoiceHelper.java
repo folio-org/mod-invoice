@@ -1,5 +1,6 @@
 package org.folio.rest.impl;
 
+import static org.folio.invoices.utils.HelperUtils.handlePutRequest;
 import static org.folio.invoices.utils.ResourcePathResolver.FOLIO_INVOICE_NUMBER;
 import static org.folio.invoices.utils.HelperUtils.handleDeleteRequest;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICES;
@@ -96,5 +97,20 @@ public class InvoiceHelper extends AbstractHelper {
 
   public CompletableFuture<Void> deleteInvoice(String id) {
     return handleDeleteRequest(String.format(DELETE_INVOICE_BY_ID, id, lang), httpClient, ctx, okapiHeaders, logger);
+  }
+
+  public CompletableFuture<Void> updateInvoice(Invoice invoice) {
+    logger.debug("Updating invoice...");
+
+    return setSystemGeneratedData(invoice)
+      .thenCompose(updatedInvoice -> {
+        JsonObject jsonInvoice = JsonObject.mapFrom(updatedInvoice);
+        return handlePutRequest(resourceByIdPath(INVOICES, invoice.getId()), jsonInvoice, httpClient, ctx, okapiHeaders, logger);
+      });
+  }
+
+  private CompletableFuture<Invoice> setSystemGeneratedData(Invoice invoice) {
+    return getInvoice(invoice.getId())
+      .thenApply(invoiceFromStorage -> invoice.withFolioInvoiceNo(invoiceFromStorage.getFolioInvoiceNo()));
   }
 }

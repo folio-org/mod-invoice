@@ -41,9 +41,10 @@ import static org.folio.rest.RestVerticle.OKAPI_HEADER_TENANT;
 import static org.folio.rest.impl.AbstractHelper.ID;
 import static org.folio.rest.impl.ApiTestBase.FOLIO_INVOICE_NUMBER_VALUE;
 import static org.folio.rest.impl.ApiTestBase.getMockData;
+import static org.folio.rest.impl.ApiTestBase.ID_DOES_NOT_EXIST;
+import static org.folio.rest.impl.ApiTestBase.ID_FOR_INTERNAL_SERVER_ERROR;
 import static org.folio.rest.impl.InvoicesApiTest.BAD_QUERY;
 import static org.folio.rest.impl.InvoicesApiTest.EXISTING_VENDOR_INV_NO;
-import static org.folio.rest.impl.InvoicesApiTest.ID_FOR_INTERNAL_SERVER_ERROR;
 import static org.folio.rest.impl.InvoicesApiTest.INVOICE_MOCK_DATA_PATH;
 import static org.folio.rest.impl.InvoiceLinesApiTest.INVOICE_LINES_MOCK_DATA_PATH;
 import static org.junit.Assert.fail;
@@ -60,9 +61,6 @@ public class MockServer {
 
   private static final String ID_PATH_PARAM = ":" + ID;
   private static final String TOTAL_RECORDS = "totalRecords";
-
-  public static final String ID_DOES_NOT_EXIST = "d25498e7-3ae6-45fe-9612-ec99e2700d2f";
-
 
   private final int port;
   private final Vertx vertx;
@@ -110,6 +108,9 @@ public class MockServer {
 
     router.route(HttpMethod.DELETE, resourceByIdPath(INVOICES, ID_PATH_PARAM)).handler(ctx -> handleDeleteRequest(ctx, INVOICES));
     router.route(HttpMethod.DELETE, resourceByIdPath(INVOICE_LINES, ID_PATH_PARAM)).handler(ctx -> handleDeleteRequest(ctx, INVOICE_LINES));
+
+    router.route(HttpMethod.PUT, resourceByIdPath(INVOICES, ID_PATH_PARAM)).handler(ctx -> handlePutGenericSubObj(ctx, INVOICES));
+    router.route(HttpMethod.PUT, resourceByIdPath(INVOICE_LINES, ID_PATH_PARAM)).handler(ctx -> handlePutGenericSubObj(ctx, INVOICE_LINES));
     return router;
   }
 
@@ -132,21 +133,24 @@ public class MockServer {
     logger.info("handleGetInvoiceById got: GET " + ctx.request().path());
     String id = ctx.request().getParam(ID);
     logger.info("id: " + id);
+    if (ID_FOR_INTERNAL_SERVER_ERROR.equals(id)) {
+      serverResponse(ctx, 500, APPLICATION_JSON, Response.Status.INTERNAL_SERVER_ERROR.getReasonPhrase());
+    } else {
+      try {
 
-    try {
+        String filePath = String.format("%s%s.json", INVOICE_MOCK_DATA_PATH, id);
 
-      String filePath = String.format("%s%s.json", INVOICE_MOCK_DATA_PATH, id);
+        JsonObject invoice = new JsonObject(getMockData(filePath));
 
-      JsonObject invoice = new JsonObject(getMockData(filePath));
-
-      // validate content against schema
-      Invoice invoiceSchema = invoice.mapTo(Invoice.class);
-      invoiceSchema.setId(id);
-      invoice = JsonObject.mapFrom(invoiceSchema);
-      addServerRqRsData(HttpMethod.GET, INVOICES, invoice);
-      serverResponse(ctx, 200, APPLICATION_JSON, invoice.encodePrettily());
-    } catch (IOException e) {
-      ctx.response().setStatusCode(404).end(id);
+        // validate content against schema
+        Invoice invoiceSchema = invoice.mapTo(Invoice.class);
+        invoiceSchema.setId(id);
+        invoice = JsonObject.mapFrom(invoiceSchema);
+        addServerRqRsData(HttpMethod.GET, INVOICES, invoice);
+        serverResponse(ctx, 200, APPLICATION_JSON, invoice.encodePrettily());
+      } catch (IOException e) {
+        ctx.response().setStatusCode(404).end(id);
+      }
     }
   }
 
@@ -222,7 +226,6 @@ public class MockServer {
     } else {
       ctx.response()
         .setStatusCode(204)
-        .putHeader(HttpHeaders.CONTENT_TYPE, APPLICATION_JSON)
         .end();
     }
   }
@@ -241,5 +244,22 @@ public class MockServer {
     }
     entries.add(data);
     serverRqRs.put(objName, method, entries);
+  }
+
+  private void handlePutGenericSubObj(RoutingContext ctx, String subObj) {
+    logger.info("handlePutGenericSubObj got: PUT " + ctx.request().path());
+    String id = ctx.request().getParam(ID);
+
+    addServerRqRsData(HttpMethod.PUT, subObj, ctx.getBodyAsJson());
+
+    if (ID_DOES_NOT_EXIST.equals(id)) {
+      serverResponse(ctx, 404, APPLICATION_JSON, id);
+    } else if (ID_FOR_INTERNAL_SERVER_ERROR.equals(id)) {
+      serverResponse(ctx, 500, APPLICATION_JSON, Response.Status.INTERNAL_SERVER_ERROR.getReasonPhrase());
+    } else {
+      ctx.response()
+        .setStatusCode(204)
+        .end();
+    }
   }
 }

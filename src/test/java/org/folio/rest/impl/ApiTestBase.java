@@ -17,7 +17,6 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.Stream;
@@ -25,7 +24,6 @@ import java.util.stream.Stream;
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 import static org.folio.rest.RestVerticle.OKAPI_HEADER_TENANT;
 import static org.folio.rest.RestVerticle.OKAPI_HEADER_TOKEN;
-import static org.folio.rest.impl.AbstractHelper.ID;
 import static org.folio.rest.impl.AbstractHelper.OKAPI_URL;
 import static org.folio.rest.impl.ApiTestSuite.mockPort;
 import static org.junit.Assert.fail;
@@ -44,6 +42,8 @@ public class ApiTestBase {
   static final String LANG_PARAM = "lang";
   static final String INVALID_LANG = "english";
 
+  public static final String ID_DOES_NOT_EXIST = "d25498e7-3ae6-45fe-9612-ec99e2700d2f";
+  public static final String ID_FOR_INTERNAL_SERVER_ERROR = "168f8a86-d26c-406e-813f-c7527f241ac3";
 
   static {
     System.setProperty(LoggerFactory.LOGGER_DELEGATE_FACTORY_CLASS_NAME, "io.vertx.core.logging.Log4j2LogDelegateFactory");
@@ -121,11 +121,16 @@ public class ApiTestBase {
             .response();
   }
 
+  Response verifyPut(String url, String body, String expectedContentType, int expectedCode) {
+    Headers headers = prepareHeaders(X_OKAPI_URL, X_OKAPI_TENANT);
+    return verifyPut(url, body, headers,expectedContentType, expectedCode);
+  }
 
   Response verifyPut(String url, String body, Headers headers, String expectedContentType, int expectedCode) {
     return RestAssured
       .with()
         .headers(headers)
+        .header(X_OKAPI_URL)
         .body(body)
         .contentType(APPLICATION_JSON)
       .put(url)
