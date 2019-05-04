@@ -11,10 +11,8 @@ import org.folio.rest.jaxrs.model.Errors;
 import org.folio.rest.jaxrs.model.InvoiceLine;
 import org.junit.Test;
 import java.net.MalformedURLException;
-import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
-import static javax.ws.rs.core.MediaType.TEXT_PLAIN;
+
 import static org.folio.rest.impl.AbstractHelper.ID;
-import static org.folio.rest.impl.MockServer.ID_DOES_NOT_EXIST;
 import static org.junit.Assert.assertEquals;
 
 

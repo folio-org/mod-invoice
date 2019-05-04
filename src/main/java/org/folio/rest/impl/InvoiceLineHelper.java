@@ -2,9 +2,9 @@ package org.folio.rest.impl;
 
 import static org.folio.invoices.utils.HelperUtils.getInvoiceLineById;
 import static org.folio.invoices.utils.HelperUtils.handleDeleteRequest;
+import static org.folio.invoices.utils.HelperUtils.handlePutRequest;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_LINES;
 import static org.folio.invoices.utils.ResourcePathResolver.resourceByIdPath;
-import static org.folio.invoices.utils.HelperUtils.handlePutRequest;
 
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
