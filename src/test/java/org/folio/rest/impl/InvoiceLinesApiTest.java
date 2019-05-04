@@ -1,8 +1,5 @@
 package org.folio.rest.impl;
 
-import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
-import static javax.ws.rs.core.MediaType.TEXT_PLAIN;
-
 import io.restassured.response.Response;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
@@ -12,6 +9,8 @@ import org.folio.rest.jaxrs.model.InvoiceLine;
 import org.junit.Test;
 import java.net.MalformedURLException;
 
+import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
+import static javax.ws.rs.core.MediaType.TEXT_PLAIN;
 import static org.folio.rest.impl.AbstractHelper.ID;
 import static org.junit.Assert.assertEquals;
 
