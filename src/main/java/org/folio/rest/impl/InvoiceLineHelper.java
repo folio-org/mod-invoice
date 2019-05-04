@@ -19,8 +19,6 @@ import me.escoffier.vertx.completablefuture.VertxCompletableFuture;
 import org.folio.rest.jaxrs.model.InvoiceLine;
 import org.folio.rest.jaxrs.model.InvoiceLineCollection;
 
-
-
 public class InvoiceLineHelper extends AbstractHelper {
 
   private static final String GET_INVOICE_LINES_BY_QUERY = resourcesPath(INVOICE_LINES) + "?limit=%s&offset=%s%s&lang=%s";

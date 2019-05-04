@@ -105,7 +105,11 @@
     {
       "id": "invoice-storage.invoices",
       "version": "1.0"
-    }    
+    },
+    {
+      "id": "invoice-storage.invoice-lines",
+      "version": "1.0"
+    }
   ],  
   "permissionSets": [
     {
