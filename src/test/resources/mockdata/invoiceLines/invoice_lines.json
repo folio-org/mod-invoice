@@ -1,5 +1,5 @@
 {
-  "invoice_lines": [
+  "invoiceLines": [
     {
       "id": "e0d08448-343b-118a-8c2f-4fb50248d672",
       "description": "Some description",

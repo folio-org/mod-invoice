@@ -106,7 +106,7 @@ public class MockServer {
     router.route(HttpMethod.GET, resourcesPath(INVOICES)).handler(this::handleGetInvoices);
     router.route(HttpMethod.GET, resourceByIdPath(INVOICES, ID_PATH_PARAM)).handler(this::handleGetInvoiceById);
     router.route(HttpMethod.GET, resourcesPath(FOLIO_INVOICE_NUMBER)).handler(this::handleGetFolioInvoiceNumber);
-    router.route(HttpMethod.GET, resourcesPath(INVOICE_LINES)+"/:id").handler(this::handleGetInvoiceLinesById);
+    router.route(HttpMethod.GET, resourceByIdPath(INVOICE_LINES, ID_PATH_PARAM)).handler(this::handleGetInvoiceLineById);
 
     router.route(HttpMethod.DELETE, resourceByIdPath(INVOICES, ID_PATH_PARAM)).handler(ctx -> handleDeleteRequest(ctx, INVOICES));
     router.route(HttpMethod.DELETE, resourceByIdPath(INVOICE_LINES, ID_PATH_PARAM)).handler(ctx -> handleDeleteRequest(ctx, INVOICE_LINES));
@@ -150,7 +150,7 @@ public class MockServer {
     }
   }
 
-  private void handleGetInvoiceLinesById(RoutingContext ctx) {
+  private void handleGetInvoiceLineById(RoutingContext ctx) {
     logger.info("handleGetInvoiceLinesById got: GET " + ctx.request().path());
     String id = ctx.request().getParam(ID);
     logger.info("id: " + id);

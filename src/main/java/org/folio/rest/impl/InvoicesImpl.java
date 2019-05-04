@@ -105,11 +105,11 @@ public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
   @Override
   public void getInvoiceInvoiceLinesById(String id, String lang, Map<String, String> okapiHeaders,
       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
-    InvoiceLinesHelper invoiceLinesHelper = new InvoiceLinesHelper(okapiHeaders, vertxContext, lang);
-    invoiceLinesHelper
+    InvoiceLineHelper invoiceLineHelper = new InvoiceLineHelper(okapiHeaders, vertxContext, lang);
+    invoiceLineHelper
       .getInvoiceLine(id)
-      .thenAccept(invoices -> asyncResultHandler.handle(succeededFuture(invoiceLinesHelper.buildOkResponse(invoices))))
-      .exceptionally(t -> handleErrorResponse(asyncResultHandler, invoiceLinesHelper, t));
+      .thenAccept(invoiceLine -> asyncResultHandler.handle(succeededFuture(invoiceLineHelper.buildOkResponse(invoiceLine))))
+      .exceptionally(t -> handleErrorResponse(asyncResultHandler, invoiceLineHelper, t));
   }
 
   @Validate
