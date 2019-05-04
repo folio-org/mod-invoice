@@ -86,7 +86,6 @@ public class InvoiceLinesApiTest extends ApiTestBase {
 
   @Test
   public void deleteInvoiceBadLanguageTest() {
-
     String endpoint = String.format(INVOICE_LINE_ID_PATH, UUID) + String.format("?%s=%s", LANG_PARAM, INVALID_LANG) ;
 
     verifyDeleteResponse(endpoint, TEXT_PLAIN, 400);

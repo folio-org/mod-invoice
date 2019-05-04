@@ -70,7 +70,8 @@
         {
           "methods": ["DELETE"],
           "pathPattern": "/invoice/invoice-lines/{id}",
-          "permissionsRequired": ["invoice.invoice-lines.item.delete"]
+          "permissionsRequired": ["invoice.invoice-lines.item.delete"],
+          "modulePermissions": ["invoice-storage.invoice-lines.item.delete"]
         },
         {
           "methods": ["GET"],
