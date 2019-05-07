@@ -45,8 +45,8 @@ public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
   @Override
   public void getInvoiceInvoices(int offset, int limit, String query, String lang, Map<String, String> okapiHeaders,
       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
-    InvoiceHelper helper = new InvoiceHelper(okapiHeaders, vertxContext, lang);
-    helper
+  InvoiceHelper helper = new InvoiceHelper(okapiHeaders, vertxContext, lang);
+  helper
     .getInvoices(limit, offset, query)
       .thenAccept(invoices -> {
         if (logger.isInfoEnabled()) {
@@ -108,13 +108,12 @@ public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
     InvoiceLineHelper helper = new InvoiceLineHelper(okapiHeaders, vertxContext, lang);
     logger.info("== Creating InvoiceLine for an existing invoice ==");
 
-    helper
-   .createInvoiceLine(invoiceLine)
-   .thenAccept(invoiceLineWithId -> {
-     Response response = PostInvoiceInvoiceLinesResponse.respond201WithApplicationJson(invoiceLineWithId,
-           PostInvoiceInvoiceLinesResponse.headersFor201()
-             .withLocation(String.format(INVOICE_LINE_LOCATION_PREFIX, invoiceLineWithId.getId())));
-     asyncResultHandler.handle(succeededFuture(response));
+    helper.createInvoiceLine(invoiceLine)
+      .thenAccept(invoiceLineWithId -> {
+          Response response = PostInvoiceInvoiceLinesResponse.respond201WithApplicationJson(invoiceLineWithId,
+              PostInvoiceInvoiceLinesResponse.headersFor201()
+       .withLocation(String.format(INVOICE_LINE_LOCATION_PREFIX, invoiceLineWithId.getId())));
+    asyncResultHandler.handle(succeededFuture(response));
    })
    .exceptionally(t -> handleErrorResponse(asyncResultHandler, helper, t));
   }
