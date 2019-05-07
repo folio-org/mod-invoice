@@ -110,9 +110,9 @@ public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
 
     helper.createInvoiceLine(invoiceLine)
       .thenAccept(invoiceLineWithId -> {
-          Response response = PostInvoiceInvoiceLinesResponse.respond201WithApplicationJson(invoiceLineWithId,
-              PostInvoiceInvoiceLinesResponse.headersFor201()
-       .withLocation(String.format(INVOICE_LINE_LOCATION_PREFIX, invoiceLineWithId.getId())));
+        Response response = PostInvoiceInvoiceLinesResponse.respond201WithApplicationJson(invoiceLineWithId,
+          PostInvoiceInvoiceLinesResponse.headersFor201()
+      .withLocation(String.format(INVOICE_LINE_LOCATION_PREFIX, invoiceLineWithId.getId())));
     asyncResultHandler.handle(succeededFuture(response));
    })
    .exceptionally(t -> handleErrorResponse(asyncResultHandler, helper, t));
