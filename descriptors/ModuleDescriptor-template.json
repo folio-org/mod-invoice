@@ -58,8 +58,8 @@
         {
           "methods": ["POST"],
           "pathPattern": "/invoice/invoice-lines",
-          "permissionsRequired": [
-            "invoice.invoice-lines.item.post",
+          "permissionsRequired": ["invoice.invoice-lines.item.post"],
+          "modulePermissions": [
             "invoice-storage.invoice-line-number.get",
             "invoice-storage.invoices.item.get"
           ]
@@ -180,9 +180,7 @@
         "invoice.invoice-lines.item.put",
         "invoice.invoice-lines.item.delete",
         "invoice.invoice-number.item.get",
-        "invoice.invoice-number.item.post",
-        "invoice-storage.invoice-line-number.get",
-        "invoice-storage.invoices.item.get"
+        "invoice.invoice-number.item.post"
       ],
       "visible": false
     }
