@@ -53,7 +53,10 @@
         {
           "methods": ["GET"],
           "pathPattern": "/invoice/invoice-lines",
-          "permissionsRequired": ["invoice.invoice-lines.collection.get"]
+          "permissionsRequired": ["invoice.invoice-lines.collection.get"],
+          "modulePermissions": [
+            "invoice-storage.invoice-lines.collection.get"
+          ]
         },
         {
           "methods": ["POST"],

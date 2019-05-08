@@ -18,6 +18,9 @@ import java.io.IOException;
 import java.net.MalformedURLException;
 
 import static org.folio.rest.RestVerticle.OKAPI_HEADER_TENANT;
+
+import static org.folio.rest.impl.InvoicesApiTest.BAD_QUERY;
+
 import static org.folio.rest.impl.AbstractHelper.ID;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
@@ -45,7 +48,26 @@ public class InvoiceLinesApiTest extends ApiTestBase {
 
   @Test
   public void getInvoicingInvoiceLinesTest() {
-    verifyGet(INVOICE_LINES_PATH, TEXT_PLAIN, 500);
+    verifyGet(INVOICE_LINES_PATH, APPLICATION_JSON, 200);
+  }
+
+  @Test
+  public void testGetOrderLinesInternalServerError() {
+    logger.info("=== Test Get Order Lines by query - emulating 500 from storage ===");
+
+    String endpointQuery = String.format("%s?query=%s", INVOICE_LINES_PATH, ID_FOR_INTERNAL_SERVER_ERROR);
+
+    verifyGet(endpointQuery, APPLICATION_JSON, 500);
+  }
+
+  @Test
+  public void testGetOrderLinesBadQuery() {
+    logger.info("=== Test Get Order Lines by query - unprocessable query to emulate 400 from storage ===");
+
+    String endpointQuery = String.format("%s?query=%s", INVOICE_LINES_PATH, BAD_QUERY);
+
+    verifyGet(endpointQuery, APPLICATION_JSON, 400);
+
   }
 
   @Test
@@ -76,7 +98,7 @@ public class InvoiceLinesApiTest extends ApiTestBase {
 
   @Test
   public void deleteInvoicingInvoiceLinesByIdTest() {
-    verifyDeleteResponse(String.format(INVOICE_LINE_ID_PATH, UUID), TEXT_PLAIN, 500);
+    verifyDeleteResponse(String.format(INVOICE_LINE_ID_PATH, VALID_UUID), TEXT_PLAIN, 500);
   }
 
   @Test
@@ -122,7 +144,7 @@ public class InvoiceLinesApiTest extends ApiTestBase {
   public void testPutInvoicingInvoiceLinesByIdTest() throws Exception {
     String reqData = getMockData(INVOICE_LINE_SAMPLE_PATH);
 
-    verifyPut(String.format(INVOICE_LINE_ID_PATH, UUID), reqData, "" , 204);
+    verifyPut(String.format(INVOICE_LINE_ID_PATH, VALID_UUID), reqData, "" , 204);
   }
 
   @Test
@@ -156,7 +178,7 @@ public class InvoiceLinesApiTest extends ApiTestBase {
   @Test
   public void testPutInvoicingInvoiceLinesInvalidLang() throws Exception {
     String reqData = getMockData(INVOICE_LINE_SAMPLE_PATH);
-    String endpoint = String.format(INVOICE_LINE_ID_PATH, UUID)
+    String endpoint = String.format(INVOICE_LINE_ID_PATH, VALID_UUID)
         + String.format("?%s=%s", LANG_PARAM, INVALID_LANG);
 
     verifyPut(endpoint, reqData, TEXT_PLAIN, 400);
