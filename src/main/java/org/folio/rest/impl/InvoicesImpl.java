@@ -22,20 +22,19 @@ public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
   private static final Logger logger = LoggerFactory.getLogger(InvoicesImpl.class);
   private static final String NOT_SUPPORTED = "Not supported";  // To overcome sonarcloud warning
   private static final String INVOICE_LOCATION_PREFIX = "/invoice/invoices/%s";
+  private static final String INVOICE_LINE_LOCATION_PREFIX = "/invoice/invoice-lines/%s";
 
   @Validate
   @Override
   public void postInvoiceInvoices(String lang, Invoice invoice, Map<String, String> okapiHeaders,
                                   Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
-
     InvoiceHelper helper = new InvoiceHelper(okapiHeaders, vertxContext, lang);
-
     helper.createInvoice(invoice)
       .thenAccept(invoiceWithId -> {
         Response response = PostInvoiceInvoicesResponse.respond201WithApplicationJson(invoiceWithId,
-          PostInvoiceInvoicesResponse.headersFor201()
-            .withLocation(String.format(INVOICE_LOCATION_PREFIX, invoiceWithId.getId())));
-        asyncResultHandler.handle(succeededFuture(response));
+        PostInvoiceInvoicesResponse.headersFor201()
+          .withLocation(String.format(INVOICE_LOCATION_PREFIX, invoiceWithId.getId())));
+          asyncResultHandler.handle(succeededFuture(response));
       })
       .exceptionally(t -> handleErrorResponse(asyncResultHandler, helper, t));
   }
@@ -106,9 +105,19 @@ public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
 
   @Validate
   @Override
-  public void postInvoiceInvoiceLines(String lang, InvoiceLine entity, Map<String, String> okapiHeaders,
+  public void postInvoiceInvoiceLines(String lang, InvoiceLine invoiceLine, Map<String, String> okapiHeaders,
                                       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
-    asyncResultHandler.handle(succeededFuture(PostInvoiceInvoiceLinesResponse.respond500WithTextPlain(NOT_SUPPORTED)));
+    InvoiceLineHelper helper = new InvoiceLineHelper(okapiHeaders, vertxContext, lang);
+    logger.info("== Creating InvoiceLine for an existing invoice ==");
+
+    helper.createInvoiceLine(invoiceLine)
+      .thenAccept(invoiceLineWithId -> {
+        Response response = PostInvoiceInvoiceLinesResponse.respond201WithApplicationJson(invoiceLineWithId,
+            PostInvoiceInvoiceLinesResponse.headersFor201()
+              .withLocation(String.format(INVOICE_LINE_LOCATION_PREFIX, invoiceLineWithId.getId())));
+        asyncResultHandler.handle(succeededFuture(response));
+      })
+      .exceptionally(t -> handleErrorResponse(asyncResultHandler, helper, t));
   }
 
   @Validate

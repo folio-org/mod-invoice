@@ -3,31 +3,44 @@ package org.folio.rest.impl;
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 import static javax.ws.rs.core.MediaType.TEXT_PLAIN;
 
+import io.restassured.http.Header;
 import io.restassured.response.Response;
+import io.vertx.core.http.HttpMethod;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
+
 import org.folio.rest.jaxrs.model.Errors;
 import org.folio.rest.jaxrs.model.InvoiceLine;
 import org.junit.Test;
+
+import java.io.IOException;
 import java.net.MalformedURLException;
+
+import static org.folio.rest.RestVerticle.OKAPI_HEADER_TENANT;
 import static org.folio.rest.impl.InvoicesApiTest.BAD_QUERY;
 import static org.folio.rest.impl.AbstractHelper.ID;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThat;
+import static org.hamcrest.Matchers.notNullValue;
+import static org.hamcrest.Matchers.hasSize;
+import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_LINE_NUMBER;
+import static org.folio.rest.impl.MockServer.INVOICE_LINE_NUMBER_ERROR_X_OKAPI_TENANT;
 
 
 public class InvoiceLinesApiTest extends ApiTestBase {
 
   private static final Logger logger = LoggerFactory.getLogger(InvoiceLinesApiTest.class);
 
+  static final Header NON_EXIST_CONFIG_X_OKAPI_TENANT = new Header(OKAPI_HEADER_TENANT, "invoicetest");
+  static final String INVOICE_LINES_MOCK_DATA_PATH = BASE_MOCK_DATA_PATH + "invoiceLines/";
+  private static final String INVOICE_LINES_LIST_PATH = INVOICE_LINES_MOCK_DATA_PATH + "invoice_lines.json";
   private static final String INVOICE_LINE_ID_PATH = "/invoice/invoice-lines/%s";
   private static final String INVOICE_LINES_PATH = "/invoice/invoice-lines";
   private static final String INVOICE_LINE_SAMPLE_PATH = "mockdata/invoiceLines/invoice_line.json";
-
-  static final String INVOICE_LINES_MOCK_DATA_PATH = BASE_MOCK_DATA_PATH + "invoiceLines/";
-  private static final String INVOICE_LINES_LIST_PATH = INVOICE_LINES_MOCK_DATA_PATH + "invoice_lines.json";
-
   private static final String BAD_INVOICE_LINE_ID = "5a34ae0e-5a11-4337-be95-1a20cfdc3161";
+  private static final String INVOICE_ID = "invoiceId";
+  private static final String NULL = "null";
 
   @Test
   public void getInvoicingInvoiceLinesTest() {
@@ -86,11 +99,43 @@ public class InvoiceLinesApiTest extends ApiTestBase {
 
   @Test
   public void postInvoicingInvoiceLinesTest() throws Exception {
-    String jsonBody = getMockData(INVOICE_LINE_SAMPLE_PATH);
+    logger.info("=== Test create invoice line - 201 successfully created ===");
 
-    verifyPostResponse(INVOICE_LINES_PATH, jsonBody, prepareHeaders(X_OKAPI_TENANT), TEXT_PLAIN, 500);
+    String body = getMockData(INVOICE_LINE_SAMPLE_PATH);
+    
+    final InvoiceLine respData = verifyPostResponse(INVOICE_LINES_PATH, body, prepareHeaders(X_OKAPI_TENANT), APPLICATION_JSON, 201).as(InvoiceLine.class);
+
+    String invoiceId = respData.getId();
+    String InvoiceLineNo = respData.getInvoiceLineNumber();
+
+    assertThat(invoiceId, notNullValue());
+    assertThat(InvoiceLineNo, notNullValue());
+    assertThat(MockServer.serverRqRs.get(INVOICE_LINE_NUMBER, HttpMethod.GET), hasSize(1));
   }
 
+  @Test
+  public void testPostInvoicingInvoiceLinesWithInvoiceLineNumberGenerationFail() throws IOException {
+    logger.info("=== Test create invoice with error from storage on invoiceLineNo generation  ===");
+
+    String body = getMockData(INVOICE_LINE_SAMPLE_PATH);
+    verifyPostResponse(INVOICE_LINES_PATH, body, prepareHeaders(INVOICE_LINE_NUMBER_ERROR_X_OKAPI_TENANT), APPLICATION_JSON, 500);
+  }
+
+  @Test
+  public void testPostInvoiceLinesByIdLineWithoutId() throws IOException {
+    logger.info("=== Test Post Invoice Lines By Id (empty id in body) ===");
+
+    InvoiceLine reqData = getMockAsJson(INVOICE_LINE_SAMPLE_PATH).mapTo(InvoiceLine.class);
+    reqData.setInvoiceId(null);
+    String jsonBody = JsonObject.mapFrom(reqData).encode();
+    Errors resp = verifyPostResponse(INVOICE_LINES_PATH, jsonBody, prepareHeaders(NON_EXIST_CONFIG_X_OKAPI_TENANT),
+        APPLICATION_JSON, 422).as(Errors.class);
+
+    assertEquals(1, resp.getErrors().size());
+    assertEquals(INVOICE_ID, resp.getErrors().get(0).getParameters().get(0).getKey());
+    assertEquals(NULL, resp.getErrors().get(0).getParameters().get(0).getValue());
+  }
+  
   @Test
   public void testPutInvoicingInvoiceLinesByIdTest() throws Exception {
     String reqData = getMockData(INVOICE_LINE_SAMPLE_PATH);
