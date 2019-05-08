@@ -315,8 +315,7 @@ public class MockServer {
       body.put(ID, id);
       InvoiceLine invoiceLine = body.mapTo(InvoiceLine.class);
       addServerRqRsData(HttpMethod.POST, INVOICE_LINES, body);
-
-       serverResponse(ctx, 201, APPLICATION_JSON, JsonObject.mapFrom(invoiceLine).encodePrettily());
+      serverResponse(ctx, 201, APPLICATION_JSON, JsonObject.mapFrom(invoiceLine).encodePrettily());
     }
   }
   
@@ -333,6 +332,5 @@ public class MockServer {
       addServerRqRsData(HttpMethod.GET, INVOICE_LINE_NUMBER, jsonSequence);
       serverResponse(ctx, 200, APPLICATION_JSON, jsonSequence.encodePrettily());
     }
-
    }
 }
