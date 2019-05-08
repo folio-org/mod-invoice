@@ -334,6 +334,5 @@ public class MockServer {
       addServerRqRsData(HttpMethod.GET, INVOICE_LINE_NUMBER, jsonSequence);
       serverResponse(ctx, 200, APPLICATION_JSON, jsonSequence.encodePrettily());
     }
-
    }
 }
