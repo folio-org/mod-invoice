@@ -65,16 +65,15 @@ public class MockServer {
   private static final String INVOICE_NUMBER_ERROR_TENANT = "po_number_error_tenant";
   private static final String INVOICE_LINE_NUMBER_ERROR_TENANT = "invoice_line_number_error_tenant";
   private static final String ERROR_TENANT = "error_tenant";
+  private static final String INVOICE_LINES_COLLECTION = BASE_MOCK_DATA_PATH + "invoiceLines/invoice_lines.json";
+  private static final String ID_PATH_PARAM = ":" + ID;
+  private static final String TOTAL_RECORDS = "totalRecords";
+  
   static final Header INVOICE_NUMBER_ERROR_X_OKAPI_TENANT = new Header(OKAPI_HEADER_TENANT, INVOICE_NUMBER_ERROR_TENANT);
   static final Header ERROR_X_OKAPI_TENANT = new Header(OKAPI_HEADER_TENANT, ERROR_TENANT);
   static final Header INVOICE_LINE_NUMBER_ERROR_X_OKAPI_TENANT = new Header(OKAPI_HEADER_TENANT, INVOICE_LINE_NUMBER_ERROR_TENANT);
   static final String EMPTY_CONFIG_TENANT = "config_empty";
   static final Header EMPTY_CONFIG_X_OKAPI_TENANT = new Header(OKAPI_HEADER_TENANT, EMPTY_CONFIG_TENANT);
-
-  private static final String INVOICE_LINES_COLLECTION = BASE_MOCK_DATA_PATH + "invoiceLines/invoice_lines.json";
-
-  private static final String ID_PATH_PARAM = ":" + ID;
-  private static final String TOTAL_RECORDS = "totalRecords";
 
   private final int port;
   private final Vertx vertx;

@@ -149,8 +149,7 @@ public class InvoiceLineHelper extends AbstractHelper {
     return folioInvoiceNumber + "-" + sequence;
   }
 
-   private String getInvoiceLineNumberEndpoint(String id) {
+  private String getInvoiceLineNumberEndpoint(String id) {
     return INVOICE_LINE_NUMBER_ENDPOINT + id;
   }
-
 }
