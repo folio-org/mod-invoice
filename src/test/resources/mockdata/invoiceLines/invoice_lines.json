@@ -23,7 +23,7 @@
       "pieceIds": [
         "5e317dc2-deeb-4429-b2a1-91e5cd0fd5f7"
       ],
-      "invoiceId": "c0d08648-347b-418a-8c2f-5fb50248d67e",
+      "invoiceId": "c0d08448-347b-418a-8c2f-5fb50248d67e",
       "fundDistributions": [
         "HIST"
       ],
@@ -41,22 +41,22 @@
       }
     },
     {
-      "id": "e0d08448-347b-118a-8c2f-4fb50248d672",
-      "description": "Some description",
+      "id": "b418897b-0e40-4f31-896b-9c9adc979a88",
+      "description": "Some description 2",
       "poLineIds": [
         "c0d08448-347b-418a-8c2f-5fb50248d67e"
       ],
-      "invoiceLineNumber": "123invoicenumber45-1",
+      "invoiceLineNumber": "123invoicenumber45-2",
       "invoiceLineStatus": "Open",
       "vendorRefNo": "1",
       "productId": "9780764354113",
       "productIdType": "ISBN",
-      "invoiceLineTax": 11.2,
+      "invoiceLineTax": 12.4,
       "comment": "Sample invoice line",
-      "price": 2.2,
-      "quantity": 3.0,
+      "price": 4.2,
+      "quantity": 6.0,
       "doNotReleaseEncumbrance": true,
-      "reportTax": 3.5,
+      "reportTax": 7.5,
       "subscriptionInfo": "Subscription information",
       "subscriptionStart": "2018-08-01T00:00:00.000+0000",
       "subscriptionEnd": "2019-01-01T00:00:00.000+0000",
@@ -76,27 +76,27 @@
         }
       ],
       "metadata": {
-        "createdDate": "2018-07-19T00:00:00.000+0000",
+        "createdDate": "2018-07-19T11:03:47.000+0000",
         "createdByUserId": "28d1057c-d137-11e8-a8d5-f2801f1b9fd1"
       }
     },
     {
-      "id": "e0d08448-343b-118a-8c2f-4fb50248d672",
-      "description": "Some description",
+      "id": "b981e3e2-cd26-dCE2-c6Cd-159eAEfb351d",
+      "description": "Some description 3",
       "poLineIds": [
         "c0d08448-347b-418a-8c2f-5fb50248d67e"
       ],
-      "invoiceLineNumber": "123invoicenumber45-1",
+      "invoiceLineNumber": "123invoicenumber45-3",
       "invoiceLineStatus": "Open",
       "vendorRefNo": "1",
       "productId": "9780764354113",
       "productIdType": "ISBN",
-      "invoiceLineTax": 11.2,
+      "invoiceLineTax": 12.4,
       "comment": "Sample invoice line",
-      "price": 2.2,
-      "quantity": 3.0,
+      "price": 4.2,
+      "quantity": 6.0,
       "doNotReleaseEncumbrance": true,
-      "reportTax": 3.5,
+      "reportTax": 7.5,
       "subscriptionInfo": "Subscription information",
       "subscriptionStart": "2018-08-01T00:00:00.000+0000",
       "subscriptionEnd": "2019-01-01T00:00:00.000+0000",
@@ -116,7 +116,7 @@
         }
       ],
       "metadata": {
-        "createdDate": "2018-07-19T00:00:00.000+0000",
+        "createdDate": "2018-07-19T11:03:47.000+0000",
         "createdByUserId": "28d1057c-d137-11e8-a8d5-f2801f1b9fd1"
       }
     }

@@ -53,12 +53,20 @@
         {
           "methods": ["GET"],
           "pathPattern": "/invoice/invoice-lines",
-          "permissionsRequired": ["invoice.invoice-lines.collection.get"]
+          "permissionsRequired": ["invoice.invoice-lines.collection.get"],
+          "modulePermissions": [
+            "invoice-storage.invoice-lines.collection.get"
+          ]
         },
         {
           "methods": ["POST"],
           "pathPattern": "/invoice/invoice-lines",
-          "permissionsRequired": ["invoice.invoice-lines.item.post"]
+          "permissionsRequired": ["invoice.invoice-lines.item.post"],
+          "modulePermissions": [
+            "invoice-storage.invoice-line-number.get",
+            "invoice-storage.invoices.item.get",
+            "invoice-storage.invoice-lines.item.post"
+          ]
         },
         {
           "methods": ["GET"],
@@ -103,7 +111,15 @@
     {
       "id": "invoice-storage.invoices",
       "version": "1.0"
-    }    
+    },
+    {
+      "id": "invoice-storage.invoice-lines",
+      "version": "1.0"
+    },
+    {
+      "id": "invoice-storage.invoice-line-number",
+      "version": "1.0"
+    }
   ],  
   "permissionSets": [
     {

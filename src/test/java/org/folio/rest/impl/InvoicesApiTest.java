@@ -41,6 +41,7 @@ public class InvoicesApiTest extends ApiTestBase {
   static final String BAD_QUERY = "unprocessableQuery";
   private static final String VENDOR_INVOICE_NUMBER_FIELD = "vendorInvoiceNo";
   static final String EXISTING_VENDOR_INV_NO = "existingVendorInvoiceNo";
+  static final String ID_FOR_INTERNAL_SERVER_ERROR = "168f8a86-d26c-406e-813f-c7527f241ac3";
   private static final String BAD_INVOICE_ID = "5a34ae0e-5a11-4337-be95-1a20cfdc3161";
 
   @Test
@@ -160,7 +161,7 @@ public class InvoicesApiTest extends ApiTestBase {
   @Test
   public void testUpdateInvoiceBadLanguage() throws IOException {
     String jsonBody  = getMockData(INVOICE_SAMPLE_PATH);
-    String endpoint = String.format(INVOICE_ID_WITH_LANG_PATH, UUID, INVALID_LANG) ;
+    String endpoint = String.format(INVOICE_ID_WITH_LANG_PATH, VALID_UUID, INVALID_LANG) ;
 
     verifyPut(endpoint, jsonBody, TEXT_PLAIN, 400);
   }
@@ -200,7 +201,7 @@ public class InvoicesApiTest extends ApiTestBase {
 
   @Test
   public void testPostInvoicingInvoicesWithInvoiceNumberGenerationFail() throws IOException {
-    logger.info("=== Test create invoice without with error from storage on folioInvoiceNo generation  ===");
+    logger.info("=== Test create invoice without error from storage on folioInvoiceNo generation  ===");
 
     Invoice reqData = getMockAsJson(INVOICE_SAMPLE_PATH).mapTo(Invoice.class);
     reqData.setId(null);
@@ -220,7 +221,7 @@ public class InvoicesApiTest extends ApiTestBase {
 
   @Test
   public void testDeleteInvoiceByValidId() {
-    verifyDeleteResponse(String.format(INVOICE_ID_PATH, UUID), "", 204);
+    verifyDeleteResponse(String.format(INVOICE_ID_PATH, VALID_UUID), "", 204);
   }
 
   @Test
@@ -241,7 +242,7 @@ public class InvoicesApiTest extends ApiTestBase {
   @Test
   public void testDeleteInvoiceBadLanguage() {
 
-    String endpoint = String.format(INVOICE_ID_WITH_LANG_PATH, UUID, INVALID_LANG) ;
+    String endpoint = String.format(INVOICE_ID_WITH_LANG_PATH, VALID_UUID, INVALID_LANG) ;
 
     verifyDeleteResponse(endpoint, TEXT_PLAIN, 400);
   }

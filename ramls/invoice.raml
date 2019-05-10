@@ -45,7 +45,7 @@ resourceTypes:
       description: Post invoice and number of invoice lines;
       is: [validate]
     get:
-      is: [ pageable, searchable: {description: "using CQL (indexes for invoice)", example: "status==\"Open\""}, validate ]
+      is: [ pageable, searchable: {description: "using CQL (indexes for invoice)", example: "invoiceLineStatus==\"Open\""}, validate ]
     /{id}:
       uriParameters:
         id:
@@ -74,7 +74,7 @@ resourceTypes:
         exampleItem: !include acq-models/mod-invoice-storage/examples/invoice_line.sample
     is: [validate]
     get:
-      is: [ pageable, validate ]
+      is: [ pageable, searchable: {description: "using CQL (indexes for invoice lines)", example: "status==\"Open\""}, validate ]
     post:
       description: Post an invoice lines to corresponding invoice
     /{id}:

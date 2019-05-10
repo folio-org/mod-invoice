@@ -13,6 +13,7 @@ public class ResourcePathResolver {
   public static final String INVOICES = "invoices";
   public static final String INVOICE_LINES = "invoiceLines";
   public static final String FOLIO_INVOICE_NUMBER = "folioInvoiceNo";
+  public static final String INVOICE_LINE_NUMBER = "invoiceLineNumber";
 
   private static final Map<String, String> SUB_OBJECT_COLLECTION_APIS;
   private static final Map<String, String> SUB_OBJECT_ITEM_APIS;
@@ -21,6 +22,7 @@ public class ResourcePathResolver {
     Map<String, String> apis = new HashMap<>();
     apis.put(INVOICES, "/invoice-storage/invoices");
     apis.put(INVOICE_LINES, "/invoice-storage/invoice-lines");
+    apis.put(INVOICE_LINE_NUMBER, "/invoice-storage/invoice-line-number");
     apis.put(FOLIO_INVOICE_NUMBER, "/invoice-storage/invoice-number");
 
     SUB_OBJECT_COLLECTION_APIS = Collections.unmodifiableMap(apis);
