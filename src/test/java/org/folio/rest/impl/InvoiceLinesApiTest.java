@@ -121,7 +121,6 @@ public class InvoiceLinesApiTest extends ApiTestBase {
     String endpoint = String.format(INVOICE_LINE_ID_PATH, VALID_UUID) + String.format("?%s=%s", LANG_PARAM, INVALID_LANG) ;
 
     verifyDeleteResponse(endpoint, TEXT_PLAIN, 400);
-    verifyDeleteResponse(String.format(INVOICE_LINE_ID_PATH, VALID_UUID), TEXT_PLAIN, 500);
   }
 
   @Test
