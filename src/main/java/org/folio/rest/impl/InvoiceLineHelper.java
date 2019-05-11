@@ -1,8 +1,8 @@
 package org.folio.rest.impl;
 
 import static io.vertx.core.json.JsonObject.mapFrom;
-import static org.folio.invoices.utils.HelperUtils.getInvoiceLineById;
 import static org.folio.invoices.utils.HelperUtils.getInvoiceById;
+import static org.folio.invoices.utils.HelperUtils.handleDeleteRequest;
 import static org.folio.invoices.utils.HelperUtils.handlePutRequest;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_LINES;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_LINE_NUMBER;
@@ -36,11 +36,10 @@ import org.folio.rest.jaxrs.model.InvoiceLineCollection;
 
 public class InvoiceLineHelper extends AbstractHelper {
 
-
   private static final String INVOICE_ID = "invoiceId";
   private static final String INVOICE_LINE_NUMBER_ENDPOINT = resourcesPath(INVOICE_LINE_NUMBER) + "?" + INVOICE_ID + "=";
   private static final String GET_INVOICE_LINES_BY_QUERY = resourcesPath(INVOICE_LINES) + "?limit=%s&offset=%s%s&lang=%s";
-
+  private static final String INVOICE_LINE_BYID_ENDPOINT = resourceByIdPath(INVOICE_LINES, "%s") + "?lang=%s";
 
   InvoiceLineHelper(Map<String, String> okapiHeaders, Context ctx, String lang) {
     super(getHttpClient(okapiHeaders), okapiHeaders, ctx, lang);
@@ -73,8 +72,9 @@ public class InvoiceLineHelper extends AbstractHelper {
 
   public CompletableFuture<InvoiceLine> getInvoiceLine(String id) {
     CompletableFuture<InvoiceLine> future = new VertxCompletableFuture<>(ctx);
+
     try {
-      getInvoiceLineById(id, lang, httpClient, ctx, okapiHeaders, logger)
+      handleGetRequest(String.format(INVOICE_LINE_BYID_ENDPOINT, id, lang), httpClient, ctx, okapiHeaders, logger)
         .thenAccept(jsonInvoiceLine -> {
           logger.info("Successfully retrieved invoice line: " + jsonInvoiceLine.encodePrettily());
           future.complete(jsonInvoiceLine.mapTo(InvoiceLine.class));
@@ -87,6 +87,7 @@ public class InvoiceLineHelper extends AbstractHelper {
     } catch (Exception e) {
       future.completeExceptionally(e);
     }
+
     return future;
   }
 
@@ -94,7 +95,7 @@ public class InvoiceLineHelper extends AbstractHelper {
     return handlePutRequest(resourceByIdPath(INVOICE_LINES, invoiceLine.getId()),
       JsonObject.mapFrom(invoiceLine), httpClient, ctx, okapiHeaders, logger);
   }
-  
+
   /**
    * Creates Invoice Line if its content is valid
    * @param invoiceLine {@link InvoiceLine} to be created
@@ -104,7 +105,7 @@ public class InvoiceLineHelper extends AbstractHelper {
     return getInvoice(invoiceLine)
       .thenCompose(invoice -> createInvoiceLine(invoiceLine, invoice));
   }
-  
+
   private CompletableFuture<Invoice> getInvoice(InvoiceLine invoiceLine) {
     return getInvoiceById(invoiceLine.getInvoiceId(), lang, httpClient, ctx, okapiHeaders, logger)
       .thenApply(HelperUtils::convertToInvoice)
@@ -113,7 +114,7 @@ public class InvoiceLineHelper extends AbstractHelper {
         throw t instanceof CompletionException ? (CompletionException) t : new CompletionException(cause);
       });
   }
-  
+
   /**
    * Creates Invoice Line assuming its content is valid
    * @param invoiceLine {@link InvoiceLine} to be created
@@ -130,7 +131,7 @@ public class InvoiceLineHelper extends AbstractHelper {
       .thenAccept(lineNumber -> line.put(INVOICE_LINE_NUMBER, lineNumber))
       .thenCompose(v -> createInvoiceLineSummary(invoiceLine, line));
   }
-  
+
   private CompletableFuture<String> generateLineNumber(Invoice invoice) {
     return handleGetRequest(getInvoiceLineNumberEndpoint(invoice.getId()), httpClient, ctx, okapiHeaders, logger)
       .thenApply(sequenceNumberJson -> {
@@ -138,7 +139,7 @@ public class InvoiceLineHelper extends AbstractHelper {
         return buildInvoiceLineNumber(invoice.getFolioInvoiceNo(), sequenceNumber.getSequenceNumber());
       });
   }
-  
+
   private CompletionStage<InvoiceLine> createInvoiceLineSummary(InvoiceLine invoiceLine, JsonObject line) {
     return createRecordInStorage(line, resourcesPath(INVOICE_LINES))
       // After generating line number, set id and line number of the created Invoice Line
@@ -151,5 +152,9 @@ public class InvoiceLineHelper extends AbstractHelper {
 
   private String getInvoiceLineNumberEndpoint(String id) {
     return INVOICE_LINE_NUMBER_ENDPOINT + id;
+  }
+
+  public CompletableFuture<Void> deleteInvoiceLine(String id) {
+    return handleDeleteRequest(String.format(INVOICE_LINE_BYID_ENDPOINT, id, lang), httpClient, ctx, okapiHeaders, logger);
   }
 }
