@@ -1,7 +1,6 @@
 package org.folio.rest.impl;
 
 import static io.vertx.core.json.JsonObject.mapFrom;
-import static org.folio.invoices.utils.HelperUtils.getInvoiceLineById;
 import static org.folio.invoices.utils.HelperUtils.getInvoiceById;
 import static org.folio.invoices.utils.HelperUtils.handleDeleteRequest;
 import static org.folio.invoices.utils.HelperUtils.handlePutRequest;
@@ -40,7 +39,7 @@ public class InvoiceLineHelper extends AbstractHelper {
   private static final String INVOICE_ID = "invoiceId";
   private static final String INVOICE_LINE_NUMBER_ENDPOINT = resourcesPath(INVOICE_LINE_NUMBER) + "?" + INVOICE_ID + "=";
   private static final String GET_INVOICE_LINES_BY_QUERY = resourcesPath(INVOICE_LINES) + "?limit=%s&offset=%s%s&lang=%s";
-  private static final String DELETE_INVOICE_LINE_BY_ID = resourceByIdPath(INVOICE_LINES, "%s") + "?lang=%s";
+  private static final String INVOICE_LINE_BYID_ENDPOINT = resourceByIdPath(INVOICE_LINES, "%s") + "?lang=%s";
 
   InvoiceLineHelper(Map<String, String> okapiHeaders, Context ctx, String lang) {
     super(getHttpClient(okapiHeaders), okapiHeaders, ctx, lang);
@@ -73,8 +72,9 @@ public class InvoiceLineHelper extends AbstractHelper {
 
   public CompletableFuture<InvoiceLine> getInvoiceLine(String id) {
     CompletableFuture<InvoiceLine> future = new VertxCompletableFuture<>(ctx);
+
     try {
-      getInvoiceLineById(id, lang, httpClient, ctx, okapiHeaders, logger)
+      handleGetRequest(String.format(INVOICE_LINE_BYID_ENDPOINT, id, lang), httpClient, ctx, okapiHeaders, logger)
         .thenAccept(jsonInvoiceLine -> {
           logger.info("Successfully retrieved invoice line: " + jsonInvoiceLine.encodePrettily());
           future.complete(jsonInvoiceLine.mapTo(InvoiceLine.class));
@@ -87,6 +87,7 @@ public class InvoiceLineHelper extends AbstractHelper {
     } catch (Exception e) {
       future.completeExceptionally(e);
     }
+
     return future;
   }
 
@@ -154,6 +155,6 @@ public class InvoiceLineHelper extends AbstractHelper {
   }
 
   public CompletableFuture<Void> deleteInvoiceLine(String id) {
-    return handleDeleteRequest(String.format(DELETE_INVOICE_LINE_BY_ID, id, lang), httpClient, ctx, okapiHeaders, logger);
+    return handleDeleteRequest(String.format(INVOICE_LINE_BYID_ENDPOINT, id, lang), httpClient, ctx, okapiHeaders, logger);
   }
 }
