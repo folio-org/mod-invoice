@@ -35,12 +35,14 @@ public class InvoiceLinesApiTest extends ApiTestBase {
   static final Header NON_EXIST_CONFIG_X_OKAPI_TENANT = new Header(OKAPI_HEADER_TENANT, "invoicetest");
   static final String INVOICE_LINES_MOCK_DATA_PATH = BASE_MOCK_DATA_PATH + "invoiceLines/";
   private static final String INVOICE_LINES_LIST_PATH = INVOICE_LINES_MOCK_DATA_PATH + "invoice_lines.json";
-  private static final String INVOICE_LINE_ID_PATH = "/invoice/invoice-lines/%s";
   private static final String INVOICE_LINES_PATH = "/invoice/invoice-lines";
+  private static final String INVOICE_LINE_ID_PATH = INVOICE_LINES_PATH + "/%s";
   private static final String INVOICE_LINE_SAMPLE_PATH = "mockdata/invoiceLines/invoice_line.json";
   private static final String BAD_INVOICE_LINE_ID = "5a34ae0e-5a11-4337-be95-1a20cfdc3161";
   private static final String INVOICE_ID = "invoiceId";
   private static final String NULL = "null";
+  static final String ID_FOR_INTERNAL_SERVER_ERROR = "168f8a86-d26c-406e-813f-c7527f241ac3";
+
 
   @Test
   public void getInvoicingInvoiceLinesTest() {
@@ -94,7 +96,31 @@ public class InvoiceLinesApiTest extends ApiTestBase {
 
   @Test
   public void deleteInvoicingInvoiceLinesByIdTest() {
-    verifyDeleteResponse(String.format(INVOICE_LINE_ID_PATH, VALID_UUID), TEXT_PLAIN, 500);
+    logger.info("=== Test delete invoice line by id ===");
+
+    verifyDeleteResponse(String.format(INVOICE_LINE_ID_PATH, VALID_UUID), "", 204);
+  }
+
+  @Test
+  public void deleteInvoiceLinesByIdWithInvalidFormatTest() {
+    verifyDeleteResponse(String.format(INVOICE_LINE_ID_PATH, ID_BAD_FORMAT), TEXT_PLAIN, 400);
+  }
+
+  @Test
+  public void deleteNotExistentInvoiceLinesTest() {
+    verifyDeleteResponse(String.format(INVOICE_LINE_ID_PATH, ID_DOES_NOT_EXIST), APPLICATION_JSON, 404);
+  }
+
+  @Test
+  public void deleteInvoiceLinesInternalErrorOnStorageTest() {
+    verifyDeleteResponse(String.format(INVOICE_LINE_ID_PATH, ID_FOR_INTERNAL_SERVER_ERROR), APPLICATION_JSON, 500);
+  }
+
+  @Test
+  public void deleteInvoiceLinesBadLanguageTest() {
+    String endpoint = String.format(INVOICE_LINE_ID_PATH, VALID_UUID) + String.format("?%s=%s", LANG_PARAM, INVALID_LANG) ;
+
+    verifyDeleteResponse(endpoint, TEXT_PLAIN, 400);
   }
 
   @Test
@@ -102,7 +128,7 @@ public class InvoiceLinesApiTest extends ApiTestBase {
     logger.info("=== Test create invoice line - 201 successfully created ===");
 
     String body = getMockData(INVOICE_LINE_SAMPLE_PATH);
-    
+
     final InvoiceLine respData = verifyPostResponse(INVOICE_LINES_PATH, body, prepareHeaders(X_OKAPI_TENANT), APPLICATION_JSON, 201).as(InvoiceLine.class);
 
     String invoiceId = respData.getId();
@@ -135,7 +161,7 @@ public class InvoiceLinesApiTest extends ApiTestBase {
     assertEquals(INVOICE_ID, resp.getErrors().get(0).getParameters().get(0).getKey());
     assertEquals(NULL, resp.getErrors().get(0).getParameters().get(0).getValue());
   }
-  
+
   @Test
   public void testPutInvoicingInvoiceLinesByIdTest() throws Exception {
     String reqData = getMockData(INVOICE_LINE_SAMPLE_PATH);

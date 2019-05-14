@@ -47,7 +47,6 @@ public class HelperUtils {
     return handleGetRequest(endpoint, httpClient, ctx, okapiHeaders, logger);
   }
 
-  
   public static CompletableFuture<JsonObject> getInvoiceLineById(String id, String lang, HttpClientInterface httpClient, Context ctx,
                                                                  Map<String, String> okapiHeaders, Logger logger) {
     String endpoint = String.format(GET_INVOICE_LINES_BYID, id, lang);
@@ -59,7 +58,7 @@ public class HelperUtils {
     String endpoint = String.format(GET_VOUCHER_LINES_BYID, id, lang);
     return handleGetRequest(endpoint, httpClient, ctx, okapiHeaders, logger);
   }
-  
+
   public static JsonObject verifyAndExtractBody(Response response) {
     verifyResponse(response);
     return response.getBody();

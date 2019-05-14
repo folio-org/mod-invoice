@@ -84,7 +84,7 @@ public class InvoicesApiTest extends ApiTestBase {
   }
 
   @Test
-  public void TestGetInvoicingInvoicesBadRequestUrl() {
+  public void testGetInvoicingInvoicesBadRequestUrl() {
     logger.info("=== Test Get Invoices by query - emulating 400 by sending bad request Url ===");
 
     verifyGet(INVOICE_PATH_BAD, TEXT_PLAIN, 400);
@@ -246,5 +246,4 @@ public class InvoicesApiTest extends ApiTestBase {
 
     verifyDeleteResponse(endpoint, TEXT_PLAIN, 400);
   }
-
 }
