@@ -95,6 +95,18 @@
       ]
     },
     {
+      "id": "voucher",
+      "version": "1.0",
+      "handlers": [
+        {
+          "methods": ["GET"],
+          "pathPattern": "/voucher/voucher-lines/{id}",
+          "permissionsRequired": ["voucher.voucher-lines.item.get"],
+          "modulePermissions": ["voucher-storage.voucher-lines.item.get"]
+        }
+      ]
+    },
+    {
       "id": "_jsonSchemas",
       "version": "1.0",
       "interfaceType" : "multiple",
@@ -117,6 +129,10 @@
     },
     {
       "id": "invoice-storage.invoice-line-number",
+      "version": "1.0"
+    },
+    {
+      "id": "voucher-storage.voucher-lines",
       "version": "1.0"
     }
   ],  
@@ -177,6 +193,11 @@
       "description": "Generate a Invoice Number"
     },
     {
+      "permissionName": "voucher.voucher-lines.item.get",
+      "displayName": "Voucher - get an existing Voucher line",
+      "description": "Get an existing Voucher line"
+    },    
+    {
       "permissionName": "invoice.all",
       "displayName": "Invoice module - all permissions",
       "description": "Entire set of permissions needed to use the invoice module",
@@ -193,6 +214,15 @@
         "invoice.invoice-lines.item.delete",
         "invoice.invoice-number.item.get",
         "invoice.invoice-number.item.post"
+      ],
+      "visible": false
+    },
+    {
+      "permissionName": "voucher.all",
+      "displayName": "Voucher module - all permissions",
+      "description": "Entire set of permissions needed to use the voucher module",
+      "subPermissions": [
+        "voucher.voucher-lines.item.get"
       ],
       "visible": false
     }

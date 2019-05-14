@@ -6,14 +6,10 @@ protocols: [ HTTP, HTTPS ]
 baseUri: http://localhost
 
 documentation:
-  - title: Invoice API
+  - title: Voucher API
     content: This documents the API calls that can be made to manage vouchers
 
 types:
-  invoice: !include acq-models/mod-invoice-storage/schemas/invoice.json
-  invoiceCollection: !include acq-models/mod-invoice-storage/schemas/invoice_collection.json
-  invoiceLine: !include acq-models/mod-invoice-storage/schemas/invoice_line.json
-  invoiceLineCollection: !include acq-models/mod-invoice-storage/schemas/invoice_line_collection.json
   voucherLine: !include acq-models/mod-invoice-storage/schemas/voucher_line.json
   voucherLineCollection: !include acq-models/mod-invoice-storage/schemas/voucher_line_collection.json
   errors: !include raml-util/schemas/errors.schema
@@ -43,8 +39,6 @@ resourceTypes:
         exampleCollection: !include acq-models/mod-invoice-storage/examples/voucher_line_collection.sample
         exampleItem: !include acq-models/mod-invoice-storage/examples/voucher_line.sample
     is: [validate]
-    get:
-      is: [ pageable, searchable: {description: "using CQL (indexes for voucher lines)", example: "status==\"Open\""}, validate ]
     /{id}:
       displayName: Voucher Line
       description: Manage voucher line by id

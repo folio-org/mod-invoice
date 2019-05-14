@@ -1,0 +1,29 @@
+{
+  "voucherLines": [
+    {
+      "id": "6d615cfd-38b6-4182-8178-8e6ffee7c01e",
+      "externalAccountNumber": "54321099",
+      "voucherLineAmount": 33.55,
+      "fundId": "f951ec3a-19a0-42ea-85d1-ae987caf5e4d",
+      "fundDistributions": "9c28ec73-ea09-47e2-b12f-5c7ef98c7a9f",
+      "subTransactionId": "d384a4c2-9f85-4072-a305-800b3f6f5143"
+    },
+    {
+      "id": "e0d08448-343b-118a-8c2f-4fb50248d672",
+      "externalAccountNumber": "54321098",
+      "voucherLineAmount": 23.45,
+      "fundId": "172364c7-AaAa-A0C2-C12C-e35CeCcbfaF2",
+      "fundDistributions": "efee4b3a-fcd5-40c8-8cf4-0ee3d76ddf4d",
+      "subTransactionId": "7b1f7179-b83f-4eab-a4db-3c600eebe271"
+    },
+    {
+      "id": "56c8b0a8-5fb7-4097-bf47-2bdaf0adcf56",
+      "externalAccountNumber": "54321100",
+      "voucherLineAmount": 45.60,
+      "fundId": "d694fb77-589f-48b1-9cf4-d5e35a3847b3",
+      "fundDistributions": "0ad452a8-6b22-4698-804b-118c36236243",
+      "subTransactionId": "60007286-990b-4d92-a13a-375541146806"
+    }        
+  ],
+  "totalRecords": 3
+}
