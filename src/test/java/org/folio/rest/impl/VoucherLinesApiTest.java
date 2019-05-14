@@ -1,6 +1,7 @@
 package org.folio.rest.impl;
 
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
+import static javax.ws.rs.core.MediaType.TEXT_PLAIN;
 import io.restassured.http.Header;
 import io.restassured.response.Response;
 import io.vertx.core.json.JsonObject;
@@ -27,9 +28,10 @@ public class VoucherLinesApiTest extends ApiTestBase {
   private static final String VOUCHER_LINES_LIST_PATH = VOUCHER_LINES_MOCK_DATA_PATH + "voucher_lines.json";
   private static final String VOUCHER_LINES_PATH = "/voucher/voucher-lines";
   private static final String NOT_FOUND_VOUCHER_LINE_ID = "5a34ae0e-5a11-4337-be95-1a20cfdc3161";
+  private static final String INVALID_VOUCHER_LINE_ID = "invalidVoucherLineId";
   
   @Test
-  public void getVouchersVoucherLinesByIdTest() throws Exception {
+  public void testGetVouchersVoucherLinesById() throws Exception {
     logger.info("=== Test Get Voucher line By Id ===");
 
     JsonObject voucherLinesList = new JsonObject(getMockData(VOUCHER_LINES_LIST_PATH));
@@ -43,7 +45,7 @@ public class VoucherLinesApiTest extends ApiTestBase {
   }
 
   @Test
-  public void getVouchersVoucherLinesByIdNotFoundTest() throws MalformedURLException {
+  public void testGetVouchersVoucherLinesByIdNotFoundTest() throws MalformedURLException {
     logger.info("=== Test Get Voucher line by Id - 404 Not found ===");
 
     final Response resp = verifyGet(VOUCHER_LINES_PATH + "/" + NOT_FOUND_VOUCHER_LINE_ID, APPLICATION_JSON, 404);
@@ -52,5 +54,11 @@ public class VoucherLinesApiTest extends ApiTestBase {
     logger.info("Id not found: " + actual);
 
     assertEquals(NOT_FOUND_VOUCHER_LINE_ID, actual);
+  }
+  
+  @Test
+  public void testGetVouchersVoucherLineByIdInvalidFormat() {
+    logger.info("=== Test Get Voucher line by Id - 400 Bad request ===");
+    verifyGet(String.format(VOUCHER_LINES_PATH, INVALID_VOUCHER_LINE_ID), TEXT_PLAIN, 400);
   }
 }
