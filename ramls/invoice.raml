@@ -105,19 +105,3 @@ resourceTypes:
     get:
       description: Get system generated Invoice Number
       is: [validate]
-
-/voucher:
-  /voucher-lines:
-    displayName: Voucher Lines
-    description: Manage voucher lines
-    type:
-      collection:
-        schemaCollection: voucherLineCollection
-        schemaItem: voucherLine
-        exampleCollection: !include acq-models/mod-invoice-storage/examples/voucher_line_collection.sample
-        exampleItem: !include acq-models/mod-invoice-storage/examples/voucher_line.sample
-    is: [validate]
-    get:
-      is: [ pageable, searchable: {description: "using CQL (indexes for voucher lines)", example: "status==\"Open\""}, validate ]
-      get:
-        description: Return an invoice line with given {id}
