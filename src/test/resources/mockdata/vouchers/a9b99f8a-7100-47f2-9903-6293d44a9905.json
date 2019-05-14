@@ -1,7 +1,4 @@
 {
-  "vouchers": [
-    {
-      "id": "a9b99f8a-7100-47f2-9903-6293d44a9905",
       "systemCurrency": "USD",
       "invoiceCurrency": "EUR",
       "exchangeRate": 1.12,
@@ -16,12 +13,5 @@
       "accountingCode": "0206",
       "disbursementNumber": "EFT546789",
       "disbursementDate": "2019-05-05T00:00:00.000+0000",
-      "disbursementAmount": 5,
-      "metadata": {
-         "createdDate": "2019-05-06T00:00:00.000+0000",
-         "createdByUserId": "28d1057c-d137-11e8-a8d5-f2801f1b9fd1"
-      }
-    }
-  ],
-  "totalRecords": 1
+      "disbursementAmount": 5
 }

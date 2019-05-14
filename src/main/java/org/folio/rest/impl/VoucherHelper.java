@@ -1,6 +1,6 @@
 package org.folio.rest.impl;
 
-import static org.folio.invoices.utils.HelperUtils.getInvoiceById;
+import static org.folio.invoices.utils.HelperUtils.getVoucherById;
 
 import io.vertx.core.Context;
 import java.util.Map;
@@ -16,7 +16,7 @@ public class VoucherHelper extends AbstractHelper {
 
   public CompletableFuture<Voucher> getVoucher(String id) {
     CompletableFuture<Voucher> future = new VertxCompletableFuture<>(ctx);
-    getInvoiceById(id, lang, httpClient, ctx, okapiHeaders, logger).thenAccept(jsonInvoice -> {
+    getVoucherById(id, lang, httpClient, ctx, okapiHeaders, logger).thenAccept(jsonInvoice -> {
       logger.info("Successfully retrieved voucher by id: " + jsonInvoice.encodePrettily());
       future.complete(jsonInvoice.mapTo(Voucher.class));
     })

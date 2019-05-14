@@ -200,6 +200,8 @@
       "description": "Entire set of permissions needed to use Vouchers",
       "subPermissions": [
         "voucher.vouchers.item.get"
+        ],
+      "visible": false
     },
     {
       "permissionName": "invoice.all",
