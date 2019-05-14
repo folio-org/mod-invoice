@@ -33,6 +33,7 @@ public class HelperUtils {
   private static final String GET_VOUCHER_BYID = resourceByIdPath(VOUCHERS) + URL_WITH_LANG_PARAM;
   private static final String GET_INVOICE_LINES_BYID = resourceByIdPath(INVOICE_LINES) + URL_WITH_LANG_PARAM;
 
+
   private HelperUtils() {
 
   }
@@ -47,6 +48,7 @@ public class HelperUtils {
     return handleGetRequest(endpoint, httpClient, ctx, okapiHeaders, logger);
   }
 
+
   public static CompletableFuture<JsonObject> getInvoiceLineById(String id, String lang, HttpClientInterface httpClient, Context ctx,
                                                                  Map<String, String> okapiHeaders, Logger logger) {
     String endpoint = String.format(GET_INVOICE_LINES_BYID, id, lang);
@@ -58,6 +60,7 @@ public class HelperUtils {
     String endpoint = String.format(GET_VOUCHER_BYID, id, lang);
     return handleGetRequest(endpoint, httpClient, ctx, okapiHeaders, logger);
   }
+
 
   public static JsonObject verifyAndExtractBody(Response response) {
     verifyResponse(response);
