@@ -1,0 +1,61 @@
+#%RAML 1.0
+
+title: Voucher
+version: v0.1
+protocols: [ HTTP, HTTPS ]
+baseUri: http://localhost
+
+documentation:
+  - title: Invoice API
+    content: This documents the API calls that can be made to manage vouchers
+
+types:
+  invoice: !include acq-models/mod-invoice-storage/schemas/invoice.json
+  invoiceCollection: !include acq-models/mod-invoice-storage/schemas/invoice_collection.json
+  invoiceLine: !include acq-models/mod-invoice-storage/schemas/invoice_line.json
+  invoiceLineCollection: !include acq-models/mod-invoice-storage/schemas/invoice_line_collection.json
+  voucherLine: !include acq-models/mod-invoice-storage/schemas/voucher_line.json
+  voucherLineCollection: !include acq-models/mod-invoice-storage/schemas/voucher_line_collection.json
+  errors: !include raml-util/schemas/errors.schema
+  UUID:
+    type: string
+    pattern: ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$
+
+traits:
+  validate: !include raml-util/traits/validation.raml
+  language: !include raml-util/traits/language.raml
+  pageable:  !include raml-util/traits/pageable.raml
+  searchable: !include raml-util/traits/searchable.raml
+
+resourceTypes:
+  collection: !include raml-util/rtypes/collection.raml
+  collection-item: !include raml-util/rtypes/item-collection.raml
+  get-only: !include raml-util/rtypes/get-only.raml
+
+/voucher:
+  /voucher-lines:
+    displayName: Voucher Lines
+    description: Manage voucher lines
+    type:
+      collection:
+        schemaCollection: voucherLineCollection
+        schemaItem: voucherLine
+        exampleCollection: !include acq-models/mod-invoice-storage/examples/voucher_line_collection.sample
+        exampleItem: !include acq-models/mod-invoice-storage/examples/voucher_line.sample
+    is: [validate]
+    get:
+      is: [ pageable, searchable: {description: "using CQL (indexes for voucher lines)", example: "status==\"Open\""}, validate ]
+    /{id}:
+      displayName: Voucher Line
+      description: Manage voucher line by id
+      uriParameters:
+        id:
+          description: The UUID of a voucher line
+          type: UUID
+      type:
+        collection-item:
+          exampleItem: !include acq-models/mod-invoice-storage/examples/voucher_line.sample
+          schema: voucherLine
+      is: [validate]
+      get:
+        description: Return an voucher line with given {id}
