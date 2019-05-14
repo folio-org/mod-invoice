@@ -127,6 +127,7 @@ public class MockServer {
     router.route(HttpMethod.GET, resourceByIdPath(VOUCHER_LINES, ID_PATH_PARAM)).handler(this::handleGetVoucherLineById);
 
     router.route(HttpMethod.DELETE, resourceByIdPath(INVOICES, ID_PATH_PARAM)).handler(ctx -> handleDeleteRequest(ctx, INVOICES));
+    router.route(HttpMethod.DELETE, resourceByIdPath(INVOICE_LINES, ID_PATH_PARAM)).handler(ctx -> handleDeleteRequest(ctx, INVOICE_LINES));
 
     router.route(HttpMethod.PUT, resourceByIdPath(INVOICES, ID_PATH_PARAM)).handler(ctx -> handlePutGenericSubObj(ctx, INVOICES));
     router.route(HttpMethod.PUT, resourceByIdPath(INVOICE_LINES, ID_PATH_PARAM)).handler(ctx -> handlePutGenericSubObj(ctx, INVOICE_LINES));
