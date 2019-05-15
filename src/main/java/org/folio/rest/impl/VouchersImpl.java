@@ -40,7 +40,7 @@ public class VouchersImpl implements Voucher {
   @Override
   public void getVoucherVoucherLinesById(String id, String lang, Map<String, String> okapiHeaders,
                                          Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
-    logger.info("== Get Voucher Line by Id for an existing invoice ==");
+    logger.info("== Get Voucher Line by Id for an existing Voucher ==");
     VoucherLineHelper voucherLineHelper = new VoucherLineHelper(okapiHeaders, vertxContext, lang);
     voucherLineHelper
       .getVoucherLines(id)

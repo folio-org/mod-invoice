@@ -28,18 +28,18 @@ resourceTypes:
 
 /voucher:
   /vouchers/{id}:
-      uriParameters:
-        id:
-          description: The UUID of an voucher
-          type: UUID
-      displayName: voucher
-      description: Get specific voucher
-      type:
-        get-only:
-          schema: voucher
-          exampleCollection: !include acq-models/mod-invoice-storage/examples/voucher.sample
-      get:
-        description: Return an voucher with given {id}
+    uriParameters:
+      id:
+        description: The UUID of an voucher
+        type: UUID
+    displayName: voucher
+    description: Get specific voucher
+    type:
+      get-only:
+        schema: voucher
+        exampleCollection: !include acq-models/mod-invoice-storage/examples/voucher.sample
+    get:
+      description: Return an voucher with given {id}
   /voucher-lines/{id}:
     uriParameters:
       id:
