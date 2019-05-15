@@ -2,7 +2,6 @@ package org.folio.rest.impl;
 
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 import static javax.ws.rs.core.MediaType.TEXT_PLAIN;
-import io.restassured.http.Header;
 import io.restassured.response.Response;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
@@ -14,7 +13,6 @@ import org.junit.Test;
 
 import java.net.MalformedURLException;
 
-import static org.folio.rest.RestVerticle.OKAPI_HEADER_TENANT;
 import static org.folio.rest.impl.AbstractHelper.ID;
 import static org.junit.Assert.assertEquals;
 
@@ -23,7 +21,6 @@ public class VoucherLinesApiTest extends ApiTestBase {
 
   private static final Logger logger = LoggerFactory.getLogger(VoucherLinesApiTest.class);
 
-  static final Header NON_EXIST_CONFIG_X_OKAPI_TENANT = new Header(OKAPI_HEADER_TENANT, "invoicetest");
   static final String VOUCHER_LINES_MOCK_DATA_PATH = BASE_MOCK_DATA_PATH + "voucherLines/";
   private static final String VOUCHER_LINES_LIST_PATH = VOUCHER_LINES_MOCK_DATA_PATH + "voucher_lines.json";
   private static final String VOUCHER_LINES_PATH = "/voucher/voucher-lines";
