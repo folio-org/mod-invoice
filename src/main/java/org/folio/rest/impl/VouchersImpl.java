@@ -13,8 +13,9 @@ import io.vertx.core.Context;
 import io.vertx.core.Handler;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
+import org.folio.rest.jaxrs.resource.Voucher;
 
-public class VouchersImpl implements org.folio.rest.jaxrs.resource.Voucher {
+public class VouchersImpl implements Voucher {
 
   private static final Logger logger = LoggerFactory.getLogger(VouchersImpl.class);
 
@@ -24,6 +25,17 @@ public class VouchersImpl implements org.folio.rest.jaxrs.resource.Voucher {
     return null;
   }
 
+  @Override
+  @Validate
+  public void getVoucherVouchersById(String id, String lang, Map<String, String> okapiHeaders,
+                                     Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+    VoucherHelper helper = new VoucherHelper(okapiHeaders, vertxContext, lang);
+    helper.getVoucher(id)
+      .thenAccept(voucher -> asyncResultHandler.handle(succeededFuture(helper.buildOkResponse(voucher))))
+      .exceptionally(t -> handleErrorResponse(asyncResultHandler, helper, t));
+
+  }
+  
   @Validate
   @Override
   public void getVoucherVoucherLinesById(String id, String lang, Map<String, String> okapiHeaders,

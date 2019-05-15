@@ -1,9 +1,9 @@
 #%RAML 1.0
 
 title: Voucher
-version: v0.1
+version: v1.0
 protocols: [ HTTP, HTTPS ]
-baseUri: http://localhost
+baseUri: https://github.com/folio-org/mod-invoice
 
 documentation:
   - title: Voucher API
@@ -11,6 +11,7 @@ documentation:
 
 types:
   voucherLine: !include acq-models/mod-invoice-storage/schemas/voucher_line.json
+  voucher: !include acq-models/mod-invoice-storage/schemas/voucher.json
   errors: !include raml-util/schemas/errors.schema
   UUID:
     type: string
@@ -19,11 +20,26 @@ types:
 traits:
   validate: !include raml-util/traits/validation.raml
   language: !include raml-util/traits/language.raml
+  pageable:  !include raml-util/traits/pageable.raml
+  searchable: !include raml-util/traits/searchable.raml
 
 resourceTypes:
   get-only: !include raml-util/rtypes/get-only.raml
 
 /voucher:
+  /vouchers/{id}:
+      uriParameters:
+        id:
+          description: The UUID of an voucher
+          type: UUID
+      displayName: voucher
+      description: Get specific voucher
+      type:
+        get-only:
+          schema: voucher
+          exampleCollection: !include acq-models/mod-invoice-storage/examples/voucher.sample
+      get:
+        description: Return an voucher with given {id}
   /voucher-lines/{id}:
     uriParameters:
       id:

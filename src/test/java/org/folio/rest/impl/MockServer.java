@@ -11,6 +11,7 @@ import static org.folio.invoices.utils.ResourcePathResolver.VOUCHER_LINES;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_LINE_NUMBER;
 import static org.folio.invoices.utils.ResourcePathResolver.resourceByIdPath;
 import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
+import static org.folio.invoices.utils.ResourcePathResolver.VOUCHERS;
 import static org.folio.rest.RestVerticle.OKAPI_HEADER_TENANT;
 import static org.folio.rest.impl.AbstractHelper.ID;
 import static org.folio.rest.impl.ApiTestBase.BASE_MOCK_DATA_PATH;
@@ -24,6 +25,7 @@ import static org.folio.rest.impl.VoucherLinesApiTest.VOUCHER_LINES_MOCK_DATA_PA
 import static org.folio.rest.impl.InvoicesApiTest.BAD_QUERY;
 import static org.folio.rest.impl.InvoicesApiTest.EXISTING_VENDOR_INV_NO;
 import static org.folio.rest.impl.InvoicesApiTest.INVOICE_MOCK_DATA_PATH;
+import static org.folio.rest.impl.VouchersApiTest.VOUCHER_MOCK_DATA_PATH;
 import static org.junit.Assert.fail;
 
 import java.io.IOException;
@@ -44,7 +46,7 @@ import org.folio.rest.acq.model.SequenceNumber;
 import org.folio.rest.acq.model.VoucherLine;
 import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.jaxrs.model.InvoiceLineCollection;
-
+import org.folio.rest.jaxrs.model.Voucher;
 import com.google.common.collect.HashBasedTable;
 import com.google.common.collect.Table;
 
@@ -71,7 +73,7 @@ public class MockServer {
   private static final String INVOICE_LINES_COLLECTION = BASE_MOCK_DATA_PATH + "invoiceLines/invoice_lines.json";
   private static final String ID_PATH_PARAM = ":" + ID;
   private static final String TOTAL_RECORDS = "totalRecords";
-  
+
   static final Header INVOICE_NUMBER_ERROR_X_OKAPI_TENANT = new Header(OKAPI_HEADER_TENANT, INVOICE_NUMBER_ERROR_TENANT);
   static final Header ERROR_X_OKAPI_TENANT = new Header(OKAPI_HEADER_TENANT, ERROR_TENANT);
   static final Header INVOICE_LINE_NUMBER_ERROR_X_OKAPI_TENANT = new Header(OKAPI_HEADER_TENANT, INVOICE_LINE_NUMBER_ERROR_TENANT);
@@ -125,6 +127,7 @@ public class MockServer {
     router.route(HttpMethod.GET, resourceByIdPath(INVOICE_LINES, ID_PATH_PARAM)).handler(this::handleGetInvoiceLineById);
     router.route(HttpMethod.GET, resourcesPath(INVOICE_LINE_NUMBER)).handler(this::handleGetInvoiceLineNumber);
     router.route(HttpMethod.GET, resourceByIdPath(VOUCHER_LINES, ID_PATH_PARAM)).handler(this::handleGetVoucherLineById);
+    router.route(HttpMethod.GET, resourceByIdPath(VOUCHERS, ID_PATH_PARAM)).handler(this::handleGetVoucherById);
 
     router.route(HttpMethod.DELETE, resourceByIdPath(INVOICES, ID_PATH_PARAM)).handler(ctx -> handleDeleteRequest(ctx, INVOICES));
     router.route(HttpMethod.DELETE, resourceByIdPath(INVOICE_LINES, ID_PATH_PARAM)).handler(ctx -> handleDeleteRequest(ctx, INVOICE_LINES));
@@ -360,4 +363,30 @@ public class MockServer {
       serverResponse(ctx, 200, APPLICATION_JSON, jsonSequence.encodePrettily());
     }
    }
+
+  private void handleGetVoucherById(RoutingContext ctx) {
+    logger.info("handleGetVoucherById got: GET " + ctx.request().path());
+    String id = ctx.request().getParam(ID);
+    logger.info("id: " + id);
+    if (ID_FOR_INTERNAL_SERVER_ERROR.equals(id)) {
+      serverResponse(ctx, 500, APPLICATION_JSON, Response.Status.INTERNAL_SERVER_ERROR.getReasonPhrase());
+    } else {
+      try {
+
+        String filePath = String.format("%s%s.json", VOUCHER_MOCK_DATA_PATH, id);
+
+        JsonObject voucher = new JsonObject(getMockData(filePath));
+
+        // validate content against schema
+        Voucher voucherSchema = voucher.mapTo(Voucher.class);
+        voucherSchema.setId(id);
+        voucher = JsonObject.mapFrom(voucherSchema);
+        addServerRqRsData(HttpMethod.GET, VOUCHERS, voucher);
+        serverResponse(ctx, 200, APPLICATION_JSON, voucher.encodePrettily());
+      } catch (IOException e) {
+        ctx.response().setStatusCode(404).end(id);
+      }
+    }
+  }
+
 }
