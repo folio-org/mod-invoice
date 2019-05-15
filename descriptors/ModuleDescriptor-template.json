@@ -218,6 +218,16 @@
       "description": "Get an existing Voucher line"
     },
     {
+      "permissionName": "voucher.all",
+      "displayName": "Invoice module - all Voucher permissions",
+      "description": "Entire set of permissions needed to use Vouchers",
+      "subPermissions": [
+        "voucher.vouchers.item.get",
+        "voucher.voucher-lines.item.get"
+      ],
+      "visible": false
+    },    
+    {
       "permissionName": "invoice.all",
       "displayName": "Invoice module - all permissions",
       "description": "Entire set of permissions needed to use the invoice module",
@@ -235,16 +245,6 @@
         "invoice.invoice-number.item.get",
         "invoice.invoice-number.item.post",
         "voucher.all"
-      ],
-      "visible": false
-    },
-    {
-      "permissionName": "voucher.all",
-      "displayName": "Invoice module - all Voucher permissions",
-      "description": "Entire set of permissions needed to use Vouchers",
-      "subPermissions": [
-        "voucher.vouchers.item.get",
-        "voucher.voucher-lines.item.get"
       ],
       "visible": false
     }
