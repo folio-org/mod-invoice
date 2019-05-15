@@ -92,7 +92,13 @@
           "methods": ["GET"],
           "pathPattern": "/invoice/invoice-number",
           "permissionsRequired": ["invoice.invoice-number.item.get"]
-        },
+        }      
+      ]
+    },
+    {
+      "id": "voucher",
+      "version": "1.0",
+      "handlers": [
         {
           "methods": ["GET"],
           "pathPattern": "/voucher/vouchers/{id}",
