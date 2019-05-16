@@ -2,30 +2,49 @@ package org.folio.rest.impl;
 
 import static io.vertx.core.Future.succeededFuture;
 
+import java.util.Map;
+
+import javax.ws.rs.core.Response;
+import org.folio.rest.annotations.Validate;
+
+
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Context;
 import io.vertx.core.Handler;
-import java.util.Map;
-import javax.ws.rs.core.Response;
-import org.folio.rest.annotations.Validate;
+import io.vertx.core.logging.Logger;
+import io.vertx.core.logging.LoggerFactory;
 import org.folio.rest.jaxrs.resource.Voucher;
 
 public class VouchersImpl implements Voucher {
 
+  private static final Logger logger = LoggerFactory.getLogger(VouchersImpl.class);
+
+  private Void handleErrorResponse(Handler<AsyncResult<Response>> asyncResultHandler, AbstractHelper helper,
+                                   Throwable t) {
+    asyncResultHandler.handle(succeededFuture(helper.buildErrorResponse(t)));
+    return null;
+  }
+
   @Override
   @Validate
   public void getVoucherVouchersById(String id, String lang, Map<String, String> okapiHeaders,
-      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+                                     Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     VoucherHelper helper = new VoucherHelper(okapiHeaders, vertxContext, lang);
     helper.getVoucher(id)
       .thenAccept(voucher -> asyncResultHandler.handle(succeededFuture(helper.buildOkResponse(voucher))))
       .exceptionally(t -> handleErrorResponse(asyncResultHandler, helper, t));
 
   }
-
-  private Void handleErrorResponse(Handler<AsyncResult<Response>> asyncResultHandler, AbstractHelper helper, Throwable t) {
-    asyncResultHandler.handle(succeededFuture(helper.buildErrorResponse(t)));
-    return null;
-
+  
+  @Validate
+  @Override
+  public void getVoucherVoucherLinesById(String id, String lang, Map<String, String> okapiHeaders,
+                                         Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+    logger.info("== Get Voucher Line by Id for an existing Voucher ==");
+    VoucherLineHelper voucherLineHelper = new VoucherLineHelper(okapiHeaders, vertxContext, lang);
+    voucherLineHelper
+      .getVoucherLines(id)
+      .thenAccept(voucherLine -> asyncResultHandler.handle(succeededFuture(voucherLineHelper.buildOkResponse(voucherLine))))
+      .exceptionally(t -> handleErrorResponse(asyncResultHandler, voucherLineHelper, t));
   }
 }

@@ -10,6 +10,7 @@ documentation:
     content: This documents the API calls that can be made to manage vouchers
 
 types:
+  voucherLine: !include acq-models/mod-invoice-storage/schemas/voucher_line.json
   voucher: !include acq-models/mod-invoice-storage/schemas/voucher.json
   errors: !include raml-util/schemas/errors.schema
   UUID:
@@ -27,15 +28,29 @@ resourceTypes:
 
 /voucher:
   /vouchers/{id}:
-      uriParameters:
-        id:
-          description: The UUID of an voucher
-          type: UUID
-      displayName: voucher
-      description: Get specific voucher
-      type:
-        get-only:
-          schema: voucher
-          exampleCollection: !include acq-models/mod-invoice-storage/examples/voucher.sample
-      get:
-        description: Return an voucher with given {id}
+    uriParameters:
+      id:
+        description: The UUID of an voucher
+        type: UUID
+    displayName: voucher
+    description: Get specific voucher
+    type:
+      get-only:
+        schema: voucher
+        exampleCollection: !include acq-models/mod-invoice-storage/examples/voucher.sample
+    get:
+      description: Return an voucher with given {id}
+  /voucher-lines/{id}:
+    uriParameters:
+      id:
+        description: The UUID of a voucher line
+        type: UUID  
+    displayName: Voucher Lines
+    description: Get specific voucher lines
+    is: [validate]
+    type:
+      get-only:
+        schema: voucherLine
+        exampleCollection: !include acq-models/mod-invoice-storage/examples/voucher_line.sample
+    get:
+      description: Return an voucher line with given {id}

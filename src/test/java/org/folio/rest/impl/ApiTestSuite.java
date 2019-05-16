@@ -20,7 +20,8 @@ import java.util.concurrent.TimeoutException;
 @Suite.SuiteClasses({
   InvoicesApiTest.class,
   InvoiceLinesApiTest.class,
-  VouchersApiTest.class
+  VouchersApiTest.class,
+  VoucherLinesApiTest.class
 })
 public class ApiTestSuite {
 

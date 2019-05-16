@@ -106,6 +106,14 @@
           "modulePermissions": [
             "voucher-storage.vouchers.item.get"
           ]
+        },
+        {
+          "methods": ["GET"],
+          "pathPattern": "/voucher/voucher-lines/{id}",
+          "permissionsRequired": ["voucher.voucher-lines.item.get"],
+          "modulePermissions": [
+            "voucher-storage.voucher-lines.item.get"
+          ]
         }
       ]
     },
@@ -136,6 +144,10 @@
     },
     {
       "id": "voucher-storage.vouchers",
+      "version": "1.0"
+    },
+    {
+      "id": "voucher-storage.voucher-lines",
       "version": "1.0"
     }
   ],  
@@ -201,14 +213,20 @@
       "description": "Get an existing Voucher"
     },
     {
+      "permissionName": "voucher.voucher-lines.item.get",
+      "displayName": "Voucher - get an existing Voucher line",
+      "description": "Get an existing Voucher line"
+    },
+    {
       "permissionName": "voucher.all",
       "displayName": "Invoice module - all Voucher permissions",
       "description": "Entire set of permissions needed to use Vouchers",
       "subPermissions": [
-        "voucher.vouchers.item.get"
-        ],
+        "voucher.vouchers.item.get",
+        "voucher.voucher-lines.item.get"
+      ],
       "visible": false
-    },
+    },    
     {
       "permissionName": "invoice.all",
       "displayName": "Invoice module - all permissions",

@@ -7,6 +7,7 @@ import static org.apache.commons.lang3.StringUtils.EMPTY;
 import static org.folio.invoices.utils.ResourcePathResolver.FOLIO_INVOICE_NUMBER;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICES;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_LINES;
+import static org.folio.invoices.utils.ResourcePathResolver.VOUCHER_LINES;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_LINE_NUMBER;
 import static org.folio.invoices.utils.ResourcePathResolver.resourceByIdPath;
 import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
@@ -20,6 +21,7 @@ import static org.folio.rest.impl.ApiTestBase.ID_FOR_INTERNAL_SERVER_ERROR;
 import static org.folio.rest.impl.ApiTestBase.INVOICE_LINE_NUMBER_VALUE;
 import static org.folio.rest.impl.ApiTestBase.getMockData;
 import static org.folio.rest.impl.InvoiceLinesApiTest.INVOICE_LINES_MOCK_DATA_PATH;
+import static org.folio.rest.impl.VoucherLinesApiTest.VOUCHER_LINES_MOCK_DATA_PATH;
 import static org.folio.rest.impl.InvoicesApiTest.BAD_QUERY;
 import static org.folio.rest.impl.InvoicesApiTest.EXISTING_VENDOR_INV_NO;
 import static org.folio.rest.impl.InvoicesApiTest.INVOICE_MOCK_DATA_PATH;
@@ -41,6 +43,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.folio.invoices.utils.ResourcePathResolver;
 import org.folio.rest.acq.model.InvoiceLine;
 import org.folio.rest.acq.model.SequenceNumber;
+import org.folio.rest.acq.model.VoucherLine;
 import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.jaxrs.model.InvoiceLineCollection;
 import org.folio.rest.jaxrs.model.Voucher;
@@ -123,6 +126,7 @@ public class MockServer {
     router.route(HttpMethod.GET, resourcesPath(FOLIO_INVOICE_NUMBER)).handler(this::handleGetFolioInvoiceNumber);
     router.route(HttpMethod.GET, resourceByIdPath(INVOICE_LINES, ID_PATH_PARAM)).handler(this::handleGetInvoiceLineById);
     router.route(HttpMethod.GET, resourcesPath(INVOICE_LINE_NUMBER)).handler(this::handleGetInvoiceLineNumber);
+    router.route(HttpMethod.GET, resourceByIdPath(VOUCHER_LINES, ID_PATH_PARAM)).handler(this::handleGetVoucherLineById);
     router.route(HttpMethod.GET, resourceByIdPath(VOUCHERS, ID_PATH_PARAM)).handler(this::handleGetVoucherById);
 
     router.route(HttpMethod.DELETE, resourceByIdPath(INVOICES, ID_PATH_PARAM)).handler(ctx -> handleDeleteRequest(ctx, INVOICES));
@@ -200,25 +204,50 @@ public class MockServer {
     }
   }
 
-  private void handleGetInvoiceLineById(RoutingContext ctx) {
-    logger.info("handleGetInvoiceLinesById got: GET " + ctx.request().path());
+  private void handleGetVoucherLineById(RoutingContext ctx) {
+    logger.info("handleGetVoucherLinesById got: GET " + ctx.request().path());
     String id = ctx.request().getParam(ID);
     logger.info("id: " + id);
 
     try {
       String filePath = null;
-      filePath = String.format("%s%s.json", INVOICE_LINES_MOCK_DATA_PATH, id);
+      filePath = String.format("%s%s.json", VOUCHER_LINES_MOCK_DATA_PATH, id);
 
-      JsonObject invoiceLine = new JsonObject(getMockData(filePath));
+      JsonObject voucherLine = new JsonObject(getMockData(filePath));
 
       // validate content against schema
-      org.folio.rest.acq.model.InvoiceLine invoiceSchema = invoiceLine.mapTo(org.folio.rest.acq.model.InvoiceLine.class);
-      invoiceSchema.setId(id);
-      invoiceLine = JsonObject.mapFrom(invoiceSchema);
-      addServerRqRsData(HttpMethod.GET, INVOICE_LINES, invoiceLine);
-      serverResponse(ctx, 200, APPLICATION_JSON, invoiceLine.encodePrettily());
+      VoucherLine voucherSchema = voucherLine.mapTo(org.folio.rest.acq.model.VoucherLine.class);
+      voucherSchema.setId(id);
+      voucherLine = JsonObject.mapFrom(voucherSchema);
+      addServerRqRsData(HttpMethod.GET, VOUCHER_LINES, voucherLine);
+      serverResponse(ctx, 200, APPLICATION_JSON, voucherLine.encodePrettily());
     } catch (IOException e) {
       ctx.response().setStatusCode(404).end(id);
+    }
+  }
+  
+  private void handleGetInvoiceLineById(RoutingContext ctx) {
+    logger.info("handleGetInvoiceLinesById got: GET " + ctx.request().path());
+    String id = ctx.request().getParam(ID);
+    logger.info("id: " + id);
+    if (ID_FOR_INTERNAL_SERVER_ERROR.equals(id)) {
+      serverResponse(ctx, 500, APPLICATION_JSON, Response.Status.INTERNAL_SERVER_ERROR.getReasonPhrase());
+    } else {
+      try {
+        String filePath = null;
+        filePath = String.format("%s%s.json", INVOICE_LINES_MOCK_DATA_PATH, id);
+  
+        JsonObject invoiceLine = new JsonObject(getMockData(filePath));
+  
+        // validate content against schema
+        org.folio.rest.acq.model.InvoiceLine invoiceSchema = invoiceLine.mapTo(org.folio.rest.acq.model.InvoiceLine.class);
+        invoiceSchema.setId(id);
+        invoiceLine = JsonObject.mapFrom(invoiceSchema);
+        addServerRqRsData(HttpMethod.GET, INVOICE_LINES, invoiceLine);
+        serverResponse(ctx, 200, APPLICATION_JSON, invoiceLine.encodePrettily());
+      } catch (IOException e) {
+        ctx.response().setStatusCode(404).end(id);
+      }
     }
   }
 
