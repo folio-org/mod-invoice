@@ -24,7 +24,7 @@ public class VoucherLineHelper extends AbstractHelper {
     return handlePutRequest(resourceByIdPath(VOUCHER_LINES, voucherLine.getId()), JsonObject.mapFrom(voucherLine), httpClient, ctx,
         okapiHeaders, logger);
   }
-  
+
   public CompletableFuture<VoucherLine> getVoucherLines(String id) {
     CompletableFuture<VoucherLine> future = new VertxCompletableFuture<>(ctx);
     try {
