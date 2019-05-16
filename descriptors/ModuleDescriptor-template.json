@@ -114,6 +114,14 @@
           "modulePermissions": [
             "voucher-storage.voucher-lines.item.get"
           ]
+        },
+        {
+          "methods": ["PUT"],
+          "pathPattern": "/voucher/voucher-lines/{id}",
+          "permissionsRequired": ["voucher.voucher-lines.item.put"],
+          "modulePermissions": [
+            "voucher-storage.voucher-lines.item.put"
+          ]
         }
       ]
     },
@@ -218,12 +226,18 @@
       "description": "Get an existing Voucher line"
     },
     {
+      "permissionName": "voucher.voucher-lines.item.put",
+      "displayName": "Voucher - modify an existing Voucher line",
+      "description": "Modify an existing Voucher line"
+    },
+    {
       "permissionName": "voucher.all",
       "displayName": "Invoice module - all Voucher permissions",
       "description": "Entire set of permissions needed to use Vouchers",
       "subPermissions": [
         "voucher.vouchers.item.get",
-        "voucher.voucher-lines.item.get"
+        "voucher.voucher-lines.item.get",
+        "voucher.voucher-lines.item.put"
       ],
       "visible": false
     },    

@@ -134,6 +134,7 @@ public class MockServer {
 
     router.route(HttpMethod.PUT, resourceByIdPath(INVOICES, ID_PATH_PARAM)).handler(ctx -> handlePutGenericSubObj(ctx, INVOICES));
     router.route(HttpMethod.PUT, resourceByIdPath(INVOICE_LINES, ID_PATH_PARAM)).handler(ctx -> handlePutGenericSubObj(ctx, INVOICE_LINES));
+    router.route(HttpMethod.PUT, resourceByIdPath(VOUCHER_LINES, ID_PATH_PARAM)).handler(ctx -> handlePutGenericSubObj(ctx, VOUCHER_LINES));
     return router;
   }
 

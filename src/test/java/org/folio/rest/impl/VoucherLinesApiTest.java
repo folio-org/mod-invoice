@@ -2,21 +2,21 @@ package org.folio.rest.impl;
 
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 import static javax.ws.rs.core.MediaType.TEXT_PLAIN;
-import io.restassured.response.Response;
-import io.vertx.core.json.JsonObject;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
+import static org.folio.rest.impl.AbstractHelper.ID;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
+
+import java.net.MalformedURLException;
 
 import org.folio.rest.jaxrs.model.Errors;
 import org.folio.rest.jaxrs.model.VoucherLine;
 import org.junit.Test;
 
-import java.net.MalformedURLException;
-
-import static org.folio.rest.impl.AbstractHelper.ID;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
+import io.restassured.response.Response;
+import io.vertx.core.json.JsonObject;
+import io.vertx.core.logging.Logger;
+import io.vertx.core.logging.LoggerFactory;
 
 
 public class VoucherLinesApiTest extends ApiTestBase {
@@ -24,7 +24,9 @@ public class VoucherLinesApiTest extends ApiTestBase {
   private static final Logger logger = LoggerFactory.getLogger(VoucherLinesApiTest.class);
 
   static final String VOUCHER_LINES_MOCK_DATA_PATH = BASE_MOCK_DATA_PATH + "voucherLines/";
+  static final String VALID_VOUCHER_LINE_UUID = "6d615cfd-38b6-4182-8178-8e6ffee7c01e";
   private static final String VOUCHER_LINES_LIST_PATH = VOUCHER_LINES_MOCK_DATA_PATH + "voucher_lines.json";
+  private static final String VOUCHER_LINE_PATH = VOUCHER_LINES_MOCK_DATA_PATH + "voucher_line.json";
   private static final String VOUCHER_LINES_PATH = "/voucher/voucher-lines" + "/%s";
   private static final String NOT_FOUND_VOUCHER_LINE_ID = "5a34ae0e-5a11-4337-be95-1a20cfdc3161";
   private static final String INVALID_VOUCHER_LINE_ID = "invalidVoucherLineId";
@@ -64,5 +66,32 @@ public class VoucherLinesApiTest extends ApiTestBase {
 
     assertNotNull(actual);
     assertTrue(actual.contains(INVALID_VOUCHER_LINE_ID));
+  }
+  
+  @Test
+  public void testPutVouchersVoucherLinesByIdTest() throws Exception {
+    String reqData = getMockData(VOUCHER_LINE_PATH);
+
+    verifyPut(String.format(VOUCHER_LINES_PATH, VALID_VOUCHER_LINE_UUID), reqData, "", 204);
+  }
+
+  @Test
+  public void testPutVouchersVoucherLinesByNonExistentId() throws Exception {
+    VoucherLine reqData = getMockAsJson(VOUCHER_LINE_PATH).mapTo(VoucherLine.class);
+    reqData.setId(ID_DOES_NOT_EXIST);
+    String jsonBody = JsonObject.mapFrom(reqData)
+      .encode();
+
+    verifyPut(String.format(VOUCHER_LINES_PATH, ID_DOES_NOT_EXIST), jsonBody, APPLICATION_JSON, 404);
+  }
+
+  @Test
+  public void testPutVouchersVoucherLinesInvalidIdFormat() throws Exception {
+    VoucherLine reqData = getMockAsJson(VOUCHER_LINE_PATH).mapTo(VoucherLine.class);
+    reqData.setId(ID_BAD_FORMAT);
+    String jsonBody = JsonObject.mapFrom(reqData)
+      .encode();
+
+    verifyPut(String.format(VOUCHER_LINES_PATH, ID_BAD_FORMAT), jsonBody, APPLICATION_JSON, 422);
   }
 }
