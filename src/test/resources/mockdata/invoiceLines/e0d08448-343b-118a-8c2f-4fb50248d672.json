@@ -1,36 +1,33 @@
 {
   "id": "e0d08448-343b-118a-8c2f-4fb50248d672",
   "description": "Some description",
-  "poLineIds": [
-    "c0d08448-347b-418a-8c2f-5fb50248d67e"
-  ],
   "invoiceLineNumber": "123invoicenumber45-1",
   "invoiceLineStatus": "Open",
   "vendorRefNo": "1",
+  "poLineId": "c0d08448-347b-418a-8c2f-5fb50248d67e",
   "productId": "9780764354113",
   "productIdType": "ISBN",
-  "invoiceLineTax": 11.2,
   "comment": "Sample invoice line",
-  "price": 2.2,
-  "quantity": 3.0,
-  "doNotReleaseEncumbrance": true,
-  "reportTax": 3.5,
+  "subTotal": 2.2,
+  "quantity": 3,
+  "releaseEncumbrance": false,
   "subscriptionInfo": "Subscription information",
   "subscriptionStart": "2018-08-01T00:00:00.000+0000",
   "subscriptionEnd": "2019-01-01T00:00:00.000+0000",
-  "pieceIds": [
-    "5e317dc2-deeb-4429-b2a1-91e5cd0fd5f7"
-  ],
   "invoiceId": "c0d08448-347b-418a-8c2f-5fb50248d67e",
   "fundDistributions": [
-    "HIST"
+    {
+      "code": "EUHIST",
+      "encumbrance": "5f9bfc74-f6ff-4877-be1f-793f8ce90ade",
+      "fundId": "63157e96-0693-426d-b0df-948bacdfdb08",
+      "percentage": 50
+    }
   ],
-  "adjustmentsFieldSet": [
+  "adjustments": [
     {
       "adjustmentLabel": "Adjustment label",
       "adjustmentType": "Percentage",
-      "adjustmentValue": 10.1,
-      "proRateAdjustment": true
+      "adjustmentValue": 10.1
     }
   ],
   "metadata": {

@@ -1,8 +1,17 @@
 {
   "externalAccountNumber": "54321099",
-  "voucherLineAmount": 33.55,
-  "sourceId": "0726fc17-38c3-4249-81d3-97ffddada92b",
-  "fundId": "f951ec3a-19a0-42ea-85d1-ae987caf5e4d",
-  "fundDistributions": "9c28ec73-ea09-47e2-b12f-5c7ef98c7a9f",
-  "subTransactionId": "d384a4c2-9f85-4072-a305-800b3f6f5143"
+  "amount": 33.55,
+  "sourceIds": [
+    "0726fc17-38c3-4249-81d3-97ffddada92b"
+  ],
+  "fundDistributions": [
+    {
+      "code": "USHIST",
+      "encumbrance": "1c8fc9f4-d2cc-4bd1-aa9a-cb02291cbe65",
+      "fundId": "f951ec3a-19a0-42ea-85d1-ae987caf5e4d",
+      "percentage": 50
+    }
+  ],
+  "subTransactionId": "d384a4c2-9f85-4072-a305-800b3f6f5143",
+  "voucherId": "a9b99f8a-7100-47f2-9903-6293d44a9905"
 }
