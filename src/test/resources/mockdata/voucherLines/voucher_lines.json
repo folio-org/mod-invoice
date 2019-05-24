@@ -3,29 +3,56 @@
     {
       "id": "6d615cfd-38b6-4182-8178-8e6ffee7c01e",
       "externalAccountNumber": "54321099",
-      "voucherLineAmount": 33.55,
-      "sourceId": "0726fc17-38c3-4249-81d3-97ffddada92b",
-      "fundId": "f951ec3a-19a0-42ea-85d1-ae987caf5e4d",
-      "fundDistributions": "9c28ec73-ea09-47e2-b12f-5c7ef98c7a9f",
-      "subTransactionId": "d384a4c2-9f85-4072-a305-800b3f6f5143"
+      "amount": 33.55,
+      "sourceIds": [
+        "0726fc17-38c3-4249-81d3-97ffddada92b"
+      ],
+      "fundDistributions": [
+        {
+          "code": "USHIST",
+          "encumbrance": "1c8fc9f4-d2cc-4bd1-aa9a-cb02291cbe65",
+          "fundId": "f951ec3a-19a0-42ea-85d1-ae987caf5e4d",
+          "percentage": 50
+        }
+      ],
+      "subTransactionId": "d384a4c2-9f85-4072-a305-800b3f6f5143",
+      "voucherId": "a9b99f8a-7100-47f2-9903-6293d44a9905"
     },
     {
-      "id": "e0d08448-343b-118a-8c2f-4fb50248d672",
+      "id": "22c278f5-29bb-40d6-8f99-62cc5b27191a",
       "externalAccountNumber": "54321098",
-      "voucherLineAmount": 23.45,
-      "sourceId": "7500196f-9612-4413-b8e0-f453a21dd2df",
-      "fundId": "172364c7-AaAa-A0C2-C12C-e35CeCcbfaF2",
-      "fundDistributions": "efee4b3a-fcd5-40c8-8cf4-0ee3d76ddf4d",
-      "subTransactionId": "7b1f7179-b83f-4eab-a4db-3c600eebe271"
+      "amount": 23.45,
+      "sourceIds": [
+        "7500196f-9612-4413-b8e0-f453a21dd2df"
+      ],
+      "fundDistributions": [
+        {
+          "code": "USHIST",
+          "encumbrance": "1c8fc9f4-d2cc-4bd1-aa9a-cb02291cbe65",
+          "fundId": "172364c7-aaaa-10c2-a12c-e35ceccbfaf2",
+          "percentage": 50
+        }
+      ],
+      "subTransactionId": "7b1f7179-b83f-4eab-a4db-3c600eebe271",
+      "voucherId": "a9b99f8a-7100-47f2-9903-6293d44a9905"
     },
     {
       "id": "56c8b0a8-5fb7-4097-bf47-2bdaf0adcf56",
       "externalAccountNumber": "54321100",
-      "voucherLineAmount": 45.60,
-      "sourceId": "0f6ab0b7-82f9-4d5b-b575-a5baa0f3f3ce",
-      "fundId": "d694fb77-589f-48b1-9cf4-d5e35a3847b3",
-      "fundDistributions": "0ad452a8-6b22-4698-804b-118c36236243",
-      "subTransactionId": "60007286-990b-4d92-a13a-375541146806"
+      "amount": 45.60,
+      "sourceIds": [
+        "0f6ab0b7-82f9-4d5b-b575-a5baa0f3f3ce"
+      ],
+      "fundDistributions": [
+        {
+          "code": "USHIST",
+          "encumbrance": "1c8fc9f4-d2cc-4bd1-aa9a-cb02291cbe65",
+          "fundId": "d694fb77-589f-48b1-9cf4-d5e35a3847b3",
+          "percentage": 50
+        }
+      ],
+      "subTransactionId": "60007286-990b-4d92-a13a-375541146806",
+      "voucherId": "a9b99f8a-7100-47f2-9903-6293d44a9905"
     }
   ],
   "totalRecords": 3

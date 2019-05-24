@@ -6,9 +6,9 @@
       "invoiceCurrency": "EUR",
       "exchangeRate": 1.12,
       "exportToAccounting": false,
-      "voucherType": "Payment",
-      "voucherStatus": "Awaiting Payment",
-      "voucherAmount": 23.45,
+      "type": "Payment",
+      "status": "Awaiting payment",
+      "amount": 23.45,
       "voucherDate": "2019-05-06T00:00:00.000+0000",
       "voucherNumber": "1000",
       "batchNumber": "101",
@@ -18,8 +18,8 @@
       "disbursementDate": "2019-05-05T00:00:00.000+0000",
       "disbursementAmount": 5,
       "metadata": {
-         "createdDate": "2019-05-06T00:00:00.000+0000",
-         "createdByUserId": "28d1057c-d137-11e8-a8d5-f2801f1b9fd1"
+        "createdDate": "2019-05-06T00:00:00.000+0000",
+        "createdByUserId": "28d1057c-d137-11e8-a8d5-f2801f1b9fd1"
       }
     }
   ],
