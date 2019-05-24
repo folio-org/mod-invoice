@@ -2,6 +2,14 @@
   "id": "c0d08448-347b-418a-8c2f-5fb50248d67e",
   "approvedBy": "ab18897b-0e40-4f31-896b-9c9adc979a88",
   "approvalDate": "2018-07-29T00:00:00.000+0000",
+  "adjustments": [
+    {
+      "description": "Extra Taxes",
+      "type": "Amount",
+      "value": 10
+    }
+  ],
+  "adjustmentsTotal":10,
   "chkSubscriptionOverlap": false,
   "currency": "USD",
   "folioInvoiceNo": "123invoicenumber45",
@@ -13,7 +21,8 @@
   "paymentMethod": "EFT",
   "status": "Open",
   "source": "024b6f41-c5c6-4280-858e-33fba452a334",
-  "total": 5,
+  "subTotal": 5,
+  "total": 15,
   "vendorInvoiceNo": "YK75851",
   "disbursementNumber": "58",
   "voucherNumber": "478",
