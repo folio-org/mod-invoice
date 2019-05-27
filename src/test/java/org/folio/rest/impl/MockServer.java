@@ -1,5 +1,6 @@
 package org.folio.rest.impl;
 
+import static java.util.stream.Collectors.toList;
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 import static javax.ws.rs.core.MediaType.TEXT_PLAIN;
 import static javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
@@ -20,6 +21,7 @@ import static org.folio.rest.impl.ApiTestBase.ID_DOES_NOT_EXIST;
 import static org.folio.rest.impl.ApiTestBase.ID_FOR_INTERNAL_SERVER_ERROR;
 import static org.folio.rest.impl.ApiTestBase.INVOICE_LINE_NUMBER_VALUE;
 import static org.folio.rest.impl.ApiTestBase.getMockData;
+import static org.folio.rest.impl.InvoiceLinesApiTest.INVOICE_ID;
 import static org.folio.rest.impl.InvoiceLinesApiTest.INVOICE_LINES_MOCK_DATA_PATH;
 import static org.folio.rest.impl.VoucherLinesApiTest.VOUCHER_LINES_MOCK_DATA_PATH;
 import static org.folio.rest.impl.InvoicesApiTest.BAD_QUERY;
@@ -30,21 +32,29 @@ import static org.junit.Assert.fail;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.stream.Collectors;
 
 import javax.ws.rs.core.Response;
 
+import org.apache.commons.collections4.CollectionUtils;
+
+import org.apache.commons.collections4.MapUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.folio.invoices.utils.ResourcePathResolver;
-import org.folio.rest.acq.model.InvoiceLine;
+import org.folio.rest.acq.model.CompositePoLine;
 import org.folio.rest.acq.model.SequenceNumber;
 import org.folio.rest.acq.model.VoucherLine;
 import org.folio.rest.jaxrs.model.Invoice;
+import org.folio.rest.jaxrs.model.InvoiceLine;
 import org.folio.rest.jaxrs.model.InvoiceLineCollection;
 import org.folio.rest.jaxrs.model.Voucher;
 import com.google.common.collect.HashBasedTable;
@@ -65,20 +75,21 @@ import io.vertx.ext.web.handler.BodyHandler;
 public class MockServer {
 
   private static final Logger logger = LoggerFactory.getLogger(MockServer.class);
+  public static final String ORDER_LINES_BY_ID_PATH = "/orders/order-lines/:id";
 
   static Table<String, HttpMethod, List<JsonObject>> serverRqRs = HashBasedTable.create();
   private static final String INVOICE_NUMBER_ERROR_TENANT = "po_number_error_tenant";
   private static final String INVOICE_LINE_NUMBER_ERROR_TENANT = "invoice_line_number_error_tenant";
   private static final String ERROR_TENANT = "error_tenant";
   private static final String INVOICE_LINES_COLLECTION = BASE_MOCK_DATA_PATH + "invoiceLines/invoice_lines.json";
+  private static final String PO_LINES_MOCK_DATA_PATH = BASE_MOCK_DATA_PATH + "poLines/";
   private static final String ID_PATH_PARAM = ":" + ID;
   private static final String TOTAL_RECORDS = "totalRecords";
+  static final String PO_LINES = "poLines";
 
   static final Header INVOICE_NUMBER_ERROR_X_OKAPI_TENANT = new Header(OKAPI_HEADER_TENANT, INVOICE_NUMBER_ERROR_TENANT);
   static final Header ERROR_X_OKAPI_TENANT = new Header(OKAPI_HEADER_TENANT, ERROR_TENANT);
   static final Header INVOICE_LINE_NUMBER_ERROR_X_OKAPI_TENANT = new Header(OKAPI_HEADER_TENANT, INVOICE_LINE_NUMBER_ERROR_TENANT);
-  static final String EMPTY_CONFIG_TENANT = "config_empty";
-  static final Header EMPTY_CONFIG_X_OKAPI_TENANT = new Header(OKAPI_HEADER_TENANT, EMPTY_CONFIG_TENANT);
 
   private final int port;
   private final Vertx vertx;
@@ -128,6 +139,7 @@ public class MockServer {
     router.route(HttpMethod.GET, resourcesPath(INVOICE_LINE_NUMBER)).handler(this::handleGetInvoiceLineNumber);
     router.route(HttpMethod.GET, resourceByIdPath(VOUCHER_LINES, ID_PATH_PARAM)).handler(this::handleGetVoucherLineById);
     router.route(HttpMethod.GET, resourceByIdPath(VOUCHERS, ID_PATH_PARAM)).handler(this::handleGetVoucherById);
+    router.route(HttpMethod.GET, ORDER_LINES_BY_ID_PATH).handler(this::handleGetPoLineById);
 
     router.route(HttpMethod.DELETE, resourceByIdPath(INVOICES, ID_PATH_PARAM)).handler(ctx -> handleDeleteRequest(ctx, INVOICES));
     router.route(HttpMethod.DELETE, resourceByIdPath(INVOICE_LINES, ID_PATH_PARAM)).handler(ctx -> handleDeleteRequest(ctx, INVOICE_LINES));
@@ -135,6 +147,7 @@ public class MockServer {
     router.route(HttpMethod.PUT, resourceByIdPath(INVOICES, ID_PATH_PARAM)).handler(ctx -> handlePutGenericSubObj(ctx, INVOICES));
     router.route(HttpMethod.PUT, resourceByIdPath(INVOICE_LINES, ID_PATH_PARAM)).handler(ctx -> handlePutGenericSubObj(ctx, INVOICE_LINES));
     router.route(HttpMethod.PUT, resourceByIdPath(VOUCHER_LINES, ID_PATH_PARAM)).handler(ctx -> handlePutGenericSubObj(ctx, VOUCHER_LINES));
+    router.route(HttpMethod.PUT, ORDER_LINES_BY_ID_PATH).handler(ctx -> handlePutGenericSubObj(ctx, PO_LINES));
     return router;
   }
 
@@ -142,13 +155,26 @@ public class MockServer {
     logger.info("handleGetInvoiceLines got: {}?{}", ctx.request().path(), ctx.request().query());
 
     String queryParam = StringUtils.trimToEmpty(ctx.request().getParam("query"));
+    String invoiceId = EMPTY;
+    if (queryParam.contains(INVOICE_ID)) {
+      invoiceId = queryParam.split(INVOICE_ID + "==")[1];
+    }
     if (queryParam.contains(BAD_QUERY)) {
       serverResponse(ctx, 400, APPLICATION_JSON, Response.Status.BAD_REQUEST.getReasonPhrase());
     } else if (queryParam.contains(ID_FOR_INTERNAL_SERVER_ERROR)) {
       serverResponse(ctx, 500, APPLICATION_JSON, Response.Status.INTERNAL_SERVER_ERROR.getReasonPhrase());
     } else {
       try {
-        InvoiceLineCollection invoiceLineCollection = new JsonObject(ApiTestBase.getMockData(INVOICE_LINES_COLLECTION)).mapTo(InvoiceLineCollection.class);
+        InvoiceLineCollection invoiceLineCollection = new InvoiceLineCollection();
+        List<JsonObject> jsonObjects  = serverRqRs.get(INVOICE_LINES, HttpMethod.POST);
+        if (CollectionUtils.isNotEmpty(jsonObjects)) {
+          List<InvoiceLine> invoiceLines =  jsonObjects.stream().map(entries -> entries.mapTo(InvoiceLine.class)).collect(toList());
+          invoiceLineCollection.setInvoiceLines(invoiceLines);
+        } else {
+          invoiceLineCollection = new JsonObject(ApiTestBase.getMockData(INVOICE_LINES_COLLECTION)).mapTo(InvoiceLineCollection.class);
+        }
+
+        invoiceLineCollection.setInvoiceLines(filterLineByInvoiceId(invoiceId, invoiceLineCollection));
         invoiceLineCollection.setTotalRecords(invoiceLineCollection.getInvoiceLines().size());
 
         JsonObject po_lines = JsonObject.mapFrom(invoiceLineCollection);
@@ -163,6 +189,15 @@ public class MockServer {
       }
 
     }
+  }
+
+  private List<org.folio.rest.jaxrs.model.InvoiceLine> filterLineByInvoiceId(String invoiceId, InvoiceLineCollection invoiceLineCollection) {
+    if (StringUtils.isNotEmpty(invoiceId)) {
+      return invoiceLineCollection.getInvoiceLines().stream()
+        .filter(invoiceLine -> invoiceId.equals(invoiceLine.getInvoiceId()))
+        .collect(toList());
+    }
+    return invoiceLineCollection.getInvoiceLines();
   }
 
   private void handlePostInvoice(RoutingContext ctx) {
@@ -303,6 +338,46 @@ public class MockServer {
       ctx.response()
         .setStatusCode(204)
         .end();
+    }
+  }
+
+  private void handleGetPoLineById(RoutingContext ctx) {
+    logger.info("got: " + ctx.request().path());
+    String id = ctx.request().getParam(ID);
+    logger.info("id: " + id);
+
+    addServerRqRsData(HttpMethod.GET, PO_LINES, new JsonObject().put(ID, id));
+
+    if (ID_FOR_INTERNAL_SERVER_ERROR.equals(id)) {
+      serverResponse(ctx, 500, APPLICATION_JSON, INTERNAL_SERVER_ERROR.getReasonPhrase());
+    } else {
+      try {
+
+        JsonObject pol = null;
+
+        // Attempt to find POLine in mock server memory
+        Map<String, List<JsonObject>> column = serverRqRs.column(HttpMethod.POST);
+        if (MapUtils.isNotEmpty(column) && CollectionUtils.isNotEmpty(column.get(PO_LINES))) {
+          List<JsonObject> objects = new ArrayList<>(column.get(PO_LINES));
+          Comparator<JsonObject> comparator = Comparator.comparing(o -> o.getString(ID));
+          objects.sort(comparator);
+          int ind = Collections.binarySearch(objects, new JsonObject().put(ID, id), comparator);
+          if(ind > -1) {
+            pol = objects.get(ind);
+          }
+        }
+
+        // If previous step has no result then attempt to find POLine in stubs
+        if (pol == null) {
+          CompositePoLine poLine = new JsonObject(ApiTestBase.getMockData(String.format("%s%s.json", PO_LINES_MOCK_DATA_PATH, id))).mapTo(CompositePoLine.class);
+
+          pol = JsonObject.mapFrom(poLine);
+        }
+
+        serverResponse(ctx, 200, APPLICATION_JSON, pol.encodePrettily());
+      } catch (IOException e) {
+        serverResponse(ctx, 404, APPLICATION_JSON, id);
+      }
     }
   }
 

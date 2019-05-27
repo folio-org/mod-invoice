@@ -1,0 +1,21 @@
+{
+  "id": "9917d4a6-fbb2-4ed6-946d-6cf8c42369e4",
+  "approvalDate": "2018-07-29T00:00:00.000+0000",
+  "currency": "USD",
+  "folioInvoiceNo": "123invoicenumber456",
+  "invoiceDate": "2018-08-21T00:00:00.000+0000",
+  "note": "Some note 2",
+  "paymentTerms": "Payment in Advance",
+  "paymentMethod": "EFT",
+  "status": "Approved",
+  "source": "024b6f41-c5c6-4280-858e-33fba452a334",
+  "total": 15.0,
+  "vendorInvoiceNo": "YK75852",
+  "voucherNumber": "479",
+  "paymentId": "a5065f0d-fb88-4d23-b0c1-57e754fba40e",
+  "poNumbers": [
+    "AB268758PQR"
+  ],
+  "vendorId": "168f8a63-d612-406e-813f-c7527f241ac3",
+  "manualPayment": false
+}
