@@ -163,6 +163,27 @@ public class ApiTestBase {
     return verifyGet(url, APPLICATION_JSON, 200).as(clazz);
   }
 
+  Response verifyPostStartValueResponse(String url, String body, Headers headers, String
+      expectedContentType, int expectedCode) {
+      Response response = RestAssured
+        .with()
+          .header(X_OKAPI_URL)
+          .header(X_OKAPI_TOKEN)
+          .headers(headers)
+          .contentType(APPLICATION_JSON)
+          .body(body)
+        .post(url)
+          .then()
+            .log()
+            .all()
+            .statusCode(expectedCode)
+            .contentType(expectedContentType)
+            .extract()
+              .response();
+
+      return response;
+  }
+  
   Response verifyDeleteResponse(String url, String expectedContentType, int expectedCode) {
     Headers headers =  prepareHeaders(X_OKAPI_URL, X_OKAPI_TENANT);
     return verifyDeleteResponse(url, headers, expectedContentType, expectedCode);

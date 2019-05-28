@@ -62,3 +62,22 @@ resourceTypes:
           example:
             strict: false
             value: !include acq-models/mod-invoice-storage/examples/voucher_line.sample
+  /voucher-number/start/{value}:
+    displayName: Voucher Number
+    description: Manage voucher number
+    is: [language]
+    post:
+      description: (Re)set the start value of the voucher number sequence 
+      responses:
+        204:
+          description: "Start value successfully updated"
+        400:
+          description: "Bad request"
+          body:
+            text/plain:
+              example: "Bad request"
+        500:
+          description: "Internal server error, e.g. due to misconfiguration"
+          body:
+            text/plain:
+              example: "internal server error, contact administrator"

@@ -9,6 +9,7 @@ import static org.folio.invoices.utils.ResourcePathResolver.INVOICES;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_LINES;
 import static org.folio.invoices.utils.ResourcePathResolver.VOUCHER_LINES;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_LINE_NUMBER;
+import static org.folio.invoices.utils.ResourcePathResolver.VOUCHER_NUMBER_START;
 import static org.folio.invoices.utils.ResourcePathResolver.resourceByIdPath;
 import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
 import static org.folio.invoices.utils.ResourcePathResolver.VOUCHERS;
@@ -119,6 +120,7 @@ public class MockServer {
     router.route().handler(BodyHandler.create());
     router.route(HttpMethod.POST, ResourcePathResolver.resourcesPath(INVOICES)).handler(this::handlePostInvoice);
     router.route(HttpMethod.POST, resourcesPath(INVOICE_LINES)).handler(this::handlePostInvoiceLine);
+    router.route(HttpMethod.POST, resourcesPath(VOUCHER_NUMBER_START)).handler(this::handlePostVoucherStartValue);
 
     router.route(HttpMethod.GET, resourcesPath(INVOICES)).handler(this::handleGetInvoices);
     router.route(HttpMethod.GET, resourcesPath(INVOICE_LINES)).handler(this::handleGetInvoiceLines);
@@ -289,6 +291,21 @@ public class MockServer {
     }
   }
 
+  private void handlePostVoucherStartValue(RoutingContext ctx) {
+      logger.info("got: " + ctx.getBodyAsString());
+      if (ERROR_TENANT.equals(ctx.request().getHeader(OKAPI_HEADER_TENANT))) {
+        serverResponse(ctx, 500, TEXT_PLAIN, INTERNAL_SERVER_ERROR.getReasonPhrase());
+      } else {
+        String id = UUID.randomUUID().toString();
+        JsonObject body = ctx.getBodyAsJson();
+        body.put(ID, id);
+        Invoice po = body.mapTo(Invoice.class);
+        addServerRqRsData(HttpMethod.POST, INVOICES, body);
+
+        serverResponse(ctx, 201, APPLICATION_JSON, JsonObject.mapFrom(po).encodePrettily());
+      }
+    }
+  
   private void handleDeleteRequest(RoutingContext ctx, String type) {
     String id = ctx.request().getParam(ID);
 

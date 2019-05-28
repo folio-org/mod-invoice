@@ -2,11 +2,13 @@ package org.folio.rest.impl;
 
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 import static javax.ws.rs.core.MediaType.TEXT_PLAIN;
+import static org.folio.rest.RestVerticle.OKAPI_HEADER_TENANT;
 import static org.folio.rest.impl.AbstractHelper.ID;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
+import io.restassured.http.Header;
 import io.restassured.response.Response;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
@@ -27,6 +29,14 @@ public class VouchersApiTest extends ApiTestBase {
   private static final String BAD_VOUCHER_ID = "5a34ae0e-5a11-4337-be95-1a20cfdc3161";
   private static final String INVALID_VOUCHER_ID = "invalidVoucherId";
 
+  private static final String VOUCHER_START_PATH = "/voucher/voucher-number/start" + "/%s";
+  static final Header EXIST_CONFIG_X_OKAPI_TENANT_LIMIT_10 = new Header(OKAPI_HEADER_TENANT, "test_diku_limit_10");
+  
+  @Test
+  public void testPostVoucherStartValue() {
+    verifyPostStartValueResponse(String.format(VOUCHER_START_PATH, "200"), "", prepareHeaders(EXIST_CONFIG_X_OKAPI_TENANT_LIMIT_10), "", 204);
+  }
+  
   @Test
   public void testGetVouchersVoucherById() throws IOException {
     logger.info("=== Test Get Voucher By Id ===");
