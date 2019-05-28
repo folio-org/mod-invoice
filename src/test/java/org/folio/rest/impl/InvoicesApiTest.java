@@ -6,9 +6,16 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import java.io.IOException;
+import java.util.*;
+
+import org.apache.commons.lang3.reflect.FieldUtils;
+import org.apache.http.HttpStatus;
+import org.folio.invoices.utils.InvoiceProtectedFields;
+import org.folio.rest.jaxrs.model.Adjustment;
 import org.folio.rest.jaxrs.model.Errors;
 import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.jaxrs.model.InvoiceCollection;
+import org.hamcrest.Matchers;
 import org.junit.Test;
 
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
@@ -16,13 +23,14 @@ import static javax.ws.rs.core.MediaType.TEXT_PLAIN;
 import static org.folio.invoices.utils.ResourcePathResolver.FOLIO_INVOICE_NUMBER;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICES;
 import static org.folio.rest.impl.AbstractHelper.ID;
+import static org.folio.rest.impl.InvoicesImpl.PROTECTED_AND_MODIFIED_FIELDS;
 import static org.folio.rest.impl.MockServer.ERROR_X_OKAPI_TENANT;
 import static org.folio.rest.impl.MockServer.INVOICE_NUMBER_ERROR_X_OKAPI_TENANT;
 import static org.folio.rest.impl.MockServer.serverRqRs;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.hasSize;
-import static org.hamcrest.Matchers.notNullValue;
+import static org.hamcrest.Matchers.*;
 import static org.hamcrest.core.IsNot.not;
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 
 public class InvoicesApiTest extends ApiTestBase {
@@ -245,5 +253,76 @@ public class InvoicesApiTest extends ApiTestBase {
     String endpoint = String.format(INVOICE_ID_WITH_LANG_PATH, VALID_UUID, INVALID_LANG) ;
 
     verifyDeleteResponse(endpoint, TEXT_PLAIN, 400);
+  }
+
+  @Test
+  public void testNumberOfRequests() {
+    logger.info("=== Test nuber of requests on invoice PUT ===");
+
+    // Invoice status APPROVED, PAID, CANCELLED - expect invoice updating with GET invoice rq + PUT invoice rq by statuses processable flow
+    Invoice.Status[] processableStatuses = {Invoice.Status.APPROVED, Invoice.Status.PAID, Invoice.Status.CANCELLED};
+    checkNumberOfRequests(processableStatuses);
+
+    // Invoice status APPROVED, PAID, CANCELLED - expect invoice updating with GET invoice rq + PUT invoice rq without statuses processable flow
+    Invoice.Status[] nonProcessableStatuses = {Invoice.Status.OPEN, Invoice.Status.REVIEWED};
+    checkNumberOfRequests(nonProcessableStatuses);
+  }
+
+  private void checkNumberOfRequests(Invoice.Status[] statuses) {
+    // Invoice status open - expect no GET invoice rq + PUT invoice rq
+    for(Invoice.Status status : statuses) {
+      Invoice invoice = getMockAsJson(INVOICE_MOCK_DATA_PATH + "c0d08448-347b-418a-8c2f-5fb50248d67e.json").mapTo(Invoice.class);
+      invoice.setStatus(status);
+      verifyPut(String.format(INVOICE_ID_PATH, invoice.getId()), JsonObject.mapFrom(invoice).encode(), "", HttpStatus.SC_NO_CONTENT);
+      assertThat(serverRqRs.row("invoices").get(HttpMethod.GET), hasSize(1));
+      assertThat(serverRqRs.row("invoices").get(HttpMethod.PUT), hasSize(1));
+      serverRqRs.clear();
+    }
+  }
+
+  @Test
+  public void testUpdateInvoiceWithProtectedFields() throws IllegalAccessException {
+    logger.info("=== Test update invoice by id with protected fields (all fields set) ===");
+
+    Invoice invoice = getMockAsJson(INVOICE_MOCK_DATA_PATH + "c0d08448-347b-418a-8c2f-5fb50248d67e.json").mapTo(Invoice.class);
+
+    Map<InvoiceProtectedFields, Object> allProtectedFieldsModification = new HashMap<>();
+
+    List<Adjustment> adjustments = invoice.getAdjustments();
+    adjustments.get(0).setAdjustmentValue(12345.54321);
+    allProtectedFieldsModification.put(InvoiceProtectedFields.ADJUSTMENTS, adjustments);
+
+    allProtectedFieldsModification.put(InvoiceProtectedFields.APPROVED_BY, UUID.randomUUID().toString());
+    allProtectedFieldsModification.put(InvoiceProtectedFields.APPROVAL_DATE, new Date(System.currentTimeMillis()));
+    allProtectedFieldsModification.put(InvoiceProtectedFields.CHK_SUBSCRIPTION_OVERLAP, true);
+    allProtectedFieldsModification.put(InvoiceProtectedFields.CURRENCY, "TUGRIK");
+    allProtectedFieldsModification.put(InvoiceProtectedFields.FOLIO_INVOICE_NO, "some_folio_inv_num");
+    allProtectedFieldsModification.put(InvoiceProtectedFields.INVOICE_DATE, new Date(System.currentTimeMillis()));
+    allProtectedFieldsModification.put(InvoiceProtectedFields.LOCK_TOTAL, true);
+    allProtectedFieldsModification.put(InvoiceProtectedFields.PAYMENT_TERMS, "Payment now");
+    allProtectedFieldsModification.put(InvoiceProtectedFields.SOURCE, UUID.randomUUID().toString());
+    allProtectedFieldsModification.put(InvoiceProtectedFields.TOTAL, 123.123);
+    allProtectedFieldsModification.put(InvoiceProtectedFields.VOUCHER_NUMBER, "some_voucher_number");
+    allProtectedFieldsModification.put(InvoiceProtectedFields.PAYMENT_ID, UUID.randomUUID().toString());
+    allProtectedFieldsModification.put(InvoiceProtectedFields.VENDOR_ID, UUID.randomUUID().toString());
+
+    List<String> poNumbers = invoice.getPoNumbers();
+    poNumbers.add(0, "AB267798XYZ");
+    allProtectedFieldsModification.put(InvoiceProtectedFields.PO_NUMBERS, poNumbers);
+
+    checkPreventInvoiceModificationRule(invoice, allProtectedFieldsModification);
+  }
+
+  private void checkPreventInvoiceModificationRule(Invoice invoice, Map<InvoiceProtectedFields, Object> updatedFields) throws IllegalAccessException {
+    invoice.setStatus(Invoice.Status.APPROVED);
+    for (Map.Entry<InvoiceProtectedFields, Object> m : updatedFields.entrySet()) {
+      FieldUtils.writeDeclaredField(invoice, m.getKey().getFieldName(), m.getValue(), true);
+    }
+    String body = JsonObject.mapFrom(invoice).encode();
+    Errors errors = verifyPut(String.format(INVOICE_ID_PATH, invoice.getId()), body, "", HttpStatus.SC_BAD_REQUEST).as(Errors.class);
+    Object[] failedFieldNames = ((List<String>) errors.getErrors().get(0).getAdditionalProperties().get(PROTECTED_AND_MODIFIED_FIELDS)).toArray();
+    Object[] expected = updatedFields.keySet().stream().map(InvoiceProtectedFields::getFieldName).toArray();
+    assertThat(failedFieldNames.length, is(expected.length));
+    assertThat(expected, Matchers.arrayContainingInAnyOrder(failedFieldNames));
   }
 }

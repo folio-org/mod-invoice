@@ -1,0 +1,37 @@
+{
+  "id": "5cb6d270-a54c-4c38-b645-3ae7f249c606",
+  "description": "Some description",
+  "invoiceLineNumber": "123invoicenumber45-1",
+  "invoiceLineStatus": "Open",
+  "vendorRefNo": "1",
+  "poLineId": "0610be6d-0ddd-494b-b867-19f63d8b5d6d",
+  "productId": "9780764354113",
+  "productIdType": "ISBN",
+  "comment": "Sample invoice line",
+  "subTotal": 2.2,
+  "quantity": 3,
+  "releaseEncumbrance": false,
+  "subscriptionInfo": "Subscription information",
+  "subscriptionStart": "2018-08-01T00:00:00.000+0000",
+  "subscriptionEnd": "2019-01-01T00:00:00.000+0000",
+  "invoiceId": "52fd6ec7-dec3-4c53-bc26-2779afc27136",
+  "fundDistributions": [
+    {
+      "code": "EUHIST",
+      "encumbrance": "5f9bfc74-f6ff-4877-be1f-793f8ce90ade",
+      "fundId": "63157e96-0693-426d-b0df-948bacdfdb08",
+      "percentage": 50
+    }
+  ],
+  "adjustments": [
+    {
+      "adjustmentLabel": "Adjustment label",
+      "adjustmentType": "Percentage",
+      "adjustmentValue": 10.1
+    }
+  ],
+  "metadata": {
+    "createdDate": "2018-07-19T00:00:00.000+0000",
+    "createdByUserId": "28d1057c-d137-11e8-a8d5-f2801f1b9fd1"
+  }
+}

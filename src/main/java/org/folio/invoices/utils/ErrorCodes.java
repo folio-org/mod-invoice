@@ -4,7 +4,8 @@ import org.folio.rest.jaxrs.model.Error;
 
 public enum ErrorCodes {
 
-  GENERIC_ERROR_CODE("genericError", "Generic error");
+  GENERIC_ERROR_CODE("genericError", "Generic error"),
+  PROHIBITED_FIELD_CHANGING("protectedFieldChanging", "Field can't be modified");
 
   private final String code;
   private final String description;

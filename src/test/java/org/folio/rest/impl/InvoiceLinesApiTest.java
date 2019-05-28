@@ -3,6 +3,7 @@ package org.folio.rest.impl;
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 import static javax.ws.rs.core.MediaType.TEXT_PLAIN;
 
+import com.google.common.collect.Lists;
 import io.restassured.http.Header;
 import io.restassured.response.Response;
 import io.vertx.core.http.HttpMethod;
@@ -10,20 +11,33 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 
+import org.apache.commons.lang3.builder.EqualsBuilder;
+import org.apache.commons.lang3.reflect.FieldUtils;
+import org.apache.http.HttpStatus;
+import org.folio.invoices.utils.InvoiceLineProtectedFields;
+import org.folio.invoices.utils.InvoiceProtectedFields;
+import org.folio.rest.jaxrs.model.Adjustment;
 import org.folio.rest.jaxrs.model.Errors;
+import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.jaxrs.model.InvoiceLine;
+import org.hamcrest.MatcherAssert;
+import org.hamcrest.Matchers;
 import org.junit.Test;
 
 import java.io.IOException;
 import java.net.MalformedURLException;
+import java.time.LocalDate;
+import java.util.*;
+import java.util.concurrent.ThreadLocalRandom;
 
 import static org.folio.rest.RestVerticle.OKAPI_HEADER_TENANT;
 import static org.folio.rest.impl.InvoicesApiTest.BAD_QUERY;
 import static org.folio.rest.impl.AbstractHelper.ID;
+import static org.folio.rest.impl.InvoicesImpl.PROTECTED_AND_MODIFIED_FIELDS;
+import static org.folio.rest.impl.MockServer.serverRqRs;
+import static org.hamcrest.Matchers.*;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
-import static org.hamcrest.Matchers.notNullValue;
-import static org.hamcrest.Matchers.hasSize;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_LINE_NUMBER;
 import static org.folio.rest.impl.MockServer.INVOICE_LINE_NUMBER_ERROR_X_OKAPI_TENANT;
 
@@ -38,9 +52,15 @@ public class InvoiceLinesApiTest extends ApiTestBase {
   private static final String INVOICE_LINES_PATH = "/invoice/invoice-lines";
   private static final String INVOICE_LINE_ID_PATH = INVOICE_LINES_PATH + "/%s";
   private static final String INVOICE_LINE_SAMPLE_PATH = "mockdata/invoiceLines/invoice_line.json";
+  private static final String INVOICE_LINE_SAMPLE_FOR_PROTECTED_FIELDS_PATH = "mockdata/invoiceLines/e0d08448-343b-118a-8c2f-4fb50248d672.json";
   private static final String BAD_INVOICE_LINE_ID = "5a34ae0e-5a11-4337-be95-1a20cfdc3161";
   private static final String INVOICE_ID = "invoiceId";
   private static final String NULL = "null";
+
+  private static final String VALID_INVOICE_LINE_ID = "e0d08448-343b-118a-8c2f-4fb50248d672";
+  private static final String INVOICE_LINE_WITH_APPROVED_EXISTED_INVOICE_ID = "e0d08448-343b-118a-8c2f-4fb50248d672";
+  private static final String INVOICE_LINE_WITH_OPEN_EXISTED_INVOICE_ID = "5cb6d270-a54c-4c38-b645-3ae7f249c606";
+  private static final String INVOICE_LINE_WITH_NOT_EXISTED_INVOICE_ID = "ebd42944-20fc-4448-86ad-60ec9b73a6d7";
   static final String ID_FOR_INTERNAL_SERVER_ERROR = "168f8a86-d26c-406e-813f-c7527f241ac3";
 
 
@@ -164,9 +184,9 @@ public class InvoiceLinesApiTest extends ApiTestBase {
 
   @Test
   public void testPutInvoicingInvoiceLinesByIdTest() throws Exception {
-    String reqData = getMockData(INVOICE_LINE_SAMPLE_PATH);
+    String reqData = getMockData(INVOICE_LINES_MOCK_DATA_PATH + VALID_INVOICE_LINE_ID + ".json");
 
-    verifyPut(String.format(INVOICE_LINE_ID_PATH, VALID_UUID), reqData, "" , 204);
+    verifyPut(String.format(INVOICE_LINE_ID_PATH, VALID_INVOICE_LINE_ID), reqData, "", 204);
   }
 
   @Test
@@ -205,5 +225,92 @@ public class InvoiceLinesApiTest extends ApiTestBase {
 
     verifyPut(endpoint, reqData, TEXT_PLAIN, 400);
 
+  }
+
+  @Test
+  public void testNumberOfRequests() {
+    logger.info("=== Test nuber of requests on invoice line PUT ===");
+
+    // InvoiceLine with corresponding Invoice with status APPROVED
+    checkNumberOfRequests(INVOICE_LINE_WITH_APPROVED_EXISTED_INVOICE_ID);
+
+    // InvoiceLine with corresponding Invoice with status APPROVED
+    checkNumberOfRequests(INVOICE_LINE_WITH_OPEN_EXISTED_INVOICE_ID);
+  }
+
+  private void checkNumberOfRequests(String invoiceLineId) {
+      InvoiceLine invoiceLine = getMockAsJson(INVOICE_LINE_SAMPLE_FOR_PROTECTED_FIELDS_PATH).mapTo(InvoiceLine.class);
+      invoiceLine.setId(invoiceLineId);
+      verifyPut(String.format(INVOICE_LINE_ID_PATH, invoiceLineId), JsonObject.mapFrom(invoiceLine).encode(), "", HttpStatus.SC_NO_CONTENT);
+      MatcherAssert.assertThat(serverRqRs.row("invoiceLines").get(HttpMethod.GET), hasSize(1));
+      MatcherAssert.assertThat(serverRqRs.row("invoices").get(HttpMethod.GET), hasSize(1));
+      MatcherAssert.assertThat(serverRqRs.row("invoiceLines").get(HttpMethod.PUT), hasSize(1));
+      serverRqRs.clear();
+
+  }
+
+  @Test
+  public void testPutInvoicingInvoiceLinesWithProtectedFields() throws Exception {
+    logger.info("=== Test update invoice line by id with protected fields (all fields set) ===");
+    InvoiceLine invoiceLine = getMockAsJson(INVOICE_LINE_SAMPLE_FOR_PROTECTED_FIELDS_PATH).mapTo(InvoiceLine.class);
+
+    // Invoice line updated (invoice status = APPROVED) - protected field not modified
+    invoiceLine.setId(INVOICE_LINE_WITH_APPROVED_EXISTED_INVOICE_ID);
+    verifyPut(String.format(INVOICE_LINE_ID_PATH, invoiceLine.getId()), JsonObject.mapFrom(invoiceLine).encode(), "", HttpStatus.SC_NO_CONTENT);
+
+    // Invoice line updated (invoice status = OPEN) - protected field not modified
+    invoiceLine.setId(INVOICE_LINE_WITH_OPEN_EXISTED_INVOICE_ID);
+    verifyPut(String.format(INVOICE_LINE_ID_PATH, invoiceLine.getId()), JsonObject.mapFrom(invoiceLine).encode(), "", HttpStatus.SC_NO_CONTENT);
+
+    // Invoice line updated (invoice not founded)
+    invoiceLine.setId(INVOICE_LINE_WITH_NOT_EXISTED_INVOICE_ID);
+    verifyPut(String.format(INVOICE_LINE_ID_PATH, invoiceLine.getId()), JsonObject.mapFrom(invoiceLine).encode(), "", HttpStatus.SC_NOT_FOUND);
+
+    // Invoice line updated (invoice status = APPROVED) - all protected fields modified
+
+    InvoiceLine allProtectedFieldsModificatedInvoiceLine
+      = getMockAsJson(INVOICE_LINE_SAMPLE_FOR_PROTECTED_FIELDS_PATH).mapTo(InvoiceLine.class);
+    invoiceLine.setInvoiceId(INVOICE_LINE_WITH_APPROVED_EXISTED_INVOICE_ID);
+    Map<InvoiceLineProtectedFields, Object> allProtectedFieldsModification = new HashMap<>();
+
+    // nested object verification
+    // - field of nested object modified
+    List<Adjustment> adjustments = invoiceLine.getAdjustments();
+    adjustments.get(0).setAdjustmentValue(12345.54321);
+    allProtectedFieldsModification.put(InvoiceLineProtectedFields.ADJUSTMENTS, adjustments);
+
+    checkPreventInvoiceLineModificationRule(allProtectedFieldsModificatedInvoiceLine, allProtectedFieldsModification);
+
+    // - total nested object replaced
+    adjustments = new ArrayList<>();
+    allProtectedFieldsModification.put(InvoiceLineProtectedFields.ADJUSTMENTS, adjustments);
+    checkPreventInvoiceLineModificationRule(allProtectedFieldsModificatedInvoiceLine, allProtectedFieldsModification);
+
+    // all other fields
+    allProtectedFieldsModification.put(InvoiceLineProtectedFields.INVOICE_ID, UUID.randomUUID().toString());
+    allProtectedFieldsModification.put(InvoiceLineProtectedFields.INVOICE_LINE_NUMBER, "123456789");
+    allProtectedFieldsModification.put(InvoiceLineProtectedFields.PO_LINE_ID, UUID.randomUUID().toString());
+    allProtectedFieldsModification.put(InvoiceLineProtectedFields.PRODUCT_ID, UUID.randomUUID().toString());
+    allProtectedFieldsModification.put(InvoiceLineProtectedFields.PRODUCT_ID_TYPE, InvoiceLine.ProductIdType.VENDOR_ITEM_NUMBER);
+    allProtectedFieldsModification.put(InvoiceLineProtectedFields.QUANTITY, 10);
+    allProtectedFieldsModification.put(InvoiceLineProtectedFields.SUBSCRIPTION_INFO, "Tested subscription info");
+    allProtectedFieldsModification.put(InvoiceLineProtectedFields.SUBSCRIPTION_START, new Date(System.currentTimeMillis()));
+    allProtectedFieldsModification.put(InvoiceLineProtectedFields.SUBSCRIPTION_END, new Date(System.currentTimeMillis()));
+    allProtectedFieldsModification.put(InvoiceLineProtectedFields.TOTAL, 123.123);
+
+    checkPreventInvoiceLineModificationRule(allProtectedFieldsModificatedInvoiceLine, allProtectedFieldsModification);
+
+  }
+
+  private void checkPreventInvoiceLineModificationRule(InvoiceLine invoiceLine, Map<InvoiceLineProtectedFields, Object> updatedFields) throws IllegalAccessException {
+    for (Map.Entry<InvoiceLineProtectedFields, Object> m : updatedFields.entrySet()) {
+      FieldUtils.writeDeclaredField(invoiceLine, m.getKey().getFieldName(), m.getValue(), true);
+    }
+    String body = JsonObject.mapFrom(invoiceLine).encode();
+    Errors errors = verifyPut(String.format(INVOICE_LINE_ID_PATH, invoiceLine.getId()), body, "", HttpStatus.SC_BAD_REQUEST).as(Errors.class);
+    Object[] failedFieldNames = ((List<String>) errors.getErrors().get(0).getAdditionalProperties().get(PROTECTED_AND_MODIFIED_FIELDS)).toArray();
+    Object[] expected = updatedFields.keySet().stream().map(InvoiceLineProtectedFields::getFieldName).toArray();
+    MatcherAssert.assertThat(failedFieldNames.length, is(expected.length));
+    MatcherAssert.assertThat(expected, Matchers.arrayContainingInAnyOrder(failedFieldNames));
   }
 }
