@@ -5,9 +5,6 @@ import io.vertx.core.http.HttpMethod;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
-import java.io.IOException;
-import java.util.*;
-
 import org.apache.commons.lang3.reflect.FieldUtils;
 import org.apache.http.HttpStatus;
 import org.folio.invoices.utils.InvoiceProtectedFields;
@@ -18,19 +15,19 @@ import org.folio.rest.jaxrs.model.InvoiceCollection;
 import org.hamcrest.Matchers;
 import org.junit.Test;
 
+import java.io.IOException;
+import java.util.*;
+
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 import static javax.ws.rs.core.MediaType.TEXT_PLAIN;
 import static org.folio.invoices.utils.ResourcePathResolver.FOLIO_INVOICE_NUMBER;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICES;
 import static org.folio.rest.impl.AbstractHelper.ID;
 import static org.folio.rest.impl.InvoicesImpl.PROTECTED_AND_MODIFIED_FIELDS;
-import static org.folio.rest.impl.MockServer.ERROR_X_OKAPI_TENANT;
-import static org.folio.rest.impl.MockServer.INVOICE_NUMBER_ERROR_X_OKAPI_TENANT;
-import static org.folio.rest.impl.MockServer.serverRqRs;
+import static org.folio.rest.impl.MockServer.*;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.*;
 import static org.hamcrest.core.IsNot.not;
-import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 
 public class InvoicesApiTest extends ApiTestBase {

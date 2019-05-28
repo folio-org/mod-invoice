@@ -1,13 +1,11 @@
 package org.folio.rest.impl;
 
-import static io.vertx.core.Future.succeededFuture;
-import static java.util.stream.Collectors.toSet;
-
-import java.util.*;
-import java.util.function.Consumer;
-
-import javax.ws.rs.core.Response;
-
+import io.vertx.core.AsyncResult;
+import io.vertx.core.Context;
+import io.vertx.core.Handler;
+import io.vertx.core.json.JsonObject;
+import io.vertx.core.logging.Logger;
+import io.vertx.core.logging.LoggerFactory;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.apache.commons.lang3.reflect.FieldUtils;
@@ -19,12 +17,13 @@ import org.folio.rest.annotations.Validate;
 import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.jaxrs.model.InvoiceLine;
 
-import io.vertx.core.AsyncResult;
-import io.vertx.core.Context;
-import io.vertx.core.Handler;
-import io.vertx.core.json.JsonObject;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
+import javax.ws.rs.core.Response;
+import java.util.Map;
+import java.util.Set;
+import java.util.function.Consumer;
+
+import static io.vertx.core.Future.succeededFuture;
+import static java.util.stream.Collectors.toSet;
 
 public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
 
@@ -97,7 +96,6 @@ public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
             try {
               return !EqualsBuilder.reflectionEquals(FieldUtils.readDeclaredField(invoice, field, true), FieldUtils.readDeclaredField(existed, field, true), true, Invoice.class, true);
             } catch (IllegalAccessException e) {
-              e.printStackTrace();
               asyncResultHandler.handle(succeededFuture(invoiceHelper.buildErrorResponse(HttpStatus.HTTP_INTERNAL_SERVER_ERROR.toInt())));
             }
             return false;
@@ -106,7 +104,7 @@ public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
             invoiceHelper.updateInvoice(invoice, existed)
               .thenAccept(success);
           } else {
-            invoiceHelper.addProcessingError(ErrorCodes.PROHIBITED_FIELD_CHANGING.toError().withAdditionalProperty("protectedAndModifiedFields", fields));
+            invoiceHelper.addProcessingError(ErrorCodes.PROHIBITED_FIELD_CHANGING.toError().withAdditionalProperty(PROTECTED_AND_MODIFIED_FIELDS, fields));
             asyncResultHandler.handle(succeededFuture(invoiceHelper.buildErrorResponse(HttpStatus.HTTP_BAD_REQUEST.toInt())));
           }
         } else {

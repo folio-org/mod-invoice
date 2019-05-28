@@ -1,24 +1,16 @@
 package org.folio.rest.impl;
 
-import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
-import static javax.ws.rs.core.MediaType.TEXT_PLAIN;
-
-import com.google.common.collect.Lists;
 import io.restassured.http.Header;
 import io.restassured.response.Response;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
-
-import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.apache.commons.lang3.reflect.FieldUtils;
 import org.apache.http.HttpStatus;
 import org.folio.invoices.utils.InvoiceLineProtectedFields;
-import org.folio.invoices.utils.InvoiceProtectedFields;
 import org.folio.rest.jaxrs.model.Adjustment;
 import org.folio.rest.jaxrs.model.Errors;
-import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.jaxrs.model.InvoiceLine;
 import org.hamcrest.MatcherAssert;
 import org.hamcrest.Matchers;
@@ -26,20 +18,20 @@ import org.junit.Test;
 
 import java.io.IOException;
 import java.net.MalformedURLException;
-import java.time.LocalDate;
 import java.util.*;
-import java.util.concurrent.ThreadLocalRandom;
 
+import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
+import static javax.ws.rs.core.MediaType.TEXT_PLAIN;
+import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_LINE_NUMBER;
 import static org.folio.rest.RestVerticle.OKAPI_HEADER_TENANT;
-import static org.folio.rest.impl.InvoicesApiTest.BAD_QUERY;
 import static org.folio.rest.impl.AbstractHelper.ID;
+import static org.folio.rest.impl.InvoicesApiTest.BAD_QUERY;
 import static org.folio.rest.impl.InvoicesImpl.PROTECTED_AND_MODIFIED_FIELDS;
+import static org.folio.rest.impl.MockServer.INVOICE_LINE_NUMBER_ERROR_X_OKAPI_TENANT;
 import static org.folio.rest.impl.MockServer.serverRqRs;
 import static org.hamcrest.Matchers.*;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
-import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_LINE_NUMBER;
-import static org.folio.rest.impl.MockServer.INVOICE_LINE_NUMBER_ERROR_X_OKAPI_TENANT;
 
 
 public class InvoiceLinesApiTest extends ApiTestBase {
