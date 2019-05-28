@@ -1,0 +1,29 @@
+import org.folio.rest.jaxrs.model.Invoice
+import org.folio.rest.jaxrs.model.InvoiceLine
+import org.apache.commons.lang3.reflect.FieldUtils
+import org.apache.commons.lang3.builder.EqualsBuilder
+import org.folio.invoices.utils.InvoiceProtectedFields
+import org.folio.invoices.utils.InvoiceLineProtectedFields
+
+global java.util.Set $protectedAndModifiedFields
+global org.folio.rest.jaxrs.model.Invoice $existedInvoice
+global org.folio.rest.jaxrs.model.InvoiceLine $existedInvoiceLine
+
+rule "Invoice: Filter of Attempts to Change of Prohibited For Modification Fields"
+  when
+    $updatedInvoice : Invoice();
+    $field : String() from InvoiceProtectedFields.getFieldNames();
+    eval(!EqualsBuilder.reflectionEquals(FieldUtils.readDeclaredField($updatedInvoice, $field, true), FieldUtils.readDeclaredField($existedInvoice, $field, true), true, Invoice.class, true));
+  then
+    $protectedAndModifiedFields.add($field);
+end
+
+rule "InvoiceLine: Filter of Attempts to Change of Prohibited For Modification Fields"
+  when
+    $updatedInvoiceLine : InvoiceLine();
+    $field : String() from InvoiceLineProtectedFields.getFieldNames();
+    eval(!EqualsBuilder.reflectionEquals(FieldUtils.readDeclaredField($updatedInvoiceLine, $field, true), FieldUtils.readDeclaredField($existedInvoiceLine, $field, true), true, InvoiceLine.class, true));
+  then
+    $protectedAndModifiedFields.add($field);
+end
+
