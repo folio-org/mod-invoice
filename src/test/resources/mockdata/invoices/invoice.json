@@ -6,7 +6,9 @@
     {
       "description": "Extra Taxes",
       "type": "Amount",
-      "value": 10
+      "value": 10,
+      "prorate": "Not prorated",
+      "relationToTotal": "In addition to"
     }
   ],
   "adjustmentsTotal": 10,

@@ -5,9 +5,11 @@
       "approvalDate": "2018-07-29T00:00:00.000+0000",
       "adjustments": [
        {
-      	"description": "Extra Taxes",
-      	"type": "Amount",
-      	"value": 10.0
+      	  "description": "Extra Taxes",
+      	  "type": "Amount",
+      	  "value": 10.0,
+          "prorate": "Not prorated",
+          "relationToTotal": "In addition to"
        } 
   	  ],
   	  "adjustmentsTotal":10,
