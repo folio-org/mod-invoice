@@ -308,6 +308,11 @@ public class InvoicesApiTest extends ApiTestBase {
     allProtectedFieldsModification.put(InvoiceProtectedFields.PO_NUMBERS, poNumbers);
 
     checkPreventInvoiceModificationRule(invoice, allProtectedFieldsModification);
+
+    // Check number of requests
+    assertThat(serverRqRs.row("invoices").get(HttpMethod.GET), hasSize(1));
+    // PUT request wasn't processed
+    assertThat(serverRqRs.row("invoices").get(HttpMethod.PUT), nullValue());
   }
 
   private void checkPreventInvoiceModificationRule(Invoice invoice, Map<InvoiceProtectedFields, Object> updatedFields) throws IllegalAccessException {
