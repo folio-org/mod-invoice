@@ -96,7 +96,6 @@ public class InvoicesApiTest extends ApiTestBase {
 
     JsonObject invoicesList = new JsonObject(getMockData(INVOICES_LIST_PATH));
     String id = invoicesList.getJsonArray("invoices").getJsonObject(0).getString(ID);
-    logger.info(String.format("using mock datafile: %s%s.json", INVOICES_LIST_PATH, id));
 
     final Invoice resp = verifySuccessGet(String.format(INVOICE_ID_PATH, id), Invoice.class);
 

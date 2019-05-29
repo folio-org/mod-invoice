@@ -33,6 +33,7 @@ import org.folio.rest.jaxrs.model.Invoice;
 
 import org.folio.rest.jaxrs.model.InvoiceLine;
 import org.folio.rest.jaxrs.model.InvoiceLineCollection;
+import org.folio.rest.tools.client.interfaces.HttpClientInterface;
 
 public class InvoiceLineHelper extends AbstractHelper {
 
@@ -43,6 +44,10 @@ public class InvoiceLineHelper extends AbstractHelper {
 
   InvoiceLineHelper(Map<String, String> okapiHeaders, Context ctx, String lang) {
     super(getHttpClient(okapiHeaders), okapiHeaders, ctx, lang);
+  }
+
+  InvoiceLineHelper(HttpClientInterface httpClient, Map<String, String> okapiHeaders, Context ctx, String lang) {
+    super(httpClient, okapiHeaders, ctx, lang);
   }
 
   public CompletableFuture<InvoiceLineCollection> getInvoiceLines(int limit, int offset, String query) {
