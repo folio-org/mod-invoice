@@ -1,12 +1,12 @@
 package org.folio.rest.impl;
 
 import static org.folio.invoices.utils.HelperUtils.getVoucherById;
+
+import io.vertx.core.Context;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
-
-import org.folio.rest.jaxrs.model.Voucher;
-import io.vertx.core.Context;
 import me.escoffier.vertx.completablefuture.VertxCompletableFuture;
+import org.folio.rest.jaxrs.model.Voucher;
 
 public class VoucherHelper extends AbstractHelper {
 
@@ -27,4 +27,5 @@ public class VoucherHelper extends AbstractHelper {
       });
     return future;
   }
+
 }
