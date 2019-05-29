@@ -81,7 +81,7 @@ public class VouchersApiTest extends ApiTestBase {
 
   @Test
   public void testGetVoucherNumberStart() {
-    logger.info("=== Test Get Voucher number start value - 500 Internal Server Error ===");
+    logger.info("=== Test Get Voucher number start value - success ===");
 
     SequenceNumber number = verifyGet(VOUCHER_NUMBER_START_PATH, APPLICATION_JSON, 200).as(SequenceNumber.class);
     assertThat(number.getSequenceNumber(), not(isEmptyOrNullString()));
