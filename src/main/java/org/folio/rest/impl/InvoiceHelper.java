@@ -11,6 +11,7 @@ import static org.folio.invoices.utils.HelperUtils.handleGetRequest;
 import static org.folio.invoices.utils.HelperUtils.getEndpointWithQuery;
 import static org.folio.invoices.utils.HelperUtils.getInvoiceById;
 
+import java.util.ArrayList;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
@@ -199,16 +200,20 @@ public class InvoiceHelper extends AbstractHelper {
   }
 
   private List<CompositePoLine> updatePoLinesPaymentStatus(Map<CompositePoLine, List<InvoiceLine>> compositePoLinesWithInvoiceLines) {
-    return compositePoLinesWithInvoiceLines.keySet().stream()
-      .peek(compositePoLine -> updatePoLinePaymentStatus(compositePoLine, compositePoLinesWithInvoiceLines.get(compositePoLine)))
-      .collect(toList());
+    List<CompositePoLine> compositePoLines =  new ArrayList<>(compositePoLinesWithInvoiceLines.keySet());
+     compositePoLines
+      .forEach(compositePoLine -> {
+        List<InvoiceLine> invoiceLines =  compositePoLinesWithInvoiceLines.get(compositePoLine);
+        compositePoLine.setPaymentStatus(getPoLinePaymentStatus(invoiceLines));
+      });
+    return compositePoLines;
   }
 
-  private void updatePoLinePaymentStatus(CompositePoLine compositePoLine, List<InvoiceLine> invoiceLines) {
+  private CompositePoLine.PaymentStatus getPoLinePaymentStatus(List<InvoiceLine> invoiceLines) {
     if (isAnyInvoiceLineReleaseEncumbrance(invoiceLines)) {
-      compositePoLine.setPaymentStatus(CompositePoLine.PaymentStatus.FULLY_PAID);
+      return CompositePoLine.PaymentStatus.FULLY_PAID;
     } else {
-      compositePoLine.setPaymentStatus(CompositePoLine.PaymentStatus.PARTIALLY_PAID);
+      return CompositePoLine.PaymentStatus.PARTIALLY_PAID;
     }
   }
 
