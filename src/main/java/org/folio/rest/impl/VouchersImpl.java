@@ -62,6 +62,7 @@ public class VouchersImpl implements Voucher {
       .exceptionally(t -> handleErrorResponse(asyncResultHandler, voucherLinesHelper, t));
   }
 
+  @Validate
   @Override
   public void postVoucherVoucherNumberStartByValue(String value, String lang, Map<String, String> okapiHeaders,
       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {

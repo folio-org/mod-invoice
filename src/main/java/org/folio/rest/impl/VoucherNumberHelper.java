@@ -23,10 +23,24 @@ public class VoucherNumberHelper extends AbstractHelper {
     super(getHttpClient(okapiHeaders), okapiHeaders, ctx, lang);
   }
 
-  public CompletableFuture<Void> setStartValue(String id) {
-    return handlePostStartValueRequest(resourcesPath(VOUCHER_NUMBER_START) + "/" + id, httpClient, ctx, okapiHeaders, logger);
+  /**
+   * This endpoint is a means for the UI to set/reset the start value of the voucher-number sequence
+   * @param value start value to be set/reset
+   * @return completable future on success or {@code null} if validation fails or an exception if any issue happens
+   */
+  public CompletableFuture<Void> setStartValue(String value) {
+    return handlePostStartValueRequest(resourcesPath(VOUCHER_NUMBER_START) + "/" + value, httpClient, ctx, okapiHeaders, logger);
   }
 
+  /**
+   * Proxy the request to storage module POST /voucher-storage/voucher-number/start/<val>
+   * @param url Storage url to proxy the request
+   * @param httpClient HttpClientInterface
+   * @param ctx Context of the vertex thread
+   * @param okapiHeaders Map of okapi request headers and its values
+   * @param logger vertx logger classes for logging purpose
+   * @return completable future on success or {@code null} if validation fails or an exception if any issue happens
+   */
   public CompletableFuture<Void> handlePostStartValueRequest(String url, HttpClientInterface httpClient, Context ctx,
       Map<String, String> okapiHeaders, Logger logger) {
     CompletableFuture<Void> future = new VertxCompletableFuture<>(ctx);
