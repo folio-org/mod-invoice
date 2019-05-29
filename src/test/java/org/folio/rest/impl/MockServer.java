@@ -296,13 +296,7 @@ public class MockServer {
       if (ERROR_TENANT.equals(ctx.request().getHeader(OKAPI_HEADER_TENANT))) {
         serverResponse(ctx, 500, TEXT_PLAIN, INTERNAL_SERVER_ERROR.getReasonPhrase());
       } else {
-        String id = UUID.randomUUID().toString();
-        JsonObject body = ctx.getBodyAsJson();
-        body.put(ID, id);
-        Invoice po = body.mapTo(Invoice.class);
-        addServerRqRsData(HttpMethod.POST, INVOICES, body);
-
-        serverResponse(ctx, 201, APPLICATION_JSON, JsonObject.mapFrom(po).encodePrettily());
+        serverResponse(ctx, 201, APPLICATION_JSON, "");
       }
     }
   
