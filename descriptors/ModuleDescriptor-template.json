@@ -122,6 +122,14 @@
           "modulePermissions": [
             "voucher-storage.voucher-lines.item.put"
           ]
+        },
+        {
+          "methods": ["GET"],
+          "pathPattern": "/voucher/voucher-number/start",
+          "permissionsRequired": ["voucher.voucher-number.start.get"],
+          "modulePermissions": [
+            "voucher-storage.voucher-number.start.get"
+          ]
         }
       ]
     },
@@ -231,13 +239,19 @@
       "description": "Modify an existing Voucher line"
     },
     {
+      "permissionName": "voucher.voucher-number.start.get",
+      "displayName": "Get voucher number sequence start value",
+      "description": "Voucher number sequence - get the start value of the sequence"
+    },
+    {
       "permissionName": "voucher.all",
       "displayName": "Invoice module - all Voucher permissions",
       "description": "Entire set of permissions needed to use Vouchers",
       "subPermissions": [
         "voucher.vouchers.item.get",
         "voucher.voucher-lines.item.get",
-        "voucher.voucher-lines.item.put"
+        "voucher.voucher-lines.item.put",
+        "voucher.voucher-number.start.get"
       ],
       "visible": false
     },    

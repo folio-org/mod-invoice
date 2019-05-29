@@ -3,8 +3,12 @@ package org.folio.rest.impl;
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 import static javax.ws.rs.core.MediaType.TEXT_PLAIN;
 import static org.folio.rest.impl.AbstractHelper.ID;
+import static org.folio.rest.impl.MockServer.ERROR_X_OKAPI_TENANT;
+import static org.hamcrest.Matchers.isEmptyOrNullString;
+import static org.hamcrest.Matchers.not;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 
 import io.restassured.response.Response;
@@ -13,6 +17,7 @@ import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import java.io.IOException;
 import org.folio.rest.jaxrs.model.Errors;
+import org.folio.rest.jaxrs.model.SequenceNumber;
 import org.folio.rest.jaxrs.model.Voucher;
 import org.junit.Test;
 
@@ -26,6 +31,7 @@ public class VouchersApiTest extends ApiTestBase {
   private static final String VOUCHERS_LIST_PATH = VOUCHER_MOCK_DATA_PATH + "vouchers.json";
   private static final String BAD_VOUCHER_ID = "5a34ae0e-5a11-4337-be95-1a20cfdc3161";
   private static final String INVALID_VOUCHER_ID = "invalidVoucherId";
+  private static final String VOUCHER_NUMBER_START_PATH = "/voucher/voucher-number/start";
 
   @Test
   public void testGetVouchersVoucherById() throws IOException {
@@ -73,4 +79,18 @@ public class VouchersApiTest extends ApiTestBase {
     assertTrue(actual.contains(INVALID_VOUCHER_ID));
   }
 
+  @Test
+  public void testGetVoucherNumberStart() {
+    logger.info("=== Test Get Voucher number start value - 500 Internal Server Error ===");
+
+    SequenceNumber number = verifyGet(VOUCHER_NUMBER_START_PATH, APPLICATION_JSON, 200).as(SequenceNumber.class);
+    assertThat(number.getSequenceNumber(), not(isEmptyOrNullString()));
+  }
+
+  @Test
+  public void testGetVoucherNumberStartInternalError() {
+    logger.info("=== Test Get Voucher number start value - 500 Internal Server Error ===");
+
+    verifyGet(VOUCHER_NUMBER_START_PATH, prepareHeaders(X_OKAPI_URL, ERROR_X_OKAPI_TENANT), APPLICATION_JSON, 500);
+  }
 }
