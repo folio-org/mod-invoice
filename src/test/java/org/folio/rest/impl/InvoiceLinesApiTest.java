@@ -38,6 +38,7 @@ public class InvoiceLinesApiTest extends ApiTestBase {
   private static final String INVOICE_LINES_PATH = "/invoice/invoice-lines";
   private static final String INVOICE_LINE_ID_PATH = INVOICE_LINES_PATH + "/%s";
   private static final String INVOICE_LINE_SAMPLE_PATH = "mockdata/invoiceLines/invoice_line.json";
+  private static final String INVOICE_LINE_ADJUSTMENTS_SAMPLE_PATH = INVOICE_LINES_MOCK_DATA_PATH + "invoice_line_adjustments.json";
   private static final String BAD_INVOICE_LINE_ID = "5a34ae0e-5a11-4337-be95-1a20cfdc3161";
   private static final String INVOICE_ID = "invoiceId";
   private static final String NULL = "null";
@@ -206,4 +207,17 @@ public class InvoiceLinesApiTest extends ApiTestBase {
     verifyPut(endpoint, reqData, TEXT_PLAIN, 400);
 
   }
+
+  @Test
+  public void testPostInvoiceLinesByIdwithAdjustments() throws IOException {
+    logger.info("=== Test Post Invoice Lines By Id (empty id in body) ===");
+
+    InvoiceLine reqData = getMockAsJson(INVOICE_LINE_ADJUSTMENTS_SAMPLE_PATH).mapTo(InvoiceLine.class);
+    String jsonBody = JsonObject.mapFrom(reqData).encode();
+    InvoiceLine invoiceLine = verifyPostResponse(INVOICE_LINES_PATH, jsonBody, prepareHeaders(X_OKAPI_TENANT),
+        APPLICATION_JSON, 201).as(InvoiceLine.class);
+
+    assertThat(invoiceLine.getAdjustmentsTotal(), notNullValue());
+  }
+
 }
