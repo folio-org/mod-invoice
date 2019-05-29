@@ -292,11 +292,14 @@ public class MockServer {
     }
   }
 
+  
   private void handlePostVoucherStartValue(RoutingContext ctx) {
     logger.info("got: " + ctx.getBodyAsString());
     String startValue = ctx.request()
       .getParam("value");
-    if (ERROR_TENANT.equals(ctx.request()
+    if (startValue.contains(BAD_QUERY)) {
+      serverResponse(ctx, 400, APPLICATION_JSON, Response.Status.BAD_REQUEST.getReasonPhrase());
+    } else if (ERROR_TENANT.equals(ctx.request()
       .getHeader(OKAPI_HEADER_TENANT))) {
       serverResponse(ctx, 500, TEXT_PLAIN, INTERNAL_SERVER_ERROR.getReasonPhrase());
     } else if (Integer.parseInt(startValue) < 0) {
@@ -305,7 +308,7 @@ public class MockServer {
       serverResponse(ctx, 204, APPLICATION_JSON, "");
     }
   }
-  
+
   private void handleDeleteRequest(RoutingContext ctx, String type) {
     String id = ctx.request().getParam(ID);
 
