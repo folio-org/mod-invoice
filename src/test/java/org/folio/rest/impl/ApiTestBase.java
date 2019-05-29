@@ -43,8 +43,9 @@ public class ApiTestBase {
   static final String LANG_PARAM = "lang";
   static final String INVALID_LANG = "english";
 
-  public static final String ID_DOES_NOT_EXIST = "d25498e7-3ae6-45fe-9612-ec99e2700d2f";
-  public static final String ID_FOR_INTERNAL_SERVER_ERROR = "168f8a86-d26c-406e-813f-c7527f241ac3";
+  static final String ID_DOES_NOT_EXIST = "d25498e7-3ae6-45fe-9612-ec99e2700d2f";
+  static final String ID_FOR_INTERNAL_SERVER_ERROR = "168f8a86-d26c-406e-813f-c7527f241ac3";
+  static final String ID_FOR_INTERNAL_SERVER_ERROR_PUT = "bad500bb-bbbb-500b-bbbb-bbbbbbbbbbbb";
 
   static {
     System.setProperty(LoggerFactory.LOGGER_DELEGATE_FACTORY_CLASS_NAME, "io.vertx.core.logging.Log4j2LogDelegateFactory");
@@ -59,7 +60,7 @@ public class ApiTestBase {
   public static void before() throws InterruptedException, ExecutionException, TimeoutException {
 
     if(ApiTestSuite.isNotInitialised()) {
-      System.out.println("Running test on own, initialising suite manually");
+      logger.info("Running test on own, initialising suite manually");
       runningOnOwn = true;
       ApiTestSuite.before();
     }
@@ -74,7 +75,7 @@ public class ApiTestBase {
   public static void after() {
 
     if(runningOnOwn) {
-      System.out.println("Running test on own, un-initialising suite manually");
+      logger.info("Running test on own, un-initialising suite manually");
       ApiTestSuite.after();
     }
   }

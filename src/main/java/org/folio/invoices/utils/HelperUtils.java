@@ -1,14 +1,9 @@
 package org.folio.invoices.utils;
 
-import io.vertx.core.Context;
-import io.vertx.core.http.HttpMethod;
-import io.vertx.core.json.JsonObject;
-import io.vertx.core.logging.Logger;
-import me.escoffier.vertx.completablefuture.VertxCompletableFuture;
-import org.folio.invoices.rest.exceptions.HttpException;
-import org.folio.rest.jaxrs.model.Invoice;
-import org.folio.rest.tools.client.Response;
-import org.folio.rest.tools.client.interfaces.HttpClientInterface;
+import static java.util.Objects.nonNull;
+import static org.apache.commons.lang3.StringUtils.EMPTY;
+import static org.apache.commons.lang3.StringUtils.isEmpty;
+import static org.folio.invoices.utils.ResourcePathResolver.*;
 
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
@@ -17,13 +12,16 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 
-import static java.util.Objects.nonNull;
-import static org.apache.commons.lang3.StringUtils.EMPTY;
-import static org.apache.commons.lang3.StringUtils.isEmpty;
-import static org.folio.invoices.utils.ResourcePathResolver.INVOICES;
-import static org.folio.invoices.utils.ResourcePathResolver.VOUCHERS;
-import static org.folio.invoices.utils.ResourcePathResolver.VOUCHER_LINES;
-import static org.folio.invoices.utils.ResourcePathResolver.resourceByIdPath;
+import org.folio.invoices.rest.exceptions.HttpException;
+import org.folio.rest.jaxrs.model.Invoice;
+import org.folio.rest.tools.client.Response;
+import org.folio.rest.tools.client.interfaces.HttpClientInterface;
+
+import io.vertx.core.Context;
+import io.vertx.core.http.HttpMethod;
+import io.vertx.core.json.JsonObject;
+import io.vertx.core.logging.Logger;
+import me.escoffier.vertx.completablefuture.VertxCompletableFuture;
 
 public class HelperUtils {
 

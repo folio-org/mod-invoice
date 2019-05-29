@@ -19,6 +19,7 @@ import static org.folio.rest.impl.ApiTestBase.BASE_MOCK_DATA_PATH;
 import static org.folio.rest.impl.ApiTestBase.FOLIO_INVOICE_NUMBER_VALUE;
 import static org.folio.rest.impl.ApiTestBase.ID_DOES_NOT_EXIST;
 import static org.folio.rest.impl.ApiTestBase.ID_FOR_INTERNAL_SERVER_ERROR;
+import static org.folio.rest.impl.ApiTestBase.ID_FOR_INTERNAL_SERVER_ERROR_PUT;
 import static org.folio.rest.impl.ApiTestBase.INVOICE_LINE_NUMBER_VALUE;
 import static org.folio.rest.impl.ApiTestBase.getMockData;
 import static org.folio.rest.impl.InvoiceLinesApiTest.INVOICE_ID;
@@ -41,7 +42,6 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import java.util.stream.Collectors;
 
 import javax.ws.rs.core.Response;
 
@@ -75,7 +75,8 @@ import io.vertx.ext.web.handler.BodyHandler;
 public class MockServer {
 
   private static final Logger logger = LoggerFactory.getLogger(MockServer.class);
-  public static final String ORDER_LINES_BY_ID_PATH = "/orders/order-lines/:id";
+  private static final String ORDER_LINES_BY_ID_PATH = "/orders/order-lines/:id";
+  public static final String MOCK_DATA_PATH_PATTERN = "%s%s.json";
 
   static Table<String, HttpMethod, List<JsonObject>> serverRqRs = HashBasedTable.create();
   private static final String INVOICE_NUMBER_ERROR_TENANT = "po_number_error_tenant";
@@ -177,11 +178,11 @@ public class MockServer {
         invoiceLineCollection.setInvoiceLines(filterLineByInvoiceId(invoiceId, invoiceLineCollection));
         invoiceLineCollection.setTotalRecords(invoiceLineCollection.getInvoiceLines().size());
 
-        JsonObject po_lines = JsonObject.mapFrom(invoiceLineCollection);
-        logger.info(po_lines.encodePrettily());
+        JsonObject poLines = JsonObject.mapFrom(invoiceLineCollection);
+        logger.info(poLines.encodePrettily());
 
-        addServerRqRsData(HttpMethod.GET, INVOICE_LINES, po_lines);
-        serverResponse(ctx, 200, APPLICATION_JSON, po_lines.encode());
+        addServerRqRsData(HttpMethod.GET, INVOICE_LINES, poLines);
+        serverResponse(ctx, 200, APPLICATION_JSON, poLines.encode());
       } catch (IOException e) {
         InvoiceLineCollection poLineCollection = new InvoiceLineCollection();
         poLineCollection.setTotalRecords(0);
@@ -224,7 +225,7 @@ public class MockServer {
     } else {
       try {
 
-        String filePath = String.format("%s%s.json", INVOICE_MOCK_DATA_PATH, id);
+        String filePath = String.format(MOCK_DATA_PATH_PATTERN, INVOICE_MOCK_DATA_PATH, id);
 
         JsonObject invoice = new JsonObject(getMockData(filePath));
 
@@ -247,7 +248,7 @@ public class MockServer {
 
     try {
       String filePath = null;
-      filePath = String.format("%s%s.json", VOUCHER_LINES_MOCK_DATA_PATH, id);
+      filePath = String.format(MOCK_DATA_PATH_PATTERN, VOUCHER_LINES_MOCK_DATA_PATH, id);
 
       JsonObject voucherLine = new JsonObject(getMockData(filePath));
 
@@ -271,12 +272,12 @@ public class MockServer {
     } else {
       try {
         String filePath = null;
-        filePath = String.format("%s%s.json", INVOICE_LINES_MOCK_DATA_PATH, id);
+        filePath = String.format(MOCK_DATA_PATH_PATTERN, INVOICE_LINES_MOCK_DATA_PATH, id);
   
         JsonObject invoiceLine = new JsonObject(getMockData(filePath));
   
         // validate content against schema
-        org.folio.rest.acq.model.InvoiceLine invoiceSchema = invoiceLine.mapTo(org.folio.rest.acq.model.InvoiceLine.class);
+       InvoiceLine invoiceSchema = invoiceLine.mapTo(InvoiceLine.class);
         invoiceSchema.setId(id);
         invoiceLine = JsonObject.mapFrom(invoiceSchema);
         addServerRqRsData(HttpMethod.GET, INVOICE_LINES, invoiceLine);
@@ -350,6 +351,10 @@ public class MockServer {
 
     if (ID_FOR_INTERNAL_SERVER_ERROR.equals(id)) {
       serverResponse(ctx, 500, APPLICATION_JSON, INTERNAL_SERVER_ERROR.getReasonPhrase());
+    } else if (ID_FOR_INTERNAL_SERVER_ERROR_PUT.equals(id)) {
+      CompositePoLine poLine = new CompositePoLine();
+      poLine.setId(ID_FOR_INTERNAL_SERVER_ERROR_PUT);
+      serverResponse(ctx, 200, APPLICATION_JSON, JsonObject.mapFrom(poLine).encodePrettily());
     } else {
       try {
 
@@ -369,7 +374,7 @@ public class MockServer {
 
         // If previous step has no result then attempt to find POLine in stubs
         if (pol == null) {
-          CompositePoLine poLine = new JsonObject(ApiTestBase.getMockData(String.format("%s%s.json", PO_LINES_MOCK_DATA_PATH, id))).mapTo(CompositePoLine.class);
+          CompositePoLine poLine = new JsonObject(ApiTestBase.getMockData(String.format(MOCK_DATA_PATH_PATTERN, PO_LINES_MOCK_DATA_PATH, id))).mapTo(CompositePoLine.class);
 
           pol = JsonObject.mapFrom(poLine);
         }
@@ -405,7 +410,7 @@ public class MockServer {
 
     if (ID_DOES_NOT_EXIST.equals(id)) {
       serverResponse(ctx, 404, APPLICATION_JSON, id);
-    } else if (ID_FOR_INTERNAL_SERVER_ERROR.equals(id)) {
+    } else if (ID_FOR_INTERNAL_SERVER_ERROR.equals(id) || ID_FOR_INTERNAL_SERVER_ERROR_PUT.equals(id)) {
       serverResponse(ctx, 500, APPLICATION_JSON, Response.Status.INTERNAL_SERVER_ERROR.getReasonPhrase());
     } else {
       ctx.response()
@@ -452,7 +457,7 @@ public class MockServer {
     } else {
       try {
 
-        String filePath = String.format("%s%s.json", VOUCHER_MOCK_DATA_PATH, id);
+        String filePath = String.format(MOCK_DATA_PATH_PATTERN, VOUCHER_MOCK_DATA_PATH, id);
 
         JsonObject voucher = new JsonObject(getMockData(filePath));
 

@@ -1,6 +1,19 @@
 package org.folio.rest.impl;
 
-import io.vertx.core.Context;
+import static java.util.stream.Collectors.toList;
+import static org.folio.invoices.utils.HelperUtils.handlePutRequest;
+import static org.folio.invoices.utils.ResourcePathResolver.FOLIO_INVOICE_NUMBER;
+import static org.folio.invoices.utils.HelperUtils.handleDeleteRequest;
+import static org.folio.invoices.utils.ResourcePathResolver.INVOICES;
+import static org.folio.invoices.utils.ResourcePathResolver.resourceByIdPath;
+import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
+import static org.folio.invoices.utils.HelperUtils.handleGetRequest;
+import static org.folio.invoices.utils.HelperUtils.getEndpointWithQuery;
+import static org.folio.invoices.utils.HelperUtils.getInvoiceById;
+
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+
 import io.vertx.core.json.JsonObject;
 import me.escoffier.vertx.completablefuture.VertxCompletableFuture;
 import org.apache.commons.collections4.CollectionUtils;
@@ -15,22 +28,10 @@ import org.folio.rest.jaxrs.model.InvoiceLineCollection;
 
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.stream.Collectors;
 
-import static java.util.stream.Collectors.toList;
-import static org.folio.invoices.utils.HelperUtils.getEndpointWithQuery;
-import static org.folio.invoices.utils.HelperUtils.getInvoiceById;
-import static org.folio.invoices.utils.HelperUtils.handleDeleteRequest;
-import static org.folio.invoices.utils.HelperUtils.handleGetRequest;
-import static org.folio.invoices.utils.HelperUtils.handlePutRequest;
-import static org.folio.invoices.utils.ResourcePathResolver.FOLIO_INVOICE_NUMBER;
-import static org.folio.invoices.utils.ResourcePathResolver.INVOICES;
-import static org.folio.invoices.utils.ResourcePathResolver.resourceByIdPath;
-import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
-
+import io.vertx.core.Context;
 
 public class InvoiceHelper extends AbstractHelper {
 
@@ -200,7 +201,7 @@ public class InvoiceHelper extends AbstractHelper {
   private List<CompositePoLine> updatePoLinesPaymentStatus(Map<CompositePoLine, List<InvoiceLine>> compositePoLinesWithInvoiceLines) {
     return compositePoLinesWithInvoiceLines.keySet().stream()
       .peek(compositePoLine -> updatePoLinePaymentStatus(compositePoLine, compositePoLinesWithInvoiceLines.get(compositePoLine)))
-      .collect(Collectors.toList());
+      .collect(toList());
   }
 
   private void updatePoLinePaymentStatus(CompositePoLine compositePoLine, List<InvoiceLine> invoiceLines) {
