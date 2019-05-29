@@ -171,8 +171,12 @@
     {
       "id": "voucher-storage.voucher-lines",
       "version": "1.0"
+    },
+    {
+      "id": "voucher-storage.voucher-number",
+      "version": "1.0"
     }
-  ],  
+  ],
   "permissionSets": [
     {
       "permissionName": "invoice.invoices.collection.get",
