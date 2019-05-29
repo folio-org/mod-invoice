@@ -120,7 +120,8 @@ public class MockServer {
     router.route().handler(BodyHandler.create());
     router.route(HttpMethod.POST, ResourcePathResolver.resourcesPath(INVOICES)).handler(this::handlePostInvoice);
     router.route(HttpMethod.POST, resourcesPath(INVOICE_LINES)).handler(this::handlePostInvoiceLine);
-    router.route(HttpMethod.POST, resourcesPath(VOUCHER_NUMBER_START)).handler(this::handlePostVoucherStartValue);
+    // router.route(HttpMethod.POST, resourcesPath(VOUCHER_NUMBER_START)).handler(this::handlePostVoucherStartValue);
+    router.route(HttpMethod.POST, resourcesPath(VOUCHER_NUMBER_START) + "/:value").handler(this::handlePostVoucherStartValue);
 
     router.route(HttpMethod.GET, resourcesPath(INVOICES)).handler(this::handleGetInvoices);
     router.route(HttpMethod.GET, resourcesPath(INVOICE_LINES)).handler(this::handleGetInvoiceLines);
@@ -293,10 +294,13 @@ public class MockServer {
 
   private void handlePostVoucherStartValue(RoutingContext ctx) {
       logger.info("got: " + ctx.getBodyAsString());
+      String startValue = ctx.request().getParam("value");
       if (ERROR_TENANT.equals(ctx.request().getHeader(OKAPI_HEADER_TENANT))) {
         serverResponse(ctx, 500, TEXT_PLAIN, INTERNAL_SERVER_ERROR.getReasonPhrase());
+      } else if( Integer.parseInt(startValue) < 0) {
+        serverResponse(ctx, 404, TEXT_PLAIN, startValue);
       } else {
-        serverResponse(ctx, 201, APPLICATION_JSON, "");
+        serverResponse(ctx, 204, APPLICATION_JSON, "");
       }
     }
   

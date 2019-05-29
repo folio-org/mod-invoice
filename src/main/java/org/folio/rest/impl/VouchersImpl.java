@@ -1,12 +1,7 @@
 package org.folio.rest.impl;
 
 import static io.vertx.core.Future.succeededFuture;
-import static org.folio.invoices.utils.ResourcePathResolver.INVOICES;
-import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
-
 import java.util.Map;
-import java.util.concurrent.CompletableFuture;
-
 import javax.ws.rs.core.Response;
 
 import org.apache.commons.lang3.StringUtils;
@@ -16,11 +11,9 @@ import org.folio.rest.annotations.Validate;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Context;
 import io.vertx.core.Handler;
-import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 
-import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.jaxrs.model.VoucherLine;
 import org.folio.rest.jaxrs.resource.Voucher;
 
@@ -72,7 +65,7 @@ public class VouchersImpl implements Voucher {
   @Override
   public void postVoucherVoucherNumberStartByValue(String value, String lang, Map<String, String> okapiHeaders,
       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
-    VoucherHelper helper = new VoucherHelper(okapiHeaders, vertxContext, lang);
+    VoucherNumberHelper helper = new VoucherNumberHelper(okapiHeaders, vertxContext, lang);
     helper.setStartValue(value)
     .thenAccept(ok -> asyncResultHandler.handle(succeededFuture(helper.buildNoContentResponse())))
     .exceptionally(fail -> handleErrorResponse(asyncResultHandler, helper, fail));

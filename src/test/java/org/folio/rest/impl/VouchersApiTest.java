@@ -36,6 +36,10 @@ public class VouchersApiTest extends ApiTestBase {
   public void testPostVoucherStartValue() {
     verifyPostStartValueResponse(String.format(VOUCHER_START_PATH, "200"), "", prepareHeaders(EXIST_CONFIG_X_OKAPI_TENANT_LIMIT_10), "", 204);
   }
+  @Test
+  public void testPostVoucherStartValueBadRequest() {
+    verifyPostStartValueResponse(String.format(VOUCHER_START_PATH, "-12"), "", prepareHeaders(EXIST_CONFIG_X_OKAPI_TENANT_LIMIT_10), "", 404);
+  }
   
   @Test
   public void testGetVouchersVoucherById() throws IOException {
