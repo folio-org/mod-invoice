@@ -18,12 +18,11 @@ public class VoucherNumberHelper extends AbstractHelper {
 
   private static final String CALLING_ENDPOINT_MSG = "Sending {} {}";
   private static final String EXCEPTION_CALLING_ENDPOINT_MSG = "Exception calling {} {}";
-  
+
   VoucherNumberHelper(Map<String, String> okapiHeaders, Context ctx, String lang) {
     super(getHttpClient(okapiHeaders), okapiHeaders, ctx, lang);
   }
 
-  
   public CompletableFuture<Void> setStartValue(String id) {
     return handlePostStartValueRequest(resourcesPath(VOUCHER_NUMBER_START) + "/" + id, httpClient, ctx, okapiHeaders, logger);
   }

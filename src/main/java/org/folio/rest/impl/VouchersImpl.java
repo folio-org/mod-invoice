@@ -67,7 +67,7 @@ public class VouchersImpl implements Voucher {
       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     VoucherNumberHelper helper = new VoucherNumberHelper(okapiHeaders, vertxContext, lang);
     helper.setStartValue(value)
-    .thenAccept(ok -> asyncResultHandler.handle(succeededFuture(helper.buildNoContentResponse())))
-    .exceptionally(fail -> handleErrorResponse(asyncResultHandler, helper, fail));
+      .thenAccept(ok -> asyncResultHandler.handle(succeededFuture(helper.buildNoContentResponse())))
+      .exceptionally(fail -> handleErrorResponse(asyncResultHandler, helper, fail));
   }
 }

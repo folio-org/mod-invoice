@@ -73,6 +73,7 @@ public class MockServer {
   private static final String ERROR_TENANT = "error_tenant";
   private static final String INVOICE_LINES_COLLECTION = BASE_MOCK_DATA_PATH + "invoiceLines/invoice_lines.json";
   private static final String ID_PATH_PARAM = ":" + ID;
+  private static final String VALUE_PATH_PARAM = ":value";
   private static final String TOTAL_RECORDS = "totalRecords";
 
   static final Header INVOICE_NUMBER_ERROR_X_OKAPI_TENANT = new Header(OKAPI_HEADER_TENANT, INVOICE_NUMBER_ERROR_TENANT);
@@ -120,8 +121,7 @@ public class MockServer {
     router.route().handler(BodyHandler.create());
     router.route(HttpMethod.POST, ResourcePathResolver.resourcesPath(INVOICES)).handler(this::handlePostInvoice);
     router.route(HttpMethod.POST, resourcesPath(INVOICE_LINES)).handler(this::handlePostInvoiceLine);
-    // router.route(HttpMethod.POST, resourcesPath(VOUCHER_NUMBER_START)).handler(this::handlePostVoucherStartValue);
-    router.route(HttpMethod.POST, resourcesPath(VOUCHER_NUMBER_START) + "/:value").handler(this::handlePostVoucherStartValue);
+    router.route(HttpMethod.POST, resourceByIdPath(VOUCHER_NUMBER_START, VALUE_PATH_PARAM)).handler(this::handlePostVoucherStartValue);
 
     router.route(HttpMethod.GET, resourcesPath(INVOICES)).handler(this::handleGetInvoices);
     router.route(HttpMethod.GET, resourcesPath(INVOICE_LINES)).handler(this::handleGetInvoiceLines);
@@ -293,16 +293,18 @@ public class MockServer {
   }
 
   private void handlePostVoucherStartValue(RoutingContext ctx) {
-      logger.info("got: " + ctx.getBodyAsString());
-      String startValue = ctx.request().getParam("value");
-      if (ERROR_TENANT.equals(ctx.request().getHeader(OKAPI_HEADER_TENANT))) {
-        serverResponse(ctx, 500, TEXT_PLAIN, INTERNAL_SERVER_ERROR.getReasonPhrase());
-      } else if( Integer.parseInt(startValue) < 0) {
-        serverResponse(ctx, 404, TEXT_PLAIN, startValue);
-      } else {
-        serverResponse(ctx, 204, APPLICATION_JSON, "");
-      }
+    logger.info("got: " + ctx.getBodyAsString());
+    String startValue = ctx.request()
+      .getParam("value");
+    if (ERROR_TENANT.equals(ctx.request()
+      .getHeader(OKAPI_HEADER_TENANT))) {
+      serverResponse(ctx, 500, TEXT_PLAIN, INTERNAL_SERVER_ERROR.getReasonPhrase());
+    } else if (Integer.parseInt(startValue) < 0) {
+      serverResponse(ctx, 404, TEXT_PLAIN, startValue);
+    } else {
+      serverResponse(ctx, 204, APPLICATION_JSON, "");
     }
+  }
   
   private void handleDeleteRequest(RoutingContext ctx, String type) {
     String id = ctx.request().getParam(ID);
