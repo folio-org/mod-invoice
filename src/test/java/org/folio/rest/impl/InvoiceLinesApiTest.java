@@ -241,7 +241,7 @@ public class InvoiceLinesApiTest extends ApiTestBase {
         201).as(InvoiceLine.class);
 
     double expectedAdjustmentsTotal = -2.978d;
-    double expectedTotal = expectedAdjustmentsTotal + reqData.getSubTotal();
+    double expectedTotal = 17.042d;
 
     assertThat(invoiceLine.getAdjustmentsTotal(), equalTo(expectedAdjustmentsTotal));
     assertThat(invoiceLine.getTotal(), equalTo(expectedTotal));
