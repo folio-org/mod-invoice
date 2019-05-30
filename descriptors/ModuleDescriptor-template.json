@@ -131,6 +131,14 @@
       "version": "1.0",
       "handlers": [
         {
+          "methods": ["POST"],
+          "pathPattern": "/voucher/voucher-number/start/{value}",
+          "permissionsRequired": ["voucher-number.start.post"],
+          "modulePermissions": [
+            "voucher-storage.voucher-number.start.post"
+          ]
+        },
+        {
           "methods": ["GET"],
           "pathPattern": "/voucher/voucher-number/start",
           "permissionsRequired": ["voucher-number.start.get"],
@@ -254,6 +262,11 @@
       "description": "Modify an existing Voucher line"
     },
     {
+      "permissionName": "voucher-number.start.post",
+      "displayName": "Post voucher number sequence start value",
+      "description": "Voucher number sequence - re(set) the start value of the sequence"
+    },
+    {
       "permissionName": "voucher-number.start.get",
       "displayName": "Get voucher number sequence start value",
       "description": "Voucher number sequence - get the start value of the sequence"
@@ -286,6 +299,7 @@
         "invoice.invoice-lines.item.delete",
         "invoice.invoice-number.item.get",
         "invoice.invoice-number.item.post",
+        "voucher-number.start.post",
         "voucher-number.start.get",
         "voucher.all"
       ],
