@@ -304,7 +304,7 @@ public class MockServer {
       .getHeader(OKAPI_HEADER_TENANT))) {
       serverResponse(ctx, 500, TEXT_PLAIN, INTERNAL_SERVER_ERROR.getReasonPhrase());
     } else if (Integer.parseInt(startValue) < 0) {
-      serverResponse(ctx, 404, TEXT_PLAIN, startValue);
+      serverResponse(ctx, 400, TEXT_PLAIN, startValue);
     } else {
       serverResponse(ctx, 204, APPLICATION_JSON, "");
     }

@@ -98,10 +98,10 @@ public class VouchersApiTest extends ApiTestBase {
 
   @Test
   public void testPostVoucherNegativeStartValueBadRequest() {
-    logger.info("=== Test POST Voucher negative start value - 404 Bad Request ===");
+    logger.info("=== Test POST Voucher negative start value - 400 Bad Request ===");
 
     verifyPostResponse(String.format(VOUCHER_START_PATH, INVALID_NEGATIVE_START_VALUE), "",
-        prepareHeaders(EXIST_CONFIG_X_OKAPI_TENANT_LIMIT_10), "", 404);
+        prepareHeaders(EXIST_CONFIG_X_OKAPI_TENANT_LIMIT_10), "", 400);
   }
 
   @Test
