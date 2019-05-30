@@ -30,15 +30,15 @@ resourceTypes:
 
 /voucher:
   /vouchers:
-    displayName: voucher collection
+    displayName: Vouchers
     description: Get list of voucher
     type:
       get-only:
         schema: voucherCollection
         exampleCollection: !include acq-models/mod-invoice-storage/examples/voucher_collection.sample
     get:
-        description: Return a list of voucher
-        is: [ pageable, searchable: {description: "using CQL (indexes for invoice)", example: "invoiceLineStatus==\"Open\""}, validate ]
+        description: Retrieve a list of voucher items.
+        is: [ pageable, searchable: {description: "using CQL (indexes for voucher)", example: "voucherNumber==\"1000\""}, validate ]
     /{id}:
       uriParameters:
         id:
