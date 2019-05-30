@@ -49,6 +49,7 @@ public class VouchersImpl implements Voucher {
   }
 
   @Override
+  @Validate
   public void putVoucherVoucherLinesById(String voucherLineId, String lang, VoucherLine voucherLine, Map<String, String> okapiHeaders,
       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     logger.info("== Update Voucher Line by Id for an existing Voucher ==");
@@ -66,9 +67,23 @@ public class VouchersImpl implements Voucher {
   @Override
   public void postVoucherVoucherNumberStartByValue(String value, String lang, Map<String, String> okapiHeaders,
       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
-    VoucherNumberHelper helper = new VoucherNumberHelper(okapiHeaders, vertxContext, lang);
+    logger.info("== Re(set) the current start value of the voucher number sequence ==");
+    VoucherHelper helper = new VoucherHelper(okapiHeaders, vertxContext, lang);
     helper.setStartValue(value)
       .thenAccept(ok -> asyncResultHandler.handle(succeededFuture(helper.buildNoContentResponse())))
       .exceptionally(fail -> handleErrorResponse(asyncResultHandler, helper, fail));
+  }
+
+  @Override
+  @Validate
+  public void getVoucherVoucherNumberStart(String lang, Map<String, String> okapiHeaders,
+      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+    logger.info("== Getting the current start value of the voucher number sequence ==");
+
+    VoucherHelper helper = new VoucherHelper(okapiHeaders, vertxContext, lang);
+
+    helper.getVoucherNumberStartValue()
+      .thenAccept(number -> asyncResultHandler.handle(succeededFuture(helper.buildOkResponse(number))))
+      .exceptionally(t -> handleErrorResponse(asyncResultHandler, helper, t));
   }
 }

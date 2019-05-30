@@ -130,11 +130,19 @@
       "version": "1.0",
       "handlers": [
         {
+<<<<<<< HEAD
           "methods": ["POST"],
           "pathPattern": "/voucher/voucher-number/start/{value}",
           "permissionsRequired": ["voucher-number.start.post"],
           "modulePermissions": [
             "voucher-storage.voucher-number.start.post"
+=======
+          "methods": ["GET"],
+          "pathPattern": "/voucher/voucher-number/start",
+          "permissionsRequired": ["voucher-number.start.get"],
+          "modulePermissions": [
+            "voucher-storage.voucher-number.start.get"
+>>>>>>> c73ae466a0102658199c7a420509959328ef7213
           ]
         }
       ]
@@ -176,7 +184,7 @@
       "id": "voucher-storage.voucher-number",
       "version": "1.0"
     }
-  ],  
+  ],
   "permissionSets": [
     {
       "permissionName": "invoice.invoices.collection.get",
@@ -249,10 +257,17 @@
       "description": "Modify an existing Voucher line"
     },
     {
+<<<<<<< HEAD
       "permissionName": "voucher-number.start.post",
       "displayName": "Post voucher number sequence start value",
       "description": "Voucher number sequence - re(set) the start value of the sequence"
     },    
+=======
+      "permissionName": "voucher-number.start.get",
+      "displayName": "Get voucher number sequence start value",
+      "description": "Voucher number sequence - get the start value of the sequence"
+    },
+>>>>>>> c73ae466a0102658199c7a420509959328ef7213
     {
       "permissionName": "voucher.all",
       "displayName": "Invoice module - all Voucher permissions",
@@ -281,7 +296,11 @@
         "invoice.invoice-lines.item.delete",
         "invoice.invoice-number.item.get",
         "invoice.invoice-number.item.post",
+<<<<<<< HEAD
         "voucher-number.start.post",
+=======
+        "voucher-number.start.get",
+>>>>>>> c73ae466a0102658199c7a420509959328ef7213
         "voucher.all"
       ],
       "visible": false
