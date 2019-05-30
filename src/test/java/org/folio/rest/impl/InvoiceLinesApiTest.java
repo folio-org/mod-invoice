@@ -21,8 +21,9 @@ import static org.folio.rest.RestVerticle.OKAPI_HEADER_TENANT;
 import static org.folio.rest.impl.InvoicesApiTest.BAD_QUERY;
 import static org.folio.rest.impl.AbstractHelper.ID;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertThat;
 import static org.hamcrest.Matchers.notNullValue;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasSize;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_LINE_NUMBER;
 import static org.folio.rest.impl.MockServer.INVOICE_LINE_NUMBER_ERROR_X_OKAPI_TENANT;
@@ -216,8 +217,29 @@ public class InvoiceLinesApiTest extends ApiTestBase {
     String jsonBody = JsonObject.mapFrom(reqData).encode();
     InvoiceLine invoiceLine = verifyPostResponse(INVOICE_LINES_PATH, jsonBody, prepareHeaders(X_OKAPI_TENANT),
         APPLICATION_JSON, 201).as(InvoiceLine.class);
+    double expectedAdjustmentsTotal = 7.02d;
+    double expextedTotal = expectedAdjustmentsTotal+reqData.getSubTotal();
 
-    assertThat(invoiceLine.getAdjustmentsTotal(), notNullValue());
+    assertThat(invoiceLine.getAdjustmentsTotal(), equalTo(expectedAdjustmentsTotal));
+    assertThat(invoiceLine.getTotal(), equalTo(expextedTotal));
+  }
+
+  @Test
+  public void testPostInvoiceLinesByIdwithNegativeAdjustments() throws IOException {
+    logger.info("=== Test Post Invoice Lines By Id (empty id in body) ===");
+
+    InvoiceLine reqData = getMockAsJson(INVOICE_LINE_ADJUSTMENTS_SAMPLE_PATH).mapTo(InvoiceLine.class);
+    //set adjustment amount to a negative value
+    reqData.getAdjustments().get(1).setValue(-5d);
+    String jsonBody = JsonObject.mapFrom(reqData).encode();
+    InvoiceLine invoiceLine = verifyPostResponse(INVOICE_LINES_PATH, jsonBody, prepareHeaders(X_OKAPI_TENANT),
+        APPLICATION_JSON, 201).as(InvoiceLine.class);
+
+    double expectedAdjustmentsTotal = -2.98d;
+    double expextedTotal = expectedAdjustmentsTotal+reqData.getSubTotal();
+
+    assertThat(invoiceLine.getAdjustmentsTotal(), equalTo(expectedAdjustmentsTotal));
+    assertThat(invoiceLine.getTotal(), equalTo(expextedTotal));
   }
 
 }
