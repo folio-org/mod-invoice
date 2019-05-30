@@ -27,9 +27,11 @@
       ],
       "adjustments": [
         {
-          "adjustmentLabel": "Adjustment label",
-          "adjustmentType": "Percentage",
-          "adjustmentValue": 10.1
+          "description": "Adjustment label",
+          "type": "Percentage",
+          "value": 10.1,
+          "prorate": "Not prorated",
+          "relationToTotal": "In addition to"
         }
       ],
       "metadata": {
@@ -64,9 +66,11 @@
       ],
       "adjustments": [
         {
-          "adjustmentLabel": "Adjustment label",
-          "adjustmentType": "Percentage",
-          "adjustmentValue": 10.1
+          "description": "Adjustment label",
+          "type": "Percentage",
+          "value": 10.1,
+          "prorate": "Not prorated",
+          "relationToTotal": "In addition to"
         }
       ],
       "metadata": {
@@ -107,9 +111,11 @@
       ],
       "adjustments": [
         {
-          "adjustmentLabel": "Adjustment label",
-          "adjustmentType": "Percentage",
-          "adjustmentValue": 10.1
+          "description": "Adjustment label",
+          "type": "Percentage",
+          "value": 10.1,
+          "prorate": "Not prorated",
+          "relationToTotal": "In addition to"
         }
       ],
       "metadata": {
