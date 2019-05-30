@@ -286,7 +286,7 @@ public class InvoicesApiTest extends ApiTestBase {
     Map<InvoiceProtectedFields, Object> allProtectedFieldsModification = new HashMap<>();
 
     List<Adjustment> adjustments = invoice.getAdjustments();
-    adjustments.get(0).setAdjustmentValue(12345.54321);
+    adjustments.get(0).setValue(12345.54321);
     allProtectedFieldsModification.put(InvoiceProtectedFields.ADJUSTMENTS, adjustments);
 
     allProtectedFieldsModification.put(InvoiceProtectedFields.APPROVED_BY, UUID.randomUUID().toString());
