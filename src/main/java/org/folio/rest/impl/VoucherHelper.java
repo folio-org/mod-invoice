@@ -1,11 +1,16 @@
 package org.folio.rest.impl;
 
 import static org.folio.invoices.utils.HelperUtils.getVoucherById;
+import static org.folio.invoices.utils.HelperUtils.handleGetRequest;
+import static org.folio.invoices.utils.ResourcePathResolver.VOUCHER_NUMBER_START;
+import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
 
 import io.vertx.core.Context;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import me.escoffier.vertx.completablefuture.VertxCompletableFuture;
+
+import org.folio.rest.jaxrs.model.SequenceNumber;
 import org.folio.rest.jaxrs.model.Voucher;
 
 public class VoucherHelper extends AbstractHelper {
@@ -28,4 +33,9 @@ public class VoucherHelper extends AbstractHelper {
     return future;
   }
 
+  public CompletableFuture<SequenceNumber> getVoucherNumberStartValue() {
+
+    return handleGetRequest(resourcesPath(VOUCHER_NUMBER_START), httpClient, ctx, okapiHeaders, logger)
+      .thenApply(entry -> entry.mapTo(SequenceNumber.class));
+  }
 }

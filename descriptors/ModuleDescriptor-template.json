@@ -127,6 +127,20 @@
       ]
     },
     {
+      "id": "voucher-number",
+      "version": "1.0",
+      "handlers": [
+        {
+          "methods": ["GET"],
+          "pathPattern": "/voucher/voucher-number/start",
+          "permissionsRequired": ["voucher-number.start.get"],
+          "modulePermissions": [
+            "voucher-storage.voucher-number.start.get"
+          ]
+        }
+      ]
+    },
+    {
       "id": "_jsonSchemas",
       "version": "1.0",
       "interfaceType" : "multiple",
@@ -162,8 +176,12 @@
     {
       "id": "orders",
       "version": "5.0"
+    },
+    {
+      "id": "voucher-storage.voucher-number",
+      "version": "1.0"
     }
-  ],  
+  ],
   "permissionSets": [
     {
       "permissionName": "invoice.invoices.collection.get",
@@ -236,6 +254,11 @@
       "description": "Modify an existing Voucher line"
     },
     {
+      "permissionName": "voucher-number.start.get",
+      "displayName": "Get voucher number sequence start value",
+      "description": "Voucher number sequence - get the start value of the sequence"
+    },
+    {
       "permissionName": "voucher.all",
       "displayName": "Invoice module - all Voucher permissions",
       "description": "Entire set of permissions needed to use Vouchers",
@@ -263,6 +286,7 @@
         "invoice.invoice-lines.item.delete",
         "invoice.invoice-number.item.get",
         "invoice.invoice-number.item.post",
+        "voucher-number.start.get",
         "voucher.all"
       ],
       "visible": false

@@ -137,6 +137,7 @@
             <configuration>
               <sourceDirectory>${basedir}/ramls/acq-models/common/schemas</sourceDirectory>
               <targetPackage>org.folio.rest.acq.model</targetPackage>
+              <generateBuilders>true</generateBuilders>
             </configuration>
           </execution>
           <execution>
@@ -147,6 +148,7 @@
             <configuration>
               <sourceDirectory>${basedir}/ramls/acq-models/mod-orders/schemas</sourceDirectory>
               <targetPackage>org.folio.rest.acq.model</targetPackage>
+              <generateBuilders>true</generateBuilders>
             </configuration>
           </execution>
         </executions>
