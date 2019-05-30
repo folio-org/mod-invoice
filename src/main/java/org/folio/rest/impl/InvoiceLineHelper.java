@@ -11,7 +11,6 @@ import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
 
 import io.vertx.core.Context;
 import io.vertx.core.json.JsonObject;
-import java.math.BigDecimal;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -29,6 +28,7 @@ import org.folio.rest.jaxrs.model.InvoiceLine;
 import org.folio.rest.jaxrs.model.InvoiceLineCollection;
 import org.javamoney.moneta.Money;
 import org.javamoney.moneta.function.MonetaryFunctions;
+import org.javamoney.moneta.function.MonetaryOperators;
 
 public class InvoiceLineHelper extends AbstractHelper {
 
@@ -88,9 +88,9 @@ public class InvoiceLineHelper extends AbstractHelper {
   }
 
   public CompletableFuture<Void> updateInvoiceLine(InvoiceLine invoiceLine) {
-    return calculateInvoiceLineTotals(invoiceLine).thenAccept(t ->
-     handlePutRequest(resourceByIdPath(INVOICE_LINES, invoiceLine.getId()),
-      JsonObject.mapFrom(invoiceLine), httpClient, ctx, okapiHeaders, logger));
+    return calculateInvoiceLineTotals(invoiceLine)
+      .thenCompose(t -> handlePutRequest(resourceByIdPath(INVOICE_LINES, invoiceLine.getId()), JsonObject.mapFrom(invoiceLine),
+          httpClient, ctx, okapiHeaders, logger));
   }
 
   /**
@@ -134,50 +134,39 @@ public class InvoiceLineHelper extends AbstractHelper {
     return getInvoice(invoiceLine).thenApply(invoice -> calculateInvoiceLineTotals(invoiceLine, invoice));
   }
 
-  private  InvoiceLine calculateInvoiceLineTotals(InvoiceLine invoiceLine, Invoice invoice) {
+  private InvoiceLine calculateInvoiceLineTotals(InvoiceLine invoiceLine, Invoice invoice) {
     String currency = invoice.getCurrency();
     CurrencyUnit currencyUnit = Monetary.getCurrency(currency);
     MonetaryAmount subTotal = Money.of(invoiceLine.getSubTotal(), currencyUnit);
 
     MonetaryAmount adjustmentTotals = calculateAdjustmentsTotal(invoiceLine, subTotal);
-    MonetaryAmount total = adjustmentTotals.add(subTotal);
-    invoiceLine.setAdjustmentsTotal(adjustmentTotals.getNumber().doubleValue());
-    invoiceLine.setTotal(total.getNumber().doubleValue());
+    MonetaryAmount total = adjustmentTotals.add(subTotal).with(MonetaryOperators.rounding());
+    invoiceLine.setAdjustmentsTotal(adjustmentTotals.getNumber()
+      .doubleValue());
+    invoiceLine.setTotal(total.getNumber()
+      .doubleValue());
 
     return invoiceLine;
   }
 
-//  private double calculateTotals(InvoiceLine invoiceLine, MonetaryAmount subTotal) {
-//    return calculateAdjustmentsTotal(invoiceLine, subTotal).add(subTotal)
-//      .getNumber()
-//      .doubleValue();
-//
-//    // UT: No adjust, negative adj, positive adj, wrong currency
-//
-//  }
 
   private MonetaryAmount calculateAdjustmentsTotal(InvoiceLine invoiceLine, MonetaryAmount subTotal) {
     return invoiceLine.getAdjustments()
       .stream()
       .map(adj -> calculateAdjustment(adj, subTotal))
       .collect(MonetaryFunctions.summarizingMonetary(subTotal.getCurrency()))
-      .getSum();
+      .getSum()
+      .with(MonetaryOperators.rounding());
   }
 
-//  private double getAdjustmentsTotal(InvoiceLine invoiceLine, MonetaryAmount subTotal) {
-//    return calculateAdjustmentsTotal(invoiceLine, subTotal)
-//      .getNumber()
-//      .doubleValue();
-//  }
 
   private MonetaryAmount calculateAdjustment(Adjustment adjustment, MonetaryAmount subTotal) {
-    if (adjustment.getType().equals(Adjustment.Type.PERCENTAGE)) {
-      return subTotal.multiply(BigDecimal.valueOf(adjustment.getValue())
-        .divide(new BigDecimal(100)));
+    if (adjustment.getType()
+      .equals(Adjustment.Type.PERCENTAGE)) {
+      return subTotal.with(MonetaryOperators.percent(adjustment.getValue()));
     }
     return Money.of(adjustment.getValue(), subTotal.getCurrency());
   }
-
 
   private CompletableFuture<String> generateLineNumber(Invoice invoice) {
     return handleGetRequest(getInvoiceLineNumberEndpoint(invoice.getId()), httpClient, ctx, okapiHeaders, logger)
@@ -190,7 +179,8 @@ public class InvoiceLineHelper extends AbstractHelper {
   private CompletionStage<InvoiceLine> createInvoiceLineSummary(InvoiceLine invoiceLine, JsonObject line) {
     return createRecordInStorage(line, resourcesPath(INVOICE_LINES))
       // After generating line number, set id and line number of the created Invoice Line
-      .thenApply(id -> invoiceLine.withId(id).withInvoiceLineNumber(line.getString(INVOICE_LINE_NUMBER)));
+      .thenApply(id -> invoiceLine.withId(id)
+        .withInvoiceLineNumber(line.getString(INVOICE_LINE_NUMBER)));
   }
 
   private String buildInvoiceLineNumber(String folioInvoiceNumber, String sequence) {

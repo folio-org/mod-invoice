@@ -24,8 +24,10 @@ import static org.junit.Assert.assertEquals;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.hasSize;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_LINE_NUMBER;
+import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_LINES;
 import static org.folio.rest.impl.MockServer.INVOICE_LINE_NUMBER_ERROR_X_OKAPI_TENANT;
 
 
@@ -39,7 +41,7 @@ public class InvoiceLinesApiTest extends ApiTestBase {
   private static final String INVOICE_LINES_PATH = "/invoice/invoice-lines";
   private static final String INVOICE_LINE_ID_PATH = INVOICE_LINES_PATH + "/%s";
   private static final String INVOICE_LINE_SAMPLE_PATH = "mockdata/invoiceLines/invoice_line.json";
-  private static final String INVOICE_LINE_ADJUSTMENTS_SAMPLE_PATH = INVOICE_LINES_MOCK_DATA_PATH + "invoice_line_adjustments.json";
+  private static final String INVOICE_LINE_ADJUSTMENTS_SAMPLE_PATH = INVOICE_LINES_MOCK_DATA_PATH + "29846620-8fb6-4433-b84e-0b6051eb76ec.json";
   private static final String BAD_INVOICE_LINE_ID = "5a34ae0e-5a11-4337-be95-1a20cfdc3161";
   private static final String INVOICE_ID = "invoiceId";
   private static final String NULL = "null";
@@ -52,7 +54,7 @@ public class InvoiceLinesApiTest extends ApiTestBase {
   }
 
   @Test
-  public void testGetOrderLinesInternalServerError() {
+  public void testGetInvoiceLinesInternalServerError() {
     logger.info("=== Test Get Order Lines by query - emulating 500 from storage ===");
 
     String endpointQuery = String.format("%s?query=%s", INVOICE_LINES_PATH, ID_FOR_INTERNAL_SERVER_ERROR);
@@ -61,7 +63,7 @@ public class InvoiceLinesApiTest extends ApiTestBase {
   }
 
   @Test
-  public void testGetOrderLinesBadQuery() {
+  public void testGetInvoiceLinesBadQuery() {
     logger.info("=== Test Get Order Lines by query - unprocessable query to emulate 400 from storage ===");
 
     String endpointQuery = String.format("%s?query=%s", INVOICE_LINES_PATH, BAD_QUERY);
@@ -210,36 +212,121 @@ public class InvoiceLinesApiTest extends ApiTestBase {
   }
 
   @Test
-  public void testPostInvoiceLinesByIdwithAdjustments() throws IOException {
-    logger.info("=== Test Post Invoice Lines By Id (empty id in body) ===");
+  public void testPostInvoiceLinesWithAdjustments() throws IOException {
+    logger.info("=== Test Post Invoice Lines with adjustments calculated ===");
 
     InvoiceLine reqData = getMockAsJson(INVOICE_LINE_ADJUSTMENTS_SAMPLE_PATH).mapTo(InvoiceLine.class);
     String jsonBody = JsonObject.mapFrom(reqData).encode();
     InvoiceLine invoiceLine = verifyPostResponse(INVOICE_LINES_PATH, jsonBody, prepareHeaders(X_OKAPI_TENANT),
         APPLICATION_JSON, 201).as(InvoiceLine.class);
-    double expectedAdjustmentsTotal = 7.02d;
-    double expextedTotal = expectedAdjustmentsTotal+reqData.getSubTotal();
+    double expectedAdjustmentsTotal = 7.022d;
+    double expectedTotal = expectedAdjustmentsTotal+reqData.getSubTotal();
 
     assertThat(invoiceLine.getAdjustmentsTotal(), equalTo(expectedAdjustmentsTotal));
-    assertThat(invoiceLine.getTotal(), equalTo(expextedTotal));
+    assertThat(invoiceLine.getTotal(), equalTo(expectedTotal));
   }
 
   @Test
-  public void testPostInvoiceLinesByIdwithNegativeAdjustments() throws IOException {
-    logger.info("=== Test Post Invoice Lines By Id (empty id in body) ===");
+  public void testPostInvoiceLinesWithNegativeAdjustments() throws IOException {
+    logger.info("=== Test Post Invoice Lines with negative adjustment value ===");
 
     InvoiceLine reqData = getMockAsJson(INVOICE_LINE_ADJUSTMENTS_SAMPLE_PATH).mapTo(InvoiceLine.class);
-    //set adjustment amount to a negative value
-    reqData.getAdjustments().get(1).setValue(-5d);
-    String jsonBody = JsonObject.mapFrom(reqData).encode();
-    InvoiceLine invoiceLine = verifyPostResponse(INVOICE_LINES_PATH, jsonBody, prepareHeaders(X_OKAPI_TENANT),
-        APPLICATION_JSON, 201).as(InvoiceLine.class);
+    // set adjustment amount to a negative value
+    reqData.getAdjustments()
+      .get(1)
+      .setValue(-5d);
+    String jsonBody = JsonObject.mapFrom(reqData)
+      .encode();
+    InvoiceLine invoiceLine = verifyPostResponse(INVOICE_LINES_PATH, jsonBody, prepareHeaders(X_OKAPI_TENANT), APPLICATION_JSON,
+        201).as(InvoiceLine.class);
 
-    double expectedAdjustmentsTotal = -2.98d;
-    double expextedTotal = expectedAdjustmentsTotal+reqData.getSubTotal();
+    double expectedAdjustmentsTotal = -2.978d;
+    double expectedTotal = expectedAdjustmentsTotal + reqData.getSubTotal();
 
     assertThat(invoiceLine.getAdjustmentsTotal(), equalTo(expectedAdjustmentsTotal));
-    assertThat(invoiceLine.getTotal(), equalTo(expextedTotal));
+    assertThat(invoiceLine.getTotal(), equalTo(expectedTotal));
   }
+
+  @Test
+  public void testPostInvoiceLinesWithNoAdjustments() throws IOException {
+    logger.info("=== Test Post Invoice Lines with no adjustment value ===");
+
+    InvoiceLine reqData = getMockAsJson(INVOICE_LINE_ADJUSTMENTS_SAMPLE_PATH).mapTo(InvoiceLine.class);
+    JsonObject jsonBody = JsonObject.mapFrom(reqData);
+    // delete adjustments
+    jsonBody.remove("adjustments");
+    InvoiceLine invoiceLine = verifyPostResponse(INVOICE_LINES_PATH, jsonBody.encode(), prepareHeaders(X_OKAPI_TENANT),
+        APPLICATION_JSON, 201).as(InvoiceLine.class);
+
+    assertThat(invoiceLine.getAdjustmentsTotal(), equalTo(0d));
+    assertThat(invoiceLine.getTotal(), equalTo(reqData.getSubTotal()));
+  }
+
+  @Test
+  public void testPostInvoicingInvoiceLinesWithIncorrectAdjustmentTotals() throws Exception {
+    logger.info("=== Test Post Invoice Lines to ignore incorrect totals from request ===");
+
+    InvoiceLine reqData = getMockAsJson(INVOICE_LINE_ADJUSTMENTS_SAMPLE_PATH).mapTo(InvoiceLine.class);
+    reqData.setAdjustmentsTotal(100d);
+    reqData.setTotal(200d);
+
+    String jsonBody = JsonObject.mapFrom(reqData).encode();
+
+    InvoiceLine invoiceLine = verifyPostResponse(INVOICE_LINES_PATH, jsonBody, prepareHeaders(X_OKAPI_TENANT), APPLICATION_JSON,
+        201).as(InvoiceLine.class);
+    double expectedAdjustmentsTotal = 7.022d;
+    double expectedTotal = expectedAdjustmentsTotal + reqData.getSubTotal();
+
+    assertThat(invoiceLine.getAdjustmentsTotal(), equalTo(expectedAdjustmentsTotal));
+    assertThat(invoiceLine.getTotal(), equalTo(expectedTotal));
+  }
+
+  @Test
+  public void testPostInvoicingInvoiceLinesWithCurrencyScale() throws Exception {
+    logger.info("=== Test Post Invoice Lines to use currency scale ===");
+
+    InvoiceLine reqData = getMockAsJson(INVOICE_LINE_ADJUSTMENTS_SAMPLE_PATH).mapTo(InvoiceLine.class);
+    String jsonBody = JsonObject.mapFrom(reqData).encode();
+
+    InvoiceLine invoiceLine = verifyPostResponse(INVOICE_LINES_PATH, jsonBody, prepareHeaders(X_OKAPI_TENANT), APPLICATION_JSON,
+        201).as(InvoiceLine.class);
+    //checking scale of currency, with currency as "BHD", which has a scale of 3.
+    //In the test adjustment 10.1% of 20.02 = 2.02202,but check if it utilizes the scale of the currency.
+    double expectedAdjustmentsTotal = 7.022d;
+    double expectedTotal = expectedAdjustmentsTotal + reqData.getSubTotal();
+
+    assertThat(invoiceLine.getAdjustmentsTotal(), equalTo(expectedAdjustmentsTotal));
+    assertThat(invoiceLine.getTotal(), equalTo(expectedTotal));
+  }
+
+  @Test
+  public void testGetInvoiceLinesByIdValidAdjustments() throws Exception {
+    logger.info("=== Test Get Invoice line By Id, adjustments are re calculated ===");
+
+    JsonObject invoiceLinesList = new JsonObject(getMockData(INVOICE_LINES_LIST_PATH));
+    JsonObject invoiceLine = invoiceLinesList.getJsonArray("invoiceLines").getJsonObject(3);
+    String id = invoiceLine.getString(ID);
+    double incorrectAdjustmentTotal = invoiceLine.getDouble("adjustmentsTotal");
+    logger.info(String.format("using mock datafile: %s%s.json", INVOICE_LINES_LIST_PATH, id));
+
+    final InvoiceLine resp = verifySuccessGet(INVOICE_LINES_PATH + "/" + id, InvoiceLine.class);
+
+    logger.info(JsonObject.mapFrom(resp).encodePrettily());
+    assertEquals(id, resp.getId());
+    assertThat(resp.getAdjustmentsTotal(), not(incorrectAdjustmentTotal));
+  }
+
+  @Test
+  public void testPutInvoiceLinesByIdAdjustmentsRecalculated() throws Exception {
+    logger.info("=== Test Put Invoice line By Id, adjustments are re calculated ===");
+    String reqData = getMockData(INVOICE_LINE_ADJUSTMENTS_SAMPLE_PATH);
+
+    verifyPut(String.format(INVOICE_LINE_ID_PATH, VALID_UUID), reqData, "" , 204);
+    double expectedAdjustmentsTotal = 7.022d;
+    double calculatedAdjustmentsTotal = MockServer.serverRqRs.get(INVOICE_LINES, HttpMethod.PUT).get(0).getDouble("adjustmentsTotal");
+
+    assertThat(calculatedAdjustmentsTotal, equalTo(expectedAdjustmentsTotal));
+  }
+
 
 }

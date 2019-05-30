@@ -27,7 +27,9 @@
     {
       "description": "Adjustment label",
       "type": "Percentage",
-      "value": 10.1
+      "value": 10.1,
+      "relationToTotal": "In addition to",
+      "prorate": "Not prorated"
     }
   ],
   "metadata": {

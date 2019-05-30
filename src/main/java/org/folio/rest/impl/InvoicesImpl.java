@@ -131,7 +131,7 @@ public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
 
     invoiceLineHelper
       .getInvoiceLine(id)
-      .thenAccept(invoiceLineHelper::calculateInvoiceLineTotals)
+      .thenCompose(invoiceLineHelper::calculateInvoiceLineTotals)
       .thenAccept(invoiceLine -> asyncResultHandler.handle(succeededFuture(invoiceLineHelper.buildOkResponse(invoiceLine))))
       .exceptionally(t -> handleErrorResponse(asyncResultHandler, invoiceLineHelper, t));
   }
