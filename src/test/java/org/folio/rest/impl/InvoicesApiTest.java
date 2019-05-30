@@ -254,7 +254,51 @@ public class InvoicesApiTest extends ApiTestBase {
     assertThat(serverRqRs.get(PO_LINES, HttpMethod.PUT), notNullValue());
     assertThat(serverRqRs.get(PO_LINES, HttpMethod.PUT), hasSize(1));
     assertThat(serverRqRs.get(PO_LINES, HttpMethod.PUT).get(0).mapTo(CompositePoLine.class).getPaymentStatus(), equalTo(CompositePoLine.PaymentStatus.PARTIALLY_PAID));
+  }
 
+  @Test
+  public void testUpdateValidInvoiceTransitionToPaidReleaseEncumbranceFalseNoPoLineUpdate() {
+    logger.info("=== Test transition invoice to paid and releaseEncumbrance false for invoice line without poLine update ===");
+    List<InvoiceLine> invoiceLines = new ArrayList<>();
+    List<CompositePoLine> poLines = new ArrayList<>();
+
+    InvoiceLine invoiceLine = getMockAsJson(INVOICE_LINE_SAMPLE_PATH).mapTo(InvoiceLine.class);
+    invoiceLines.add(invoiceLine);
+    CompositePoLine poLine = getMockAsJson(String.format("%s%s.json", PO_LINE_MOCK_DATA_PATH, EXISTENT_PO_LINE_ID)).mapTo(CompositePoLine.class);
+    poLines.add(poLine);
+
+    Invoice reqData = getMockAsJson(INVOICE_SAMPLE_PATH).mapTo(Invoice.class);
+
+    invoiceLine.setId(UUID.randomUUID().toString());
+    invoiceLine.setInvoiceId(reqData.getId());
+    invoiceLine.setPoLineId(EXISTENT_PO_LINE_ID);
+    invoiceLine.setReleaseEncumbrance(false);
+
+    poLine.setId(EXISTENT_PO_LINE_ID);
+    poLine.setPaymentStatus(CompositePoLine.PaymentStatus.PARTIALLY_PAID);
+
+    List<JsonObject> preparedInvoiceLines = invoiceLines.stream()
+      .map(JsonObject::mapFrom)
+      .collect(Collectors.toList());
+
+    List<JsonObject> preparedPoLines = poLines.stream()
+      .map(JsonObject::mapFrom)
+      .collect(Collectors.toList());
+
+    serverRqRs.put(INVOICE_LINES, HttpMethod.POST, preparedInvoiceLines);
+    serverRqRs.put(PO_LINES, HttpMethod.POST, preparedPoLines);
+
+    reqData.setStatus(Invoice.Status.PAID);
+
+    String id = reqData.getId();
+    String jsonBody = JsonObject.mapFrom(reqData).encode();
+
+    verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, "", 204);
+
+    assertThat(serverRqRs.get(INVOICES, HttpMethod.PUT).get(0).getString(STATUS), is(Invoice.Status.PAID.value()));
+    assertThat(serverRqRs.get(INVOICE_LINES, HttpMethod.GET), notNullValue());
+    assertThat(serverRqRs.get(INVOICE_LINES, HttpMethod.GET).get(0).mapTo(InvoiceLineCollection.class).getTotalRecords(), equalTo(1));
+    assertThat(serverRqRs.get(PO_LINES, HttpMethod.PUT), nullValue());
   }
 
   @Test

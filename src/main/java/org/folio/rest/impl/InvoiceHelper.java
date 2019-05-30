@@ -178,7 +178,7 @@ public class InvoiceHelper extends AbstractHelper {
       .collect(Collectors.groupingBy(InvoiceLine::getPoLineId));
   }
 
-  private CompletableFuture<Map<CompositePoLine, List<InvoiceLine>>> fetchPoLines(Map<String, List<InvoiceLine>> poLineIdsWithInvoiceLines) {
+  private CompletableFuture<Map<CompositePoLine, CompositePoLine.PaymentStatus>> fetchPoLines(Map<String, List<InvoiceLine>> poLineIdsWithInvoiceLines) {
     List<CompletableFuture<CompositePoLine>> futures = poLineIdsWithInvoiceLines.keySet()
       .stream()
       .map(this::getPoLineById)
@@ -187,7 +187,7 @@ public class InvoiceHelper extends AbstractHelper {
     return VertxCompletableFuture.allOf(futures.toArray(new CompletableFuture[0]))
       .thenApply(v -> futures.stream()
         .map(CompletableFuture::join)
-        .collect(Collectors.toMap(poLine -> poLine, poLine -> poLineIdsWithInvoiceLines.get(poLine.getId()))));
+        .collect(Collectors.toMap(poLine -> poLine, poLine -> getPoLinePaymentStatus(poLineIdsWithInvoiceLines.get(poLine.getId())))));
   }
 
   private CompletableFuture<CompositePoLine> getPoLineById(String poLineId) {
@@ -199,15 +199,25 @@ public class InvoiceHelper extends AbstractHelper {
       });
   }
 
-  private List<CompositePoLine> updatePoLinesPaymentStatus(Map<CompositePoLine, List<InvoiceLine>> compositePoLinesWithInvoiceLines) {
-    List<CompositePoLine> compositePoLines =  new ArrayList<>(compositePoLinesWithInvoiceLines.keySet());
-     compositePoLines
-      .forEach(compositePoLine -> {
-        List<InvoiceLine> invoiceLines =  compositePoLinesWithInvoiceLines.get(compositePoLine);
-        compositePoLine.setPaymentStatus(getPoLinePaymentStatus(invoiceLines));
-      });
-    return compositePoLines;
+  private List<CompositePoLine> updatePoLinesPaymentStatus(Map<CompositePoLine, CompositePoLine.PaymentStatus> compositePoLinesWithNewStatuses) {
+    return compositePoLinesWithNewStatuses
+      .keySet().stream()
+      .filter(compositePoLine -> isPaymentStatusUpdateRequired(compositePoLinesWithNewStatuses, compositePoLine))
+      .map(compositePoLine -> updatePaymentStatus(compositePoLinesWithNewStatuses, compositePoLine) )
+      .collect(toList());
   }
+
+  private boolean isPaymentStatusUpdateRequired(Map<CompositePoLine, CompositePoLine.PaymentStatus> compositePoLinesWithStatus, CompositePoLine compositePoLine) {
+    CompositePoLine.PaymentStatus newPaymentStatus =  compositePoLinesWithStatus.get(compositePoLine);
+    return !newPaymentStatus.equals(compositePoLine.getPaymentStatus());
+  }
+
+  private CompositePoLine updatePaymentStatus(Map<CompositePoLine, CompositePoLine.PaymentStatus> compositePoLinesWithStatus, CompositePoLine compositePoLine) {
+    CompositePoLine.PaymentStatus newPaymentStatus =  compositePoLinesWithStatus.get(compositePoLine);
+    compositePoLine.setPaymentStatus(newPaymentStatus);
+    return compositePoLine;
+  }
+
 
   private CompositePoLine.PaymentStatus getPoLinePaymentStatus(List<InvoiceLine> invoiceLines) {
     if (isAnyInvoiceLineReleaseEncumbrance(invoiceLines)) {
