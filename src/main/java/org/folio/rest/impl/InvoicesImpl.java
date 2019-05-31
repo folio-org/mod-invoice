@@ -21,10 +21,10 @@ import javax.ws.rs.core.Response;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CompletionException;
 import java.util.function.Consumer;
 
 import static io.vertx.core.Future.succeededFuture;
-import static java.util.stream.Collectors.toSet;
 
 public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
 
@@ -100,19 +100,21 @@ public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
                 fields.add(field);
               }
             } catch(IllegalAccessException e) {
-              asyncResultHandler.handle(succeededFuture(invoiceHelper.buildErrorResponse(HttpStatus.HTTP_INTERNAL_SERVER_ERROR.toInt())));
+              throw new CompletionException(e);
             }
           }
           if(fields.isEmpty()) {
             invoiceHelper.updateInvoice(invoice, existed)
-              .thenAccept(success);
+              .thenAccept(success)
+              .exceptionally(fail -> handleErrorResponse(asyncResultHandler, invoiceHelper, fail));
           } else {
             invoiceHelper.addProcessingError(ErrorCodes.PROHIBITED_FIELD_CHANGING.toError().withAdditionalProperty(PROTECTED_AND_MODIFIED_FIELDS, fields));
             asyncResultHandler.handle(succeededFuture(invoiceHelper.buildErrorResponse(HttpStatus.HTTP_BAD_REQUEST.toInt())));
           }
         } else {
           invoiceHelper.updateInvoice(invoice, existed)
-            .thenAccept(success);
+            .thenAccept(success)
+            .exceptionally(fail -> handleErrorResponse(asyncResultHandler, invoiceHelper, fail));
         }
       }).exceptionally(fail -> handleErrorResponse(asyncResultHandler, invoiceHelper, fail));
   }
@@ -193,12 +195,13 @@ public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
                   fields.add(field);
                 }
               } catch(IllegalAccessException e) {
-                asyncResultHandler.handle(succeededFuture(invoiceHelper.buildErrorResponse(HttpStatus.HTTP_INTERNAL_SERVER_ERROR.toInt())));
+                throw new CompletionException(e);
               }
             }
             if(fields.isEmpty()) {
               invoiceLinesHelper.updateInvoiceLine(invoiceLine)
-                .thenAccept(success);
+                .thenAccept(success)
+                .exceptionally(fail -> handleErrorResponse(asyncResultHandler, invoiceHelper, fail));
             } else {
               invoiceLinesHelper.addProcessingError(ErrorCodes.PROHIBITED_FIELD_CHANGING.toError().withAdditionalProperty(PROTECTED_AND_MODIFIED_FIELDS, fields));
               asyncResultHandler.handle(succeededFuture(invoiceLinesHelper.buildErrorResponse(HttpStatus.HTTP_BAD_REQUEST.toInt())));
