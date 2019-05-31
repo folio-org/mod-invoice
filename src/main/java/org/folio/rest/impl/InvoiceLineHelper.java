@@ -88,9 +88,8 @@ public class InvoiceLineHelper extends AbstractHelper {
   }
 
   public CompletableFuture<Void> updateInvoiceLine(InvoiceLine invoiceLine) {
-    return calculateInvoiceLineTotals(invoiceLine)
-      .thenCompose(t -> handlePutRequest(resourceByIdPath(INVOICE_LINES, invoiceLine.getId()), JsonObject.mapFrom(invoiceLine),
-          httpClient, ctx, okapiHeaders, logger));
+    return handlePutRequest(resourceByIdPath(INVOICE_LINES, invoiceLine.getId()), JsonObject.mapFrom(invoiceLine),
+          httpClient, ctx, okapiHeaders, logger);
   }
 
   /**

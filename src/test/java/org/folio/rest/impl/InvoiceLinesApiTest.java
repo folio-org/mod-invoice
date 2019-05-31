@@ -27,7 +27,6 @@ import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.hasSize;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_LINE_NUMBER;
-import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_LINES;
 import static org.folio.rest.impl.MockServer.INVOICE_LINE_NUMBER_ERROR_X_OKAPI_TENANT;
 
 
@@ -248,6 +247,26 @@ public class InvoiceLinesApiTest extends ApiTestBase {
   }
 
   @Test
+  public void testPostInvoiceLinesWithNegativeTotal() throws IOException {
+    logger.info("=== Test Post Invoice Lines with negative adjustment value ===");
+
+    InvoiceLine reqData = getMockAsJson(INVOICE_LINE_ADJUSTMENTS_SAMPLE_PATH).mapTo(InvoiceLine.class);
+    reqData.setSubTotal(-20.234d);
+    JsonObject jsonBody = JsonObject.mapFrom(reqData);
+    // delete adjustments
+    jsonBody.remove("adjustments");
+    InvoiceLine invoiceLine = verifyPostResponse(INVOICE_LINES_PATH, jsonBody.encode(), prepareHeaders(X_OKAPI_TENANT), APPLICATION_JSON,
+        201).as(InvoiceLine.class);
+
+    double expectedAdjustmentsTotal = 0d;
+    double expectedTotal = -20.234d;
+
+    assertThat(invoiceLine.getAdjustmentsTotal(), equalTo(expectedAdjustmentsTotal));
+    assertThat(invoiceLine.getTotal(), equalTo(expectedTotal));
+  }
+
+
+  @Test
   public void testPostInvoiceLinesWithNoAdjustments() throws IOException {
     logger.info("=== Test Post Invoice Lines with no adjustment value ===");
 
@@ -315,18 +334,5 @@ public class InvoiceLinesApiTest extends ApiTestBase {
     assertEquals(id, resp.getId());
     assertThat(resp.getAdjustmentsTotal(), not(incorrectAdjustmentTotal));
   }
-
-  @Test
-  public void testPutInvoiceLinesByIdAdjustmentsRecalculated() throws Exception {
-    logger.info("=== Test Put Invoice line By Id, adjustments are re calculated ===");
-    String reqData = getMockData(INVOICE_LINE_ADJUSTMENTS_SAMPLE_PATH);
-
-    verifyPut(String.format(INVOICE_LINE_ID_PATH, VALID_UUID), reqData, "" , 204);
-    double expectedAdjustmentsTotal = 7.022d;
-    double calculatedAdjustmentsTotal = MockServer.serverRqRs.get(INVOICE_LINES, HttpMethod.PUT).get(0).getDouble("adjustmentsTotal");
-
-    assertThat(calculatedAdjustmentsTotal, equalTo(expectedAdjustmentsTotal));
-  }
-
 
 }
