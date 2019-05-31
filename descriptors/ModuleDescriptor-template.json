@@ -40,6 +40,8 @@
           "modulePermissions": [
             "invoice-storage.invoices.item.put",
             "invoice-storage.invoices.item.get",
+            "invoice-storage.invoice-lines.collection.get",
+            "orders.po-lines.item.put",
             "orders.po-lines.item.get"
           ]
         },
