@@ -92,7 +92,7 @@ public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
       .getInvoice(id)
       .thenAccept(existed -> {
         final Consumer<Void> success = ok -> asyncResultHandler.handle(succeededFuture(invoiceHelper.buildNoContentResponse()));
-        if(invoice.getStatus() == Invoice.Status.APPROVED || invoice.getStatus() == Invoice.Status.PAID || invoice.getStatus() == Invoice.Status.CANCELLED) {
+        if(isFieldsVerificationNeeded(invoice)) {
           Set<String> fields = new HashSet<>();
           for(String field : InvoiceProtectedFields.getFieldNames()) {
             try {
@@ -187,7 +187,7 @@ public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
       .thenAccept(existedInvoiceLine -> invoiceHelper.getInvoice(existedInvoiceLine.getInvoiceId())
         .thenAccept(existedInvoice -> {
           Consumer<Void> success = vVoid -> asyncResultHandler.handle(succeededFuture(invoiceLinesHelper.buildNoContentResponse()));
-          if(existedInvoice.getStatus() == Invoice.Status.APPROVED || existedInvoice.getStatus() == Invoice.Status.PAID || existedInvoice.getStatus() == Invoice.Status.CANCELLED) {
+          if(isFieldsVerificationNeeded(existedInvoice)) {
             Set<String> fields = new HashSet<>();
             for(String field : InvoiceLineProtectedFields.getFieldNames()) {
               try {
@@ -238,5 +238,9 @@ public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
                                    Throwable t) {
     asyncResultHandler.handle(succeededFuture(helper.buildErrorResponse(t)));
     return null;
+  }
+
+  private boolean isFieldsVerificationNeeded(Invoice existedInvoice) {
+    return existedInvoice.getStatus() == Invoice.Status.APPROVED || existedInvoice.getStatus() == Invoice.Status.PAID || existedInvoice.getStatus() == Invoice.Status.CANCELLED;
   }
 }
