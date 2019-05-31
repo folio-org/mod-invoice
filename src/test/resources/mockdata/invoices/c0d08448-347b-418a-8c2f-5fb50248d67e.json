@@ -21,9 +21,9 @@
   ],
   "adjustments": [
     {
-      "adjustmentLabel": "Adjustment label",
-      "adjustmentType": "Percentage",
-      "adjustmentValue": 10.1
+      "description": "Test adjustment",
+      "type": "Percentage",
+      "value": 10.1
     }
   ],
   "vendorId": "168f8a63-d612-406e-813f-c7527f241ac3",

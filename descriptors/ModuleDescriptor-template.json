@@ -79,7 +79,9 @@
           "pathPattern": "/invoice/invoice-lines/{id}",
           "permissionsRequired": ["invoice.invoice-lines.item.put"],
           "modulePermissions": [
-              "invoice-storage.invoice-lines.item.put"
+              "invoice-storage.invoice-lines.item.put",
+              "invoice-storage.invoice-lines.item.get",
+              "invoice-storage.invoices.item.get"
           ]
         },
         {
@@ -126,6 +128,28 @@
       ]
     },
     {
+      "id": "voucher-number",
+      "version": "1.0",
+      "handlers": [
+        {
+          "methods": ["POST"],
+          "pathPattern": "/voucher/voucher-number/start/{value}",
+          "permissionsRequired": ["voucher-number.start.post"],
+          "modulePermissions": [
+            "voucher-storage.voucher-number.start.post"
+          ]
+        },
+        {
+          "methods": ["GET"],
+          "pathPattern": "/voucher/voucher-number/start",
+          "permissionsRequired": ["voucher-number.start.get"],
+          "modulePermissions": [
+            "voucher-storage.voucher-number.start.get"
+          ]
+        }
+      ]
+    },
+    {
       "id": "_jsonSchemas",
       "version": "1.0",
       "interfaceType" : "multiple",
@@ -157,8 +181,12 @@
     {
       "id": "voucher-storage.voucher-lines",
       "version": "1.0"
+    },
+    {
+      "id": "voucher-storage.voucher-number",
+      "version": "1.0"
     }
-  ],  
+  ],
   "permissionSets": [
     {
       "permissionName": "invoice.invoices.collection.get",
@@ -231,6 +259,16 @@
       "description": "Modify an existing Voucher line"
     },
     {
+      "permissionName": "voucher-number.start.post",
+      "displayName": "Post voucher number sequence start value",
+      "description": "Voucher number sequence - re(set) the start value of the sequence"
+    },
+    {
+      "permissionName": "voucher-number.start.get",
+      "displayName": "Get voucher number sequence start value",
+      "description": "Voucher number sequence - get the start value of the sequence"
+    },
+    {
       "permissionName": "voucher.all",
       "displayName": "Invoice module - all Voucher permissions",
       "description": "Entire set of permissions needed to use Vouchers",
@@ -258,6 +296,8 @@
         "invoice.invoice-lines.item.delete",
         "invoice.invoice-number.item.get",
         "invoice.invoice-number.item.post",
+        "voucher-number.start.post",
+        "voucher-number.start.get",
         "voucher.all"
       ],
       "visible": false

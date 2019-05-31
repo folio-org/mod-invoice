@@ -18,6 +18,7 @@ import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.jaxrs.model.InvoiceLine;
 
 import javax.ws.rs.core.Response;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
@@ -92,14 +93,16 @@ public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
       .thenAccept(existed -> {
         final Consumer<Void> success = ok -> asyncResultHandler.handle(succeededFuture(invoiceHelper.buildNoContentResponse()));
         if(invoice.getStatus() == Invoice.Status.APPROVED || invoice.getStatus() == Invoice.Status.PAID || invoice.getStatus() == Invoice.Status.CANCELLED) {
-          Set<String> fields = InvoiceProtectedFields.getFieldNames().stream().filter(field -> {
+          Set<String> fields = new HashSet<>();
+          for(String field : InvoiceProtectedFields.getFieldNames()) {
             try {
-              return !EqualsBuilder.reflectionEquals(FieldUtils.readDeclaredField(invoice, field, true), FieldUtils.readDeclaredField(existed, field, true), true, Invoice.class, true);
-            } catch (IllegalAccessException e) {
+              if(!EqualsBuilder.reflectionEquals(FieldUtils.readDeclaredField(invoice, field, true), FieldUtils.readDeclaredField(existed, field, true), true, Invoice.class, true)) {
+                fields.add(field);
+              }
+            } catch(IllegalAccessException e) {
               asyncResultHandler.handle(succeededFuture(invoiceHelper.buildErrorResponse(HttpStatus.HTTP_INTERNAL_SERVER_ERROR.toInt())));
             }
-            return false;
-          }).collect(toSet());
+          }
           if(fields.isEmpty()) {
             invoiceHelper.updateInvoice(invoice, existed)
               .thenAccept(success);
@@ -183,14 +186,16 @@ public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
         .thenAccept(existedInvoice -> {
           Consumer<Void> success = vVoid -> asyncResultHandler.handle(succeededFuture(invoiceLinesHelper.buildNoContentResponse()));
           if(existedInvoice.getStatus() == Invoice.Status.APPROVED || existedInvoice.getStatus() == Invoice.Status.PAID || existedInvoice.getStatus() == Invoice.Status.CANCELLED) {
-            Set<String> fields = InvoiceLineProtectedFields.getFieldNames().stream().filter(field -> {
+            Set<String> fields = new HashSet<>();
+            for(String field : InvoiceLineProtectedFields.getFieldNames()) {
               try {
-                return !EqualsBuilder.reflectionEquals(FieldUtils.readDeclaredField(invoiceLine, field, true), FieldUtils.readDeclaredField(existedInvoiceLine, field, true), true, InvoiceLine.class, true);
-              } catch (IllegalAccessException e) {
+                if(!EqualsBuilder.reflectionEquals(FieldUtils.readDeclaredField(invoiceLine, field, true), FieldUtils.readDeclaredField(existedInvoiceLine, field, true), true, InvoiceLine.class, true)) {
+                  fields.add(field);
+                }
+              } catch(IllegalAccessException e) {
                 asyncResultHandler.handle(succeededFuture(invoiceHelper.buildErrorResponse(HttpStatus.HTTP_INTERNAL_SERVER_ERROR.toInt())));
               }
-              return false;
-            }).collect(toSet());
+            }
             if(fields.isEmpty()) {
               invoiceLinesHelper.updateInvoiceLine(invoiceLine)
                 .thenAccept(success);

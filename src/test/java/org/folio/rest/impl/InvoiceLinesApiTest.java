@@ -268,7 +268,7 @@ public class InvoiceLinesApiTest extends ApiTestBase {
     // nested object verification
     // - field of nested object modified
     List<Adjustment> adjustments = invoiceLine.getAdjustments();
-    adjustments.get(0).setAdjustmentValue(12345.54321);
+    adjustments.get(0).setValue(12345.54321);
     allProtectedFieldsModification.put(InvoiceLineProtectedFields.ADJUSTMENTS, adjustments);
 
     checkPreventInvoiceLineModificationRule(allProtectedFieldsModificatedInvoiceLine, allProtectedFieldsModification);
