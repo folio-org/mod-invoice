@@ -9,7 +9,7 @@ import io.vertx.core.http.HttpMethod;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
-
+import org.folio.rest.jaxrs.model.Adjustment;
 import org.folio.rest.jaxrs.model.Errors;
 import org.folio.rest.jaxrs.model.InvoiceLine;
 import org.junit.Test;
@@ -317,6 +317,30 @@ public class InvoiceLinesApiTest extends ApiTestBase {
     assertThat(invoiceLine.getAdjustmentsTotal(), equalTo(expectedAdjustmentsTotal));
     assertThat(invoiceLine.getTotal(), equalTo(expectedTotal));
   }
+
+  @Test
+  public void testPostInvoicingInvoiceLinesWithRelationshipTotal() throws Exception {
+    logger.info("=== Test Post Invoice Lines to use only In addition To RelationToTotal ===");
+
+
+    InvoiceLine reqData = getMockAsJson(INVOICE_LINE_ADJUSTMENTS_SAMPLE_PATH).mapTo(InvoiceLine.class);
+    // set adjustment realtion to Included In
+    reqData.getAdjustments()
+      .get(0)
+      .setRelationToTotal(Adjustment.RelationToTotal.INCLUDED_IN);
+    String jsonBody = JsonObject.mapFrom(reqData)
+      .encode();
+    InvoiceLine invoiceLine = verifyPostResponse(INVOICE_LINES_PATH, jsonBody, prepareHeaders(X_OKAPI_TENANT), APPLICATION_JSON,
+        201).as(InvoiceLine.class);
+
+    double expectedAdjustmentsTotal = 5d;
+    double expectedTotal = 25.02d;
+
+    assertThat(invoiceLine.getAdjustmentsTotal(), equalTo(expectedAdjustmentsTotal));
+    assertThat(invoiceLine.getTotal(), equalTo(expectedTotal));
+
+  }
+
 
   @Test
   public void testGetInvoiceLinesByIdValidAdjustments() throws Exception {

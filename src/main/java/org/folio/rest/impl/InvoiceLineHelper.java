@@ -152,6 +152,7 @@ public class InvoiceLineHelper extends AbstractHelper {
   private MonetaryAmount calculateAdjustmentsTotal(InvoiceLine invoiceLine, MonetaryAmount subTotal) {
     return invoiceLine.getAdjustments()
       .stream()
+      .filter(adj -> adj.getRelationToTotal().equals(Adjustment.RelationToTotal.IN_ADDITION_TO))
       .map(adj -> calculateAdjustment(adj, subTotal))
       .collect(MonetaryFunctions.summarizingMonetary(subTotal.getCurrency()))
       .getSum()
