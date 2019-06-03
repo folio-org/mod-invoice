@@ -13,6 +13,7 @@ types:
   sequenceNumber: !include acq-models/common/schemas/sequence_number.json
   voucherLine: !include acq-models/mod-invoice-storage/schemas/voucher_line.json
   voucher: !include acq-models/mod-invoice-storage/schemas/voucher.json
+  voucherCollection: !include acq-models/mod-invoice-storage/schemas/voucher_collection.json
   errors: !include raml-util/schemas/errors.schema
   UUID:
     type: string
@@ -28,19 +29,29 @@ resourceTypes:
   get-only: !include raml-util/rtypes/get-only.raml
 
 /voucher:
-  /vouchers/{id}:
-    uriParameters:
-      id:
-        description: The UUID of an voucher
-        type: UUID
-    displayName: voucher
-    description: Get specific voucher
+  /vouchers:
+    displayName: Vouchers
+    description: Get list of voucher
     type:
       get-only:
-        schema: voucher
-        exampleCollection: !include acq-models/mod-invoice-storage/examples/voucher.sample
+        schema: voucherCollection
+        exampleCollection: !include acq-models/mod-invoice-storage/examples/voucher_collection.sample
     get:
-      description: Return an voucher with given {id}
+        description: Retrieve a list of voucher items.
+        is: [ pageable, searchable: {description: "using CQL (indexes for voucher)", example: "voucherNumber==\"1000\""}, validate ]
+    /{id}:
+      uriParameters:
+        id:
+          description: The UUID of an voucher
+          type: UUID
+      displayName: voucher
+      description: Get specific voucher
+      type:
+        get-only:
+          schema: voucher
+          exampleCollection: !include acq-models/mod-invoice-storage/examples/voucher.sample
+      get:
+        description: Return an voucher with given {id}
   /voucher-lines/{id}:
     uriParameters:
       id:

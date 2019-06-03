@@ -103,6 +103,14 @@
       "handlers": [
         {
           "methods": ["GET"],
+          "pathPattern": "/voucher/vouchers",
+          "permissionsRequired": ["voucher.vouchers.collection.get"],
+          "modulePermissions": [
+            "voucher-storage.vouchers.collection.get"
+          ]
+        },
+        {
+          "methods": ["GET"],
           "pathPattern": "/voucher/vouchers/{id}",
           "permissionsRequired": ["voucher.vouchers.item.get"],
           "modulePermissions": [
@@ -244,6 +252,11 @@
       "description": "Generate a Invoice Number"
     },
     {
+      "permissionName": "voucher.vouchers.collection.get",
+      "displayName": "Voucher - get collection of Voucher",
+      "description": "Get collection of Voucher"
+    },    
+    {
       "permissionName": "voucher.vouchers.item.get",
       "displayName": "Voucher - get an existing Voucher",
       "description": "Get an existing Voucher"
@@ -273,6 +286,7 @@
       "displayName": "Invoice module - all Voucher permissions",
       "description": "Entire set of permissions needed to use Vouchers",
       "subPermissions": [
+        "voucher.vouchers.collection.get",
         "voucher.vouchers.item.get",
         "voucher.voucher-lines.item.get",
         "voucher.voucher-lines.item.put"
