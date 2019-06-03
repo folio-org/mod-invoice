@@ -36,8 +36,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.hasSize;
-import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_LINE_NUMBER;
-import static org.folio.rest.impl.MockServer.INVOICE_LINE_NUMBER_ERROR_X_OKAPI_TENANT;
+
 
 
 
@@ -50,19 +49,18 @@ public class InvoiceLinesApiTest extends ApiTestBase {
   private static final String INVOICE_LINES_LIST_PATH = INVOICE_LINES_MOCK_DATA_PATH + "invoice_lines.json";
   private static final String INVOICE_LINES_PATH = "/invoice/invoice-lines";
   private static final String INVOICE_LINE_ID_PATH = INVOICE_LINES_PATH + "/%s";
-  private static final String INVOICE_LINE_SAMPLE_PATH = "mockdata/invoiceLines/invoice_line.json";
+  static final String INVOICE_LINE_SAMPLE_PATH = INVOICE_LINES_MOCK_DATA_PATH + "invoice_line.json";
 
   private static final String INVOICE_LINE_ADJUSTMENTS_SAMPLE_PATH = INVOICE_LINES_MOCK_DATA_PATH + "29846620-8fb6-4433-b84e-0b6051eb76ec.json";
-  private static final String INVOICE_LINE_SAMPLE_FOR_PROTECTED_FIELDS_PATH = "mockdata/invoiceLines/e0d08448-343b-118a-8c2f-4fb50248d672.json";
+  private static final String INVOICE_LINE_SAMPLE_FOR_PROTECTED_FIELDS_PATH = INVOICE_LINES_MOCK_DATA_PATH + "e0d08448-343b-118a-8c2f-4fb50248d672.json";
   private static final String BAD_INVOICE_LINE_ID = "5a34ae0e-5a11-4337-be95-1a20cfdc3161";
-  private static final String INVOICE_ID = "invoiceId";
+  static final String INVOICE_ID = "invoiceId";
   private static final String NULL = "null";
 
   private static final String VALID_INVOICE_LINE_ID = "e0d08448-343b-118a-8c2f-4fb50248d672";
   private static final String INVOICE_LINE_WITH_APPROVED_EXISTED_INVOICE_ID = "e0d08448-343b-118a-8c2f-4fb50248d672";
   private static final String INVOICE_LINE_WITH_OPEN_EXISTED_INVOICE_ID = "5cb6d270-a54c-4c38-b645-3ae7f249c606";
-  private static final String INVOICE_LINE_WITH_NOT_EXISTED_INVOICE_ID = "ebd42944-20fc-4448-86ad-60ec9b73a6d7";
-  static final String ID_FOR_INTERNAL_SERVER_ERROR = "168f8a86-d26c-406e-813f-c7527f241ac3";
+  private static final String INVOICE_LINE_WITH_INTERNAL_ERROR_ON_GET_INVOICE = "4051b42d-c6cf-4306-a331-209514af9877";
 
 
   @Test
@@ -188,6 +186,13 @@ public class InvoiceLinesApiTest extends ApiTestBase {
     String reqData = getMockData(INVOICE_LINES_MOCK_DATA_PATH + VALID_INVOICE_LINE_ID + ".json");
 
     verifyPut(String.format(INVOICE_LINE_ID_PATH, VALID_INVOICE_LINE_ID), reqData, "", 204);
+  }
+
+  @Test
+  public void testPutInvoicingInvoiceLinesByIdTestWithInternalErrorOnInvoiceGet() throws Exception {
+    String reqData = getMockData(INVOICE_LINES_MOCK_DATA_PATH + INVOICE_LINE_WITH_INTERNAL_ERROR_ON_GET_INVOICE + ".json");
+
+    verifyPut(String.format(INVOICE_LINE_ID_PATH, VALID_INVOICE_LINE_ID), reqData, APPLICATION_JSON, 500);
   }
 
   @Test
@@ -365,7 +370,7 @@ public class InvoiceLinesApiTest extends ApiTestBase {
     logger.info("=== Test Get Invoice line By Id, adjustments are re calculated ===");
 
     JsonObject invoiceLinesList = new JsonObject(getMockData(INVOICE_LINES_LIST_PATH));
-    JsonObject invoiceLine = invoiceLinesList.getJsonArray("invoiceLines").getJsonObject(3);
+    JsonObject invoiceLine = invoiceLinesList.getJsonArray("invoiceLines").getJsonObject(4);
     String id = invoiceLine.getString(ID);
     double incorrectAdjustmentTotal = invoiceLine.getDouble("adjustmentsTotal");
     logger.info(String.format("using mock datafile: %s%s.json", INVOICE_LINES_LIST_PATH, id));
@@ -377,14 +382,14 @@ public class InvoiceLinesApiTest extends ApiTestBase {
     assertThat(resp.getAdjustmentsTotal(), not(incorrectAdjustmentTotal));
   }
 
-
+  @Test
   public void testNumberOfRequests() {
-    logger.info("=== Test nuber of requests on invoice line PUT ===");
+    logger.info("=== Test number of requests on invoice line PUT ===");
 
     // InvoiceLine with corresponding Invoice with status APPROVED
     checkNumberOfRequests(INVOICE_LINE_WITH_APPROVED_EXISTED_INVOICE_ID);
 
-    // InvoiceLine with corresponding Invoice with status APPROVED
+    // InvoiceLine with corresponding Invoice with status OPEN
     checkNumberOfRequests(INVOICE_LINE_WITH_OPEN_EXISTED_INVOICE_ID);
   }
 
@@ -412,13 +417,9 @@ public class InvoiceLinesApiTest extends ApiTestBase {
     invoiceLine.setId(INVOICE_LINE_WITH_OPEN_EXISTED_INVOICE_ID);
     verifyPut(String.format(INVOICE_LINE_ID_PATH, invoiceLine.getId()), JsonObject.mapFrom(invoiceLine).encode(), "", HttpStatus.SC_NO_CONTENT);
 
-    // Invoice line updated (invoice not founded)
-    invoiceLine.setId(INVOICE_LINE_WITH_NOT_EXISTED_INVOICE_ID);
-    verifyPut(String.format(INVOICE_LINE_ID_PATH, invoiceLine.getId()), JsonObject.mapFrom(invoiceLine).encode(), "", HttpStatus.SC_NOT_FOUND);
-
     // Invoice line updated (invoice status = APPROVED) - all protected fields modified
 
-    InvoiceLine allProtectedFieldsModificatedInvoiceLine
+    InvoiceLine allProtectedFieldsModifiedInvoiceLine
       = getMockAsJson(INVOICE_LINE_SAMPLE_FOR_PROTECTED_FIELDS_PATH).mapTo(InvoiceLine.class);
     invoiceLine.setInvoiceId(INVOICE_LINE_WITH_APPROVED_EXISTED_INVOICE_ID);
     Map<InvoiceLineProtectedFields, Object> allProtectedFieldsModification = new HashMap<>();
@@ -429,12 +430,12 @@ public class InvoiceLinesApiTest extends ApiTestBase {
     adjustments.get(0).setValue(12345.54321);
     allProtectedFieldsModification.put(InvoiceLineProtectedFields.ADJUSTMENTS, adjustments);
 
-    checkPreventInvoiceLineModificationRule(allProtectedFieldsModificatedInvoiceLine, allProtectedFieldsModification);
+    checkPreventInvoiceLineModificationRule(allProtectedFieldsModifiedInvoiceLine, allProtectedFieldsModification);
 
     // - total nested object replaced
     adjustments = new ArrayList<>();
     allProtectedFieldsModification.put(InvoiceLineProtectedFields.ADJUSTMENTS, adjustments);
-    checkPreventInvoiceLineModificationRule(allProtectedFieldsModificatedInvoiceLine, allProtectedFieldsModification);
+    checkPreventInvoiceLineModificationRule(allProtectedFieldsModifiedInvoiceLine, allProtectedFieldsModification);
 
     // all other fields
     allProtectedFieldsModification.put(InvoiceLineProtectedFields.INVOICE_ID, UUID.randomUUID().toString());
@@ -448,7 +449,7 @@ public class InvoiceLinesApiTest extends ApiTestBase {
     allProtectedFieldsModification.put(InvoiceLineProtectedFields.SUBSCRIPTION_END, new Date(System.currentTimeMillis()));
     allProtectedFieldsModification.put(InvoiceLineProtectedFields.TOTAL, 123.123);
 
-    checkPreventInvoiceLineModificationRule(allProtectedFieldsModificatedInvoiceLine, allProtectedFieldsModification);
+    checkPreventInvoiceLineModificationRule(allProtectedFieldsModifiedInvoiceLine, allProtectedFieldsModification);
 
   }
 

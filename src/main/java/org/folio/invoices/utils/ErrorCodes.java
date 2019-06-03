@@ -5,6 +5,7 @@ import org.folio.rest.jaxrs.model.Error;
 public enum ErrorCodes {
 
   GENERIC_ERROR_CODE("genericError", "Generic error"),
+  PO_LINE_NOT_FOUND("poLineNotFound", "The purchase order line record is not found"),
   PROHIBITED_FIELD_CHANGING("protectedFieldChanging", "Field can't be modified");
 
   private final String code;

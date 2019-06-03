@@ -143,6 +143,18 @@
             <configuration>
               <sourceDirectory>${basedir}/ramls/acq-models/common/schemas</sourceDirectory>
               <targetPackage>org.folio.rest.acq.model</targetPackage>
+              <generateBuilders>true</generateBuilders>
+            </configuration>
+          </execution>
+          <execution>
+            <id>mod-orders</id>
+            <goals>
+              <goal>generate</goal>
+            </goals>
+            <configuration>
+              <sourceDirectory>${basedir}/ramls/acq-models/mod-orders/schemas</sourceDirectory>
+              <targetPackage>org.folio.rest.acq.model</targetPackage>
+              <generateBuilders>true</generateBuilders>
             </configuration>
           </execution>
         </executions>
