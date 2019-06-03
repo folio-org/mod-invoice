@@ -1,6 +1,7 @@
 package org.folio.rest.impl;
 
 import static java.util.stream.Collectors.toList;
+import static org.folio.invoices.utils.ErrorCodes.PO_LINE_NOT_FOUND;
 import static org.folio.invoices.utils.HelperUtils.findChangedProtectedFields;
 import static org.folio.invoices.utils.HelperUtils.handlePutRequest;
 import static org.folio.invoices.utils.HelperUtils.isFieldsVerificationNeeded;
@@ -25,6 +26,7 @@ import org.folio.invoices.utils.HelperUtils;
 import org.folio.invoices.utils.InvoiceProtectedFields;
 import org.folio.rest.acq.model.CompositePoLine;
 import org.folio.rest.acq.model.SequenceNumber;
+import org.folio.rest.jaxrs.model.Error;
 import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.jaxrs.model.InvoiceCollection;
 import org.folio.rest.jaxrs.model.InvoiceLine;
@@ -36,6 +38,7 @@ import java.util.concurrent.CompletionStage;
 import java.util.stream.Collectors;
 
 import io.vertx.core.Context;
+import org.folio.rest.jaxrs.model.Parameter;
 
 public class InvoiceHelper extends AbstractHelper {
 
@@ -204,8 +207,9 @@ public class InvoiceHelper extends AbstractHelper {
     return handleGetRequest(String.format(PO_LINE_BY_ID_ENDPOINT, poLineId, lang), httpClient, ctx, okapiHeaders, logger)
       .thenApply(jsonObject -> jsonObject.mapTo(CompositePoLine.class))
       .exceptionally(throwable -> {
-        logger.error("Exception retrieving poLine with id={}:", throwable, poLineId);
-        throw new HttpException(500, String.format("PoLine with id=%s not found", poLineId));
+        List<Parameter> parameters = Collections.singletonList(new Parameter().withKey("poLineId").withValue(poLineId));
+        Error error = PO_LINE_NOT_FOUND.toError().withParameters(parameters);
+        throw new HttpException(500, error);
       });
   }
 

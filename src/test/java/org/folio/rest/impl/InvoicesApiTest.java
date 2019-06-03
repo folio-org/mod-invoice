@@ -31,6 +31,7 @@ import java.util.*;
 
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 import static javax.ws.rs.core.MediaType.TEXT_PLAIN;
+import static org.folio.invoices.utils.ErrorCodes.PO_LINE_NOT_FOUND;
 import static org.folio.invoices.utils.ResourcePathResolver.FOLIO_INVOICE_NUMBER;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICES;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_LINES;
@@ -178,7 +179,8 @@ public class InvoicesApiTest extends ApiTestBase {
     Errors errors = verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, APPLICATION_JSON, 500).then().extract().body().as(Errors.class);
     assertThat(serverRqRs.get(INVOICES, HttpMethod.PUT), nullValue());
     assertThat(errors.getErrors(), hasSize(1));
-    assertThat(errors.getErrors().get(0).getMessage(), containsString(ID_DOES_NOT_EXIST));
+    assertThat(errors.getErrors().get(0).getCode(), equalTo(PO_LINE_NOT_FOUND.getCode()));
+    assertThat(errors.getErrors().get(0).getParameters().get(0).getValue(), equalTo(ID_DOES_NOT_EXIST));
   }
 
   @Test
