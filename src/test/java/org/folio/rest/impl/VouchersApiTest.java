@@ -21,6 +21,7 @@ import java.io.IOException;
 import org.folio.rest.jaxrs.model.Errors;
 import org.folio.rest.jaxrs.model.SequenceNumber;
 import org.folio.rest.jaxrs.model.Voucher;
+import org.folio.rest.jaxrs.model.VoucherCollection;
 import org.junit.Test;
 
 public class VouchersApiTest extends ApiTestBase {
@@ -29,7 +30,8 @@ public class VouchersApiTest extends ApiTestBase {
 
   static final String VOUCHER_MOCK_DATA_PATH = BASE_MOCK_DATA_PATH + "vouchers/";
   static final Header EXIST_CONFIG_X_OKAPI_TENANT_LIMIT_10 = new Header(OKAPI_HEADER_TENANT, "test_diku_limit_10");
-  
+  static final String EXISTING_VOUCHER_NUMBER = "1000";
+
   private static final String VOUCHER_PATH = "/voucher/vouchers";
   private static final String VOUCHER_ID_PATH = VOUCHER_PATH + "/%s";
   private static final String VOUCHERS_LIST_PATH = VOUCHER_MOCK_DATA_PATH + "vouchers.json";
@@ -39,8 +41,36 @@ public class VouchersApiTest extends ApiTestBase {
   private static final String INVALID_NEGATIVE_START_VALUE = "-12";
   private static final String INVALID_START_VALUE_QUERY = "unprocessableQuery";
   private static final String VOUCHER_START_PATH = "/voucher/voucher-number/start" + "/%s";
-
   private static final String VOUCHER_NUMBER_START_PATH = "/voucher/voucher-number/start";
+  private static final String BAD_QUERY = "unprocessableQuery";
+  private static final String VOUCHER_NUMBER_FIELD = "voucherNumber";
+  
+  @Test
+  public void testGetVoucherVouchers() {
+    logger.info("=== Test Get Vouchers by without query - get 200 by successful retrieval of vouchers ===");
+
+    final VoucherCollection resp = verifySuccessGet(VOUCHER_PATH, VoucherCollection.class);
+    assertEquals(4, resp.getTotalRecords()
+      .intValue());
+  }
+
+  @Test
+  public void testGetVoucherVouchersWithQueryParam() {
+    logger.info("=== Test Get Vouchers with query - get 200 by successful retrieval of vouchers by query ===");
+
+    String endpointQuery = String.format("%s?query=%s==%s", VOUCHER_PATH, VOUCHER_NUMBER_FIELD, EXISTING_VOUCHER_NUMBER);
+    final VoucherCollection resp = verifySuccessGet(endpointQuery, VoucherCollection.class);
+    assertEquals(1, resp.getTotalRecords()
+      .intValue());
+  }
+
+  @Test
+  public void testGetVouchersBadQuery() {
+    logger.info("=== Test Get Vouchers by query - unprocessable query to emulate 400 from storage ===");
+
+    String endpointQuery = String.format("%s?query=%s", VOUCHER_PATH, BAD_QUERY);
+    verifyGet(endpointQuery, APPLICATION_JSON, 400);
+  }
 
   @Test
   public void testGetVouchersVoucherById() throws IOException {

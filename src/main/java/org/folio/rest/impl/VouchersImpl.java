@@ -11,6 +11,7 @@ import org.folio.rest.annotations.Validate;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Context;
 import io.vertx.core.Handler;
+import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 
@@ -85,5 +86,22 @@ public class VouchersImpl implements Voucher {
     helper.getVoucherNumberStartValue()
       .thenAccept(number -> asyncResultHandler.handle(succeededFuture(helper.buildOkResponse(number))))
       .exceptionally(t -> handleErrorResponse(asyncResultHandler, helper, t));
+  }
+
+  @Validate
+  @Override
+  public void getVoucherVouchers(int offset, int limit, String query, String lang, Map<String, String> okapiHeaders,
+      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+    VoucherHelper vouchersHelper = new VoucherHelper(okapiHeaders, vertxContext, lang);
+
+    vouchersHelper.getVouchers(limit, offset, query)
+      .thenAccept(vouchers -> {
+        if (logger.isInfoEnabled()) {
+          logger.info("Successfully retrieved vouchers: " + JsonObject.mapFrom(vouchers)
+            .encodePrettily());
+        }
+        asyncResultHandler.handle(succeededFuture(vouchersHelper.buildOkResponse(vouchers)));
+      })
+      .exceptionally(t -> handleErrorResponse(asyncResultHandler, vouchersHelper, t));
   }
 }

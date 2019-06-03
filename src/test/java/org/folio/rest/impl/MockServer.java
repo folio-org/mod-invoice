@@ -30,6 +30,7 @@ import static org.folio.rest.impl.InvoicesApiTest.BAD_QUERY;
 import static org.folio.rest.impl.InvoicesApiTest.EXISTING_VENDOR_INV_NO;
 import static org.folio.rest.impl.InvoicesApiTest.INVOICE_MOCK_DATA_PATH;
 import static org.folio.rest.impl.VouchersApiTest.VOUCHER_MOCK_DATA_PATH;
+import static org.folio.rest.impl.VouchersApiTest.EXISTING_VOUCHER_NUMBER;
 import static org.junit.Assert.fail;
 
 import java.io.IOException;
@@ -145,6 +146,7 @@ public class MockServer {
     router.route(HttpMethod.GET, resourceByIdPath(VOUCHERS, ID_PATH_PARAM)).handler(this::handleGetVoucherById);
     router.route(HttpMethod.GET, ORDER_LINES_BY_ID_PATH).handler(this::handleGetPoLineById);
     router.route(HttpMethod.GET, resourcesPath(VOUCHER_NUMBER_START)).handler(this::handleGetSequence);
+    router.route(HttpMethod.GET, resourcesPath(VOUCHERS)).handler(this::handleGetVouchers);
 
     router.route(HttpMethod.DELETE, resourceByIdPath(INVOICES, ID_PATH_PARAM)).handler(ctx -> handleDeleteRequest(ctx, INVOICES));
     router.route(HttpMethod.DELETE, resourceByIdPath(INVOICE_LINES, ID_PATH_PARAM)).handler(ctx -> handleDeleteRequest(ctx, INVOICE_LINES));
@@ -490,7 +492,30 @@ public class MockServer {
     }
   }
 
-
+  private void handleGetVouchers(RoutingContext ctx) {
+    String queryParam = StringUtils.trimToEmpty(ctx.request().getParam("query"));
+    if (queryParam.contains(BAD_QUERY)) {
+      serverResponse(ctx, 400, APPLICATION_JSON, Response.Status.BAD_REQUEST.getReasonPhrase());
+    } else if (queryParam.contains(ID_FOR_INTERNAL_SERVER_ERROR)) {
+      serverResponse(ctx, 500, APPLICATION_JSON, Response.Status.INTERNAL_SERVER_ERROR.getReasonPhrase());
+    } else {
+      JsonObject voucher = new JsonObject();
+      final String VOUCHER_NUMBER_QUERY = "voucherNumber==";
+      switch (queryParam) {
+        case VOUCHER_NUMBER_QUERY + EXISTING_VOUCHER_NUMBER:
+          voucher.put(TOTAL_RECORDS, 1);
+          break;
+        case EMPTY:
+          voucher.put(TOTAL_RECORDS, 4);
+          break;
+        default:
+          voucher.put(TOTAL_RECORDS, 0);
+      }
+      addServerRqRsData(HttpMethod.GET, VOUCHERS, voucher);
+      serverResponse(ctx, 200, APPLICATION_JSON, voucher.encodePrettily());
+    }
+  }
+  
   private void handleGetSequence(RoutingContext ctx) {
     if (ERROR_TENANT.equals(ctx.request().getHeader(OKAPI_HEADER_TENANT))) {
       serverResponse(ctx, 500, TEXT_PLAIN, INTERNAL_SERVER_ERROR.getReasonPhrase());
