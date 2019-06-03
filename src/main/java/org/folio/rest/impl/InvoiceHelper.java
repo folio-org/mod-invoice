@@ -1,7 +1,9 @@
 package org.folio.rest.impl;
 
 import static java.util.stream.Collectors.toList;
+import static org.folio.invoices.utils.HelperUtils.findChangedProtectedFields;
 import static org.folio.invoices.utils.HelperUtils.handlePutRequest;
+import static org.folio.invoices.utils.HelperUtils.isFieldsVerificationNeeded;
 import static org.folio.invoices.utils.ResourcePathResolver.FOLIO_INVOICE_NUMBER;
 import static org.folio.invoices.utils.HelperUtils.handleDeleteRequest;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICES;
@@ -12,6 +14,7 @@ import static org.folio.invoices.utils.HelperUtils.getEndpointWithQuery;
 import static org.folio.invoices.utils.HelperUtils.getInvoiceById;
 
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 
 import io.vertx.core.json.JsonObject;
@@ -19,6 +22,7 @@ import me.escoffier.vertx.completablefuture.VertxCompletableFuture;
 import org.apache.commons.collections4.CollectionUtils;
 import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.invoices.utils.HelperUtils;
+import org.folio.invoices.utils.InvoiceProtectedFields;
 import org.folio.rest.acq.model.CompositePoLine;
 import org.folio.rest.acq.model.SequenceNumber;
 import org.folio.rest.jaxrs.model.Invoice;
@@ -119,6 +123,7 @@ public class InvoiceHelper extends AbstractHelper {
 
     return getInvoice(invoice.getId())
       .thenApply(invoiceFromStorage -> {
+        validateInvoice(invoice, invoiceFromStorage);
         setSystemGeneratedData(invoiceFromStorage, invoice);
         return invoiceFromStorage;
       })
@@ -131,6 +136,12 @@ public class InvoiceHelper extends AbstractHelper {
       });
   }
 
+  private void validateInvoice(Invoice invoice, Invoice invoiceFromStorage) {
+    if(isFieldsVerificationNeeded(invoiceFromStorage)) {
+      Set<String> fields = findChangedProtectedFields(invoice, invoiceFromStorage, InvoiceProtectedFields.getFieldNames());
+      verifyThatProtectedFieldsUnchanged(fields);
+    }
+  }
 
   private CompletableFuture<Void> updateInvoiceRecord(Invoice updatedInvoice) {
     JsonObject jsonInvoice = JsonObject.mapFrom(updatedInvoice);

@@ -7,22 +7,12 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.builder.EqualsBuilder;
-import org.apache.commons.lang3.reflect.FieldUtils;
-import org.folio.HttpStatus;
-import org.folio.invoices.utils.ErrorCodes;
-import org.folio.invoices.utils.InvoiceLineProtectedFields;
-import org.folio.invoices.utils.InvoiceProtectedFields;
 import org.folio.rest.annotations.Validate;
 import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.jaxrs.model.InvoiceLine;
 
 import javax.ws.rs.core.Response;
-import java.util.HashSet;
 import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.CompletionException;
-import java.util.function.Consumer;
 
 import static io.vertx.core.Future.succeededFuture;
 
@@ -88,35 +78,9 @@ public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
 
     InvoiceHelper invoiceHelper = new InvoiceHelper(okapiHeaders, vertxContext, lang);
 
-    invoiceHelper
-      .getInvoice(id)
-      .thenAccept(existed -> {
-        final Consumer<Void> success = ok -> asyncResultHandler.handle(succeededFuture(invoiceHelper.buildNoContentResponse()));
-        if(isFieldsVerificationNeeded(invoice)) {
-          Set<String> fields = new HashSet<>();
-          for(String field : InvoiceProtectedFields.getFieldNames()) {
-            try {
-              if(!EqualsBuilder.reflectionEquals(FieldUtils.readDeclaredField(invoice, field, true), FieldUtils.readDeclaredField(existed, field, true), true, Invoice.class, true)) {
-                fields.add(field);
-              }
-            } catch(IllegalAccessException e) {
-              throw new CompletionException(e);
-            }
-          }
-          if(fields.isEmpty()) {
-            invoiceHelper.updateInvoice(invoice, existed)
-              .thenAccept(success)
-              .exceptionally(fail -> handleErrorResponse(asyncResultHandler, invoiceHelper, fail));
-          } else {
-            invoiceHelper.addProcessingError(ErrorCodes.PROHIBITED_FIELD_CHANGING.toError().withAdditionalProperty(PROTECTED_AND_MODIFIED_FIELDS, fields));
-            asyncResultHandler.handle(succeededFuture(invoiceHelper.buildErrorResponse(HttpStatus.HTTP_BAD_REQUEST.toInt())));
-          }
-        } else {
-          invoiceHelper.updateInvoice(invoice, existed)
-            .thenAccept(success)
-            .exceptionally(fail -> handleErrorResponse(asyncResultHandler, invoiceHelper, fail));
-        }
-      }).exceptionally(fail -> handleErrorResponse(asyncResultHandler, invoiceHelper, fail));
+    invoiceHelper.updateInvoice(invoice)
+      .thenAccept(ok -> asyncResultHandler.handle(succeededFuture(invoiceHelper.buildNoContentResponse())))
+      .exceptionally(fail -> handleErrorResponse(asyncResultHandler, invoiceHelper, fail));
   }
 
   @Validate
@@ -178,42 +142,14 @@ public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
                                          Map<String, String> okapiHeaders,
                                          Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     InvoiceLineHelper invoiceLinesHelper = new InvoiceLineHelper(okapiHeaders, vertxContext, lang);
-    InvoiceHelper invoiceHelper = new InvoiceHelper(okapiHeaders, vertxContext, lang);
 
     if (StringUtils.isEmpty(invoiceLine.getId())) {
       invoiceLine.setId(invoiceLineId);
     }
 
-    invoiceLinesHelper.getInvoiceLine(invoiceLineId)
-      .thenAccept(existedInvoiceLine -> invoiceHelper.getInvoice(existedInvoiceLine.getInvoiceId())
-        .thenAccept(existedInvoice -> {
-          Consumer<Void> success = vVoid -> asyncResultHandler.handle(succeededFuture(invoiceLinesHelper.buildNoContentResponse()));
-          if(isFieldsVerificationNeeded(existedInvoice)) {
-            Set<String> fields = new HashSet<>();
-            for(String field : InvoiceLineProtectedFields.getFieldNames()) {
-              try {
-                if(!EqualsBuilder.reflectionEquals(FieldUtils.readDeclaredField(invoiceLine, field, true), FieldUtils.readDeclaredField(existedInvoiceLine, field, true), true, InvoiceLine.class, true)) {
-                  fields.add(field);
-                }
-              } catch(IllegalAccessException e) {
-                throw new CompletionException(e);
-              }
-            }
-            if(fields.isEmpty()) {
-              invoiceLinesHelper.updateInvoiceLine(invoiceLine)
-                .thenAccept(success)
-                .exceptionally(fail -> handleErrorResponse(asyncResultHandler, invoiceHelper, fail));
-            } else {
-              invoiceLinesHelper.addProcessingError(ErrorCodes.PROHIBITED_FIELD_CHANGING.toError().withAdditionalProperty(PROTECTED_AND_MODIFIED_FIELDS, fields));
-              asyncResultHandler.handle(succeededFuture(invoiceLinesHelper.buildErrorResponse(HttpStatus.HTTP_BAD_REQUEST.toInt())));
-            }
-          } else {
-            invoiceLinesHelper.updateInvoiceLine(invoiceLine)
-              .thenAccept(success)
-              .exceptionally(t -> handleErrorResponse(asyncResultHandler, invoiceLinesHelper, t));
-          }
-        })
-        .exceptionally(t -> handleErrorResponse(asyncResultHandler, invoiceLinesHelper, t))).exceptionally(t -> handleErrorResponse(asyncResultHandler, invoiceLinesHelper, t));
+    invoiceLinesHelper.updateInvoiceLine(invoiceLine)
+      .thenAccept(v -> asyncResultHandler.handle(succeededFuture(invoiceLinesHelper.buildNoContentResponse())))
+      .exceptionally(t -> handleErrorResponse(asyncResultHandler, invoiceLinesHelper, t));
   }
 
   @Validate
@@ -241,7 +177,4 @@ public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
     return null;
   }
 
-  private boolean isFieldsVerificationNeeded(Invoice existedInvoice) {
-    return existedInvoice.getStatus() == Invoice.Status.APPROVED || existedInvoice.getStatus() == Invoice.Status.PAID || existedInvoice.getStatus() == Invoice.Status.CANCELLED;
-  }
 }
