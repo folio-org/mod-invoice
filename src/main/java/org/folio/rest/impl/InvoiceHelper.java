@@ -169,19 +169,12 @@ public class InvoiceHelper extends AbstractHelper {
     return handleDeleteRequest(String.format(DELETE_INVOICE_BY_ID, id, lang), httpClient, ctx, okapiHeaders, logger);
   }
 
-  public CompletableFuture<Void> updateInvoice(Invoice invoice) {
+  public CompletableFuture<Void> updateInvoice(Invoice invoice, Invoice invoiceFromStorage) {
     logger.debug("Updating invoice...");
 
-    return setSystemGeneratedData(invoice)
-      .thenCompose(updatedInvoice -> {
-        JsonObject jsonInvoice = JsonObject.mapFrom(updatedInvoice);
-        return handlePutRequest(resourceByIdPath(INVOICES, invoice.getId()), jsonInvoice, httpClient, ctx, okapiHeaders, logger);
-      });
-  }
-
-  private CompletableFuture<Invoice> setSystemGeneratedData(Invoice invoice) {
-    return getInvoice(invoice.getId())
-      .thenApply(invoiceFromStorage -> invoice.withFolioInvoiceNo(invoiceFromStorage.getFolioInvoiceNo()));
+    invoice.withFolioInvoiceNo(invoiceFromStorage.getFolioInvoiceNo());
+    JsonObject jsonInvoice = JsonObject.mapFrom(invoice);
+    return handlePutRequest(resourceByIdPath(INVOICES, invoice.getId()), jsonInvoice, httpClient, ctx, okapiHeaders, logger);
   }
 
   private CompletableFuture<List<InvoiceLine>> getInvoiceLines(String invoiceId) {

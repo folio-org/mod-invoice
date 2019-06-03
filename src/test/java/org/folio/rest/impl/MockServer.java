@@ -9,6 +9,7 @@ import static org.folio.invoices.utils.ResourcePathResolver.INVOICES;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_LINES;
 import static org.folio.invoices.utils.ResourcePathResolver.VOUCHER_LINES;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_LINE_NUMBER;
+import static org.folio.invoices.utils.ResourcePathResolver.VOUCHER_NUMBER_START;
 import static org.folio.invoices.utils.ResourcePathResolver.resourceByIdPath;
 import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
 import static org.folio.invoices.utils.ResourcePathResolver.VOUCHERS;
@@ -26,6 +27,7 @@ import static org.folio.rest.impl.InvoicesApiTest.BAD_QUERY;
 import static org.folio.rest.impl.InvoicesApiTest.EXISTING_VENDOR_INV_NO;
 import static org.folio.rest.impl.InvoicesApiTest.INVOICE_MOCK_DATA_PATH;
 import static org.folio.rest.impl.VouchersApiTest.VOUCHER_MOCK_DATA_PATH;
+import static org.folio.rest.impl.VouchersApiTest.EXISTING_VOUCHER_NUMBER;
 import static org.junit.Assert.fail;
 
 import java.io.IOException;
@@ -42,10 +44,10 @@ import javax.ws.rs.core.Response;
 import org.apache.commons.lang3.StringUtils;
 import org.folio.invoices.utils.ResourcePathResolver;
 import org.folio.rest.acq.model.InvoiceLine;
-import org.folio.rest.acq.model.SequenceNumber;
 import org.folio.rest.acq.model.VoucherLine;
 import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.jaxrs.model.InvoiceLineCollection;
+import org.folio.rest.jaxrs.model.SequenceNumber;
 import org.folio.rest.jaxrs.model.Voucher;
 import com.google.common.collect.HashBasedTable;
 import com.google.common.collect.Table;
@@ -72,6 +74,7 @@ public class MockServer {
   private static final String ERROR_TENANT = "error_tenant";
   private static final String INVOICE_LINES_COLLECTION = BASE_MOCK_DATA_PATH + "invoiceLines/invoice_lines.json";
   private static final String ID_PATH_PARAM = ":" + ID;
+  private static final String VALUE_PATH_PARAM = ":value";
   private static final String TOTAL_RECORDS = "totalRecords";
 
   static final Header INVOICE_NUMBER_ERROR_X_OKAPI_TENANT = new Header(OKAPI_HEADER_TENANT, INVOICE_NUMBER_ERROR_TENANT);
@@ -119,6 +122,7 @@ public class MockServer {
     router.route().handler(BodyHandler.create());
     router.route(HttpMethod.POST, ResourcePathResolver.resourcesPath(INVOICES)).handler(this::handlePostInvoice);
     router.route(HttpMethod.POST, resourcesPath(INVOICE_LINES)).handler(this::handlePostInvoiceLine);
+    router.route(HttpMethod.POST, resourceByIdPath(VOUCHER_NUMBER_START, VALUE_PATH_PARAM)).handler(this::handlePostVoucherStartValue);
 
     router.route(HttpMethod.GET, resourcesPath(INVOICES)).handler(this::handleGetInvoices);
     router.route(HttpMethod.GET, resourcesPath(INVOICE_LINES)).handler(this::handleGetInvoiceLines);
@@ -128,6 +132,8 @@ public class MockServer {
     router.route(HttpMethod.GET, resourcesPath(INVOICE_LINE_NUMBER)).handler(this::handleGetInvoiceLineNumber);
     router.route(HttpMethod.GET, resourceByIdPath(VOUCHER_LINES, ID_PATH_PARAM)).handler(this::handleGetVoucherLineById);
     router.route(HttpMethod.GET, resourceByIdPath(VOUCHERS, ID_PATH_PARAM)).handler(this::handleGetVoucherById);
+    router.route(HttpMethod.GET, resourcesPath(VOUCHER_NUMBER_START)).handler(this::handleGetSequence);
+    router.route(HttpMethod.GET, resourcesPath(VOUCHERS)).handler(this::handleGetVouchers);
 
     router.route(HttpMethod.DELETE, resourceByIdPath(INVOICES, ID_PATH_PARAM)).handler(ctx -> handleDeleteRequest(ctx, INVOICES));
     router.route(HttpMethod.DELETE, resourceByIdPath(INVOICE_LINES, ID_PATH_PARAM)).handler(ctx -> handleDeleteRequest(ctx, INVOICE_LINES));
@@ -289,6 +295,20 @@ public class MockServer {
     }
   }
 
+  private void handlePostVoucherStartValue(RoutingContext ctx) {
+    logger.info("got: " + ctx.getBodyAsString());
+    String startValue = ctx.request()
+      .getParam("value");
+     if (ERROR_TENANT.equals(ctx.request()
+      .getHeader(OKAPI_HEADER_TENANT))) {
+      serverResponse(ctx, 500, TEXT_PLAIN, INTERNAL_SERVER_ERROR.getReasonPhrase());
+    } else if (startValue.contains(BAD_QUERY) || Integer.parseInt(startValue) < 0) {
+      serverResponse(ctx, 400, TEXT_PLAIN, startValue);
+    } else {
+      serverResponse(ctx, 204, APPLICATION_JSON, "");
+    }
+  }
+
   private void handleDeleteRequest(RoutingContext ctx, String type) {
     String id = ctx.request().getParam(ID);
 
@@ -393,4 +413,36 @@ public class MockServer {
     }
   }
 
+  private void handleGetVouchers(RoutingContext ctx) {
+    String queryParam = StringUtils.trimToEmpty(ctx.request().getParam("query"));
+    if (queryParam.contains(BAD_QUERY)) {
+      serverResponse(ctx, 400, APPLICATION_JSON, Response.Status.BAD_REQUEST.getReasonPhrase());
+    } else if (queryParam.contains(ID_FOR_INTERNAL_SERVER_ERROR)) {
+      serverResponse(ctx, 500, APPLICATION_JSON, Response.Status.INTERNAL_SERVER_ERROR.getReasonPhrase());
+    } else {
+      JsonObject voucher = new JsonObject();
+      final String VOUCHER_NUMBER_QUERY = "voucherNumber==";
+      switch (queryParam) {
+        case VOUCHER_NUMBER_QUERY + EXISTING_VOUCHER_NUMBER:
+          voucher.put(TOTAL_RECORDS, 1);
+          break;
+        case EMPTY:
+          voucher.put(TOTAL_RECORDS, 4);
+          break;
+        default:
+          voucher.put(TOTAL_RECORDS, 0);
+      }
+      addServerRqRsData(HttpMethod.GET, VOUCHERS, voucher);
+      serverResponse(ctx, 200, APPLICATION_JSON, voucher.encodePrettily());
+    }
+  }
+  
+  private void handleGetSequence(RoutingContext ctx) {
+    if (ERROR_TENANT.equals(ctx.request().getHeader(OKAPI_HEADER_TENANT))) {
+      serverResponse(ctx, 500, TEXT_PLAIN, INTERNAL_SERVER_ERROR.getReasonPhrase());
+    } else {
+      SequenceNumber sequenceNumber = new SequenceNumber().withSequenceNumber("200");
+      serverResponse(ctx, 200, APPLICATION_JSON, JsonObject.mapFrom(sequenceNumber).encode());
+    }
+  }
 }
