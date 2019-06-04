@@ -23,6 +23,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletionException;
 import java.util.function.Consumer;
+import java.util.function.Function;
 
 import static io.vertx.core.Future.succeededFuture;
 
@@ -87,9 +88,10 @@ public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
     invoice.setId(id);
 
     InvoiceHelper invoiceHelper = new InvoiceHelper(okapiHeaders, vertxContext, lang);
+    Function<Throwable, Void> failure = t -> handleErrorResponse(asyncResultHandler, invoiceHelper, t);
 
     invoiceHelper
-      .getInvoice(id)
+      .getInvoiceRecord(id)
       .thenAccept(existed -> {
         final Consumer<Void> success = ok -> asyncResultHandler.handle(succeededFuture(invoiceHelper.buildNoContentResponse()));
         if(isFieldsVerificationNeeded(invoice)) {
@@ -106,7 +108,7 @@ public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
           if(fields.isEmpty()) {
             invoiceHelper.updateInvoice(invoice, existed)
               .thenAccept(success)
-              .exceptionally(fail -> handleErrorResponse(asyncResultHandler, invoiceHelper, fail));
+              .exceptionally(failure);
           } else {
             invoiceHelper.addProcessingError(ErrorCodes.PROHIBITED_FIELD_CHANGING.toError().withAdditionalProperty(PROTECTED_AND_MODIFIED_FIELDS, fields));
             asyncResultHandler.handle(succeededFuture(invoiceHelper.buildErrorResponse(HttpStatus.HTTP_BAD_REQUEST.toInt())));
@@ -114,9 +116,10 @@ public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
         } else {
           invoiceHelper.updateInvoice(invoice, existed)
             .thenAccept(success)
-            .exceptionally(fail -> handleErrorResponse(asyncResultHandler, invoiceHelper, fail));
+            .exceptionally(failure);
         }
-      }).exceptionally(fail -> handleErrorResponse(asyncResultHandler, invoiceHelper, fail));
+      })
+      .exceptionally(failure);
   }
 
   @Validate
@@ -177,43 +180,48 @@ public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
   public void putInvoiceInvoiceLinesById(String invoiceLineId, String lang, InvoiceLine invoiceLine,
                                          Map<String, String> okapiHeaders,
                                          Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
-    InvoiceLineHelper invoiceLinesHelper = new InvoiceLineHelper(okapiHeaders, vertxContext, lang);
     InvoiceHelper invoiceHelper = new InvoiceHelper(okapiHeaders, vertxContext, lang);
+    InvoiceLineHelper invoiceLinesHelper = new InvoiceLineHelper(invoiceHelper.getHttpClient(), okapiHeaders, vertxContext, lang);
+    Function<Throwable, Void> failure = t -> handleErrorResponse(asyncResultHandler, invoiceLinesHelper, t);
 
     if (StringUtils.isEmpty(invoiceLine.getId())) {
       invoiceLine.setId(invoiceLineId);
     }
 
     invoiceLinesHelper.getInvoiceLine(invoiceLineId)
-      .thenAccept(existedInvoiceLine -> invoiceHelper.getInvoice(existedInvoiceLine.getInvoiceId())
+      .thenAccept(existedInvoiceLine -> invoiceHelper.getInvoiceRecord(existedInvoiceLine.getInvoiceId())
         .thenAccept(existedInvoice -> {
           Consumer<Void> success = vVoid -> asyncResultHandler.handle(succeededFuture(invoiceLinesHelper.buildNoContentResponse()));
-          if(isFieldsVerificationNeeded(existedInvoice)) {
+          if (isFieldsVerificationNeeded(existedInvoice)) {
             Set<String> fields = new HashSet<>();
-            for(String field : InvoiceLineProtectedFields.getFieldNames()) {
+            for (String field : InvoiceLineProtectedFields.getFieldNames()) {
               try {
-                if(!EqualsBuilder.reflectionEquals(FieldUtils.readDeclaredField(invoiceLine, field, true), FieldUtils.readDeclaredField(existedInvoiceLine, field, true), true, InvoiceLine.class, true)) {
+                if (!EqualsBuilder.reflectionEquals(FieldUtils.readDeclaredField(invoiceLine, field, true),
+                    FieldUtils.readDeclaredField(existedInvoiceLine, field, true), true, InvoiceLine.class, true)) {
                   fields.add(field);
                 }
-              } catch(IllegalAccessException e) {
+              } catch (IllegalAccessException e) {
                 throw new CompletionException(e);
               }
             }
-            if(fields.isEmpty()) {
+            if (fields.isEmpty()) {
               invoiceLinesHelper.updateInvoiceLine(invoiceLine)
                 .thenAccept(success)
-                .exceptionally(fail -> handleErrorResponse(asyncResultHandler, invoiceHelper, fail));
+                .exceptionally(failure);
             } else {
-              invoiceLinesHelper.addProcessingError(ErrorCodes.PROHIBITED_FIELD_CHANGING.toError().withAdditionalProperty(PROTECTED_AND_MODIFIED_FIELDS, fields));
-              asyncResultHandler.handle(succeededFuture(invoiceLinesHelper.buildErrorResponse(HttpStatus.HTTP_BAD_REQUEST.toInt())));
+              invoiceLinesHelper.addProcessingError(ErrorCodes.PROHIBITED_FIELD_CHANGING.toError()
+                .withAdditionalProperty(PROTECTED_AND_MODIFIED_FIELDS, fields));
+              asyncResultHandler
+                .handle(succeededFuture(invoiceLinesHelper.buildErrorResponse(HttpStatus.HTTP_BAD_REQUEST.toInt())));
             }
           } else {
             invoiceLinesHelper.updateInvoiceLine(invoiceLine)
               .thenAccept(success)
-              .exceptionally(t -> handleErrorResponse(asyncResultHandler, invoiceLinesHelper, t));
+              .exceptionally(failure);
           }
         })
-        .exceptionally(t -> handleErrorResponse(asyncResultHandler, invoiceLinesHelper, t))).exceptionally(t -> handleErrorResponse(asyncResultHandler, invoiceLinesHelper, t));
+        .exceptionally(failure))
+      .exceptionally(failure);
   }
 
   @Validate
@@ -235,8 +243,7 @@ public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
     asyncResultHandler.handle(succeededFuture(GetInvoiceInvoiceNumberResponse.respond500WithTextPlain(NOT_SUPPORTED)));
   }
 
-  private Void handleErrorResponse(Handler<AsyncResult<Response>> asyncResultHandler, AbstractHelper helper,
-                                   Throwable t) {
+  private Void handleErrorResponse(Handler<AsyncResult<Response>> asyncResultHandler, AbstractHelper helper, Throwable t) {
     asyncResultHandler.handle(succeededFuture(helper.buildErrorResponse(t)));
     return null;
   }

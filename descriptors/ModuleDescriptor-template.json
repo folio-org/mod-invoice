@@ -30,7 +30,8 @@
             "invoice.invoices.item.get"
           ],
           "modulePermissions": [
-            "invoice-storage.invoices.item.get"
+            "invoice-storage.invoices.item.get",
+            "invoice-storage.invoice-lines.collection.get"
           ]
         },
         {
@@ -64,15 +65,18 @@
           "permissionsRequired": ["invoice.invoice-lines.item.post"],
           "modulePermissions": [
             "invoice-storage.invoice-line-number.get",
-            "invoice-storage.invoices.item.get",
-            "invoice-storage.invoice-lines.item.post"
+            "invoice-storage.invoice-lines.item.post",
+            "invoice-storage.invoices.item.get"
           ]
         },
         {
           "methods": ["GET"],
           "pathPattern": "/invoice/invoice-lines/{id}",
           "permissionsRequired": ["invoice.invoice-lines.item.get"],
-          "modulePermissions": ["invoice-storage.invoice-lines.item.get"]
+          "modulePermissions": [
+            "invoice-storage.invoice-lines.item.get",
+            "invoice-storage.invoices.item.get"
+          ]
         },
         {
           "methods": ["PUT"],

@@ -12,10 +12,15 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 
+import javax.money.MonetaryAmount;
+
 import org.folio.invoices.rest.exceptions.HttpException;
+import org.folio.rest.jaxrs.model.Adjustment;
 import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.tools.client.Response;
 import org.folio.rest.tools.client.interfaces.HttpClientInterface;
+import org.javamoney.moneta.Money;
+import org.javamoney.moneta.function.MonetaryOperators;
 
 import io.vertx.core.Context;
 import io.vertx.core.http.HttpMethod;
@@ -37,14 +42,16 @@ public class HelperUtils {
 
   }
 
-  public static Invoice convertToInvoice(JsonObject poJson) {
-    return poJson.mapTo(Invoice.class);
-  }
-
-  public static CompletableFuture<JsonObject> getInvoiceById(String id, String lang, HttpClientInterface httpClient, Context ctx,
+  public static CompletableFuture<Invoice> getInvoiceById(String id, String lang, HttpClientInterface httpClient, Context ctx,
       Map<String, String> okapiHeaders, Logger logger) {
     String endpoint = String.format(GET_INVOICE_BYID, id, lang);
-    return handleGetRequest(endpoint, httpClient, ctx, okapiHeaders, logger);
+    return handleGetRequest(endpoint, httpClient, ctx, okapiHeaders, logger)
+      .thenApply(jsonInvoice -> {
+        if (logger.isInfoEnabled()) {
+          logger.info("Successfully retrieved invoice by id: " + jsonInvoice.encodePrettily());
+        }
+        return jsonInvoice.mapTo(Invoice.class);
+      });
   }
 
   public static CompletableFuture<JsonObject> getVoucherLineById(String id, String lang, HttpClientInterface httpClient,
@@ -173,5 +180,19 @@ public class HelperUtils {
     }
 
     return future;
+  }
+
+  public static MonetaryAmount calculateAdjustment(Adjustment adjustment, MonetaryAmount subTotal) {
+    if (adjustment.getType()
+      .equals(Adjustment.Type.PERCENTAGE)) {
+      return subTotal.with(MonetaryOperators.percent(adjustment.getValue()));
+    }
+    return Money.of(adjustment.getValue(), subTotal.getCurrency());
+  }
+
+  public static double convertToDouble(MonetaryAmount amount) {
+    return amount.with(MonetaryOperators.rounding())
+      .getNumber()
+      .doubleValue();
   }
 }

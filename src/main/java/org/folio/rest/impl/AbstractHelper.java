@@ -177,6 +177,10 @@ public abstract class AbstractHelper {
     return Response.noContent().build();
   }
 
+  public HttpClientInterface getHttpClient() {
+    return httpClient;
+  }
+
   public void closeHttpClient() {
     httpClient.closeClient();
   }

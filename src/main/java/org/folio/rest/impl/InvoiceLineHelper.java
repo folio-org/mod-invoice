@@ -14,13 +14,11 @@ import io.vertx.core.json.JsonObject;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionException;
 import java.util.concurrent.CompletionStage;
 import javax.money.CurrencyUnit;
 import javax.money.Monetary;
 import javax.money.MonetaryAmount;
 import me.escoffier.vertx.completablefuture.VertxCompletableFuture;
-import org.folio.invoices.utils.HelperUtils;
 import org.folio.rest.acq.model.SequenceNumber;
 import org.folio.rest.jaxrs.model.Adjustment;
 import org.folio.rest.jaxrs.model.Invoice;
@@ -29,7 +27,6 @@ import org.folio.rest.jaxrs.model.InvoiceLineCollection;
 import org.folio.rest.tools.client.interfaces.HttpClientInterface;
 import org.javamoney.moneta.Money;
 import org.javamoney.moneta.function.MonetaryFunctions;
-import org.javamoney.moneta.function.MonetaryOperators;
 
 public class InvoiceLineHelper extends AbstractHelper {
 
@@ -108,12 +105,7 @@ public class InvoiceLineHelper extends AbstractHelper {
   }
 
   private CompletableFuture<Invoice> getInvoice(InvoiceLine invoiceLine) {
-    return getInvoiceById(invoiceLine.getInvoiceId(), lang, httpClient, ctx, okapiHeaders, logger)
-      .thenApply(HelperUtils::convertToInvoice)
-      .exceptionally(t -> {
-        Throwable cause = t.getCause();
-        throw t instanceof CompletionException ? (CompletionException) t : new CompletionException(cause);
-      });
+    return getInvoiceById(invoiceLine.getInvoiceId(), lang, httpClient, ctx, okapiHeaders, logger);
   }
 
   /**
@@ -138,17 +130,15 @@ public class InvoiceLineHelper extends AbstractHelper {
     return getInvoice(invoiceLine).thenApply(invoice -> calculateInvoiceLineTotals(invoiceLine, invoice));
   }
 
-  private InvoiceLine calculateInvoiceLineTotals(InvoiceLine invoiceLine, Invoice invoice) {
+  InvoiceLine calculateInvoiceLineTotals(InvoiceLine invoiceLine, Invoice invoice) {
     String currency = invoice.getCurrency();
     CurrencyUnit currencyUnit = Monetary.getCurrency(currency);
     MonetaryAmount subTotal = Money.of(invoiceLine.getSubTotal(), currencyUnit);
 
     MonetaryAmount adjustmentTotals = calculateAdjustmentsTotal(invoiceLine, subTotal);
-    MonetaryAmount total = adjustmentTotals.add(subTotal).with(MonetaryOperators.rounding());
-    invoiceLine.setAdjustmentsTotal(adjustmentTotals.getNumber()
-      .doubleValue());
-    invoiceLine.setTotal(total.getNumber()
-      .doubleValue());
+    MonetaryAmount total = adjustmentTotals.add(subTotal);
+    invoiceLine.setAdjustmentsTotal(convertToDouble(adjustmentTotals));
+    invoiceLine.setTotal(convertToDouble(total));
 
     return invoiceLine;
   }
@@ -160,17 +150,7 @@ public class InvoiceLineHelper extends AbstractHelper {
       .filter(adj -> adj.getRelationToTotal().equals(Adjustment.RelationToTotal.IN_ADDITION_TO))
       .map(adj -> calculateAdjustment(adj, subTotal))
       .collect(MonetaryFunctions.summarizingMonetary(subTotal.getCurrency()))
-      .getSum()
-      .with(MonetaryOperators.rounding());
-  }
-
-
-  private MonetaryAmount calculateAdjustment(Adjustment adjustment, MonetaryAmount subTotal) {
-    if (adjustment.getType()
-      .equals(Adjustment.Type.PERCENTAGE)) {
-      return subTotal.with(MonetaryOperators.percent(adjustment.getValue()));
-    }
-    return Money.of(adjustment.getValue(), subTotal.getCurrency());
+      .getSum();
   }
 
   private CompletableFuture<String> generateLineNumber(Invoice invoice) {
