@@ -77,8 +77,8 @@
           "pathPattern": "/invoice/invoice-lines/{id}",
           "permissionsRequired": ["invoice.invoice-lines.item.get"],
           "modulePermissions": [
-            "invoice-storage.invoice-lines.item.get",
-            "invoice-storage.invoices.item.get"
+          		"invoice-storage.invoice-lines.item.get",
+          		"invoice-storage.invoices.item.get"
           ]
         },
         {
