@@ -30,6 +30,11 @@ public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
                                   Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     InvoiceHelper helper = new InvoiceHelper(okapiHeaders, vertxContext, lang);
 
+    if (!helper.validateNewInvoice(invoice)) {
+      asyncResultHandler.handle(succeededFuture(helper.buildErrorResponse(422)));
+      return;
+    }
+
     helper.createInvoice(invoice)
       .thenAccept(invoiceWithId -> {
         Response response = PostInvoiceInvoicesResponse.respond201WithApplicationJson(invoiceWithId,

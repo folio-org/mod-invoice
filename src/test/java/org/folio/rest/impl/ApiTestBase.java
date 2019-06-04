@@ -104,8 +104,11 @@ public class ApiTestBase {
     return new JsonObject();
   }
 
-  Response verifyPostResponse(String url, String body, Headers headers, String
-    expectedContentType, int expectedCode) {
+  Response verifyPostResponse(String url, JsonObject body, Headers headers, String expectedContentType, int expectedCode) {
+    return verifyPostResponse(url, body.encode(), headers, expectedContentType, expectedCode);
+  }
+
+  Response verifyPostResponse(String url, String body, Headers headers, String expectedContentType, int expectedCode) {
     return RestAssured
       .with()
         .header(X_OKAPI_URL)
@@ -154,6 +157,7 @@ public class ApiTestBase {
         .headers(headers)
       .get(url)
         .then()
+        .log().all()
         .statusCode(expectedCode)
         .contentType(expectedContentType)
         .extract()

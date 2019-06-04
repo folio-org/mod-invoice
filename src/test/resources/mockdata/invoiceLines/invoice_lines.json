@@ -112,8 +112,8 @@
       "adjustments": [
         {
           "description": "Adjustment label",
-          "type": "Percentage",
-          "value": 10.1,
+          "type": "Amount",
+          "value": 1.1,
           "prorate": "Not prorated",
           "relationToTotal": "In addition to"
         }

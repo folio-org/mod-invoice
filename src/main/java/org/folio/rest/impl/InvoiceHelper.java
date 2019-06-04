@@ -1,6 +1,7 @@
 package org.folio.rest.impl;
 
 import static java.util.stream.Collectors.toList;
+import static org.folio.invoices.utils.ErrorCodes.INVOICE_TOTAL_REQUIRED;
 import static org.folio.invoices.utils.HelperUtils.calculateAdjustmentsTotal;
 import static org.folio.invoices.utils.HelperUtils.convertToDouble;
 import static org.folio.invoices.utils.ErrorCodes.PO_LINE_NOT_FOUND;
@@ -19,6 +20,7 @@ import static org.folio.invoices.utils.HelperUtils.getInvoiceById;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 
@@ -151,6 +153,13 @@ public class InvoiceHelper extends AbstractHelper {
           return updateInvoiceRecord(invoice);
         }
       });
+  }
+
+  public boolean validateNewInvoice(Invoice invoice) {
+    if(invoice.getLockTotal() && Objects.isNull(invoice.getTotal())) {
+      addProcessingError(INVOICE_TOTAL_REQUIRED.toError());
+    }
+    return getErrors().isEmpty();
   }
 
   private void validateInvoice(Invoice invoice, Invoice invoiceFromStorage) {
@@ -307,7 +316,7 @@ public class InvoiceHelper extends AbstractHelper {
   private List<Adjustment> getNotProratedAdjustments(Invoice invoice) {
     return invoice.getAdjustments()
       .stream()
-      .filter(adj -> adj.getProrate() != Adjustment.Prorate.NOT_PRORATED)
+      .filter(adj -> adj.getProrate() == Adjustment.Prorate.NOT_PRORATED)
       .collect(toList());
   }
 

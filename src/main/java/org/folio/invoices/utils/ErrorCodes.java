@@ -6,6 +6,7 @@ public enum ErrorCodes {
 
   GENERIC_ERROR_CODE("genericError", "Generic error"),
   PO_LINE_NOT_FOUND("poLineNotFound", "The purchase order line record is not found"),
+  INVOICE_TOTAL_REQUIRED("invoiceTotalRequired", "The total amount is expected when lockTotal is true"),
   PROHIBITED_FIELD_CHANGING("protectedFieldChanging", "Field can't be modified");
 
   private final String code;
