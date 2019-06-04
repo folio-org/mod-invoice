@@ -25,6 +25,7 @@ import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.tools.client.Response;
 import org.folio.rest.tools.client.interfaces.HttpClientInterface;
 import org.javamoney.moneta.Money;
+import org.javamoney.moneta.function.MonetaryFunctions;
 import org.javamoney.moneta.function.MonetaryOperators;
 
 import io.vertx.core.Context;
@@ -187,6 +188,15 @@ public class HelperUtils {
     return future;
   }
 
+  public static MonetaryAmount calculateAdjustmentsTotal(List<Adjustment> adjustments, MonetaryAmount subTotal) {
+    return adjustments.stream()
+      .filter(adj -> adj.getRelationToTotal().equals(Adjustment.RelationToTotal.IN_ADDITION_TO))
+      .map(adj -> calculateAdjustment(adj, subTotal))
+      .collect(MonetaryFunctions.summarizingMonetary(subTotal.getCurrency()))
+      .getSum()
+      .with(MonetaryOperators.rounding());
+  }
+
   public static MonetaryAmount calculateAdjustment(Adjustment adjustment, MonetaryAmount subTotal) {
     if (adjustment.getType()
       .equals(Adjustment.Type.PERCENTAGE)) {
@@ -202,7 +212,8 @@ public class HelperUtils {
   }
 
   public static boolean isFieldsVerificationNeeded(Invoice existedInvoice) {
-    return existedInvoice.getStatus() == Invoice.Status.APPROVED || existedInvoice.getStatus() == Invoice.Status.PAID || existedInvoice.getStatus() == Invoice.Status.CANCELLED;
+    return existedInvoice.getStatus() == Invoice.Status.APPROVED || existedInvoice.getStatus() == Invoice.Status.PAID
+        || existedInvoice.getStatus() == Invoice.Status.CANCELLED;
   }
 
   public static Set<String> findChangedProtectedFields(Object newObject, Object existedObject, List<String> protectedFields) {

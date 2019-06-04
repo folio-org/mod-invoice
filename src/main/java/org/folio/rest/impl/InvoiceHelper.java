@@ -1,7 +1,7 @@
 package org.folio.rest.impl;
 
 import static java.util.stream.Collectors.toList;
-import static org.folio.invoices.utils.HelperUtils.calculateAdjustment;
+import static org.folio.invoices.utils.HelperUtils.calculateAdjustmentsTotal;
 import static org.folio.invoices.utils.HelperUtils.convertToDouble;
 import static org.folio.invoices.utils.ErrorCodes.PO_LINE_NOT_FOUND;
 import static org.folio.invoices.utils.HelperUtils.findChangedProtectedFields;
@@ -48,6 +48,7 @@ import java.util.stream.Collectors;
 
 import io.vertx.core.Context;
 import org.folio.rest.jaxrs.model.Parameter;
+import org.javamoney.moneta.function.MonetaryFunctions;
 
 public class InvoiceHelper extends AbstractHelper {
 
@@ -59,7 +60,7 @@ public class InvoiceHelper extends AbstractHelper {
 
   InvoiceHelper(Map<String, String> okapiHeaders, Context ctx, String lang) {
     super(getHttpClient(okapiHeaders), okapiHeaders, ctx, lang);
-    invoiceLineHelper = new InvoiceLineHelper(okapiHeaders, ctx, lang);
+    invoiceLineHelper = new InvoiceLineHelper(httpClient, okapiHeaders, ctx, lang);
   }
 
   public CompletableFuture<Invoice> createInvoice(Invoice invoice) {
@@ -285,30 +286,13 @@ public class InvoiceHelper extends AbstractHelper {
 
   private Invoice withCalculatedTotals(Invoice invoice, List<InvoiceLine> lines) {
     CurrencyUnit currency = Monetary.getCurrency(invoice.getCurrency());
-    Money zero = Money.of(0, currency);
-
-    if (lines == null) {
-      lines = Collections.emptyList();
-    }
 
     // 1. Sub-total
-    MonetaryAmount subTotal = lines.stream()
-      .map(InvoiceLine::getSubTotal)
-      .map(amount -> Money.of(amount, currency))
-      .reduce(zero, Money::add);
+    MonetaryAmount subTotal = calculateSubTotal(lines, currency);
 
-    // 2. Adjustments (sum of not prorated and "In addition to" invoice level and all invoice line level adjustments)
-    MonetaryAmount invoiceLinesAdjTotal = lines.stream()
-      .map(invoiceLine -> Money.of(invoiceLine.getAdjustmentsTotal(), currency))
-      .reduce(zero, Money::add);
-
-    MonetaryAmount adjustmentsTotal = invoice.getAdjustments()
-      .stream()
-      .filter(adj -> adj.getProrate() != Adjustment.Prorate.NOT_PRORATED)
-      .filter(adj -> adj.getRelationToTotal() == Adjustment.RelationToTotal.IN_ADDITION_TO)
-      .map(adj -> calculateAdjustment(adj, subTotal))
-      .reduce(zero, MonetaryAmount::add)
-      .add(invoiceLinesAdjTotal);
+    // 2. Adjustments (sum of not prorated invoice level and all invoice line level adjustments)
+    MonetaryAmount adjustmentsTotal = calculateAdjustmentsTotal(getNotProratedAdjustments(invoice), subTotal)
+      .add(calculateInvoiceLinesAdjustmentsTotal(lines, currency));
 
     // 3. Total
     if (!invoice.getLockTotal()) {
@@ -318,5 +302,26 @@ public class InvoiceHelper extends AbstractHelper {
     invoice.setSubTotal(convertToDouble(subTotal));
 
     return invoice;
+  }
+
+  private List<Adjustment> getNotProratedAdjustments(Invoice invoice) {
+    return invoice.getAdjustments()
+      .stream()
+      .filter(adj -> adj.getProrate() != Adjustment.Prorate.NOT_PRORATED)
+      .collect(toList());
+  }
+
+  private MonetaryAmount calculateSubTotal(List<InvoiceLine> lines, CurrencyUnit currency) {
+    return lines.stream()
+      .map(line -> Money.of(line.getSubTotal(), currency))
+      .collect(MonetaryFunctions.summarizingMonetary(currency))
+      .getSum();
+  }
+
+  private MonetaryAmount calculateInvoiceLinesAdjustmentsTotal(List<InvoiceLine> lines, CurrencyUnit currency) {
+    return lines.stream()
+      .map(line -> Money.of(line.getAdjustmentsTotal(), currency))
+      .collect(MonetaryFunctions.summarizingMonetary(currency))
+      .getSum();
   }
 }

@@ -11,6 +11,7 @@ import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
 
 import io.vertx.core.Context;
 import io.vertx.core.json.JsonObject;
+
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -22,13 +23,11 @@ import javax.money.MonetaryAmount;
 import me.escoffier.vertx.completablefuture.VertxCompletableFuture;
 import org.folio.invoices.utils.InvoiceLineProtectedFields;
 import org.folio.rest.acq.model.SequenceNumber;
-import org.folio.rest.jaxrs.model.Adjustment;
 import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.jaxrs.model.InvoiceLine;
 import org.folio.rest.jaxrs.model.InvoiceLineCollection;
 import org.folio.rest.tools.client.interfaces.HttpClientInterface;
 import org.javamoney.moneta.Money;
-import org.javamoney.moneta.function.MonetaryFunctions;
 
 public class InvoiceLineHelper extends AbstractHelper {
 
@@ -154,22 +153,12 @@ public class InvoiceLineHelper extends AbstractHelper {
     CurrencyUnit currencyUnit = Monetary.getCurrency(currency);
     MonetaryAmount subTotal = Money.of(invoiceLine.getSubTotal(), currencyUnit);
 
-    MonetaryAmount adjustmentTotals = calculateAdjustmentsTotal(invoiceLine, subTotal);
+    MonetaryAmount adjustmentTotals = calculateAdjustmentsTotal(invoiceLine.getAdjustments(), subTotal);
     MonetaryAmount total = adjustmentTotals.add(subTotal);
     invoiceLine.setAdjustmentsTotal(convertToDouble(adjustmentTotals));
     invoiceLine.setTotal(convertToDouble(total));
 
     return invoiceLine;
-  }
-
-
-  private MonetaryAmount calculateAdjustmentsTotal(InvoiceLine invoiceLine, MonetaryAmount subTotal) {
-    return invoiceLine.getAdjustments()
-      .stream()
-      .filter(adj -> adj.getRelationToTotal().equals(Adjustment.RelationToTotal.IN_ADDITION_TO))
-      .map(adj -> calculateAdjustment(adj, subTotal))
-      .collect(MonetaryFunctions.summarizingMonetary(subTotal.getCurrency()))
-      .getSum();
   }
 
   private CompletableFuture<String> generateLineNumber(Invoice invoice) {
