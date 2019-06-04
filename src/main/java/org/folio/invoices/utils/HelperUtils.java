@@ -8,12 +8,17 @@ import static org.folio.invoices.utils.ResourcePathResolver.*;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 
 import javax.money.MonetaryAmount;
 
+import org.apache.commons.lang3.builder.EqualsBuilder;
+import org.apache.commons.lang3.reflect.FieldUtils;
 import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.rest.jaxrs.model.Adjustment;
 import org.folio.rest.jaxrs.model.Invoice;
@@ -194,5 +199,31 @@ public class HelperUtils {
     return amount.with(MonetaryOperators.rounding())
       .getNumber()
       .doubleValue();
+  }
+
+  public static boolean isFieldsVerificationNeeded(Invoice existedInvoice) {
+    return existedInvoice.getStatus() == Invoice.Status.APPROVED || existedInvoice.getStatus() == Invoice.Status.PAID || existedInvoice.getStatus() == Invoice.Status.CANCELLED;
+  }
+
+  public static Set<String> findChangedProtectedFields(Object newObject, Object existedObject, List<String> protectedFields) {
+    Set<String> fields = new HashSet<>();
+    for(String field : protectedFields) {
+      try {
+        if(isFieldNotEmpty(newObject, existedObject, field) && isFieldChanged(newObject, existedObject, field)) {
+          fields.add(field);
+        }
+      } catch(IllegalAccessException e) {
+        throw new CompletionException(e);
+      }
+    }
+    return fields;
+  }
+
+  private static boolean isFieldNotEmpty(Object newObject, Object existedObject, String field) {
+    return FieldUtils.getDeclaredField(newObject.getClass(), field, true) != null && FieldUtils.getDeclaredField(existedObject.getClass(), field, true) != null;
+  }
+
+  private static boolean isFieldChanged(Object newObject, Object existedObject, String field) throws IllegalAccessException {
+    return !EqualsBuilder.reflectionEquals(FieldUtils.readDeclaredField(newObject, field, true), FieldUtils.readDeclaredField(existedObject, field, true), true, existedObject.getClass(), true);
   }
 }

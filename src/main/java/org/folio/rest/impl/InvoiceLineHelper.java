@@ -12,6 +12,7 @@ import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
 import io.vertx.core.Context;
 import io.vertx.core.json.JsonObject;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
@@ -19,6 +20,7 @@ import javax.money.CurrencyUnit;
 import javax.money.Monetary;
 import javax.money.MonetaryAmount;
 import me.escoffier.vertx.completablefuture.VertxCompletableFuture;
+import org.folio.invoices.utils.InvoiceLineProtectedFields;
 import org.folio.rest.acq.model.SequenceNumber;
 import org.folio.rest.jaxrs.model.Adjustment;
 import org.folio.rest.jaxrs.model.Invoice;
@@ -34,6 +36,8 @@ public class InvoiceLineHelper extends AbstractHelper {
   private static final String INVOICE_LINE_NUMBER_ENDPOINT = resourcesPath(INVOICE_LINE_NUMBER) + "?" + INVOICE_ID + "=";
   private static final String GET_INVOICE_LINES_BY_QUERY = resourcesPath(INVOICE_LINES) + "?limit=%s&offset=%s%s&lang=%s";
   private static final String INVOICE_LINE_BYID_ENDPOINT = resourceByIdPath(INVOICE_LINES, "%s") + "?lang=%s";
+
+
 
   InvoiceLineHelper(Map<String, String> okapiHeaders, Context ctx, String lang) {
     super(getHttpClient(okapiHeaders), okapiHeaders, ctx, lang);
@@ -90,8 +94,23 @@ public class InvoiceLineHelper extends AbstractHelper {
   }
 
   public CompletableFuture<Void> updateInvoiceLine(InvoiceLine invoiceLine) {
-    return handlePutRequest(resourceByIdPath(INVOICE_LINES, invoiceLine.getId()), JsonObject.mapFrom(invoiceLine),
-          httpClient, ctx, okapiHeaders, logger);
+
+    return getInvoiceLine(invoiceLine.getId())
+      .thenCompose(existedInvoiceLine -> new InvoiceHelper(okapiHeaders, ctx, lang).getInvoiceRecord(existedInvoiceLine.getInvoiceId())
+        .thenAccept(existedInvoice -> {
+          validateInvoiceLine(existedInvoice, invoiceLine, existedInvoiceLine);
+          invoiceLine.setInvoiceLineNumber(existedInvoiceLine.getInvoiceLineNumber());
+        })
+      )
+      .thenCompose(aVoid -> handlePutRequest(resourceByIdPath(INVOICE_LINES, invoiceLine.getId()), JsonObject.mapFrom(invoiceLine),
+        httpClient, ctx, okapiHeaders, logger));
+  }
+
+  private void validateInvoiceLine(Invoice existedInvoice, InvoiceLine invoiceLine, InvoiceLine existedInvoiceLine) {
+    if(isFieldsVerificationNeeded(existedInvoice)) {
+      Set<String> fields = findChangedProtectedFields(invoiceLine, existedInvoiceLine, InvoiceLineProtectedFields.getFieldNames());
+      verifyThatProtectedFieldsUnchanged(fields);
+    }
   }
 
   /**

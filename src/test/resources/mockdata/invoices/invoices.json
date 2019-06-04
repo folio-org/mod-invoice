@@ -19,7 +19,7 @@
       "note": "Some note 1",
       "paymentTerms": "Payment in Advance",
       "paymentMethod": "EFT",
-      "status": "Open",
+      "status": "Approved",
       "source": "024b6f41-c5c6-4280-858e-33fba452a334",
       "subTotal": 5.0,
       "total": 15.0,

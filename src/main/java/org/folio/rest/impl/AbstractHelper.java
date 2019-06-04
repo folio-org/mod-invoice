@@ -6,12 +6,15 @@ import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 import static javax.ws.rs.core.MediaType.TEXT_PLAIN;
 import static javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
 import static org.folio.invoices.utils.ErrorCodes.GENERIC_ERROR_CODE;
+import static org.folio.invoices.utils.ErrorCodes.PROHIBITED_FIELD_CHANGING;
 import static org.folio.invoices.utils.HelperUtils.verifyAndExtractBody;
 import static org.folio.rest.RestVerticle.OKAPI_HEADER_TENANT;
+import static org.folio.rest.impl.InvoicesImpl.PROTECTED_AND_MODIFIED_FIELDS;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 
 import javax.ws.rs.core.Response;
@@ -19,6 +22,7 @@ import javax.ws.rs.core.Response;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.core.json.JsonObject;
 import me.escoffier.vertx.completablefuture.VertxCompletableFuture;
+import org.apache.commons.collections4.CollectionUtils;
 import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.rest.jaxrs.model.Error;
 import org.folio.rest.jaxrs.model.Errors;
@@ -123,6 +127,13 @@ public abstract class AbstractHelper {
     return HttpClientFactory.getHttpClient(okapiURL, tenantId);
   }
 
+  protected void verifyThatProtectedFieldsUnchanged(Set<String> fields) {
+    if(CollectionUtils.isNotEmpty(fields)) {
+      Error error = PROHIBITED_FIELD_CHANGING.toError().withAdditionalProperty(PROTECTED_AND_MODIFIED_FIELDS, fields);
+      throw new HttpException(400, error);
+    }
+  }
+
   public Response buildErrorResponse(Throwable throwable) {
     return buildErrorResponse(handleProcessingError(throwable));
   }
@@ -135,9 +146,7 @@ public abstract class AbstractHelper {
 
     if (cause instanceof HttpException) {
       code = ((HttpException) cause).getCode();
-      error = new Error();
-      error.withCode(((HttpException) cause).getErrorCode());
-      error.withMessage(cause.getMessage());
+      error = ((HttpException) cause).getError();
     } else {
       code = INTERNAL_SERVER_ERROR.getStatusCode();
       error = GENERIC_ERROR_CODE.toError().withAdditionalProperty(ERROR_CAUSE, cause.getMessage());

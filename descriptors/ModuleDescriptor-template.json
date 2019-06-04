@@ -40,7 +40,10 @@
           "permissionsRequired": ["invoice.invoices.item.put"],
           "modulePermissions": [
             "invoice-storage.invoices.item.put",
-            "invoice-storage.invoices.item.get"
+            "invoice-storage.invoices.item.get",
+            "invoice-storage.invoice-lines.collection.get",
+            "orders.po-lines.item.put",
+            "orders.po-lines.item.get"
           ]
         },
         {
@@ -193,6 +196,10 @@
     {
       "id": "voucher-storage.voucher-lines",
       "version": "1.0"
+    },
+    {
+      "id": "orders",
+      "version": "5.0"
     },
     {
       "id": "voucher-storage.voucher-number",

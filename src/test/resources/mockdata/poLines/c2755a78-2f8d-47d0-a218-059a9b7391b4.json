@@ -1,0 +1,83 @@
+{
+  "id": "c2755a78-2f8d-47d0-a218-059a9b7391b4",
+  "acquisitionMethod": "Purchase",
+  "alerts": [],
+  "cancellationRestriction": false,
+  "cancellationRestrictionNote": "",
+  "claims": [
+    {
+      "claimed": false,
+      "grace": 0
+    }
+  ],
+  "collection": false,
+  "contributors": [
+    {
+      "contributor": "Ed Mashburn",
+      "contributorType": "fbdd42a8-e47d-4694-b448-cc571d1b44c3"
+    }
+  ],
+  "cost": {
+    "currency": "USD",
+    "listUnitPriceElectronic": 75.22,
+    "quantityElectronic": 1
+  },
+  "description": "",
+  "details": {
+    "receivingNote": "",
+    "productIds": [
+      {
+        "productId": "9781118416068",
+        "productIdType": "ISBN"
+      }
+    ],
+    "subscriptionFrom": null,
+    "subscriptionInterval": 0,
+    "subscriptionTo": null
+  },
+  "donor": "",
+  "eresource": {
+    "activated": true,
+    "createInventory": "Instance",
+    "trial": false,
+    "expectedActivation": "2014-07-06T00:00:00.000Z",
+    "userLimit": 1,
+    "accessProvider": "7e1841d9-c0a4-4ae0-8521-b7e08fdcbc8a",
+    "license": {
+      "code": "Code 1",
+      "description": "License Agreement 1"
+    },
+    "materialType":  "1a54b431-2e4f-452d-9cae-9cee66c9a892"
+  },
+  "locations": [
+    {
+      "locationId": "758258bc-ecc1-41b8-abca-f7b610822ffd",
+      "quantity": 1,
+      "quantityElectronic": 1,
+      "quantityPhysical": 0
+    }
+  ],
+  "orderFormat": "Electronic Resource",
+  "paymentStatus": "Awaiting Payment",
+  "poLineDescription": "",
+  "poLineNumber": "268758-03",
+  "publicationDate": "2017",
+  "publisher": "John Wiley & Sons, Inc.",
+  "purchaseOrderId": "3419ed01-a339-4448-9539-9815f231d405",
+  "receiptDate": null,
+  "receiptStatus": "Fully Received",
+  "reportingCodes": [],
+  "requester": "",
+  "rush": false,
+  "selector": "Woods",
+  "source": {
+    "code": "FOLIO",
+    "description": "Manually entered"
+  },
+  "tags": [""],
+  "title": "Roitt's essential immunology / Peter J. Delves, Seamus J. Martin, Dennis R. Burton, Ivan M. Roitt.",
+  "metadata": {
+    "createdDate": "2018-06-29T00:00:00.000",
+    "createdByUserId": "28d0f99c-d137-11e8-a8d5-f2801f1b9fd1"
+  }
+}
