@@ -30,7 +30,7 @@ public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
                                   Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     InvoiceHelper helper = new InvoiceHelper(okapiHeaders, vertxContext, lang);
 
-    if (!helper.validateNewInvoice(invoice)) {
+    if (!helper.validateIncomingInvoice(invoice)) {
       asyncResultHandler.handle(succeededFuture(helper.buildErrorResponse(422)));
       return;
     }
@@ -82,6 +82,12 @@ public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
     invoice.setId(id);
 
     InvoiceHelper invoiceHelper = new InvoiceHelper(okapiHeaders, vertxContext, lang);
+
+    // Validate incoming invoice first to avoid extra calls to other services if content is invalid
+    if (!invoiceHelper.validateIncomingInvoice(invoice)) {
+      asyncResultHandler.handle(succeededFuture(invoiceHelper.buildErrorResponse(422)));
+      return;
+    }
 
     invoiceHelper.updateInvoice(invoice)
       .thenAccept(ok -> asyncResultHandler.handle(succeededFuture(invoiceHelper.buildNoContentResponse())))

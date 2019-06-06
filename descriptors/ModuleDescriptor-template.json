@@ -68,8 +68,8 @@
           "permissionsRequired": ["invoice.invoice-lines.item.post"],
           "modulePermissions": [
             "invoice-storage.invoice-line-number.get",
-            "invoice-storage.invoice-lines.item.post",
-            "invoice-storage.invoices.item.get"
+            "invoice-storage.invoices.item.get",
+            "invoice-storage.invoice-lines.item.post"
           ]
         },
         {

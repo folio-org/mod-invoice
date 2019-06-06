@@ -198,8 +198,7 @@ public class HelperUtils {
   }
 
   public static MonetaryAmount calculateAdjustment(Adjustment adjustment, MonetaryAmount subTotal) {
-    if (adjustment.getType()
-      .equals(Adjustment.Type.PERCENTAGE)) {
+    if (adjustment.getType().equals(Adjustment.Type.PERCENTAGE)) {
       return subTotal.with(MonetaryOperators.percent(adjustment.getValue()));
     }
     return Money.of(adjustment.getValue(), subTotal.getCurrency());

@@ -429,6 +429,23 @@ public class InvoicesApiTest extends ApiTestBase {
 
   }
 
+  @Test
+  public void testUpdateInvoiceWithLockedTotalButWithoutTotal() throws IOException {
+    logger.info("=== Test validation updating invoice without total which is locked ===");
+
+    // ===  Preparing invoice for test  ===
+    Invoice invoice = new JsonObject(getMockData(APPROVED_INVOICE_SAMPLE_PATH)).mapTo(Invoice.class);
+    invoice.setLockTotal(true);
+    invoice.setTotal(null);
+
+    // ===  Run test  ===
+    Errors errors = verifyPut(String.format(INVOICE_ID_PATH, invoice.getId()), JsonObject.mapFrom(invoice), APPLICATION_JSON, 422)
+      .as(Errors.class);
+
+    assertThat(errors.getErrors(), hasSize(1));
+    assertThat(errors.getErrors().get(0).getCode(), equalTo(INVOICE_TOTAL_REQUIRED.getCode()));
+    assertThat(serverRqRs.size(), equalTo(0));
+  }
 
   @Test
   public void testUpdateNotExistentInvoice() throws IOException {
@@ -484,7 +501,7 @@ public class InvoicesApiTest extends ApiTestBase {
   public void testCreateInvoiceWithLockedTotalAndTwoAdjustments() throws IOException {
     logger.info("=== Test create invoice with locked total and 2 adjustments ===");
 
-    // ===  Preparing invoice for test with random id to make sure no lines exists  ===
+    // ===  Preparing invoice for test  ===
     Invoice invoice = new JsonObject(getMockData(APPROVED_INVOICE_SAMPLE_PATH)).mapTo(Invoice.class);
     invoice.setLockTotal(true);
     invoice.setTotal(15d);
@@ -508,7 +525,7 @@ public class InvoicesApiTest extends ApiTestBase {
   public void testCreateInvoiceWithLockedTotalAndTwoProratedAdjustments() throws IOException {
     logger.info("=== Test create invoice with locked total and 2 prorated adjustments ===");
 
-    // ===  Preparing invoice for test with random id to make sure no lines exists  ===
+    // ===  Preparing invoice for test  ===
     Invoice invoice = new JsonObject(getMockData(APPROVED_INVOICE_SAMPLE_PATH)).mapTo(Invoice.class);
     invoice.getAdjustments().forEach(adj -> adj.setProrate(Adjustment.Prorate.BY_AMOUNT));
     invoice.setLockTotal(true);
@@ -533,7 +550,7 @@ public class InvoicesApiTest extends ApiTestBase {
   public void testCreateInvoiceWithNonLockedTotalAndWithoutAdjustments() throws IOException {
     logger.info("=== Test create invoice without total and no adjustments ===");
 
-    // ===  Preparing invoice for test with random id to make sure no lines exists  ===
+    // ===  Preparing invoice for test  ===
     Invoice invoice = new JsonObject(getMockData(APPROVED_INVOICE_SAMPLE_PATH)).mapTo(Invoice.class);
     invoice.setLockTotal(false);
     invoice.setAdjustments(null);
@@ -584,7 +601,7 @@ public class InvoicesApiTest extends ApiTestBase {
   public void testCreateInvoiceWithLockedTotalButWithoutTotal() throws IOException {
     logger.info("=== Test validation on creating Invoice without total which is locked ===");
 
-    // ===  Preparing invoice for test with random id to make sure no lines exists  ===
+    // ===  Preparing invoice for test  ===
     Invoice invoice = new JsonObject(getMockData(APPROVED_INVOICE_SAMPLE_PATH)).mapTo(Invoice.class);
     invoice.setLockTotal(true);
     invoice.setTotal(null);
@@ -595,6 +612,7 @@ public class InvoicesApiTest extends ApiTestBase {
 
     assertThat(errors.getErrors(), hasSize(1));
     assertThat(errors.getErrors().get(0).getCode(), equalTo(INVOICE_TOTAL_REQUIRED.getCode()));
+    assertThat(serverRqRs.size(), equalTo(0));
   }
 
   @Test

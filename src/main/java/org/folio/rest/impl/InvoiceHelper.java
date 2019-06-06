@@ -155,7 +155,7 @@ public class InvoiceHelper extends AbstractHelper {
       });
   }
 
-  public boolean validateNewInvoice(Invoice invoice) {
+  public boolean validateIncomingInvoice(Invoice invoice) {
     if(invoice.getLockTotal() && Objects.isNull(invoice.getTotal())) {
       addProcessingError(INVOICE_TOTAL_REQUIRED.toError());
     }
