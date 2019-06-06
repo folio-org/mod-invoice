@@ -21,9 +21,18 @@
   ],
   "adjustments": [
     {
-      "description": "Test adjustment",
+      "description": "Test adjustment with fixed amount",
+      "prorate": "Not prorated",
+      "relationToTotal": "In addition to",
+      "type": "Amount",
+      "value": 5.06
+    },
+    {
+      "description": "Test percentage adjustment",
+      "prorate": "Not prorated",
+      "relationToTotal": "In addition to",
       "type": "Percentage",
-      "value": 10.1
+      "value": 3.5
     }
   ],
   "vendorId": "168f8a63-d612-406e-813f-c7527f241ac3",

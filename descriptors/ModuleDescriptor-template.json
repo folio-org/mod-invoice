@@ -30,7 +30,8 @@
             "invoice.invoices.item.get"
           ],
           "modulePermissions": [
-            "invoice-storage.invoices.item.get"
+            "invoice-storage.invoices.item.get",
+            "invoice-storage.invoice-lines.collection.get"
           ]
         },
         {

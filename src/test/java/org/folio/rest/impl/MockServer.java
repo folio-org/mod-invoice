@@ -39,11 +39,13 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.function.Supplier;
 
 import javax.ws.rs.core.Response;
 
@@ -59,6 +61,7 @@ import org.folio.rest.acq.model.InvoiceLineCollection;
 import org.folio.rest.acq.model.SequenceNumber;
 import org.folio.rest.acq.model.Voucher;
 import org.folio.rest.acq.model.VoucherLine;
+
 import com.google.common.collect.HashBasedTable;
 import com.google.common.collect.Table;
 
@@ -229,20 +232,25 @@ public class MockServer {
     if (ID_FOR_INTERNAL_SERVER_ERROR.equals(id)) {
       serverResponse(ctx, 500, APPLICATION_JSON, Response.Status.INTERNAL_SERVER_ERROR.getReasonPhrase());
     } else {
-      try {
-
+      Supplier<JsonObject> getFromFile = () -> {
         String filePath = String.format(MOCK_DATA_PATH_PATTERN, INVOICE_MOCK_DATA_PATH, id);
+        try {
+          return new JsonObject(getMockData(filePath));
+        } catch (IOException e) {
+          return null;
+        }
+      };
 
-        JsonObject invoice = new JsonObject(getMockData(filePath));
-
+      JsonObject invoice = getMockEntry(INVOICES, id).orElseGet(getFromFile);
+      if (invoice == null) {
+        ctx.response().setStatusCode(404).end(id);
+      } else {
         // validate content against schema
         Invoice invoiceSchema = invoice.mapTo(Invoice.class);
         invoiceSchema.setId(id);
         invoice = JsonObject.mapFrom(invoiceSchema);
         addServerRqRsData(HttpMethod.GET, INVOICES, invoice);
         serverResponse(ctx, 200, APPLICATION_JSON, invoice.encodePrettily());
-      } catch (IOException e) {
-        ctx.response().setStatusCode(404).end(id);
       }
     }
   }
@@ -412,13 +420,28 @@ public class MockServer {
       .end(body);
   }
 
-  private void addServerRqRsData(HttpMethod method, String objName, JsonObject data) {
+  public static void addMockEntry(String objName, JsonObject data) {
+    addServerRqRsData(HttpMethod.OTHER, objName, data);
+  }
+
+  private Optional<JsonObject> getMockEntry(String objName, String id) {
+    return getRqRsEntries(HttpMethod.OTHER, objName).stream()
+      .filter(obj -> id.equals(obj.getString(ID)))
+      .findAny();
+  }
+
+  private static void addServerRqRsData(HttpMethod method, String objName, JsonObject data) {
+    List<JsonObject> entries = getRqRsEntries(method, objName);
+    entries.add(data);
+    serverRqRs.put(objName, method, entries);
+  }
+
+  public static List<JsonObject> getRqRsEntries(HttpMethod method, String objName) {
     List<JsonObject> entries = serverRqRs.get(objName, method);
     if (entries == null) {
       entries = new ArrayList<>();
     }
-    entries.add(data);
-    serverRqRs.put(objName, method, entries);
+    return entries;
   }
 
   private void handlePutGenericSubObj(RoutingContext ctx, String subObj) {

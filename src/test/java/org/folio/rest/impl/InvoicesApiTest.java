@@ -31,16 +31,18 @@ import java.util.*;
 
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 import static javax.ws.rs.core.MediaType.TEXT_PLAIN;
+import static org.folio.invoices.utils.ErrorCodes.INVOICE_TOTAL_REQUIRED;
 import static org.folio.invoices.utils.ErrorCodes.PO_LINE_NOT_FOUND;
 import static org.folio.invoices.utils.ResourcePathResolver.FOLIO_INVOICE_NUMBER;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICES;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_LINES;
-import static org.folio.rest.impl.AbstractHelper.ID;
 import static org.folio.rest.impl.InvoicesImpl.PROTECTED_AND_MODIFIED_FIELDS;
 import static org.folio.rest.impl.InvoiceLinesApiTest.INVOICE_LINE_SAMPLE_PATH;
 import static org.folio.rest.impl.MockServer.ERROR_X_OKAPI_TENANT;
 import static org.folio.rest.impl.MockServer.INVOICE_NUMBER_ERROR_X_OKAPI_TENANT;
 import static org.folio.rest.impl.MockServer.PO_LINES;
+import static org.folio.rest.impl.MockServer.addMockEntry;
+import static org.folio.rest.impl.MockServer.getRqRsEntries;
 import static org.folio.rest.impl.MockServer.serverRqRs;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasSize;
@@ -49,7 +51,6 @@ import static org.hamcrest.Matchers.nullValue;
 import static org.hamcrest.core.Is.is;
 import static org.hamcrest.core.IsEqual.equalTo;
 import static org.hamcrest.core.IsNot.not;
-import static org.hamcrest.core.StringContains.containsString;
 import static org.junit.Assert.assertEquals;
 
 public class InvoicesApiTest extends ApiTestBase {
@@ -63,8 +64,8 @@ public class InvoicesApiTest extends ApiTestBase {
   private static final String INVOICE_NUMBER_PATH = "/invoice/invoice-number";
   static final String INVOICE_MOCK_DATA_PATH = BASE_MOCK_DATA_PATH + "invoices/";
   private static final String PO_LINE_MOCK_DATA_PATH = BASE_MOCK_DATA_PATH + "poLines/";
-  private static final String INVOICES_LIST_PATH = INVOICE_MOCK_DATA_PATH + "invoices.json";
-  private static final String APPROVED_INVOICE_SAMPLE_PATH = INVOICE_MOCK_DATA_PATH + "c0d08448-347b-418a-8c2f-5fb50248d67e.json";
+  private static final String APPROVED_INVOICE_ID = "c0d08448-347b-418a-8c2f-5fb50248d67e";
+  private static final String APPROVED_INVOICE_SAMPLE_PATH = INVOICE_MOCK_DATA_PATH + APPROVED_INVOICE_ID + ".json";
   private static final String OPEN_INVOICE_SAMPLE_PATH = INVOICE_MOCK_DATA_PATH + "52fd6ec7-ddc3-4c53-bc26-2779afc27136.json";
 
   static final String BAD_QUERY = "unprocessableQuery";
@@ -122,17 +123,84 @@ public class InvoicesApiTest extends ApiTestBase {
   }
 
   @Test
-  public void testGetInvoicingInvoicesById() throws IOException {
+  public void testGetInvoicingInvoicesById() {
     logger.info("=== Test Get Invoice By Id ===");
 
-    JsonObject invoicesList = new JsonObject(getMockData(INVOICES_LIST_PATH));
-    String id = invoicesList.getJsonArray("invoices").getJsonObject(0).getString(ID);
-    logger.info(String.format("using mock datafile: %s%s.json", INVOICES_LIST_PATH, id));
+    final Invoice resp = verifySuccessGet(String.format(INVOICE_ID_PATH, APPROVED_INVOICE_ID), Invoice.class);
 
+    logger.info(JsonObject.mapFrom(resp).encodePrettily());
+    assertThat(resp.getId(), equalTo(APPROVED_INVOICE_ID));
+
+    /* The invoice has 2 not prorated adjustments, 3 related invoice lines and each one has adjustment */
+    assertThat(resp.getAdjustmentsTotal(), equalTo(7.17d));
+    assertThat(resp.getSubTotal(), equalTo(10.6d));
+    assertThat(resp.getTotal(), equalTo(17.77d));
+
+    // Verify that expected number of external calls made
+    assertThat(getRqRsEntries(HttpMethod.GET, INVOICES), hasSize(1));
+    assertThat(getRqRsEntries(HttpMethod.GET, INVOICE_LINES), hasSize(1));
+  }
+
+  @Test
+  public void testGetInvoiceWithoutLines() throws IOException {
+    logger.info("=== Test Get Invoice without associated invoice lines ===");
+
+    // ===  Preparing invoice for test with random id to make sure no lines exists  ===
+    String id = UUID.randomUUID().toString();
+    Invoice invoice = new JsonObject(getMockData(APPROVED_INVOICE_SAMPLE_PATH)).mapTo(Invoice.class);
+    invoice.setId(id);
+    invoice.setLockTotal(true);
+    invoice.setTotal(15d);
+
+    addMockEntry(INVOICES, JsonObject.mapFrom(invoice));
+
+    // ===  Run test  ===
     final Invoice resp = verifySuccessGet(String.format(INVOICE_ID_PATH, id), Invoice.class);
 
     logger.info(JsonObject.mapFrom(resp).encodePrettily());
-    assertEquals(id, resp.getId());
+    assertThat(resp.getId(), equalTo(id));
+
+    /* The invoice has 2 not prorated adjustments one with fixed amount and another with percentage type */
+    assertThat(resp.getAdjustmentsTotal(), equalTo(5.06d));
+    assertThat(resp.getSubTotal(), equalTo(0d));
+    assertThat(resp.getTotal(), equalTo(15d));
+
+    // Verify that expected number of external calls made
+    assertThat(getRqRsEntries(HttpMethod.GET, INVOICES), hasSize(1));
+    assertThat(getRqRsEntries(HttpMethod.GET, INVOICE_LINES), hasSize(1));
+  }
+
+  @Test
+  public void testGetInvoiceWithoutLinesButProratedAdjustments() throws IOException {
+    logger.info("=== Test Get Invoice without associated invoice lines ===");
+
+    // ===  Preparing invoice for test with random id to make sure no lines exists  ===
+    String id = UUID.randomUUID().toString();
+    Invoice invoice = new JsonObject(getMockData(APPROVED_INVOICE_SAMPLE_PATH)).mapTo(Invoice.class);
+    invoice.setId(id);
+    invoice.getAdjustments().forEach(adj -> adj.setProrate(Adjustment.Prorate.BY_LINE));
+    // Setting totals to verify that they are re-calculated
+    invoice.setAdjustmentsTotal(5d);
+    invoice.setSubTotal(10d);
+    invoice.setTotal(15d);
+    invoice.setLockTotal(false);
+
+    addMockEntry(INVOICES, JsonObject.mapFrom(invoice));
+
+    // ===  Run test  ===
+    final Invoice resp = verifySuccessGet(String.format(INVOICE_ID_PATH, id), Invoice.class);
+
+    logger.info(JsonObject.mapFrom(resp).encodePrettily());
+    assertThat(resp.getId(), equalTo(id));
+
+    /* The invoice has 2 not prorated adjustments one with fixed amount and another with percentage type */
+    assertThat(resp.getAdjustmentsTotal(), equalTo(0d));
+    assertThat(resp.getSubTotal(), equalTo(0d));
+    assertThat(resp.getTotal(), equalTo(0d));
+
+    // Verify that expected number of external calls made
+    assertThat(getRqRsEntries(HttpMethod.GET, INVOICES), hasSize(1));
+    assertThat(getRqRsEntries(HttpMethod.GET, INVOICE_LINES), hasSize(1));
   }
 
   @Test
@@ -361,6 +429,23 @@ public class InvoicesApiTest extends ApiTestBase {
 
   }
 
+  @Test
+  public void testUpdateInvoiceWithLockedTotalButWithoutTotal() throws IOException {
+    logger.info("=== Test validation updating invoice without total which is locked ===");
+
+    // ===  Preparing invoice for test  ===
+    Invoice invoice = new JsonObject(getMockData(APPROVED_INVOICE_SAMPLE_PATH)).mapTo(Invoice.class);
+    invoice.setLockTotal(true);
+    invoice.setTotal(null);
+
+    // ===  Run test  ===
+    Errors errors = verifyPut(String.format(INVOICE_ID_PATH, invoice.getId()), JsonObject.mapFrom(invoice), APPLICATION_JSON, 422)
+      .as(Errors.class);
+
+    assertThat(errors.getErrors(), hasSize(1));
+    assertThat(errors.getErrors().get(0).getCode(), equalTo(INVOICE_TOTAL_REQUIRED.getCode()));
+    assertThat(serverRqRs.size(), equalTo(0));
+  }
 
   @Test
   public void testUpdateNotExistentInvoice() throws IOException {
@@ -400,9 +485,6 @@ public class InvoicesApiTest extends ApiTestBase {
   public void testPostInvoicingInvoices() throws Exception {
     logger.info("=== Test create invoice without id and folioInvoiceNo ===");
 
-    Invoice reqData = getMockAsJson(APPROVED_INVOICE_SAMPLE_PATH).mapTo(Invoice.class);
-    reqData.setId(null);
-    reqData.setFolioInvoiceNo(null);
     String body = getMockData(APPROVED_INVOICE_SAMPLE_PATH);
 
     final Invoice respData = verifyPostResponse(INVOICE_PATH, body, prepareHeaders(X_OKAPI_TENANT), APPLICATION_JSON, 201).as(Invoice.class);
@@ -413,6 +495,79 @@ public class InvoicesApiTest extends ApiTestBase {
     assertThat(poId, notNullValue());
     assertThat(folioInvoiceNo, notNullValue());
     assertThat(MockServer.serverRqRs.get(FOLIO_INVOICE_NUMBER, HttpMethod.GET), hasSize(1));
+  }
+
+  @Test
+  public void testCreateInvoiceWithLockedTotalAndTwoAdjustments() throws IOException {
+    logger.info("=== Test create invoice with locked total and 2 adjustments ===");
+
+    // ===  Preparing invoice for test  ===
+    Invoice invoice = new JsonObject(getMockData(APPROVED_INVOICE_SAMPLE_PATH)).mapTo(Invoice.class);
+    invoice.setLockTotal(true);
+    invoice.setTotal(15d);
+
+    // ===  Run test  ===
+    final Invoice resp = verifyPostResponse(INVOICE_PATH, JsonObject.mapFrom(invoice), prepareHeaders(X_OKAPI_TENANT),
+        APPLICATION_JSON, 201).as(Invoice.class);
+
+    /* The invoice has 2 not prorated adjustments one with fixed amount and another with percentage type */
+    assertThat(resp.getAdjustmentsTotal(), equalTo(5.06d));
+    assertThat(resp.getSubTotal(), equalTo(0d));
+    assertThat(resp.getTotal(), equalTo(15d));
+
+    // Verify that expected number of external calls made
+    assertThat(serverRqRs.cellSet(), hasSize(2));
+    assertThat(getRqRsEntries(HttpMethod.GET, FOLIO_INVOICE_NUMBER), hasSize(1));
+    assertThat(getRqRsEntries(HttpMethod.POST, INVOICES), hasSize(1));
+  }
+
+  @Test
+  public void testCreateInvoiceWithLockedTotalAndTwoProratedAdjustments() throws IOException {
+    logger.info("=== Test create invoice with locked total and 2 prorated adjustments ===");
+
+    // ===  Preparing invoice for test  ===
+    Invoice invoice = new JsonObject(getMockData(APPROVED_INVOICE_SAMPLE_PATH)).mapTo(Invoice.class);
+    invoice.getAdjustments().forEach(adj -> adj.setProrate(Adjustment.Prorate.BY_AMOUNT));
+    invoice.setLockTotal(true);
+    invoice.setTotal(15d);
+
+    // ===  Run test  ===
+    final Invoice resp = verifyPostResponse(INVOICE_PATH, JsonObject.mapFrom(invoice), prepareHeaders(X_OKAPI_TENANT),
+      APPLICATION_JSON, 201).as(Invoice.class);
+
+    /* The invoice has 2 not prorated adjustments one with fixed amount and another with percentage type */
+    assertThat(resp.getAdjustmentsTotal(), equalTo(0d));
+    assertThat(resp.getSubTotal(), equalTo(0d));
+    assertThat(resp.getTotal(), equalTo(15d));
+
+    // Verify that expected number of external calls made
+    assertThat(serverRqRs.cellSet(), hasSize(2));
+    assertThat(getRqRsEntries(HttpMethod.GET, FOLIO_INVOICE_NUMBER), hasSize(1));
+    assertThat(getRqRsEntries(HttpMethod.POST, INVOICES), hasSize(1));
+  }
+
+  @Test
+  public void testCreateInvoiceWithNonLockedTotalAndWithoutAdjustments() throws IOException {
+    logger.info("=== Test create invoice without total and no adjustments ===");
+
+    // ===  Preparing invoice for test  ===
+    Invoice invoice = new JsonObject(getMockData(APPROVED_INVOICE_SAMPLE_PATH)).mapTo(Invoice.class);
+    invoice.setLockTotal(false);
+    invoice.setAdjustments(null);
+    invoice.setTotal(null);
+
+    // ===  Run test  ===
+    final Invoice resp = verifyPostResponse(INVOICE_PATH, JsonObject.mapFrom(invoice), prepareHeaders(X_OKAPI_TENANT),
+      APPLICATION_JSON, 201).as(Invoice.class);
+
+    assertThat(resp.getAdjustmentsTotal(), equalTo(0d));
+    assertThat(resp.getSubTotal(), equalTo(0d));
+    assertThat(resp.getTotal(), equalTo(0d));
+
+    // Verify that expected number of external calls made
+    assertThat(serverRqRs.cellSet(), hasSize(2));
+    assertThat(getRqRsEntries(HttpMethod.GET, FOLIO_INVOICE_NUMBER), hasSize(1));
+    assertThat(getRqRsEntries(HttpMethod.POST, INVOICES), hasSize(1));
   }
 
   @Test
@@ -440,6 +595,24 @@ public class InvoicesApiTest extends ApiTestBase {
 
     verifyPostResponse(INVOICE_PATH, body, prepareHeaders(INVOICE_NUMBER_ERROR_X_OKAPI_TENANT), APPLICATION_JSON, 500);
 
+  }
+
+  @Test
+  public void testCreateInvoiceWithLockedTotalButWithoutTotal() throws IOException {
+    logger.info("=== Test validation on creating Invoice without total which is locked ===");
+
+    // ===  Preparing invoice for test  ===
+    Invoice invoice = new JsonObject(getMockData(APPROVED_INVOICE_SAMPLE_PATH)).mapTo(Invoice.class);
+    invoice.setLockTotal(true);
+    invoice.setTotal(null);
+
+    // ===  Run test  ===
+    Errors errors = verifyPostResponse(INVOICE_PATH, JsonObject.mapFrom(invoice), prepareHeaders(X_OKAPI_TENANT), APPLICATION_JSON, 422)
+      .as(Errors.class);
+
+    assertThat(errors.getErrors(), hasSize(1));
+    assertThat(errors.getErrors().get(0).getCode(), equalTo(INVOICE_TOTAL_REQUIRED.getCode()));
+    assertThat(serverRqRs.size(), equalTo(0));
   }
 
   @Test

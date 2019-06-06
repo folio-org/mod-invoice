@@ -1,6 +1,9 @@
 package org.folio.rest.impl;
 
 import static java.util.stream.Collectors.toList;
+import static org.folio.invoices.utils.ErrorCodes.INVOICE_TOTAL_REQUIRED;
+import static org.folio.invoices.utils.HelperUtils.calculateAdjustmentsTotal;
+import static org.folio.invoices.utils.HelperUtils.convertToDouble;
 import static org.folio.invoices.utils.ErrorCodes.PO_LINE_NOT_FOUND;
 import static org.folio.invoices.utils.HelperUtils.findChangedProtectedFields;
 import static org.folio.invoices.utils.HelperUtils.handlePutRequest;
@@ -14,31 +17,40 @@ import static org.folio.invoices.utils.HelperUtils.handleGetRequest;
 import static org.folio.invoices.utils.HelperUtils.getEndpointWithQuery;
 import static org.folio.invoices.utils.HelperUtils.getInvoiceById;
 
+import java.util.Collections;
+import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 
+import javax.money.CurrencyUnit;
+import javax.money.Monetary;
+import javax.money.MonetaryAmount;
+
 import io.vertx.core.json.JsonObject;
 import me.escoffier.vertx.completablefuture.VertxCompletableFuture;
+
 import org.apache.commons.collections4.CollectionUtils;
 import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.invoices.utils.HelperUtils;
 import org.folio.invoices.utils.InvoiceProtectedFields;
 import org.folio.rest.acq.model.CompositePoLine;
 import org.folio.rest.acq.model.SequenceNumber;
+import org.folio.rest.jaxrs.model.Adjustment;
 import org.folio.rest.jaxrs.model.Error;
 import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.jaxrs.model.InvoiceCollection;
 import org.folio.rest.jaxrs.model.InvoiceLine;
 import org.folio.rest.jaxrs.model.InvoiceLineCollection;
+import org.javamoney.moneta.Money;
 
-import java.util.Collections;
-import java.util.List;
 import java.util.concurrent.CompletionStage;
 import java.util.stream.Collectors;
 
 import io.vertx.core.Context;
 import org.folio.rest.jaxrs.model.Parameter;
+import org.javamoney.moneta.function.MonetaryFunctions;
 
 public class InvoiceHelper extends AbstractHelper {
 
@@ -50,44 +62,48 @@ public class InvoiceHelper extends AbstractHelper {
 
   InvoiceHelper(Map<String, String> okapiHeaders, Context ctx, String lang) {
     super(getHttpClient(okapiHeaders), okapiHeaders, ctx, lang);
-    invoiceLineHelper = new InvoiceLineHelper(okapiHeaders, ctx, lang);
+    invoiceLineHelper = new InvoiceLineHelper(httpClient, okapiHeaders, ctx, lang);
   }
 
   public CompletableFuture<Invoice> createInvoice(Invoice invoice) {
     return generateFolioInvoiceNumber()
-      .thenCompose(folioInvoiceNumber -> {
-        JsonObject jsonInvoice = JsonObject.mapFrom (invoice.withFolioInvoiceNo(folioInvoiceNumber));
-        return createRecordInStorage(jsonInvoice, resourcesPath(INVOICES));
-      })
-      .thenApply(invoice::withId);
-  }
-
-  private CompletableFuture<String> generateFolioInvoiceNumber() {
-    return HelperUtils.handleGetRequest(resourcesPath(FOLIO_INVOICE_NUMBER), httpClient, ctx, okapiHeaders, logger)
-      .thenApply(seqNumber -> seqNumber.mapTo(SequenceNumber.class).getSequenceNumber());
+      .thenApply(invoice::withFolioInvoiceNo)
+      .thenApply(JsonObject::mapFrom)
+      .thenCompose(jsonInvoice -> createRecordInStorage(jsonInvoice, resourcesPath(INVOICES)))
+      .thenApply(invoice::withId)
+      .thenApply(this::withCalculatedTotals);
   }
 
   /**
-   * Gets invoice by id
+   * Gets invoice by id and calculates totals
    *
    * @param id invoice uuid
    * @return completable future with {@link Invoice} on success or an exception if processing fails
    */
   public CompletableFuture<Invoice> getInvoice(String id) {
     CompletableFuture<Invoice> future = new VertxCompletableFuture<>(ctx);
-    getInvoiceById(id, lang, httpClient, ctx, okapiHeaders, logger)
-    .thenAccept(jsonInvoice -> {
-      logger.info("Successfully retrieved invoice by id: " + jsonInvoice.encodePrettily());
-      future.complete(jsonInvoice.mapTo(Invoice.class));
-    })
-    .exceptionally(t -> {
-      logger.error("Failed to build an Invoice", t.getCause());
-      future.completeExceptionally(t);
-      return null;
-    });
+    getInvoiceRecord(id)
+      // To calculate totals, related invoice lines have to be retrieved
+      .thenCompose(invoice -> getInvoiceLinesWithTotals(invoice).thenApply(lines -> withCalculatedTotals(invoice, lines)))
+      .thenAccept(future::complete)
+      .exceptionally(t -> {
+        logger.error("Failed to get an Invoice by id={}", t.getCause(), id);
+        future.completeExceptionally(t);
+        return null;
+      });
     return future;
   }
-  
+
+  /**
+   * Gets invoice by id without calculated totals
+   *
+   * @param id invoice uuid
+   * @return completable future with {@link Invoice} on success or an exception if processing fails
+   */
+  public CompletableFuture<Invoice> getInvoiceRecord(String id) {
+    return getInvoiceById(id, lang, httpClient, ctx, okapiHeaders, logger);
+  }
+
   /**
    * Gets list of invoice
    *
@@ -124,7 +140,7 @@ public class InvoiceHelper extends AbstractHelper {
   public CompletableFuture<Void> updateInvoice(Invoice invoice) {
     logger.debug("Updating invoice...");
 
-    return getInvoice(invoice.getId())
+    return getInvoiceRecord(invoice.getId())
       .thenApply(invoiceFromStorage -> {
         validateInvoice(invoice, invoiceFromStorage);
         setSystemGeneratedData(invoiceFromStorage, invoice);
@@ -137,6 +153,13 @@ public class InvoiceHelper extends AbstractHelper {
           return updateInvoiceRecord(invoice);
         }
       });
+  }
+
+  public boolean validateIncomingInvoice(Invoice invoice) {
+    if(invoice.getLockTotal() && Objects.isNull(invoice.getTotal())) {
+      addProcessingError(INVOICE_TOTAL_REQUIRED.toError());
+    }
+    return getErrors().isEmpty();
   }
 
   private void validateInvoice(Invoice invoice, Invoice invoiceFromStorage) {
@@ -180,6 +203,14 @@ public class InvoiceHelper extends AbstractHelper {
     // Assuming that the invoice will never contain more than Integer.MAX_VALUE invoiceLines.
     return invoiceLineHelper.getInvoiceLines(Integer.MAX_VALUE, 0, query)
       .thenApply(InvoiceLineCollection::getInvoiceLines);
+  }
+
+  private CompletableFuture<List<InvoiceLine>> getInvoiceLinesWithTotals(Invoice invoice) {
+    return fetchInvoiceLinesByInvoiceId(invoice.getId())
+      .thenApply(lines -> {
+        lines.forEach(line -> invoiceLineHelper.calculateInvoiceLineTotals(line, invoice));
+        return lines;
+      });
   }
 
   private Map<String, List<InvoiceLine>>  groupInvoiceLinesByPoLineId(List<InvoiceLine> invoiceLines) {
@@ -252,4 +283,54 @@ public class InvoiceHelper extends AbstractHelper {
       .toArray(CompletableFuture[]::new));
   }
 
+
+  private CompletableFuture<String> generateFolioInvoiceNumber() {
+    return HelperUtils.handleGetRequest(resourcesPath(FOLIO_INVOICE_NUMBER), httpClient, ctx, okapiHeaders, logger)
+      .thenApply(seqNumber -> seqNumber.mapTo(SequenceNumber.class).getSequenceNumber());
+  }
+
+  private Invoice withCalculatedTotals(Invoice invoice) {
+    return withCalculatedTotals(invoice, Collections.emptyList());
+  }
+
+  private Invoice withCalculatedTotals(Invoice invoice, List<InvoiceLine> lines) {
+    CurrencyUnit currency = Monetary.getCurrency(invoice.getCurrency());
+
+    // 1. Sub-total
+    MonetaryAmount subTotal = calculateSubTotal(lines, currency);
+
+    // 2. Adjustments (sum of not prorated invoice level and all invoice line level adjustments)
+    MonetaryAmount adjustmentsTotal = calculateAdjustmentsTotal(getNotProratedAdjustments(invoice), subTotal)
+      .add(calculateInvoiceLinesAdjustmentsTotal(lines, currency));
+
+    // 3. Total
+    if (!invoice.getLockTotal()) {
+      invoice.setTotal(convertToDouble(subTotal.add(adjustmentsTotal)));
+    }
+    invoice.setAdjustmentsTotal(convertToDouble(adjustmentsTotal));
+    invoice.setSubTotal(convertToDouble(subTotal));
+
+    return invoice;
+  }
+
+  private List<Adjustment> getNotProratedAdjustments(Invoice invoice) {
+    return invoice.getAdjustments()
+      .stream()
+      .filter(adj -> adj.getProrate() == Adjustment.Prorate.NOT_PRORATED)
+      .collect(toList());
+  }
+
+  private MonetaryAmount calculateSubTotal(List<InvoiceLine> lines, CurrencyUnit currency) {
+    return lines.stream()
+      .map(line -> Money.of(line.getSubTotal(), currency))
+      .collect(MonetaryFunctions.summarizingMonetary(currency))
+      .getSum();
+  }
+
+  private MonetaryAmount calculateInvoiceLinesAdjustmentsTotal(List<InvoiceLine> lines, CurrencyUnit currency) {
+    return lines.stream()
+      .map(line -> Money.of(line.getAdjustmentsTotal(), currency))
+      .collect(MonetaryFunctions.summarizingMonetary(currency))
+      .getSum();
+  }
 }
