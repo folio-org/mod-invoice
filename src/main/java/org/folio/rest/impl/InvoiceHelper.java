@@ -54,6 +54,7 @@ import org.javamoney.moneta.function.MonetaryFunctions;
 
 public class InvoiceHelper extends AbstractHelper {
 
+  public static final String TOTAL = "total";
   private final InvoiceLineHelper invoiceLineHelper;
 
   private static final String GET_INVOICES_BY_QUERY = resourcesPath(INVOICES) + "?limit=%s&offset=%s%s&lang=%s";
@@ -165,6 +166,12 @@ public class InvoiceHelper extends AbstractHelper {
   private void validateInvoice(Invoice invoice, Invoice invoiceFromStorage) {
     if(isFieldsVerificationNeeded(invoiceFromStorage)) {
       Set<String> fields = findChangedProtectedFields(invoice, invoiceFromStorage, InvoiceProtectedFields.getFieldNames());
+
+      // "total" depends on value of "lockTotal": if value is true, total is required; if false, read-only (system calculated)
+      if (invoiceFromStorage.getLockTotal()
+          && (invoice.getTotal() == null || Double.compare(invoice.getTotal(), invoiceFromStorage.getTotal()) != 0)) {
+        fields.add(TOTAL);
+      }
       verifyThatProtectedFieldsUnchanged(fields);
     }
   }

@@ -16,8 +16,6 @@ public enum InvoiceProtectedFields {
   LOCK_TOTAL("lockTotal"),
   PAYMENT_TERMS("paymentTerms"),
   SOURCE("source"),
-  SUB_TOTAL("subTotal"),
-  TOTAL("total"),
   VOUCHER_NUMBER("voucherNumber"),
   PAYMENT_ID("paymentId"),
   PO_NUMBERS("poNumbers"),
