@@ -6,7 +6,7 @@
   "invoiceLineStatus": "Open",
   "vendorRefNo": "1",
   "productId": "9780764354113",
-  "productIdType": "ISBN",
+  "productIdType": "8261054f-be78-422d-bd51-4ed9f33c3422",
   "comment": "Sample invoice line",
   "subTotal": 2.2,
   "quantity": 3,

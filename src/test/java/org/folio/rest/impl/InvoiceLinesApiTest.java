@@ -442,7 +442,7 @@ public class InvoiceLinesApiTest extends ApiTestBase {
     allProtectedFieldsModification.put(InvoiceLineProtectedFields.INVOICE_LINE_NUMBER, "123456789");
     allProtectedFieldsModification.put(InvoiceLineProtectedFields.PO_LINE_ID, UUID.randomUUID().toString());
     allProtectedFieldsModification.put(InvoiceLineProtectedFields.PRODUCT_ID, UUID.randomUUID().toString());
-    allProtectedFieldsModification.put(InvoiceLineProtectedFields.PRODUCT_ID_TYPE, InvoiceLine.ProductIdType.VENDOR_ITEM_NUMBER);
+    allProtectedFieldsModification.put(InvoiceLineProtectedFields.PRODUCT_ID_TYPE, UUID.randomUUID().toString());
     allProtectedFieldsModification.put(InvoiceLineProtectedFields.QUANTITY, 10);
     allProtectedFieldsModification.put(InvoiceLineProtectedFields.SUBSCRIPTION_INFO, "Tested subscription info");
     allProtectedFieldsModification.put(InvoiceLineProtectedFields.SUBSCRIPTION_START, new Date(System.currentTimeMillis()));
