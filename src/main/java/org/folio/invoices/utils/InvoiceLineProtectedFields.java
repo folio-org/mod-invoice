@@ -15,8 +15,7 @@ public enum InvoiceLineProtectedFields {
   QUANTITY("quantity"),
   SUBSCRIPTION_INFO("subscriptionInfo"),
   SUBSCRIPTION_START("subscriptionStart"),
-  SUBSCRIPTION_END("subscriptionEnd"),
-  TOTAL("total");
+  SUBSCRIPTION_END("subscriptionEnd");
 
 
   InvoiceLineProtectedFields(String field) {
