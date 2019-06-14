@@ -7,7 +7,6 @@
   "folioInvoiceNo": "123invoicenumber45",
   "invoiceDate": "2018-07-20T00:00:00.000+0000",
   "note": "Some note 1",
-  "acquisitionsUnit": "d79b0bcc-DcAD-1E4E-Abb7-DbFcaD5BB3bb",
   "paymentTerms": "Payment in Advance",
   "paymentMethod": "EFT",
   "status": "Approved",
