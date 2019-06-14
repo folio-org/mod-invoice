@@ -3,7 +3,6 @@ package org.folio.rest.impl;
 import static java.util.concurrent.CompletableFuture.allOf;
 import static java.util.stream.Collectors.groupingBy;
 import static java.util.stream.Collectors.toList;
-import static org.apache.commons.collections4.CollectionUtils.isEmpty;
 import static org.apache.commons.collections4.CollectionUtils.isNotEmpty;
 import static org.folio.invoices.utils.ErrorCodes.FUNDS_NOT_FOUND;
 import static org.folio.invoices.utils.ErrorCodes.INVOICE_TOTAL_REQUIRED;
@@ -71,7 +70,7 @@ import io.vertx.core.Context;
 import org.folio.rest.jaxrs.model.Parameter;
 import org.folio.rest.jaxrs.model.Voucher;
 import org.folio.rest.jaxrs.model.VoucherLine;
-import org.javamoney.moneta.function.MonetaryOperators;
+
 
 
 import org.javamoney.moneta.function.MonetaryFunctions;
@@ -82,6 +81,7 @@ public class InvoiceHelper extends AbstractHelper {
   private static final String QUERY_BY_INVOICE_ID = "invoiceId==%s";
   private static final String DEFAULT_ACCOUNTING_CODE = "tmp_code";
   public static final String NO_INVOICE_LINES_ERROR_MSG = "An invoice cannot be approved if there are no corresponding lines of invoice.";
+  public static final String TOTAL = "total";
   private final InvoiceLineHelper invoiceLineHelper;
   private final VoucherHelper voucherHelper;
   private final VoucherLineHelper voucherLineHelper;
@@ -181,13 +181,6 @@ public class InvoiceHelper extends AbstractHelper {
       })
       .thenCompose(invoiceFromStorage -> processInvoice(invoice, invoiceFromStorage))
       .thenCompose(aVoid -> updateInvoiceRecord(invoice));
-  }
-
-  private void validateInvoice(Invoice invoice, Invoice invoiceFromStorage) {
-    if(isFieldsVerificationNeeded(invoiceFromStorage)) {
-      Set<String> fields = findChangedProtectedFields(invoice, invoiceFromStorage, InvoiceProtectedFields.getFieldNames());
-      verifyThatProtectedFieldsUnchanged(fields);
-    }
   }
 
   private void setSystemGeneratedData(Invoice invoiceFromStorage, Invoice invoice) {
@@ -400,7 +393,7 @@ public class InvoiceHelper extends AbstractHelper {
   private CompletableFuture<Void> deleteVoucherLinesIfExist(String voucherId) {
     return getVoucherLineIdsByVoucherId(voucherId)
       .thenCompose(ids -> VertxCompletableFuture.allOf(ids.stream()
-        .map(id -> voucherLineHelper.deleteVoucherLine(id))
+        .map(voucherLineHelper::deleteVoucherLine)
         .toArray(CompletableFuture[]::new)));
   }
 
@@ -409,7 +402,7 @@ public class InvoiceHelper extends AbstractHelper {
     return voucherLineHelper.getVoucherLines(Integer.MAX_VALUE, 0, query)
       .thenApply(voucherLineCollection ->  voucherLineCollection.getVoucherLines().
         stream()
-        .map(voucherLine -> voucherLine.getId())
+        .map(org.folio.rest.acq.model.VoucherLine::getId)
         .collect(toList())
       );
   }
@@ -419,6 +412,18 @@ public class InvoiceHelper extends AbstractHelper {
       addProcessingError(INVOICE_TOTAL_REQUIRED.toError());
     }
     return getErrors().isEmpty();
+  }
+
+  private void validateInvoice(Invoice invoice, Invoice invoiceFromStorage) {
+    if(isFieldsVerificationNeeded(invoiceFromStorage)) {
+      Set<String> fields = findChangedProtectedFields(invoice, invoiceFromStorage, InvoiceProtectedFields.getFieldNames());
+
+      // "total" depends on value of "lockTotal": if value is true, total is required; if false, read-only (system calculated)
+      if (invoiceFromStorage.getLockTotal() && !Objects.equals(invoice.getTotal(), invoiceFromStorage.getTotal())) {
+        fields.add(TOTAL);
+      }
+      verifyThatProtectedFieldsUnchanged(fields);
+    }
   }
 
   private CompletableFuture<Void> updateInvoiceRecord(Invoice updatedInvoice) {

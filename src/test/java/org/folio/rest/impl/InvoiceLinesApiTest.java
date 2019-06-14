@@ -3,7 +3,6 @@ package org.folio.rest.impl;
 import io.restassured.http.Header;
 import io.restassured.response.Response;
 import io.vertx.core.http.HttpMethod;
-import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
@@ -23,6 +22,8 @@ import java.util.*;
 
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 import static javax.ws.rs.core.MediaType.TEXT_PLAIN;
+import static org.folio.invoices.utils.ResourcePathResolver.INVOICES;
+import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_LINES;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_LINE_NUMBER;
 import static org.folio.rest.RestVerticle.OKAPI_HEADER_TENANT;
 import static org.folio.rest.impl.AbstractHelper.ID;
@@ -37,8 +38,6 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.hasSize;
-
-
 
 
 public class InvoiceLinesApiTest extends ApiTestBase {
@@ -398,9 +397,9 @@ public class InvoiceLinesApiTest extends ApiTestBase {
       InvoiceLine invoiceLine = getMockAsJson(INVOICE_LINE_SAMPLE_FOR_PROTECTED_FIELDS_PATH).mapTo(InvoiceLine.class);
       invoiceLine.setId(invoiceLineId);
       verifyPut(String.format(INVOICE_LINE_ID_PATH, invoiceLineId), JsonObject.mapFrom(invoiceLine).encode(), "", HttpStatus.SC_NO_CONTENT);
-      MatcherAssert.assertThat(serverRqRs.row("invoiceLines").get(HttpMethod.GET), hasSize(1));
-      MatcherAssert.assertThat(serverRqRs.row("invoices").get(HttpMethod.GET), hasSize(1));
-      MatcherAssert.assertThat(serverRqRs.row("invoiceLines").get(HttpMethod.PUT), hasSize(1));
+      MatcherAssert.assertThat(serverRqRs.row(INVOICE_LINES).get(HttpMethod.GET), hasSize(1));
+      MatcherAssert.assertThat(serverRqRs.row(INVOICES).get(HttpMethod.GET), hasSize(1));
+      MatcherAssert.assertThat(serverRqRs.row(INVOICE_LINES).get(HttpMethod.PUT), hasSize(1));
       serverRqRs.clear();
 
   }
@@ -443,7 +442,7 @@ public class InvoiceLinesApiTest extends ApiTestBase {
     allProtectedFieldsModification.put(InvoiceLineProtectedFields.INVOICE_LINE_NUMBER, "123456789");
     allProtectedFieldsModification.put(InvoiceLineProtectedFields.PO_LINE_ID, UUID.randomUUID().toString());
     allProtectedFieldsModification.put(InvoiceLineProtectedFields.PRODUCT_ID, UUID.randomUUID().toString());
-    allProtectedFieldsModification.put(InvoiceLineProtectedFields.PRODUCT_ID_TYPE, InvoiceLine.ProductIdType.VENDOR_ITEM_NUMBER);
+    allProtectedFieldsModification.put(InvoiceLineProtectedFields.PRODUCT_ID_TYPE, UUID.randomUUID().toString());
     allProtectedFieldsModification.put(InvoiceLineProtectedFields.QUANTITY, 10);
     allProtectedFieldsModification.put(InvoiceLineProtectedFields.SUBSCRIPTION_INFO, "Tested subscription info");
     allProtectedFieldsModification.put(InvoiceLineProtectedFields.SUBSCRIPTION_START, new Date(System.currentTimeMillis()));
