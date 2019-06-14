@@ -4,6 +4,8 @@ import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 import static javax.ws.rs.core.MediaType.TEXT_PLAIN;
 import static org.folio.rest.RestVerticle.OKAPI_HEADER_TENANT;
 import static org.folio.rest.impl.AbstractHelper.ID;
+import static org.folio.rest.impl.InvoiceLinesApiTest.INVOICE_ID;
+import static org.folio.rest.impl.InvoicesApiTest.APPROVED_INVOICE_ID;
 import static org.folio.rest.impl.MockServer.ERROR_X_OKAPI_TENANT;
 import static org.hamcrest.Matchers.isEmptyOrNullString;
 import static org.hamcrest.Matchers.not;
@@ -30,11 +32,10 @@ public class VouchersApiTest extends ApiTestBase {
 
   static final String VOUCHER_MOCK_DATA_PATH = BASE_MOCK_DATA_PATH + "vouchers/";
   static final Header EXIST_CONFIG_X_OKAPI_TENANT_LIMIT_10 = new Header(OKAPI_HEADER_TENANT, "test_diku_limit_10");
-  static final String EXISTING_VOUCHER_NUMBER = "1000";
 
   private static final String VOUCHER_PATH = "/voucher/vouchers";
   private static final String VOUCHER_ID_PATH = VOUCHER_PATH + "/%s";
-  private static final String VOUCHERS_LIST_PATH = VOUCHER_MOCK_DATA_PATH + "vouchers.json";
+  static final String VOUCHERS_LIST_PATH = VOUCHER_MOCK_DATA_PATH + "vouchers.json";
   private static final String BAD_VOUCHER_ID = "5a34ae0e-5a11-4337-be95-1a20cfdc3161";
   private static final String INVALID_VOUCHER_ID = "invalidVoucherId";
   private static final String VALID_START_VALUE = "101";
@@ -50,7 +51,7 @@ public class VouchersApiTest extends ApiTestBase {
     logger.info("=== Test Get Vouchers by without query - get 200 by successful retrieval of vouchers ===");
 
     final VoucherCollection resp = verifySuccessGet(VOUCHER_PATH, VoucherCollection.class);
-    assertEquals(4, resp.getTotalRecords()
+    assertEquals(2, resp.getTotalRecords()
       .intValue());
   }
 
@@ -58,7 +59,7 @@ public class VouchersApiTest extends ApiTestBase {
   public void testGetVoucherVouchersWithQueryParam() {
     logger.info("=== Test Get Vouchers with query - get 200 by successful retrieval of vouchers by query ===");
 
-    String endpointQuery = String.format("%s?query=%s==%s", VOUCHER_PATH, VOUCHER_NUMBER_FIELD, EXISTING_VOUCHER_NUMBER);
+    String endpointQuery = String.format("%s?query=%s==%s", VOUCHER_PATH, INVOICE_ID, APPROVED_INVOICE_ID);
     final VoucherCollection resp = verifySuccessGet(endpointQuery, VoucherCollection.class);
     assertEquals(1, resp.getTotalRecords()
       .intValue());

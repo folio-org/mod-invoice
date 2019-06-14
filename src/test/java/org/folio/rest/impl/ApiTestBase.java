@@ -33,6 +33,7 @@ public class ApiTestBase {
   static final String VALID_UUID = "8d3881f6-dd93-46f0-b29d-1c36bdb5c9f9";
   static final String ID_BAD_FORMAT = "123-45-678-90-abc";
   static final String FOLIO_INVOICE_NUMBER_VALUE = "228D126";
+  static final String X_INTERNAL_ERROR = "X-Okapi-Internal-Error";
   static final Header X_OKAPI_URL = new Header(OKAPI_URL, "http://localhost:" + mockPort);
   static final Header X_OKAPI_TOKEN = new Header(OKAPI_HEADER_TOKEN, "eyJhbGciOiJIUzI1NiJ9");
   static final Header X_OKAPI_TENANT = new Header(OKAPI_HEADER_TENANT, "invoiceimpltest");
@@ -40,6 +41,7 @@ public class ApiTestBase {
   static final String BASE_MOCK_DATA_PATH = "mockdata/";
 
   static final String INVOICE_LINE_NUMBER_VALUE = "1";
+  static final String VOUCHER_NUMBER_VALUE = "1";
   static final String LANG_PARAM = "lang";
   static final String INVALID_LANG = "english";
 
@@ -127,12 +129,12 @@ public class ApiTestBase {
   }
 
   Response verifyPut(String url, String body, String expectedContentType, int expectedCode) {
-    Headers headers = prepareHeaders(X_OKAPI_URL, X_OKAPI_TENANT);
+    Headers headers = prepareHeaders(X_OKAPI_URL, X_OKAPI_TENANT,X_OKAPI_TOKEN);
     return verifyPut(url, body, headers,expectedContentType, expectedCode);
   }
 
   Response verifyPut(String url, JsonObject body, String expectedContentType, int expectedCode) {
-    Headers headers = prepareHeaders(X_OKAPI_URL, X_OKAPI_TENANT);
+    Headers headers = prepareHeaders(X_OKAPI_URL, X_OKAPI_TENANT, X_OKAPI_TOKEN);
     return verifyPut(url, body.encode(), headers,expectedContentType, expectedCode);
   }
 

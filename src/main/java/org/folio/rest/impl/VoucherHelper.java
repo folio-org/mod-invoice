@@ -1,48 +1,57 @@
 package org.folio.rest.impl;
 
-import static org.folio.invoices.utils.HelperUtils.getVoucherById;
-import static org.folio.invoices.utils.HelperUtils.getEndpointWithQuery;
-import static org.folio.invoices.utils.HelperUtils.handleGetRequest;
-import static org.folio.invoices.utils.ResourcePathResolver.VOUCHERS;
-import static org.folio.invoices.utils.ResourcePathResolver.VOUCHER_NUMBER_START;
-import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
-
 import io.vertx.core.Context;
 import io.vertx.core.http.HttpMethod;
+import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
-
-import java.util.Map;
-import java.util.concurrent.CompletableFuture;
 import me.escoffier.vertx.completablefuture.VertxCompletableFuture;
-
 import org.folio.invoices.utils.HelperUtils;
 import org.folio.rest.jaxrs.model.SequenceNumber;
 import org.folio.rest.jaxrs.model.Voucher;
 import org.folio.rest.jaxrs.model.VoucherCollection;
 import org.folio.rest.tools.client.interfaces.HttpClientInterface;
 
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
+
+import static org.folio.invoices.utils.HelperUtils.getEndpointWithQuery;
+import static org.folio.invoices.utils.HelperUtils.handleGetRequest;
+import static org.folio.invoices.utils.HelperUtils.handlePutRequest;
+import static org.folio.invoices.utils.ResourcePathResolver.VOUCHERS;
+import static org.folio.invoices.utils.ResourcePathResolver.VOUCHER_NUMBER;
+import static org.folio.invoices.utils.ResourcePathResolver.VOUCHER_NUMBER_START;
+import static org.folio.invoices.utils.ResourcePathResolver.resourceByIdPath;
+import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
+
 public class VoucherHelper extends AbstractHelper {
 
   private static final String CALLING_ENDPOINT_MSG = "Sending {} {}";
   private static final String EXCEPTION_CALLING_ENDPOINT_MSG = "Exception calling {} {}";
   private static final String GET_VOUCHERS_BY_QUERY = resourcesPath(VOUCHERS) + "?limit=%s&offset=%s%s&lang=%s";
+  private static final String VOUCHER_BY_ID_ENDPOINT = resourceByIdPath(VOUCHERS, "%s") + "?lang=%s";
+
+  static final String DEFAULT_SYSTEM_CURRENCY = "USD";
   
   VoucherHelper(Map<String, String> okapiHeaders, Context ctx, String lang) {
     super(getHttpClient(okapiHeaders), okapiHeaders, ctx, lang);
   }
 
+  VoucherHelper(HttpClientInterface httpClient, Map<String, String> okapiHeaders, Context ctx, String lang) {
+    super(httpClient, okapiHeaders, ctx, lang);
+  }
+
   public CompletableFuture<Voucher> getVoucher(String id) {
-    CompletableFuture<Voucher> future = new VertxCompletableFuture<>(ctx);
-    getVoucherById(id, lang, httpClient, ctx, okapiHeaders, logger).thenAccept(jsonInvoice -> {
-      logger.info("Successfully retrieved voucher by id: " + jsonInvoice.encodePrettily());
-      future.complete(jsonInvoice.mapTo(Voucher.class));
-    })
+    String endpoint = String.format(VOUCHER_BY_ID_ENDPOINT, id, lang);
+    return handleGetRequest(endpoint, httpClient, ctx, okapiHeaders, logger)
+      .thenApply(jsonInvoice -> {
+        logger.info("Successfully retrieved voucher by id: " + jsonInvoice.encodePrettily());
+        return jsonInvoice.mapTo(Voucher.class);
+      })
       .exceptionally(t -> {
         logger.error("Failed to retrieve Voucher", t.getCause());
-        future.completeExceptionally(t);
-        return null;
+        throw new CompletionException(t.getCause());
       });
-    return future;
   }
 
   public CompletableFuture<SequenceNumber> getVoucherNumberStartValue() {
@@ -118,5 +127,22 @@ public class VoucherHelper extends AbstractHelper {
         future.completeExceptionally(e);
     }
     return future;
+  }
+
+  CompletableFuture<String> generateVoucherNumber() {
+    return HelperUtils.handleGetRequest(resourcesPath(VOUCHER_NUMBER), httpClient, ctx, okapiHeaders, logger)
+      .thenApply(seqNumber -> seqNumber.mapTo(SequenceNumber.class).getSequenceNumber());
+  }
+
+  CompletableFuture<Voucher> createVoucher(Voucher voucher) {
+    JsonObject voucherRecord = JsonObject.mapFrom(voucher);
+    return createRecordInStorage(voucherRecord, resourcesPath(VOUCHERS))
+      .thenApply(voucher::withId);
+  }
+
+  CompletableFuture<Void> updateVoucher(Voucher voucher) {
+    JsonObject voucherRecord = JsonObject.mapFrom(voucher);
+    String endpoint = String.format(VOUCHER_BY_ID_ENDPOINT, voucher.getId(), lang);
+    return handlePutRequest(endpoint, voucherRecord, httpClient, ctx, okapiHeaders, logger);
   }
 }

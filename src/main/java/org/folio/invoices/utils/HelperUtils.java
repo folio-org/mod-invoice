@@ -1,6 +1,7 @@
 package org.folio.invoices.utils;
 
 import static java.util.Objects.nonNull;
+import static java.util.stream.Collectors.toList;
 import static org.apache.commons.lang3.StringUtils.EMPTY;
 import static org.apache.commons.lang3.StringUtils.isEmpty;
 import static org.folio.invoices.utils.ResourcePathResolver.*;
@@ -11,17 +12,25 @@ import java.nio.charset.StandardCharsets;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 
+import javax.money.CurrencyUnit;
+import javax.money.Monetary;
 import javax.money.MonetaryAmount;
 
+import one.util.streamex.StreamEx;
 import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.apache.commons.lang3.reflect.FieldUtils;
 import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.rest.jaxrs.model.Adjustment;
+import org.folio.rest.jaxrs.model.FundDistribution;
 import org.folio.rest.jaxrs.model.Invoice;
+import org.folio.rest.jaxrs.model.InvoiceLine;
+import org.folio.rest.jaxrs.model.Voucher;
+import org.folio.rest.jaxrs.model.VoucherLine;
 import org.folio.rest.tools.client.Response;
 import org.folio.rest.tools.client.interfaces.HttpClientInterface;
 import org.javamoney.moneta.Money;
@@ -63,12 +72,6 @@ public class HelperUtils {
   public static CompletableFuture<JsonObject> getVoucherLineById(String id, String lang, HttpClientInterface httpClient,
                                                                  Context ctx, Map<String, String> okapiHeaders, Logger logger) {
     String endpoint = String.format(GET_VOUCHER_LINES_BYID, id, lang);
-    return handleGetRequest(endpoint, httpClient, ctx, okapiHeaders, logger);
-  }
-
-  public static CompletableFuture<JsonObject> getVoucherById(String id, String lang, HttpClientInterface httpClient, Context ctx,
-      Map<String, String> okapiHeaders, Logger logger) {
-    String endpoint = String.format(GET_VOUCHER_BY_ID, id, lang);
     return handleGetRequest(endpoint, httpClient, ctx, okapiHeaders, logger);
   }
 
@@ -235,5 +238,77 @@ public class HelperUtils {
 
   private static boolean isFieldChanged(Object newObject, Object existedObject, String field) throws IllegalAccessException {
     return !EqualsBuilder.reflectionEquals(FieldUtils.readDeclaredField(newObject, field, true), FieldUtils.readDeclaredField(existedObject, field, true), true, existedObject.getClass(), true);
+  }
+
+  /**
+   * Transform list of id's to CQL query using 'or' operation
+   * @param ids list of id's
+   * @return String representing CQL query to get records by id's
+   */
+  public static String convertIdsToCqlQuery(List<String> ids) {
+    return StreamEx.of(ids).map(id -> "id==" + id).joining(" or ");
+  }
+
+  /**
+   * Wait for all requests completion and collect all resulting objects. In case any failed, complete resulting future with the exception
+   * @param futures list of futures and each produces resulting object on completion
+   * @param <T> resulting type
+   * @return resulting objects
+   */
+  public static <T> CompletableFuture<List<T>> collectResultsOnSuccess(List<CompletableFuture<T>> futures) {
+    return VertxCompletableFuture.allOf(futures.toArray(new CompletableFuture[0]))
+      .thenApply(v -> futures
+        .stream()
+        // The CompletableFuture::join can be safely used because the `allOf` guaranties success at this step
+        .map(CompletableFuture::join)
+        .filter(Objects::nonNull)
+        .collect(toList())
+      );
+  }
+
+  public static double calculateVoucherAmount(Voucher voucher, List<VoucherLine> voucherLines) {
+
+    CurrencyUnit currency = Monetary.getCurrency(voucher.getSystemCurrency());
+
+    MonetaryAmount amount = voucherLines.stream()
+      .map(line -> Money.of(line.getAmount(), currency))
+      .collect(MonetaryFunctions.summarizingMonetary(currency))
+      .getSum();
+
+    return convertToDouble(amount);
+  }
+
+  public static Double calculateVoucherLineAmount(List<FundDistribution> fundDistributions, List<InvoiceLine> invoiceLines, Voucher voucher) {
+    CurrencyUnit invoiceCurrency = Monetary.getCurrency(voucher.getInvoiceCurrency());
+    MonetaryAmount totalAmount = Money.of(0, invoiceCurrency);
+
+    for (FundDistribution fundDistribution : fundDistributions) {
+      InvoiceLine invoiceLine = findLineById(invoiceLines, fundDistribution.getInvoiceLineId());
+      MonetaryAmount subTotal = Money.of(invoiceLine.getTotal(), invoiceCurrency);
+      totalAmount = totalAmount.add(subTotal.with(MonetaryOperators.percent(fundDistribution.getPercentage())).multiply(voucher.getExchangeRate()));
+    }
+    return convertToDouble(totalAmount);
+  }
+
+
+
+  public static InvoiceLine findLineById(List<InvoiceLine> invoiceLines, String invoiceLineId) {
+    return invoiceLines.stream()
+      .filter(invoiceLine -> invoiceLineId.equals(invoiceLine.getId()))
+      .findFirst()
+      .orElseThrow(() -> new IllegalArgumentException("Cannot find invoiceLine associated with foundDistribution"));
+  }
+
+  public static InvoiceLine calculateInvoiceLineTotals(InvoiceLine invoiceLine, Invoice invoice) {
+    String currency = invoice.getCurrency();
+    CurrencyUnit currencyUnit = Monetary.getCurrency(currency);
+    MonetaryAmount subTotal = Money.of(invoiceLine.getSubTotal(), currencyUnit);
+
+    MonetaryAmount adjustmentTotals = calculateAdjustmentsTotal(invoiceLine.getAdjustments(), subTotal);
+    MonetaryAmount total = adjustmentTotals.add(subTotal);
+    invoiceLine.setAdjustmentsTotal(convertToDouble(adjustmentTotals));
+    invoiceLine.setTotal(convertToDouble(total));
+
+    return invoiceLine;
   }
 }

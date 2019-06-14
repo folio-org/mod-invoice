@@ -1,23 +1,35 @@
 package org.folio.rest.impl;
 
+import static org.folio.invoices.utils.HelperUtils.getEndpointWithQuery;
 import static org.folio.invoices.utils.HelperUtils.getVoucherLineById;
+import static org.folio.invoices.utils.HelperUtils.handleDeleteRequest;
+import static org.folio.invoices.utils.HelperUtils.handleGetRequest;
 import static org.folio.invoices.utils.HelperUtils.handlePutRequest;
 import static org.folio.invoices.utils.ResourcePathResolver.VOUCHER_LINES;
 import static org.folio.invoices.utils.ResourcePathResolver.resourceByIdPath;
+import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
 
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
+import org.folio.rest.acq.model.VoucherLineCollection;
 import org.folio.rest.jaxrs.model.VoucherLine;
 
 import io.vertx.core.Context;
 import io.vertx.core.json.JsonObject;
 import me.escoffier.vertx.completablefuture.VertxCompletableFuture;
+import org.folio.rest.tools.client.interfaces.HttpClientInterface;
 
 public class VoucherLineHelper extends AbstractHelper {
+  private static final String GET_VOUCHER_LINE_BY_QUERY = resourcesPath(VOUCHER_LINES) + "?limit=%s&offset=%s%s&lang=%s";
+  private static final String VOUCHER_LINE_BY_ID_ENDPOINT = resourceByIdPath(VOUCHER_LINES, "%s") + "?lang=%s";
 
   VoucherLineHelper(Map<String, String> okapiHeaders, Context ctx, String lang) {
     super(getHttpClient(okapiHeaders), okapiHeaders, ctx, lang);
+  }
+
+  VoucherLineHelper(HttpClientInterface httpClient, Map<String, String> okapiHeaders, Context ctx, String lang) {
+    super(httpClient, okapiHeaders, ctx, lang);
   }
 
   public CompletableFuture<Void> updateVoucherLine(VoucherLine voucherLine) {
@@ -25,7 +37,7 @@ public class VoucherLineHelper extends AbstractHelper {
         okapiHeaders, logger);
   }
 
-  public CompletableFuture<VoucherLine> getVoucherLines(String id) {
+  public CompletableFuture<VoucherLine> getVoucherLine(String id) {
     CompletableFuture<VoucherLine> future = new VertxCompletableFuture<>(ctx);
     try {
       getVoucherLineById(id, lang, httpClient, ctx, okapiHeaders, logger)
@@ -42,5 +54,38 @@ public class VoucherLineHelper extends AbstractHelper {
       future.completeExceptionally(e);
     }
     return future;
+  }
+
+  /**
+   * Gets list of voucher line
+   *
+   * @param limit Limit the number of elements returned in the response
+   * @param offset Skip over a number of elements by specifying an offset value for the query
+   * @param query A query expressed as a CQL string using valid searchable fields
+   * @return completable future with {@link VoucherLineCollection} on success or an exception if processing fails
+   */
+  public CompletableFuture<VoucherLineCollection> getVoucherLines(int limit, int offset, String query) {
+    CompletableFuture<VoucherLineCollection> future = new VertxCompletableFuture<>(ctx);
+    try {
+      String queryParam = getEndpointWithQuery(query, logger);
+      String endpoint = String.format(GET_VOUCHER_LINE_BY_QUERY, limit, offset, queryParam, lang);
+      handleGetRequest(endpoint, httpClient, ctx, okapiHeaders, logger)
+        .thenAccept(jsonVoucherLines -> {
+          logger.info("Successfully retrieved vouchers: " + jsonVoucherLines.encodePrettily());
+          future.complete(jsonVoucherLines.mapTo(VoucherLineCollection.class));
+        })
+        .exceptionally(t -> {
+          logger.error("Error getting vouchers", t);
+          future.completeExceptionally(t);
+          return null;
+        });
+    } catch (Exception e) {
+      future.completeExceptionally(e);
+    }
+    return future;
+  }
+
+  public CompletableFuture<Void> deleteVoucherLine(String id) {
+    return handleDeleteRequest(String.format(VOUCHER_LINE_BY_ID_ENDPOINT, id, lang), httpClient, ctx, okapiHeaders, logger);
   }
 }

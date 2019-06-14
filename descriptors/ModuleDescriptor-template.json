@@ -39,11 +39,20 @@
           "pathPattern": "/invoice/invoices/{id}",
           "permissionsRequired": ["invoice.invoices.item.put"],
           "modulePermissions": [
+            "configuration.entries.collection.get",
             "invoice-storage.invoices.item.put",
             "invoice-storage.invoices.item.get",
             "invoice-storage.invoice-lines.collection.get",
+            "finance-storage.funds.collection.get",
             "orders.po-lines.item.put",
-            "orders.po-lines.item.get"
+            "orders.po-lines.item.get",
+            "voucher-storage.vouchers.collection.get",
+            "voucher-storage.vouchers.item.post",
+            "voucher-storage.vouchers.item.put",
+            "voucher-storage.voucher-lines.collection.get",
+            "voucher-storage.voucher-lines.item.post",
+            "voucher-storage.voucher-lines.item.delete",
+            "voucher-storage.voucher-number.get"
           ]
         },
         {
@@ -199,7 +208,7 @@
     },
     {
       "id": "orders",
-      "version": "5.0"
+      "version": "6.0"
     },
     {
       "id": "voucher-storage.voucher-number",

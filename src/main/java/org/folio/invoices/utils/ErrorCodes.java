@@ -7,7 +7,9 @@ public enum ErrorCodes {
   GENERIC_ERROR_CODE("genericError", "Generic error"),
   PO_LINE_NOT_FOUND("poLineNotFound", "The purchase order line record is not found"),
   INVOICE_TOTAL_REQUIRED("invoiceTotalRequired", "The total amount is expected when lockTotal is true"),
-  PROHIBITED_FIELD_CHANGING("protectedFieldChanging", "Field can't be modified");
+  MOD_CONFIG_ERROR("configNotAvailable", "The mod-configuration is not available"),
+  PROHIBITED_FIELD_CHANGING("protectedFieldChanging", "Field can't be modified"),
+  FUNDS_NOT_FOUND("fundsNotFound", "Fund records are not found");
 
   private final String code;
   private final String description;
