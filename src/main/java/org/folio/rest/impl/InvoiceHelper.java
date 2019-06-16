@@ -1,57 +1,16 @@
 package org.folio.rest.impl;
 
-import static java.util.concurrent.CompletableFuture.allOf;
-import static java.util.stream.Collectors.groupingBy;
-import static java.util.stream.Collectors.toList;
-import static org.apache.commons.collections4.CollectionUtils.isNotEmpty;
-import static org.folio.invoices.utils.ErrorCodes.FUNDS_NOT_FOUND;
-import static org.folio.invoices.utils.ErrorCodes.INVOICE_TOTAL_REQUIRED;
-import static org.folio.invoices.utils.HelperUtils.calculateAdjustmentsTotal;
-import static org.folio.invoices.utils.HelperUtils.calculateVoucherLineAmount;
-import static org.folio.invoices.utils.HelperUtils.collectResultsOnSuccess;
-import static org.folio.invoices.utils.HelperUtils.convertToDouble;
-import static java.util.stream.Collectors.toMap;
-import static org.folio.invoices.utils.ErrorCodes.PO_LINE_NOT_FOUND;
-import static org.folio.invoices.utils.HelperUtils.encodeQuery;
-import static org.folio.invoices.utils.HelperUtils.findChangedProtectedFields;
-import static org.folio.invoices.utils.HelperUtils.handlePutRequest;
-import static org.folio.invoices.utils.HelperUtils.isFieldsVerificationNeeded;
-import static org.folio.invoices.utils.ResourcePathResolver.FOLIO_INVOICE_NUMBER;
-import static org.folio.invoices.utils.HelperUtils.handleDeleteRequest;
-import static org.folio.invoices.utils.ResourcePathResolver.INVOICES;
-import static org.folio.invoices.utils.ResourcePathResolver.PO_LINES;
-import static org.folio.invoices.utils.ResourcePathResolver.VOUCHER_LINES;
-import static org.folio.invoices.utils.ResourcePathResolver.resourceByIdPath;
-import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
-import static org.folio.invoices.utils.HelperUtils.handleGetRequest;
-import static org.folio.invoices.utils.HelperUtils.getEndpointWithQuery;
-import static org.folio.invoices.utils.HelperUtils.getInvoiceById;
-import static org.folio.rest.impl.VoucherHelper.DEFAULT_SYSTEM_CURRENCY;
-
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
-import java.util.concurrent.CompletableFuture;
-
-import javax.money.CurrencyUnit;
-import javax.money.Monetary;
-import javax.money.MonetaryAmount;
-import javax.money.convert.MonetaryConversions;
-
+import io.vertx.core.Context;
 import io.vertx.core.json.JsonObject;
 import me.escoffier.vertx.completablefuture.VertxCompletableFuture;
-
 import one.util.streamex.StreamEx;
 import org.apache.commons.collections4.CollectionUtils;
 import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.invoices.utils.HelperUtils;
 import org.folio.invoices.utils.InvoiceProtectedFields;
-import org.folio.rest.acq.model.orders.CompositePoLine;
 import org.folio.rest.acq.model.finance.Fund;
 import org.folio.rest.acq.model.finance.FundCollection;
+import org.folio.rest.acq.model.orders.CompositePoLine;
 import org.folio.rest.jaxrs.model.Adjustment;
 import org.folio.rest.jaxrs.model.Error;
 import org.folio.rest.jaxrs.model.FundDistribution;
@@ -59,21 +18,55 @@ import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.jaxrs.model.InvoiceCollection;
 import org.folio.rest.jaxrs.model.InvoiceLine;
 import org.folio.rest.jaxrs.model.InvoiceLineCollection;
+import org.folio.rest.jaxrs.model.Parameter;
 import org.folio.rest.jaxrs.model.SequenceNumber;
+import org.folio.rest.jaxrs.model.Voucher;
 import org.folio.rest.jaxrs.model.VoucherCollection;
+import org.folio.rest.jaxrs.model.VoucherLine;
 import org.javamoney.moneta.Money;
+import org.javamoney.moneta.function.MonetaryFunctions;
 
+import javax.money.CurrencyUnit;
+import javax.money.Monetary;
+import javax.money.MonetaryAmount;
+import javax.money.convert.MonetaryConversions;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.stream.Collectors;
 
-import io.vertx.core.Context;
-import org.folio.rest.jaxrs.model.Parameter;
-import org.folio.rest.jaxrs.model.Voucher;
-import org.folio.rest.jaxrs.model.VoucherLine;
-
-
-
-import org.javamoney.moneta.function.MonetaryFunctions;
+import static java.util.concurrent.CompletableFuture.allOf;
+import static java.util.stream.Collectors.groupingBy;
+import static java.util.stream.Collectors.toList;
+import static java.util.stream.Collectors.toMap;
+import static org.apache.commons.collections4.CollectionUtils.isNotEmpty;
+import static org.folio.invoices.utils.ErrorCodes.FUNDS_NOT_FOUND;
+import static org.folio.invoices.utils.ErrorCodes.INVOICE_TOTAL_REQUIRED;
+import static org.folio.invoices.utils.ErrorCodes.PO_LINE_NOT_FOUND;
+import static org.folio.invoices.utils.HelperUtils.calculateAdjustmentsTotal;
+import static org.folio.invoices.utils.HelperUtils.calculateVoucherLineAmount;
+import static org.folio.invoices.utils.HelperUtils.collectResultsOnSuccess;
+import static org.folio.invoices.utils.HelperUtils.convertToDouble;
+import static org.folio.invoices.utils.HelperUtils.encodeQuery;
+import static org.folio.invoices.utils.HelperUtils.findChangedProtectedFields;
+import static org.folio.invoices.utils.HelperUtils.getEndpointWithQuery;
+import static org.folio.invoices.utils.HelperUtils.getInvoiceById;
+import static org.folio.invoices.utils.HelperUtils.handleDeleteRequest;
+import static org.folio.invoices.utils.HelperUtils.handleGetRequest;
+import static org.folio.invoices.utils.HelperUtils.handlePutRequest;
+import static org.folio.invoices.utils.HelperUtils.isFieldsVerificationNeeded;
+import static org.folio.invoices.utils.ResourcePathResolver.FOLIO_INVOICE_NUMBER;
+import static org.folio.invoices.utils.ResourcePathResolver.INVOICES;
+import static org.folio.invoices.utils.ResourcePathResolver.PO_LINES;
+import static org.folio.invoices.utils.ResourcePathResolver.VOUCHER_LINES;
+import static org.folio.invoices.utils.ResourcePathResolver.resourceByIdPath;
+import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
+import static org.folio.rest.impl.VoucherHelper.DEFAULT_SYSTEM_CURRENCY;
 
 public class InvoiceHelper extends AbstractHelper {
 
@@ -82,6 +75,8 @@ public class InvoiceHelper extends AbstractHelper {
   private static final String DEFAULT_ACCOUNTING_CODE = "tmp_code";
   public static final String NO_INVOICE_LINES_ERROR_MSG = "An invoice cannot be approved if there are no corresponding lines of invoice.";
   public static final String TOTAL = "total";
+  public static final String SYSTEM_CONFIG_NAME = "ORG";
+  public static final String LOCALE_SETTINGS = "localeSettings";
   private final InvoiceLineHelper invoiceLineHelper;
   private final VoucherHelper voucherHelper;
   private final VoucherLineHelper voucherLineHelper;
@@ -236,7 +231,8 @@ public class InvoiceHelper extends AbstractHelper {
           Voucher voucher = vouchers.get(0);
           voucher.setInvoiceCurrency(invoice.getCurrency());
           setVoucherDefaultRequiredFields(voucher);
-          return getExchangeRate(voucher)
+          return getSystemCurrency()
+            .thenCompose(systemCurrency -> getExchangeRate(voucher.withSystemCurrency(systemCurrency)))
             .thenAccept(voucher::setExchangeRate)
             .thenCompose(v -> VertxCompletableFuture.completedFuture(voucher));
         }
@@ -269,15 +265,19 @@ public class InvoiceHelper extends AbstractHelper {
     voucher.setInvoiceCurrency(invoice.getCurrency());
     setVoucherDefaultRequiredFields(voucher);
 
-    return loadConfiguration("ORG", "localeSettings")
-      .thenAccept(configs -> {
-        JsonObject config = new JsonObject(configs.get(0).getValue());
-        voucher.setSystemCurrency(config.getString("currency", DEFAULT_SYSTEM_CURRENCY));
-      })
-      .thenCompose(v -> getExchangeRate(voucher))
+    return getSystemCurrency()
+      .thenCompose(systemCurrency -> getExchangeRate(voucher.withSystemCurrency(systemCurrency)))
       .thenAccept(voucher::setExchangeRate)
       .thenCompose(v -> voucherHelper.generateVoucherNumber())
       .thenApply(voucher::withVoucherNumber);
+  }
+
+  private CompletableFuture<String> getSystemCurrency() {
+    return loadConfiguration(SYSTEM_CONFIG_NAME, LOCALE_SETTINGS)
+      .thenApply(configs -> {
+        JsonObject config = configs.stream().map(conf -> new JsonObject(conf.getValue())).findFirst().orElseGet(JsonObject::new);
+        return config.getString("currency", DEFAULT_SYSTEM_CURRENCY);
+      });
   }
 
   private CompletableFuture<Void> handleVoucherWithLines(List<InvoiceLine> invoiceLines, Voucher voucher) {
@@ -364,8 +364,10 @@ public class InvoiceHelper extends AbstractHelper {
       .withVoucherId(voucher.getId())
       .withExternalAccountNumber(foundDistributionsAssociatedWithAccountNumber.getKey())
       .withFundDistributions(foundDistributionsAssociatedWithAccountNumber.getValue())
-      .withSourceIds(invoiceLines.stream()
-        .map(InvoiceLine::getId)
+      .withSourceIds(foundDistributionsAssociatedWithAccountNumber.getValue()
+        .stream()
+        .map(FundDistribution::getInvoiceLineId)
+        .distinct()
         .collect(toList()))
       .withAmount(calculateVoucherLineAmount(foundDistributionsAssociatedWithAccountNumber.getValue(), invoiceLines, voucher));
   }

@@ -1,6 +1,5 @@
 package org.folio.rest.impl;
 
-import io.restassured.http.Header;
 import io.restassured.http.Headers;
 import io.restassured.response.Response;
 import io.vertx.core.http.HttpMethod;
@@ -14,6 +13,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import org.folio.rest.acq.model.VoucherLineCollection;
 import org.folio.rest.acq.model.finance.Fund;
 import org.folio.rest.acq.model.finance.FundCollection;
 import org.folio.rest.acq.model.orders.CompositePoLine;
@@ -40,7 +40,9 @@ import java.util.*;
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 import static javax.ws.rs.core.MediaType.TEXT_PLAIN;
 import static org.folio.invoices.utils.ErrorCodes.FUNDS_NOT_FOUND;
+import static org.folio.invoices.utils.ErrorCodes.GENERIC_ERROR_CODE;
 import static org.folio.invoices.utils.ErrorCodes.INVOICE_TOTAL_REQUIRED;
+import static org.folio.invoices.utils.ErrorCodes.MOD_CONFIG_ERROR;
 import static org.folio.invoices.utils.ErrorCodes.PO_LINE_NOT_FOUND;
 import static org.folio.invoices.utils.HelperUtils.calculateInvoiceLineTotals;
 import static org.folio.invoices.utils.HelperUtils.calculateVoucherAmount;
@@ -55,13 +57,17 @@ import static org.folio.invoices.utils.ResourcePathResolver.VOUCHERS;
 import static org.folio.invoices.utils.ResourcePathResolver.VOUCHER_LINES;
 import static org.folio.rest.impl.InvoiceHelper.MAX_IDS_FOR_GET_RQ;
 import static org.folio.rest.impl.InvoiceHelper.NO_INVOICE_LINES_ERROR_MSG;
+import static org.folio.rest.impl.InvoiceLinesApiTest.INVOICE_LINES_LIST_PATH;
+import static org.folio.rest.impl.MockServer.NON_EXIST_CONFIG_X_OKAPI_TENANT;
 import static org.folio.rest.impl.InvoicesImpl.PROTECTED_AND_MODIFIED_FIELDS;
 import static org.folio.rest.impl.InvoiceLinesApiTest.INVOICE_LINE_SAMPLE_PATH;
+import static org.folio.rest.impl.MockServer.ERROR_CONFIG_X_OKAPI_TENANT;
 import static org.folio.rest.impl.MockServer.ERROR_X_OKAPI_TENANT;
 import static org.folio.rest.impl.MockServer.INVOICE_NUMBER_ERROR_X_OKAPI_TENANT;
 import static org.folio.rest.impl.MockServer.addMockEntry;
 import static org.folio.rest.impl.MockServer.getRqRsEntries;
 import static org.folio.rest.impl.MockServer.serverRqRs;
+import static org.folio.rest.impl.VoucherHelper.DEFAULT_SYSTEM_CURRENCY;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.arrayContaining;
@@ -96,7 +102,9 @@ public class InvoicesApiTest extends ApiTestBase {
   static final String EXISTING_VENDOR_INV_NO = "existingVendorInvoiceNo";
   private static final String BAD_INVOICE_ID = "5a34ae0e-5a11-4337-be95-1a20cfdc3161";
   private static final String EXISTENT_PO_LINE_ID = "c2755a78-2f8d-47d0-a218-059a9b7391b4";
+  private static final String EXISTING_VOUCHER_ID = "f914903e-0419-4123-9afc-73e863d1768c";
   private static final String STATUS = "status";
+  private static final String INVALID_CURRENCY = "ABC";
 
 
   @Test
@@ -255,8 +263,35 @@ public class InvoicesApiTest extends ApiTestBase {
   }
 
   @Test
-  public void testUpdateValidInvoiceTransitionToApproved() {
+  public void testTransitionToApproved() {
     logger.info("=== Test transition invoice to Approved ===");
+
+    List<InvoiceLine> invoiceLines = getMockAsJson(INVOICE_LINES_LIST_PATH).mapTo(InvoiceLineCollection.class).getInvoiceLines();
+    Invoice reqData = getMockAsJson(REVIEWED_INVOICE_SAMPLE_PATH).mapTo(Invoice.class);
+    invoiceLines
+      .forEach(invoiceLine -> {
+        invoiceLine.setInvoiceId(reqData.getId());
+        addMockEntry(INVOICE_LINES, JsonObject.mapFrom(invoiceLine));
+      });
+
+    reqData.setStatus(Invoice.Status.APPROVED);
+
+    String id = reqData.getId();
+    String jsonBody = JsonObject.mapFrom(reqData).encode();
+    Headers headers = prepareHeaders(X_OKAPI_URL, X_OKAPI_TENANT, X_OKAPI_TOKEN);
+    verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, headers, "", 204);
+
+    List<JsonObject> vouchersCreated = serverRqRs.get(VOUCHERS, HttpMethod.POST);
+    assertThat(vouchersCreated, notNullValue());
+    assertThat(vouchersCreated, hasSize(1));
+    Voucher voucherCreated = vouchersCreated.get(0).mapTo(Voucher.class);
+    assertThat(voucherCreated.getSystemCurrency(), equalTo("GBP"));
+    verifyTransitionToApproved(voucherCreated, invoiceLines);
+  }
+
+  @Test
+  public void testTransitionToApprovedWithDefaultSystemCurrency() {
+    logger.info("=== Test transition invoice to Approved with empty config ===");
     List<InvoiceLine> invoiceLines = new ArrayList<>();
     for (int i = 0; i < 3; i++) {
       invoiceLines.add(getMockAsJson(INVOICE_LINE_SAMPLE_PATH).mapTo(InvoiceLine.class));
@@ -274,32 +309,30 @@ public class InvoicesApiTest extends ApiTestBase {
 
     String id = reqData.getId();
     String jsonBody = JsonObject.mapFrom(reqData).encode();
-
-    verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, "", 204);
+    Headers headers = prepareHeaders(X_OKAPI_URL, NON_EXIST_CONFIG_X_OKAPI_TENANT, X_OKAPI_TOKEN);
+    verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, headers, "", 204);
 
     List<JsonObject> vouchersCreated = serverRqRs.get(VOUCHERS, HttpMethod.POST);
     assertThat(vouchersCreated, notNullValue());
     assertThat(vouchersCreated, hasSize(1));
-
     Voucher voucherCreated = vouchersCreated.get(0).mapTo(Voucher.class);
-
+    assertThat(voucherCreated.getSystemCurrency(), equalTo(DEFAULT_SYSTEM_CURRENCY));
     verifyTransitionToApproved(voucherCreated, invoiceLines);
   }
 
   @Test
-  public void testUpdateValidInvoiceTransitionToApprovedWithExistingVoucher() {
-    logger.info("=== Test transition invoice to Approved with existing voucher ===");
-    List<InvoiceLine> invoiceLines = new ArrayList<>();
-    for (int i = 0; i < 3; i++) {
-      invoiceLines.add(getMockAsJson(INVOICE_LINE_SAMPLE_PATH).mapTo(InvoiceLine.class));
-    }
+  public void testTransitionToApprovedWithExistingVoucherAndVoucherLines() {
+    logger.info("=== Test transition invoice to Approved with existing voucher and voucherLines ===");
+
+    InvoiceLine invoiceLine = getMockAsJson(INVOICE_LINE_SAMPLE_PATH).mapTo(InvoiceLine.class);
+    VoucherLine voucherLine = new VoucherLine().withVoucherId(EXISTING_VOUCHER_ID);
 
     Invoice reqData = getMockAsJson(REVIEWED_INVOICE_WITH_EXISTING_VOUCHER_SAMPLE_PATH).mapTo(Invoice.class);
-    invoiceLines.forEach(invoiceLine -> {
-        invoiceLine.setId(UUID.randomUUID().toString());
-        invoiceLine.setInvoiceId(reqData.getId());
-        addMockEntry(INVOICE_LINES, JsonObject.mapFrom(invoiceLine));
-      });
+    invoiceLine.setId(UUID.randomUUID().toString());
+    invoiceLine.setInvoiceId(reqData.getId());
+
+    addMockEntry(INVOICE_LINES, JsonObject.mapFrom(invoiceLine));
+    addMockEntry(VOUCHER_LINES, JsonObject.mapFrom(voucherLine));
 
     reqData.setStatus(Invoice.Status.APPROVED);
 
@@ -308,18 +341,98 @@ public class InvoicesApiTest extends ApiTestBase {
 
     verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, "", 204);
     List<JsonObject> vouchersUpdated = serverRqRs.get(VOUCHERS, HttpMethod.PUT);
+    List<JsonObject> voucherLinesDeletions = serverRqRs.get(VOUCHER_LINES, HttpMethod.DELETE);
+    List<JsonObject> voucherLinesSearches = serverRqRs.get(VOUCHER_LINES, HttpMethod.GET);
+
     assertThat(vouchersUpdated, notNullValue());
     assertThat(vouchersUpdated, hasSize(1));
+    assertThat(voucherLinesDeletions, notNullValue());
+    assertThat(voucherLinesSearches, notNullValue());
+    assertThat(voucherLinesSearches, hasSize(1));
+    VoucherLineCollection voucherLineCollection = voucherLinesSearches.get(0).mapTo(VoucherLineCollection.class);
+    assertThat(voucherLinesDeletions, hasSize(voucherLineCollection.getTotalRecords()));
+
 
     Voucher updatedVoucher = vouchersUpdated.get(0).mapTo(Voucher.class);
 
-    verifyTransitionToApproved(updatedVoucher, invoiceLines);
-
-
+    verifyTransitionToApproved(updatedVoucher, Collections.singletonList(invoiceLine));
   }
 
   @Test
-  public void testUpdateValidInvoiceTransitionToApprovedWithOutInvoiceLines() {
+  public void testTransitionToApprovedInvalidCurrency() {
+    logger.info("=== Test transition invoice to Approved with invalid invoiceCurrency ===");
+
+    InvoiceLine invoiceLine = getMockAsJson(INVOICE_LINE_SAMPLE_PATH).mapTo(InvoiceLine.class);
+
+
+    Invoice reqData = getMockAsJson(REVIEWED_INVOICE_WITH_EXISTING_VOUCHER_SAMPLE_PATH).mapTo(Invoice.class);
+    invoiceLine.setId(UUID.randomUUID().toString());
+    invoiceLine.setInvoiceId(reqData.getId());
+    addMockEntry(INVOICE_LINES, JsonObject.mapFrom(invoiceLine));
+
+
+    reqData.setStatus(Invoice.Status.APPROVED);
+    reqData.setCurrency(INVALID_CURRENCY);
+
+    String id = reqData.getId();
+    String jsonBody = JsonObject.mapFrom(reqData).encode();
+    Errors errors = verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, APPLICATION_JSON, 500)
+      .then()
+        .extract()
+          .body().as(Errors.class);
+
+    assertThat(errors, notNullValue());
+    assertThat(errors.getErrors(), hasSize(1));
+    assertThat(errors.getErrors().get(0).getAdditionalProperties().get("cause"), equalTo("Unknown currency code: " + INVALID_CURRENCY));
+  }
+
+  @Test
+  public void testTransitionToApprovedErrorFromModConfig() {
+    logger.info("=== Test transition invoice to Approved with mod-config error ===");
+
+    Errors errors = transitionToApprovedWithError(REVIEWED_INVOICE_SAMPLE_PATH, prepareHeaders(X_OKAPI_URL, ERROR_CONFIG_X_OKAPI_TENANT, X_OKAPI_TOKEN));
+
+    assertThat(errors, notNullValue());
+    assertThat(errors.getErrors(), hasSize(1));
+    assertThat(errors.getErrors().get(0).getMessage(), equalTo(MOD_CONFIG_ERROR.getDescription()));
+    assertThat(errors.getErrors().get(0).getCode(), equalTo(MOD_CONFIG_ERROR.getCode()));
+  }
+
+  private Errors transitionToApprovedWithError(String invoiceSamplePath, Headers headers) {
+    InvoiceLine invoiceLine = getMockAsJson(INVOICE_LINE_SAMPLE_PATH).mapTo(InvoiceLine.class);
+
+
+    Invoice reqData = getMockAsJson(invoiceSamplePath).mapTo(Invoice.class);
+    invoiceLine.setId(UUID.randomUUID().toString());
+    invoiceLine.setInvoiceId(reqData.getId());
+    addMockEntry(INVOICE_LINES, JsonObject.mapFrom(invoiceLine));
+
+
+    reqData.setStatus(Invoice.Status.APPROVED);
+
+    String id = reqData.getId();
+    String jsonBody = JsonObject.mapFrom(reqData).encode();
+    return verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, headers, APPLICATION_JSON, 500)
+      .then()
+      .extract()
+      .body().as(Errors.class);
+  }
+
+
+  @Test
+  public void testTransitionToApprovedWithoutToken() {
+    logger.info("=== Test transition invoice to Approved without token ===");
+
+    Errors errors = transitionToApprovedWithError(REVIEWED_INVOICE_WITH_EXISTING_VOUCHER_SAMPLE_PATH, prepareHeaders(X_OKAPI_URL, X_OKAPI_TENANT));
+
+    assertThat(errors, notNullValue());
+    assertThat(errors.getErrors(), hasSize(1));
+    assertThat(errors.getErrors().get(0).getMessage(), equalTo(MOD_CONFIG_ERROR.getDescription()));
+    assertThat(errors.getErrors().get(0).getCode(), equalTo(MOD_CONFIG_ERROR.getCode()));
+  }
+
+  @Test
+  public void testTransitionToApprovedWithoutInvoiceLines() {
     logger.info("=== Test transition invoice to Approved without invoiceLines should fail ===");
 
     Invoice reqData = getMockAsJson(REVIEWED_INVOICE_WITH_EXISTING_VOUCHER_SAMPLE_PATH).mapTo(Invoice.class);
@@ -341,24 +454,11 @@ public class InvoicesApiTest extends ApiTestBase {
   }
 
   @Test
-  public void testUpdateValidInvoiceTransitionToApprovedWithInternalServerErrorFromOnGetInvoiceLines() {
+  public void testTransitionToApprovedWithInternalServerErrorFromGetInvoiceLines() {
     logger.info("=== Test transition invoice to Approved with Internal Server Error when retrieving invoiceLines ===");
 
-    InvoiceLine invoiceLine = getMockAsJson(INVOICE_LINE_SAMPLE_PATH).mapTo(InvoiceLine.class);
-    Invoice reqData = getMockAsJson(REVIEWED_INVOICE_WITH_EXISTING_VOUCHER_SAMPLE_PATH).mapTo(Invoice.class);
-    reqData.setStatus(Invoice.Status.APPROVED);
-    String id = reqData.getId();
-    invoiceLine.setId(UUID.randomUUID().toString());
-    invoiceLine.setInvoiceId(id);
-
-    addMockEntry(INVOICE_LINES, JsonObject.mapFrom(invoiceLine));
-
-    String jsonBody = JsonObject.mapFrom(reqData).encode();
-    Headers headers = prepareHeaders(X_OKAPI_URL, X_OKAPI_TENANT,X_OKAPI_TOKEN, new Header(X_INTERNAL_ERROR, INVOICE_LINES));
-    Errors errors = verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, headers, APPLICATION_JSON, 500)
-      .then()
-      .extract()
-      .body().as(Errors.class);
+    Headers headers = prepareHeaders(X_OKAPI_URL, MockServer.GET_INVOICE_LINES_ERROR_X_OKAPI_TENANT, X_OKAPI_TOKEN);
+    Errors errors = transitionToApprovedWithError(REVIEWED_INVOICE_WITH_EXISTING_VOUCHER_SAMPLE_PATH, headers);
 
     assertThat(errors, notNullValue());
     assertThat(errors.getErrors(), hasSize(1));
@@ -367,7 +467,7 @@ public class InvoicesApiTest extends ApiTestBase {
   }
 
   @Test
-  public void testUpdateValidInvoiceTransitionToApprovedFundsNotFound() {
+  public void testTransitionToApprovedFundsNotFound() {
     logger.info("=== Test transition invoice to Approved when fund not found ===");
 
     InvoiceLine invoiceLine = getMockAsJson(INVOICE_LINE_SAMPLE_PATH).mapTo(InvoiceLine.class);
@@ -395,71 +495,104 @@ public class InvoicesApiTest extends ApiTestBase {
   }
 
   @Test
-  public void testUpdateValidInvoiceTransitionToApprovedWithInternalServerErrorFromOnGetFunds() {
-    logger.info("=== Test transition invoice to Approved with Internal Server Error when retrieving invoiceLines ===");
+  public void testTransitionToApprovedWithInternalServerErrorFromGetFunds() {
+    logger.info("=== Test transition invoice to Approved with Internal Server Error when retrieving funds ===");
 
-    InvoiceLine invoiceLine = getMockAsJson(INVOICE_LINE_SAMPLE_PATH).mapTo(InvoiceLine.class);
-    Invoice reqData = getMockAsJson(REVIEWED_INVOICE_WITH_EXISTING_VOUCHER_SAMPLE_PATH).mapTo(Invoice.class);
-    reqData.setStatus(Invoice.Status.APPROVED);
-    String id = reqData.getId();
-    invoiceLine.setId(UUID.randomUUID().toString());
-    invoiceLine.setInvoiceId(id);
-    addMockEntry(INVOICE_LINES, JsonObject.mapFrom(invoiceLine));
-
-    String jsonBody = JsonObject.mapFrom(reqData).encode();
-    Headers headers = prepareHeaders(X_OKAPI_URL, X_OKAPI_TENANT,X_OKAPI_TOKEN, new Header(X_INTERNAL_ERROR, FUNDS));
-    Errors errors = verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, headers, APPLICATION_JSON, 500)
-      .then()
-      .extract()
-      .body().as(Errors.class);
+    Headers headers = prepareHeaders(X_OKAPI_URL, MockServer.GET_FUNDS_ERROR_X_OKAPI_TENANT, X_OKAPI_TOKEN);
+    Errors errors = transitionToApprovedWithError(REVIEWED_INVOICE_WITH_EXISTING_VOUCHER_SAMPLE_PATH, headers);
 
     assertThat(errors, notNullValue());
     assertThat(errors.getErrors(), hasSize(1));
+    assertThat(errors.getErrors().get(0).getCode(), equalTo(GENERIC_ERROR_CODE.getCode()));
     assertThat(errors.getErrors().get(0).getMessage(), equalTo(javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR.getReasonPhrase()));
-
   }
 
   @Test
-  public void testUpdateValidInvoiceTransitionToApprovedWithErrorFromGetVouchersByInvoiceId() {
-    logger.info("=== Test transition invoice to Approved when fund not found ===");
+  public void testTransitionToApprovedWithErrorFromGetVouchersByInvoiceId() {
+    logger.info("=== Test transition invoice to Approved when searching existing voucher ===");
 
-    InvoiceLine invoiceLine = getMockAsJson(INVOICE_LINE_SAMPLE_PATH).mapTo(InvoiceLine.class);
-    Invoice reqData = getMockAsJson(REVIEWED_INVOICE_WITH_EXISTING_VOUCHER_SAMPLE_PATH).mapTo(Invoice.class);
-    reqData.setStatus(Invoice.Status.APPROVED);
-    String id = reqData.getId();
-    invoiceLine.setId(UUID.randomUUID().toString());
-    invoiceLine.setInvoiceId(id);
-    invoiceLine.getFundDistributions().get(0).setFundId(ID_DOES_NOT_EXIST);
-
-    addMockEntry(INVOICE_LINES, JsonObject.mapFrom(invoiceLine));
-
-    String jsonBody = JsonObject.mapFrom(reqData).encode();
-    Errors errors = verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, APPLICATION_JSON, 500)
-      .then()
-      .extract()
-      .body().as(Errors.class);
+    Headers headers = prepareHeaders(X_OKAPI_URL, MockServer.GET_VOUCHERS_ERROR_X_OKAPI_TENANT, X_OKAPI_TOKEN);
+    Errors errors = transitionToApprovedWithError(REVIEWED_INVOICE_WITH_EXISTING_VOUCHER_SAMPLE_PATH, headers);
 
     assertThat(errors, notNullValue());
     assertThat(errors.getErrors(), hasSize(1));
-    Error error = errors.getErrors().get(0);
-    assertThat(error.getMessage(), equalTo(FUNDS_NOT_FOUND.getDescription()));
-    assertThat(error.getCode(), equalTo(FUNDS_NOT_FOUND.getCode()));
-    assertThat(error.getParameters().get(0).getValue(), containsString(ID_DOES_NOT_EXIST));
+    assertThat(errors.getErrors().get(0).getCode(), equalTo(GENERIC_ERROR_CODE.getCode()));
+  }
+
+  @Test
+  public void testTransitionToApprovedWithErrorFromUpdateVoucherById() {
+    logger.info("=== Test transition invoice to Approved with error when updating existing voucher  ===");
+
+    Headers headers = prepareHeaders(X_OKAPI_URL, MockServer.UPDATE_VOUCHER_ERROR_X_OKAPI_TENANT, X_OKAPI_TOKEN);
+    Errors errors = transitionToApprovedWithError(REVIEWED_INVOICE_WITH_EXISTING_VOUCHER_SAMPLE_PATH, headers);
+
+    assertThat(errors, notNullValue());
+    assertThat(errors.getErrors(), hasSize(1));
+    assertThat(errors.getErrors().get(0).getCode(), equalTo(GENERIC_ERROR_CODE.getCode()));
+  }
+
+  @Test
+  public void testTransitionToApprovedWithErrorFromCreateVoucher() {
+    logger.info("=== Test transition invoice to Approved with error when creating voucher  ===");
+
+    Headers headers = prepareHeaders(X_OKAPI_URL, MockServer.CREATE_VOUCHER_ERROR_X_OKAPI_TENANT, X_OKAPI_TOKEN);
+    Errors errors = transitionToApprovedWithError(REVIEWED_INVOICE_SAMPLE_PATH, headers);
+
+    assertThat(errors, notNullValue());
+    assertThat(errors.getErrors(), hasSize(1));
+    assertThat(errors.getErrors().get(0).getCode(), equalTo(GENERIC_ERROR_CODE.getCode()));
+  }
+
+  @Test
+  public void testTransitionToApprovedWithErrorFromGetVoucherLines() {
+    logger.info("=== Test transition invoice to Approved with error when getting voucherLines  ===");
+
+    Headers headers = prepareHeaders(X_OKAPI_URL, MockServer.GET_VOUCHER_LINE_ERROR_X_OKAPI_TENANT, X_OKAPI_TOKEN);
+    Errors errors = transitionToApprovedWithError(REVIEWED_INVOICE_SAMPLE_PATH, headers);
+
+    assertThat(errors, notNullValue());
+    assertThat(errors.getErrors(), hasSize(1));
+    assertThat(errors.getErrors().get(0).getCode(), equalTo(GENERIC_ERROR_CODE.getCode()));
+  }
+
+  @Test
+  public void testTransitionToApprovedWithErrorFromDeleteVoucherLines() {
+    logger.info("=== Test transition invoice to Approved with error when deleting voucherLines  ===");
+
+    Headers headers = prepareHeaders(X_OKAPI_URL, MockServer.DELETE_VOUCHER_LINE_ERROR_X_OKAPI_TENANT, X_OKAPI_TOKEN);
+    Errors errors = transitionToApprovedWithError(REVIEWED_INVOICE_SAMPLE_PATH, headers);
+
+    assertThat(errors, notNullValue());
+    assertThat(errors.getErrors(), hasSize(1));
+    assertThat(errors.getErrors().get(0).getCode(), equalTo(GENERIC_ERROR_CODE.getCode()));
+  }
+
+  @Test
+  public void testTransitionToApprovedWithErrorFromCreateVoucherLines() {
+    logger.info("=== Test transition invoice to Approved with error when creating voucherLines  ===");
+
+    Headers headers = prepareHeaders(X_OKAPI_URL, MockServer.CREATE_VOUCHER_LINE_ERROR_X_OKAPI_TENANT, X_OKAPI_TOKEN);
+    Errors errors = transitionToApprovedWithError(REVIEWED_INVOICE_SAMPLE_PATH, headers);
+
+    assertThat(errors, notNullValue());
+    assertThat(errors.getErrors(), hasSize(1));
+    assertThat(errors.getErrors().get(0).getCode(), equalTo(GENERIC_ERROR_CODE.getCode()));
   }
 
   private void verifyTransitionToApproved(Voucher voucherCreated, List<InvoiceLine> invoiceLines) {
     List<JsonObject> invoiceLinesSearches = serverRqRs.get(INVOICE_LINES, HttpMethod.GET);
-    assertThat(invoiceLinesSearches, notNullValue());
-    assertThat(invoiceLinesSearches, hasSize(invoiceLines.size()/MAX_IDS_FOR_GET_RQ + 1));
     List<JsonObject> voucherLinesCreated = serverRqRs.get(VOUCHER_LINES, HttpMethod.POST);
-    assertThat(voucherLinesCreated, hasSize(1));
-    assertThat(voucherLinesCreated, notNullValue());
-    List<JsonObject> invoiceUpdates = serverRqRs.get(INVOICES, HttpMethod.PUT);
-    assertThat(invoiceUpdates, notNullValue());
     List<JsonObject> fundsSearches = serverRqRs.get(FUNDS, HttpMethod.GET);
-    assertThat(fundsSearches, notNullValue());
+    List<JsonObject> invoiceUpdates = serverRqRs.get(INVOICES, HttpMethod.PUT);
 
+    assertThat(invoiceLinesSearches, notNullValue());
+    assertThat(fundsSearches, notNullValue());
+    assertThat(voucherLinesCreated, notNullValue());
+    assertThat(invoiceUpdates, notNullValue());
+
+    assertThat(invoiceLinesSearches, hasSize(invoiceLines.size()/MAX_IDS_FOR_GET_RQ + 1));
     List<Fund> funds = fundsSearches.get(0).mapTo(FundCollection.class).getFunds();
+    assertThat(voucherLinesCreated, hasSize(getExpectedVoucherLinesQuantity(funds)));
 
     Invoice invoiceUpdate = invoiceUpdates.get(0).mapTo(Invoice.class);
 

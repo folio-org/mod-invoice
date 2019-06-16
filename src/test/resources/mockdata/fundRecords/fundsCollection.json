@@ -53,7 +53,7 @@
     {
       "id": "55f48dc6-efa7-4cfe-bc7c-4786efe493e3",
       "name": "Asian History",
-      "code": "ASIAHIST",
+      "code": "EUHIST",
       "externalAccountNo": "94508839006119",
       "fundStatus": "Active",
       "description": "use for East, Central, and South Asia",
@@ -68,7 +68,7 @@
     {
       "id": "388c0f7b-9fff-451c-b300-6509e443bef5",
       "name": "Asian History1",
-      "code": "ASIAHIST1",
+      "code": "USHIST",
       "externalAccountNo": "94508839006119",
       "fundStatus": "Active",
       "description": "use for East, Central, and South Asia",

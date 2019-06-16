@@ -83,7 +83,7 @@ public abstract class AbstractHelper {
       configurationsClient.getConfigurationsEntries(String.format(CONFIG_QUERY, moduleName, configName), 0, 100, null, lang, response -> response.bodyHandler(body -> {
         if (response.statusCode() != 200) {
           logger.error(String.format("Error happened while getting configs, expected status code 200, got '%s' :%s", response.statusCode(), body.toString()));
-          future.completeExceptionally(new HttpException(response.statusCode(), MOD_CONFIG_ERROR.getCode()));
+          future.completeExceptionally(new HttpException(response.statusCode(), MOD_CONFIG_ERROR));
           return;
         }
 
@@ -97,7 +97,7 @@ public abstract class AbstractHelper {
       }));
     } catch (Exception e) {
       logger.error("Error happened while getting configs", e);
-      future.completeExceptionally(new HttpException(500, MOD_CONFIG_ERROR.getCode()));
+      future.completeExceptionally(new HttpException(500, MOD_CONFIG_ERROR));
     }
     return future;
   }

@@ -33,7 +33,6 @@ public class ApiTestBase {
   static final String VALID_UUID = "8d3881f6-dd93-46f0-b29d-1c36bdb5c9f9";
   static final String ID_BAD_FORMAT = "123-45-678-90-abc";
   static final String FOLIO_INVOICE_NUMBER_VALUE = "228D126";
-  static final String X_INTERNAL_ERROR = "X-Okapi-Internal-Error";
   static final Header X_OKAPI_URL = new Header(OKAPI_URL, "http://localhost:" + mockPort);
   static final Header X_OKAPI_TOKEN = new Header(OKAPI_HEADER_TOKEN, "eyJhbGciOiJIUzI1NiJ9");
   static final Header X_OKAPI_TENANT = new Header(OKAPI_HEADER_TENANT, "invoiceimpltest");
