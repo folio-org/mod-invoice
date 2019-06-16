@@ -444,7 +444,6 @@ public class InvoiceLinesApiTest extends ApiTestBase {
     allProtectedFieldsModification.put(InvoiceLineProtectedFields.SUBSCRIPTION_INFO, "Tested subscription info");
     allProtectedFieldsModification.put(InvoiceLineProtectedFields.SUBSCRIPTION_START, new Date(System.currentTimeMillis()));
     allProtectedFieldsModification.put(InvoiceLineProtectedFields.SUBSCRIPTION_END, new Date(System.currentTimeMillis()));
-    allProtectedFieldsModification.put(InvoiceLineProtectedFields.TOTAL, 123.123);
 
     checkPreventInvoiceLineModificationRule(allProtectedFieldsModifiedInvoiceLine, allProtectedFieldsModification);
 
