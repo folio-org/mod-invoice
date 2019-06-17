@@ -259,8 +259,7 @@ public class InvoiceHelper extends AbstractHelper {
 
     return getSystemCurrency()
       .thenCompose(systemCurrency -> getExchangeRate(voucher.withSystemCurrency(systemCurrency)))
-      .thenAccept(voucher::setExchangeRate)
-      .thenCompose(v -> VertxCompletableFuture.completedFuture(voucher));
+      .thenApply(voucher::withExchangeRate);
   }
 
   //TODO Start using real information to create a voucher when it becomes known where to get these values from.

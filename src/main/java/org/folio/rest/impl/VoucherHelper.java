@@ -13,15 +13,15 @@ import org.folio.rest.tools.client.interfaces.HttpClientInterface;
 
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionException;
 
+import static org.folio.invoices.utils.HelperUtils.VOUCHER_BY_ID_ENDPOINT;
 import static org.folio.invoices.utils.HelperUtils.getEndpointWithQuery;
+import static org.folio.invoices.utils.HelperUtils.getVoucherById;
 import static org.folio.invoices.utils.HelperUtils.handleGetRequest;
 import static org.folio.invoices.utils.HelperUtils.handlePutRequest;
 import static org.folio.invoices.utils.ResourcePathResolver.VOUCHERS;
 import static org.folio.invoices.utils.ResourcePathResolver.VOUCHER_NUMBER;
 import static org.folio.invoices.utils.ResourcePathResolver.VOUCHER_NUMBER_START;
-import static org.folio.invoices.utils.ResourcePathResolver.resourceByIdPath;
 import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
 
 public class VoucherHelper extends AbstractHelper {
@@ -29,7 +29,7 @@ public class VoucherHelper extends AbstractHelper {
   private static final String CALLING_ENDPOINT_MSG = "Sending {} {}";
   private static final String EXCEPTION_CALLING_ENDPOINT_MSG = "Exception calling {} {}";
   private static final String GET_VOUCHERS_BY_QUERY = resourcesPath(VOUCHERS) + "?limit=%s&offset=%s%s&lang=%s";
-  private static final String VOUCHER_BY_ID_ENDPOINT = resourceByIdPath(VOUCHERS, "%s") + "?lang=%s";
+
 
   static final String DEFAULT_SYSTEM_CURRENCY = "USD";
   
@@ -42,16 +42,17 @@ public class VoucherHelper extends AbstractHelper {
   }
 
   public CompletableFuture<Voucher> getVoucher(String id) {
-    String endpoint = String.format(VOUCHER_BY_ID_ENDPOINT, id, lang);
-    return handleGetRequest(endpoint, httpClient, ctx, okapiHeaders, logger)
-      .thenApply(jsonInvoice -> {
-        logger.info("Successfully retrieved voucher by id: " + jsonInvoice.encodePrettily());
-        return jsonInvoice.mapTo(Voucher.class);
-      })
+    CompletableFuture<Voucher> future = new VertxCompletableFuture<>(ctx);
+    getVoucherById(id, lang, httpClient, ctx, okapiHeaders, logger).thenAccept(jsonInvoice -> {
+      logger.info("Successfully retrieved voucher by id: " + jsonInvoice.encodePrettily());
+      future.complete(jsonInvoice.mapTo(Voucher.class));
+    })
       .exceptionally(t -> {
         logger.error("Failed to retrieve Voucher", t.getCause());
-        throw new CompletionException(t.getCause());
+        future.completeExceptionally(t);
+        return null;
       });
+    return future;
   }
 
   public CompletableFuture<SequenceNumber> getVoucherNumberStartValue() {
