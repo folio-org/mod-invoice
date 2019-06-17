@@ -136,10 +136,8 @@ public class HelperUtils {
   /**
    * A common method to update an entry in the storage
    *
-   * @param recordData
-   *          json to use for update operation
-   * @param endpoint
-   *          endpoint
+   * @param recordData json to use for update operation
+   * @param endpoint endpoint
    */
   public static CompletableFuture<Void> handlePutRequest(String endpoint, JsonObject recordData,
       HttpClientInterface httpClient,
@@ -289,8 +287,6 @@ public class HelperUtils {
     }
     return convertToDouble(totalAmount);
   }
-
-
 
   public static InvoiceLine findLineById(List<InvoiceLine> invoiceLines, String invoiceLineId) {
     return invoiceLines.stream()

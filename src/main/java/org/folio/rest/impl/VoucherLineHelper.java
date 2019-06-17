@@ -11,6 +11,7 @@ import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
 
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 
 import org.folio.rest.acq.model.VoucherLineCollection;
 import org.folio.rest.jaxrs.model.VoucherLine;
@@ -71,11 +72,11 @@ public class VoucherLineHelper extends AbstractHelper {
       String endpoint = String.format(GET_VOUCHER_LINE_BY_QUERY, limit, offset, queryParam, lang);
       handleGetRequest(endpoint, httpClient, ctx, okapiHeaders, logger)
         .thenAccept(jsonVoucherLines -> {
-          logger.info("Successfully retrieved vouchers: " + jsonVoucherLines.encodePrettily());
+          logger.info("Successfully retrieved voucher lines: " + jsonVoucherLines.encodePrettily());
           future.complete(jsonVoucherLines.mapTo(VoucherLineCollection.class));
         })
         .exceptionally(t -> {
-          logger.error("Error getting vouchers", t);
+          logger.error("Error getting voucher lines", t);
           future.completeExceptionally(t);
           return null;
         });
@@ -85,7 +86,17 @@ public class VoucherLineHelper extends AbstractHelper {
     return future;
   }
 
-  public CompletableFuture<Void> deleteVoucherLine(String id) {
-    return handleDeleteRequest(String.format(VOUCHER_LINE_BY_ID_ENDPOINT, id, lang), httpClient, ctx, okapiHeaders, logger);
+  CompletableFuture<String> createVoucherLine(VoucherLine voucherLine) {
+    JsonObject line = JsonObject.mapFrom(voucherLine);
+    return createRecordInStorage(line, resourcesPath(VOUCHER_LINES));
   }
+
+  CompletableFuture<Void> deleteVoucherLine(String id) {
+    return handleDeleteRequest(String.format(VOUCHER_LINE_BY_ID_ENDPOINT, id, lang), httpClient, ctx, okapiHeaders, logger)
+      .exceptionally(t -> {
+        logger.error("Error deleting voucherLines", t);
+        throw  new CompletionException(t.getCause());
+      });
+  }
+
 }
