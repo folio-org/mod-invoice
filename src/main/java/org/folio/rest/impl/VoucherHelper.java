@@ -1,19 +1,5 @@
 package org.folio.rest.impl;
 
-import io.vertx.core.Context;
-import io.vertx.core.http.HttpMethod;
-import io.vertx.core.json.JsonObject;
-import io.vertx.core.logging.Logger;
-import me.escoffier.vertx.completablefuture.VertxCompletableFuture;
-import org.folio.invoices.utils.HelperUtils;
-import org.folio.rest.jaxrs.model.SequenceNumber;
-import org.folio.rest.jaxrs.model.Voucher;
-import org.folio.rest.jaxrs.model.VoucherCollection;
-import org.folio.rest.tools.client.interfaces.HttpClientInterface;
-
-import java.util.Map;
-import java.util.concurrent.CompletableFuture;
-
 import static org.folio.invoices.utils.HelperUtils.VOUCHER_BY_ID_ENDPOINT;
 import static org.folio.invoices.utils.HelperUtils.getEndpointWithQuery;
 import static org.folio.invoices.utils.HelperUtils.getVoucherById;
@@ -23,6 +9,21 @@ import static org.folio.invoices.utils.ResourcePathResolver.VOUCHERS;
 import static org.folio.invoices.utils.ResourcePathResolver.VOUCHER_NUMBER;
 import static org.folio.invoices.utils.ResourcePathResolver.VOUCHER_NUMBER_START;
 import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
+
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+
+import org.folio.invoices.utils.HelperUtils;
+import org.folio.rest.jaxrs.model.SequenceNumber;
+import org.folio.rest.jaxrs.model.Voucher;
+import org.folio.rest.jaxrs.model.VoucherCollection;
+import org.folio.rest.tools.client.interfaces.HttpClientInterface;
+
+import io.vertx.core.Context;
+import io.vertx.core.http.HttpMethod;
+import io.vertx.core.json.JsonObject;
+import io.vertx.core.logging.Logger;
+import me.escoffier.vertx.completablefuture.VertxCompletableFuture;
 
 public class VoucherHelper extends AbstractHelper {
 

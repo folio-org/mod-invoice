@@ -1,46 +1,5 @@
 package org.folio.rest.impl;
 
-import io.vertx.core.Context;
-import io.vertx.core.json.JsonObject;
-import me.escoffier.vertx.completablefuture.VertxCompletableFuture;
-import one.util.streamex.StreamEx;
-import org.apache.commons.collections4.CollectionUtils;
-import org.folio.invoices.rest.exceptions.HttpException;
-import org.folio.invoices.utils.HelperUtils;
-import org.folio.invoices.utils.InvoiceProtectedFields;
-import org.folio.rest.acq.model.finance.Fund;
-import org.folio.rest.acq.model.finance.FundCollection;
-import org.folio.rest.acq.model.orders.CompositePoLine;
-import org.folio.rest.jaxrs.model.Adjustment;
-import org.folio.rest.jaxrs.model.Error;
-import org.folio.rest.jaxrs.model.FundDistribution;
-import org.folio.rest.jaxrs.model.Invoice;
-import org.folio.rest.jaxrs.model.InvoiceCollection;
-import org.folio.rest.jaxrs.model.InvoiceLine;
-import org.folio.rest.jaxrs.model.InvoiceLineCollection;
-import org.folio.rest.jaxrs.model.Parameter;
-import org.folio.rest.jaxrs.model.SequenceNumber;
-import org.folio.rest.jaxrs.model.Voucher;
-import org.folio.rest.jaxrs.model.VoucherCollection;
-import org.folio.rest.jaxrs.model.VoucherLine;
-import org.javamoney.moneta.Money;
-import org.javamoney.moneta.function.MonetaryFunctions;
-
-import javax.money.CurrencyUnit;
-import javax.money.Monetary;
-import javax.money.MonetaryAmount;
-import javax.money.convert.MonetaryConversions;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
-import java.util.stream.Collector;
-import java.util.stream.Collectors;
-
 import static java.util.concurrent.CompletableFuture.allOf;
 import static java.util.stream.Collectors.groupingBy;
 import static java.util.stream.Collectors.toList;
@@ -67,6 +26,49 @@ import static org.folio.invoices.utils.ResourcePathResolver.PO_LINES;
 import static org.folio.invoices.utils.ResourcePathResolver.resourceByIdPath;
 import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
 import static org.folio.rest.impl.VoucherHelper.DEFAULT_SYSTEM_CURRENCY;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
+import java.util.stream.Collector;
+import java.util.stream.Collectors;
+
+import javax.money.CurrencyUnit;
+import javax.money.Monetary;
+import javax.money.MonetaryAmount;
+import javax.money.convert.MonetaryConversions;
+
+import org.apache.commons.collections4.CollectionUtils;
+import org.folio.invoices.rest.exceptions.HttpException;
+import org.folio.invoices.utils.HelperUtils;
+import org.folio.invoices.utils.InvoiceProtectedFields;
+import org.folio.rest.acq.model.finance.Fund;
+import org.folio.rest.acq.model.finance.FundCollection;
+import org.folio.rest.acq.model.orders.CompositePoLine;
+import org.folio.rest.jaxrs.model.Adjustment;
+import org.folio.rest.jaxrs.model.Error;
+import org.folio.rest.jaxrs.model.FundDistribution;
+import org.folio.rest.jaxrs.model.Invoice;
+import org.folio.rest.jaxrs.model.InvoiceCollection;
+import org.folio.rest.jaxrs.model.InvoiceLine;
+import org.folio.rest.jaxrs.model.InvoiceLineCollection;
+import org.folio.rest.jaxrs.model.Parameter;
+import org.folio.rest.jaxrs.model.SequenceNumber;
+import org.folio.rest.jaxrs.model.Voucher;
+import org.folio.rest.jaxrs.model.VoucherCollection;
+import org.folio.rest.jaxrs.model.VoucherLine;
+import org.javamoney.moneta.Money;
+import org.javamoney.moneta.function.MonetaryFunctions;
+
+import io.vertx.core.Context;
+import io.vertx.core.json.JsonObject;
+import me.escoffier.vertx.completablefuture.VertxCompletableFuture;
+import one.util.streamex.StreamEx;
 
 public class InvoiceHelper extends AbstractHelper {
 
