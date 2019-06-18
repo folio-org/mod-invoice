@@ -21,8 +21,8 @@ public class VoucherLineHelper extends AbstractHelper {
   }
 
   public CompletableFuture<Void> updateVoucherLine(VoucherLine voucherLine) {
-    return handlePutRequest(resourceByIdPath(VOUCHER_LINES, voucherLine.getId()), JsonObject.mapFrom(voucherLine), httpClient, ctx,
-        okapiHeaders, logger);
+    String path = resourceByIdPath(VOUCHER_LINES, voucherLine.getId(), lang);
+    return handlePutRequest(path, JsonObject.mapFrom(voucherLine), httpClient, ctx, okapiHeaders, logger);
   }
 
   public CompletableFuture<VoucherLine> getVoucherLines(String id) {
