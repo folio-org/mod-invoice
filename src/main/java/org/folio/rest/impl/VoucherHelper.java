@@ -31,9 +31,6 @@ public class VoucherHelper extends AbstractHelper {
   private static final String EXCEPTION_CALLING_ENDPOINT_MSG = "Exception calling {} {}";
   private static final String GET_VOUCHERS_BY_QUERY = resourcesPath(VOUCHERS) + "?limit=%s&offset=%s%s&lang=%s";
 
-
-  static final String DEFAULT_SYSTEM_CURRENCY = "USD";
-  
   VoucherHelper(Map<String, String> okapiHeaders, Context ctx, String lang) {
     super(getHttpClient(okapiHeaders), okapiHeaders, ctx, lang);
   }
