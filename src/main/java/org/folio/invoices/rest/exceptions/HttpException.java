@@ -18,7 +18,7 @@ public class HttpException extends RuntimeException {
 
   public HttpException(int code, ErrorCodes errorCode) {
     this.code = code;
-    this.error = new Error().withCode(errorCode.getCode()).withMessage(errorCode.getDescription());
+    this.error = errorCode.toError();
   }
 
   public HttpException(int code, Error error) {

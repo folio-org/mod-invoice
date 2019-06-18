@@ -4,7 +4,10 @@ import static java.util.Objects.nonNull;
 import static java.util.stream.Collectors.toList;
 import static org.apache.commons.lang3.StringUtils.EMPTY;
 import static org.apache.commons.lang3.StringUtils.isEmpty;
-import static org.folio.invoices.utils.ResourcePathResolver.*;
+import static org.folio.invoices.utils.ResourcePathResolver.INVOICES;
+import static org.folio.invoices.utils.ResourcePathResolver.VOUCHERS;
+import static org.folio.invoices.utils.ResourcePathResolver.VOUCHER_LINES;
+import static org.folio.invoices.utils.ResourcePathResolver.resourceByIdPath;
 
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
@@ -21,7 +24,6 @@ import javax.money.CurrencyUnit;
 import javax.money.Monetary;
 import javax.money.MonetaryAmount;
 
-import one.util.streamex.StreamEx;
 import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.apache.commons.lang3.reflect.FieldUtils;
 import org.folio.invoices.rest.exceptions.HttpException;
@@ -36,12 +38,14 @@ import org.folio.rest.tools.client.interfaces.HttpClientInterface;
 import org.javamoney.moneta.Money;
 import org.javamoney.moneta.function.MonetaryFunctions;
 import org.javamoney.moneta.function.MonetaryOperators;
+import org.javamoney.moneta.spi.DefaultNumberValue;
 
 import io.vertx.core.Context;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import me.escoffier.vertx.completablefuture.VertxCompletableFuture;
+import one.util.streamex.StreamEx;
 
 public class HelperUtils {
 
@@ -284,14 +288,23 @@ public class HelperUtils {
 
   public static Double calculateVoucherLineAmount(List<FundDistribution> fundDistributions, List<InvoiceLine> invoiceLines, Voucher voucher) {
     CurrencyUnit invoiceCurrency = Monetary.getCurrency(voucher.getInvoiceCurrency());
-    MonetaryAmount totalAmount = Money.of(0, invoiceCurrency);
+    CurrencyUnit systemCurrency = Monetary.getCurrency(voucher.getSystemCurrency());
+    MonetaryAmount voucherLineAmount = Money.of(0, invoiceCurrency);
 
     for (FundDistribution fundDistribution : fundDistributions) {
       InvoiceLine invoiceLine = findLineById(invoiceLines, fundDistribution.getInvoiceLineId());
       MonetaryAmount subTotal = Money.of(invoiceLine.getTotal(), invoiceCurrency);
-      totalAmount = totalAmount.add(subTotal.with(MonetaryOperators.percent(fundDistribution.getPercentage())).multiply(voucher.getExchangeRate()));
+
+      voucherLineAmount = voucherLineAmount.add(subTotal.with(MonetaryOperators.percent(fundDistribution.getPercentage())));
     }
-    return convertToDouble(totalAmount);
+
+    MonetaryAmount convertedAmount = voucherLineAmount
+      .multiply(DefaultNumberValue.of(voucher.getExchangeRate()))
+      .getFactory()
+      .setCurrency(systemCurrency)
+      .create();
+
+    return convertToDouble(convertedAmount);
   }
 
   public static InvoiceLine findLineById(List<InvoiceLine> invoiceLines, String invoiceLineId) {
