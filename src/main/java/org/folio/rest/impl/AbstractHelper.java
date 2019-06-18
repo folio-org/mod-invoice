@@ -55,7 +55,6 @@ public abstract class AbstractHelper {
   protected final Map<String, String> okapiHeaders;
   protected final Context ctx;
   protected final String lang;
-  private ConfigurationsClient configurationsClient;
   private static final String CONFIG_QUERY = "module==%s and configName==%s";
 
   AbstractHelper(HttpClientInterface httpClient, Map<String, String> okapiHeaders, Context ctx, String lang) {
@@ -64,10 +63,6 @@ public abstract class AbstractHelper {
     this.ctx = ctx;
     this.lang = lang;
     setDefaultHeaders();
-    String okapiURL = StringUtils.trimToEmpty(okapiHeaders.get(OKAPI_URL));
-    String tenant = okapiHeaders.get(OKAPI_HEADER_TENANT);
-    String token = okapiHeaders.get(OKAPI_HEADER_TOKEN);
-    configurationsClient = new ConfigurationsClient(okapiURL, tenant, token, true, 60, 60);
   }
 
   /**
@@ -79,6 +74,12 @@ public abstract class AbstractHelper {
   public CompletableFuture<List<Config>> loadConfiguration(String moduleName, String configName) {
 
     CompletableFuture<List<Config>> future = new VertxCompletableFuture<>();
+
+    String okapiURL = StringUtils.trimToEmpty(okapiHeaders.get(OKAPI_URL));
+    String tenant = okapiHeaders.get(OKAPI_HEADER_TENANT);
+    String token = okapiHeaders.get(OKAPI_HEADER_TOKEN);
+    ConfigurationsClient configurationsClient = new ConfigurationsClient(okapiURL, tenant, token, true, 10, 10);
+
     try {
       configurationsClient.getConfigurationsEntries(String.format(CONFIG_QUERY, moduleName, configName), 0, 100, null, lang, response -> response.bodyHandler(body -> {
         if (response.statusCode() != 200) {
