@@ -9,14 +9,14 @@ import static org.folio.invoices.utils.ResourcePathResolver.FOLIO_INVOICE_NUMBER
 import static org.folio.invoices.utils.ResourcePathResolver.FUNDS;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICES;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_LINES;
-import static org.folio.invoices.utils.ResourcePathResolver.PO_LINES;
-import static org.folio.invoices.utils.ResourcePathResolver.ORDER_LINES;
-import static org.folio.invoices.utils.ResourcePathResolver.VOUCHER_LINES;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_LINE_NUMBER;
+import static org.folio.invoices.utils.ResourcePathResolver.ORDER_LINES;
+import static org.folio.invoices.utils.ResourcePathResolver.PO_LINES;
+import static org.folio.invoices.utils.ResourcePathResolver.VOUCHERS;
+import static org.folio.invoices.utils.ResourcePathResolver.VOUCHER_LINES;
 import static org.folio.invoices.utils.ResourcePathResolver.VOUCHER_NUMBER;
 import static org.folio.invoices.utils.ResourcePathResolver.VOUCHER_NUMBER_START;
 import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
-import static org.folio.invoices.utils.ResourcePathResolver.VOUCHERS;
 import static org.folio.rest.RestVerticle.OKAPI_HEADER_TENANT;
 import static org.folio.rest.impl.AbstractHelper.ID;
 import static org.folio.rest.impl.ApiTestBase.BASE_MOCK_DATA_PATH;
@@ -31,10 +31,10 @@ import static org.folio.rest.impl.InvoiceHelper.LOCALE_SETTINGS;
 import static org.folio.rest.impl.InvoiceHelper.SYSTEM_CONFIG_NAME;
 import static org.folio.rest.impl.InvoiceLinesApiTest.INVOICE_ID;
 import static org.folio.rest.impl.InvoiceLinesApiTest.INVOICE_LINES_MOCK_DATA_PATH;
-import static org.folio.rest.impl.VoucherLinesApiTest.VOUCHER_LINES_MOCK_DATA_PATH;
 import static org.folio.rest.impl.InvoicesApiTest.BAD_QUERY;
 import static org.folio.rest.impl.InvoicesApiTest.EXISTING_VENDOR_INV_NO;
 import static org.folio.rest.impl.InvoicesApiTest.INVOICE_MOCK_DATA_PATH;
+import static org.folio.rest.impl.VoucherLinesApiTest.VOUCHER_LINES_MOCK_DATA_PATH;
 import static org.folio.rest.impl.VouchersApiTest.VOUCHERS_LIST_PATH;
 import static org.folio.rest.impl.VouchersApiTest.VOUCHER_MOCK_DATA_PATH;
 import static org.junit.Assert.fail;
@@ -54,19 +54,21 @@ import java.util.function.Supplier;
 
 import javax.ws.rs.core.Response;
 
-import one.util.streamex.StreamEx;
-import org.apache.commons.collections4.CollectionUtils;
-
 import org.apache.commons.lang3.StringUtils;
 import org.folio.invoices.utils.ResourcePathResolver;
+import org.folio.rest.acq.model.SequenceNumber;
 import org.folio.rest.acq.model.VoucherLine;
 import org.folio.rest.acq.model.VoucherLineCollection;
 import org.folio.rest.acq.model.finance.Fund;
 import org.folio.rest.acq.model.finance.FundCollection;
 import org.folio.rest.acq.model.orders.CompositePoLine;
-import org.folio.rest.acq.model.SequenceNumber;
-
-import org.folio.rest.acq.model.VoucherCollection;
+import org.folio.rest.jaxrs.model.Config;
+import org.folio.rest.jaxrs.model.Configs;
+import org.folio.rest.jaxrs.model.Invoice;
+import org.folio.rest.jaxrs.model.InvoiceLine;
+import org.folio.rest.jaxrs.model.InvoiceLineCollection;
+import org.folio.rest.jaxrs.model.Voucher;
+import org.folio.rest.jaxrs.model.VoucherCollection;
 
 import com.google.common.collect.HashBasedTable;
 import com.google.common.collect.Table;
@@ -82,13 +84,7 @@ import io.vertx.core.logging.LoggerFactory;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
 import io.vertx.ext.web.handler.BodyHandler;
-import org.folio.rest.jaxrs.model.Config;
-import org.folio.rest.jaxrs.model.Configs;
-import org.folio.rest.jaxrs.model.Invoice;
-import org.folio.rest.jaxrs.model.InvoiceLine;
-import org.folio.rest.jaxrs.model.InvoiceLineCollection;
-import org.folio.rest.jaxrs.model.Voucher;
-import org.folio.rest.jaxrs.model.VoucherCollection;
+import one.util.streamex.StreamEx;
 
 
 public class MockServer {
@@ -278,15 +274,17 @@ public class MockServer {
     } else if (queryParam.contains(ID_FOR_INTERNAL_SERVER_ERROR) || GET_INVOICE_LINES_ERROR_TENANT.equals(tenant)) {
       serverResponse(ctx, 500, APPLICATION_JSON, Response.Status.INTERNAL_SERVER_ERROR.getReasonPhrase());
     } else {
-      try {
-        InvoiceLineCollection invoiceLineCollection = new InvoiceLineCollection();
-        List<JsonObject> jsonObjects = getMockEntries(INVOICE_LINES);
-        if (CollectionUtils.isNotEmpty(jsonObjects)) {
-          List<InvoiceLine> invoiceLines =  jsonObjects.stream().map(entries -> entries.mapTo(InvoiceLine.class)).collect(toList());
-          invoiceLineCollection.setInvoiceLines(invoiceLines);
-        } else {
-          invoiceLineCollection = new JsonObject(ApiTestBase.getMockData(INVOICE_LINES_COLLECTION)).mapTo(InvoiceLineCollection.class);
+      Supplier<List<InvoiceLine>> getFromFile = () -> {
+        try {
+          return new JsonObject(getMockData(INVOICE_LINES_COLLECTION))
+            .mapTo(InvoiceLineCollection.class).getInvoiceLines();
+        } catch (IOException e) {
+          return Collections.emptyList();
         }
+      };
+
+      InvoiceLineCollection invoiceLineCollection = new InvoiceLineCollection();
+      List<InvoiceLine> invoiceLines  = getMockEntries(INVOICE_LINES, InvoiceLine.class).orElseGet(getFromFile);
 
       Function<InvoiceLine, String> invoiceIdGetter = InvoiceLine::getInvoiceId;
       invoiceLineCollection.setInvoiceLines(filterEntriesByStringValue(invoiceId, invoiceLines, invoiceIdGetter));
@@ -464,31 +462,26 @@ public class MockServer {
       poLine.setId(ID_FOR_INTERNAL_SERVER_ERROR_PUT);
       serverResponse(ctx, 200, APPLICATION_JSON, JsonObject.mapFrom(poLine).encodePrettily());
     } else {
-      try {
-
-        JsonObject pol = null;
-
-        // Attempt to find POLine in mock server memory
-        List<JsonObject> pols = getMockEntries(PO_LINES);
-        if (!pols.isEmpty()) {
-          Comparator<JsonObject> comparator = Comparator.comparing(o -> o.getString(ID));
-          pols.sort(comparator);
-          int ind = Collections.binarySearch(pols, new JsonObject().put(ID, id), comparator);
-          if(ind > -1) {
-            pol = pols.get(ind);
-          }
+      Supplier<JsonObject> getFromFile = () -> {
+        String filePath = String.format(MOCK_DATA_PATH_PATTERN, PO_LINES_MOCK_DATA_PATH, id);
+        try {
+          return new JsonObject(getMockData(filePath));
+        } catch (IOException e) {
+          return null;
         }
+      };
 
-        // If previous step has no result then attempt to find POLine in stubs
-        if (pol == null) {
-          CompositePoLine poLine = new JsonObject(ApiTestBase.getMockData(String.format(MOCK_DATA_PATH_PATTERN, PO_LINES_MOCK_DATA_PATH, id))).mapTo(CompositePoLine.class);
+      // Attempt to find POLine in mock server memory
+      JsonObject poLine = getMockEntry(PO_LINES, id).orElseGet(getFromFile);
+      if (poLine == null) {
+        ctx.response().setStatusCode(404).end(id);
+      } else {
+        // validate content against schema
+        CompositePoLine poLineSchema = poLine.mapTo(CompositePoLine.class);
+        poLineSchema.setId(id);
+        poLine = JsonObject.mapFrom(poLineSchema);
 
-          pol = JsonObject.mapFrom(poLine);
-        }
-
-        serverResponse(ctx, 200, APPLICATION_JSON, pol.encodePrettily());
-      } catch (IOException e) {
-        serverResponse(ctx, 404, APPLICATION_JSON, id);
+        serverResponse(ctx, 200, APPLICATION_JSON, poLine.encodePrettily());
       }
     }
   }
@@ -515,10 +508,6 @@ public class MockServer {
       .map(entries -> entries.mapTo(tClass))
       .collect(toList());
     return Optional.ofNullable(entryList.isEmpty()? null: entryList);
-  }
-
-  private List<JsonObject> getMockEntries(String objName) {
-    return getRqRsEntries(HttpMethod.OTHER, objName);
   }
 
   private static void addServerRqRsData(HttpMethod method, String objName, JsonObject data) {
@@ -619,9 +608,8 @@ public class MockServer {
 
     logger.info("handleGetVoucher got: {}?{}", ctx.request().path(), ctx.request().query());
 
-    String tenant = ctx.request().getHeader(OKAPI_HEADER_TENANT);
-
     String queryParam = StringUtils.trimToEmpty(ctx.request().getParam(QUERY));
+    String tenant = ctx.request().getHeader(OKAPI_HEADER_TENANT);
     String invoiceId = EMPTY;
     if (queryParam.contains(INVOICE_ID)) {
       invoiceId = queryParam.split(INVOICE_ID + "==")[1];
@@ -631,21 +619,27 @@ public class MockServer {
     } else if (queryParam.contains(ID_FOR_INTERNAL_SERVER_ERROR) || GET_VOUCHERS_ERROR_TENANT.equals(tenant)) {
       serverResponse(ctx, 500, APPLICATION_JSON, Response.Status.INTERNAL_SERVER_ERROR.getReasonPhrase());
     } else {
-      VoucherCollection collection = new VoucherCollection();
-      final String VOUCHER_NUMBER_QUERY = "voucherNumber==";
-      if ((VOUCHER_NUMBER_QUERY + EXISTING_VOUCHER_NUMBER).equals(queryParam)) {
-        collection.setTotalRecords(1);
-      } else if (queryParam.startsWith(VoucherHelper.INVOICE_ID)) {
-        getMockEntries(VOUCHERS).forEach(obj -> collection.getVouchers().add(obj.mapTo(Voucher.class)));
-        collection.setTotalRecords(collection.getVouchers().size());
-      } else if (EMPTY.equals(queryParam)) {
-        collection.setTotalRecords(4);
-      } else {
-        collection.setTotalRecords(0);
-      }
-      JsonObject vouchers = JsonObject.mapFrom(collection);
-      addServerRqRsData(HttpMethod.GET, VOUCHERS, vouchers);
-      serverResponse(ctx, 200, APPLICATION_JSON, vouchers.encodePrettily());
+      Supplier<List<Voucher>> getFromFile = () -> {
+        try {
+          return new JsonObject(getMockData(VOUCHERS_LIST_PATH))
+            .mapTo(VoucherCollection.class).getVouchers();
+        } catch (IOException e) {
+          return Collections.emptyList();
+        }
+      };
+
+      VoucherCollection voucherCollection = new VoucherCollection();
+      List<Voucher> vouchers  = getMockEntries(VOUCHERS, Voucher.class).orElseGet(getFromFile);
+
+      Function<Voucher, String> voucherIdGetter = Voucher::getInvoiceId;
+      voucherCollection.setVouchers(filterEntriesByStringValue(invoiceId, vouchers, voucherIdGetter));
+      voucherCollection.setTotalRecords(voucherCollection.getVouchers().size());
+
+      JsonObject vouchersJson = JsonObject.mapFrom(voucherCollection);
+      logger.info(vouchersJson.encodePrettily());
+
+      addServerRqRsData(HttpMethod.GET, VOUCHERS, vouchersJson);
+      serverResponse(ctx, 200, APPLICATION_JSON, vouchersJson.encode());
     }
   }
   

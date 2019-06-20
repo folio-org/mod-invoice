@@ -1,7 +1,6 @@
 package org.folio.rest.impl;
 
 import static org.folio.invoices.utils.ErrorCodes.VOUCHER_UPDATE_FAILURE;
-import static org.folio.invoices.utils.HelperUtils.getVoucherById;
 import static org.folio.invoices.utils.HelperUtils.getEndpointWithQuery;
 import static org.folio.invoices.utils.HelperUtils.getVoucherById;
 import static org.folio.invoices.utils.HelperUtils.handleGetRequest;
@@ -11,11 +10,6 @@ import static org.folio.invoices.utils.ResourcePathResolver.VOUCHER_NUMBER;
 import static org.folio.invoices.utils.ResourcePathResolver.VOUCHER_NUMBER_START;
 import static org.folio.invoices.utils.ResourcePathResolver.resourceByIdPath;
 import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
-
-import io.vertx.core.Context;
-import io.vertx.core.http.HttpMethod;
-import io.vertx.core.json.JsonObject;
-import io.vertx.core.logging.Logger;
 
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -146,12 +140,6 @@ public class VoucherHelper extends AbstractHelper {
     JsonObject voucherRecord = JsonObject.mapFrom(voucher);
     return createRecordInStorage(voucherRecord, resourcesPath(VOUCHERS))
       .thenApply(voucher::withId);
-  }
-
-  CompletableFuture<Void> updateVoucher(Voucher voucher) {
-    JsonObject voucherRecord = JsonObject.mapFrom(voucher);
-    String endpoint = String.format(VOUCHER_BY_ID_ENDPOINT, voucher.getId(), lang);
-    return handlePutRequest(endpoint, voucherRecord, httpClient, ctx, okapiHeaders, logger);
   }
 
   public CompletableFuture<Voucher> getVoucherByInvoiceId(String invoiceId) {

@@ -1,43 +1,6 @@
 package org.folio.rest.impl;
 
-import io.restassured.http.Headers;
-import io.restassured.response.Response;
-import io.vertx.core.http.HttpMethod;
-import io.vertx.core.json.JsonObject;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
-import java.util.stream.Collectors;
-
-import org.folio.rest.acq.model.VoucherLineCollection;
-import org.folio.rest.acq.model.finance.Fund;
-import org.folio.rest.acq.model.finance.FundCollection;
-import org.folio.rest.acq.model.orders.CompositePoLine;
-import org.apache.commons.lang3.reflect.FieldUtils;
-import org.apache.http.HttpStatus;
-import org.folio.invoices.utils.InvoiceProtectedFields;
-import org.folio.rest.jaxrs.model.Adjustment;
-import org.folio.rest.jaxrs.model.Error;
-import org.folio.rest.jaxrs.model.Errors;
-import org.folio.rest.jaxrs.model.Invoice;
-import org.folio.rest.jaxrs.model.InvoiceCollection;
-import org.folio.rest.jaxrs.model.InvoiceLine;
-import org.folio.rest.jaxrs.model.InvoiceLineCollection;
-import org.folio.rest.jaxrs.model.Voucher;
-import org.folio.rest.jaxrs.model.VoucherLine;
-import org.folio.rest.jaxrs.model.VoucherCollection;
-import org.hamcrest.Matchers;
-import org.junit.Test;
-
-import javax.money.convert.MonetaryConversions;
-
 import static java.util.stream.Collectors.groupingBy;
-import java.util.*;
-
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 import static javax.ws.rs.core.MediaType.TEXT_PLAIN;
 import static org.folio.invoices.utils.ErrorCodes.FUNDS_NOT_FOUND;
@@ -45,13 +8,13 @@ import static org.folio.invoices.utils.ErrorCodes.GENERIC_ERROR_CODE;
 import static org.folio.invoices.utils.ErrorCodes.INVOICE_TOTAL_REQUIRED;
 import static org.folio.invoices.utils.ErrorCodes.MOD_CONFIG_ERROR;
 import static org.folio.invoices.utils.ErrorCodes.PO_LINE_NOT_FOUND;
-import static org.folio.invoices.utils.HelperUtils.calculateInvoiceLineTotals;
-import static org.folio.invoices.utils.HelperUtils.calculateVoucherAmount;
-import static org.folio.invoices.utils.HelperUtils.calculateVoucherLineAmount;
 import static org.folio.invoices.utils.ErrorCodes.PO_LINE_UPDATE_FAILURE;
 import static org.folio.invoices.utils.ErrorCodes.PROHIBITED_FIELD_CHANGING;
 import static org.folio.invoices.utils.ErrorCodes.VOUCHER_NOT_FOUND;
 import static org.folio.invoices.utils.ErrorCodes.VOUCHER_UPDATE_FAILURE;
+import static org.folio.invoices.utils.HelperUtils.calculateInvoiceLineTotals;
+import static org.folio.invoices.utils.HelperUtils.calculateVoucherAmount;
+import static org.folio.invoices.utils.HelperUtils.calculateVoucherLineAmount;
 import static org.folio.invoices.utils.ResourcePathResolver.FOLIO_INVOICE_NUMBER;
 import static org.folio.invoices.utils.ResourcePathResolver.FUNDS;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICES;
@@ -62,21 +25,20 @@ import static org.folio.invoices.utils.ResourcePathResolver.VOUCHER_LINES;
 import static org.folio.rest.impl.InvoiceHelper.MAX_IDS_FOR_GET_RQ;
 import static org.folio.rest.impl.InvoiceHelper.NO_INVOICE_LINES_ERROR_MSG;
 import static org.folio.rest.impl.InvoiceLinesApiTest.INVOICE_LINES_LIST_PATH;
-import static org.folio.rest.impl.MockServer.NON_EXIST_CONFIG_X_OKAPI_TENANT;
-import static org.folio.invoices.utils.ResourcePathResolver.VOUCHERS;
-import static org.folio.rest.impl.InvoicesImpl.PROTECTED_AND_MODIFIED_FIELDS;
 import static org.folio.rest.impl.InvoiceLinesApiTest.INVOICE_LINE_SAMPLE_PATH;
+import static org.folio.rest.impl.InvoicesImpl.PROTECTED_AND_MODIFIED_FIELDS;
 import static org.folio.rest.impl.MockServer.ERROR_CONFIG_X_OKAPI_TENANT;
 import static org.folio.rest.impl.MockServer.ERROR_X_OKAPI_TENANT;
 import static org.folio.rest.impl.MockServer.INVOICE_NUMBER_ERROR_X_OKAPI_TENANT;
+import static org.folio.rest.impl.MockServer.NON_EXIST_CONFIG_X_OKAPI_TENANT;
 import static org.folio.rest.impl.MockServer.addMockEntry;
 import static org.folio.rest.impl.MockServer.getRqRsEntries;
 import static org.folio.rest.impl.MockServer.serverRqRs;
-import static org.folio.rest.impl.VouchersApiTest.*;
 import static org.folio.rest.impl.VoucherHelper.DEFAULT_SYSTEM_CURRENCY;
+import static org.folio.rest.impl.VouchersApiTest.VOUCHERS_LIST_PATH;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.arrayContaining;
+import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.notNullValue;
@@ -85,6 +47,46 @@ import static org.hamcrest.core.Is.is;
 import static org.hamcrest.core.IsEqual.equalTo;
 import static org.hamcrest.core.IsNot.not;
 import static org.junit.Assert.assertEquals;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.UUID;
+import java.util.stream.Collectors;
+
+import javax.money.convert.MonetaryConversions;
+
+import org.apache.commons.lang3.reflect.FieldUtils;
+import org.apache.http.HttpStatus;
+import org.folio.invoices.utils.InvoiceProtectedFields;
+import org.folio.rest.acq.model.VoucherLineCollection;
+import org.folio.rest.acq.model.finance.Fund;
+import org.folio.rest.acq.model.finance.FundCollection;
+import org.folio.rest.acq.model.orders.CompositePoLine;
+import org.folio.rest.jaxrs.model.Adjustment;
+import org.folio.rest.jaxrs.model.Error;
+import org.folio.rest.jaxrs.model.Errors;
+import org.folio.rest.jaxrs.model.Invoice;
+import org.folio.rest.jaxrs.model.InvoiceCollection;
+import org.folio.rest.jaxrs.model.InvoiceLine;
+import org.folio.rest.jaxrs.model.InvoiceLineCollection;
+import org.folio.rest.jaxrs.model.Voucher;
+import org.folio.rest.jaxrs.model.VoucherCollection;
+import org.folio.rest.jaxrs.model.VoucherLine;
+import org.hamcrest.Matchers;
+import org.junit.Test;
+
+import io.restassured.http.Headers;
+import io.restassured.response.Response;
+import io.vertx.core.http.HttpMethod;
+import io.vertx.core.json.JsonObject;
+import io.vertx.core.logging.Logger;
+import io.vertx.core.logging.LoggerFactory;
 
 public class InvoicesApiTest extends ApiTestBase {
 
@@ -109,7 +111,7 @@ public class InvoicesApiTest extends ApiTestBase {
   static final String EXISTING_VENDOR_INV_NO = "existingVendorInvoiceNo";
   private static final String BAD_INVOICE_ID = "5a34ae0e-5a11-4337-be95-1a20cfdc3161";
   private static final String EXISTENT_PO_LINE_ID = "c2755a78-2f8d-47d0-a218-059a9b7391b4";
-  private static final String EXISTING_VOUCHER_ID = "f914903e-0419-4123-9afc-73e863d1768c";
+  private static final String EXISTING_VOUCHER_ID = "a9b99f8a-7100-47f2-9903-6293d44a9905";
   private static final String STATUS = "status";
   private static final String INVALID_CURRENCY = "ABC";
 
@@ -332,12 +334,13 @@ public class InvoicesApiTest extends ApiTestBase {
     logger.info("=== Test transition invoice to Approved with existing voucher and voucherLines ===");
 
     InvoiceLine invoiceLine = getMockAsJson(INVOICE_LINE_SAMPLE_PATH).mapTo(InvoiceLine.class);
-    VoucherLine voucherLine = new VoucherLine().withVoucherId(EXISTING_VOUCHER_ID);
+
 
     Invoice reqData = getMockAsJson(REVIEWED_INVOICE_WITH_EXISTING_VOUCHER_SAMPLE_PATH).mapTo(Invoice.class);
     invoiceLine.setId(UUID.randomUUID().toString());
     invoiceLine.setInvoiceId(reqData.getId());
-
+    prepareMockVoucher(reqData.getId());
+    VoucherLine voucherLine = new VoucherLine().withVoucherId(EXISTING_VOUCHER_ID);
     addMockEntry(INVOICE_LINES, JsonObject.mapFrom(invoiceLine));
     addMockEntry(VOUCHER_LINES, JsonObject.mapFrom(voucherLine));
 
@@ -408,10 +411,10 @@ public class InvoicesApiTest extends ApiTestBase {
   private Errors transitionToApprovedWithError(String invoiceSamplePath, Headers headers) {
     InvoiceLine invoiceLine = getMockAsJson(INVOICE_LINE_SAMPLE_PATH).mapTo(InvoiceLine.class);
 
-
     Invoice reqData = getMockAsJson(invoiceSamplePath).mapTo(Invoice.class);
     invoiceLine.setId(UUID.randomUUID().toString());
     invoiceLine.setInvoiceId(reqData.getId());
+    prepareMockVoucher(reqData.getId());
     addMockEntry(INVOICE_LINES, JsonObject.mapFrom(invoiceLine));
 
 
@@ -725,7 +728,7 @@ public class InvoicesApiTest extends ApiTestBase {
     logger.info("=== Test transition invoice to paid - no voucher found ===");
 
     Invoice reqData = getMockAsJson(APPROVED_INVOICE_SAMPLE_PATH).mapTo(Invoice.class).withStatus(Invoice.Status.PAID);
-    //prepareMockVoucher(reqData.getId());
+    prepareMockVoucher(ID_DOES_NOT_EXIST);
 
     String url = String.format(INVOICE_ID_PATH, reqData.getId());
     Errors errors = verifyPut(url, JsonObject.mapFrom(reqData), APPLICATION_JSON, 500).as(Errors.class);

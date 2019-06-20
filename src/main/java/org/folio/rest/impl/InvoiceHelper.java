@@ -25,7 +25,6 @@ import static org.folio.invoices.utils.HelperUtils.isFieldsVerificationNeeded;
 import static org.folio.invoices.utils.ResourcePathResolver.FOLIO_INVOICE_NUMBER;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICES;
 import static org.folio.invoices.utils.ResourcePathResolver.ORDER_LINES;
-import static org.folio.invoices.utils.ResourcePathResolver.PO_LINES;
 import static org.folio.invoices.utils.ResourcePathResolver.resourceByIdPath;
 import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
 
@@ -82,7 +81,7 @@ public class InvoiceHelper extends AbstractHelper {
   public static final String SYSTEM_CONFIG_NAME = "ORG";
   public static final String LOCALE_SETTINGS = "localeSettings";
   public static final String SYSTEM_CURRENCY_PROPERTY_NAME = "currency";
-  public static final String FUND_SERACHING_ENDPOINT = "/finance-storage/funds?query=%s&limit=%s&lang=%s";
+  public static final String FUND_SEARCHING_ENDPOINT = "/finance-storage/funds?query=%s&limit=%s&lang=%s";
   private final InvoiceLineHelper invoiceLineHelper;
   private final VoucherHelper voucherHelper;
   private final VoucherLineHelper voucherLineHelper;
@@ -438,7 +437,7 @@ public class InvoiceHelper extends AbstractHelper {
 
   private CompletableFuture<List<Fund>> getFoundsByIds(List<String> ids) {
     String query = encodeQuery(HelperUtils.convertIdsToCqlQuery(ids), logger);
-    String endpoint = String.format(FUND_SERACHING_ENDPOINT, query, ids.size(), lang);
+    String endpoint = String.format(FUND_SEARCHING_ENDPOINT, query, ids.size(), lang);
     return handleGetRequest(endpoint, httpClient, ctx, okapiHeaders, logger)
       .thenApply(this::extractFounds);
   }
@@ -563,8 +562,7 @@ public class InvoiceHelper extends AbstractHelper {
    * @return CompletableFuture that indicates when transition is completed
    */
   private CompletableFuture<Void> payInvoice(Invoice invoice) {
-    return VertxCompletableFuture.allOf(ctx, payPoLines(invoice), payVoucher(invoice))
-      .thenCompose(ok -> updateInvoiceRecord(invoice));
+    return VertxCompletableFuture.allOf(ctx, payPoLines(invoice), payVoucher(invoice));
   }
 
   /**
@@ -588,7 +586,6 @@ public class InvoiceHelper extends AbstractHelper {
    * @return CompletableFuture that indicates when transition is completed
    */
   private CompletableFuture<Void> payVoucher(Invoice invoice) {
-    VoucherHelper voucherHelper = new VoucherHelper(httpClient, okapiHeaders, ctx, lang);
 
     return voucherHelper.getVoucherByInvoiceId(invoice.getId())
       .thenApply(voucher -> Optional.ofNullable(voucher).orElseThrow(() -> new HttpException(500, VOUCHER_NOT_FOUND.toError())))
