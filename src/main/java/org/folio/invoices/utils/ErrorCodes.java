@@ -6,6 +6,9 @@ public enum ErrorCodes {
 
   GENERIC_ERROR_CODE("genericError", "Generic error"),
   PO_LINE_NOT_FOUND("poLineNotFound", "The purchase order line record is not found"),
+  PO_LINE_UPDATE_FAILURE("poLineUpdateFailure", "One or more purchase order line record(s) cannot be updated"),
+  VOUCHER_NOT_FOUND("voucherNotFound", "The voucher record is not found"),
+  VOUCHER_UPDATE_FAILURE("voucherUpdateFailure", "Voucher record cannot be updated"),
   INVOICE_TOTAL_REQUIRED("invoiceTotalRequired", "The total amount is expected when lockTotal is true"),
   PROHIBITED_FIELD_CHANGING("protectedFieldChanging", "Field can't be modified");
 

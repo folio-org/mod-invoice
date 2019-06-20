@@ -34,9 +34,6 @@ public class InvoiceLineHelper extends AbstractHelper {
   private static final String INVOICE_ID = "invoiceId";
   private static final String INVOICE_LINE_NUMBER_ENDPOINT = resourcesPath(INVOICE_LINE_NUMBER) + "?" + INVOICE_ID + "=";
   private static final String GET_INVOICE_LINES_BY_QUERY = resourcesPath(INVOICE_LINES) + "?limit=%s&offset=%s%s&lang=%s";
-  private static final String INVOICE_LINE_BYID_ENDPOINT = resourceByIdPath(INVOICE_LINES, "%s") + "?lang=%s";
-
-
 
   InvoiceLineHelper(Map<String, String> okapiHeaders, Context ctx, String lang) {
     super(getHttpClient(okapiHeaders), okapiHeaders, ctx, lang);
@@ -75,7 +72,7 @@ public class InvoiceLineHelper extends AbstractHelper {
     CompletableFuture<InvoiceLine> future = new VertxCompletableFuture<>(ctx);
 
     try {
-      handleGetRequest(String.format(INVOICE_LINE_BYID_ENDPOINT, id, lang), httpClient, ctx, okapiHeaders, logger)
+      handleGetRequest(resourceByIdPath(INVOICE_LINES, id, lang), httpClient, ctx, okapiHeaders, logger)
         .thenAccept(jsonInvoiceLine -> {
           logger.info("Successfully retrieved invoice line: " + jsonInvoiceLine.encodePrettily());
           future.complete(jsonInvoiceLine.mapTo(InvoiceLine.class));
@@ -101,8 +98,8 @@ public class InvoiceLineHelper extends AbstractHelper {
           invoiceLine.setInvoiceLineNumber(existedInvoiceLine.getInvoiceLineNumber());
         })
       )
-      .thenCompose(aVoid -> handlePutRequest(resourceByIdPath(INVOICE_LINES, invoiceLine.getId()), JsonObject.mapFrom(invoiceLine),
-        httpClient, ctx, okapiHeaders, logger));
+      .thenCompose(ok -> handlePutRequest(resourceByIdPath(INVOICE_LINES, invoiceLine.getId(), lang),
+          JsonObject.mapFrom(invoiceLine), httpClient, ctx, okapiHeaders, logger));
   }
 
   private void validateInvoiceLine(Invoice existedInvoice, InvoiceLine invoiceLine, InvoiceLine existedInvoiceLine) {
@@ -185,6 +182,6 @@ public class InvoiceLineHelper extends AbstractHelper {
   }
 
   public CompletableFuture<Void> deleteInvoiceLine(String id) {
-    return handleDeleteRequest(String.format(INVOICE_LINE_BYID_ENDPOINT, id, lang), httpClient, ctx, okapiHeaders, logger);
+    return handleDeleteRequest(resourceByIdPath(INVOICE_LINES, id, lang), httpClient, ctx, okapiHeaders, logger);
   }
 }

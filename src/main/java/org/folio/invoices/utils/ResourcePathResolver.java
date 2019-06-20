@@ -12,6 +12,7 @@ public class ResourcePathResolver {
 
   public static final String INVOICES = "invoices";
   public static final String INVOICE_LINES = "invoiceLines";
+  public static final String ORDER_LINES = "orderLines";
   public static final String VOUCHER_LINES = "voucherLines";
   public static final String VOUCHER_NUMBER_START = "voucherNumberStart";
   public static final String FOLIO_INVOICE_NUMBER = "folioInvoiceNo";
@@ -26,6 +27,7 @@ public class ResourcePathResolver {
     apis.put(INVOICES, "/invoice-storage/invoices");
     apis.put(INVOICE_LINES, "/invoice-storage/invoice-lines");
     apis.put(INVOICE_LINE_NUMBER, "/invoice-storage/invoice-line-number");
+    apis.put(ORDER_LINES, "/orders/order-lines");
     apis.put(FOLIO_INVOICE_NUMBER, "/invoice-storage/invoice-number");
     apis.put(VOUCHERS, "/voucher-storage/vouchers");
     apis.put(VOUCHER_LINES, "/voucher-storage/voucher-lines");
@@ -35,16 +37,12 @@ public class ResourcePathResolver {
     SUB_OBJECT_ITEM_APIS = Collections.unmodifiableMap(
         apis.entrySet()
             .stream()
-            .collect(Collectors.toMap(Map.Entry::getKey, v -> v.getValue() + "/"))
+            .collect(Collectors.toMap(Map.Entry::getKey, v -> v.getValue() + "/%s?lang=%s"))
       );
   }
 
-  public static String resourceByIdPath(String field) {
-    return SUB_OBJECT_ITEM_APIS.get(field);
-  }
-
-  public static String resourceByIdPath(String field, String id) {
-    return SUB_OBJECT_ITEM_APIS.get(field) + id;
+  public static String resourceByIdPath(String field, String id, String lang) {
+    return String.format(SUB_OBJECT_ITEM_APIS.get(field), id, lang);
   }
 
   public static String resourcesPath(String field) {
