@@ -52,18 +52,13 @@ public class HelperUtils {
   private static final String EXCEPTION_CALLING_ENDPOINT_MSG = "Exception calling {} {}";
   private static final String CALLING_ENDPOINT_MSG = "Sending {} {}";
 
-  public static final String URL_WITH_LANG_PARAM = "%s?lang=%s";
-  private static final String GET_INVOICE_BYID = resourceByIdPath(INVOICES) + URL_WITH_LANG_PARAM;
-  private static final String GET_VOUCHER_LINES_BYID = resourceByIdPath(VOUCHER_LINES) + URL_WITH_LANG_PARAM;
-  public static final String VOUCHER_BY_ID_ENDPOINT = resourceByIdPath(VOUCHERS) + URL_WITH_LANG_PARAM;
-
   private HelperUtils() {
 
   }
 
   public static CompletableFuture<Invoice> getInvoiceById(String id, String lang, HttpClientInterface httpClient, Context ctx,
       Map<String, String> okapiHeaders, Logger logger) {
-    String endpoint = String.format(GET_INVOICE_BYID, id, lang);
+    String endpoint = resourceByIdPath(INVOICES, id, lang);
     return handleGetRequest(endpoint, httpClient, ctx, okapiHeaders, logger)
       .thenApply(jsonInvoice -> {
         if (logger.isInfoEnabled()) {
@@ -75,13 +70,13 @@ public class HelperUtils {
 
   public static CompletableFuture<JsonObject> getVoucherLineById(String id, String lang, HttpClientInterface httpClient,
                                                                  Context ctx, Map<String, String> okapiHeaders, Logger logger) {
-    String endpoint = String.format(GET_VOUCHER_LINES_BYID, id, lang);
+    String endpoint = resourceByIdPath(VOUCHER_LINES, id, lang);
     return handleGetRequest(endpoint, httpClient, ctx, okapiHeaders, logger);
   }
 
   public static CompletableFuture<JsonObject> getVoucherById(String id, String lang, HttpClientInterface httpClient, Context ctx,
       Map<String, String> okapiHeaders, Logger logger) {
-    String endpoint = String.format(VOUCHER_BY_ID_ENDPOINT, id, lang);
+    String endpoint = resourceByIdPath(VOUCHERS, id, lang);
     return handleGetRequest(endpoint, httpClient, ctx, okapiHeaders, logger);
   }
 

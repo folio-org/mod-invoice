@@ -8,6 +8,8 @@ import static org.apache.commons.collections4.CollectionUtils.isNotEmpty;
 import static org.folio.invoices.utils.ErrorCodes.FUNDS_NOT_FOUND;
 import static org.folio.invoices.utils.ErrorCodes.INVOICE_TOTAL_REQUIRED;
 import static org.folio.invoices.utils.ErrorCodes.PO_LINE_NOT_FOUND;
+import static org.folio.invoices.utils.ErrorCodes.PO_LINE_UPDATE_FAILURE;
+import static org.folio.invoices.utils.ErrorCodes.VOUCHER_NOT_FOUND;
 import static org.folio.invoices.utils.HelperUtils.calculateAdjustmentsTotal;
 import static org.folio.invoices.utils.HelperUtils.calculateVoucherLineAmount;
 import static org.folio.invoices.utils.HelperUtils.collectResultsOnSuccess;
@@ -22,6 +24,7 @@ import static org.folio.invoices.utils.HelperUtils.handlePutRequest;
 import static org.folio.invoices.utils.HelperUtils.isFieldsVerificationNeeded;
 import static org.folio.invoices.utils.ResourcePathResolver.FOLIO_INVOICE_NUMBER;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICES;
+import static org.folio.invoices.utils.ResourcePathResolver.ORDER_LINES;
 import static org.folio.invoices.utils.ResourcePathResolver.PO_LINES;
 import static org.folio.invoices.utils.ResourcePathResolver.resourceByIdPath;
 import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
@@ -31,6 +34,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
@@ -84,9 +88,6 @@ public class InvoiceHelper extends AbstractHelper {
   private final VoucherLineHelper voucherLineHelper;
 
   private static final String GET_INVOICES_BY_QUERY = resourcesPath(INVOICES) + "?limit=%s&offset=%s%s&lang=%s";
-  private static final String DELETE_INVOICE_BY_ID = resourceByIdPath(INVOICES, "%s") + "?lang=%s";
-  private static final String PO_LINE_BY_ID_ENDPOINT = resourceByIdPath(PO_LINES, "%s") + "?lang=%s";
-
 
   InvoiceHelper(Map<String, String> okapiHeaders, Context ctx, String lang) {
     super(getHttpClient(okapiHeaders), okapiHeaders, ctx, lang);
@@ -164,7 +165,7 @@ public class InvoiceHelper extends AbstractHelper {
   }
 
   public CompletableFuture<Void> deleteInvoice(String id) {
-    return handleDeleteRequest(String.format(DELETE_INVOICE_BY_ID, id, lang), httpClient, ctx, okapiHeaders, logger);
+    return handleDeleteRequest(resourceByIdPath(INVOICES, id, lang), httpClient, ctx, okapiHeaders, logger);
   }
 
   public CompletableFuture<Void> updateInvoice(Invoice invoice) {
@@ -546,7 +547,8 @@ public class InvoiceHelper extends AbstractHelper {
 
   private CompletableFuture<Void> updateInvoiceRecord(Invoice updatedInvoice) {
     JsonObject jsonInvoice = JsonObject.mapFrom(updatedInvoice);
-    return handlePutRequest(resourceByIdPath(INVOICES, updatedInvoice.getId()), jsonInvoice, httpClient, ctx, okapiHeaders, logger);
+    String path = resourceByIdPath(INVOICES, updatedInvoice.getId(), lang);
+    return handlePutRequest(path, jsonInvoice, httpClient, ctx, okapiHeaders, logger);
   }
 
 
@@ -557,10 +559,21 @@ public class InvoiceHelper extends AbstractHelper {
   /**
    * Handles transition of given invoice to PAID status.
    *
-   * @param invoice Invoice to paid
+   * @param invoice Invoice to be paid
    * @return CompletableFuture that indicates when transition is completed
    */
   private CompletableFuture<Void> payInvoice(Invoice invoice) {
+    return VertxCompletableFuture.allOf(ctx, payPoLines(invoice), payVoucher(invoice))
+      .thenCompose(ok -> updateInvoiceRecord(invoice));
+  }
+
+  /**
+   * Updates payment status of the associated PO Lines.
+   *
+   * @param invoice the invoice to be paid
+   * @return CompletableFuture that indicates when transition is completed
+   */
+  private CompletableFuture<Void> payPoLines(Invoice invoice) {
     return fetchInvoiceLinesByInvoiceId(invoice.getId())
       .thenApply(this::groupInvoiceLinesByPoLineId)
       .thenCompose(this::fetchPoLines)
@@ -568,6 +581,19 @@ public class InvoiceHelper extends AbstractHelper {
       .thenCompose(this::updateCompositePoLines);
   }
 
+  /**
+   * Updates associated Voucher status to Paid.
+   *
+   * @param invoice invoice to be paid
+   * @return CompletableFuture that indicates when transition is completed
+   */
+  private CompletableFuture<Void> payVoucher(Invoice invoice) {
+    VoucherHelper voucherHelper = new VoucherHelper(httpClient, okapiHeaders, ctx, lang);
+
+    return voucherHelper.getVoucherByInvoiceId(invoice.getId())
+      .thenApply(voucher -> Optional.ofNullable(voucher).orElseThrow(() -> new HttpException(500, VOUCHER_NOT_FOUND.toError())))
+      .thenCompose(voucherHelper::updateVoucherStatusToPaid);
+  }
 
   private CompletableFuture<List<InvoiceLine>> fetchInvoiceLinesByInvoiceId(String invoiceId) {
     String query = String.format(QUERY_BY_INVOICE_ID, invoiceId);
@@ -593,6 +619,11 @@ public class InvoiceHelper extends AbstractHelper {
       .collect(Collectors.groupingBy(InvoiceLine::getPoLineId));
   }
 
+  /**
+   * Retrieves PO Lines associated with invoice lines and calculates expected PO Line's payment status
+   * @param poLineIdsWithInvoiceLines map where key is PO Line id and value is list of associated invoice lines
+   * @return map where key is {@link CompositePoLine} and value is expected PO Line's payment status
+   */
   private CompletableFuture<Map<CompositePoLine, CompositePoLine.PaymentStatus>> fetchPoLines(Map<String, List<InvoiceLine>> poLineIdsWithInvoiceLines) {
     List<CompletableFuture<CompositePoLine>> futures = poLineIdsWithInvoiceLines.keySet()
       .stream()
@@ -606,7 +637,7 @@ public class InvoiceHelper extends AbstractHelper {
   }
 
   private CompletableFuture<CompositePoLine> getPoLineById(String poLineId) {
-    return handleGetRequest(String.format(PO_LINE_BY_ID_ENDPOINT, poLineId, lang), httpClient, ctx, okapiHeaders, logger)
+    return handleGetRequest(resourceByIdPath(ORDER_LINES, poLineId, lang), httpClient, ctx, okapiHeaders, logger)
       .thenApply(jsonObject -> jsonObject.mapTo(CompositePoLine.class))
       .exceptionally(throwable -> {
         List<Parameter> parameters = Collections.singletonList(new Parameter().withKey("poLineId").withValue(poLineId));
@@ -650,8 +681,11 @@ public class InvoiceHelper extends AbstractHelper {
   private CompletionStage<Void> updateCompositePoLines(List<CompositePoLine> poLines) {
     return VertxCompletableFuture.allOf(poLines.stream()
       .map(JsonObject::mapFrom)
-      .map(poLine -> handlePutRequest(String.format(PO_LINE_BY_ID_ENDPOINT, poLine.getString(ID), lang), poLine, httpClient, ctx, okapiHeaders, logger))
-      .toArray(CompletableFuture[]::new));
+      .map(poLine -> handlePutRequest(resourceByIdPath(ORDER_LINES, poLine.getString(ID), lang), poLine, httpClient, ctx, okapiHeaders, logger))
+      .toArray(CompletableFuture[]::new))
+      .exceptionally(fail -> {
+        throw new HttpException(500, PO_LINE_UPDATE_FAILURE.toError());
+      });
   }
 
 
