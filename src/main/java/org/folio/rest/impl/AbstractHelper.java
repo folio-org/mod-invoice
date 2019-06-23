@@ -69,7 +69,7 @@ public abstract class AbstractHelper {
    * Retrieve configuration by moduleName and configName from mod-configuration.
    * @param moduleName name of the module for which the configuration is to be retrieved
    * @param configName name of the configuration to retrieve it
-   * @return CompletableFuture with JsonObject
+   * @return CompletableFuture with {@link List<Config>}
    */
   public CompletableFuture<List<Config>> loadConfiguration(String moduleName, String configName) {
 

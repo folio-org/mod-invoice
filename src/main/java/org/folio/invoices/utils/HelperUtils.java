@@ -311,7 +311,7 @@ public class HelperUtils {
     return invoiceLines.stream()
       .filter(invoiceLine -> invoiceLineId.equals(invoiceLine.getId()))
       .findFirst()
-      .orElseThrow(() -> new IllegalArgumentException("Cannot find invoiceLine associated with foundDistribution"));
+      .orElseThrow(() -> new IllegalArgumentException("Cannot find invoiceLine associated with fundDistribution"));
   }
 
   public static InvoiceLine calculateInvoiceLineTotals(InvoiceLine invoiceLine, Invoice invoice) {

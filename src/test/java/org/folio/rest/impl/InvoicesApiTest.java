@@ -263,20 +263,20 @@ public class InvoicesApiTest extends ApiTestBase {
   }
 
   @Test
-  public void testTransitionToApproved() {
+  public void testTransitionFromOpenToApproved() {
     logger.info("=== Test transition invoice to Approved ===");
 
     List<InvoiceLine> invoiceLines = getMockAsJson(INVOICE_LINES_LIST_PATH).mapTo(InvoiceLineCollection.class).getInvoiceLines();
-    Invoice reqData = getMockAsJson(REVIEWED_INVOICE_SAMPLE_PATH).mapTo(Invoice.class);
+    Invoice reqData = getMockAsJson(OPEN_INVOICE_SAMPLE_PATH).mapTo(Invoice.class);
+    String id = reqData.getId();
     invoiceLines
       .forEach(invoiceLine -> {
-        invoiceLine.setInvoiceId(reqData.getId());
+        invoiceLine.setInvoiceId(id);
         addMockEntry(INVOICE_LINES, JsonObject.mapFrom(invoiceLine));
       });
 
     reqData.setStatus(Invoice.Status.APPROVED);
 
-    String id = reqData.getId();
     String jsonBody = JsonObject.mapFrom(reqData).encode();
     Headers headers = prepareHeaders(X_OKAPI_URL, X_OKAPI_TENANT, X_OKAPI_TOKEN);
     verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, headers, "", 204);

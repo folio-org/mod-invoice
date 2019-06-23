@@ -196,7 +196,7 @@ public class InvoiceHelper extends AbstractHelper {
   }
 
   private boolean isTransitionToApproved(Invoice invoiceFromStorage, Invoice invoice) {
-    return invoiceFromStorage.getStatus() == Invoice.Status.REVIEWED && invoice.getStatus() == Invoice.Status.APPROVED;
+    return (invoiceFromStorage.getStatus() == Invoice.Status.REVIEWED || invoiceFromStorage.getStatus() == Invoice.Status.OPEN) && invoice.getStatus() == Invoice.Status.APPROVED;
   }
 
   /**
@@ -242,7 +242,7 @@ public class InvoiceHelper extends AbstractHelper {
   private CompletableFuture<Voucher> prepareVoucher(Invoice invoice) {
     return findExistingVoucher(invoice.getId())
       .thenCompose(vouchers -> {
-        if (isNotEmpty(vouchers)){
+        if (isNotEmpty(vouchers)) {
           Voucher voucher = vouchers.get(0);
           return updateExistingVoucherState(invoice, voucher);
         }
@@ -301,7 +301,7 @@ public class InvoiceHelper extends AbstractHelper {
   }
 
   private CompletableFuture<Void> handleVoucherWithLines(List<InvoiceLine> invoiceLines, Voucher voucher) {
-    return groupFundDistributionsByExternalAccountNo(invoiceLines)
+    return groupFundDistrosByExternalAcctNo(invoiceLines)
       .thenCompose(fundDistributionsGroupedByExternalAccountNo -> {
         List<VoucherLine> voucherLines = buildVoucherLineRecords(fundDistributionsGroupedByExternalAccountNo, invoiceLines,
             voucher);
@@ -312,16 +312,16 @@ public class InvoiceHelper extends AbstractHelper {
       });
   }
 
-  private CompletableFuture<Map<String, List<FundDistribution>>> groupFundDistributionsByExternalAccountNo(
+  private CompletableFuture<Map<String, List<FundDistribution>>> groupFundDistrosByExternalAcctNo(
       List<InvoiceLine> invoiceLines) {
 
-    Map<String, List<FundDistribution>> fundDistributionsGroupedByFundId = getGroupFundDistributionsByFundId(invoiceLines);
+    Map<String, List<FundDistribution>> fundDistrosGroupedByFundId = groupFundDistrosByFundId(invoiceLines);
 
-    return fetchFounds(new ArrayList<>(fundDistributionsGroupedByFundId.keySet())).thenApply(funds -> funds.stream()
+    return fetchFunds(new ArrayList<>(fundDistrosGroupedByFundId.keySet())).thenApply(funds -> funds.stream()
       .collect(groupingBy(Fund::getExternalAccountNo)))
       .thenApply(fundsGroupedByExternalAccountNo -> fundsGroupedByExternalAccountNo.keySet()
         .stream()
-        .collect(mapExternalAccountNumberToFundDistributions(fundDistributionsGroupedByFundId, fundsGroupedByExternalAccountNo)));
+        .collect(mapExternalAccountNumberToFundDistributions(fundDistrosGroupedByFundId, fundsGroupedByExternalAccountNo)));
   }
 
   private Collector<String, ?, Map<String, List<FundDistribution>>> mapExternalAccountNumberToFundDistributions(
@@ -336,18 +336,18 @@ public class InvoiceHelper extends AbstractHelper {
       .collect(toList()));
   }
 
-  private Map<String, List<FundDistribution>> getGroupFundDistributionsByFundId(List<InvoiceLine> invoiceLines) {
+  private Map<String, List<FundDistribution>> groupFundDistrosByFundId(List<InvoiceLine> invoiceLines) {
     return invoiceLines.stream()
       .flatMap(invoiceLine -> invoiceLine.getFundDistributions().stream()
         .map(fundDistribution -> fundDistribution.withInvoiceLineId(invoiceLine.getId())))
       .collect(groupingBy(FundDistribution::getFundId));
   }
 
-  private CompletableFuture<List<Fund>> fetchFounds(List<String> fundIds) {
+  private CompletableFuture<List<Fund>> fetchFunds(List<String> fundIds) {
     List<CompletableFuture<List<Fund>>> futures = StreamEx
       .ofSubLists(fundIds, MAX_IDS_FOR_GET_RQ)
       // Send get request for each CQL query
-      .map(this::getFoundsByIds)
+      .map(this::getFundsByIds)
       .collect(toList());
 
     return collectResultsOnSuccess(futures)
@@ -356,22 +356,22 @@ public class InvoiceHelper extends AbstractHelper {
         .flatMap(List::stream)
         .collect(toList())
       )
-      .thenApply(existedFunds -> verifyThatAllFundsFound(existedFunds, fundIds));
+      .thenApply(existingFunds -> verifyThatAllFundsFound(existingFunds, fundIds));
   }
 
-  private List<Fund> verifyThatAllFundsFound(List<Fund> existedFunds, List<String> fundIds) {
-    if (fundIds.size() != existedFunds.size()) {
-      List<String> idsNotFound = collectFundIdsThatWasNotFound(existedFunds, fundIds);
+  private List<Fund> verifyThatAllFundsFound(List<Fund> existingFunds, List<String> fundIds) {
+    if (fundIds.size() != existingFunds.size()) {
+      List<String> idsNotFound = collectFundIdsThatWasNotFound(existingFunds, fundIds);
       if (isNotEmpty(idsNotFound)) {
         throw new HttpException(500, buildFundNotFoundError(idsNotFound));
       }
     }
-    return existedFunds;
+    return existingFunds;
   }
 
-  private List<String> collectFundIdsThatWasNotFound(List<Fund> existedFunds, List<String> fundIds) {
+  private List<String> collectFundIdsThatWasNotFound(List<Fund> existingFunds, List<String> fundIds) {
     return fundIds.stream()
-      .filter(id -> existedFunds.stream().
+      .filter(id -> existingFunds.stream().
         map(Fund::getId)
         .noneMatch(fundIds::contains))
       .collect(toList());
@@ -385,27 +385,27 @@ public class InvoiceHelper extends AbstractHelper {
       .withParameters(Collections.singletonList(parameter));
   }
 
-  private CompletableFuture<List<Fund>> getFoundsByIds(List<String> ids) {
+  private CompletableFuture<List<Fund>> getFundsByIds(List<String> ids) {
     String query = encodeQuery(HelperUtils.convertIdsToCqlQuery(ids), logger);
     String endpoint = String.format(FUND_SERACHING_ENDPOINT, query, ids.size(), lang);
     return handleGetRequest(endpoint, httpClient, ctx, okapiHeaders, logger)
-      .thenApply(this::extractFounds);
+      .thenApply(this::extractFunds);
   }
 
-  private List<Fund> extractFounds(JsonObject entries) {
+  private List<Fund> extractFunds(JsonObject entries) {
     FundCollection fundCollection = entries.mapTo(FundCollection.class);
     return fundCollection.getFunds();
   }
 
-  private List<VoucherLine> buildVoucherLineRecords(Map<String, List<FundDistribution>> fundDistributionsGroupedByExternalAccountNo, List<InvoiceLine> invoiceLines, Voucher voucher) {
-    return fundDistributionsGroupedByExternalAccountNo.entrySet().stream()
+  private List<VoucherLine> buildVoucherLineRecords(Map<String, List<FundDistribution>> fundDistroGroupedByExternalAcctNo, List<InvoiceLine> invoiceLines, Voucher voucher) {
+    return fundDistroGroupedByExternalAcctNo.entrySet().stream()
       .map(entry -> buildVoucherLineRecord(entry, invoiceLines , voucher))
       .collect(Collectors.toList());
   }
 
-  private VoucherLine buildVoucherLineRecord(Map.Entry<String, List<FundDistribution>> foundDistributionsAssociatedWithAccountNumber, List<InvoiceLine> invoiceLines, Voucher voucher) {
-    String externalAccountNumber = foundDistributionsAssociatedWithAccountNumber.getKey();
-    List<FundDistribution> fundDistributions = foundDistributionsAssociatedWithAccountNumber.getValue();
+  private VoucherLine buildVoucherLineRecord(Map.Entry<String, List<FundDistribution>> fundDistroAssociatedWithAcctNo, List<InvoiceLine> invoiceLines, Voucher voucher) {
+    String externalAccountNumber = fundDistroAssociatedWithAcctNo.getKey();
+    List<FundDistribution> fundDistributions = fundDistroAssociatedWithAcctNo.getValue();
 
     return new VoucherLine()
       .withVoucherId(voucher.getId())
@@ -415,8 +415,8 @@ public class InvoiceHelper extends AbstractHelper {
       .withAmount(calculateVoucherLineAmount(fundDistributions, invoiceLines, voucher));
   }
 
-  private List<String> collectInvoiceLineIds(List<FundDistribution> foundDistributions) {
-    return foundDistributions
+  private List<String> collectInvoiceLineIds(List<FundDistribution> fundDistributions) {
+    return fundDistributions
       .stream()
       .map(FundDistribution::getInvoiceLineId)
       .distinct()
