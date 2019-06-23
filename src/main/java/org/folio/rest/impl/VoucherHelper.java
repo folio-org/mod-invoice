@@ -1,6 +1,6 @@
 package org.folio.rest.impl;
 
-import static org.folio.invoices.utils.HelperUtils.VOUCHER_BY_ID_ENDPOINT;
+import static org.folio.invoices.utils.ErrorCodes.VOUCHER_UPDATE_FAILURE;
 import static org.folio.invoices.utils.HelperUtils.getEndpointWithQuery;
 import static org.folio.invoices.utils.HelperUtils.getVoucherById;
 import static org.folio.invoices.utils.HelperUtils.handleGetRequest;
@@ -8,11 +8,13 @@ import static org.folio.invoices.utils.HelperUtils.handlePutRequest;
 import static org.folio.invoices.utils.ResourcePathResolver.VOUCHERS;
 import static org.folio.invoices.utils.ResourcePathResolver.VOUCHER_NUMBER;
 import static org.folio.invoices.utils.ResourcePathResolver.VOUCHER_NUMBER_START;
+import static org.folio.invoices.utils.ResourcePathResolver.resourceByIdPath;
 import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
 
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
+import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.invoices.utils.HelperUtils;
 import org.folio.rest.jaxrs.model.SequenceNumber;
 import org.folio.rest.jaxrs.model.Voucher;
@@ -30,16 +32,14 @@ public class VoucherHelper extends AbstractHelper {
   private static final String CALLING_ENDPOINT_MSG = "Sending {} {}";
   private static final String EXCEPTION_CALLING_ENDPOINT_MSG = "Exception calling {} {}";
   private static final String GET_VOUCHERS_BY_QUERY = resourcesPath(VOUCHERS) + "?limit=%s&offset=%s%s&lang=%s";
-
-
-  static final String DEFAULT_SYSTEM_CURRENCY = "USD";
-  
-  VoucherHelper(Map<String, String> okapiHeaders, Context ctx, String lang) {
-    super(getHttpClient(okapiHeaders), okapiHeaders, ctx, lang);
-  }
+  public static final String INVOICE_ID = "invoiceId";
 
   VoucherHelper(HttpClientInterface httpClient, Map<String, String> okapiHeaders, Context ctx, String lang) {
     super(httpClient, okapiHeaders, ctx, lang);
+  }
+
+  VoucherHelper(Map<String, String> okapiHeaders, Context ctx, String lang) {
+    super(getHttpClient(okapiHeaders), okapiHeaders, ctx, lang);
   }
 
   public CompletableFuture<Voucher> getVoucher(String id) {
@@ -142,9 +142,31 @@ public class VoucherHelper extends AbstractHelper {
       .thenApply(voucher::withId);
   }
 
-  CompletableFuture<Void> updateVoucher(Voucher voucher) {
-    JsonObject voucherRecord = JsonObject.mapFrom(voucher);
-    String endpoint = String.format(VOUCHER_BY_ID_ENDPOINT, voucher.getId(), lang);
-    return handlePutRequest(endpoint, voucherRecord, httpClient, ctx, okapiHeaders, logger);
+  public CompletableFuture<Voucher> getVoucherByInvoiceId(String invoiceId) {
+    return getVouchers(1, 0, INVOICE_ID + "==" + invoiceId)
+      .thenApply(VoucherCollection::getVouchers)
+      .thenApply(vouchers -> vouchers.isEmpty() ? null : vouchers.get(0));
+  }
+
+  /**
+   * In case voucher's status is already Paid, returns completed future. Otherwise updates voucher in storage with Paid status.
+   * @param voucher voucher to update status to Paid for
+   * @return completed future on success or with {@link HttpException} if update fails
+   */
+  public CompletableFuture<Void> updateVoucherStatusToPaid(Voucher voucher) {
+    if (voucher.getStatus() == Voucher.Status.PAID) {
+      // Voucher already marked as paid
+      return CompletableFuture.completedFuture(null);
+    } else {
+      return updateVoucher(voucher.withStatus(Voucher.Status.PAID))
+        .exceptionally(fail -> {
+          throw new HttpException(500, VOUCHER_UPDATE_FAILURE.toError());
+        });
+    }
+  }
+
+  public CompletableFuture<Void> updateVoucher(Voucher voucher) {
+    String path = resourceByIdPath(VOUCHERS, voucher.getId(), lang);
+    return handlePutRequest(path, JsonObject.mapFrom(voucher), httpClient, ctx, okapiHeaders, logger);
   }
 }

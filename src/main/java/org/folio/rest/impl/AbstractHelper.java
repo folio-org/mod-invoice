@@ -42,20 +42,20 @@ import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 
 public abstract class AbstractHelper {
+  protected final Logger logger = LoggerFactory.getLogger(this.getClass());
+
   public static final String ID = "id";
   public static final String ERROR_CAUSE = "cause";
   public static final String OKAPI_URL = "X-Okapi-Url";
-
-
-  protected final Logger logger = LoggerFactory.getLogger(this.getClass());
+  public static final String DEFAULT_SYSTEM_CURRENCY = "USD";
+  private static final String CONFIG_QUERY = "module==%s and configName==%s";
 
   private final Errors processingErrors = new Errors();
-
   protected final HttpClientInterface httpClient;
   protected final Map<String, String> okapiHeaders;
   protected final Context ctx;
   protected final String lang;
-  private static final String CONFIG_QUERY = "module==%s and configName==%s";
+
 
   AbstractHelper(HttpClientInterface httpClient, Map<String, String> okapiHeaders, Context ctx, String lang) {
     this.httpClient = httpClient;
@@ -67,6 +67,7 @@ public abstract class AbstractHelper {
 
   /**
    * Retrieve configuration by moduleName and configName from mod-configuration.
+   *
    * @param moduleName name of the module for which the configuration is to be retrieved
    * @param configName name of the configuration to retrieve it
    * @return CompletableFuture with {@link List<Config>}

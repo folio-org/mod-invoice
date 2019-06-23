@@ -9,14 +9,14 @@ import static org.folio.invoices.utils.ResourcePathResolver.FOLIO_INVOICE_NUMBER
 import static org.folio.invoices.utils.ResourcePathResolver.FUNDS;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICES;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_LINES;
-import static org.folio.invoices.utils.ResourcePathResolver.PO_LINES;
-import static org.folio.invoices.utils.ResourcePathResolver.VOUCHER_LINES;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_LINE_NUMBER;
+import static org.folio.invoices.utils.ResourcePathResolver.ORDER_LINES;
+import static org.folio.invoices.utils.ResourcePathResolver.PO_LINES;
+import static org.folio.invoices.utils.ResourcePathResolver.VOUCHERS;
+import static org.folio.invoices.utils.ResourcePathResolver.VOUCHER_LINES;
 import static org.folio.invoices.utils.ResourcePathResolver.VOUCHER_NUMBER;
 import static org.folio.invoices.utils.ResourcePathResolver.VOUCHER_NUMBER_START;
-import static org.folio.invoices.utils.ResourcePathResolver.resourceByIdPath;
 import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
-import static org.folio.invoices.utils.ResourcePathResolver.VOUCHERS;
 import static org.folio.rest.RestVerticle.OKAPI_HEADER_TENANT;
 import static org.folio.rest.impl.AbstractHelper.ID;
 import static org.folio.rest.impl.ApiTestBase.BASE_MOCK_DATA_PATH;
@@ -31,10 +31,10 @@ import static org.folio.rest.impl.InvoiceHelper.LOCALE_SETTINGS;
 import static org.folio.rest.impl.InvoiceHelper.SYSTEM_CONFIG_NAME;
 import static org.folio.rest.impl.InvoiceLinesApiTest.INVOICE_ID;
 import static org.folio.rest.impl.InvoiceLinesApiTest.INVOICE_LINES_MOCK_DATA_PATH;
-import static org.folio.rest.impl.VoucherLinesApiTest.VOUCHER_LINES_MOCK_DATA_PATH;
 import static org.folio.rest.impl.InvoicesApiTest.BAD_QUERY;
 import static org.folio.rest.impl.InvoicesApiTest.EXISTING_VENDOR_INV_NO;
 import static org.folio.rest.impl.InvoicesApiTest.INVOICE_MOCK_DATA_PATH;
+import static org.folio.rest.impl.VoucherLinesApiTest.VOUCHER_LINES_MOCK_DATA_PATH;
 import static org.folio.rest.impl.VouchersApiTest.VOUCHERS_LIST_PATH;
 import static org.folio.rest.impl.VouchersApiTest.VOUCHER_MOCK_DATA_PATH;
 import static org.junit.Assert.fail;
@@ -54,18 +54,21 @@ import java.util.function.Supplier;
 
 import javax.ws.rs.core.Response;
 
-import one.util.streamex.StreamEx;
-import org.apache.commons.collections4.CollectionUtils;
-
 import org.apache.commons.lang3.StringUtils;
 import org.folio.invoices.utils.ResourcePathResolver;
+import org.folio.rest.acq.model.SequenceNumber;
 import org.folio.rest.acq.model.VoucherLine;
 import org.folio.rest.acq.model.VoucherLineCollection;
 import org.folio.rest.acq.model.finance.Fund;
 import org.folio.rest.acq.model.finance.FundCollection;
 import org.folio.rest.acq.model.orders.CompositePoLine;
-import org.folio.rest.acq.model.SequenceNumber;
-
+import org.folio.rest.jaxrs.model.Config;
+import org.folio.rest.jaxrs.model.Configs;
+import org.folio.rest.jaxrs.model.Invoice;
+import org.folio.rest.jaxrs.model.InvoiceLine;
+import org.folio.rest.jaxrs.model.InvoiceLineCollection;
+import org.folio.rest.jaxrs.model.Voucher;
+import org.folio.rest.jaxrs.model.VoucherCollection;
 
 import com.google.common.collect.HashBasedTable;
 import com.google.common.collect.Table;
@@ -81,13 +84,7 @@ import io.vertx.core.logging.LoggerFactory;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
 import io.vertx.ext.web.handler.BodyHandler;
-import org.folio.rest.jaxrs.model.Config;
-import org.folio.rest.jaxrs.model.Configs;
-import org.folio.rest.jaxrs.model.Invoice;
-import org.folio.rest.jaxrs.model.InvoiceLine;
-import org.folio.rest.jaxrs.model.InvoiceLineCollection;
-import org.folio.rest.jaxrs.model.Voucher;
-import org.folio.rest.jaxrs.model.VoucherCollection;
+import one.util.streamex.StreamEx;
 
 
 public class MockServer {
@@ -117,8 +114,8 @@ public class MockServer {
   private static final String INVOICE_LINES_COLLECTION = BASE_MOCK_DATA_PATH + "invoiceLines/invoice_lines.json";
   private static final String VOUCHER_LINES_COLLECTION = BASE_MOCK_DATA_PATH + "voucherLines/voucher_lines.json";
   private static final String PO_LINES_MOCK_DATA_PATH = BASE_MOCK_DATA_PATH + "poLines/";
-  private static final String ID_PATH_PARAM = ":" + ID;
-  private static final String VALUE_PATH_PARAM = ":value";
+  private static final String ID_PATH_PARAM = "/:" + ID;
+  private static final String VALUE_PATH_PARAM = "/:value";
   private static final String TOTAL_RECORDS = "totalRecords";
 
   static final Header INVOICE_NUMBER_ERROR_X_OKAPI_TENANT = new Header(OKAPI_HEADER_TENANT, INVOICE_NUMBER_ERROR_TENANT);
@@ -174,19 +171,19 @@ public class MockServer {
     router.route().handler(BodyHandler.create());
     router.route(HttpMethod.POST, ResourcePathResolver.resourcesPath(INVOICES)).handler(ctx -> handlePostEntry(ctx, Invoice.class, INVOICES));
     router.route(HttpMethod.POST, resourcesPath(INVOICE_LINES)).handler(ctx -> handlePostEntry(ctx, InvoiceLine.class, INVOICE_LINES));
-    router.route(HttpMethod.POST, resourceByIdPath(VOUCHER_NUMBER_START, VALUE_PATH_PARAM)).handler(this::handlePostVoucherStartValue);
+    router.route(HttpMethod.POST, resourceByValuePath(VOUCHER_NUMBER_START)).handler(this::handlePostVoucherStartValue);
     router.route(HttpMethod.POST, resourcesPath(VOUCHERS)).handler(ctx -> handlePostEntry(ctx, Voucher.class, VOUCHERS));
     router.route(HttpMethod.POST, resourcesPath(VOUCHER_LINES)).handler(ctx -> handlePostEntry(ctx, VoucherLine.class, VOUCHER_LINES));
 
     router.route(HttpMethod.GET, resourcesPath(INVOICES)).handler(this::handleGetInvoices);
     router.route(HttpMethod.GET, resourcesPath(INVOICE_LINES)).handler(this::handleGetInvoiceLines);
-    router.route(HttpMethod.GET, resourceByIdPath(INVOICES, ID_PATH_PARAM)).handler(this::handleGetInvoiceById);
+    router.route(HttpMethod.GET, resourceByIdPath(INVOICES)).handler(this::handleGetInvoiceById);
     router.route(HttpMethod.GET, resourcesPath(FOLIO_INVOICE_NUMBER)).handler(this::handleGetFolioInvoiceNumber);
-    router.route(HttpMethod.GET, resourceByIdPath(INVOICE_LINES, ID_PATH_PARAM)).handler(this::handleGetInvoiceLineById);
+    router.route(HttpMethod.GET, resourceByIdPath(INVOICE_LINES)).handler(this::handleGetInvoiceLineById);
     router.route(HttpMethod.GET, resourcesPath(INVOICE_LINE_NUMBER)).handler(this::handleGetInvoiceLineNumber);
-    router.route(HttpMethod.GET, resourceByIdPath(VOUCHER_LINES, ID_PATH_PARAM)).handler(this::handleGetVoucherLineById);
-    router.route(HttpMethod.GET, resourceByIdPath(VOUCHERS, ID_PATH_PARAM)).handler(this::handleGetVoucherById);
-    router.route(HttpMethod.GET, resourceByIdPath(PO_LINES, ID_PATH_PARAM)).handler(this::handleGetPoLineById);
+    router.route(HttpMethod.GET, resourceByIdPath(VOUCHER_LINES)).handler(this::handleGetVoucherLineById);
+    router.route(HttpMethod.GET, resourceByIdPath(VOUCHERS)).handler(this::handleGetVoucherById);
+    router.route(HttpMethod.GET, resourceByIdPath(ORDER_LINES)).handler(this::handleGetPoLineById);
     router.route(HttpMethod.GET, resourcesPath(VOUCHER_NUMBER_START)).handler(this::handleGetSequence);
     router.route(HttpMethod.GET, resourcesPath(VOUCHERS)).handler(this::handleGetVouchers);
     router.route(HttpMethod.GET, resourcesPath(VOUCHER_LINES)).handler(this::handleGetVoucherLines);
@@ -194,15 +191,15 @@ public class MockServer {
     router.route(HttpMethod.GET, resourcesPath(FUNDS)).handler(this::handleGetFundRecords);
     router.route(HttpMethod.GET,"/configurations/entries").handler(this::handleConfigurationModuleResponse);
 
-    router.route(HttpMethod.DELETE, resourceByIdPath(INVOICES, ID_PATH_PARAM)).handler(ctx -> handleDeleteRequest(ctx, INVOICES));
-    router.route(HttpMethod.DELETE, resourceByIdPath(INVOICE_LINES, ID_PATH_PARAM)).handler(ctx -> handleDeleteRequest(ctx, INVOICE_LINES));
-    router.route(HttpMethod.DELETE, resourceByIdPath(VOUCHER_LINES, ID_PATH_PARAM)).handler(ctx -> handleDeleteRequest(ctx, VOUCHER_LINES));
+    router.route(HttpMethod.DELETE, resourceByIdPath(INVOICES)).handler(ctx -> handleDeleteRequest(ctx, INVOICES));
+    router.route(HttpMethod.DELETE, resourceByIdPath(INVOICE_LINES)).handler(ctx -> handleDeleteRequest(ctx, INVOICE_LINES));
+    router.route(HttpMethod.DELETE, resourceByIdPath(VOUCHER_LINES)).handler(ctx -> handleDeleteRequest(ctx, VOUCHER_LINES));
 
-    router.route(HttpMethod.PUT, resourceByIdPath(INVOICES, ID_PATH_PARAM)).handler(ctx -> handlePutGenericSubObj(ctx, INVOICES));
-    router.route(HttpMethod.PUT, resourceByIdPath(INVOICE_LINES, ID_PATH_PARAM)).handler(ctx -> handlePutGenericSubObj(ctx, INVOICE_LINES));
-    router.route(HttpMethod.PUT, resourceByIdPath(VOUCHERS, ID_PATH_PARAM)).handler(ctx -> handlePutGenericSubObj(ctx, VOUCHERS));
-    router.route(HttpMethod.PUT, resourceByIdPath(VOUCHER_LINES, ID_PATH_PARAM)).handler(ctx -> handlePutGenericSubObj(ctx, VOUCHER_LINES));
-    router.route(HttpMethod.PUT, resourceByIdPath(PO_LINES, ID_PATH_PARAM)).handler(ctx -> handlePutGenericSubObj(ctx, PO_LINES));
+    router.route(HttpMethod.PUT, resourceByIdPath(INVOICES)).handler(ctx -> handlePutGenericSubObj(ctx, INVOICES));
+    router.route(HttpMethod.PUT, resourceByIdPath(INVOICE_LINES)).handler(ctx -> handlePutGenericSubObj(ctx, INVOICE_LINES));
+    router.route(HttpMethod.PUT, resourceByIdPath(VOUCHERS)).handler(ctx -> handlePutGenericSubObj(ctx, VOUCHERS));
+    router.route(HttpMethod.PUT, resourceByIdPath(VOUCHER_LINES)).handler(ctx -> handlePutGenericSubObj(ctx, VOUCHER_LINES));
+    router.route(HttpMethod.PUT, resourceByIdPath(ORDER_LINES)).handler(ctx -> handlePutGenericSubObj(ctx, PO_LINES));
 
 
     return router;
@@ -253,6 +250,14 @@ public class MockServer {
         .collect(toList());
     }
     return entries;
+  }
+
+  private String resourceByValuePath(String field) {
+    return resourcesPath(field) + VALUE_PATH_PARAM;
+  }
+
+  private String resourceByIdPath(String field) {
+    return resourcesPath(field) + ID_PATH_PARAM;
   }
 
   private void handleGetInvoiceLines(RoutingContext ctx) {
@@ -316,16 +321,7 @@ public class MockServer {
     if (ID_FOR_INTERNAL_SERVER_ERROR.equals(id)) {
       serverResponse(ctx, 500, APPLICATION_JSON, Response.Status.INTERNAL_SERVER_ERROR.getReasonPhrase());
     } else {
-      Supplier<JsonObject> getFromFile = () -> {
-        String filePath = String.format(MOCK_DATA_PATH_PATTERN, INVOICE_MOCK_DATA_PATH, id);
-        try {
-          return new JsonObject(getMockData(filePath));
-        } catch (IOException e) {
-          return null;
-        }
-      };
-
-      JsonObject invoice = getMockEntry(INVOICES, id).orElseGet(getFromFile);
+      JsonObject invoice = getMockEntry(INVOICES, id).orElseGet(getJsonObjectFromFile(INVOICE_MOCK_DATA_PATH, id));
       if (invoice == null) {
         ctx.response().setStatusCode(404).end(id);
       } else {
@@ -363,7 +359,6 @@ public class MockServer {
   private void handleGetInvoiceLineById(RoutingContext ctx) {
     logger.info("handleGetInvoiceLinesById got: GET " + ctx.request().path());
     String id = ctx.request().getParam(ID);
-
     logger.info("id: " + id);
     if (ID_FOR_INTERNAL_SERVER_ERROR.equals(id)) {
       serverResponse(ctx, 500, APPLICATION_JSON, Response.Status.INTERNAL_SERVER_ERROR.getReasonPhrase());
@@ -584,31 +579,37 @@ public class MockServer {
     if (ID_FOR_INTERNAL_SERVER_ERROR.equals(id)) {
       serverResponse(ctx, 500, APPLICATION_JSON, Response.Status.INTERNAL_SERVER_ERROR.getReasonPhrase());
     } else {
-      try {
-
-        String filePath = String.format(MOCK_DATA_PATH_PATTERN, VOUCHER_MOCK_DATA_PATH, id);
-
-        JsonObject voucher = new JsonObject(getMockData(filePath));
-
+      JsonObject voucher = getMockEntry(VOUCHERS, id).orElseGet(getJsonObjectFromFile(VOUCHER_MOCK_DATA_PATH, id));
+      if (voucher != null) {
         // validate content against schema
         Voucher voucherSchema = voucher.mapTo(Voucher.class);
         voucherSchema.setId(id);
         voucher = JsonObject.mapFrom(voucherSchema);
         addServerRqRsData(HttpMethod.GET, VOUCHERS, voucher);
-        serverResponse(ctx, 200, APPLICATION_JSON, voucher.encodePrettily());
-      } catch (IOException e) {
-        ctx.response().setStatusCode(404).end(id);
+        serverResponse(ctx, Response.Status.OK.getStatusCode(), APPLICATION_JSON, voucher.encodePrettily());
+      } else {
+        serverResponse(ctx, Response.Status.NOT_FOUND.getStatusCode(), TEXT_PLAIN, id);
       }
     }
+  }
+
+  private Supplier<JsonObject> getJsonObjectFromFile(String mockDataPath, String id) {
+    return () -> {
+      String filePath = String.format(MOCK_DATA_PATH_PATTERN, mockDataPath, id);
+      try {
+        return new JsonObject(getMockData(filePath));
+      } catch (IOException e) {
+        return null;
+      }
+    };
   }
 
   private void handleGetVouchers(RoutingContext ctx) {
 
     logger.info("handleGetVoucher got: {}?{}", ctx.request().path(), ctx.request().query());
 
-    String tenant = ctx.request().getHeader(OKAPI_HEADER_TENANT);
-
     String queryParam = StringUtils.trimToEmpty(ctx.request().getParam(QUERY));
+    String tenant = ctx.request().getHeader(OKAPI_HEADER_TENANT);
     String invoiceId = EMPTY;
     if (queryParam.contains(INVOICE_ID)) {
       invoiceId = queryParam.split(INVOICE_ID + "==")[1];
@@ -618,33 +619,30 @@ public class MockServer {
     } else if (queryParam.contains(ID_FOR_INTERNAL_SERVER_ERROR) || GET_VOUCHERS_ERROR_TENANT.equals(tenant)) {
       serverResponse(ctx, 500, APPLICATION_JSON, Response.Status.INTERNAL_SERVER_ERROR.getReasonPhrase());
     } else {
-      try {
-        VoucherCollection voucherCollection = new VoucherCollection();
-        List<JsonObject> jsonObjects  = serverRqRs.get(VOUCHERS, HttpMethod.POST);
-        if (CollectionUtils.isNotEmpty(jsonObjects)) {
-          List<Voucher> vouchers =  jsonObjects.stream().map(entries -> entries.mapTo(Voucher.class)).collect(toList());
-          voucherCollection.setVouchers(vouchers);
-        } else {
-          voucherCollection = new JsonObject(ApiTestBase.getMockData(VOUCHERS_LIST_PATH)).mapTo(VoucherCollection.class);
+      Supplier<List<Voucher>> getFromFile = () -> {
+        try {
+          return new JsonObject(getMockData(VOUCHERS_LIST_PATH))
+            .mapTo(VoucherCollection.class).getVouchers();
+        } catch (IOException e) {
+          return Collections.emptyList();
         }
-        Function<Voucher, String> invoiceIdGetter = Voucher::getInvoiceId;
-        voucherCollection.setVouchers(filterEntriesByStringValue(invoiceId, voucherCollection.getVouchers(), invoiceIdGetter));
-        voucherCollection.setTotalRecords(voucherCollection.getVouchers().size());
+      };
 
-        JsonObject vouchers = JsonObject.mapFrom(voucherCollection);
-        logger.info(vouchers.encodePrettily());
+      VoucherCollection voucherCollection = new VoucherCollection();
+      List<Voucher> vouchers  = getMockEntries(VOUCHERS, Voucher.class).orElseGet(getFromFile);
 
-        addServerRqRsData(HttpMethod.GET, VOUCHERS, vouchers);
-        serverResponse(ctx, 200, APPLICATION_JSON, vouchers.encode());
-      } catch (IOException e) {
-        VoucherLineCollection voucherLineCollection = new VoucherLineCollection();
-        voucherLineCollection.setTotalRecords(0);
-        serverResponse(ctx, 200, APPLICATION_JSON, JsonObject.mapFrom(voucherLineCollection).encodePrettily());
-      }
+      Function<Voucher, String> voucherIdGetter = Voucher::getInvoiceId;
+      voucherCollection.setVouchers(filterEntriesByStringValue(invoiceId, vouchers, voucherIdGetter));
+      voucherCollection.setTotalRecords(voucherCollection.getVouchers().size());
 
+      JsonObject vouchersJson = JsonObject.mapFrom(voucherCollection);
+      logger.info(vouchersJson.encodePrettily());
+
+      addServerRqRsData(HttpMethod.GET, VOUCHERS, vouchersJson);
+      serverResponse(ctx, 200, APPLICATION_JSON, vouchersJson.encode());
     }
   }
-
+  
   private void handleGetSequence(RoutingContext ctx) {
     if (ERROR_TENANT.equals(ctx.request().getHeader(OKAPI_HEADER_TENANT))) {
       serverResponse(ctx, 500, TEXT_PLAIN, INTERNAL_SERVER_ERROR.getReasonPhrase());

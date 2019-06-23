@@ -1,42 +1,6 @@
 package org.folio.rest.impl;
 
-import io.restassured.http.Headers;
-import io.restassured.response.Response;
-import io.vertx.core.http.HttpMethod;
-import io.vertx.core.json.JsonObject;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
-import java.util.stream.Collectors;
-
-import org.folio.rest.acq.model.VoucherLineCollection;
-import org.folio.rest.acq.model.finance.Fund;
-import org.folio.rest.acq.model.finance.FundCollection;
-import org.folio.rest.acq.model.orders.CompositePoLine;
-import org.apache.commons.lang3.reflect.FieldUtils;
-import org.apache.http.HttpStatus;
-import org.folio.invoices.utils.InvoiceProtectedFields;
-import org.folio.rest.jaxrs.model.Adjustment;
-import org.folio.rest.jaxrs.model.Error;
-import org.folio.rest.jaxrs.model.Errors;
-import org.folio.rest.jaxrs.model.Invoice;
-import org.folio.rest.jaxrs.model.InvoiceCollection;
-import org.folio.rest.jaxrs.model.InvoiceLine;
-import org.folio.rest.jaxrs.model.InvoiceLineCollection;
-import org.folio.rest.jaxrs.model.Voucher;
-import org.folio.rest.jaxrs.model.VoucherLine;
-import org.hamcrest.Matchers;
-import org.junit.Test;
-
-import javax.money.convert.MonetaryConversions;
-
 import static java.util.stream.Collectors.groupingBy;
-import java.util.*;
-
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 import static javax.ws.rs.core.MediaType.TEXT_PLAIN;
 import static org.folio.invoices.utils.ErrorCodes.FUNDS_NOT_FOUND;
@@ -44,10 +8,13 @@ import static org.folio.invoices.utils.ErrorCodes.GENERIC_ERROR_CODE;
 import static org.folio.invoices.utils.ErrorCodes.INVOICE_TOTAL_REQUIRED;
 import static org.folio.invoices.utils.ErrorCodes.MOD_CONFIG_ERROR;
 import static org.folio.invoices.utils.ErrorCodes.PO_LINE_NOT_FOUND;
+import static org.folio.invoices.utils.ErrorCodes.PO_LINE_UPDATE_FAILURE;
+import static org.folio.invoices.utils.ErrorCodes.PROHIBITED_FIELD_CHANGING;
+import static org.folio.invoices.utils.ErrorCodes.VOUCHER_NOT_FOUND;
+import static org.folio.invoices.utils.ErrorCodes.VOUCHER_UPDATE_FAILURE;
 import static org.folio.invoices.utils.HelperUtils.calculateInvoiceLineTotals;
 import static org.folio.invoices.utils.HelperUtils.calculateVoucherAmount;
 import static org.folio.invoices.utils.HelperUtils.calculateVoucherLineAmount;
-import static org.folio.invoices.utils.ErrorCodes.PROHIBITED_FIELD_CHANGING;
 import static org.folio.invoices.utils.ResourcePathResolver.FOLIO_INVOICE_NUMBER;
 import static org.folio.invoices.utils.ResourcePathResolver.FUNDS;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICES;
@@ -58,19 +25,21 @@ import static org.folio.invoices.utils.ResourcePathResolver.VOUCHER_LINES;
 import static org.folio.rest.impl.InvoiceHelper.MAX_IDS_FOR_GET_RQ;
 import static org.folio.rest.impl.InvoiceHelper.NO_INVOICE_LINES_ERROR_MSG;
 import static org.folio.rest.impl.InvoiceLinesApiTest.INVOICE_LINES_LIST_PATH;
-import static org.folio.rest.impl.MockServer.NON_EXIST_CONFIG_X_OKAPI_TENANT;
-import static org.folio.rest.impl.InvoicesImpl.PROTECTED_AND_MODIFIED_FIELDS;
 import static org.folio.rest.impl.InvoiceLinesApiTest.INVOICE_LINE_SAMPLE_PATH;
+import static org.folio.rest.impl.InvoicesImpl.PROTECTED_AND_MODIFIED_FIELDS;
 import static org.folio.rest.impl.MockServer.ERROR_CONFIG_X_OKAPI_TENANT;
 import static org.folio.rest.impl.MockServer.ERROR_X_OKAPI_TENANT;
 import static org.folio.rest.impl.MockServer.INVOICE_NUMBER_ERROR_X_OKAPI_TENANT;
+import static org.folio.rest.impl.MockServer.NON_EXIST_CONFIG_X_OKAPI_TENANT;
 import static org.folio.rest.impl.MockServer.addMockEntry;
 import static org.folio.rest.impl.MockServer.getRqRsEntries;
 import static org.folio.rest.impl.MockServer.serverRqRs;
 import static org.folio.rest.impl.VoucherHelper.DEFAULT_SYSTEM_CURRENCY;
+import static org.folio.rest.impl.VouchersApiTest.VOUCHERS_LIST_PATH;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.arrayContaining;
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.nullValue;
@@ -78,6 +47,46 @@ import static org.hamcrest.core.Is.is;
 import static org.hamcrest.core.IsEqual.equalTo;
 import static org.hamcrest.core.IsNot.not;
 import static org.junit.Assert.assertEquals;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.UUID;
+import java.util.stream.Collectors;
+
+import javax.money.convert.MonetaryConversions;
+
+import org.apache.commons.lang3.reflect.FieldUtils;
+import org.apache.http.HttpStatus;
+import org.folio.invoices.utils.InvoiceProtectedFields;
+import org.folio.rest.acq.model.VoucherLineCollection;
+import org.folio.rest.acq.model.finance.Fund;
+import org.folio.rest.acq.model.finance.FundCollection;
+import org.folio.rest.acq.model.orders.CompositePoLine;
+import org.folio.rest.jaxrs.model.Adjustment;
+import org.folio.rest.jaxrs.model.Error;
+import org.folio.rest.jaxrs.model.Errors;
+import org.folio.rest.jaxrs.model.Invoice;
+import org.folio.rest.jaxrs.model.InvoiceCollection;
+import org.folio.rest.jaxrs.model.InvoiceLine;
+import org.folio.rest.jaxrs.model.InvoiceLineCollection;
+import org.folio.rest.jaxrs.model.Voucher;
+import org.folio.rest.jaxrs.model.VoucherCollection;
+import org.folio.rest.jaxrs.model.VoucherLine;
+import org.hamcrest.Matchers;
+import org.junit.Test;
+
+import io.restassured.http.Headers;
+import io.restassured.response.Response;
+import io.vertx.core.http.HttpMethod;
+import io.vertx.core.json.JsonObject;
+import io.vertx.core.logging.Logger;
+import io.vertx.core.logging.LoggerFactory;
 
 public class InvoicesApiTest extends ApiTestBase {
 
@@ -102,7 +111,7 @@ public class InvoicesApiTest extends ApiTestBase {
   static final String EXISTING_VENDOR_INV_NO = "existingVendorInvoiceNo";
   private static final String BAD_INVOICE_ID = "5a34ae0e-5a11-4337-be95-1a20cfdc3161";
   private static final String EXISTENT_PO_LINE_ID = "c2755a78-2f8d-47d0-a218-059a9b7391b4";
-  private static final String EXISTING_VOUCHER_ID = "f914903e-0419-4123-9afc-73e863d1768c";
+  private static final String EXISTING_VOUCHER_ID = "a9b99f8a-7100-47f2-9903-6293d44a9905";
   private static final String STATUS = "status";
   private static final String INVALID_CURRENCY = "ABC";
 
@@ -325,12 +334,13 @@ public class InvoicesApiTest extends ApiTestBase {
     logger.info("=== Test transition invoice to Approved with existing voucher and voucherLines ===");
 
     InvoiceLine invoiceLine = getMockAsJson(INVOICE_LINE_SAMPLE_PATH).mapTo(InvoiceLine.class);
-    VoucherLine voucherLine = new VoucherLine().withVoucherId(EXISTING_VOUCHER_ID);
+
 
     Invoice reqData = getMockAsJson(REVIEWED_INVOICE_WITH_EXISTING_VOUCHER_SAMPLE_PATH).mapTo(Invoice.class);
     invoiceLine.setId(UUID.randomUUID().toString());
     invoiceLine.setInvoiceId(reqData.getId());
-
+    prepareMockVoucher(reqData.getId());
+    VoucherLine voucherLine = new VoucherLine().withVoucherId(EXISTING_VOUCHER_ID);
     addMockEntry(INVOICE_LINES, JsonObject.mapFrom(invoiceLine));
     addMockEntry(VOUCHER_LINES, JsonObject.mapFrom(voucherLine));
 
@@ -401,10 +411,10 @@ public class InvoicesApiTest extends ApiTestBase {
   private Errors transitionToApprovedWithError(String invoiceSamplePath, Headers headers) {
     InvoiceLine invoiceLine = getMockAsJson(INVOICE_LINE_SAMPLE_PATH).mapTo(InvoiceLine.class);
 
-
     Invoice reqData = getMockAsJson(invoiceSamplePath).mapTo(Invoice.class);
     invoiceLine.setId(UUID.randomUUID().toString());
     invoiceLine.setInvoiceId(reqData.getId());
+    prepareMockVoucher(reqData.getId());
     addMockEntry(INVOICE_LINES, JsonObject.mapFrom(invoiceLine));
 
 
@@ -548,7 +558,7 @@ public class InvoicesApiTest extends ApiTestBase {
     logger.info("=== Test transition invoice to Approved with error when getting voucherLines  ===");
 
     Headers headers = prepareHeaders(X_OKAPI_URL, MockServer.GET_VOUCHER_LINE_ERROR_X_OKAPI_TENANT, X_OKAPI_TOKEN);
-    Errors errors = transitionToApprovedWithError(REVIEWED_INVOICE_SAMPLE_PATH, headers);
+    Errors errors = transitionToApprovedWithError(REVIEWED_INVOICE_WITH_EXISTING_VOUCHER_SAMPLE_PATH, headers);
 
     assertThat(errors, notNullValue());
     assertThat(errors.getErrors(), hasSize(1));
@@ -560,7 +570,7 @@ public class InvoicesApiTest extends ApiTestBase {
     logger.info("=== Test transition invoice to Approved with error when deleting voucherLines  ===");
 
     Headers headers = prepareHeaders(X_OKAPI_URL, MockServer.DELETE_VOUCHER_LINE_ERROR_X_OKAPI_TENANT, X_OKAPI_TOKEN);
-    Errors errors = transitionToApprovedWithError(REVIEWED_INVOICE_SAMPLE_PATH, headers);
+    Errors errors = transitionToApprovedWithError(REVIEWED_INVOICE_WITH_EXISTING_VOUCHER_SAMPLE_PATH, headers);
 
     assertThat(errors, notNullValue());
     assertThat(errors.getErrors(), hasSize(1));
@@ -627,12 +637,16 @@ public class InvoicesApiTest extends ApiTestBase {
   public void testUpdateValidInvoiceTransitionToPaidWithMissingPoLine() {
     logger.info("=== Test transition invoice to paid with deleted associated poLine ===");
 
-    Invoice reqData = getMockAsJson(APPROVED_INVOICE_SAMPLE_PATH).mapTo(Invoice.class);
-    InvoiceLine invoiceLine = getMockAsJson(INVOICE_LINE_SAMPLE_PATH).mapTo(InvoiceLine.class);
-    reqData.setStatus(Invoice.Status.PAID);
+    Invoice reqData = getMockAsJson(APPROVED_INVOICE_SAMPLE_PATH).mapTo(Invoice.class).withStatus(Invoice.Status.PAID);
     String id = reqData.getId();
+
+    InvoiceLine invoiceLine = getMockAsJson(INVOICE_LINE_SAMPLE_PATH).mapTo(InvoiceLine.class);
     invoiceLine.setInvoiceId(id);
     invoiceLine.setPoLineId(ID_DOES_NOT_EXIST);
+
+    addMockEntry(INVOICE_LINES, JsonObject.mapFrom(invoiceLine));
+    prepareMockVoucher(id);
+
 
     addMockEntry(INVOICE_LINES, JsonObject.mapFrom(invoiceLine));
 
@@ -649,17 +663,22 @@ public class InvoicesApiTest extends ApiTestBase {
   public void testUpdateValidInvoiceTransitionToPaidWitErrorOnPoLineUpdate() {
     logger.info("=== Test transition invoice to paid with server error poLine update ===");
 
-    Invoice reqData = getMockAsJson(APPROVED_INVOICE_SAMPLE_PATH).mapTo(Invoice.class);
-    InvoiceLine invoiceLine = getMockAsJson(INVOICE_LINE_SAMPLE_PATH).mapTo(InvoiceLine.class);
-    reqData.setStatus(Invoice.Status.PAID);
+    Invoice reqData = getMockAsJson(APPROVED_INVOICE_SAMPLE_PATH).mapTo(Invoice.class).withStatus(Invoice.Status.PAID);
     String id = reqData.getId();
+
+    InvoiceLine invoiceLine = getMockAsJson(INVOICE_LINE_SAMPLE_PATH).mapTo(InvoiceLine.class);
     invoiceLine.setInvoiceId(id);
     invoiceLine.setPoLineId(ID_FOR_INTERNAL_SERVER_ERROR_PUT);
+
     addMockEntry(INVOICE_LINES, JsonObject.mapFrom(invoiceLine));
+    prepareMockVoucher(id);
 
     String jsonBody = JsonObject.mapFrom(reqData).encode();
 
-    verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, APPLICATION_JSON, 500);
+    Errors errors = verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, APPLICATION_JSON, 500).as(Errors.class);
+    assertThat(serverRqRs.get(INVOICES, HttpMethod.PUT), nullValue());
+    assertThat(errors.getErrors(), hasSize(1));
+    assertThat(errors.getErrors().get(0).getCode(), equalTo(PO_LINE_UPDATE_FAILURE.getCode()));
     assertThat(serverRqRs.get(INVOICES, HttpMethod.PUT), nullValue());
   }
 
@@ -667,22 +686,89 @@ public class InvoicesApiTest extends ApiTestBase {
   public void testUpdateValidInvoiceTransitionToPaid() {
     logger.info("=== Test transition invoice to paid and mixed releaseEncumbrance ===");
 
-    Invoice reqData = getMockAsJson(APPROVED_INVOICE_SAMPLE_PATH).mapTo(Invoice.class);
-    reqData.setStatus(Invoice.Status.PAID);
-
+    Invoice reqData = getMockAsJson(APPROVED_INVOICE_SAMPLE_PATH).mapTo(Invoice.class).withStatus(Invoice.Status.PAID);
     String id = reqData.getId();
+
+    prepareMockVoucher(id);
+
     String jsonBody = JsonObject.mapFrom(reqData).encode();
 
     verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, "", 204);
     assertThat(serverRqRs.get(INVOICES, HttpMethod.PUT).get(0).getString(STATUS), is(Invoice.Status.PAID.value()));
+
     validatePoLinesPaymentStatus();
+    assertThatVoucherPaid();
+  }
+
+  @Test
+  public void testUpdateInvoiceTransitionToPaidNoVoucherUpdate() {
+    logger.info("=== Test transition invoice to paid - voucher already paid ===");
+
+    Invoice reqData = getMockAsJson(APPROVED_INVOICE_SAMPLE_PATH).mapTo(Invoice.class).withStatus(Invoice.Status.PAID);
+    String id = reqData.getId();
+
+    // Prepare already paid voucher
+    Voucher voucher = getMockAsJson(VOUCHERS_LIST_PATH).mapTo(VoucherCollection.class).getVouchers().get(0);
+    voucher.setInvoiceId(id);
+    voucher.setStatus(Voucher.Status.PAID);
+    addMockEntry(VOUCHERS, JsonObject.mapFrom(voucher));
+
+    String jsonBody = JsonObject.mapFrom(reqData).encode();
+
+    verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, "", 204);
+
+    assertThat(getRqRsEntries(HttpMethod.GET, VOUCHERS), hasSize(1));
+    assertThat(getRqRsEntries(HttpMethod.PUT, VOUCHERS), empty());
+    assertThat(getRqRsEntries(HttpMethod.PUT, INVOICES), hasSize(1));
+    assertThat(getRqRsEntries(HttpMethod.PUT, INVOICES).get(0).getString(STATUS), is(Invoice.Status.PAID.value()));
+  }
+
+  @Test
+  public void testUpdateInvoiceTransitionToPaidNoVoucher() {
+    logger.info("=== Test transition invoice to paid - no voucher found ===");
+
+    Invoice reqData = getMockAsJson(APPROVED_INVOICE_SAMPLE_PATH).mapTo(Invoice.class).withStatus(Invoice.Status.PAID);
+    prepareMockVoucher(ID_DOES_NOT_EXIST);
+
+    String url = String.format(INVOICE_ID_PATH, reqData.getId());
+    Errors errors = verifyPut(url, JsonObject.mapFrom(reqData), APPLICATION_JSON, 500).as(Errors.class);
+
+    assertThat(errors.getErrors(), hasSize(1));
+    assertThat(errors.getErrors().get(0).getCode(), equalTo(VOUCHER_NOT_FOUND.getCode()));
+    assertThat(getRqRsEntries(HttpMethod.GET, INVOICES), hasSize(1));
+    assertThat(getRqRsEntries(HttpMethod.PUT, INVOICES), empty());
+    assertThat(getRqRsEntries(HttpMethod.PUT, VOUCHERS), empty());
+  }
+
+  @Test
+  public void testUpdateInvoiceTransitionToPaidVoucherUpdateFailure() {
+    logger.info("=== Test transition invoice to paid - voucher update failure ===");
+
+    Invoice reqData = getMockAsJson(APPROVED_INVOICE_SAMPLE_PATH).mapTo(Invoice.class).withStatus(Invoice.Status.PAID);
+    prepareMockVoucher(reqData.getId(), true);
+
+    String url = String.format(INVOICE_ID_PATH, reqData.getId());
+    Errors errors = verifyPut(url, JsonObject.mapFrom(reqData), APPLICATION_JSON, 500).as(Errors.class);
+
+    assertThat(errors.getErrors(), hasSize(1));
+    assertThat(errors.getErrors().get(0).getCode(), equalTo(VOUCHER_UPDATE_FAILURE.getCode()));
+    assertThat(getRqRsEntries(HttpMethod.PUT, INVOICES), empty());
   }
 
   private void validatePoLinesPaymentStatus() {
-    List<JsonObject> poLineUpdates = serverRqRs.get(PO_LINES, HttpMethod.PUT);
-    assertThat(poLineUpdates, notNullValue());
-    final List<CompositePoLine> updatedPoLines = poLineUpdates.stream().map(poLine -> poLine.mapTo(CompositePoLine.class)).collect(Collectors.toList());
-    Map<String, List<InvoiceLine>> invoiceLines = serverRqRs.get(INVOICE_LINES, HttpMethod.GET).get(0).mapTo(InvoiceLineCollection.class).getInvoiceLines().stream().collect(groupingBy(InvoiceLine::getPoLineId));
+
+    final List<CompositePoLine> updatedPoLines = getRqRsEntries(HttpMethod.PUT, PO_LINES).stream()
+      .map(poLine -> poLine.mapTo(CompositePoLine.class))
+      .collect(Collectors.toList());
+
+    assertThat(updatedPoLines, not(empty()));
+
+    Map<String, List<InvoiceLine>> invoiceLines = getRqRsEntries(HttpMethod.GET, INVOICE_LINES).get(0)
+      .mapTo(InvoiceLineCollection.class)
+      .getInvoiceLines()
+      .stream()
+      .collect(groupingBy(InvoiceLine::getPoLineId));
+
     assertThat(invoiceLines.size(), equalTo(updatedPoLines.size()));
 
     for (Map.Entry<String, List<InvoiceLine>> poLineIdWithInvoiceLines : invoiceLines.entrySet()) {
@@ -696,31 +782,31 @@ public class InvoicesApiTest extends ApiTestBase {
     }
   }
 
+  private void assertThatVoucherPaid() {
+    assertThat(getRqRsEntries(HttpMethod.PUT, VOUCHERS), hasSize(1));
+    assertThat(getRqRsEntries(HttpMethod.PUT, VOUCHERS).get(0).mapTo(Voucher.class).getStatus(), is(Voucher.Status.PAID));
+  }
+
   @Test
   public void testUpdateValidInvoiceTransitionToPaidReleaseEncumbranceFalse() {
     logger.info("=== Test transition invoice to paid and releaseEncumbrance false for all invoice lines ===");
-    List<InvoiceLine> invoiceLines = new ArrayList<>();
+
+    Invoice reqData = getMockAsJson(APPROVED_INVOICE_SAMPLE_PATH).mapTo(Invoice.class).withStatus(Invoice.Status.PAID);
+    String id = reqData.getId();
+
+    // Prepare invoice lines
     for (int i = 0; i < 3; i++) {
-      invoiceLines.add(getMockAsJson(INVOICE_LINE_SAMPLE_PATH).mapTo(InvoiceLine.class));
+      InvoiceLine invoiceLine = getMockAsJson(INVOICE_LINE_SAMPLE_PATH).mapTo(InvoiceLine.class);
+      invoiceLine.setId(UUID.randomUUID().toString());
+      invoiceLine.setInvoiceId(id);
+      invoiceLine.setPoLineId(EXISTENT_PO_LINE_ID);
+      invoiceLine.setReleaseEncumbrance(false);
+      addMockEntry(INVOICE_LINES, JsonObject.mapFrom(invoiceLine));
     }
 
-    Invoice reqData = getMockAsJson(APPROVED_INVOICE_SAMPLE_PATH).mapTo(Invoice.class);
-    invoiceLines
-      .forEach(invoiceLine -> {
-        invoiceLine.setId(UUID.randomUUID().toString());
-        invoiceLine.setInvoiceId(reqData.getId());
-        invoiceLine.setPoLineId(EXISTENT_PO_LINE_ID);
-        invoiceLine.setReleaseEncumbrance(false);
-        addMockEntry(INVOICE_LINES, JsonObject.mapFrom(invoiceLine));
+    prepareMockVoucher(id);
 
-      });
-
-    reqData.setStatus(Invoice.Status.PAID);
-
-    String id = reqData.getId();
-    String jsonBody = JsonObject.mapFrom(reqData).encode();
-
-    verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, "", 204);
+    verifyPut(String.format(INVOICE_ID_PATH, id), JsonObject.mapFrom(reqData), "", 204);
 
     assertThat(serverRqRs.get(INVOICES, HttpMethod.PUT).get(0).getString(STATUS), is(Invoice.Status.PAID.value()));
     assertThat(serverRqRs.get(INVOICE_LINES, HttpMethod.GET), notNullValue());
@@ -734,33 +820,43 @@ public class InvoicesApiTest extends ApiTestBase {
   public void testUpdateValidInvoiceTransitionToPaidReleaseEncumbranceFalseNoPoLineUpdate() {
     logger.info("=== Test transition invoice to paid and releaseEncumbrance false for invoice line without poLine update ===");
 
+    Invoice reqData = getMockAsJson(APPROVED_INVOICE_SAMPLE_PATH).mapTo(Invoice.class).withStatus(Invoice.Status.PAID);
+    String id = reqData.getId();
+
     InvoiceLine invoiceLine = getMockAsJson(INVOICE_LINE_SAMPLE_PATH).mapTo(InvoiceLine.class);
-    CompositePoLine poLine = getMockAsJson(String.format("%s%s.json", PO_LINE_MOCK_DATA_PATH, EXISTENT_PO_LINE_ID)).mapTo(CompositePoLine.class);
-
-    Invoice reqData = getMockAsJson(APPROVED_INVOICE_SAMPLE_PATH).mapTo(Invoice.class);
-
     invoiceLine.setId(UUID.randomUUID().toString());
-    invoiceLine.setInvoiceId(reqData.getId());
+    invoiceLine.setInvoiceId(id);
     invoiceLine.setPoLineId(EXISTENT_PO_LINE_ID);
     invoiceLine.setReleaseEncumbrance(false);
 
+    CompositePoLine poLine = getMockAsJson(String.format("%s%s.json", PO_LINE_MOCK_DATA_PATH, EXISTENT_PO_LINE_ID)).mapTo(CompositePoLine.class);
     poLine.setId(EXISTENT_PO_LINE_ID);
     poLine.setPaymentStatus(CompositePoLine.PaymentStatus.PARTIALLY_PAID);
 
     addMockEntry(INVOICE_LINES, JsonObject.mapFrom(invoiceLine));
     addMockEntry(PO_LINES, JsonObject.mapFrom(poLine));
+    prepareMockVoucher(id);
 
-    reqData.setStatus(Invoice.Status.PAID);
+    verifyPut(String.format(INVOICE_ID_PATH, id), JsonObject.mapFrom(reqData), "", 204);
 
-    String id = reqData.getId();
-    String jsonBody = JsonObject.mapFrom(reqData).encode();
+    assertThat(getRqRsEntries(HttpMethod.PUT, INVOICES).get(0).getString(STATUS), is(Invoice.Status.PAID.value()));
+    assertThat(getRqRsEntries(HttpMethod.GET, INVOICE_LINES), hasSize(1));
+    assertThat(getRqRsEntries(HttpMethod.GET, INVOICE_LINES).get(0).mapTo(InvoiceLineCollection.class).getTotalRecords(), equalTo(1));
+    assertThat(getRqRsEntries(HttpMethod.PUT, PO_LINES), empty());
+    assertThatVoucherPaid();
+  }
 
-    verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, "", 204);
+  private void prepareMockVoucher(String invoiceId) {
+    prepareMockVoucher(invoiceId, false);
+  }
 
-    assertThat(serverRqRs.get(INVOICES, HttpMethod.PUT).get(0).getString(STATUS), is(Invoice.Status.PAID.value()));
-    assertThat(serverRqRs.get(INVOICE_LINES, HttpMethod.GET), notNullValue());
-    assertThat(serverRqRs.get(INVOICE_LINES, HttpMethod.GET).get(0).mapTo(InvoiceLineCollection.class).getTotalRecords(), equalTo(1));
-    assertThat(serverRqRs.get(PO_LINES, HttpMethod.PUT), nullValue());
+  private void prepareMockVoucher(String invoiceId, boolean failOnUpdate) {
+    Voucher voucher = getMockAsJson(VOUCHERS_LIST_PATH).mapTo(VoucherCollection.class).getVouchers().get(0);
+    voucher.setInvoiceId(invoiceId);
+    if (failOnUpdate) {
+      voucher.setId(ID_FOR_INTERNAL_SERVER_ERROR_PUT);
+    }
+    addMockEntry(VOUCHERS, JsonObject.mapFrom(voucher));
   }
 
   @Test
@@ -773,36 +869,30 @@ public class InvoicesApiTest extends ApiTestBase {
       poLines.add(getMockAsJson(String.format("%s%s.json", PO_LINE_MOCK_DATA_PATH, EXISTENT_PO_LINE_ID)).mapTo(CompositePoLine.class));
     }
 
-    Invoice reqData = getMockAsJson(APPROVED_INVOICE_SAMPLE_PATH).mapTo(Invoice.class);
+    Invoice reqData = getMockAsJson(APPROVED_INVOICE_SAMPLE_PATH).mapTo(Invoice.class).withStatus(Invoice.Status.PAID);
+    String id = reqData.getId();
     for (int i = 0; i < 3; i++) {
-      InvoiceLine invoiceLine = invoiceLines.get(i);
-
-      invoiceLine.setId(UUID.randomUUID().toString());
-      invoiceLine.setInvoiceId(reqData.getId());
+      invoiceLines.get(i).setId(UUID.randomUUID().toString());
+      invoiceLines.get(i).setInvoiceId(reqData.getId());
       String poLineId = UUID.randomUUID().toString();
-      invoiceLine.setPoLineId(poLineId);
+      invoiceLines.get(i).setPoLineId(poLineId);
       poLines.get(i).setId(poLineId);
-
-      addMockEntry(INVOICE_LINES, JsonObject.mapFrom(invoiceLine));
-      addMockEntry(PO_LINES, JsonObject.mapFrom(poLines.get(i)));
     }
 
+    invoiceLines.forEach(line -> addMockEntry(INVOICE_LINES, JsonObject.mapFrom(line)));
+    poLines.forEach(line -> addMockEntry(PO_LINES, JsonObject.mapFrom(line)));
+    prepareMockVoucher(id);
 
-    reqData.setStatus(Invoice.Status.PAID);
+    verifyPut(String.format(INVOICE_ID_PATH, id), JsonObject.mapFrom(reqData), "", 204);
 
-    String id = reqData.getId();
-    String jsonBody = JsonObject.mapFrom(reqData).encode();
-
-    verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, "", 204);
-
-    assertThat(serverRqRs.get(INVOICES, HttpMethod.PUT).get(0).getString(STATUS), is(Invoice.Status.PAID.value()));
-    assertThat(serverRqRs.get(INVOICE_LINES, HttpMethod.GET), notNullValue());
-    assertThat(serverRqRs.get(INVOICE_LINES, HttpMethod.GET).get(0).mapTo(InvoiceLineCollection.class).getTotalRecords(), equalTo(3));
-    assertThat(serverRqRs.get(PO_LINES, HttpMethod.PUT), notNullValue());
-    assertThat(serverRqRs.get(PO_LINES, HttpMethod.PUT), hasSize(3));
-    serverRqRs.get(PO_LINES, HttpMethod.PUT).stream()
+    assertThat(getRqRsEntries(HttpMethod.PUT, INVOICES).get(0).getString(STATUS), is(Invoice.Status.PAID.value()));
+    assertThat(getRqRsEntries(HttpMethod.GET, INVOICE_LINES), hasSize(1));
+    assertThat(getRqRsEntries(HttpMethod.GET, INVOICE_LINES).get(0).mapTo(InvoiceLineCollection.class).getTotalRecords(), equalTo(3));
+    assertThat(getRqRsEntries(HttpMethod.PUT, PO_LINES), hasSize(3));
+    getRqRsEntries(HttpMethod.PUT, PO_LINES).stream()
       .map(entries -> entries.mapTo(CompositePoLine.class))
       .forEach(compositePoLine -> assertThat(compositePoLine.getPaymentStatus(), equalTo(CompositePoLine.PaymentStatus.FULLY_PAID)));
+    assertThatVoucherPaid();
 
   }
 
@@ -1043,9 +1133,11 @@ public class InvoicesApiTest extends ApiTestBase {
   private void checkNumberOfRequests(Invoice.Status[] statuses) {
     // Invoice status open - expect no GET invoice rq + PUT invoice rq
     for(Invoice.Status status : statuses) {
-      Invoice invoice = getMockAsJson(APPROVED_INVOICE_SAMPLE_PATH).mapTo(Invoice.class);
-      invoice.setStatus(status);
+      Invoice invoice = getMockAsJson(APPROVED_INVOICE_SAMPLE_PATH).mapTo(Invoice.class).withStatus(status);
+      prepareMockVoucher(invoice.getId());
+
       verifyPut(String.format(INVOICE_ID_PATH, invoice.getId()), JsonObject.mapFrom(invoice).encode(), "", HttpStatus.SC_NO_CONTENT);
+
       assertThat(serverRqRs.row(INVOICES).get(HttpMethod.GET), hasSize(1));
       assertThat(serverRqRs.row(INVOICES).get(HttpMethod.PUT), hasSize(1));
       serverRqRs.clear();

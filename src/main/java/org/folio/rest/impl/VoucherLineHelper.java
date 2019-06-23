@@ -15,15 +15,14 @@ import java.util.concurrent.CompletionException;
 
 import org.folio.rest.acq.model.VoucherLineCollection;
 import org.folio.rest.jaxrs.model.VoucherLine;
+import org.folio.rest.tools.client.interfaces.HttpClientInterface;
 
 import io.vertx.core.Context;
 import io.vertx.core.json.JsonObject;
 import me.escoffier.vertx.completablefuture.VertxCompletableFuture;
-import org.folio.rest.tools.client.interfaces.HttpClientInterface;
 
 public class VoucherLineHelper extends AbstractHelper {
   private static final String GET_VOUCHER_LINE_BY_QUERY = resourcesPath(VOUCHER_LINES) + "?limit=%s&offset=%s%s&lang=%s";
-  private static final String VOUCHER_LINE_BY_ID_ENDPOINT = resourceByIdPath(VOUCHER_LINES, "%s") + "?lang=%s";
 
   VoucherLineHelper(Map<String, String> okapiHeaders, Context ctx, String lang) {
     super(getHttpClient(okapiHeaders), okapiHeaders, ctx, lang);
@@ -34,8 +33,8 @@ public class VoucherLineHelper extends AbstractHelper {
   }
 
   public CompletableFuture<Void> updateVoucherLine(VoucherLine voucherLine) {
-    return handlePutRequest(resourceByIdPath(VOUCHER_LINES, voucherLine.getId()), JsonObject.mapFrom(voucherLine), httpClient, ctx,
-        okapiHeaders, logger);
+    String path = resourceByIdPath(VOUCHER_LINES, voucherLine.getId(), lang);
+    return handlePutRequest(path, JsonObject.mapFrom(voucherLine), httpClient, ctx, okapiHeaders, logger);
   }
 
   public CompletableFuture<VoucherLine> getVoucherLine(String id) {
@@ -92,7 +91,7 @@ public class VoucherLineHelper extends AbstractHelper {
   }
 
   CompletableFuture<Void> deleteVoucherLine(String id) {
-    return handleDeleteRequest(String.format(VOUCHER_LINE_BY_ID_ENDPOINT, id, lang), httpClient, ctx, okapiHeaders, logger)
+    return handleDeleteRequest(resourceByIdPath(VOUCHER_LINES, id, lang), httpClient, ctx, okapiHeaders, logger)
       .exceptionally(t -> {
         logger.error("Error deleting voucherLines", t);
         throw  new CompletionException(t.getCause());
