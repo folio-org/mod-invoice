@@ -255,8 +255,8 @@ public class HelperUtils {
   /**
    * Wait for all requests completion and collect all resulting objects. In case any failed, complete resulting future with the exception
    * @param futures list of futures and each produces resulting object on completion
-   * @param <T> resulting type
-   * @return resulting objects
+   * @param <T> resulting objects type
+   * @return CompletableFuture with resulting objects
    */
   public static <T> CompletableFuture<List<T>> collectResultsOnSuccess(List<CompletableFuture<T>> futures) {
     return VertxCompletableFuture.allOf(futures.toArray(new CompletableFuture[0]))
