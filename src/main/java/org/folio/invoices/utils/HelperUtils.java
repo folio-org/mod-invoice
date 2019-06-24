@@ -210,7 +210,7 @@ public class HelperUtils {
     return Money.of(adjustment.getValue(), subTotal.getCurrency());
   }
 
-  public static double convertToDouble(MonetaryAmount amount) {
+  public static double convertToDoubleWithRounding(MonetaryAmount amount) {
     return amount.with(MonetaryOperators.rounding())
       .getNumber()
       .doubleValue();
@@ -278,7 +278,7 @@ public class HelperUtils {
       .collect(MonetaryFunctions.summarizingMonetary(currency))
       .getSum();
 
-    return convertToDouble(amount);
+    return convertToDoubleWithRounding(amount);
   }
 
   public static Double calculateVoucherLineAmount(List<FundDistribution> fundDistributions, List<InvoiceLine> invoiceLines, Voucher voucher) {
@@ -299,7 +299,7 @@ public class HelperUtils {
       .setCurrency(systemCurrency)
       .create();
 
-    return convertToDouble(convertedAmount);
+    return convertToDoubleWithRounding(convertedAmount);
   }
 
   public static InvoiceLine findLineById(List<InvoiceLine> invoiceLines, String invoiceLineId) {
@@ -316,8 +316,8 @@ public class HelperUtils {
 
     MonetaryAmount adjustmentTotals = calculateAdjustmentsTotal(invoiceLine.getAdjustments(), subTotal);
     MonetaryAmount total = adjustmentTotals.add(subTotal);
-    invoiceLine.setAdjustmentsTotal(convertToDouble(adjustmentTotals));
-    invoiceLine.setTotal(convertToDouble(total));
+    invoiceLine.setAdjustmentsTotal(convertToDoubleWithRounding(adjustmentTotals));
+    invoiceLine.setTotal(convertToDoubleWithRounding(total));
 
     return invoiceLine;
   }

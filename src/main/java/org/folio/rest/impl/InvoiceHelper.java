@@ -13,7 +13,7 @@ import static org.folio.invoices.utils.ErrorCodes.VOUCHER_NOT_FOUND;
 import static org.folio.invoices.utils.HelperUtils.calculateAdjustmentsTotal;
 import static org.folio.invoices.utils.HelperUtils.calculateVoucherLineAmount;
 import static org.folio.invoices.utils.HelperUtils.collectResultsOnSuccess;
-import static org.folio.invoices.utils.HelperUtils.convertToDouble;
+import static org.folio.invoices.utils.HelperUtils.convertToDoubleWithRounding;
 import static org.folio.invoices.utils.HelperUtils.encodeQuery;
 import static org.folio.invoices.utils.HelperUtils.findChangedProtectedFields;
 import static org.folio.invoices.utils.HelperUtils.getEndpointWithQuery;
@@ -268,7 +268,7 @@ public class InvoiceHelper extends AbstractHelper {
     setDefaultRequiredFields(voucher);
 
     return getSystemCurrency()
-      .thenCompose(systemCurrency -> getExchangeRate(voucher.withSystemCurrency(systemCurrency)))
+      .thenCompose(systemCurrency -> getVoucherExchangeRate(voucher.withSystemCurrency(systemCurrency)))
       .thenApply(voucher::withExchangeRate);
   }
 
@@ -286,8 +286,8 @@ public class InvoiceHelper extends AbstractHelper {
    * @param voucher {@link Voucher} for which the exchange rate factor is obtained
    * @return {@link Double} value of exchange rate factor
    */
-  private CompletableFuture<Double> getExchangeRate(Voucher voucher) {
-    return VertxCompletableFuture.supplyAsync(() -> MonetaryConversions.getExchangeRateProvider()
+  private CompletableFuture<Double> getVoucherExchangeRate(Voucher voucher) {
+    return VertxCompletableFuture.supplyBlockingAsync(ctx, () -> MonetaryConversions.getExchangeRateProvider()
       .getExchangeRate(voucher.getInvoiceCurrency(), voucher.getSystemCurrency())
       .getFactor().doubleValue());
   }
@@ -306,7 +306,7 @@ public class InvoiceHelper extends AbstractHelper {
     setDefaultRequiredFields(voucher);
 
     return getSystemCurrency()
-      .thenCompose(systemCurrency -> getExchangeRate(voucher.withSystemCurrency(systemCurrency)))
+      .thenCompose(systemCurrency -> getVoucherExchangeRate(voucher.withSystemCurrency(systemCurrency)))
       .thenAccept(voucher::setExchangeRate)
       .thenCompose(v -> voucherHelper.generateVoucherNumber())
       .thenApply(voucher::withVoucherNumber);
@@ -707,10 +707,10 @@ public class InvoiceHelper extends AbstractHelper {
 
     // 3. Total
     if (!invoice.getLockTotal()) {
-      invoice.setTotal(convertToDouble(subTotal.add(adjustmentsTotal)));
+      invoice.setTotal(convertToDoubleWithRounding(subTotal.add(adjustmentsTotal)));
     }
-    invoice.setAdjustmentsTotal(convertToDouble(adjustmentsTotal));
-    invoice.setSubTotal(convertToDouble(subTotal));
+    invoice.setAdjustmentsTotal(convertToDoubleWithRounding(adjustmentsTotal));
+    invoice.setSubTotal(convertToDoubleWithRounding(subTotal));
 
     return invoice;
   }
