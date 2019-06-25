@@ -82,6 +82,7 @@ public class InvoiceHelper extends AbstractHelper {
   public static final String LOCALE_SETTINGS = "localeSettings";
   public static final String SYSTEM_CURRENCY_PROPERTY_NAME = "currency";
   public static final String FUND_SEARCHING_ENDPOINT = "/finance-storage/funds?query=%s&limit=%s&lang=%s";
+  public static final String IMF_EXCHANGE_RATE_PROVIDER = "IMF";
   private final InvoiceLineHelper invoiceLineHelper;
   private final VoucherHelper voucherHelper;
   private final VoucherLineHelper voucherLineHelper;
@@ -267,9 +268,7 @@ public class InvoiceHelper extends AbstractHelper {
     voucher.setInvoiceCurrency(invoice.getCurrency());
     setDefaultRequiredFields(voucher);
 
-    return getSystemCurrency()
-      .thenCompose(systemCurrency -> getVoucherExchangeRate(voucher.withSystemCurrency(systemCurrency)))
-      .thenApply(voucher::withExchangeRate);
+    return VertxCompletableFuture.completedFuture(voucher);
   }
 
   //TODO Start using real information to create a voucher when it becomes known where to get these values from.
@@ -278,18 +277,6 @@ public class InvoiceHelper extends AbstractHelper {
     voucher.setExportToAccounting(false);
     voucher.setType(Voucher.Type.VOUCHER);
     voucher.setStatus(Voucher.Status.AWAITING_PAYMENT);
-  }
-
-  /**
-   * Gets exchange rate based on {@link Voucher#invoiceCurrency} and {@link Voucher#systemCurrency} using default ExchangeRateProvider
-   *
-   * @param voucher {@link Voucher} for which the exchange rate factor is obtained
-   * @return {@link Double} value of exchange rate factor
-   */
-  private CompletableFuture<Double> getVoucherExchangeRate(Voucher voucher) {
-    return VertxCompletableFuture.supplyBlockingAsync(ctx, () -> MonetaryConversions.getExchangeRateProvider()
-      .getExchangeRate(voucher.getInvoiceCurrency(), voucher.getSystemCurrency())
-      .getFactor().doubleValue());
   }
 
   /**
@@ -305,28 +292,8 @@ public class InvoiceHelper extends AbstractHelper {
     voucher.setInvoiceCurrency(invoice.getCurrency());
     setDefaultRequiredFields(voucher);
 
-    return getSystemCurrency()
-      .thenCompose(systemCurrency -> getVoucherExchangeRate(voucher.withSystemCurrency(systemCurrency)))
-      .thenAccept(voucher::setExchangeRate)
-      .thenCompose(v -> voucherHelper.generateVoucherNumber())
+    return voucherHelper.generateVoucherNumber()
       .thenApply(voucher::withVoucherNumber);
-  }
-
-  /**
-   *  Retrieves systemCurrency from mod-configuration
-   *  <ul>
-   *    <li>if config is empty than use {@link #DEFAULT_SYSTEM_CURRENCY}</li>
-   *    <li>if an error is returned from the mod-configuration, stop transition to {@link Invoice.Status#APPROVED} with error</li>
-   *  </ul>
-   *
-   * @return
-   */
-  private CompletableFuture<String> getSystemCurrency() {
-    return loadConfiguration(SYSTEM_CONFIG_NAME, LOCALE_SETTINGS)
-      .thenApply(configs -> {
-        JsonObject config = configs.stream().map(conf -> new JsonObject(conf.getValue())).findFirst().orElseGet(JsonObject::new);
-        return config.getString(SYSTEM_CURRENCY_PROPERTY_NAME, DEFAULT_SYSTEM_CURRENCY);
-      });
   }
 
   /**
@@ -337,16 +304,36 @@ public class InvoiceHelper extends AbstractHelper {
    * @return CompletableFuture that indicates when handling is completed
    */
   private CompletableFuture<Void> handleVoucherWithLines(List<InvoiceLine> invoiceLines, Voucher voucher) {
-    return groupFundDistrosByExternalAcctNo(invoiceLines)
-      .thenCompose(fundDistrosGroupedByExternalAcctNo -> {
-        List<VoucherLine> voucherLines = buildVoucherLineRecords(fundDistrosGroupedByExternalAcctNo, invoiceLines,
-            voucher);
+    return getSystemCurrency()
+      .thenCompose(systemCurrency -> setExchangeRateFactor(voucher.withSystemCurrency(systemCurrency)))
+      .thenCompose(v -> groupFundDistrosByExternalAcctNo(invoiceLines))
+      .thenApply(fundDistrosGroupedByExternalAcctNo -> buildVoucherLineRecords(fundDistrosGroupedByExternalAcctNo, invoiceLines, voucher))
+      .thenCompose(voucherLines -> {
         Double calculatedAmount = HelperUtils.calculateVoucherAmount(voucher, voucherLines);
         voucher.setAmount(calculatedAmount);
         return handleVoucher(voucher)
           .thenAccept(voucherWithId -> populateVoucherId(voucherLines, voucher))
           .thenCompose(v -> createVoucherLinesRecords(voucherLines));
       });
+  }
+
+  /**
+   *  Retrieves systemCurrency from mod-configuration
+   *  if config is empty than use {@link #DEFAULT_SYSTEM_CURRENCY}
+   */
+  private CompletableFuture<String> getSystemCurrency() {
+    return loadConfiguration(SYSTEM_CONFIG_NAME, LOCALE_SETTINGS)
+      .thenApply(configs -> {
+        JsonObject config = configs.stream().map(conf -> new JsonObject(conf.getValue())).findFirst().orElseGet(JsonObject::new);
+        return config.getString(SYSTEM_CURRENCY_PROPERTY_NAME, DEFAULT_SYSTEM_CURRENCY);
+      });
+  }
+
+  private CompletableFuture<Void> setExchangeRateFactor(Voucher voucher) {
+    return VertxCompletableFuture.supplyBlockingAsync(ctx, () -> MonetaryConversions
+        .getExchangeRateProvider(IMF_EXCHANGE_RATE_PROVIDER)
+        .getExchangeRate(voucher.getInvoiceCurrency(), voucher.getSystemCurrency()))
+      .thenAccept(exchangeRate -> voucher.setExchangeRate(exchangeRate.getFactor().doubleValue()));
   }
 
   /**
@@ -458,7 +445,6 @@ public class InvoiceHelper extends AbstractHelper {
     List<FundDistribution> fundDistributions = fundDistroAssociatedWithAcctNo.getValue();
 
     return new VoucherLine()
-      .withVoucherId(voucher.getId())
       .withExternalAccountNumber(externalAccountNumber)
       .withFundDistributions(fundDistributions)
       .withSourceIds(collectInvoiceLineIds(fundDistributions))

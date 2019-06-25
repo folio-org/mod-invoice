@@ -8,6 +8,7 @@ import static org.folio.invoices.utils.ResourcePathResolver.INVOICES;
 import static org.folio.invoices.utils.ResourcePathResolver.VOUCHERS;
 import static org.folio.invoices.utils.ResourcePathResolver.VOUCHER_LINES;
 import static org.folio.invoices.utils.ResourcePathResolver.resourceByIdPath;
+import static org.folio.rest.impl.InvoiceHelper.IMF_EXCHANGE_RATE_PROVIDER;
 
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
@@ -23,6 +24,8 @@ import java.util.concurrent.CompletionException;
 import javax.money.CurrencyUnit;
 import javax.money.Monetary;
 import javax.money.MonetaryAmount;
+import javax.money.convert.CurrencyConversion;
+import javax.money.convert.MonetaryConversions;
 
 import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.apache.commons.lang3.reflect.FieldUtils;
@@ -38,7 +41,6 @@ import org.folio.rest.tools.client.interfaces.HttpClientInterface;
 import org.javamoney.moneta.Money;
 import org.javamoney.moneta.function.MonetaryFunctions;
 import org.javamoney.moneta.function.MonetaryOperators;
-import org.javamoney.moneta.spi.DefaultNumberValue;
 
 import io.vertx.core.Context;
 import io.vertx.core.http.HttpMethod;
@@ -284,20 +286,16 @@ public class HelperUtils {
   public static Double calculateVoucherLineAmount(List<FundDistribution> fundDistributions, List<InvoiceLine> invoiceLines, Voucher voucher) {
     CurrencyUnit invoiceCurrency = Monetary.getCurrency(voucher.getInvoiceCurrency());
     CurrencyUnit systemCurrency = Monetary.getCurrency(voucher.getSystemCurrency());
+    CurrencyConversion conversion = MonetaryConversions.getConversion(systemCurrency, IMF_EXCHANGE_RATE_PROVIDER);
     MonetaryAmount voucherLineAmount = Money.of(0, invoiceCurrency);
 
     for (FundDistribution fundDistribution : fundDistributions) {
       InvoiceLine invoiceLine = findLineById(invoiceLines, fundDistribution.getInvoiceLineId());
       MonetaryAmount subTotal = Money.of(invoiceLine.getTotal(), invoiceCurrency);
-
       voucherLineAmount = voucherLineAmount.add(subTotal.with(MonetaryOperators.percent(fundDistribution.getPercentage())));
     }
 
-    MonetaryAmount convertedAmount = voucherLineAmount
-      .multiply(DefaultNumberValue.of(voucher.getExchangeRate()))
-      .getFactory()
-      .setCurrency(systemCurrency)
-      .create();
+    MonetaryAmount convertedAmount = voucherLineAmount.with(conversion);
 
     return convertToDoubleWithRounding(convertedAmount);
   }
