@@ -16,9 +16,12 @@ import static org.folio.rest.impl.InvoicesImpl.PROTECTED_AND_MODIFIED_FIELDS;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 
+import javax.money.convert.ExchangeRateProvider;
+import javax.money.convert.MonetaryConversions;
 import javax.ws.rs.core.Response;
 
 import io.vertx.core.http.HttpMethod;
@@ -51,6 +54,8 @@ public abstract class AbstractHelper {
   private static final String CONFIG_QUERY = "module==%s and configName==%s";
 
   private final Errors processingErrors = new Errors();
+  private ExchangeRateProvider exchangeRateProvider;
+
   protected final HttpClientInterface httpClient;
   protected final Map<String, String> okapiHeaders;
   protected final Context ctx;
@@ -238,5 +243,12 @@ public abstract class AbstractHelper {
 
   public List<Error> getErrors() {
     return processingErrors.getErrors();
+  }
+
+  public ExchangeRateProvider getExchangeRateProvider() {
+    if (Objects.isNull(exchangeRateProvider)) {
+      exchangeRateProvider = MonetaryConversions.getExchangeRateProvider();
+    }
+    return exchangeRateProvider;
   }
 }

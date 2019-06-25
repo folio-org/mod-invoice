@@ -14,7 +14,7 @@ import static org.folio.invoices.utils.ErrorCodes.VOUCHER_NOT_FOUND;
 import static org.folio.invoices.utils.ErrorCodes.VOUCHER_UPDATE_FAILURE;
 import static org.folio.invoices.utils.HelperUtils.calculateInvoiceLineTotals;
 import static org.folio.invoices.utils.HelperUtils.calculateVoucherAmount;
-import static org.folio.invoices.utils.HelperUtils.calculateVoucherLineAmount;
+import static org.folio.invoices.utils.HelperUtils.convertToDoubleWithRounding;
 import static org.folio.invoices.utils.ResourcePathResolver.FOLIO_INVOICE_NUMBER;
 import static org.folio.invoices.utils.ResourcePathResolver.FUNDS;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICES;
@@ -59,6 +59,9 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import javax.money.CurrencyUnit;
+import javax.money.Monetary;
+import javax.money.MonetaryAmount;
 import javax.money.convert.MonetaryConversions;
 
 import org.apache.commons.lang3.reflect.FieldUtils;
@@ -71,6 +74,7 @@ import org.folio.rest.acq.model.orders.CompositePoLine;
 import org.folio.rest.jaxrs.model.Adjustment;
 import org.folio.rest.jaxrs.model.Error;
 import org.folio.rest.jaxrs.model.Errors;
+import org.folio.rest.jaxrs.model.FundDistribution;
 import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.jaxrs.model.InvoiceCollection;
 import org.folio.rest.jaxrs.model.InvoiceLine;
@@ -79,6 +83,9 @@ import org.folio.rest.jaxrs.model.Voucher;
 import org.folio.rest.jaxrs.model.VoucherCollection;
 import org.folio.rest.jaxrs.model.VoucherLine;
 import org.hamcrest.Matchers;
+import org.javamoney.moneta.Money;
+import org.javamoney.moneta.function.MonetaryOperators;
+import org.javamoney.moneta.spi.DefaultNumberValue;
 import org.junit.Test;
 
 import io.restassured.http.Headers;
@@ -280,6 +287,7 @@ public class InvoicesApiTest extends ApiTestBase {
     String id = reqData.getId();
     invoiceLines
       .forEach(invoiceLine -> {
+        invoiceLine.setId(UUID.randomUUID().toString());
         invoiceLine.setInvoiceId(id);
         addMockEntry(INVOICE_LINES, JsonObject.mapFrom(invoiceLine));
       });
@@ -627,6 +635,34 @@ public class InvoicesApiTest extends ApiTestBase {
       assertThat(calculateVoucherLineAmount(voucherLine.getFundDistributions(), invoiceLines, voucherCreated), equalTo(voucherLine.getAmount()));
       assertThat(voucherLine.getFundDistributions(), hasSize(voucherLine.getSourceIds().size()));
     });
+  }
+
+  private double calculateVoucherLineAmount(List<FundDistribution> fundDistributions, List<InvoiceLine> invoiceLines, Voucher voucher) {
+    CurrencyUnit invoiceCurrency = Monetary.getCurrency(voucher.getInvoiceCurrency());
+    CurrencyUnit systemCurrency = Monetary.getCurrency(voucher.getSystemCurrency());
+    MonetaryAmount voucherLineAmount = Money.of(0, invoiceCurrency);
+
+    for (FundDistribution fundDistribution : fundDistributions) {
+      InvoiceLine invoiceLine = findLineById(invoiceLines, fundDistribution.getInvoiceLineId());
+      MonetaryAmount subTotal = Money.of(invoiceLine.getTotal(), invoiceCurrency);
+
+      voucherLineAmount = voucherLineAmount.add(subTotal.with(MonetaryOperators.percent(fundDistribution.getPercentage())));
+    }
+
+    MonetaryAmount convertedAmount = voucherLineAmount
+      .multiply(DefaultNumberValue.of(voucher.getExchangeRate()))
+      .getFactory()
+      .setCurrency(systemCurrency)
+      .create();
+
+    return convertToDoubleWithRounding(convertedAmount);
+  }
+
+  private InvoiceLine findLineById(List<InvoiceLine> invoiceLines, String invoiceLineId) {
+    return invoiceLines.stream()
+      .filter(invoiceLine -> invoiceLineId.equals(invoiceLine.getId()))
+      .findFirst()
+      .orElseThrow(() -> new IllegalArgumentException("Cannot find invoiceLine associated with fundDistribution"));
   }
 
   private int getExpectedVoucherLinesQuantity(List<Fund> fundsSearches) {

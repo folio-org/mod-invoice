@@ -23,6 +23,7 @@ import static org.folio.invoices.utils.HelperUtils.handleGetRequest;
 import static org.folio.invoices.utils.HelperUtils.handlePutRequest;
 import static org.folio.invoices.utils.HelperUtils.isFieldsVerificationNeeded;
 import static org.folio.invoices.utils.ResourcePathResolver.FOLIO_INVOICE_NUMBER;
+import static org.folio.invoices.utils.ResourcePathResolver.FUNDS;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICES;
 import static org.folio.invoices.utils.ResourcePathResolver.ORDER_LINES;
 import static org.folio.invoices.utils.ResourcePathResolver.resourceByIdPath;
@@ -42,7 +43,7 @@ import java.util.stream.Collectors;
 import javax.money.CurrencyUnit;
 import javax.money.Monetary;
 import javax.money.MonetaryAmount;
-import javax.money.convert.MonetaryConversions;
+import javax.money.convert.CurrencyConversion;
 
 import org.apache.commons.collections4.CollectionUtils;
 import org.folio.invoices.rest.exceptions.HttpException;
@@ -80,8 +81,7 @@ public class InvoiceHelper extends AbstractHelper {
   public static final String SYSTEM_CONFIG_NAME = "ORG";
   public static final String LOCALE_SETTINGS = "localeSettings";
   public static final String SYSTEM_CURRENCY_PROPERTY_NAME = "currency";
-  public static final String FUND_SEARCHING_ENDPOINT = "/finance-storage/funds?query=%s&limit=%s&lang=%s";
-  public static final String IMF_EXCHANGE_RATE_PROVIDER = "IMF";
+  public static final String FUND_SEARCHING_ENDPOINT = resourcesPath(FUNDS) + "?query=%s&limit=%s&lang=%s";
   private final InvoiceLineHelper invoiceLineHelper;
   private final VoucherHelper voucherHelper;
   private final VoucherLineHelper voucherLineHelper;
@@ -320,8 +320,7 @@ public class InvoiceHelper extends AbstractHelper {
   }
 
   private CompletableFuture<Void> setExchangeRateFactor(Voucher voucher) {
-    return VertxCompletableFuture.supplyBlockingAsync(ctx, () -> MonetaryConversions
-        .getExchangeRateProvider(IMF_EXCHANGE_RATE_PROVIDER)
+    return VertxCompletableFuture.supplyBlockingAsync(ctx, () -> getExchangeRateProvider()
         .getExchangeRate(voucher.getInvoiceCurrency(), voucher.getSystemCurrency()))
       .thenAccept(exchangeRate -> voucher.setExchangeRate(exchangeRate.getFactor().doubleValue()));
   }
@@ -425,12 +424,18 @@ public class InvoiceHelper extends AbstractHelper {
   }
 
   private List<VoucherLine> buildVoucherLineRecords(Map<String, List<FundDistribution>> fundDistroGroupedByExternalAcctNo, List<InvoiceLine> invoiceLines, Voucher voucher) {
+
+    CurrencyUnit invoiceCurrency = Monetary.getCurrency(voucher.getInvoiceCurrency());
+    CurrencyConversion conversion = getExchangeRateProvider().getCurrencyConversion(voucher.getSystemCurrency());
+    Map<String, MonetaryAmount> invoiceLineIdMonetaryAmountMap = invoiceLines.stream()
+      .collect(toMap(InvoiceLine::getId, invoiceLine -> Money.of(invoiceLine.getTotal(), invoiceCurrency)));
+
     return fundDistroGroupedByExternalAcctNo.entrySet().stream()
-      .map(entry -> buildVoucherLineRecord(entry, invoiceLines , voucher))
+      .map(entry -> buildVoucherLineRecord(entry, invoiceLineIdMonetaryAmountMap, conversion))
       .collect(Collectors.toList());
   }
 
-  private VoucherLine buildVoucherLineRecord(Map.Entry<String, List<FundDistribution>> fundDistroAssociatedWithAcctNo, List<InvoiceLine> invoiceLines, Voucher voucher) {
+  private VoucherLine buildVoucherLineRecord(Map.Entry<String, List<FundDistribution>> fundDistroAssociatedWithAcctNo, Map<String, MonetaryAmount> invoiceLineIdMonetaryAmountMap, CurrencyConversion conversion) {
     String externalAccountNumber = fundDistroAssociatedWithAcctNo.getKey();
     List<FundDistribution> fundDistributions = fundDistroAssociatedWithAcctNo.getValue();
 
@@ -438,7 +443,7 @@ public class InvoiceHelper extends AbstractHelper {
       .withExternalAccountNumber(externalAccountNumber)
       .withFundDistributions(fundDistributions)
       .withSourceIds(collectInvoiceLineIds(fundDistributions))
-      .withAmount(calculateVoucherLineAmount(fundDistributions, invoiceLines, voucher));
+      .withAmount(calculateVoucherLineAmount(fundDistributions, invoiceLineIdMonetaryAmountMap, conversion));
   }
 
   private List<String> collectInvoiceLineIds(List<FundDistribution> fundDistributions) {

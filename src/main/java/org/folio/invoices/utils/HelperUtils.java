@@ -8,7 +8,6 @@ import static org.folio.invoices.utils.ResourcePathResolver.INVOICES;
 import static org.folio.invoices.utils.ResourcePathResolver.VOUCHERS;
 import static org.folio.invoices.utils.ResourcePathResolver.VOUCHER_LINES;
 import static org.folio.invoices.utils.ResourcePathResolver.resourceByIdPath;
-import static org.folio.rest.impl.InvoiceHelper.IMF_EXCHANGE_RATE_PROVIDER;
 
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
@@ -283,28 +282,18 @@ public class HelperUtils {
     return convertToDoubleWithRounding(amount);
   }
 
-  public static Double calculateVoucherLineAmount(List<FundDistribution> fundDistributions, List<InvoiceLine> invoiceLines, Voucher voucher) {
-    CurrencyUnit invoiceCurrency = Monetary.getCurrency(voucher.getInvoiceCurrency());
-    CurrencyUnit systemCurrency = Monetary.getCurrency(voucher.getSystemCurrency());
-    CurrencyConversion conversion = MonetaryConversions.getConversion(systemCurrency, IMF_EXCHANGE_RATE_PROVIDER);
-    MonetaryAmount voucherLineAmount = Money.of(0, invoiceCurrency);
+  public static Double calculateVoucherLineAmount(List<FundDistribution> fundDistributions, Map<String, MonetaryAmount> invoiceLineIdMonetaryAmountMap, CurrencyConversion conversion) {
+    CurrencyUnit invoiceCurrency = invoiceLineIdMonetaryAmountMap.values().stream().findAny().orElseThrow(IllegalArgumentException::new).getCurrency();
+    MonetaryAmount voucherLineAmount = Money.zero(invoiceCurrency);
 
     for (FundDistribution fundDistribution : fundDistributions) {
-      InvoiceLine invoiceLine = findLineById(invoiceLines, fundDistribution.getInvoiceLineId());
-      MonetaryAmount subTotal = Money.of(invoiceLine.getTotal(), invoiceCurrency);
-      voucherLineAmount = voucherLineAmount.add(subTotal.with(MonetaryOperators.percent(fundDistribution.getPercentage())));
+      MonetaryAmount invoiceLineTotal = invoiceLineIdMonetaryAmountMap.get(fundDistribution.getInvoiceLineId());
+      voucherLineAmount = voucherLineAmount.add(invoiceLineTotal.with(MonetaryOperators.percent(fundDistribution.getPercentage())));
     }
 
     MonetaryAmount convertedAmount = voucherLineAmount.with(conversion);
 
     return convertToDoubleWithRounding(convertedAmount);
-  }
-
-  public static InvoiceLine findLineById(List<InvoiceLine> invoiceLines, String invoiceLineId) {
-    return invoiceLines.stream()
-      .filter(invoiceLine -> invoiceLineId.equals(invoiceLine.getId()))
-      .findFirst()
-      .orElseThrow(() -> new IllegalArgumentException("Cannot find invoiceLine associated with fundDistribution"));
   }
 
   public static InvoiceLine calculateInvoiceLineTotals(InvoiceLine invoiceLine, Invoice invoice) {
