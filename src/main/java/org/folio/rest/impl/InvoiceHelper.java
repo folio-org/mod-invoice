@@ -199,7 +199,7 @@ public class InvoiceHelper extends AbstractHelper {
 
   /**
    * Handles transition of given invoice to {@link Invoice.Status#APPROVED} status.
-   * Transition only triggers if the current {@link Invoice.Status} is {@link Invoice.Status#REVIEWED}
+   * Transition triggers if the current {@link Invoice.Status} is {@link Invoice.Status#REVIEWED} or {@link Invoice.Status#OPEN}
    * and exist at least one {@link InvoiceLine} associated with this invoice
    *
    * @param invoice {@link Invoice}to be approved
