@@ -11,7 +11,6 @@ import static org.folio.invoices.utils.ResourcePathResolver.INVOICES;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_LINES;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_LINE_NUMBER;
 import static org.folio.invoices.utils.ResourcePathResolver.ORDER_LINES;
-import static org.folio.invoices.utils.ResourcePathResolver.PO_LINES;
 import static org.folio.invoices.utils.ResourcePathResolver.VOUCHERS;
 import static org.folio.invoices.utils.ResourcePathResolver.VOUCHER_LINES;
 import static org.folio.invoices.utils.ResourcePathResolver.VOUCHER_NUMBER;
@@ -199,7 +198,7 @@ public class MockServer {
     router.route(HttpMethod.PUT, resourceByIdPath(INVOICE_LINES)).handler(ctx -> handlePutGenericSubObj(ctx, INVOICE_LINES));
     router.route(HttpMethod.PUT, resourceByIdPath(VOUCHERS)).handler(ctx -> handlePutGenericSubObj(ctx, VOUCHERS));
     router.route(HttpMethod.PUT, resourceByIdPath(VOUCHER_LINES)).handler(ctx -> handlePutGenericSubObj(ctx, VOUCHER_LINES));
-    router.route(HttpMethod.PUT, resourceByIdPath(ORDER_LINES)).handler(ctx -> handlePutGenericSubObj(ctx, PO_LINES));
+    router.route(HttpMethod.PUT, resourceByIdPath(ORDER_LINES)).handler(ctx -> handlePutGenericSubObj(ctx, ResourcePathResolver.ORDER_LINES));
 
 
     return router;
@@ -453,7 +452,7 @@ public class MockServer {
     String id = ctx.request().getParam(ID);
     logger.info("id: " + id);
 
-    addServerRqRsData(HttpMethod.GET, PO_LINES, new JsonObject().put(ID, id));
+    addServerRqRsData(HttpMethod.GET, ResourcePathResolver.ORDER_LINES, new JsonObject().put(ID, id));
 
     if (ID_FOR_INTERNAL_SERVER_ERROR.equals(id)) {
       serverResponse(ctx, 500, APPLICATION_JSON, INTERNAL_SERVER_ERROR.getReasonPhrase());
@@ -472,7 +471,7 @@ public class MockServer {
       };
 
       // Attempt to find POLine in mock server memory
-      JsonObject poLine = getMockEntry(PO_LINES, id).orElseGet(getFromFile);
+      JsonObject poLine = getMockEntry(ResourcePathResolver.ORDER_LINES, id).orElseGet(getFromFile);
       if (poLine == null) {
         ctx.response().setStatusCode(404).end(id);
       } else {

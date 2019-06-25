@@ -19,7 +19,7 @@ import static org.folio.invoices.utils.ResourcePathResolver.FOLIO_INVOICE_NUMBER
 import static org.folio.invoices.utils.ResourcePathResolver.FUNDS;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICES;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_LINES;
-import static org.folio.invoices.utils.ResourcePathResolver.PO_LINES;
+import static org.folio.invoices.utils.ResourcePathResolver.ORDER_LINES;
 import static org.folio.invoices.utils.ResourcePathResolver.VOUCHERS;
 import static org.folio.invoices.utils.ResourcePathResolver.VOUCHER_LINES;
 import static org.folio.rest.impl.InvoiceHelper.MAX_IDS_FOR_GET_RQ;
@@ -757,7 +757,7 @@ public class InvoicesApiTest extends ApiTestBase {
 
   private void validatePoLinesPaymentStatus() {
 
-    final List<CompositePoLine> updatedPoLines = getRqRsEntries(HttpMethod.PUT, PO_LINES).stream()
+    final List<CompositePoLine> updatedPoLines = getRqRsEntries(HttpMethod.PUT, ORDER_LINES).stream()
       .map(poLine -> poLine.mapTo(CompositePoLine.class))
       .collect(Collectors.toList());
 
@@ -811,9 +811,9 @@ public class InvoicesApiTest extends ApiTestBase {
     assertThat(serverRqRs.get(INVOICES, HttpMethod.PUT).get(0).getString(STATUS), is(Invoice.Status.PAID.value()));
     assertThat(serverRqRs.get(INVOICE_LINES, HttpMethod.GET), notNullValue());
     assertThat(serverRqRs.get(INVOICE_LINES, HttpMethod.GET).get(0).mapTo(InvoiceLineCollection.class).getTotalRecords(), equalTo(3));
-    assertThat(serverRqRs.get(PO_LINES, HttpMethod.PUT), notNullValue());
-    assertThat(serverRqRs.get(PO_LINES, HttpMethod.PUT), hasSize(1));
-    assertThat(serverRqRs.get(PO_LINES, HttpMethod.PUT).get(0).mapTo(CompositePoLine.class).getPaymentStatus(), equalTo(CompositePoLine.PaymentStatus.PARTIALLY_PAID));
+    assertThat(serverRqRs.get(ORDER_LINES, HttpMethod.PUT), notNullValue());
+    assertThat(serverRqRs.get(ORDER_LINES, HttpMethod.PUT), hasSize(1));
+    assertThat(serverRqRs.get(ORDER_LINES, HttpMethod.PUT).get(0).mapTo(CompositePoLine.class).getPaymentStatus(), equalTo(CompositePoLine.PaymentStatus.PARTIALLY_PAID));
   }
 
   @Test
@@ -834,7 +834,7 @@ public class InvoicesApiTest extends ApiTestBase {
     poLine.setPaymentStatus(CompositePoLine.PaymentStatus.PARTIALLY_PAID);
 
     addMockEntry(INVOICE_LINES, JsonObject.mapFrom(invoiceLine));
-    addMockEntry(PO_LINES, JsonObject.mapFrom(poLine));
+    addMockEntry(ORDER_LINES, JsonObject.mapFrom(poLine));
     prepareMockVoucher(id);
 
     verifyPut(String.format(INVOICE_ID_PATH, id), JsonObject.mapFrom(reqData), "", 204);
@@ -842,7 +842,7 @@ public class InvoicesApiTest extends ApiTestBase {
     assertThat(getRqRsEntries(HttpMethod.PUT, INVOICES).get(0).getString(STATUS), is(Invoice.Status.PAID.value()));
     assertThat(getRqRsEntries(HttpMethod.GET, INVOICE_LINES), hasSize(1));
     assertThat(getRqRsEntries(HttpMethod.GET, INVOICE_LINES).get(0).mapTo(InvoiceLineCollection.class).getTotalRecords(), equalTo(1));
-    assertThat(getRqRsEntries(HttpMethod.PUT, PO_LINES), empty());
+    assertThat(getRqRsEntries(HttpMethod.PUT, ORDER_LINES), empty());
     assertThatVoucherPaid();
   }
 
@@ -880,7 +880,7 @@ public class InvoicesApiTest extends ApiTestBase {
     }
 
     invoiceLines.forEach(line -> addMockEntry(INVOICE_LINES, JsonObject.mapFrom(line)));
-    poLines.forEach(line -> addMockEntry(PO_LINES, JsonObject.mapFrom(line)));
+    poLines.forEach(line -> addMockEntry(ORDER_LINES, JsonObject.mapFrom(line)));
     prepareMockVoucher(id);
 
     verifyPut(String.format(INVOICE_ID_PATH, id), JsonObject.mapFrom(reqData), "", 204);
@@ -888,8 +888,8 @@ public class InvoicesApiTest extends ApiTestBase {
     assertThat(getRqRsEntries(HttpMethod.PUT, INVOICES).get(0).getString(STATUS), is(Invoice.Status.PAID.value()));
     assertThat(getRqRsEntries(HttpMethod.GET, INVOICE_LINES), hasSize(1));
     assertThat(getRqRsEntries(HttpMethod.GET, INVOICE_LINES).get(0).mapTo(InvoiceLineCollection.class).getTotalRecords(), equalTo(3));
-    assertThat(getRqRsEntries(HttpMethod.PUT, PO_LINES), hasSize(3));
-    getRqRsEntries(HttpMethod.PUT, PO_LINES).stream()
+    assertThat(getRqRsEntries(HttpMethod.PUT, ORDER_LINES), hasSize(3));
+    getRqRsEntries(HttpMethod.PUT, ORDER_LINES).stream()
       .map(entries -> entries.mapTo(CompositePoLine.class))
       .forEach(compositePoLine -> assertThat(compositePoLine.getPaymentStatus(), equalTo(CompositePoLine.PaymentStatus.FULLY_PAID)));
     assertThatVoucherPaid();

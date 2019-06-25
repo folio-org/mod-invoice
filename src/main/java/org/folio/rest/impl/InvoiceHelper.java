@@ -61,7 +61,6 @@ import org.folio.rest.jaxrs.model.InvoiceLineCollection;
 import org.folio.rest.jaxrs.model.Parameter;
 import org.folio.rest.jaxrs.model.SequenceNumber;
 import org.folio.rest.jaxrs.model.Voucher;
-import org.folio.rest.jaxrs.model.VoucherCollection;
 import org.folio.rest.jaxrs.model.VoucherLine;
 import org.javamoney.moneta.Money;
 import org.javamoney.moneta.function.MonetaryFunctions;
@@ -242,41 +241,34 @@ public class InvoiceHelper extends AbstractHelper {
    * @return completable future with {@link Voucher} on success
    */
   private CompletableFuture<Voucher> prepareVoucher(Invoice invoice) {
-    return findExistingVoucher(invoice.getId())
-      .thenCompose(vouchers -> {
-        if (isNotEmpty(vouchers)) {
-          Voucher voucher = vouchers.get(0);
-          return updateExistingVoucherState(invoice, voucher);
+    return voucherHelper.getVoucherByInvoiceId(invoice.getId())
+      .thenCompose(voucher -> {
+        if (Objects.nonNull(voucher)) {
+          return VertxCompletableFuture.completedFuture(voucher);
         }
         return buildNewVoucher(invoice);
-      });
-  }
-
-  private CompletableFuture<List<Voucher>> findExistingVoucher(String invoiceId) {
-    return voucherHelper.getVouchers(1, 0, String.format(QUERY_BY_INVOICE_ID, invoiceId))
-      .thenApply(VoucherCollection::getVouchers);
+      })
+      .thenApply(voucher -> withRequiredFields(voucher, invoice));
   }
 
   /**
-   * Updates state of existing {@link Voucher} linked with processed {@link Invoice}
+   * Updates state of {@link Voucher} linked with processed {@link Invoice}
    *
-   * @param invoice invoice {@link Invoice} to be approved
    * @param voucher {@link Voucher} from voucher-storage related to processed invoice
-   * @return completable future with {@link Voucher}
+   * @param invoice invoice {@link Invoice} to be approved
+   * @return voucher
    */
-  private CompletableFuture<Voucher> updateExistingVoucherState(Invoice invoice, Voucher voucher) {
+  private Voucher withRequiredFields(Voucher voucher, Invoice invoice) {
+
     voucher.setInvoiceCurrency(invoice.getCurrency());
-    setDefaultRequiredFields(voucher);
+    voucher.setExportToAccounting(invoice.getExportToAccounting());
 
-    return VertxCompletableFuture.completedFuture(voucher);
-  }
-
-  //TODO Start using real information to create a voucher when it becomes known where to get these values from.
-  private void setDefaultRequiredFields(Voucher voucher) {
+    //TODO Start using real information to create a voucher when it becomes known where to get these values from.
     voucher.setAccountingCode(DEFAULT_ACCOUNTING_CODE);
-    voucher.setExportToAccounting(false);
     voucher.setType(Voucher.Type.VOUCHER);
     voucher.setStatus(Voucher.Status.AWAITING_PAYMENT);
+
+    return voucher;
   }
 
   /**
@@ -289,8 +281,6 @@ public class InvoiceHelper extends AbstractHelper {
 
     Voucher voucher = new Voucher();
     voucher.setInvoiceId(invoice.getId());
-    voucher.setInvoiceCurrency(invoice.getCurrency());
-    setDefaultRequiredFields(voucher);
 
     return voucherHelper.generateVoucherNumber()
       .thenApply(voucher::withVoucherNumber);
