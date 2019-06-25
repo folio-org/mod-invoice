@@ -1,0 +1,19 @@
+{
+  "id": "3773625a-dc0d-4a2d-959e-4a91ee265d67",
+  "approvedBy": "ab18897b-0e40-4f31-896b-9c9adc979a88",
+  "approvalDate": "2018-07-29T00:00:00.000+0000",
+  "chkSubscriptionOverlap": false,
+  "currency": "EUR",
+  "folioInvoiceNo": "invoicenumber46",
+  "invoiceDate": "2018-07-20T00:00:00.000+0000",
+  "note": "Some note 1",
+  "paymentTerms": "Payment in Advance",
+  "paymentMethod": "EFT",
+  "status": "Reviewed",
+  "source": "024b6f41-c5c6-4280-858e-33fba452a334",
+  "total": 5.0,
+  "vendorInvoiceNo": "YK75851",
+  "paymentId": "a5065f0d-fb88-4d23-b0c1-57e754fba40e",
+  "vendorId": "168f8a63-d612-406e-813f-c7527f241ac3",
+  "manualPayment": true
+}

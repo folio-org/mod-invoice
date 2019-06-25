@@ -21,6 +21,28 @@
         "createdDate": "2019-05-06T00:00:00.000+0000",
         "createdByUserId": "28d1057c-d137-11e8-a8d5-f2801f1b9fd1"
       }
+    },
+    {
+      "id": "f914903e-0419-4123-9afc-73e863d1768c",
+      "systemCurrency": "USD",
+      "invoiceCurrency": "RUB",
+      "exchangeRate": 1.12,
+      "exportToAccounting": false,
+      "type": "Payment",
+      "status": "Awaiting payment",
+      "amount": 23.45,
+      "voucherDate": "2019-05-06T00:00:00.000+0000",
+      "voucherNumber": "1001",
+      "batchNumber": "101",
+      "invoiceId": "402d0d32-7377-46a7-86ab-542b5684506e",
+      "accountingCode": "0206",
+      "disbursementNumber": "EFT546789",
+      "disbursementDate": "2019-05-05T00:00:00.000+0000",
+      "disbursementAmount": 5,
+      "metadata": {
+        "createdDate": "2019-05-06T00:00:00.000+0000",
+        "createdByUserId": "28d1057c-d137-11e8-a8d5-f2801f1b9fd1"
+      }
     }
   ],
   "totalRecords": 1

@@ -19,10 +19,11 @@
     <vertx.version>3.5.4</vertx.version>
     <junit.version>4.12</junit.version>
     <rest-assured.version>3.1.1</rest-assured.version>
-    <generated_sources_dir>${project.build.directory}/generated-sources</generated_sources_dir>    
+    <generated_sources_dir>${project.build.directory}/generated-sources</generated_sources_dir>
     <jsonschema2pojo_output_dir>${generated_sources_dir}/jsonschema2pojo</jsonschema2pojo_output_dir>
     <ramlfiles_path>${basedir}/ramls</ramlfiles_path>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <mod-configuration-client.version>5.1.0</mod-configuration-client.version>
   </properties>
 
   <dependencies>
@@ -30,6 +31,16 @@
       <groupId>org.folio</groupId>
       <artifactId>domain-models-runtime</artifactId>
       <version>${raml-module-builder.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.folio</groupId>
+      <artifactId>mod-configuration-client</artifactId>
+      <version>${mod-configuration-client.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>one.util</groupId>
+      <artifactId>streamex</artifactId>
+      <version>0.6.8</version>
     </dependency>
     <dependency>
       <groupId>me.escoffier.vertx</groupId>
@@ -115,7 +126,7 @@
         </configuration>
       </plugin>
 
-     <plugin>
+      <plugin>
         <groupId>org.jsonschema2pojo</groupId>
         <artifactId>jsonschema2pojo-maven-plugin</artifactId>
         <version>0.4.37</version>
@@ -153,7 +164,18 @@
             </goals>
             <configuration>
               <sourceDirectory>${basedir}/ramls/acq-models/mod-orders/schemas</sourceDirectory>
-              <targetPackage>org.folio.rest.acq.model</targetPackage>
+              <targetPackage>org.folio.rest.acq.model.orders</targetPackage>
+              <generateBuilders>true</generateBuilders>
+            </configuration>
+          </execution>
+          <execution>
+            <id>mod-finance</id>
+            <goals>
+              <goal>generate</goal>
+            </goals>
+            <configuration>
+              <sourceDirectory>${basedir}/ramls/acq-models/mod-finance/schemas</sourceDirectory>
+              <targetPackage>org.folio.rest.acq.model.finance</targetPackage>
               <generateBuilders>true</generateBuilders>
             </configuration>
           </execution>
@@ -207,6 +229,10 @@
                 <systemProperty>
                   <key>schema_paths</key>
                   <value>${jsonschema_paths}</value>
+                </systemProperty>
+                <systemProperty>
+                  <key>jsonschema2pojo.config.includeHashcodeAndEquals</key>
+                  <value>true</value>
                 </systemProperty>
               </systemProperties>
             </configuration>
@@ -384,7 +410,7 @@
                   </manifestEntries>
                 </transformer>
               </transformers>
-              <artifactSet />
+              <artifactSet/>
               <outputFile>${project.build.directory}/${project.artifactId}-fat.jar</outputFile>
             </configuration>
           </execution>

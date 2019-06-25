@@ -6,24 +6,33 @@ import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 import static javax.ws.rs.core.MediaType.TEXT_PLAIN;
 import static javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
 import static org.folio.invoices.utils.ErrorCodes.GENERIC_ERROR_CODE;
+import static org.folio.invoices.utils.ErrorCodes.MOD_CONFIG_ERROR;
 import static org.folio.invoices.utils.ErrorCodes.PROHIBITED_FIELD_CHANGING;
 import static org.folio.invoices.utils.HelperUtils.verifyAndExtractBody;
 import static org.folio.rest.RestVerticle.OKAPI_HEADER_TENANT;
+import static org.folio.rest.RestVerticle.OKAPI_HEADER_TOKEN;
 import static org.folio.rest.impl.InvoicesImpl.PROTECTED_AND_MODIFIED_FIELDS;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 
+import javax.money.convert.ExchangeRateProvider;
+import javax.money.convert.MonetaryConversions;
 import javax.ws.rs.core.Response;
 
 import io.vertx.core.http.HttpMethod;
 import io.vertx.core.json.JsonObject;
 import me.escoffier.vertx.completablefuture.VertxCompletableFuture;
 import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.folio.invoices.rest.exceptions.HttpException;
+import org.folio.rest.client.ConfigurationsClient;
+import org.folio.rest.jaxrs.model.Config;
+import org.folio.rest.jaxrs.model.Configs;
 import org.folio.rest.jaxrs.model.Error;
 import org.folio.rest.jaxrs.model.Errors;
 import org.folio.rest.tools.client.HttpClientFactory;
@@ -36,18 +45,22 @@ import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 
 public abstract class AbstractHelper {
+  protected final Logger logger = LoggerFactory.getLogger(this.getClass());
+
   public static final String ID = "id";
   public static final String ERROR_CAUSE = "cause";
   public static final String OKAPI_URL = "X-Okapi-Url";
-
-  protected final Logger logger = LoggerFactory.getLogger(this.getClass());
+  public static final String DEFAULT_SYSTEM_CURRENCY = "USD";
+  private static final String CONFIG_QUERY = "module==%s and configName==%s";
 
   private final Errors processingErrors = new Errors();
+  private ExchangeRateProvider exchangeRateProvider;
 
   protected final HttpClientInterface httpClient;
   protected final Map<String, String> okapiHeaders;
   protected final Context ctx;
   protected final String lang;
+
 
   AbstractHelper(HttpClientInterface httpClient, Map<String, String> okapiHeaders, Context ctx, String lang) {
     this.httpClient = httpClient;
@@ -55,6 +68,45 @@ public abstract class AbstractHelper {
     this.ctx = ctx;
     this.lang = lang;
     setDefaultHeaders();
+  }
+
+  /**
+   * Retrieve configuration by moduleName and configName from mod-configuration.
+   *
+   * @param moduleName name of the module for which the configuration is to be retrieved
+   * @param configName name of the configuration to retrieve it
+   * @return CompletableFuture with {@link List<Config>}
+   */
+  public CompletableFuture<List<Config>> loadConfiguration(String moduleName, String configName) {
+
+    CompletableFuture<List<Config>> future = new VertxCompletableFuture<>();
+
+    String okapiURL = StringUtils.trimToEmpty(okapiHeaders.get(OKAPI_URL));
+    String tenant = okapiHeaders.get(OKAPI_HEADER_TENANT);
+    String token = okapiHeaders.get(OKAPI_HEADER_TOKEN);
+    ConfigurationsClient configurationsClient = new ConfigurationsClient(okapiURL, tenant, token, true, 10, 10);
+
+    try {
+      configurationsClient.getConfigurationsEntries(String.format(CONFIG_QUERY, moduleName, configName), 0, 100, null, lang, response -> response.bodyHandler(body -> {
+        if (response.statusCode() != 200) {
+          logger.error(String.format("Error happened while getting configs, expected status code 200, got '%s' :%s", response.statusCode(), body.toString()));
+          future.completeExceptionally(new HttpException(response.statusCode(), MOD_CONFIG_ERROR));
+          return;
+        }
+
+        JsonObject entries = body.toJsonObject();
+
+        if (logger.isDebugEnabled()) {
+          logger.debug("The response from mod-configuration: {}", entries.encodePrettily());
+        }
+        Configs configs = entries.mapTo(Configs.class);
+        future.complete(configs.getConfigs());
+      }));
+    } catch (Exception e) {
+      logger.error("Error happened while getting configs", e);
+      future.completeExceptionally(new HttpException(500, MOD_CONFIG_ERROR));
+    }
+    return future;
   }
 
   protected CompletableFuture<String> createRecordInStorage(JsonObject recordData, String endpoint) {
@@ -78,7 +130,6 @@ public abstract class AbstractHelper {
     } catch (Exception e) {
       future.completeExceptionally(e);
     }
-
     return future;
   }
 
@@ -192,5 +243,12 @@ public abstract class AbstractHelper {
 
   public List<Error> getErrors() {
     return processingErrors.getErrors();
+  }
+
+  public ExchangeRateProvider getExchangeRateProvider() {
+    if (Objects.isNull(exchangeRateProvider)) {
+      exchangeRateProvider = MonetaryConversions.getExchangeRateProvider();
+    }
+    return exchangeRateProvider;
   }
 }

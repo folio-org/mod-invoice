@@ -1,6 +1,5 @@
 package org.folio.rest.impl;
 
-import io.restassured.http.Header;
 import io.restassured.response.Response;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.core.json.JsonObject;
@@ -25,7 +24,6 @@ import static javax.ws.rs.core.MediaType.TEXT_PLAIN;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICES;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_LINES;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_LINE_NUMBER;
-import static org.folio.rest.RestVerticle.OKAPI_HEADER_TENANT;
 import static org.folio.rest.impl.AbstractHelper.ID;
 import static org.folio.rest.impl.InvoicesApiTest.BAD_QUERY;
 import static org.folio.rest.impl.InvoicesImpl.PROTECTED_AND_MODIFIED_FIELDS;
@@ -40,15 +38,12 @@ import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.hasSize;
 
 
-
-
 public class InvoiceLinesApiTest extends ApiTestBase {
 
   private static final Logger logger = LoggerFactory.getLogger(InvoiceLinesApiTest.class);
 
-  static final Header NON_EXIST_CONFIG_X_OKAPI_TENANT = new Header(OKAPI_HEADER_TENANT, "invoicetest");
   static final String INVOICE_LINES_MOCK_DATA_PATH = BASE_MOCK_DATA_PATH + "invoiceLines/";
-  private static final String INVOICE_LINES_LIST_PATH = INVOICE_LINES_MOCK_DATA_PATH + "invoice_lines.json";
+  static final String INVOICE_LINES_LIST_PATH = INVOICE_LINES_MOCK_DATA_PATH + "invoice_lines.json";
   private static final String INVOICE_LINES_PATH = "/invoice/invoice-lines";
   private static final String INVOICE_LINE_ID_PATH = INVOICE_LINES_PATH + "/%s";
   static final String INVOICE_LINE_SAMPLE_PATH = INVOICE_LINES_MOCK_DATA_PATH + "invoice_line.json";
@@ -175,7 +170,7 @@ public class InvoiceLinesApiTest extends ApiTestBase {
     InvoiceLine reqData = getMockAsJson(INVOICE_LINE_SAMPLE_PATH).mapTo(InvoiceLine.class);
     reqData.setInvoiceId(null);
     String jsonBody = JsonObject.mapFrom(reqData).encode();
-    Errors resp = verifyPostResponse(INVOICE_LINES_PATH, jsonBody, prepareHeaders(NON_EXIST_CONFIG_X_OKAPI_TENANT),
+    Errors resp = verifyPostResponse(INVOICE_LINES_PATH, jsonBody, prepareHeaders(MockServer.NON_EXIST_CONFIG_X_OKAPI_TENANT),
         APPLICATION_JSON, 422).as(Errors.class);
 
     assertEquals(1, resp.getErrors().size());

@@ -17,17 +17,16 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
-import javax.money.CurrencyUnit;
-import javax.money.Monetary;
-import javax.money.MonetaryAmount;
+
 import me.escoffier.vertx.completablefuture.VertxCompletableFuture;
+import org.folio.invoices.utils.HelperUtils;
 import org.folio.invoices.utils.InvoiceLineProtectedFields;
-import org.folio.rest.acq.model.SequenceNumber;
+
 import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.jaxrs.model.InvoiceLine;
 import org.folio.rest.jaxrs.model.InvoiceLineCollection;
+import org.folio.rest.jaxrs.model.SequenceNumber;
 import org.folio.rest.tools.client.interfaces.HttpClientInterface;
-import org.javamoney.moneta.Money;
 
 public class InvoiceLineHelper extends AbstractHelper {
 
@@ -137,25 +136,12 @@ public class InvoiceLineHelper extends AbstractHelper {
     JsonObject line = mapFrom(invoiceLine);
 
     return generateLineNumber(invoice).thenAccept(lineNumber -> line.put(INVOICE_LINE_NUMBER, lineNumber))
-      .thenAccept(t -> calculateInvoiceLineTotals(invoiceLine, invoice))
+      .thenAccept(t -> HelperUtils.calculateInvoiceLineTotals(invoiceLine, invoice))
       .thenCompose(v -> createInvoiceLineSummary(invoiceLine, line));
   }
 
   public CompletableFuture<InvoiceLine> calculateInvoiceLineTotals(InvoiceLine invoiceLine) {
-    return getInvoice(invoiceLine).thenApply(invoice -> calculateInvoiceLineTotals(invoiceLine, invoice));
-  }
-
-  InvoiceLine calculateInvoiceLineTotals(InvoiceLine invoiceLine, Invoice invoice) {
-    String currency = invoice.getCurrency();
-    CurrencyUnit currencyUnit = Monetary.getCurrency(currency);
-    MonetaryAmount subTotal = Money.of(invoiceLine.getSubTotal(), currencyUnit);
-
-    MonetaryAmount adjustmentTotals = calculateAdjustmentsTotal(invoiceLine.getAdjustments(), subTotal);
-    MonetaryAmount total = adjustmentTotals.add(subTotal);
-    invoiceLine.setAdjustmentsTotal(convertToDouble(adjustmentTotals));
-    invoiceLine.setTotal(convertToDouble(total));
-
-    return invoiceLine;
+    return getInvoice(invoiceLine).thenApply(invoice -> HelperUtils.calculateInvoiceLineTotals(invoiceLine, invoice));
   }
 
   private CompletableFuture<String> generateLineNumber(Invoice invoice) {

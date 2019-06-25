@@ -1,23 +1,18 @@
 package org.folio.rest.impl;
 
 import static org.folio.invoices.utils.ErrorCodes.VOUCHER_UPDATE_FAILURE;
-import static org.folio.invoices.utils.HelperUtils.getVoucherById;
 import static org.folio.invoices.utils.HelperUtils.getEndpointWithQuery;
+import static org.folio.invoices.utils.HelperUtils.getVoucherById;
 import static org.folio.invoices.utils.HelperUtils.handleGetRequest;
 import static org.folio.invoices.utils.HelperUtils.handlePutRequest;
 import static org.folio.invoices.utils.ResourcePathResolver.VOUCHERS;
+import static org.folio.invoices.utils.ResourcePathResolver.VOUCHER_NUMBER;
 import static org.folio.invoices.utils.ResourcePathResolver.VOUCHER_NUMBER_START;
 import static org.folio.invoices.utils.ResourcePathResolver.resourceByIdPath;
 import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
 
-import io.vertx.core.Context;
-import io.vertx.core.http.HttpMethod;
-import io.vertx.core.json.JsonObject;
-import io.vertx.core.logging.Logger;
-
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
-import me.escoffier.vertx.completablefuture.VertxCompletableFuture;
 
 import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.invoices.utils.HelperUtils;
@@ -25,6 +20,12 @@ import org.folio.rest.jaxrs.model.SequenceNumber;
 import org.folio.rest.jaxrs.model.Voucher;
 import org.folio.rest.jaxrs.model.VoucherCollection;
 import org.folio.rest.tools.client.interfaces.HttpClientInterface;
+
+import io.vertx.core.Context;
+import io.vertx.core.http.HttpMethod;
+import io.vertx.core.json.JsonObject;
+import io.vertx.core.logging.Logger;
+import me.escoffier.vertx.completablefuture.VertxCompletableFuture;
 
 public class VoucherHelper extends AbstractHelper {
 
@@ -128,6 +129,17 @@ public class VoucherHelper extends AbstractHelper {
         future.completeExceptionally(e);
     }
     return future;
+  }
+
+  CompletableFuture<String> generateVoucherNumber() {
+    return HelperUtils.handleGetRequest(resourcesPath(VOUCHER_NUMBER), httpClient, ctx, okapiHeaders, logger)
+      .thenApply(seqNumber -> seqNumber.mapTo(SequenceNumber.class).getSequenceNumber());
+  }
+
+  CompletableFuture<Voucher> createVoucher(Voucher voucher) {
+    JsonObject voucherRecord = JsonObject.mapFrom(voucher);
+    return createRecordInStorage(voucherRecord, resourcesPath(VOUCHERS))
+      .thenApply(voucher::withId);
   }
 
   public CompletableFuture<Voucher> getVoucherByInvoiceId(String invoiceId) {
