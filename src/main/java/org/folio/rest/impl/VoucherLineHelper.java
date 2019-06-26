@@ -20,6 +20,7 @@ import org.folio.rest.tools.client.interfaces.HttpClientInterface;
 import io.vertx.core.Context;
 import io.vertx.core.json.JsonObject;
 import me.escoffier.vertx.completablefuture.VertxCompletableFuture;
+import org.folio.rest.tools.client.interfaces.HttpClientInterface;
 
 public class VoucherLineHelper extends AbstractHelper {
   private static final String GET_VOUCHER_LINE_BY_QUERY = resourcesPath(VOUCHER_LINES) + "?limit=%s&offset=%s%s&lang=%s";

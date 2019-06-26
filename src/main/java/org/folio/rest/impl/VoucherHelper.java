@@ -32,7 +32,6 @@ public class VoucherHelper extends AbstractHelper {
   private static final String CALLING_ENDPOINT_MSG = "Sending {} {}";
   private static final String EXCEPTION_CALLING_ENDPOINT_MSG = "Exception calling {} {}";
   private static final String GET_VOUCHERS_BY_QUERY = resourcesPath(VOUCHERS) + "?limit=%s&offset=%s%s&lang=%s";
-  public static final String INVOICE_ID = "invoiceId";
 
   VoucherHelper(HttpClientInterface httpClient, Map<String, String> okapiHeaders, Context ctx, String lang) {
     super(httpClient, okapiHeaders, ctx, lang);
@@ -143,7 +142,7 @@ public class VoucherHelper extends AbstractHelper {
   }
 
   public CompletableFuture<Voucher> getVoucherByInvoiceId(String invoiceId) {
-    return getVouchers(1, 0, INVOICE_ID + "==" + invoiceId)
+    return getVouchers(1, 0, String.format(QUERY_BY_INVOICE_ID, invoiceId))
       .thenApply(VoucherCollection::getVouchers)
       .thenApply(vouchers -> vouchers.isEmpty() ? null : vouchers.get(0));
   }

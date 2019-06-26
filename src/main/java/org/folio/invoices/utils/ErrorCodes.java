@@ -12,7 +12,8 @@ public enum ErrorCodes {
   INVOICE_TOTAL_REQUIRED("invoiceTotalRequired", "The total amount is expected when lockTotal is true"),
   MOD_CONFIG_ERROR("configNotAvailable", "The mod-configuration is not available"),
   PROHIBITED_FIELD_CHANGING("protectedFieldChanging", "Field can't be modified"),
-  FUNDS_NOT_FOUND("fundsNotFound", "Fund records are not found");
+  FUNDS_NOT_FOUND("fundsNotFound", "Fund records are not found"),
+  VOUCHER_NUMBER_PREFIX_NOT_ALPHA("voucherNumberPrefixNotAlpha", "Voucher number prefix must contains only Unicode letters");
 
   private final String code;
   private final String description;

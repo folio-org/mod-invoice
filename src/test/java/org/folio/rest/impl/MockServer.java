@@ -26,8 +26,10 @@ import static org.folio.rest.impl.ApiTestBase.ID_FOR_INTERNAL_SERVER_ERROR_PUT;
 import static org.folio.rest.impl.ApiTestBase.INVOICE_LINE_NUMBER_VALUE;
 import static org.folio.rest.impl.ApiTestBase.VOUCHER_NUMBER_VALUE;
 import static org.folio.rest.impl.ApiTestBase.getMockData;
+import static org.folio.rest.impl.InvoiceHelper.INVOICE_CONFIG_MODULE_NAME;
 import static org.folio.rest.impl.InvoiceHelper.LOCALE_SETTINGS;
-import static org.folio.rest.impl.InvoiceHelper.SYSTEM_CONFIG_NAME;
+import static org.folio.rest.impl.InvoiceHelper.SYSTEM_CONFIG_MODULE_NAME;
+import static org.folio.rest.impl.InvoiceHelper.VOUCHER_NUMBER_PREFIX_CONFIG;
 import static org.folio.rest.impl.InvoiceLinesApiTest.INVOICE_ID;
 import static org.folio.rest.impl.InvoiceLinesApiTest.INVOICE_LINES_MOCK_DATA_PATH;
 import static org.folio.rest.impl.InvoicesApiTest.BAD_QUERY;
@@ -93,6 +95,8 @@ public class MockServer {
   private static final String FUNDS_MOCK_DATA_PATH = BASE_MOCK_DATA_PATH + "fundRecords/";;
   private static final String VOUCHER_ID = "voucherId";
   private static final String QUERY = "query";
+  public static final String TEST_PREFIX = "testPrefix";
+  private static final String INVALID_PREFIX = "12-prefix";
 
   static Table<String, HttpMethod, List<JsonObject>> serverRqRs = HashBasedTable.create();
   private static final String INVOICE_NUMBER_ERROR_TENANT = "po_number_error_tenant";
@@ -109,6 +113,7 @@ public class MockServer {
   private static final String GET_VOUCHERS_ERROR_TENANT = "get_vouchers_error_tenant";
   private static final String GET_INVOICE_LINES_ERROR_TENANT = "get_invoice_lines_error_tenant";
   private static final String NON_EXIST_CONFIG_TENANT = "invoicetest";
+  private static final String INVALID_PREFIX_CONFIG_TENANT = "invalid_prefix_config_tenant";
 
   private static final String INVOICE_LINES_COLLECTION = BASE_MOCK_DATA_PATH + "invoiceLines/invoice_lines.json";
   private static final String VOUCHER_LINES_COLLECTION = BASE_MOCK_DATA_PATH + "voucherLines/voucher_lines.json";
@@ -120,6 +125,7 @@ public class MockServer {
   static final Header INVOICE_NUMBER_ERROR_X_OKAPI_TENANT = new Header(OKAPI_HEADER_TENANT, INVOICE_NUMBER_ERROR_TENANT);
   static final Header ERROR_X_OKAPI_TENANT = new Header(OKAPI_HEADER_TENANT, ERROR_TENANT);
   static final Header ERROR_CONFIG_X_OKAPI_TENANT = new Header(OKAPI_HEADER_TENANT, ERROR_CONFIG_TENANT);
+  static final Header INVALID_PREFIX_CONFIG_X_OKAPI_TENANT = new Header(OKAPI_HEADER_TENANT, INVALID_PREFIX_CONFIG_TENANT);
   static final Header INVOICE_LINE_NUMBER_ERROR_X_OKAPI_TENANT = new Header(OKAPI_HEADER_TENANT, INVOICE_LINE_NUMBER_ERROR_TENANT);
   static final Header GET_INVOICE_LINES_ERROR_X_OKAPI_TENANT = new Header(OKAPI_HEADER_TENANT, GET_INVOICE_LINES_ERROR_TENANT);
   static final Header GET_VOUCHERS_ERROR_X_OKAPI_TENANT = new Header(OKAPI_HEADER_TENANT, GET_VOUCHERS_ERROR_TENANT);
@@ -652,7 +658,6 @@ public class MockServer {
   }
 
   private void handleConfigurationModuleResponse(RoutingContext ctx) {
-    String query = StringUtils.trimToEmpty(ctx.request().getParam(QUERY));
     String tenant = ctx.request().getHeader(OKAPI_HEADER_TENANT);
     Configs configs = new Configs();
     switch (tenant) {
@@ -665,17 +670,31 @@ public class MockServer {
         serverResponse(ctx, 500, TEXT_PLAIN, INTERNAL_SERVER_ERROR.getReasonPhrase());
         return;
       }
+      case INVALID_PREFIX_CONFIG_TENANT : {
+        Config voucherNumberPrefixConfig = new Config()
+          .withModule(INVOICE_CONFIG_MODULE_NAME)
+          .withConfigName(VOUCHER_NUMBER_PREFIX_CONFIG)
+          .withValue(INVALID_PREFIX);
+        configs.withConfigs(Collections.singletonList(voucherNumberPrefixConfig)).setTotalRecords(1);
+        serverResponse(ctx, 200, APPLICATION_JSON, JsonObject.mapFrom(configs).encodePrettily());
+        return;
+      }
       default: {
-        if (query.contains(SYSTEM_CONFIG_NAME)) {
-          Config config = new Config()
-            .withModule(SYSTEM_CONFIG_NAME)
-            .withConfigName(LOCALE_SETTINGS)
-            .withValue("{\"locale\":\"en-US\",\"timezone\":\"Pacific/Yap\",\"currency\":\"GBP\"}");
-          configs.withConfigs(Collections.singletonList(config)).withTotalRecords(1);
+
+        Config localeConfig = new Config()
+          .withModule(SYSTEM_CONFIG_MODULE_NAME)
+          .withConfigName(LOCALE_SETTINGS)
+          .withValue("{\"locale\":\"en-US\",\"timezone\":\"Pacific/Yap\",\"currency\":\"GBP\"}");
+        Config voucherNumberPrefixConfig = new Config()
+          .withModule(INVOICE_CONFIG_MODULE_NAME)
+          .withConfigName(VOUCHER_NUMBER_PREFIX_CONFIG)
+          .withValue(TEST_PREFIX);
+        configs.getConfigs().add(localeConfig);
+        configs.getConfigs().add(voucherNumberPrefixConfig);
+        configs.withTotalRecords(configs.getConfigs().size());
         }
         serverResponse(ctx, 200, APPLICATION_JSON, JsonObject.mapFrom(configs).encodePrettily());
       }
-    }
   }
 
   private void handleGetFundRecords(RoutingContext ctx) {
