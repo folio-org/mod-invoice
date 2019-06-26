@@ -298,19 +298,20 @@ public class InvoiceHelper extends AbstractHelper {
   }
 
   private CompletableFuture<String> getVoucherNumberWithPrefix() {
+    String prefix = getVoucherNumberPrefix();
+    validateVoucherNumberPrefix(prefix);
+
     return voucherHelper.generateVoucherNumber()
-      .thenApply(sequenceNumber -> getVoucherNumberPrefix() + sequenceNumber);
+      .thenApply(sequenceNumber -> prefix + sequenceNumber);
   }
 
   private String getVoucherNumberPrefix() {
-    String prefix = getLoadedTenantConfiguration()
+    return getLoadedTenantConfiguration()
       .getConfigs().stream()
       .filter(config -> INVOICE_CONFIG_MODULE_NAME.equals(config.getModule()) && VOUCHER_NUMBER_PREFIX_CONFIG.equals(config.getConfigName()))
       .map(Config::getValue)
       .findFirst()
       .orElse(EMPTY);
-    validateVoucherNumberPrefix(prefix);
-    return prefix;
   }
 
   private void validateVoucherNumberPrefix(String prefix) {

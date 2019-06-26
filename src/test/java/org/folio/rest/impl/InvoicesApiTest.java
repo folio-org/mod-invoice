@@ -23,6 +23,7 @@ import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_LINES;
 import static org.folio.invoices.utils.ResourcePathResolver.ORDER_LINES;
 import static org.folio.invoices.utils.ResourcePathResolver.VOUCHERS;
 import static org.folio.invoices.utils.ResourcePathResolver.VOUCHER_LINES;
+import static org.folio.invoices.utils.ResourcePathResolver.VOUCHER_NUMBER;
 import static org.folio.rest.impl.InvoiceHelper.MAX_IDS_FOR_GET_RQ;
 import static org.folio.rest.impl.InvoiceHelper.NO_INVOICE_LINES_ERROR_MSG;
 import static org.folio.rest.impl.InvoiceLinesApiTest.INVOICE_LINES_LIST_PATH;
@@ -388,6 +389,9 @@ public class InvoicesApiTest extends ApiTestBase {
     Headers headers = prepareHeaders(X_OKAPI_URL, INVALID_PREFIX_CONFIG_X_OKAPI_TENANT, X_OKAPI_TOKEN);
     Errors errors = transitionToApprovedWithError(REVIEWED_INVOICE_SAMPLE_PATH, headers);
 
+    List<JsonObject> voucherNumberGeneration = serverRqRs.get(VOUCHER_NUMBER, HttpMethod.GET);
+
+    assertThat(voucherNumberGeneration, nullValue());
     assertThat(errors, notNullValue());
     assertThat(errors.getErrors(), hasSize(1));
     assertThat(errors.getErrors().get(0).getMessage(), equalTo(VOUCHER_NUMBER_PREFIX_NOT_ALPHA.getDescription()));
