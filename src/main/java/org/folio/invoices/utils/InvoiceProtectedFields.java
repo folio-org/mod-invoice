@@ -11,6 +11,7 @@ public enum InvoiceProtectedFields {
   APPROVAL_DATE("approvalDate"),
   CHK_SUBSCRIPTION_OVERLAP("chkSubscriptionOverlap"),
   CURRENCY("currency"),
+  EXPORT_TO_ACCOUNTING("exportToAccounting"),
   FOLIO_INVOICE_NO("folioInvoiceNo"),
   INVOICE_DATE("invoiceDate"),
   LOCK_TOTAL("lockTotal"),

@@ -5,11 +5,14 @@ import static java.util.stream.Collectors.groupingBy;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toMap;
 import static org.apache.commons.collections4.CollectionUtils.isNotEmpty;
+import static org.apache.commons.lang3.StringUtils.EMPTY;
+import static org.apache.commons.lang3.StringUtils.isAlpha;
 import static org.folio.invoices.utils.ErrorCodes.FUNDS_NOT_FOUND;
 import static org.folio.invoices.utils.ErrorCodes.INVOICE_TOTAL_REQUIRED;
 import static org.folio.invoices.utils.ErrorCodes.PO_LINE_NOT_FOUND;
 import static org.folio.invoices.utils.ErrorCodes.PO_LINE_UPDATE_FAILURE;
 import static org.folio.invoices.utils.ErrorCodes.VOUCHER_NOT_FOUND;
+import static org.folio.invoices.utils.ErrorCodes.VOUCHER_NUMBER_PREFIX_NOT_ALPHA;
 import static org.folio.invoices.utils.HelperUtils.calculateAdjustmentsTotal;
 import static org.folio.invoices.utils.HelperUtils.calculateVoucherLineAmount;
 import static org.folio.invoices.utils.HelperUtils.collectResultsOnSuccess;
@@ -46,6 +49,7 @@ import javax.money.MonetaryAmount;
 import javax.money.convert.CurrencyConversion;
 
 import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.invoices.utils.HelperUtils;
 import org.folio.invoices.utils.InvoiceProtectedFields;
@@ -53,6 +57,8 @@ import org.folio.rest.acq.model.finance.Fund;
 import org.folio.rest.acq.model.finance.FundCollection;
 import org.folio.rest.acq.model.orders.CompositePoLine;
 import org.folio.rest.jaxrs.model.Adjustment;
+import org.folio.rest.jaxrs.model.Config;
+import org.folio.rest.jaxrs.model.Configs;
 import org.folio.rest.jaxrs.model.Error;
 import org.folio.rest.jaxrs.model.FundDistribution;
 import org.folio.rest.jaxrs.model.Invoice;
@@ -74,19 +80,23 @@ import one.util.streamex.StreamEx;
 public class InvoiceHelper extends AbstractHelper {
 
   static final int MAX_IDS_FOR_GET_RQ = 15;
-  private static final String QUERY_BY_INVOICE_ID = "invoiceId==%s";
+  static final String NO_INVOICE_LINES_ERROR_MSG = "An invoice cannot be approved if there are no corresponding lines of invoice.";
+  static final String TOTAL = "total";
+  static final String SYSTEM_CONFIG_MODULE_NAME = "ORG";
+  static final String INVOICE_CONFIG_MODULE_NAME = "INVOICES";
+  static final String LOCALE_SETTINGS = "localeSettings";
+  static final String VOUCHER_NUMBER_PREFIX_CONFIG = "voucherNumberPrefix";
+  private static final String SYSTEM_CURRENCY_PROPERTY_NAME = "currency";
+  private static final String SYSTEM_CONFIG_QUERY = String.format(CONFIG_QUERY, SYSTEM_CONFIG_MODULE_NAME, LOCALE_SETTINGS);
+  private static final String VOUCHER_NUMBER_PREFIX_CONFIG_QUERY = String.format(CONFIG_QUERY, INVOICE_CONFIG_MODULE_NAME, VOUCHER_NUMBER_PREFIX_CONFIG);
+  private static final String GET_INVOICES_BY_QUERY = resourcesPath(INVOICES) + "?limit=%s&offset=%s%s&lang=%s";
+  private static final String GET_FUNDS_BY_QUERY = resourcesPath(FUNDS) + "?query=%s&limit=%s&lang=%s";
+
   private static final String DEFAULT_ACCOUNTING_CODE = "tmp_code";
-  public static final String NO_INVOICE_LINES_ERROR_MSG = "An invoice cannot be approved if there are no corresponding lines of invoice.";
-  public static final String TOTAL = "total";
-  public static final String SYSTEM_CONFIG_NAME = "ORG";
-  public static final String LOCALE_SETTINGS = "localeSettings";
-  public static final String SYSTEM_CURRENCY_PROPERTY_NAME = "currency";
-  public static final String FUND_SEARCHING_ENDPOINT = resourcesPath(FUNDS) + "?query=%s&limit=%s&lang=%s";
+
   private final InvoiceLineHelper invoiceLineHelper;
   private final VoucherHelper voucherHelper;
   private final VoucherLineHelper voucherLineHelper;
-
-  private static final String GET_INVOICES_BY_QUERY = resourcesPath(INVOICES) + "?limit=%s&offset=%s%s&lang=%s";
 
   InvoiceHelper(Map<String, String> okapiHeaders, Context ctx, String lang) {
     super(getHttpClient(okapiHeaders), okapiHeaders, ctx, lang);
@@ -207,7 +217,8 @@ public class InvoiceHelper extends AbstractHelper {
    */
   private CompletableFuture<Void> approveInvoice(Invoice invoice) {
     CompletableFuture<Void> future = new VertxCompletableFuture<>(ctx);
-    getInvoiceLinesWithTotals(invoice)
+    loadTenantConfiguration(SYSTEM_CONFIG_QUERY, VOUCHER_NUMBER_PREFIX_CONFIG_QUERY)
+      .thenCompose(ok -> getInvoiceLinesWithTotals(invoice))
       .thenApply(invoiceLines -> {
         verifyInvoiceLineNotEmpty(invoiceLines);
         return invoiceLines;
@@ -282,8 +293,31 @@ public class InvoiceHelper extends AbstractHelper {
     Voucher voucher = new Voucher();
     voucher.setInvoiceId(invoice.getId());
 
-    return voucherHelper.generateVoucherNumber()
+    return getVoucherNumberWithPrefix()
       .thenApply(voucher::withVoucherNumber);
+  }
+
+  private CompletableFuture<String> getVoucherNumberWithPrefix() {
+    String prefix = getVoucherNumberPrefix();
+    validateVoucherNumberPrefix(prefix);
+
+    return voucherHelper.generateVoucherNumber()
+      .thenApply(sequenceNumber -> prefix + sequenceNumber);
+  }
+
+  private String getVoucherNumberPrefix() {
+    return getLoadedTenantConfiguration()
+      .getConfigs().stream()
+      .filter(config -> INVOICE_CONFIG_MODULE_NAME.equals(config.getModule()) && VOUCHER_NUMBER_PREFIX_CONFIG.equals(config.getConfigName()))
+      .map(Config::getValue)
+      .findFirst()
+      .orElse(EMPTY);
+  }
+
+  private void validateVoucherNumberPrefix(String prefix) {
+    if (StringUtils.isNotEmpty(prefix) && !isAlpha(prefix)) {
+      throw new HttpException(500, VOUCHER_NUMBER_PREFIX_NOT_ALPHA);
+    }
   }
 
   /**
@@ -294,8 +328,7 @@ public class InvoiceHelper extends AbstractHelper {
    * @return CompletableFuture that indicates when handling is completed
    */
   private CompletableFuture<Void> handleVoucherWithLines(List<InvoiceLine> invoiceLines, Voucher voucher) {
-    return getSystemCurrency()
-      .thenCompose(systemCurrency -> setExchangeRateFactor(voucher.withSystemCurrency(systemCurrency)))
+    return setExchangeRateFactor(voucher.withSystemCurrency(getSystemCurrency()))
       .thenCompose(v -> groupFundDistrosByExternalAcctNo(invoiceLines))
       .thenApply(fundDistrosGroupedByExternalAcctNo -> buildVoucherLineRecords(fundDistrosGroupedByExternalAcctNo, invoiceLines, voucher))
       .thenCompose(voucherLines -> {
@@ -311,12 +344,15 @@ public class InvoiceHelper extends AbstractHelper {
    *  Retrieves systemCurrency from mod-configuration
    *  if config is empty than use {@link #DEFAULT_SYSTEM_CURRENCY}
    */
-  private CompletableFuture<String> getSystemCurrency() {
-    return loadConfiguration(SYSTEM_CONFIG_NAME, LOCALE_SETTINGS)
-      .thenApply(configs -> {
-        JsonObject config = configs.stream().map(conf -> new JsonObject(conf.getValue())).findFirst().orElseGet(JsonObject::new);
-        return config.getString(SYSTEM_CURRENCY_PROPERTY_NAME, DEFAULT_SYSTEM_CURRENCY);
-      });
+  private String getSystemCurrency() {
+    Configs configs = getLoadedTenantConfiguration();
+    JsonObject configValue = configs.getConfigs()
+      .stream()
+      .filter(config -> SYSTEM_CONFIG_MODULE_NAME.equals(config.getModule()) && LOCALE_SETTINGS.equals(config.getConfigName()))
+      .map(config -> new JsonObject(config.getValue()))
+      .findFirst()
+      .orElseGet(JsonObject::new);
+    return configValue.getString(SYSTEM_CURRENCY_PROPERTY_NAME, DEFAULT_SYSTEM_CURRENCY);
   }
 
   private CompletableFuture<Void> setExchangeRateFactor(Voucher voucher) {
@@ -413,7 +449,7 @@ public class InvoiceHelper extends AbstractHelper {
 
   private CompletableFuture<List<Fund>> getFundsByIds(List<String> ids) {
     String query = encodeQuery(HelperUtils.convertIdsToCqlQuery(ids), logger);
-    String endpoint = String.format(FUND_SEARCHING_ENDPOINT, query, ids.size(), lang);
+    String endpoint = String.format(GET_FUNDS_BY_QUERY, query, ids.size(), lang);
     return handleGetRequest(endpoint, httpClient, ctx, okapiHeaders, logger)
       .thenApply(this::extractFunds);
   }

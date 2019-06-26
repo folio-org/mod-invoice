@@ -24,8 +24,8 @@ import javax.money.CurrencyUnit;
 import javax.money.Monetary;
 import javax.money.MonetaryAmount;
 import javax.money.convert.CurrencyConversion;
-import javax.money.convert.MonetaryConversions;
 
+import one.util.streamex.StreamEx;
 import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.apache.commons.lang3.reflect.FieldUtils;
 import org.folio.invoices.rest.exceptions.HttpException;
@@ -46,7 +46,6 @@ import io.vertx.core.http.HttpMethod;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import me.escoffier.vertx.completablefuture.VertxCompletableFuture;
-import one.util.streamex.StreamEx;
 
 public class HelperUtils {
 

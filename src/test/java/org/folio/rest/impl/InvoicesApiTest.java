@@ -11,6 +11,7 @@ import static org.folio.invoices.utils.ErrorCodes.PO_LINE_NOT_FOUND;
 import static org.folio.invoices.utils.ErrorCodes.PO_LINE_UPDATE_FAILURE;
 import static org.folio.invoices.utils.ErrorCodes.PROHIBITED_FIELD_CHANGING;
 import static org.folio.invoices.utils.ErrorCodes.VOUCHER_NOT_FOUND;
+import static org.folio.invoices.utils.ErrorCodes.VOUCHER_NUMBER_PREFIX_NOT_ALPHA;
 import static org.folio.invoices.utils.ErrorCodes.VOUCHER_UPDATE_FAILURE;
 import static org.folio.invoices.utils.HelperUtils.calculateInvoiceLineTotals;
 import static org.folio.invoices.utils.HelperUtils.calculateVoucherAmount;
@@ -22,6 +23,7 @@ import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_LINES;
 import static org.folio.invoices.utils.ResourcePathResolver.ORDER_LINES;
 import static org.folio.invoices.utils.ResourcePathResolver.VOUCHERS;
 import static org.folio.invoices.utils.ResourcePathResolver.VOUCHER_LINES;
+import static org.folio.invoices.utils.ResourcePathResolver.VOUCHER_NUMBER;
 import static org.folio.rest.impl.InvoiceHelper.MAX_IDS_FOR_GET_RQ;
 import static org.folio.rest.impl.InvoiceHelper.NO_INVOICE_LINES_ERROR_MSG;
 import static org.folio.rest.impl.InvoiceLinesApiTest.INVOICE_LINES_LIST_PATH;
@@ -29,8 +31,10 @@ import static org.folio.rest.impl.InvoiceLinesApiTest.INVOICE_LINE_SAMPLE_PATH;
 import static org.folio.rest.impl.InvoicesImpl.PROTECTED_AND_MODIFIED_FIELDS;
 import static org.folio.rest.impl.MockServer.ERROR_CONFIG_X_OKAPI_TENANT;
 import static org.folio.rest.impl.MockServer.ERROR_X_OKAPI_TENANT;
+import static org.folio.rest.impl.MockServer.INVALID_PREFIX_CONFIG_X_OKAPI_TENANT;
 import static org.folio.rest.impl.MockServer.INVOICE_NUMBER_ERROR_X_OKAPI_TENANT;
 import static org.folio.rest.impl.MockServer.NON_EXIST_CONFIG_X_OKAPI_TENANT;
+import static org.folio.rest.impl.MockServer.TEST_PREFIX;
 import static org.folio.rest.impl.MockServer.addMockEntry;
 import static org.folio.rest.impl.MockServer.getRqRsEntries;
 import static org.folio.rest.impl.MockServer.serverRqRs;
@@ -302,12 +306,13 @@ public class InvoicesApiTest extends ApiTestBase {
     assertThat(vouchersCreated, notNullValue());
     assertThat(vouchersCreated, hasSize(1));
     Voucher voucherCreated = vouchersCreated.get(0).mapTo(Voucher.class);
+    assertThat(voucherCreated.getVoucherNumber(), equalTo(TEST_PREFIX + VOUCHER_NUMBER_VALUE));
     assertThat(voucherCreated.getSystemCurrency(), equalTo("GBP"));
     verifyTransitionToApproved(voucherCreated, invoiceLines);
   }
 
   @Test
-  public void testTransitionToApprovedWithDefaultSystemCurrency() {
+  public void testTransitionToApprovedWithEmptyConfig() {
     logger.info("=== Test transition invoice to Approved with empty config ===");
     List<InvoiceLine> invoiceLines = new ArrayList<>();
     for (int i = 0; i < 3; i++) {
@@ -334,6 +339,7 @@ public class InvoicesApiTest extends ApiTestBase {
     assertThat(vouchersCreated, hasSize(1));
     Voucher voucherCreated = vouchersCreated.get(0).mapTo(Voucher.class);
     assertThat(voucherCreated.getSystemCurrency(), equalTo(DEFAULT_SYSTEM_CURRENCY));
+    assertThat(voucherCreated.getVoucherNumber(), equalTo(VOUCHER_NUMBER_VALUE));
     verifyTransitionToApproved(voucherCreated, invoiceLines);
   }
 
@@ -374,6 +380,23 @@ public class InvoicesApiTest extends ApiTestBase {
     Voucher updatedVoucher = vouchersUpdated.get(0).mapTo(Voucher.class);
 
     verifyTransitionToApproved(updatedVoucher, Collections.singletonList(invoiceLine));
+  }
+
+  @Test
+  public void testTransitionToApprovedWithInvalidVoucherNumberPrefix() {
+    logger.info("=== Test transition invoice to Approved with invalid voucher number prefix ===");
+
+    Headers headers = prepareHeaders(X_OKAPI_URL, INVALID_PREFIX_CONFIG_X_OKAPI_TENANT, X_OKAPI_TOKEN);
+    Errors errors = transitionToApprovedWithError(REVIEWED_INVOICE_SAMPLE_PATH, headers);
+
+    List<JsonObject> voucherNumberGeneration = serverRqRs.get(VOUCHER_NUMBER, HttpMethod.GET);
+
+    assertThat(voucherNumberGeneration, nullValue());
+    assertThat(errors, notNullValue());
+    assertThat(errors.getErrors(), hasSize(1));
+    assertThat(errors.getErrors().get(0).getMessage(), equalTo(VOUCHER_NUMBER_PREFIX_NOT_ALPHA.getDescription()));
+    assertThat(errors.getErrors().get(0).getCode(), equalTo(VOUCHER_NUMBER_PREFIX_NOT_ALPHA.getCode()));
+
   }
 
   @Test
@@ -422,7 +445,6 @@ public class InvoicesApiTest extends ApiTestBase {
     Invoice reqData = getMockAsJson(invoiceSamplePath).mapTo(Invoice.class);
     invoiceLine.setId(UUID.randomUUID().toString());
     invoiceLine.setInvoiceId(reqData.getId());
-    prepareMockVoucher(reqData.getId());
     addMockEntry(INVOICE_LINES, JsonObject.mapFrom(invoiceLine));
 
 
@@ -434,19 +456,6 @@ public class InvoicesApiTest extends ApiTestBase {
       .then()
       .extract()
       .body().as(Errors.class);
-  }
-
-
-  @Test
-  public void testTransitionToApprovedWithoutToken() {
-    logger.info("=== Test transition invoice to Approved without token ===");
-
-    Errors errors = transitionToApprovedWithError(REVIEWED_INVOICE_WITH_EXISTING_VOUCHER_SAMPLE_PATH, prepareHeaders(X_OKAPI_URL, X_OKAPI_TENANT));
-
-    assertThat(errors, notNullValue());
-    assertThat(errors.getErrors(), hasSize(1));
-    assertThat(errors.getErrors().get(0).getMessage(), equalTo(MOD_CONFIG_ERROR.getDescription()));
-    assertThat(errors.getErrors().get(0).getCode(), equalTo(MOD_CONFIG_ERROR.getCode()));
   }
 
   @Test
@@ -908,10 +917,12 @@ public class InvoicesApiTest extends ApiTestBase {
     Invoice reqData = getMockAsJson(APPROVED_INVOICE_SAMPLE_PATH).mapTo(Invoice.class).withStatus(Invoice.Status.PAID);
     String id = reqData.getId();
     for (int i = 0; i < 3; i++) {
-      invoiceLines.get(i).setId(UUID.randomUUID().toString());
-      invoiceLines.get(i).setInvoiceId(reqData.getId());
+      InvoiceLine invoiceLine = invoiceLines.get(i);
+
+      invoiceLine.setId(UUID.randomUUID().toString());
+      invoiceLine.setInvoiceId(reqData.getId());
       String poLineId = UUID.randomUUID().toString();
-      invoiceLines.get(i).setPoLineId(poLineId);
+      invoiceLine.setPoLineId(poLineId);
       poLines.get(i).setId(poLineId);
     }
 

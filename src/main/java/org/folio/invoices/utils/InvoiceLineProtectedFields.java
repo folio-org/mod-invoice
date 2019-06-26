@@ -7,6 +7,7 @@ import java.util.stream.Collectors;
 public enum InvoiceLineProtectedFields {
 
   ADJUSTMENTS("adjustments"),
+  FUND_DISTRIBUTIONS("fundDistributions"),
   INVOICE_ID("invoiceId"),
   INVOICE_LINE_NUMBER("invoiceLineNumber"),
   PO_LINE_ID("poLineId"),
