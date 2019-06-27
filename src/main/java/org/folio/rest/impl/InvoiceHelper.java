@@ -217,8 +217,8 @@ public class InvoiceHelper extends AbstractHelper {
    */
   private CompletableFuture<Void> approveInvoice(Invoice invoice) {
     CompletableFuture<Void> future = new VertxCompletableFuture<>(ctx);
-    loadTenantConfiguration(SYSTEM_CONFIG_QUERY, VOUCHER_NUMBER_PREFIX_CONFIG_QUERY)
-      .thenCompose(ok -> getInvoiceLinesWithTotals(invoice))
+
+    getInvoiceLinesWithTotals(invoice)
       .thenApply(invoiceLines -> {
         verifyInvoiceLineNotEmpty(invoiceLines);
         return invoiceLines;
@@ -293,25 +293,34 @@ public class InvoiceHelper extends AbstractHelper {
     Voucher voucher = new Voucher();
     voucher.setInvoiceId(invoice.getId());
 
-    return getVoucherNumberWithPrefix()
+    return getVoucherNumberPrefix()
+      .thenApply(prefix -> {
+        validateVoucherNumberPrefix(prefix);
+        return prefix;
+      })
+      .thenCompose(this::getVoucherNumberWithPrefix)
       .thenApply(voucher::withVoucherNumber);
   }
 
-  private CompletableFuture<String> getVoucherNumberWithPrefix() {
-    String prefix = getVoucherNumberPrefix();
-    validateVoucherNumberPrefix(prefix);
+  private CompletableFuture<String> getVoucherNumberWithPrefix(String prefix) {
+
 
     return voucherHelper.generateVoucherNumber()
       .thenApply(sequenceNumber -> prefix + sequenceNumber);
   }
 
-  private String getVoucherNumberPrefix() {
-    return getLoadedTenantConfiguration()
-      .getConfigs().stream()
-      .filter(config -> INVOICE_CONFIG_MODULE_NAME.equals(config.getModule()) && VOUCHER_NUMBER_PREFIX_CONFIG.equals(config.getConfigName()))
-      .map(Config::getValue)
-      .findFirst()
-      .orElse(EMPTY);
+  private CompletableFuture<String> getVoucherNumberPrefix() {
+
+    return getTenantConfiguration(SYSTEM_CONFIG_QUERY, VOUCHER_NUMBER_PREFIX_CONFIG_QUERY)
+      .thenApply(configs -> configs.getConfigs().stream()
+        .filter(this::isVoucherNumberPrefixConfig)
+        .map(Config::getValue)
+        .findFirst()
+        .orElse(EMPTY));
+  }
+
+  private boolean isVoucherNumberPrefixConfig(Config config) {
+    return INVOICE_CONFIG_MODULE_NAME.equals(config.getModule()) && VOUCHER_NUMBER_PREFIX_CONFIG.equals(config.getConfigName());
   }
 
   private void validateVoucherNumberPrefix(String prefix) {
@@ -328,7 +337,8 @@ public class InvoiceHelper extends AbstractHelper {
    * @return CompletableFuture that indicates when handling is completed
    */
   private CompletableFuture<Void> handleVoucherWithLines(List<InvoiceLine> invoiceLines, Voucher voucher) {
-    return setExchangeRateFactor(voucher.withSystemCurrency(getSystemCurrency()))
+    return getSystemCurrency()
+      .thenCompose(systemCurrency -> setExchangeRateFactor(voucher.withSystemCurrency(systemCurrency)))
       .thenCompose(v -> groupFundDistrosByExternalAcctNo(invoiceLines))
       .thenApply(fundDistrosGroupedByExternalAcctNo -> buildVoucherLineRecords(fundDistrosGroupedByExternalAcctNo, invoiceLines, voucher))
       .thenCompose(voucherLines -> {
@@ -344,15 +354,25 @@ public class InvoiceHelper extends AbstractHelper {
    *  Retrieves systemCurrency from mod-configuration
    *  if config is empty than use {@link #DEFAULT_SYSTEM_CURRENCY}
    */
-  private String getSystemCurrency() {
-    Configs configs = getLoadedTenantConfiguration();
-    JsonObject configValue = configs.getConfigs()
+  private CompletableFuture<String> getSystemCurrency() {
+    return getTenantConfiguration(SYSTEM_CONFIG_QUERY, VOUCHER_NUMBER_PREFIX_CONFIG_QUERY)
+      .thenApply(configs -> {
+        JsonObject configValue = getLocaleConfigValue(configs);
+        return configValue.getString(SYSTEM_CURRENCY_PROPERTY_NAME, DEFAULT_SYSTEM_CURRENCY);
+      });
+  }
+
+  private JsonObject getLocaleConfigValue(Configs configs) {
+    return configs.getConfigs()
       .stream()
-      .filter(config -> SYSTEM_CONFIG_MODULE_NAME.equals(config.getModule()) && LOCALE_SETTINGS.equals(config.getConfigName()))
+      .filter(this::isLocaleConfig)
       .map(config -> new JsonObject(config.getValue()))
       .findFirst()
       .orElseGet(JsonObject::new);
-    return configValue.getString(SYSTEM_CURRENCY_PROPERTY_NAME, DEFAULT_SYSTEM_CURRENCY);
+  }
+
+  private boolean isLocaleConfig(Config config) {
+    return SYSTEM_CONFIG_MODULE_NAME.equals(config.getModule()) && LOCALE_SETTINGS.equals(config.getConfigName());
   }
 
   private CompletableFuture<Void> setExchangeRateFactor(Voucher voucher) {
