@@ -59,7 +59,7 @@ public abstract class AbstractHelper {
   protected final Map<String, String> okapiHeaders;
   protected final Context ctx;
   protected final String lang;
-  private Configs tenantConfiguration;
+  private Configs tenantConfiguration = new Configs().withTotalRecords(0);
 
 
 
@@ -108,15 +108,20 @@ public abstract class AbstractHelper {
     return "(" + String.join(") OR (", searchCriteria) + ")";
   }
 
-  public CompletableFuture<Configs> getTenantConfiguration(String ... searchCriteria) {
-    if (Objects.isNull(this.tenantConfiguration)) {
+  public CompletableFuture<Void> loadTenantConfiguration(String ... searchCriteria) {
+    if (isConfigEmpty()) {
       return getConfigurationsEntries(searchCriteria)
-        .thenApply(config -> {
-          this.tenantConfiguration = config;
-          return this.tenantConfiguration;
-        });
+        .thenAccept(config -> this.tenantConfiguration = config);
     }
-    return VertxCompletableFuture.completedFuture(this.tenantConfiguration);
+    return VertxCompletableFuture.completedFuture(null);
+  }
+
+  private boolean isConfigEmpty() {
+    return CollectionUtils.isEmpty(this.tenantConfiguration.getConfigs());
+  }
+
+  public Configs getLoadedTenantConfiguration() {
+    return this.tenantConfiguration;
   }
 
   protected CompletableFuture<String> createRecordInStorage(JsonObject recordData, String endpoint) {

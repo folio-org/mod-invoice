@@ -58,7 +58,6 @@ import org.folio.rest.acq.model.finance.FundCollection;
 import org.folio.rest.acq.model.orders.CompositePoLine;
 import org.folio.rest.jaxrs.model.Adjustment;
 import org.folio.rest.jaxrs.model.Config;
-import org.folio.rest.jaxrs.model.Configs;
 import org.folio.rest.jaxrs.model.Error;
 import org.folio.rest.jaxrs.model.FundDistribution;
 import org.folio.rest.jaxrs.model.Invoice;
@@ -216,27 +215,16 @@ public class InvoiceHelper extends AbstractHelper {
    * @return CompletableFuture that indicates when transition is completed
    */
   private CompletableFuture<Void> approveInvoice(Invoice invoice) {
-    CompletableFuture<Void> future = new VertxCompletableFuture<>(ctx);
 
-    getInvoiceLinesWithTotals(invoice)
+    return loadTenantConfiguration(SYSTEM_CONFIG_QUERY, VOUCHER_NUMBER_PREFIX_CONFIG_QUERY)
+      .thenCompose(ok -> getInvoiceLinesWithTotals(invoice))
       .thenApply(invoiceLines -> {
         verifyInvoiceLineNotEmpty(invoiceLines);
         return invoiceLines;
       })
-      .thenCombine(prepareVoucher(invoice), (invoiceLines, voucher) -> {
-        invoice.setVoucherNumber(voucher.getVoucherNumber());
-        return handleVoucherWithLines(invoiceLines, voucher)
-          .thenAccept(future::complete)
-          .exceptionally(t -> {
-            future.completeExceptionally(t);
-            return null;
-          });
-      })
-    .exceptionally(t -> {
-      future.completeExceptionally(t);
-      return null;
-    });
-    return future;
+      .thenCompose(invoiceLines -> prepareVoucher(invoice)
+          .thenCompose(voucher -> handleVoucherWithLines(invoiceLines, voucher))
+      );
   }
 
   private void verifyInvoiceLineNotEmpty(List<InvoiceLine> invoiceLines) {
@@ -259,7 +247,10 @@ public class InvoiceHelper extends AbstractHelper {
         }
         return buildNewVoucher(invoice);
       })
-      .thenApply(voucher -> withRequiredFields(voucher, invoice));
+      .thenApply(voucher -> {
+        invoice.setVoucherNumber(voucher.getVoucherNumber());
+        return withRequiredFields(voucher, invoice);
+      });
   }
 
   /**
@@ -293,30 +284,25 @@ public class InvoiceHelper extends AbstractHelper {
     Voucher voucher = new Voucher();
     voucher.setInvoiceId(invoice.getId());
 
-    return getVoucherNumberPrefix()
-      .thenApply(prefix -> {
-        validateVoucherNumberPrefix(prefix);
-        return prefix;
-      })
-      .thenCompose(this::getVoucherNumberWithPrefix)
+    return getVoucherNumberWithPrefix()
       .thenApply(voucher::withVoucherNumber);
   }
 
-  private CompletableFuture<String> getVoucherNumberWithPrefix(String prefix) {
-
+  private CompletableFuture<String> getVoucherNumberWithPrefix() {
+    final String prefix = getVoucherNumberPrefix();
+    validateVoucherNumberPrefix(prefix);
 
     return voucherHelper.generateVoucherNumber()
       .thenApply(sequenceNumber -> prefix + sequenceNumber);
   }
 
-  private CompletableFuture<String> getVoucherNumberPrefix() {
-
-    return getTenantConfiguration(SYSTEM_CONFIG_QUERY, VOUCHER_NUMBER_PREFIX_CONFIG_QUERY)
-      .thenApply(configs -> configs.getConfigs().stream()
-        .filter(this::isVoucherNumberPrefixConfig)
-        .map(Config::getValue)
-        .findFirst()
-        .orElse(EMPTY));
+  private String getVoucherNumberPrefix() {
+    return getLoadedTenantConfiguration()
+      .getConfigs().stream()
+      .filter(this::isVoucherNumberPrefixConfig)
+      .map(Config::getValue)
+      .findFirst()
+      .orElse(EMPTY);
   }
 
   private boolean isVoucherNumberPrefixConfig(Config config) {
@@ -337,8 +323,7 @@ public class InvoiceHelper extends AbstractHelper {
    * @return CompletableFuture that indicates when handling is completed
    */
   private CompletableFuture<Void> handleVoucherWithLines(List<InvoiceLine> invoiceLines, Voucher voucher) {
-    return getSystemCurrency()
-      .thenCompose(systemCurrency -> setExchangeRateFactor(voucher.withSystemCurrency(systemCurrency)))
+    return setExchangeRateFactor(voucher.withSystemCurrency(getSystemCurrency()))
       .thenCompose(v -> groupFundDistrosByExternalAcctNo(invoiceLines))
       .thenApply(fundDistrosGroupedByExternalAcctNo -> buildVoucherLineRecords(fundDistrosGroupedByExternalAcctNo, invoiceLines, voucher))
       .thenCompose(voucherLines -> {
@@ -354,21 +339,15 @@ public class InvoiceHelper extends AbstractHelper {
    *  Retrieves systemCurrency from mod-configuration
    *  if config is empty than use {@link #DEFAULT_SYSTEM_CURRENCY}
    */
-  private CompletableFuture<String> getSystemCurrency() {
-    return getTenantConfiguration(SYSTEM_CONFIG_QUERY, VOUCHER_NUMBER_PREFIX_CONFIG_QUERY)
-      .thenApply(configs -> {
-        JsonObject configValue = getLocaleConfigValue(configs);
-        return configValue.getString(SYSTEM_CURRENCY_PROPERTY_NAME, DEFAULT_SYSTEM_CURRENCY);
-      });
-  }
-
-  private JsonObject getLocaleConfigValue(Configs configs) {
-    return configs.getConfigs()
+  private String getSystemCurrency() {
+    JsonObject configValue = getLoadedTenantConfiguration().getConfigs()
       .stream()
       .filter(this::isLocaleConfig)
       .map(config -> new JsonObject(config.getValue()))
       .findFirst()
       .orElseGet(JsonObject::new);
+
+    return configValue.getString(SYSTEM_CURRENCY_PROPERTY_NAME, DEFAULT_SYSTEM_CURRENCY);
   }
 
   private boolean isLocaleConfig(Config config) {
