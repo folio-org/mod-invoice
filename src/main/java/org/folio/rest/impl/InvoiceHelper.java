@@ -58,7 +58,6 @@ import org.folio.rest.acq.model.finance.FundCollection;
 import org.folio.rest.acq.model.orders.CompositePoLine;
 import org.folio.rest.jaxrs.model.Adjustment;
 import org.folio.rest.jaxrs.model.Config;
-import org.folio.rest.jaxrs.model.Configs;
 import org.folio.rest.jaxrs.model.Error;
 import org.folio.rest.jaxrs.model.FundDistribution;
 import org.folio.rest.jaxrs.model.Invoice;
@@ -216,27 +215,16 @@ public class InvoiceHelper extends AbstractHelper {
    * @return CompletableFuture that indicates when transition is completed
    */
   private CompletableFuture<Void> approveInvoice(Invoice invoice) {
-    CompletableFuture<Void> future = new VertxCompletableFuture<>(ctx);
-    loadTenantConfiguration(SYSTEM_CONFIG_QUERY, VOUCHER_NUMBER_PREFIX_CONFIG_QUERY)
+
+    return loadTenantConfiguration(SYSTEM_CONFIG_QUERY, VOUCHER_NUMBER_PREFIX_CONFIG_QUERY)
       .thenCompose(ok -> getInvoiceLinesWithTotals(invoice))
       .thenApply(invoiceLines -> {
         verifyInvoiceLineNotEmpty(invoiceLines);
         return invoiceLines;
       })
-      .thenCombine(prepareVoucher(invoice), (invoiceLines, voucher) -> {
-        invoice.setVoucherNumber(voucher.getVoucherNumber());
-        return handleVoucherWithLines(invoiceLines, voucher)
-          .thenAccept(future::complete)
-          .exceptionally(t -> {
-            future.completeExceptionally(t);
-            return null;
-          });
-      })
-    .exceptionally(t -> {
-      future.completeExceptionally(t);
-      return null;
-    });
-    return future;
+      .thenCompose(invoiceLines -> prepareVoucher(invoice)
+          .thenCompose(voucher -> handleVoucherWithLines(invoiceLines, voucher))
+      );
   }
 
   private void verifyInvoiceLineNotEmpty(List<InvoiceLine> invoiceLines) {
@@ -259,7 +247,10 @@ public class InvoiceHelper extends AbstractHelper {
         }
         return buildNewVoucher(invoice);
       })
-      .thenApply(voucher -> withRequiredFields(voucher, invoice));
+      .thenApply(voucher -> {
+        invoice.setVoucherNumber(voucher.getVoucherNumber());
+        return withRequiredFields(voucher, invoice);
+      });
   }
 
   /**
@@ -298,7 +289,7 @@ public class InvoiceHelper extends AbstractHelper {
   }
 
   private CompletableFuture<String> getVoucherNumberWithPrefix() {
-    String prefix = getVoucherNumberPrefix();
+    final String prefix = getVoucherNumberPrefix();
     validateVoucherNumberPrefix(prefix);
 
     return voucherHelper.generateVoucherNumber()
@@ -308,10 +299,14 @@ public class InvoiceHelper extends AbstractHelper {
   private String getVoucherNumberPrefix() {
     return getLoadedTenantConfiguration()
       .getConfigs().stream()
-      .filter(config -> INVOICE_CONFIG_MODULE_NAME.equals(config.getModule()) && VOUCHER_NUMBER_PREFIX_CONFIG.equals(config.getConfigName()))
+      .filter(this::isVoucherNumberPrefixConfig)
       .map(Config::getValue)
       .findFirst()
       .orElse(EMPTY);
+  }
+
+  private boolean isVoucherNumberPrefixConfig(Config config) {
+    return INVOICE_CONFIG_MODULE_NAME.equals(config.getModule()) && VOUCHER_NUMBER_PREFIX_CONFIG.equals(config.getConfigName());
   }
 
   private void validateVoucherNumberPrefix(String prefix) {
@@ -345,14 +340,18 @@ public class InvoiceHelper extends AbstractHelper {
    *  if config is empty than use {@link #DEFAULT_SYSTEM_CURRENCY}
    */
   private String getSystemCurrency() {
-    Configs configs = getLoadedTenantConfiguration();
-    JsonObject configValue = configs.getConfigs()
+    JsonObject configValue = getLoadedTenantConfiguration().getConfigs()
       .stream()
-      .filter(config -> SYSTEM_CONFIG_MODULE_NAME.equals(config.getModule()) && LOCALE_SETTINGS.equals(config.getConfigName()))
+      .filter(this::isLocaleConfig)
       .map(config -> new JsonObject(config.getValue()))
       .findFirst()
       .orElseGet(JsonObject::new);
+
     return configValue.getString(SYSTEM_CURRENCY_PROPERTY_NAME, DEFAULT_SYSTEM_CURRENCY);
+  }
+
+  private boolean isLocaleConfig(Config config) {
+    return SYSTEM_CONFIG_MODULE_NAME.equals(config.getModule()) && LOCALE_SETTINGS.equals(config.getConfigName());
   }
 
   private CompletableFuture<Void> setExchangeRateFactor(Voucher voucher) {
