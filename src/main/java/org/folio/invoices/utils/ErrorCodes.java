@@ -5,6 +5,7 @@ import org.folio.rest.jaxrs.model.Error;
 public enum ErrorCodes {
 
   GENERIC_ERROR_CODE("genericError", "Generic error"),
+  INCOMPATIBLE_INVOICE_FIELDS_ON_STATUS_TRANSITION("incompatibleInvoiceFields", "Invoice with statuses 'Open' or 'Reviewed' shouldn't contain fields 'approvedBy' or 'approvedDate'"),
   PO_LINE_NOT_FOUND("poLineNotFound", "The purchase order line record is not found"),
   PO_LINE_UPDATE_FAILURE("poLineUpdateFailure", "One or more purchase order line record(s) cannot be updated"),
   VOUCHER_NOT_FOUND("voucherNotFound", "The voucher record is not found"),

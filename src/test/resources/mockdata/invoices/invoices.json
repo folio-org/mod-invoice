@@ -30,11 +30,16 @@
         "AB268758XYZ"
       ],
       "vendorId": "168f8a63-d612-406e-813f-c7527f241ac3",
-      "manualPayment": true
+      "manualPayment": true,
+      "metadata" : {
+        "createdDate" : "2019-07-04T14:21:41.097+0000",
+        "createdByUserId" : "6333a767-7409-5454-a1ad-ecb472f42f01",
+        "updatedDate" : "2019-07-04T14:21:41.097+0000",
+        "updatedByUserId" : "6333a767-7409-5454-a1ad-ecb472f42f01"
+      }
     },
     {
       "id": "9917d4a6-fbb2-4ed6-946d-6cf8c42369e4",
-      "approvalDate": "2018-07-29T00:00:00.000+0000",
       "currency": "USD",
       "folioInvoiceNo": "123invoicenumber456",
       "invoiceDate": "2018-08-21T00:00:00.000+0000",
@@ -51,11 +56,16 @@
         "AB268758PQR"
       ],
       "vendorId": "168f8a63-d612-406e-813f-c7527f241ac3",
-      "manualPayment": false
+      "manualPayment": false,
+      "metadata" : {
+        "createdDate" : "2019-07-04T14:21:41.097+0000",
+        "createdByUserId" : "6333a767-7409-5454-a1ad-ecb472f42f01",
+        "updatedDate" : "2019-07-04T14:21:41.097+0000",
+        "updatedByUserId" : "6333a767-7409-5454-a1ad-ecb472f42f01"
+      }
     },
     {
       "id": "e6ac6e5b-2dde-4904-bc2d-def3a0b17052",
-      "approvalDate": "2018-07-29T00:00:00.000+0000",
       "currency": "USD",
       "folioInvoiceNo": "123invoicenumber47",
       "invoiceDate": "2018-09-21T00:00:00.000+0000",
@@ -72,7 +82,13 @@
         "AB268758LMN"
       ],
       "vendorId": "168f8a63-d612-406e-813f-c7527f241ac3",
-      "manualPayment": true
+      "manualPayment": true,
+      "metadata" : {
+        "createdDate" : "2019-07-04T14:21:41.097+0000",
+        "createdByUserId" : "6333a767-7409-5454-a1ad-ecb472f42f01",
+        "updatedDate" : "2019-07-04T14:21:41.097+0000",
+        "updatedByUserId" : "6333a767-7409-5454-a1ad-ecb472f42f01"
+      }
     }
   ],
   "totalRecords": 3

@@ -8,6 +8,7 @@ import static org.apache.commons.collections4.CollectionUtils.isNotEmpty;
 import static org.apache.commons.lang3.StringUtils.EMPTY;
 import static org.apache.commons.lang3.StringUtils.isAlpha;
 import static org.folio.invoices.utils.ErrorCodes.FUNDS_NOT_FOUND;
+import static org.folio.invoices.utils.ErrorCodes.INCOMPATIBLE_INVOICE_FIELDS_ON_STATUS_TRANSITION;
 import static org.folio.invoices.utils.ErrorCodes.INVOICE_TOTAL_REQUIRED;
 import static org.folio.invoices.utils.ErrorCodes.PO_LINE_NOT_FOUND;
 import static org.folio.invoices.utils.ErrorCodes.PO_LINE_UPDATE_FAILURE;
@@ -34,6 +35,7 @@ import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -191,6 +193,18 @@ public class InvoiceHelper extends AbstractHelper {
 
   private void setSystemGeneratedData(Invoice invoiceFromStorage, Invoice invoice) {
     invoice.withFolioInvoiceNo(invoiceFromStorage.getFolioInvoiceNo());
+    updateInvoiceFieldsOnTransitionToApproved(invoiceFromStorage, invoice);
+  }
+
+  private void updateInvoiceFieldsOnTransitionToApproved(Invoice invoiceFromStorage, Invoice invoice) {
+    if ((invoice.getStatus() == Invoice.Status.OPEN || invoice.getStatus() == Invoice.Status.REVIEWED)
+        && (invoice.getApprovalDate() != null || invoice.getApprovedBy() != null)) {
+      throw new HttpException(400, INCOMPATIBLE_INVOICE_FIELDS_ON_STATUS_TRANSITION);
+    }
+    if (invoiceFromStorage.getStatus() != Invoice.Status.APPROVED && invoice.getStatus() == Invoice.Status.APPROVED) {
+      invoice.setApprovalDate(new Date());
+      invoice.setApprovedBy(invoice.getMetadata().getUpdatedByUserId());
+    }
   }
 
   private CompletionStage<Void> handleInvoiceStatusTransition(Invoice invoice, Invoice invoiceFromStorage) {
