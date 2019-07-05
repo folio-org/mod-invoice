@@ -116,6 +116,7 @@ public class InvoicesApiTest extends ApiTestBase {
   private static final String REVIEWED_INVOICE_SAMPLE_PATH = INVOICE_MOCK_DATA_PATH + REVIEWED_INVOICE_ID + ".json";
   private static final String REVIEWED_INVOICE_WITH_EXISTING_VOUCHER_SAMPLE_PATH = INVOICE_MOCK_DATA_PATH + "402d0d32-7377-46a7-86ab-542b5684506e.json";
   private static final String OPEN_INVOICE_SAMPLE_PATH = INVOICE_MOCK_DATA_PATH + "52fd6ec7-ddc3-4c53-bc26-2779afc27136.json";
+  private static final String OPEN_INVOICE_WITH_APPROVED_FILEDS_SAMPLE_PATH = INVOICE_MOCK_DATA_PATH + "d3e13ed1-59da-4f70-bba3-a140e11d30f3.json";
 
   static final String BAD_QUERY = "unprocessableQuery";
   private static final String VENDOR_INVOICE_NUMBER_FIELD = "vendorInvoiceNo";
@@ -1166,21 +1167,36 @@ public class InvoicesApiTest extends ApiTestBase {
 
   @Test
   public void testNumberOfRequests() {
-    logger.info("=== Test nuber of requests on invoice PUT ===");
+    logger.info("=== Test number of requests on invoice PUT ===");
 
     // Invoice status APPROVED, PAID, CANCELLED - expect invoice updating with GET invoice rq + PUT invoice rq by statuses processable flow
     Invoice.Status[] processableStatuses = {Invoice.Status.APPROVED, Invoice.Status.PAID, Invoice.Status.CANCELLED};
     checkNumberOfRequests(processableStatuses);
 
-    // Invoice status APPROVED, PAID, CANCELLED - expect invoice updating with GET invoice rq + PUT invoice rq without statuses processable flow
+    // Invoice status OPEN, REVIEWED - expect invoice updating with GET invoice rq + PUT invoice rq without statuses processable flow
     Invoice.Status[] nonProcessableStatuses = {Invoice.Status.OPEN, Invoice.Status.REVIEWED};
     checkNumberOfRequests(nonProcessableStatuses);
   }
 
   private void checkNumberOfRequests(Invoice.Status[] statuses) {
     // Invoice status open - expect no GET invoice rq + PUT invoice rq
-    for(Invoice.Status status : statuses) {
-      Invoice invoice = getMockAsJson(APPROVED_INVOICE_SAMPLE_PATH).mapTo(Invoice.class).withStatus(status);
+    for (Invoice.Status status : statuses) {
+      // MODINVOICE-76 prepare mock invoice with appropriate statuses
+      Invoice invoice;
+      String mockFilePath;
+      switch (status) {
+      case OPEN:
+        mockFilePath = OPEN_INVOICE_SAMPLE_PATH;
+        break;
+      case REVIEWED:
+        mockFilePath = REVIEWED_INVOICE_SAMPLE_PATH;
+        break;
+      default:
+        mockFilePath = APPROVED_INVOICE_SAMPLE_PATH;
+        break;
+      }
+      invoice = getMockAsJson(mockFilePath).mapTo(Invoice.class).withStatus(status);
+      
       prepareMockVoucher(invoice.getId());
 
       verifyPut(String.format(INVOICE_ID_PATH, invoice.getId()), JsonObject.mapFrom(invoice).encode(), "", HttpStatus.SC_NO_CONTENT);
@@ -1189,6 +1205,17 @@ public class InvoicesApiTest extends ApiTestBase {
       assertThat(serverRqRs.row(INVOICES).get(HttpMethod.PUT), hasSize(1));
       serverRqRs.clear();
     }
+  }
+  
+  @Test
+  public void testUpdateOpenedInvoiceWithIncompatibleFields() {
+    logger.info("=== Test update opened invoice with 'approvedBy' and 'approvedDate' fields ===");
+
+    Invoice invoice = getMockAsJson(OPEN_INVOICE_WITH_APPROVED_FILEDS_SAMPLE_PATH).mapTo(Invoice.class);
+    verifyPut(String.format(INVOICE_ID_PATH, invoice.getId()), JsonObject.mapFrom(invoice).encode(), "", HttpStatus.SC_BAD_REQUEST);
+
+    assertThat(serverRqRs.row(INVOICES).get(HttpMethod.GET), hasSize(1));
+    serverRqRs.clear();
   }
 
   @Test

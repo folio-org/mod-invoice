@@ -1,0 +1,29 @@
+{
+  "id": "d3e13ed1-59da-4f70-bba3-a140e11d30f3",
+  "approvedBy": "ab18897b-0e40-4f31-896b-9c9adc979a88",
+  "approvalDate": "2018-07-29T00:00:00.000+0000",
+  "chkSubscriptionOverlap": false,
+  "currency": "USD",
+  "folioInvoiceNo": "123invoicenumber45",
+  "invoiceDate": "2018-07-20T00:00:00.000+0000",
+  "note": "Some note 1",
+  "paymentTerms": "Payment in Advance",
+  "paymentMethod": "EFT",
+  "status": "Open",
+  "source": "024b6f41-c5c6-4280-858e-33fba452a334",
+  "total": 5.0,
+  "vendorInvoiceNo": "YK75851",
+  "voucherNumber": "478",
+  "paymentId": "a5065f0d-fb88-4d23-b0c1-57e754fba40e",
+  "poNumbers": [
+    "AB268758XYZ"
+  ],
+  "vendorId": "168f8a63-d612-406e-813f-c7527f241ac3",
+  "manualPayment": true,
+  "metadata" : {
+    "createdDate" : "2019-07-04T14:21:41.097+0000",
+    "createdByUserId" : "6333a767-7409-5454-a1ad-ecb472f42f01",
+    "updatedDate" : "2019-07-04T14:21:41.097+0000",
+    "updatedByUserId" : "6333a767-7409-5454-a1ad-ecb472f42f01"
+  }
+}
