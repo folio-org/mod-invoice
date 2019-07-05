@@ -3,6 +3,7 @@ package org.folio.rest.impl;
 import static io.vertx.core.json.JsonObject.mapFrom;
 import static org.apache.commons.lang3.StringUtils.EMPTY;
 import static org.apache.commons.lang3.StringUtils.isEmpty;
+import static org.folio.invoices.utils.ErrorCodes.PROHIBITED_INVOICE_LINE_CREATION;
 import static org.folio.invoices.utils.HelperUtils.*;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_LINES;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_LINE_NUMBER;
@@ -19,6 +20,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 
 import me.escoffier.vertx.completablefuture.VertxCompletableFuture;
+import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.invoices.utils.HelperUtils;
 import org.folio.invoices.utils.InvoiceLineProtectedFields;
 
@@ -115,7 +117,15 @@ public class InvoiceLineHelper extends AbstractHelper {
    */
   CompletableFuture<InvoiceLine> createInvoiceLine(InvoiceLine invoiceLine) {
     return getInvoice(invoiceLine)
+      .thenApply(this::checkIfInvoiceLineCreationAllowed)
       .thenCompose(invoice -> createInvoiceLine(invoiceLine, invoice));
+  }
+
+  private Invoice checkIfInvoiceLineCreationAllowed(Invoice invoice) {
+    if (invoice.getStatus() != Invoice.Status.OPEN && invoice.getStatus() != Invoice.Status.REVIEWED) {
+      throw new HttpException(500, PROHIBITED_INVOICE_LINE_CREATION);
+    }
+    return invoice;
   }
 
   private CompletableFuture<Invoice> getInvoice(InvoiceLine invoiceLine) {

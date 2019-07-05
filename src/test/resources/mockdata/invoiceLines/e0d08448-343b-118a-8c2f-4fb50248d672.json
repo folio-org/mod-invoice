@@ -1,5 +1,28 @@
 {
   "id": "e0d08448-343b-118a-8c2f-4fb50248d672",
+  "description": "Some description",
+  "poLineId": "0610be6d-0ddd-494b-b867-19f63d8b5d6d",
+  "invoiceLineNumber": "123invoicenumber45-1",
+  "invoiceLineStatus": "Open",
+  "vendorRefNo": "1",
+  "productId": "9780764354113",
+  "productIdType": "8261054f-be78-422d-bd51-4ed9f33c3422",
+  "comment": "Sample invoice line",
+  "subTotal": 2.2,
+  "quantity": 3,
+  "releaseEncumbrance": true,
+  "subscriptionInfo": "Subscription information",
+  "subscriptionStart": "2018-08-01T00:00:00.000+0000",
+  "subscriptionEnd": "2019-01-01T00:00:00.000+0000",
+  "invoiceId": "c0d08448-347b-418a-8c2f-5fb50248d67e",
+  "fundDistributions": [
+    {
+      "code": "USHIST",
+      "encumbrance": "1c8fc9f4-d2cc-4bd1-aa9a-cb02291cbe65",
+      "fundId": "1d1574f1-9196-4a57-8d1f-3b2e4309eb81",
+      "percentage": 100
+    }
+  ],
   "adjustments": [
     {
       "description": "Adjustment label",
@@ -7,29 +30,6 @@
       "value": 10.1,
       "relationToTotal": "In addition to",
       "prorate": "Not prorated"
-    }
-  ],
-  "description": "Some description",
-  "invoiceLineNumber": "123invoicenumber45-1",
-  "invoiceLineStatus": "Open",
-  "vendorRefNo": "1",
-  "poLineId": "0610be6d-0ddd-494b-b867-19f63d8b5d6d",
-  "productId": "9780764354113",
-  "productIdType": "8261054f-be78-422d-bd51-4ed9f33c3422",
-  "comment": "Sample invoice line",
-  "subTotal": 2.2,
-  "quantity": 3,
-  "releaseEncumbrance": false,
-  "subscriptionInfo": "Subscription information",
-  "subscriptionStart": "2018-08-01T00:00:00.000+0000",
-  "subscriptionEnd": "2019-01-01T00:00:00.000+0000",
-  "invoiceId": "c0d08448-347b-418a-8c2f-5fb50248d67e",
-  "fundDistributions": [
-    {
-      "code": "EUHIST",
-      "encumbrance": "5f9bfc74-f6ff-4877-be1f-793f8ce90ade",
-      "fundId": "63157e96-0693-426d-b0df-948bacdfdb08",
-      "percentage": 50
     }
   ],
   "metadata": {

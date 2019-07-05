@@ -13,7 +13,8 @@ public enum ErrorCodes {
   MOD_CONFIG_ERROR("configNotAvailable", "The mod-configuration is not available"),
   PROHIBITED_FIELD_CHANGING("protectedFieldChanging", "Field can't be modified"),
   FUNDS_NOT_FOUND("fundsNotFound", "Fund records are not found"),
-  VOUCHER_NUMBER_PREFIX_NOT_ALPHA("voucherNumberPrefixNotAlpha", "Voucher number prefix must contains only Unicode letters");
+  VOUCHER_NUMBER_PREFIX_NOT_ALPHA("voucherNumberPrefixNotAlpha", "Voucher number prefix must contains only Unicode letters"),
+  PROHIBITED_INVOICE_LINE_CREATION("prohibitedInvoiceLineCreation","It is not allowed to add invoice line to the invoice that has been approved");
 
   private final String code;
   private final String description;
