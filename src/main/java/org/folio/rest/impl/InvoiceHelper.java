@@ -193,15 +193,7 @@ public class InvoiceHelper extends AbstractHelper {
 
   private void setSystemGeneratedData(Invoice invoiceFromStorage, Invoice invoice) {
     invoice.withFolioInvoiceNo(invoiceFromStorage.getFolioInvoiceNo());
-    updateInvoiceFieldsOnTransitionToApproved(invoiceFromStorage, invoice);
-  }
-
-  private void updateInvoiceFieldsOnTransitionToApproved(Invoice invoiceFromStorage, Invoice invoice) {
-    if ((invoice.getStatus() == Invoice.Status.OPEN || invoice.getStatus() == Invoice.Status.REVIEWED)
-        && (invoice.getApprovalDate() != null || invoice.getApprovedBy() != null)) {
-      throw new HttpException(400, INCOMPATIBLE_INVOICE_FIELDS_ON_STATUS_TRANSITION);
-    }
-    if (invoiceFromStorage.getStatus() != Invoice.Status.APPROVED && invoice.getStatus() == Invoice.Status.APPROVED) {
+    if (isTransitionToApproved(invoiceFromStorage, invoice)) {
       invoice.setApprovalDate(new Date());
       invoice.setApprovedBy(invoice.getMetadata().getUpdatedByUserId());
     }
@@ -571,6 +563,14 @@ public class InvoiceHelper extends AbstractHelper {
         fields.add(TOTAL);
       }
       verifyThatProtectedFieldsUnchanged(fields);
+    }
+    verifyInvoiceStatusMatchesWithFields(invoice);
+  }
+
+  private void verifyInvoiceStatusMatchesWithFields(Invoice invoice) {
+    if ((invoice.getStatus() == Invoice.Status.OPEN || invoice.getStatus() == Invoice.Status.REVIEWED)
+      && (invoice.getApprovalDate() != null || invoice.getApprovedBy() != null)) {
+      throw new HttpException(400, INCOMPATIBLE_INVOICE_FIELDS_ON_STATUS_TRANSITION);
     }
   }
 
