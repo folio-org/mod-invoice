@@ -1219,7 +1219,9 @@ public class InvoicesApiTest extends ApiTestBase {
     logger.info("=== Test update opened invoice with 'approvedBy' and 'approvedDate' fields ===");
 
     Invoice invoice = getMockAsJson(OPEN_INVOICE_WITH_APPROVED_FILEDS_SAMPLE_PATH).mapTo(Invoice.class);
-    verifyPut(String.format(INVOICE_ID_PATH, invoice.getId()), JsonObject.mapFrom(invoice).encode(), "", HttpStatus.SC_BAD_REQUEST);
+    Headers headers = prepareHeaders(X_OKAPI_TENANT, X_OKAPI_USERID);
+
+    verifyPut(String.format(INVOICE_ID_PATH, invoice.getId()), JsonObject.mapFrom(invoice).encode(), headers, "", HttpStatus.SC_BAD_REQUEST);
 
     assertThat(serverRqRs.row(INVOICES).get(HttpMethod.GET), hasSize(1));
     serverRqRs.clear();

@@ -19,11 +19,5 @@
     "AB268758XYZ"
   ],
   "vendorId": "168f8a63-d612-406e-813f-c7527f241ac3",
-  "manualPayment": true,
-  "metadata" : {
-    "createdDate" : "2019-07-04T14:21:41.097+0000",
-    "createdByUserId" : "6333a767-7409-5454-a1ad-ecb472f42f01",
-    "updatedDate" : "2019-07-04T14:21:41.097+0000",
-    "updatedByUserId" : "6333a767-7409-5454-a1ad-ecb472f42f01"
-  }
+  "manualPayment": true
 }

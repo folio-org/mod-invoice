@@ -30,13 +30,7 @@
         "AB268758XYZ"
       ],
       "vendorId": "168f8a63-d612-406e-813f-c7527f241ac3",
-      "manualPayment": true,
-      "metadata" : {
-        "createdDate" : "2019-07-04T14:21:41.097+0000",
-        "createdByUserId" : "6333a767-7409-5454-a1ad-ecb472f42f01",
-        "updatedDate" : "2019-07-04T14:21:41.097+0000",
-        "updatedByUserId" : "6333a767-7409-5454-a1ad-ecb472f42f01"
-      }
+      "manualPayment": true
     },
     {
       "id": "9917d4a6-fbb2-4ed6-946d-6cf8c42369e4",
@@ -56,13 +50,7 @@
         "AB268758PQR"
       ],
       "vendorId": "168f8a63-d612-406e-813f-c7527f241ac3",
-      "manualPayment": false,
-      "metadata" : {
-        "createdDate" : "2019-07-04T14:21:41.097+0000",
-        "createdByUserId" : "6333a767-7409-5454-a1ad-ecb472f42f01",
-        "updatedDate" : "2019-07-04T14:21:41.097+0000",
-        "updatedByUserId" : "6333a767-7409-5454-a1ad-ecb472f42f01"
-      }
+      "manualPayment": false
     },
     {
       "id": "e6ac6e5b-2dde-4904-bc2d-def3a0b17052",
@@ -82,13 +70,7 @@
         "AB268758LMN"
       ],
       "vendorId": "168f8a63-d612-406e-813f-c7527f241ac3",
-      "manualPayment": true,
-      "metadata" : {
-        "createdDate" : "2019-07-04T14:21:41.097+0000",
-        "createdByUserId" : "6333a767-7409-5454-a1ad-ecb472f42f01",
-        "updatedDate" : "2019-07-04T14:21:41.097+0000",
-        "updatedByUserId" : "6333a767-7409-5454-a1ad-ecb472f42f01"
-      }
+      "manualPayment": true
     }
   ],
   "totalRecords": 3
