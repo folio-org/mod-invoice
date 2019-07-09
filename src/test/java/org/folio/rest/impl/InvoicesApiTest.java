@@ -496,7 +496,7 @@ public class InvoicesApiTest extends ApiTestBase {
     String id = reqData.getId();
     invoiceLine.setId(UUID.randomUUID().toString());
     invoiceLine.setInvoiceId(id);
-    invoiceLine.getFundDistributions().clear();
+    invoiceLine.setFundDistributions(null);
 
     addMockEntry(INVOICE_LINES, JsonObject.mapFrom(invoiceLine));
 

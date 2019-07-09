@@ -241,7 +241,10 @@ public class InvoiceHelper extends AbstractHelper {
       if (line.getFundDistributions() == null || line.getFundDistributions().isEmpty()) {
         throw new HttpException(400, FUND_DISTRIBUTIONS_NOT_PRESENT);
       }
-      Double totalPercentage = line.getFundDistributions().stream().map(FundDistribution::getPercentage).reduce(Double::sum).get();
+      Double totalPercentage = line.getFundDistributions().stream()
+        .map(FundDistribution::getPercentage)
+        .reduce(Double::sum)
+        .orElse(0d);
       if (!totalPercentage.equals(100d)){
         throw new HttpException(400, FUND_DISTRIBUTIONS_PERCENTAGE_SUMMARY_MISMATCH);
       }
