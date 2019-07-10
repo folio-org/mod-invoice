@@ -34,7 +34,6 @@
     },
     {
       "id": "9917d4a6-fbb2-4ed6-946d-6cf8c42369e4",
-      "approvalDate": "2018-07-29T00:00:00.000+0000",
       "currency": "USD",
       "folioInvoiceNo": "123invoicenumber456",
       "invoiceDate": "2018-08-21T00:00:00.000+0000",
@@ -55,7 +54,6 @@
     },
     {
       "id": "e6ac6e5b-2dde-4904-bc2d-def3a0b17052",
-      "approvalDate": "2018-07-29T00:00:00.000+0000",
       "currency": "USD",
       "folioInvoiceNo": "123invoicenumber47",
       "invoiceDate": "2018-09-21T00:00:00.000+0000",

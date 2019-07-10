@@ -8,6 +8,7 @@ import static org.apache.commons.collections4.CollectionUtils.isNotEmpty;
 import static org.apache.commons.lang3.StringUtils.EMPTY;
 import static org.apache.commons.lang3.StringUtils.isAlpha;
 import static org.folio.invoices.utils.ErrorCodes.FUNDS_NOT_FOUND;
+import static org.folio.invoices.utils.ErrorCodes.INCOMPATIBLE_INVOICE_FIELDS_ON_STATUS_TRANSITION;
 import static org.folio.invoices.utils.ErrorCodes.FUND_DISTRIBUTIONS_NOT_PRESENT;
 import static org.folio.invoices.utils.ErrorCodes.FUND_DISTRIBUTIONS_PERCENTAGE_SUMMARY_MISMATCH;
 import static org.folio.invoices.utils.ErrorCodes.INVOICE_TOTAL_REQUIRED;
@@ -36,6 +37,7 @@ import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -217,6 +219,8 @@ public class InvoiceHelper extends AbstractHelper {
    * @return CompletableFuture that indicates when transition is completed
    */
   private CompletableFuture<Void> approveInvoice(Invoice invoice) {
+    invoice.setApprovalDate(new Date());
+    invoice.setApprovedBy(invoice.getMetadata().getUpdatedByUserId());
 
     return loadTenantConfiguration(SYSTEM_CONFIG_QUERY, VOUCHER_NUMBER_PREFIX_CONFIG_QUERY)
       .thenCompose(ok -> getInvoiceLinesWithTotals(invoice))
@@ -575,6 +579,14 @@ public class InvoiceHelper extends AbstractHelper {
         fields.add(TOTAL);
       }
       verifyThatProtectedFieldsUnchanged(fields);
+    }
+    verifyInvoiceStatusMatchesWithFields(invoice);
+  }
+
+  private void verifyInvoiceStatusMatchesWithFields(Invoice invoice) {
+    if ((invoice.getStatus() == Invoice.Status.OPEN || invoice.getStatus() == Invoice.Status.REVIEWED)
+      && (invoice.getApprovalDate() != null || invoice.getApprovedBy() != null)) {
+      throw new HttpException(400, INCOMPATIBLE_INVOICE_FIELDS_ON_STATUS_TRANSITION);
     }
   }
 

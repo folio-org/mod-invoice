@@ -24,6 +24,7 @@ import java.util.stream.Stream;
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 import static org.folio.rest.RestVerticle.OKAPI_HEADER_TENANT;
 import static org.folio.rest.RestVerticle.OKAPI_HEADER_TOKEN;
+import static org.folio.rest.RestVerticle.OKAPI_USERID_HEADER;
 import static org.folio.rest.impl.AbstractHelper.OKAPI_URL;
 import static org.folio.rest.impl.ApiTestSuite.mockPort;
 import static org.junit.Assert.fail;
@@ -36,6 +37,7 @@ public class ApiTestBase {
   static final Header X_OKAPI_URL = new Header(OKAPI_URL, "http://localhost:" + mockPort);
   static final Header X_OKAPI_TOKEN = new Header(OKAPI_HEADER_TOKEN, "eyJhbGciOiJIUzI1NiJ9");
   static final Header X_OKAPI_TENANT = new Header(OKAPI_HEADER_TENANT, "invoiceimpltest");
+  static final Header X_OKAPI_USERID = new Header(OKAPI_USERID_HEADER, "d1d0a10b-c563-4c4b-ae22-e5a0c11623eb");
 
   static final String BASE_MOCK_DATA_PATH = "mockdata/";
 
