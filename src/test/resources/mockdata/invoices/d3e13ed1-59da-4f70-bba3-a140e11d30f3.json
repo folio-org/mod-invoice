@@ -1,5 +1,7 @@
 {
-  "id": "52fd6ec7-ddc3-4c53-bc26-2779afc27136",
+  "id": "d3e13ed1-59da-4f70-bba3-a140e11d30f3",
+  "approvedBy": "ab18897b-0e40-4f31-896b-9c9adc979a88",
+  "approvalDate": "2018-07-29T00:00:00.000+0000",
   "chkSubscriptionOverlap": false,
   "currency": "USD",
   "folioInvoiceNo": "123invoicenumber45",
