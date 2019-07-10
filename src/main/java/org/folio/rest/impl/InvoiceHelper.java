@@ -193,10 +193,6 @@ public class InvoiceHelper extends AbstractHelper {
 
   private void setSystemGeneratedData(Invoice invoiceFromStorage, Invoice invoice) {
     invoice.withFolioInvoiceNo(invoiceFromStorage.getFolioInvoiceNo());
-    if (isTransitionToApproved(invoiceFromStorage, invoice)) {
-      invoice.setApprovalDate(new Date());
-      invoice.setApprovedBy(invoice.getMetadata().getUpdatedByUserId());
-    }
   }
 
   private CompletionStage<Void> handleInvoiceStatusTransition(Invoice invoice, Invoice invoiceFromStorage) {
@@ -221,6 +217,8 @@ public class InvoiceHelper extends AbstractHelper {
    * @return CompletableFuture that indicates when transition is completed
    */
   private CompletableFuture<Void> approveInvoice(Invoice invoice) {
+    invoice.setApprovalDate(new Date());
+    invoice.setApprovedBy(invoice.getMetadata().getUpdatedByUserId());
 
     return loadTenantConfiguration(SYSTEM_CONFIG_QUERY, VOUCHER_NUMBER_PREFIX_CONFIG_QUERY)
       .thenCompose(ok -> getInvoiceLinesWithTotals(invoice))
