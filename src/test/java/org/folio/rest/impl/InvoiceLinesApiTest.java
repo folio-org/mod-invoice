@@ -10,6 +10,7 @@ import org.apache.http.HttpStatus;
 import org.folio.invoices.utils.InvoiceLineProtectedFields;
 import org.folio.rest.jaxrs.model.Adjustment;
 import org.folio.rest.jaxrs.model.Errors;
+import org.folio.rest.jaxrs.model.Error;
 import org.folio.rest.jaxrs.model.InvoiceLine;
 import org.hamcrest.MatcherAssert;
 import org.hamcrest.Matchers;
@@ -21,11 +22,15 @@ import java.util.*;
 
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 import static javax.ws.rs.core.MediaType.TEXT_PLAIN;
+import static org.folio.invoices.utils.ErrorCodes.PROHIBITED_INVOICE_LINE_CREATION;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICES;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_LINES;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_LINE_NUMBER;
 import static org.folio.rest.impl.AbstractHelper.ID;
+import static org.folio.rest.impl.InvoicesApiTest.APPROVED_INVOICE_ID;
 import static org.folio.rest.impl.InvoicesApiTest.BAD_QUERY;
+import static org.folio.rest.impl.InvoicesApiTest.OPEN_INVOICE_ID;
+import static org.folio.rest.impl.InvoicesApiTest.REVIEWED_INVOICE_ID;
 import static org.folio.rest.impl.InvoicesImpl.PROTECTED_AND_MODIFIED_FIELDS;
 import static org.folio.rest.impl.MockServer.INVOICE_LINE_NUMBER_ERROR_X_OKAPI_TENANT;
 import static org.folio.rest.impl.MockServer.serverRqRs;
@@ -46,18 +51,17 @@ public class InvoiceLinesApiTest extends ApiTestBase {
   static final String INVOICE_LINES_LIST_PATH = INVOICE_LINES_MOCK_DATA_PATH + "invoice_lines.json";
   private static final String INVOICE_LINES_PATH = "/invoice/invoice-lines";
   private static final String INVOICE_LINE_ID_PATH = INVOICE_LINES_PATH + "/%s";
-  static final String INVOICE_LINE_SAMPLE_PATH = INVOICE_LINES_MOCK_DATA_PATH + "invoice_line.json";
+
 
   private static final String INVOICE_LINE_ADJUSTMENTS_SAMPLE_PATH = INVOICE_LINES_MOCK_DATA_PATH + "29846620-8fb6-4433-b84e-0b6051eb76ec.json";
-  private static final String INVOICE_LINE_SAMPLE_FOR_PROTECTED_FIELDS_PATH = INVOICE_LINES_MOCK_DATA_PATH + "e0d08448-343b-118a-8c2f-4fb50248d672.json";
   private static final String BAD_INVOICE_LINE_ID = "5a34ae0e-5a11-4337-be95-1a20cfdc3161";
   static final String INVOICE_ID = "invoiceId";
   private static final String NULL = "null";
 
-  private static final String VALID_INVOICE_LINE_ID = "e0d08448-343b-118a-8c2f-4fb50248d672";
   private static final String INVOICE_LINE_WITH_APPROVED_EXISTED_INVOICE_ID = "e0d08448-343b-118a-8c2f-4fb50248d672";
   private static final String INVOICE_LINE_WITH_OPEN_EXISTED_INVOICE_ID = "5cb6d270-a54c-4c38-b645-3ae7f249c606";
   private static final String INVOICE_LINE_WITH_INTERNAL_ERROR_ON_GET_INVOICE = "4051b42d-c6cf-4306-a331-209514af9877";
+  static final String INVOICE_LINE_WITH_APPROVED_INVOICE_SAMPLE_PATH = INVOICE_LINES_MOCK_DATA_PATH + INVOICE_LINE_WITH_APPROVED_EXISTED_INVOICE_ID + ".json";
 
 
   @Test
@@ -140,12 +144,14 @@ public class InvoiceLinesApiTest extends ApiTestBase {
   }
 
   @Test
-  public void postInvoicingInvoiceLinesTest() throws Exception {
+  public void postInvoicingInvoiceLinesTest() {
     logger.info("=== Test create invoice line - 201 successfully created ===");
 
-    String body = getMockData(INVOICE_LINE_SAMPLE_PATH);
-
-    final InvoiceLine respData = verifyPostResponse(INVOICE_LINES_PATH, body, prepareHeaders(X_OKAPI_TENANT), APPLICATION_JSON, 201).as(InvoiceLine.class);
+    InvoiceLine reqData = getMockAsJson(INVOICE_LINE_WITH_APPROVED_INVOICE_SAMPLE_PATH).mapTo(InvoiceLine.class);
+    reqData.setInvoiceId(OPEN_INVOICE_ID);
+    String body = JsonObject.mapFrom(reqData).encodePrettily();
+    final InvoiceLine respData = verifyPostResponse(INVOICE_LINES_PATH, body, prepareHeaders(X_OKAPI_TENANT), APPLICATION_JSON, 201)
+      .as(InvoiceLine.class);
 
     String invoiceId = respData.getId();
     String InvoiceLineNo = respData.getInvoiceLineNumber();
@@ -156,10 +162,30 @@ public class InvoiceLinesApiTest extends ApiTestBase {
   }
 
   @Test
+  public void testAddInvoiceLineToApprovedInvoice() {
+    logger.info("=== Test create invoice line for approved invoice ===");
+
+    InvoiceLine reqData = getMockAsJson(INVOICE_LINE_WITH_APPROVED_INVOICE_SAMPLE_PATH).mapTo(InvoiceLine.class);
+    reqData.setInvoiceId(APPROVED_INVOICE_ID);
+    String body = JsonObject.mapFrom(reqData).encodePrettily();
+    final Errors errors = verifyPostResponse(INVOICE_LINES_PATH, body, prepareHeaders(X_OKAPI_TENANT), APPLICATION_JSON, 500)
+      .as(Errors.class);
+
+    assertThat(errors, notNullValue());
+    assertThat(errors.getErrors(), hasSize(1));
+    Error error = errors.getErrors().get(0);
+    assertThat(error.getMessage(), is(PROHIBITED_INVOICE_LINE_CREATION.getDescription()));
+    assertThat(error.getCode(), is(PROHIBITED_INVOICE_LINE_CREATION.getCode()));
+
+  }
+
+  @Test
   public void testPostInvoicingInvoiceLinesWithInvoiceLineNumberGenerationFail() throws IOException {
     logger.info("=== Test create invoice with error from storage on invoiceLineNo generation  ===");
 
-    String body = getMockData(INVOICE_LINE_SAMPLE_PATH);
+    InvoiceLine reqData = getMockAsJson(INVOICE_LINE_WITH_APPROVED_INVOICE_SAMPLE_PATH).mapTo(InvoiceLine.class);
+    reqData.setInvoiceId(REVIEWED_INVOICE_ID);
+    String body = JsonObject.mapFrom(reqData).encodePrettily();
     verifyPostResponse(INVOICE_LINES_PATH, body, prepareHeaders(INVOICE_LINE_NUMBER_ERROR_X_OKAPI_TENANT), APPLICATION_JSON, 500);
   }
 
@@ -167,7 +193,7 @@ public class InvoiceLinesApiTest extends ApiTestBase {
   public void testPostInvoiceLinesByIdLineWithoutId() throws IOException {
     logger.info("=== Test Post Invoice Lines By Id (empty id in body) ===");
 
-    InvoiceLine reqData = getMockAsJson(INVOICE_LINE_SAMPLE_PATH).mapTo(InvoiceLine.class);
+    InvoiceLine reqData = getMockAsJson(INVOICE_LINE_WITH_APPROVED_INVOICE_SAMPLE_PATH).mapTo(InvoiceLine.class);
     reqData.setInvoiceId(null);
     String jsonBody = JsonObject.mapFrom(reqData).encode();
     Errors resp = verifyPostResponse(INVOICE_LINES_PATH, jsonBody, prepareHeaders(MockServer.NON_EXIST_CONFIG_X_OKAPI_TENANT),
@@ -180,21 +206,21 @@ public class InvoiceLinesApiTest extends ApiTestBase {
 
   @Test
   public void testPutInvoicingInvoiceLinesByIdTest() throws Exception {
-    String reqData = getMockData(INVOICE_LINES_MOCK_DATA_PATH + VALID_INVOICE_LINE_ID + ".json");
+    String reqData = getMockData(INVOICE_LINES_MOCK_DATA_PATH + INVOICE_LINE_WITH_APPROVED_EXISTED_INVOICE_ID + ".json");
 
-    verifyPut(String.format(INVOICE_LINE_ID_PATH, VALID_INVOICE_LINE_ID), reqData, "", 204);
+    verifyPut(String.format(INVOICE_LINE_ID_PATH, INVOICE_LINE_WITH_APPROVED_EXISTED_INVOICE_ID), reqData, "", 204);
   }
 
   @Test
   public void testPutInvoicingInvoiceLinesByIdTestWithInternalErrorOnInvoiceGet() throws Exception {
     String reqData = getMockData(INVOICE_LINES_MOCK_DATA_PATH + INVOICE_LINE_WITH_INTERNAL_ERROR_ON_GET_INVOICE + ".json");
 
-    verifyPut(String.format(INVOICE_LINE_ID_PATH, VALID_INVOICE_LINE_ID), reqData, APPLICATION_JSON, 500);
+    verifyPut(String.format(INVOICE_LINE_ID_PATH, INVOICE_LINE_WITH_APPROVED_EXISTED_INVOICE_ID), reqData, APPLICATION_JSON, 500);
   }
 
   @Test
   public void testPutInvoicingInvoiceLinesByNonExistentId() throws Exception {
-    InvoiceLine reqData = getMockAsJson(INVOICE_LINE_SAMPLE_PATH).mapTo(InvoiceLine.class);
+    InvoiceLine reqData = getMockAsJson(INVOICE_LINE_WITH_APPROVED_INVOICE_SAMPLE_PATH).mapTo(InvoiceLine.class);
     reqData.setId(ID_DOES_NOT_EXIST);
     String jsonBody = JsonObject.mapFrom(reqData).encode();
 
@@ -204,7 +230,7 @@ public class InvoiceLinesApiTest extends ApiTestBase {
 
   @Test
   public void testPutInvoicingInvoiceLinesWithError() throws Exception {
-    InvoiceLine reqData = getMockAsJson(INVOICE_LINE_SAMPLE_PATH).mapTo(InvoiceLine.class);
+    InvoiceLine reqData = getMockAsJson(INVOICE_LINE_WITH_APPROVED_INVOICE_SAMPLE_PATH).mapTo(InvoiceLine.class);
     reqData.setId(ID_FOR_INTERNAL_SERVER_ERROR);
     String jsonBody = JsonObject.mapFrom(reqData).encode();
 
@@ -213,7 +239,7 @@ public class InvoiceLinesApiTest extends ApiTestBase {
 
   @Test
   public void testPutInvoicingInvoiceLinesInvalidIdFormat() throws Exception {
-    InvoiceLine reqData = getMockAsJson(INVOICE_LINE_SAMPLE_PATH).mapTo(InvoiceLine.class);
+    InvoiceLine reqData = getMockAsJson(INVOICE_LINE_WITH_APPROVED_INVOICE_SAMPLE_PATH).mapTo(InvoiceLine.class);
     reqData.setId(ID_BAD_FORMAT);
     String jsonBody = JsonObject.mapFrom(reqData).encode();
 
@@ -222,7 +248,7 @@ public class InvoiceLinesApiTest extends ApiTestBase {
 
   @Test
   public void testPutInvoicingInvoiceLinesInvalidLang() throws Exception {
-    String reqData = getMockData(INVOICE_LINE_SAMPLE_PATH);
+    String reqData = getMockData(INVOICE_LINE_WITH_APPROVED_INVOICE_SAMPLE_PATH);
     String endpoint = String.format(INVOICE_LINE_ID_PATH, VALID_UUID)
         + String.format("?%s=%s", LANG_PARAM, INVALID_LANG);
 
@@ -391,7 +417,7 @@ public class InvoiceLinesApiTest extends ApiTestBase {
   }
 
   private void checkNumberOfRequests(String invoiceLineId) {
-      InvoiceLine invoiceLine = getMockAsJson(INVOICE_LINE_SAMPLE_FOR_PROTECTED_FIELDS_PATH).mapTo(InvoiceLine.class);
+      InvoiceLine invoiceLine = getMockAsJson(INVOICE_LINE_WITH_APPROVED_INVOICE_SAMPLE_PATH).mapTo(InvoiceLine.class);
       invoiceLine.setId(invoiceLineId);
       verifyPut(String.format(INVOICE_LINE_ID_PATH, invoiceLineId), JsonObject.mapFrom(invoiceLine).encode(), "", HttpStatus.SC_NO_CONTENT);
       MatcherAssert.assertThat(serverRqRs.row(INVOICE_LINES).get(HttpMethod.GET), hasSize(1));
@@ -404,7 +430,7 @@ public class InvoiceLinesApiTest extends ApiTestBase {
   @Test
   public void testPutInvoicingInvoiceLinesWithProtectedFields() throws Exception {
     logger.info("=== Test update invoice line by id with protected fields (all fields set) ===");
-    InvoiceLine invoiceLine = getMockAsJson(INVOICE_LINE_SAMPLE_FOR_PROTECTED_FIELDS_PATH).mapTo(InvoiceLine.class);
+    InvoiceLine invoiceLine = getMockAsJson(INVOICE_LINE_WITH_APPROVED_INVOICE_SAMPLE_PATH).mapTo(InvoiceLine.class);
 
     // Invoice line updated (invoice status = APPROVED) - protected field not modified
     invoiceLine.setId(INVOICE_LINE_WITH_APPROVED_EXISTED_INVOICE_ID);
@@ -417,7 +443,7 @@ public class InvoiceLinesApiTest extends ApiTestBase {
     // Invoice line updated (invoice status = APPROVED) - all protected fields modified
 
     InvoiceLine allProtectedFieldsModifiedInvoiceLine
-      = getMockAsJson(INVOICE_LINE_SAMPLE_FOR_PROTECTED_FIELDS_PATH).mapTo(InvoiceLine.class);
+      = getMockAsJson(INVOICE_LINE_WITH_APPROVED_INVOICE_SAMPLE_PATH).mapTo(InvoiceLine.class);
     invoiceLine.setInvoiceId(INVOICE_LINE_WITH_APPROVED_EXISTED_INVOICE_ID);
     Map<InvoiceLineProtectedFields, Object> allProtectedFieldsModification = new HashMap<>();
 
