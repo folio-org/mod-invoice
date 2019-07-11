@@ -549,6 +549,10 @@ public class InvoiceHelper extends AbstractHelper {
     if(invoice.getLockTotal() && Objects.isNull(invoice.getTotal())) {
       addProcessingError(INVOICE_TOTAL_REQUIRED.toError());
     }
+    if ((invoice.getStatus() == Invoice.Status.OPEN || invoice.getStatus() == Invoice.Status.REVIEWED)
+      && (invoice.getApprovalDate() != null || invoice.getApprovedBy() != null)) {
+      addProcessingError(INCOMPATIBLE_INVOICE_FIELDS_ON_STATUS_TRANSITION.toError());
+    }
     return getErrors().isEmpty();
   }
 
@@ -561,14 +565,6 @@ public class InvoiceHelper extends AbstractHelper {
         fields.add(TOTAL);
       }
       verifyThatProtectedFieldsUnchanged(fields);
-    }
-    verifyInvoiceStatusMatchesWithFields(invoice);
-  }
-
-  private void verifyInvoiceStatusMatchesWithFields(Invoice invoice) {
-    if ((invoice.getStatus() == Invoice.Status.OPEN || invoice.getStatus() == Invoice.Status.REVIEWED)
-      && (invoice.getApprovalDate() != null || invoice.getApprovedBy() != null)) {
-      throw new HttpException(400, INCOMPATIBLE_INVOICE_FIELDS_ON_STATUS_TRANSITION);
     }
   }
 
