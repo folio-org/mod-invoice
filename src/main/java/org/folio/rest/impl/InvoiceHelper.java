@@ -9,6 +9,8 @@ import static org.apache.commons.lang3.StringUtils.EMPTY;
 import static org.apache.commons.lang3.StringUtils.isAlpha;
 import static org.folio.invoices.utils.ErrorCodes.FUNDS_NOT_FOUND;
 import static org.folio.invoices.utils.ErrorCodes.INCOMPATIBLE_INVOICE_FIELDS_ON_STATUS_TRANSITION;
+import static org.folio.invoices.utils.ErrorCodes.FUND_DISTRIBUTIONS_NOT_PRESENT;
+import static org.folio.invoices.utils.ErrorCodes.FUND_DISTRIBUTIONS_PERCENTAGE_SUMMARY_MISMATCH;
 import static org.folio.invoices.utils.ErrorCodes.INVOICE_TOTAL_REQUIRED;
 import static org.folio.invoices.utils.ErrorCodes.PO_LINE_NOT_FOUND;
 import static org.folio.invoices.utils.ErrorCodes.PO_LINE_UPDATE_FAILURE;
@@ -224,6 +226,7 @@ public class InvoiceHelper extends AbstractHelper {
       .thenCompose(ok -> getInvoiceLinesWithTotals(invoice))
       .thenApply(invoiceLines -> {
         verifyInvoiceLineNotEmpty(invoiceLines);
+        validateInvoiceLineFundDistributions(invoiceLines);
         return invoiceLines;
       })
       .thenCompose(invoiceLines -> prepareVoucher(invoice)
@@ -234,6 +237,20 @@ public class InvoiceHelper extends AbstractHelper {
   private void verifyInvoiceLineNotEmpty(List<InvoiceLine> invoiceLines) {
     if (invoiceLines.isEmpty()) {
       throw new HttpException(500, NO_INVOICE_LINES_ERROR_MSG);
+    }
+  }
+
+  private void validateInvoiceLineFundDistributions(List<InvoiceLine> invoiceLines) {
+    for (InvoiceLine line : invoiceLines){
+      if (line.getFundDistributions() == null || line.getFundDistributions().isEmpty()) {
+        throw new HttpException(400, FUND_DISTRIBUTIONS_NOT_PRESENT);
+      }
+      Double totalPercentage = line.getFundDistributions().stream()
+        .mapToDouble(FundDistribution::getPercentage)
+        .sum();
+      if (!totalPercentage.equals(100d)){
+        throw new HttpException(400, FUND_DISTRIBUTIONS_PERCENTAGE_SUMMARY_MISMATCH);
+      }
     }
   }
 
