@@ -1306,15 +1306,24 @@ public class InvoicesApiTest extends ApiTestBase {
   }
 
   @Test
+  public void testCreateOpenedInvoiceWithIncompatibleFields() {
+    logger.info("=== Test create opened invoice with 'approvedBy' and 'approvedDate' fields ===");
+
+    Invoice invoice = getMockAsJson(OPEN_INVOICE_WITH_APPROVED_FILEDS_SAMPLE_PATH).mapTo(Invoice.class);
+    Headers headers = prepareHeaders(X_OKAPI_TENANT, X_OKAPI_USERID);
+
+    verifyPostResponse(INVOICE_PATH, JsonObject.mapFrom(invoice).encode(), headers, APPLICATION_JSON, HttpStatus.SC_UNPROCESSABLE_ENTITY);
+  }
+
+  @Test
   public void testUpdateOpenedInvoiceWithIncompatibleFields() {
     logger.info("=== Test update opened invoice with 'approvedBy' and 'approvedDate' fields ===");
 
     Invoice invoice = getMockAsJson(OPEN_INVOICE_WITH_APPROVED_FILEDS_SAMPLE_PATH).mapTo(Invoice.class);
     Headers headers = prepareHeaders(X_OKAPI_TENANT, X_OKAPI_USERID);
 
-    verifyPut(String.format(INVOICE_ID_PATH, invoice.getId()), JsonObject.mapFrom(invoice).encode(), headers, "", HttpStatus.SC_BAD_REQUEST);
+    verifyPut(String.format(INVOICE_ID_PATH, invoice.getId()), JsonObject.mapFrom(invoice).encode(), headers, APPLICATION_JSON, HttpStatus.SC_UNPROCESSABLE_ENTITY);
 
-    assertThat(serverRqRs.row(INVOICES).get(HttpMethod.GET), hasSize(1));
     serverRqRs.clear();
   }
 
