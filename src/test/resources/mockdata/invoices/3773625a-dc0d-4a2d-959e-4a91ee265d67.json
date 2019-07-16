@@ -1,5 +1,6 @@
 {
   "id": "3773625a-dc0d-4a2d-959e-4a91ee265d67",
+  "accountingCode": "2352",
   "chkSubscriptionOverlap": false,
   "currency": "EUR",
   "folioInvoiceNo": "invoicenumber46",
@@ -8,7 +9,7 @@
   "paymentTerms": "Payment in Advance",
   "paymentMethod": "EFT",
   "status": "Reviewed",
-  "source": "024b6f41-c5c6-4280-858e-33fba452a334",
+  "source": "User",
   "total": 5.0,
   "vendorInvoiceNo": "YK75851",
   "paymentId": "a5065f0d-fb88-4d23-b0c1-57e754fba40e",
