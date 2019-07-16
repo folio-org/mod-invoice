@@ -45,8 +45,9 @@
   "receiptStatus": "Awaiting Receipt",
   "requester": "Leo Bulero",
   "rush": true,
-  "source": {
-    "code": "FOLIO"
+  "source": "User",
+  "tags": {
+     "tagList": []
   },
   "title": "Harry Potter and the Sorcerer's Stone"
 }
