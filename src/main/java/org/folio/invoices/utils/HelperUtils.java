@@ -92,6 +92,10 @@ public class HelperUtils {
     }
   }
 
+  public static String buildQuery(String query, Logger logger) {
+    return isEmpty(query) ? EMPTY : "&query=" + encodeQuery(query, logger);
+  }
+
   /**
    * @param query string representing CQL query
    * @param logger {@link Logger} to log error if any

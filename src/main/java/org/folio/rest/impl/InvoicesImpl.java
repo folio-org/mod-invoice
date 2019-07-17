@@ -8,6 +8,7 @@ import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import org.apache.commons.lang3.StringUtils;
 import org.folio.rest.annotations.Validate;
+import org.folio.rest.jaxrs.model.AcquisitionsUnitAssignment;
 import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.jaxrs.model.InvoiceLine;
 
@@ -15,19 +16,21 @@ import javax.ws.rs.core.Response;
 import java.util.Map;
 
 import static io.vertx.core.Future.succeededFuture;
+import static org.folio.invoices.utils.ErrorCodes.MISMATCH_BETWEEN_ID_IN_PATH_AND_BODY;
 
 public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
 
   private static final Logger logger = LoggerFactory.getLogger(InvoicesImpl.class);
-  private static final String NOT_SUPPORTED = "Not supported";  // To overcome sonarcloud warning
+  private static final String NOT_SUPPORTED = "Not supported"; // To overcome sonarcloud warning
   private static final String INVOICE_LOCATION_PREFIX = "/invoice/invoices/%s";
   private static final String INVOICE_LINE_LOCATION_PREFIX = "/invoice/invoice-lines/%s";
+  private static final String ACQUISITIONS_UNIT_ASSIGNMENTS_LOCATION_PREFIX = "/orders/acquisitions-unit-assignments/%s";
   public static final String PROTECTED_AND_MODIFIED_FIELDS = "protectedAndModifiedFields";
 
   @Validate
   @Override
   public void postInvoiceInvoices(String lang, Invoice invoice, Map<String, String> okapiHeaders,
-                                  Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     InvoiceHelper helper = new InvoiceHelper(okapiHeaders, vertxContext, lang);
 
     if (!helper.validateIncomingInvoice(invoice)) {
@@ -36,27 +39,20 @@ public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
     }
 
     helper.createInvoice(invoice)
-      .thenAccept(invoiceWithId -> {
-        Response response = PostInvoiceInvoicesResponse.respond201WithApplicationJson(invoiceWithId,
-        PostInvoiceInvoicesResponse.headersFor201()
-          .withLocation(String.format(INVOICE_LOCATION_PREFIX, invoiceWithId.getId())));
-          asyncResultHandler.handle(succeededFuture(response));
-      })
+      .thenAccept(invoiceWithId -> asyncResultHandler.handle(succeededFuture(helper
+        .buildResponseWithLocation(String.format(INVOICE_LOCATION_PREFIX, invoiceWithId.getId()), invoiceWithId))))
       .exceptionally(t -> handleErrorResponse(asyncResultHandler, helper, t));
   }
 
   @Validate
   @Override
   public void getInvoiceInvoices(int offset, int limit, String query, String lang, Map<String, String> okapiHeaders,
-                                 Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     InvoiceHelper helper = new InvoiceHelper(okapiHeaders, vertxContext, lang);
 
-    helper
-      .getInvoices(limit, offset, query)
+    helper.getInvoices(limit, offset, query)
       .thenAccept(invoices -> {
-        if (logger.isInfoEnabled()) {
-          logger.info("Successfully retrieved invoices: " + JsonObject.mapFrom(invoices).encodePrettily());
-        }
+        logInfo("Successfully retrieved invoices: {}", invoices);
         asyncResultHandler.handle(succeededFuture(helper.buildOkResponse(invoices)));
       })
       .exceptionally(t -> handleErrorResponse(asyncResultHandler, helper, t));
@@ -65,11 +61,10 @@ public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
   @Validate
   @Override
   public void getInvoiceInvoicesById(String id, String lang, Map<String, String> okapiHeaders,
-                                     Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     InvoiceHelper helper = new InvoiceHelper(okapiHeaders, vertxContext, lang);
 
-    helper
-      .getInvoice(id)
+    helper.getInvoice(id)
       .thenAccept(invoice -> asyncResultHandler.handle(succeededFuture(helper.buildOkResponse(invoice))))
       .exceptionally(t -> handleErrorResponse(asyncResultHandler, helper, t));
   }
@@ -97,11 +92,10 @@ public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
   @Validate
   @Override
   public void deleteInvoiceInvoicesById(String id, String lang, Map<String, String> okapiHeaders,
-                                        Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     InvoiceHelper helper = new InvoiceHelper(okapiHeaders, vertxContext, lang);
 
-    helper
-      .deleteInvoice(id)
+    helper.deleteInvoice(id)
       .thenAccept(ok -> asyncResultHandler.handle(succeededFuture(helper.buildNoContentResponse())))
       .exceptionally(fail -> handleErrorResponse(asyncResultHandler, helper, fail));
   }
@@ -109,10 +103,9 @@ public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
   @Validate
   @Override
   public void getInvoiceInvoiceLines(int offset, int limit, String query, String lang, Map<String, String> okapiHeaders,
-                                     Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     InvoiceLineHelper helper = new InvoiceLineHelper(okapiHeaders, vertxContext, lang);
-    helper
-      .getInvoiceLines(limit, offset, query)
+    helper.getInvoiceLines(limit, offset, query)
       .thenAccept(lines -> asyncResultHandler.handle(succeededFuture(helper.buildOkResponse(lines))))
       .exceptionally(t -> handleErrorResponse(asyncResultHandler, helper, t));
   }
@@ -120,28 +113,23 @@ public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
   @Validate
   @Override
   public void postInvoiceInvoiceLines(String lang, InvoiceLine invoiceLine, Map<String, String> okapiHeaders,
-                                      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     InvoiceLineHelper helper = new InvoiceLineHelper(okapiHeaders, vertxContext, lang);
     logger.info("== Creating InvoiceLine for an existing invoice ==");
 
     helper.createInvoiceLine(invoiceLine)
-      .thenAccept(invoiceLineWithId -> {
-        Response response = PostInvoiceInvoiceLinesResponse.respond201WithApplicationJson(invoiceLineWithId,
-            PostInvoiceInvoiceLinesResponse.headersFor201()
-              .withLocation(String.format(INVOICE_LINE_LOCATION_PREFIX, invoiceLineWithId.getId())));
-        asyncResultHandler.handle(succeededFuture(response));
-      })
+      .thenAccept(invoiceLineWithId -> asyncResultHandler.handle(succeededFuture(helper
+        .buildResponseWithLocation(String.format(INVOICE_LINE_LOCATION_PREFIX, invoiceLineWithId.getId()), invoiceLineWithId))))
       .exceptionally(t -> handleErrorResponse(asyncResultHandler, helper, t));
   }
 
   @Validate
   @Override
   public void getInvoiceInvoiceLinesById(String id, String lang, Map<String, String> okapiHeaders,
-                                         Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     InvoiceLineHelper invoiceLineHelper = new InvoiceLineHelper(okapiHeaders, vertxContext, lang);
 
-    invoiceLineHelper
-      .getInvoiceLine(id)
+    invoiceLineHelper.getInvoiceLine(id)
       .thenCompose(invoiceLineHelper::calculateInvoiceLineTotals)
       .thenAccept(invoiceLine -> asyncResultHandler.handle(succeededFuture(invoiceLineHelper.buildOkResponse(invoiceLine))))
       .exceptionally(t -> handleErrorResponse(asyncResultHandler, invoiceLineHelper, t));
@@ -150,8 +138,7 @@ public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
   @Validate
   @Override
   public void putInvoiceInvoiceLinesById(String invoiceLineId, String lang, InvoiceLine invoiceLine,
-                                         Map<String, String> okapiHeaders,
-                                         Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+      Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     InvoiceLineHelper invoiceLinesHelper = new InvoiceLineHelper(okapiHeaders, vertxContext, lang);
 
     if (StringUtils.isEmpty(invoiceLine.getId())) {
@@ -166,11 +153,10 @@ public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
   @Validate
   @Override
   public void deleteInvoiceInvoiceLinesById(String id, String lang, Map<String, String> okapiHeaders,
-                                            Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     InvoiceLineHelper invoiceLineHelper = new InvoiceLineHelper(okapiHeaders, vertxContext, lang);
 
-    invoiceLineHelper
-      .deleteInvoiceLine(id)
+    invoiceLineHelper.deleteInvoiceLine(id)
       .thenAccept(invoiceLine -> asyncResultHandler.handle(succeededFuture(invoiceLineHelper.buildNoContentResponse())))
       .exceptionally(t -> handleErrorResponse(asyncResultHandler, invoiceLineHelper, t));
   }
@@ -178,8 +164,97 @@ public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
   @Validate
   @Override
   public void getInvoiceInvoiceNumber(String lang, Map<String, String> okapiHeaders,
-                                      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     asyncResultHandler.handle(succeededFuture(GetInvoiceInvoiceNumberResponse.respond500WithTextPlain(NOT_SUPPORTED)));
+  }
+
+  @Validate
+  @Override
+  public void postInvoiceAcquisitionsUnitAssignments(String lang, AcquisitionsUnitAssignment entity,
+      Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+    AcquisitionsUnitAssignmentsHelper helper = new AcquisitionsUnitAssignmentsHelper(okapiHeaders, vertxContext, lang);
+
+    helper.createAcquisitionsUnitAssignment(entity)
+      .thenAccept(unit -> {
+        logInfo("Successfully created new acquisitions unit: {}", unit);
+        asyncResultHandler.handle(succeededFuture(
+            helper.buildResponseWithLocation(String.format(ACQUISITIONS_UNIT_ASSIGNMENTS_LOCATION_PREFIX, unit.getId()), unit)));
+      })
+      .exceptionally(t -> handleErrorResponse(asyncResultHandler, helper, t));
+  }
+
+  @Validate
+  @Override
+  public void getInvoiceAcquisitionsUnitAssignments(String query, int offset, int limit, String lang,
+      Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+    AcquisitionsUnitAssignmentsHelper helper = new AcquisitionsUnitAssignmentsHelper(okapiHeaders, vertxContext, lang);
+
+    helper.getAcquisitionsUnitAssignments(query, offset, limit)
+      .thenAccept(units -> {
+        logInfo("Successfully retrieved acquisitions unit assignment : {}", units);
+        asyncResultHandler.handle(succeededFuture(helper.buildOkResponse(units)));
+      })
+      .exceptionally(t -> handleErrorResponse(asyncResultHandler, helper, t));
+  }
+
+  @Validate
+  @Override
+  public void putInvoiceAcquisitionsUnitAssignmentsById(String id, String lang, AcquisitionsUnitAssignment entity,
+      Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+    AcquisitionsUnitAssignmentsHelper helper = new AcquisitionsUnitAssignmentsHelper(okapiHeaders, vertxContext, lang);
+
+    if (entity.getId() != null && !entity.getId()
+      .equals(id)) {
+      helper.addProcessingError(MISMATCH_BETWEEN_ID_IN_PATH_AND_BODY.toError());
+      asyncResultHandler.handle(succeededFuture(helper.buildErrorResponse(422)));
+    } else {
+      helper.updateAcquisitionsUnitAssignment(entity.withId(id))
+        .thenAccept(units -> {
+         logInfo("Successfully updated acquisitions unit assignment with id={}", id);
+          asyncResultHandler.handle(succeededFuture(helper.buildNoContentResponse()));
+        })
+        .exceptionally(t -> handleErrorResponse(asyncResultHandler, helper, t));
+    }
+  }
+
+  @Validate
+  @Override
+  public void getInvoiceAcquisitionsUnitAssignmentsById(String id, String lang, Map<String, String> okapiHeaders,
+      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+    AcquisitionsUnitAssignmentsHelper helper = new AcquisitionsUnitAssignmentsHelper(okapiHeaders, vertxContext, lang);
+
+    helper.getAcquisitionsUnitAssignment(id)
+      .thenAccept(unit -> {
+        logInfo("Successfully retrieved acquisitions unit assignment: {}", unit);
+        asyncResultHandler.handle(succeededFuture(helper.buildOkResponse(unit)));
+      })
+      .exceptionally(t -> handleErrorResponse(asyncResultHandler, helper, t));
+  }
+
+  private void logInfo(String message, Object entry) {
+    if (logger.isInfoEnabled()) {
+      logger.info(message, JsonObject.mapFrom(entry).encodePrettily());
+    }
+  }
+
+  @Validate
+  @Override
+  public void deleteInvoiceAcquisitionsUnitAssignmentsById(String id, String lang, Map<String, String> okapiHeaders,
+      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+    AcquisitionsUnitAssignmentsHelper helper = new AcquisitionsUnitAssignmentsHelper(okapiHeaders, vertxContext, lang);
+
+    helper.deleteAcquisitionsUnitAssignment(id)
+      .thenAccept(ok -> {
+        logInfo("Successfully deleted acquisitions unit assignment with id={}", id);
+        asyncResultHandler.handle(succeededFuture(helper.buildNoContentResponse()));
+      })
+      .exceptionally(t -> handleErrorResponse(asyncResultHandler, helper, t));
+  }
+
+  private void logInfo(String message, String id) {
+    if (logger.isInfoEnabled()) {
+      logger.info(message, id);
+    }
   }
 
   private Void handleErrorResponse(Handler<AsyncResult<Response>> asyncResultHandler, AbstractHelper helper, Throwable t) {

@@ -38,6 +38,7 @@ public class ApiTestBase {
   static final Header X_OKAPI_TOKEN = new Header(OKAPI_HEADER_TOKEN, "eyJhbGciOiJIUzI1NiJ9");
   static final Header X_OKAPI_TENANT = new Header(OKAPI_HEADER_TENANT, "invoiceimpltest");
   static final Header X_OKAPI_USERID = new Header(OKAPI_USERID_HEADER, "d1d0a10b-c563-4c4b-ae22-e5a0c11623eb");
+  static final String X_ECHO_STATUS = "X-Okapi-Echo-Status";
 
   static final String BASE_MOCK_DATA_PATH = "mockdata/";
 

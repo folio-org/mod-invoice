@@ -5,6 +5,7 @@ import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 import static javax.ws.rs.core.MediaType.TEXT_PLAIN;
 import static javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
 import static org.apache.commons.lang3.StringUtils.EMPTY;
+import static org.folio.invoices.utils.ResourcePathResolver.ACQUISITIONS_UNIT_ASSIGNMENTS;
 import static org.folio.invoices.utils.ResourcePathResolver.FOLIO_INVOICE_NUMBER;
 import static org.folio.invoices.utils.ResourcePathResolver.FUNDS;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICES;
@@ -57,12 +58,14 @@ import javax.ws.rs.core.Response;
 
 import org.apache.commons.lang3.StringUtils;
 import org.folio.invoices.utils.ResourcePathResolver;
+import org.folio.rest.acq.model.AcquisitionsUnitAssignment;
 import org.folio.rest.acq.model.SequenceNumber;
 import org.folio.rest.acq.model.VoucherLine;
 import org.folio.rest.acq.model.VoucherLineCollection;
 import org.folio.rest.acq.model.finance.Fund;
 import org.folio.rest.acq.model.finance.FundCollection;
 import org.folio.rest.acq.model.orders.CompositePoLine;
+import org.folio.rest.jaxrs.model.AcquisitionsUnitAssignmentCollection;
 import org.folio.rest.jaxrs.model.Config;
 import org.folio.rest.jaxrs.model.Configs;
 import org.folio.rest.jaxrs.model.Invoice;
@@ -115,6 +118,8 @@ public class MockServer {
   private static final String NON_EXIST_CONFIG_TENANT = "invoicetest";
   private static final String INVALID_PREFIX_CONFIG_TENANT = "invalid_prefix_config_tenant";
 
+  private static final String ACQUISITIONS_UNIT_ASSIGNMENTS_MOCK_DATA_PATH = BASE_MOCK_DATA_PATH + "assignments";
+  private static final String ACQUISITIONS_UNIT_ASSIGNMENTS_COLLECTION = ACQUISITIONS_UNIT_ASSIGNMENTS_MOCK_DATA_PATH + "/assignments.json";
   private static final String INVOICE_LINES_COLLECTION = BASE_MOCK_DATA_PATH + "invoiceLines/invoice_lines.json";
   private static final String VOUCHER_LINES_COLLECTION = BASE_MOCK_DATA_PATH + "voucherLines/voucher_lines.json";
   private static final String PO_LINES_MOCK_DATA_PATH = BASE_MOCK_DATA_PATH + "poLines/";
@@ -179,6 +184,7 @@ public class MockServer {
     router.route(HttpMethod.POST, resourceByValuePath(VOUCHER_NUMBER_START)).handler(this::handlePostVoucherStartValue);
     router.route(HttpMethod.POST, resourcesPath(VOUCHERS)).handler(ctx -> handlePostEntry(ctx, Voucher.class, VOUCHERS));
     router.route(HttpMethod.POST, resourcesPath(VOUCHER_LINES)).handler(ctx -> handlePostEntry(ctx, VoucherLine.class, VOUCHER_LINES));
+    router.route(HttpMethod.POST, resourcesPath(ACQUISITIONS_UNIT_ASSIGNMENTS)).handler(ctx -> handlePostEntry(ctx, AcquisitionsUnitAssignment.class, ACQUISITIONS_UNIT_ASSIGNMENTS));
 
     router.route(HttpMethod.GET, resourcesPath(INVOICES)).handler(this::handleGetInvoices);
     router.route(HttpMethod.GET, resourcesPath(INVOICE_LINES)).handler(this::handleGetInvoiceLines);
@@ -195,16 +201,20 @@ public class MockServer {
     router.route(HttpMethod.GET, resourcesPath(VOUCHER_NUMBER)).handler(this::handleGetVoucherNumber);
     router.route(HttpMethod.GET, resourcesPath(FUNDS)).handler(this::handleGetFundRecords);
     router.route(HttpMethod.GET,"/configurations/entries").handler(this::handleConfigurationModuleResponse);
+    router.route(HttpMethod.GET, resourcesPath(ACQUISITIONS_UNIT_ASSIGNMENTS)).handler(this::handleGetAcquisitionsUnitAssignments);
+    router.route(HttpMethod.GET, resourceByIdPath(ACQUISITIONS_UNIT_ASSIGNMENTS)).handler(this::handleGetAcquisitionsUnitAssignment);
 
     router.route(HttpMethod.DELETE, resourceByIdPath(INVOICES)).handler(ctx -> handleDeleteRequest(ctx, INVOICES));
     router.route(HttpMethod.DELETE, resourceByIdPath(INVOICE_LINES)).handler(ctx -> handleDeleteRequest(ctx, INVOICE_LINES));
     router.route(HttpMethod.DELETE, resourceByIdPath(VOUCHER_LINES)).handler(ctx -> handleDeleteRequest(ctx, VOUCHER_LINES));
+    router.route(HttpMethod.DELETE, resourceByIdPath(ACQUISITIONS_UNIT_ASSIGNMENTS)).handler(ctx -> handleDeleteRequest(ctx, ACQUISITIONS_UNIT_ASSIGNMENTS));
 
     router.route(HttpMethod.PUT, resourceByIdPath(INVOICES)).handler(ctx -> handlePutGenericSubObj(ctx, INVOICES));
     router.route(HttpMethod.PUT, resourceByIdPath(INVOICE_LINES)).handler(ctx -> handlePutGenericSubObj(ctx, INVOICE_LINES));
     router.route(HttpMethod.PUT, resourceByIdPath(VOUCHERS)).handler(ctx -> handlePutGenericSubObj(ctx, VOUCHERS));
     router.route(HttpMethod.PUT, resourceByIdPath(VOUCHER_LINES)).handler(ctx -> handlePutGenericSubObj(ctx, VOUCHER_LINES));
     router.route(HttpMethod.PUT, resourceByIdPath(ORDER_LINES)).handler(ctx -> handlePutGenericSubObj(ctx, ResourcePathResolver.ORDER_LINES));
+    router.route(HttpMethod.PUT, resourceByIdPath(ACQUISITIONS_UNIT_ASSIGNMENTS)).handler(ctx -> handlePutGenericSubObj(ctx, ACQUISITIONS_UNIT_ASSIGNMENTS));
 
 
     return router;
@@ -725,6 +735,57 @@ public class MockServer {
       } catch (Exception e) {
         serverResponse(ctx, 500, APPLICATION_JSON, INTERNAL_SERVER_ERROR.getReasonPhrase());
       }
+    }
+  }
+
+  private void handleGetAcquisitionsUnitAssignments(RoutingContext ctx) {
+    logger.info("handleGetAcquisitionsUnitAssignments got: " + ctx.request().path());
+
+    String query = StringUtils.trimToEmpty(ctx.request().getParam("query"));
+    if (query.contains(BAD_QUERY)) {
+      serverResponse(ctx, 400, APPLICATION_JSON, Response.Status.BAD_REQUEST.getReasonPhrase());
+    } else {
+      String name = query.replace("recordId==", "");
+      AcquisitionsUnitAssignmentCollection units;
+      try {
+        units = new JsonObject(ApiTestBase.getMockData(ACQUISITIONS_UNIT_ASSIGNMENTS_COLLECTION)).mapTo(AcquisitionsUnitAssignmentCollection.class);
+      } catch (IOException e) {
+        units = new AcquisitionsUnitAssignmentCollection();
+      }
+
+      if (StringUtils.isNotEmpty(name)) {
+        units.getAcquisitionsUnitAssignments().removeIf(unit -> !unit.getRecordId().equals(name));
+      }
+
+      JsonObject data = JsonObject.mapFrom(units.withTotalRecords(units.getAcquisitionsUnitAssignments().size()));
+      addServerRqRsData(HttpMethod.GET, ACQUISITIONS_UNIT_ASSIGNMENTS, data);
+      serverResponse(ctx, 200, APPLICATION_JSON, data.encodePrettily());
+    }
+  }
+
+  private void handleGetAcquisitionsUnitAssignment(RoutingContext ctx) {
+    logger.info("handleGetAcquisitionsUnitAssignment got: " + ctx.request().path());
+    String id = ctx.request().getParam(ID);
+
+    AcquisitionsUnitAssignmentCollection unitAssignments;
+    try {
+      unitAssignments = new JsonObject(ApiTestBase.getMockData(ACQUISITIONS_UNIT_ASSIGNMENTS_COLLECTION)).mapTo(AcquisitionsUnitAssignmentCollection.class);
+    } catch (IOException e) {
+      unitAssignments = new AcquisitionsUnitAssignmentCollection();
+    }
+
+    org.folio.rest.jaxrs.model.AcquisitionsUnitAssignment acquisitionsUnitAssignment = unitAssignments.getAcquisitionsUnitAssignments()
+      .stream()
+      .filter(unitAssignment -> unitAssignment.getId().equals(id))
+      .findAny()
+      .orElse(null);
+
+    if (acquisitionsUnitAssignment != null) {
+      JsonObject data = JsonObject.mapFrom(acquisitionsUnitAssignment);
+      addServerRqRsData(HttpMethod.GET, ACQUISITIONS_UNIT_ASSIGNMENTS, data);
+      serverResponse(ctx, 200, APPLICATION_JSON, data.encodePrettily());
+    } else {
+      serverResponse(ctx, 404, TEXT_PLAIN, id);
     }
   }
 
