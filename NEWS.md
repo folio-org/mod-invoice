@@ -38,7 +38,7 @@ The primary focus of this release was to implement backend logic to manage invoi
  * [MODINVOICE-22](https://issues.folio.org/browse/MODINVOICE-22) - Implement GET /invoice/invoices
  * [MODINVOICE-21](https://issues.folio.org/browse/MODINVOICE-21) - Implement POST /invoicing/invoice-lines
  * [MODINVOICE-20](https://issues.folio.org/browse/MODINVOICE-20) - Implement POST /invoicing/invoices
- * [MODINVOICE-78](https://issues.folio.org/browse/MODINVOICE-17) - Define API
+ * [MODINVOICE-17](https://issues.folio.org/browse/MODINVOICE-17) - Define API
  * [MODINVOICE-16](https://issues.folio.org/browse/MODINVOICE-16) - Project Setup
  * [MODINVOICE-14](https://issues.folio.org/browse/MODINVOICE-14) - Invoice: "Vendor Invoice Number" field validation
  
