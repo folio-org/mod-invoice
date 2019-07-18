@@ -1,1 +1,46 @@
-* Incremental Release Notes here.
+## 1.1.0 - Unreleased
+
+## 1.0.0 - Released
+
+The primary focus of this release was to implement backend logic to manage invoices, invoice lines, vouchers, voucher lines and provide backend logic for the transitioning invoice to Approved and Paid status.
+
+### Stories
+ * [MODINVOICE-79](https://issues.folio.org/browse/MODINVOICE-79) - Assign tags to Invoice Records
+ * [MODINVOICE-78](https://issues.folio.org/browse/MODINVOICE-78) - Assign tags to Invoice Line Records
+ * [MODINVOICE-76](https://issues.folio.org/browse/MODINVOICE-76) - Invoice approval details set by system
+ * [MODINVOICE-75](https://issues.folio.org/browse/MODINVOICE-75) - Fund Distribution only required upon transition to approval
+ * [MODINVOICE-67](https://issues.folio.org/browse/MODINVOICE-67) - Make product id type to be uuid
+ * [MODINVOICE-60](https://issues.folio.org/browse/MODINVOICE-60) - Invoice schemas - readonly properties
+ * [MODINVOICE-57](https://issues.folio.org/browse/MODINVOICE-57) - Implement GET /voucher/vouchers
+ * [MODINVOICE-53](https://issues.folio.org/browse/MODINVOICE-53) - Adjustments schema updates
+ * [MODINVOICE-52](https://issues.folio.org/browse/MODINVOICE-52) - Calculate Invoice Totals
+ * [MODINVOICE-50](https://issues.folio.org/browse/MODINVOICE-50) - Calculate invoiceLine Totals
+ * [MODINVOICE-49](https://issues.folio.org/browse/MODINVOICE-49) - Voucher/VoucherLine schema updates
+ * [MODINVOICE-48](https://issues.folio.org/browse/MODINVOICE-48) - Implement POST /voucher/voucher-number/start/<val>
+ * [MODINVOICE-47](https://issues.folio.org/browse/MODINVOICE-47) - Implement GET /voucher/voucher-number/start
+ * [MODINVOICE-46](https://issues.folio.org/browse/MODINVOICE-46) - voucherNumber Generation
+ * [MODINVOICE-42](https://issues.folio.org/browse/MODINVOICE-42) - Invoice/Invoice-line schema updates
+ * [MODINVOICE-41](https://issues.folio.org/browse/MODINVOICE-41) - Implement basic GET /voucher/vouchers/<id>
+ * [MODINVOICE-40](https://issues.folio.org/browse/MODINVOICE-40) - implement basic PUT for /voucher/voucher-lines/<id>
+ * [MODINVOICE-39](https://issues.folio.org/browse/MODINVOICE-39) - Implement basic GET /voucher/voucher-lines/<id>
+ * [MODINVOICE-37](https://issues.folio.org/browse/MODINVOICE-37) - Update POL paymentStatus on transition of invoice Status
+ * [MODINVOICE-36](https://issues.folio.org/browse/MODINVOICE-36) - Mark voucher as paid on transition to invoice status "Paid"
+ * [MODINVOICE-35](https://issues.folio.org/browse/MODINVOICE-35) - Prevent modifications to invoice/invoice lines once status is "Approved"
+ * [MODINVOICE-34](https://issues.folio.org/browse/MODINVOICE-34) - Create voucher on transition to "Approved"
+ * [MODINVOICE-33](https://issues.folio.org/browse/MODINVOICE-33) - Implement DELETE /invoice/invoices/id
+ * [MODINVOICE-32](https://issues.folio.org/browse/MODINVOICE-32) - Implement DELETE /invoice/invoice-lines/id
+ * [MODINVOICE-31](https://issues.folio.org/browse/MODINVOICE-31) - Implement basic PUT /invoice/invoices/id
+ * [MODINVOICE-30](https://issues.folio.org/browse/MODINVOICE-30) - Implement basic PUT /invoice/invoice-lines/id
+ * [MODINVOICE-29](https://issues.folio.org/browse/MODINVOICE-29) - Implement GET /invoice/invoice-lines/id
+ * [MODINVOICE-28](https://issues.folio.org/browse/MODINVOICE-28) - Implement GET /invoice/invoices/id
+ * [MODINVOICE-25](https://issues.folio.org/browse/MODINVOICE-25) - Use Json API for loading module schemas
+ * [MODINVOICE-23](https://issues.folio.org/browse/MODINVOICE-23) - Implement GET /invoicing/invoice-lines
+ * [MODINVOICE-22](https://issues.folio.org/browse/MODINVOICE-22) - Implement GET /invoice/invoices
+ * [MODINVOICE-21](https://issues.folio.org/browse/MODINVOICE-21) - Implement POST /invoicing/invoice-lines
+ * [MODINVOICE-20](https://issues.folio.org/browse/MODINVOICE-20) - Implement POST /invoicing/invoices
+ * [MODINVOICE-78](https://issues.folio.org/browse/MODINVOICE-17) - Define API
+ * [MODINVOICE-16](https://issues.folio.org/browse/MODINVOICE-16) - Project Setup
+ * [MODINVOICE-14](https://issues.folio.org/browse/MODINVOICE-14) - Invoice: "Vendor Invoice Number" field validation
+ 
+### Bug Fixes
+ * [MODINVOICE-66](https://issues.folio.org/browse/MODINVOICE-66) - Shouldn't be allowed to add invoiceLines to an "approved" or "paid" invoice
