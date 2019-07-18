@@ -24,7 +24,7 @@ public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
   private static final String NOT_SUPPORTED = "Not supported"; // To overcome sonarcloud warning
   private static final String INVOICE_LOCATION_PREFIX = "/invoice/invoices/%s";
   private static final String INVOICE_LINE_LOCATION_PREFIX = "/invoice/invoice-lines/%s";
-  private static final String ACQUISITIONS_UNIT_ASSIGNMENTS_LOCATION_PREFIX = "/orders/acquisitions-unit-assignments/%s";
+  private static final String ACQUISITIONS_UNIT_ASSIGNMENTS_LOCATION_PREFIX = "/invoice/acquisitions-unit-assignments/%s";
   public static final String PROTECTED_AND_MODIFIED_FIELDS = "protectedAndModifiedFields";
 
   @Validate
