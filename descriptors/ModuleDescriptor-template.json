@@ -192,7 +192,7 @@
     },
     {
       "id": "finance-storage.funds",
-      "version": "1.0"
+      "version": "2.0"
     },
     {
       "id": "invoice-storage.invoices",
@@ -208,7 +208,7 @@
     },
     {
       "id": "orders",
-      "version": "6.0"
+      "version": "7.0"
     },
     {
       "id": "voucher-storage.vouchers",
