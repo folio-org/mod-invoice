@@ -31,6 +31,8 @@ public class AcquisitionsUnitAssignmentsTest extends ApiTestBase {
   private static final Logger logger = LoggerFactory.getLogger(AcquisitionsUnitAssignmentsTest.class);
 
   private static final String ACQ_UNIT_ASSIGNMENTS_ENDPOINT = "/invoice/acquisitions-unit-assignments";
+  private static final String ASSIGNED_INVOICE_ID = "57257531-c6bc-4b6e-b91a-06bc0034b768";
+  private static final String ACQ_ASSIGNMENT_ID = "8ad510ee-d3f1-4271-bff4-c7c80ccb22e5";
 
   @Test
   public void testGetAcqUnitAssignmentsNoQuery() {
@@ -42,7 +44,7 @@ public class AcquisitionsUnitAssignmentsTest extends ApiTestBase {
   @Test
   public void testGetAcqUnitAssignmentsWithQuery() {
     logger.info("=== Test GET Acquisitions Unit Assignments - search by query ===");
-    String url = ACQ_UNIT_ASSIGNMENTS_ENDPOINT + "?query=recordId==57257531-c6bc-4b6e-b91a-06bc0034b768";
+    String url = ACQ_UNIT_ASSIGNMENTS_ENDPOINT + "?query=recordId==" + ASSIGNED_INVOICE_ID;
 
     final AcquisitionsUnitAssignmentCollection units = verifySuccessGet(url, AcquisitionsUnitAssignmentCollection.class);
     assertThat(units.getAcquisitionsUnitAssignments(), hasSize(1));
@@ -76,7 +78,7 @@ public class AcquisitionsUnitAssignmentsTest extends ApiTestBase {
   @Test
   public void testPutAcqUnitAssignmentSuccess() {
     logger.info("=== Test PUT Acquisitions Unit Assignment - success case ===");
-    String url = ACQ_UNIT_ASSIGNMENTS_ENDPOINT + "/8ad510ee-d3f1-4271-bff4-c7c80ccb22e5";
+    String url = ACQ_UNIT_ASSIGNMENTS_ENDPOINT + "/" + ACQ_ASSIGNMENT_ID;
 
     verifyPut(url, JsonObject.mapFrom(new AcquisitionsUnitAssignment()
       .withRecordId("47Ac60b4-159D-4e1c-9aCB-8293Df67D16d")
@@ -97,8 +99,8 @@ public class AcquisitionsUnitAssignmentsTest extends ApiTestBase {
     String url = ACQ_UNIT_ASSIGNMENTS_ENDPOINT + "/" + ID_DOES_NOT_EXIST;
 
     verifyPut(url, JsonObject.mapFrom(new AcquisitionsUnitAssignment()
-      .withRecordId("57257531-c6bc-4b6e-b91a-06bc0034b768")
-      .withAcquisitionsUnitId("8ad510ee-d3f1-4271-bff4-c7c80ccb22e5")), APPLICATION_JSON, 404);
+      .withRecordId(ASSIGNED_INVOICE_ID)
+      .withAcquisitionsUnitId(ACQ_ASSIGNMENT_ID)), APPLICATION_JSON, 404);
   }
 
   @Test
@@ -106,8 +108,8 @@ public class AcquisitionsUnitAssignmentsTest extends ApiTestBase {
     logger.info("=== Test PUT Acquisitions Unit Assignment - different ids in path and body ===");
     String url = ACQ_UNIT_ASSIGNMENTS_ENDPOINT + "/" + UUID.randomUUID().toString();
 
-    AcquisitionsUnitAssignment unitAssignment = new AcquisitionsUnitAssignment().withRecordId("57257531-c6bc-4b6e-b91a-06bc0034b768")
-      .withAcquisitionsUnitId("8ad510ee-d3f1-4271-bff4-c7c80ccb22e5").withId(UUID.randomUUID().toString());
+    AcquisitionsUnitAssignment unitAssignment = new AcquisitionsUnitAssignment().withRecordId(ASSIGNED_INVOICE_ID)
+      .withAcquisitionsUnitId(ACQ_ASSIGNMENT_ID).withId(UUID.randomUUID().toString());
     Errors errors = verifyPut(url, JsonObject.mapFrom(unitAssignment), APPLICATION_JSON, 422).as(Errors.class);
     assertThat(errors.getErrors(), hasSize(1));
     assertThat(errors.getErrors().get(0).getCode(), equalTo(MISMATCH_BETWEEN_ID_IN_PATH_AND_BODY.getCode()));
@@ -116,7 +118,7 @@ public class AcquisitionsUnitAssignmentsTest extends ApiTestBase {
   @Test
   public void testDeleteAcqUnitAssignmentSuccess() {
     logger.info("=== Test DELETE Acquisitions Unit Assignment - success case ===");
-    String url = ACQ_UNIT_ASSIGNMENTS_ENDPOINT + "/8ad510ee-d3f1-4271-bff4-c7c80ccb22e5";
+    String url = ACQ_UNIT_ASSIGNMENTS_ENDPOINT + "/" + ACQ_ASSIGNMENT_ID;
 
     verifyDeleteResponse(url, "", 204);
   }
@@ -126,7 +128,7 @@ public class AcquisitionsUnitAssignmentsTest extends ApiTestBase {
     logger.info("=== Test DELETE Acquisitions Unit Assignment - not found ===");
     String url = ACQ_UNIT_ASSIGNMENTS_ENDPOINT + "/" + ID_DOES_NOT_EXIST;
 
-    verifyPut(url, JsonObject.mapFrom(new AcquisitionsUnitAssignment().withRecordId("57257531-c6bc-4b6e-b91a-06bc0034b768")
+    verifyPut(url, JsonObject.mapFrom(new AcquisitionsUnitAssignment().withRecordId(ASSIGNED_INVOICE_ID)
       .withAcquisitionsUnitId("c2d6608f-6d1f-45f7-8817-5d32c2416116")), APPLICATION_JSON, 404);
   }
 
@@ -148,7 +150,7 @@ public class AcquisitionsUnitAssignmentsTest extends ApiTestBase {
   public void testPostAcqUnitAssignmentServerError() {
     logger.info("=== Test POST Acquisitions Unit Assignment - Server Error ===");
 
-    String body = JsonObject.mapFrom(new AcquisitionsUnitAssignment().withRecordId("57257531-c6bc-4b6e-b91a-06bc0034b768")
+    String body = JsonObject.mapFrom(new AcquisitionsUnitAssignment().withRecordId(ASSIGNED_INVOICE_ID)
       .withAcquisitionsUnitId("c2d6608f-6d1f-45f7-8817-5d32c2416116")).encode();
     Headers headers = prepareHeaders(ERROR_X_OKAPI_TENANT, new Header(X_ECHO_STATUS, String.valueOf(500)));
     verifyPostResponse(ACQ_UNIT_ASSIGNMENTS_ENDPOINT, body, headers, APPLICATION_JSON, 500);
