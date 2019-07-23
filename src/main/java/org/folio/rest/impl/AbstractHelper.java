@@ -4,6 +4,7 @@ import static javax.ws.rs.core.HttpHeaders.CONTENT_TYPE;
 import static javax.ws.rs.core.HttpHeaders.LOCATION;
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 import static javax.ws.rs.core.MediaType.TEXT_PLAIN;
+import static javax.ws.rs.core.Response.Status.CREATED;
 import static javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
 import static org.folio.invoices.utils.ErrorCodes.GENERIC_ERROR_CODE;
 import static org.folio.invoices.utils.ErrorCodes.MOD_CONFIG_ERROR;
@@ -14,6 +15,8 @@ import static org.folio.invoices.utils.HelperUtils.verifyAndExtractBody;
 import static org.folio.rest.RestVerticle.OKAPI_HEADER_TENANT;
 import static org.folio.rest.impl.InvoicesImpl.PROTECTED_AND_MODIFIED_FIELDS;
 
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -51,6 +54,7 @@ public abstract class AbstractHelper {
   public static final String DEFAULT_SYSTEM_CURRENCY = "USD";
   public static final String CONFIG_QUERY = "module==%s and configName==%s";
   public static final String QUERY_BY_INVOICE_ID = "invoiceId==%s";
+  static final String SEARCH_PARAMS = "?limit=%s&offset=%s%s&lang=%s";
 
   private final Errors processingErrors = new Errors();
   private ExchangeRateProvider exchangeRateProvider;
@@ -62,14 +66,19 @@ public abstract class AbstractHelper {
   private Configs tenantConfiguration = new Configs().withTotalRecords(0);
 
 
-
-
   AbstractHelper(HttpClientInterface httpClient, Map<String, String> okapiHeaders, Context ctx, String lang) {
+    setDefaultHeaders(httpClient);
     this.httpClient = httpClient;
     this.okapiHeaders = okapiHeaders;
     this.ctx = ctx;
     this.lang = lang;
-    setDefaultHeaders();
+  }
+
+  AbstractHelper(Map<String, String> okapiHeaders, Context ctx, String lang) {
+    this.httpClient = getHttpClient(okapiHeaders, true);
+    this.okapiHeaders = okapiHeaders;
+    this.ctx = ctx;
+    this.lang = lang;
   }
 
   /**
@@ -177,13 +186,25 @@ public abstract class AbstractHelper {
   }
 
   /**
-   * Some requests do not have body and in happy flow do not produce response
-   * body. The Accept header is required for calls to storage
+   * Some requests do not have body and in happy flow do not produce response body. The Accept header is required for calls to storage
    */
-  private void setDefaultHeaders() {
+  private static void setDefaultHeaders(HttpClientInterface httpClient) {
     Map<String, String> customHeader = new HashMap<>();
     customHeader.put(HttpHeaders.ACCEPT.toString(), APPLICATION_JSON + ", " + TEXT_PLAIN);
     httpClient.setDefaultHeaders(customHeader);
+  }
+
+  public static HttpClientInterface getHttpClient(Map<String, String> okapiHeaders, boolean setDefaultHeaders) {
+    final String okapiURL = okapiHeaders.getOrDefault(OKAPI_URL, "");
+    final String tenantId = TenantTool.calculateTenantId(okapiHeaders.get(OKAPI_HEADER_TENANT));
+
+    HttpClientInterface httpClient = HttpClientFactory.getHttpClient(okapiURL, tenantId);
+
+    // Some requests do not have body and in happy flow do not produce response body. The Accept header is required for calls to storage
+    if (setDefaultHeaders) {
+      setDefaultHeaders(httpClient);
+    }
+    return httpClient;
   }
 
   public static HttpClientInterface getHttpClient(Map<String, String> okapiHeaders) {
@@ -265,5 +286,17 @@ public abstract class AbstractHelper {
       exchangeRateProvider = MonetaryConversions.getExchangeRateProvider();
     }
     return exchangeRateProvider;
+  }
+
+  public Response buildResponseWithLocation(String endpoint, Object body) {
+    closeHttpClient();
+    try {
+      return Response.created(new URI(okapiHeaders.get(OKAPI_URL) + endpoint))
+        .header(CONTENT_TYPE, APPLICATION_JSON).entity(body).build();
+    } catch (URISyntaxException e) {
+      return Response.status(CREATED).location(URI.create(endpoint))
+        .header(CONTENT_TYPE, APPLICATION_JSON)
+        .header(LOCATION, endpoint).entity(body).build();
+    }
   }
 }

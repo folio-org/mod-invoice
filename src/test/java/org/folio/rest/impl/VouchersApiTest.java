@@ -2,7 +2,6 @@ package org.folio.rest.impl;
 
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 import static javax.ws.rs.core.MediaType.TEXT_PLAIN;
-import static org.folio.rest.RestVerticle.OKAPI_HEADER_TENANT;
 import static org.folio.rest.impl.AbstractHelper.ID;
 import static org.folio.rest.impl.InvoiceLinesApiTest.INVOICE_ID;
 import static org.folio.rest.impl.InvoicesApiTest.APPROVED_INVOICE_ID;
@@ -14,7 +13,6 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 
-import io.restassured.http.Header;
 import io.restassured.response.Response;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
@@ -31,7 +29,6 @@ public class VouchersApiTest extends ApiTestBase {
   private static final Logger logger = LoggerFactory.getLogger(VouchersApiTest.class);
 
   static final String VOUCHER_MOCK_DATA_PATH = BASE_MOCK_DATA_PATH + "vouchers/";
-  static final Header EXIST_CONFIG_X_OKAPI_TENANT_LIMIT_10 = new Header(OKAPI_HEADER_TENANT, "test_diku_limit_10");
 
   private static final String VOUCHER_PATH = "/voucher/vouchers";
   private static final String VOUCHER_ID_PATH = VOUCHER_PATH + "/%s";
@@ -44,7 +41,6 @@ public class VouchersApiTest extends ApiTestBase {
   private static final String VOUCHER_START_PATH = "/voucher/voucher-number/start" + "/%s";
   private static final String VOUCHER_NUMBER_START_PATH = "/voucher/voucher-number/start";
   private static final String BAD_QUERY = "unprocessableQuery";
-  private static final String VOUCHER_NUMBER_FIELD = "voucherNumber";
   
   @Test
   public void testGetVoucherVouchers() {
@@ -124,7 +120,7 @@ public class VouchersApiTest extends ApiTestBase {
     logger.info("=== Test POST Voucher valid start value - 200 Request ===");
 
     verifyPostResponse(String.format(VOUCHER_START_PATH, VALID_START_VALUE), "",
-        prepareHeaders(EXIST_CONFIG_X_OKAPI_TENANT_LIMIT_10), "", 204);
+        prepareHeaders(X_OKAPI_TENANT), "", 204);
   }
 
   @Test
@@ -132,7 +128,7 @@ public class VouchersApiTest extends ApiTestBase {
     logger.info("=== Test POST Voucher negative start value - 400 Bad Request ===");
 
     verifyPostResponse(String.format(VOUCHER_START_PATH, INVALID_NEGATIVE_START_VALUE), "",
-        prepareHeaders(EXIST_CONFIG_X_OKAPI_TENANT_LIMIT_10), "", 400);
+        prepareHeaders(X_OKAPI_TENANT), "", 400);
   }
 
   @Test
@@ -140,7 +136,7 @@ public class VouchersApiTest extends ApiTestBase {
     logger.info("=== Test POST Voucher start value invalid query - 400 Bad request ===");
 
     verifyPostResponse(String.format(VOUCHER_START_PATH, INVALID_START_VALUE_QUERY), "",
-        prepareHeaders(EXIST_CONFIG_X_OKAPI_TENANT_LIMIT_10), "", 400);
+        prepareHeaders(X_OKAPI_TENANT), "", 400);
   }
 
   @Test
