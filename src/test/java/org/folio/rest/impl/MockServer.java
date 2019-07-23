@@ -6,6 +6,7 @@ import static javax.ws.rs.core.MediaType.TEXT_PLAIN;
 import static javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
 import static org.apache.commons.lang3.StringUtils.EMPTY;
 import static org.folio.invoices.utils.ResourcePathResolver.ACQUISITIONS_UNIT_ASSIGNMENTS;
+import static org.folio.invoices.utils.ResourcePathResolver.VOUCHER_ACQUISITIONS_UNIT_ASSIGNMENTS;
 import static org.folio.invoices.utils.ResourcePathResolver.FOLIO_INVOICE_NUMBER;
 import static org.folio.invoices.utils.ResourcePathResolver.FUNDS;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICES;
@@ -58,7 +59,7 @@ import javax.ws.rs.core.Response;
 
 import org.apache.commons.lang3.StringUtils;
 import org.folio.invoices.utils.ResourcePathResolver;
-import org.folio.rest.acq.model.AcquisitionsUnitAssignment;
+import org.folio.rest.jaxrs.model.AcquisitionsUnitAssignment;
 import org.folio.rest.acq.model.SequenceNumber;
 import org.folio.rest.acq.model.VoucherLine;
 import org.folio.rest.acq.model.VoucherLineCollection;
@@ -185,6 +186,7 @@ public class MockServer {
     router.route(HttpMethod.POST, resourcesPath(VOUCHERS)).handler(ctx -> handlePostEntry(ctx, Voucher.class, VOUCHERS));
     router.route(HttpMethod.POST, resourcesPath(VOUCHER_LINES)).handler(ctx -> handlePostEntry(ctx, VoucherLine.class, VOUCHER_LINES));
     router.route(HttpMethod.POST, resourcesPath(ACQUISITIONS_UNIT_ASSIGNMENTS)).handler(ctx -> handlePostEntry(ctx, AcquisitionsUnitAssignment.class, ACQUISITIONS_UNIT_ASSIGNMENTS));
+    router.route(HttpMethod.POST, resourcesPath(VOUCHER_ACQUISITIONS_UNIT_ASSIGNMENTS)).handler(ctx -> handlePostEntry(ctx, AcquisitionsUnitAssignment.class, VOUCHER_ACQUISITIONS_UNIT_ASSIGNMENTS));
 
     router.route(HttpMethod.GET, resourcesPath(INVOICES)).handler(this::handleGetInvoices);
     router.route(HttpMethod.GET, resourcesPath(INVOICE_LINES)).handler(this::handleGetInvoiceLines);
@@ -203,11 +205,14 @@ public class MockServer {
     router.route(HttpMethod.GET,"/configurations/entries").handler(this::handleConfigurationModuleResponse);
     router.route(HttpMethod.GET, resourcesPath(ACQUISITIONS_UNIT_ASSIGNMENTS)).handler(this::handleGetAcquisitionsUnitAssignments);
     router.route(HttpMethod.GET, resourceByIdPath(ACQUISITIONS_UNIT_ASSIGNMENTS)).handler(this::handleGetAcquisitionsUnitAssignment);
+    router.route(HttpMethod.GET, resourcesPath(VOUCHER_ACQUISITIONS_UNIT_ASSIGNMENTS)).handler(this::handleGetAcquisitionsUnitAssignments);
+    router.route(HttpMethod.GET, resourceByIdPath(VOUCHER_ACQUISITIONS_UNIT_ASSIGNMENTS)).handler(this::handleGetAcquisitionsUnitAssignment);
 
     router.route(HttpMethod.DELETE, resourceByIdPath(INVOICES)).handler(ctx -> handleDeleteRequest(ctx, INVOICES));
     router.route(HttpMethod.DELETE, resourceByIdPath(INVOICE_LINES)).handler(ctx -> handleDeleteRequest(ctx, INVOICE_LINES));
     router.route(HttpMethod.DELETE, resourceByIdPath(VOUCHER_LINES)).handler(ctx -> handleDeleteRequest(ctx, VOUCHER_LINES));
     router.route(HttpMethod.DELETE, resourceByIdPath(ACQUISITIONS_UNIT_ASSIGNMENTS)).handler(ctx -> handleDeleteRequest(ctx, ACQUISITIONS_UNIT_ASSIGNMENTS));
+    router.route(HttpMethod.DELETE, resourceByIdPath(VOUCHER_ACQUISITIONS_UNIT_ASSIGNMENTS)).handler(ctx -> handleDeleteRequest(ctx, VOUCHER_ACQUISITIONS_UNIT_ASSIGNMENTS));
 
     router.route(HttpMethod.PUT, resourceByIdPath(INVOICES)).handler(ctx -> handlePutGenericSubObj(ctx, INVOICES));
     router.route(HttpMethod.PUT, resourceByIdPath(INVOICE_LINES)).handler(ctx -> handlePutGenericSubObj(ctx, INVOICE_LINES));
@@ -215,6 +220,7 @@ public class MockServer {
     router.route(HttpMethod.PUT, resourceByIdPath(VOUCHER_LINES)).handler(ctx -> handlePutGenericSubObj(ctx, VOUCHER_LINES));
     router.route(HttpMethod.PUT, resourceByIdPath(ORDER_LINES)).handler(ctx -> handlePutGenericSubObj(ctx, ResourcePathResolver.ORDER_LINES));
     router.route(HttpMethod.PUT, resourceByIdPath(ACQUISITIONS_UNIT_ASSIGNMENTS)).handler(ctx -> handlePutGenericSubObj(ctx, ACQUISITIONS_UNIT_ASSIGNMENTS));
+    router.route(HttpMethod.PUT, resourceByIdPath(VOUCHER_ACQUISITIONS_UNIT_ASSIGNMENTS)).handler(ctx -> handlePutGenericSubObj(ctx, VOUCHER_ACQUISITIONS_UNIT_ASSIGNMENTS));
 
 
     return router;
@@ -748,7 +754,11 @@ public class MockServer {
       String name = query.replace("recordId==", "");
       AcquisitionsUnitAssignmentCollection units;
       try {
-        units = new JsonObject(ApiTestBase.getMockData(ACQUISITIONS_UNIT_ASSIGNMENTS_COLLECTION)).mapTo(AcquisitionsUnitAssignmentCollection.class);
+       // if(name.equals("f6764ba9-dd90-498e-ae48-1b8747dc199d")) {
+        //units = new JsonObject(ApiTestBase.getMockData(VOUCHER_ACQUISITIONS_UNIT_ASSIGNMENTS_COLLECTION)).mapTo(AcquisitionsUnitAssignmentCollection.class);
+        //} else {
+          units = new JsonObject(ApiTestBase.getMockData(ACQUISITIONS_UNIT_ASSIGNMENTS_COLLECTION)).mapTo(AcquisitionsUnitAssignmentCollection.class);
+       // }
       } catch (IOException e) {
         units = new AcquisitionsUnitAssignmentCollection();
       }
