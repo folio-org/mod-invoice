@@ -106,8 +106,8 @@ public class VouchersImpl implements org.folio.rest.jaxrs.resource.Voucher {
       .exceptionally(t -> handleErrorResponse(asyncResultHandler, vouchersHelper, t));
   }
 
-  @Validate
   @Override
+  @Validate
   public void postVoucherAcquisitionsUnitAssignments(String lang, AcquisitionsUnitAssignment entity,
       Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     VoucherAcquisitionsUnitAssignmentsHelper helper = new VoucherAcquisitionsUnitAssignmentsHelper(okapiHeaders, vertxContext,
@@ -122,8 +122,8 @@ public class VouchersImpl implements org.folio.rest.jaxrs.resource.Voucher {
       .exceptionally(t -> handleErrorResponse(asyncResultHandler, helper, t));
   }
 
-  @Validate
   @Override
+  @Validate
   public void getVoucherAcquisitionsUnitAssignments(String query, int offset, int limit, String lang,
       Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     VoucherAcquisitionsUnitAssignmentsHelper helper = new VoucherAcquisitionsUnitAssignmentsHelper(okapiHeaders, vertxContext,
@@ -137,8 +137,8 @@ public class VouchersImpl implements org.folio.rest.jaxrs.resource.Voucher {
       .exceptionally(t -> handleErrorResponse(asyncResultHandler, helper, t));
   }
 
-  @Validate
   @Override
+  @Validate
   public void putVoucherAcquisitionsUnitAssignmentsById(String id, String lang, AcquisitionsUnitAssignment entity,
       Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     VoucherAcquisitionsUnitAssignmentsHelper helper = new VoucherAcquisitionsUnitAssignmentsHelper(okapiHeaders, vertxContext,
@@ -153,8 +153,8 @@ public class VouchersImpl implements org.folio.rest.jaxrs.resource.Voucher {
       .exceptionally(t -> handleErrorResponse(asyncResultHandler, helper, t));
   }
 
-  @Validate
   @Override
+  @Validate
   public void getVoucherAcquisitionsUnitAssignmentsById(String id, String lang, Map<String, String> okapiHeaders,
       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     VoucherAcquisitionsUnitAssignmentsHelper helper = new VoucherAcquisitionsUnitAssignmentsHelper(okapiHeaders, vertxContext,
@@ -168,8 +168,8 @@ public class VouchersImpl implements org.folio.rest.jaxrs.resource.Voucher {
       .exceptionally(t -> handleErrorResponse(asyncResultHandler, helper, t));
   }
 
-  @Validate
   @Override
+  @Validate
   public void deleteVoucherAcquisitionsUnitAssignmentsById(String id, String lang, Map<String, String> okapiHeaders,
       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     VoucherAcquisitionsUnitAssignmentsHelper helper = new VoucherAcquisitionsUnitAssignmentsHelper(okapiHeaders, vertxContext,

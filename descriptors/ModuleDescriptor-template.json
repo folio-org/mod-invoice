@@ -461,33 +461,33 @@
     },
     {
       "permissionName": "voucher.acquisitions-units-assignments.assignments.collection.get",
-      "displayName": "Acquisitions unit assignment - get assignments",
+      "displayName": "Acquisitions unit assignment for voucher - get assignments",
       "description": "Get a collection of acquisitions unit assignments"
     },
     {
       "permissionName": "voucher.acquisitions-units-assignments.assignments.item.post",
-      "displayName": "Acquisitions unit assignment - create unit assignment",
+      "displayName": "Acquisitions unit assignment for voucher - create unit assignment",
       "description": "Create a new acquisitions unit assignments"
     },
     {
       "permissionName": "voucher.acquisitions-units-assignments.assignments.item.get",
-      "displayName": "Acquisitions unit assignment - get unit assignment",
+      "displayName": "Acquisitions unit assignment for voucher - get unit assignment",
       "description": "Fetch an acquisitions unit assignments"
     },
     {
       "permissionName": "voucher.acquisitions-units-assignments.assignments.item.put",
-      "displayName": "Acquisitions unit assignment - update unit assignment",
+      "displayName": "Acquisitions unit assignment for voucher - update unit assignment",
       "description": "Update an acquisitions unit assignments"
     },
     {
       "permissionName": "voucher.acquisitions-units-assignments.assignments.item.delete",
-      "displayName": "Acquisitions units - delete unit",
+      "displayName": "Acquisitions unit assignment for voucher - delete unit",
       "description": "Delete an acquisitions unit assignments"
     },
     {
       "permissionName": "voucher.acquisitions-units-assignments.assignments.all",
       "displayName": "All acquisitions-unit-assignments perms",
-      "description": "All permissions for the acquisitions-unit-assignments",
+      "description": "All permissions for the voucher acquisitions-unit-assignments",
       "subPermissions": [
         "voucher.acquisitions-units-assignments.assignments.collection.get",
         "voucher.acquisitions-units-assignments.assignments.item.post",

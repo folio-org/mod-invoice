@@ -754,11 +754,7 @@ public class MockServer {
       String name = query.replace("recordId==", "");
       AcquisitionsUnitAssignmentCollection units;
       try {
-       // if(name.equals("f6764ba9-dd90-498e-ae48-1b8747dc199d")) {
-        //units = new JsonObject(ApiTestBase.getMockData(VOUCHER_ACQUISITIONS_UNIT_ASSIGNMENTS_COLLECTION)).mapTo(AcquisitionsUnitAssignmentCollection.class);
-        //} else {
-          units = new JsonObject(ApiTestBase.getMockData(ACQUISITIONS_UNIT_ASSIGNMENTS_COLLECTION)).mapTo(AcquisitionsUnitAssignmentCollection.class);
-       // }
+        units = new JsonObject(ApiTestBase.getMockData(ACQUISITIONS_UNIT_ASSIGNMENTS_COLLECTION)).mapTo(AcquisitionsUnitAssignmentCollection.class);
       } catch (IOException e) {
         units = new AcquisitionsUnitAssignmentCollection();
       }
