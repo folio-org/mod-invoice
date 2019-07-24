@@ -1347,7 +1347,7 @@ public class InvoicesApiTest extends ApiTestBase {
     allProtectedFieldsModification.put(InvoiceProtectedFields.INVOICE_DATE, new Date(System.currentTimeMillis()));
     allProtectedFieldsModification.put(InvoiceProtectedFields.LOCK_TOTAL, true);
     allProtectedFieldsModification.put(InvoiceProtectedFields.PAYMENT_TERMS, "Payment now");
-    allProtectedFieldsModification.put(InvoiceProtectedFields.SOURCE, UUID.randomUUID().toString());
+    allProtectedFieldsModification.put(InvoiceProtectedFields.SOURCE, Invoice.Source.EDI);
     allProtectedFieldsModification.put(InvoiceProtectedFields.VOUCHER_NUMBER, "some_voucher_number");
     allProtectedFieldsModification.put(InvoiceProtectedFields.PAYMENT_ID, UUID.randomUUID().toString());
     allProtectedFieldsModification.put(InvoiceProtectedFields.VENDOR_ID, UUID.randomUUID().toString());

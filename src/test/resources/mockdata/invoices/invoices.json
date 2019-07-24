@@ -2,6 +2,7 @@
   "invoices": [
     {
       "id": "c0d08448-347b-418a-8c2f-5fb50248d67e",
+      "accountingCode": "2556",
       "approvalDate": "2018-07-29T00:00:00.000+0000",
       "adjustments": [
        {
@@ -20,7 +21,7 @@
       "paymentTerms": "Payment in Advance",
       "paymentMethod": "EFT",
       "status": "Approved",
-      "source": "024b6f41-c5c6-4280-858e-33fba452a334",
+      "source": "User",
       "subTotal": 5.0,
       "total": 15.0,
       "vendorInvoiceNo": "YK75851",
@@ -34,6 +35,7 @@
     },
     {
       "id": "9917d4a6-fbb2-4ed6-946d-6cf8c42369e4",
+      "accountingCode": "7858",
       "currency": "USD",
       "folioInvoiceNo": "123invoicenumber456",
       "invoiceDate": "2018-08-21T00:00:00.000+0000",
@@ -41,7 +43,7 @@
       "paymentTerms": "Payment in Advance",
       "paymentMethod": "EFT",
       "status": "Open",
-      "source": "024b6f41-c5c6-4280-858e-33fba452a334",
+      "source": "User",
       "total": 15.0,
       "vendorInvoiceNo": "YK75852",
       "voucherNumber": "479",
@@ -54,6 +56,7 @@
     },
     {
       "id": "e6ac6e5b-2dde-4904-bc2d-def3a0b17052",
+      "accountingCode": "2342",
       "currency": "USD",
       "folioInvoiceNo": "123invoicenumber47",
       "invoiceDate": "2018-09-21T00:00:00.000+0000",
@@ -61,7 +64,7 @@
       "paymentTerms": "Payment in Advance",
       "paymentMethod": "EFT",
       "status": "Open",
-      "source": "024b6f41-c5c6-4280-858e-33fba452a334",
+      "source": "User",
       "total": 18.0,
       "vendorInvoiceNo": "YK75853",
       "voucherNumber": "480",
