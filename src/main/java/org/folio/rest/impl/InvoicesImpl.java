@@ -16,7 +16,7 @@ import javax.ws.rs.core.Response;
 import java.util.Map;
 
 import static io.vertx.core.Future.succeededFuture;
-import static org.folio.invoices.utils.ErrorCodes.MISMATCH_BETWEEN_ID_IN_PATH_AND_BODY;
+import static org.folio.invoices.utils.HelperUtils.validateAcqsUnitAssignment;
 
 public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
 
@@ -39,8 +39,8 @@ public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
     }
 
     helper.createInvoice(invoice)
-      .thenAccept(invoiceWithId -> asyncResultHandler.handle(succeededFuture(helper
-        .buildResponseWithLocation(String.format(INVOICE_LOCATION_PREFIX, invoiceWithId.getId()), invoiceWithId))))
+      .thenAccept(invoiceWithId -> asyncResultHandler.handle(succeededFuture(
+          helper.buildResponseWithLocation(String.format(INVOICE_LOCATION_PREFIX, invoiceWithId.getId()), invoiceWithId))))
       .exceptionally(t -> handleErrorResponse(asyncResultHandler, helper, t));
   }
 
@@ -203,18 +203,14 @@ public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
       Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     AcquisitionsUnitAssignmentsHelper helper = new AcquisitionsUnitAssignmentsHelper(okapiHeaders, vertxContext, lang);
 
-    if (entity.getId() != null && !entity.getId()
-      .equals(id)) {
-      helper.addProcessingError(MISMATCH_BETWEEN_ID_IN_PATH_AND_BODY.toError());
-      asyncResultHandler.handle(succeededFuture(helper.buildErrorResponse(422)));
-    } else {
-      helper.updateAcquisitionsUnitAssignment(entity.withId(id))
-        .thenAccept(units -> {
-         logInfo("Successfully updated acquisitions unit assignment with id={}", id);
-          asyncResultHandler.handle(succeededFuture(helper.buildNoContentResponse()));
-        })
-        .exceptionally(t -> handleErrorResponse(asyncResultHandler, helper, t));
-    }
+    validateAcqsUnitAssignment(helper, id, entity, asyncResultHandler);
+    helper.updateAcquisitionsUnitAssignment(entity.withId(id))
+      .thenAccept(units -> {
+        logInfo("Successfully updated acquisitions unit assignment with id={}", id);
+        asyncResultHandler.handle(succeededFuture(helper.buildNoContentResponse()));
+      })
+      .exceptionally(t -> handleErrorResponse(asyncResultHandler, helper, t));
+
   }
 
   @Validate
@@ -233,7 +229,8 @@ public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
 
   private void logInfo(String message, Object entry) {
     if (logger.isInfoEnabled()) {
-      logger.info(message, JsonObject.mapFrom(entry).encodePrettily());
+      logger.info(message, JsonObject.mapFrom(entry)
+        .encodePrettily());
     }
   }
 

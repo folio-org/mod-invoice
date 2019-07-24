@@ -1,5 +1,6 @@
 package org.folio.invoices.utils;
 
+import static io.vertx.core.Future.succeededFuture;
 import static java.util.Objects.nonNull;
 import static java.util.stream.Collectors.toList;
 import static org.apache.commons.lang3.StringUtils.EMPTY;
@@ -29,6 +30,8 @@ import one.util.streamex.StreamEx;
 import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.apache.commons.lang3.reflect.FieldUtils;
 import org.folio.invoices.rest.exceptions.HttpException;
+import org.folio.rest.impl.AbstractHelper;
+import org.folio.rest.jaxrs.model.AcquisitionsUnitAssignment;
 import org.folio.rest.jaxrs.model.Adjustment;
 import org.folio.rest.jaxrs.model.FundDistribution;
 import org.folio.rest.jaxrs.model.Invoice;
@@ -41,11 +44,15 @@ import org.javamoney.moneta.Money;
 import org.javamoney.moneta.function.MonetaryFunctions;
 import org.javamoney.moneta.function.MonetaryOperators;
 
+import io.vertx.core.AsyncResult;
 import io.vertx.core.Context;
+import io.vertx.core.Handler;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import me.escoffier.vertx.completablefuture.VertxCompletableFuture;
+
+import static org.folio.invoices.utils.ErrorCodes.MISMATCH_BETWEEN_ID_IN_PATH_AND_BODY;
 
 public class HelperUtils {
 
@@ -310,5 +317,14 @@ public class HelperUtils {
     invoiceLine.setTotal(convertToDoubleWithRounding(total));
 
     return invoiceLine;
+  }
+
+  public static <T> void validateAcqsUnitAssignment( T helper, String id,
+      AcquisitionsUnitAssignment entity, Handler<AsyncResult<javax.ws.rs.core.Response>> asyncResultHandler) {
+    if (entity.getId() != null && !entity.getId()
+      .equals(id)) {
+      ((AbstractHelper) helper).addProcessingError(MISMATCH_BETWEEN_ID_IN_PATH_AND_BODY.toError());
+      asyncResultHandler.handle(succeededFuture(((AbstractHelper) helper).buildErrorResponse(422)));
+    }
   }
 }

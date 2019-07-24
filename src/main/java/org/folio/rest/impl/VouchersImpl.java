@@ -7,7 +7,6 @@ import javax.ws.rs.core.Response;
 import org.apache.commons.lang3.StringUtils;
 import org.folio.rest.annotations.Validate;
 
-
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Context;
 import io.vertx.core.Handler;
@@ -17,16 +16,15 @@ import io.vertx.core.logging.LoggerFactory;
 
 import org.folio.rest.jaxrs.model.AcquisitionsUnitAssignment;
 import org.folio.rest.jaxrs.model.VoucherLine;
-import static org.folio.invoices.utils.ErrorCodes.MISMATCH_BETWEEN_ID_IN_PATH_AND_BODY;
+import static org.folio.invoices.utils.HelperUtils.validateAcqsUnitAssignment;
 
 public class VouchersImpl implements org.folio.rest.jaxrs.resource.Voucher {
 
   private static final Logger logger = LoggerFactory.getLogger(VouchersImpl.class);
 
   private static final String VOUCHER_ACQUISITIONS_UNIT_ASSIGNMENTS_LOCATION_PREFIX = "/voucher/acquisitions-unit-assignments/%s";
-  
-  private Void handleErrorResponse(Handler<AsyncResult<Response>> asyncResultHandler, AbstractHelper helper,
-                                   Throwable t) {
+
+  private Void handleErrorResponse(Handler<AsyncResult<Response>> asyncResultHandler, AbstractHelper helper, Throwable t) {
     asyncResultHandler.handle(succeededFuture(helper.buildErrorResponse(t)));
     return null;
   }
@@ -34,17 +32,17 @@ public class VouchersImpl implements org.folio.rest.jaxrs.resource.Voucher {
   @Override
   @Validate
   public void getVoucherVouchersById(String id, String lang, Map<String, String> okapiHeaders,
-                                     Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     VoucherHelper helper = new VoucherHelper(okapiHeaders, vertxContext, lang);
     helper.getVoucher(id)
       .thenAccept(voucher -> asyncResultHandler.handle(succeededFuture(helper.buildOkResponse(voucher))))
       .exceptionally(t -> handleErrorResponse(asyncResultHandler, helper, t));
   }
-  
+
   @Validate
   @Override
   public void getVoucherVoucherLinesById(String id, String lang, Map<String, String> okapiHeaders,
-                                         Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     logger.info("== Get Voucher Line by Id for an existing Voucher ==");
     VoucherLineHelper voucherLineHelper = new VoucherLineHelper(okapiHeaders, vertxContext, lang);
     voucherLineHelper.getVoucherLine(id)
@@ -54,8 +52,8 @@ public class VouchersImpl implements org.folio.rest.jaxrs.resource.Voucher {
 
   @Override
   @Validate
-  public void putVoucherVoucherLinesById(String voucherLineId, String lang, VoucherLine voucherLine, Map<String, String> okapiHeaders,
-      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+  public void putVoucherVoucherLinesById(String voucherLineId, String lang, VoucherLine voucherLine,
+      Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     logger.info("== Update Voucher Line by Id for an existing Voucher ==");
     VoucherLineHelper voucherLinesHelper = new VoucherLineHelper(okapiHeaders, vertxContext, lang);
 
@@ -112,85 +110,86 @@ public class VouchersImpl implements org.folio.rest.jaxrs.resource.Voucher {
   @Override
   public void postVoucherAcquisitionsUnitAssignments(String lang, AcquisitionsUnitAssignment entity,
       Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
-    VoucherAcquisitionsUnitAssignmentsHelper helper = new VoucherAcquisitionsUnitAssignmentsHelper(okapiHeaders, vertxContext, lang);
+    VoucherAcquisitionsUnitAssignmentsHelper helper = new VoucherAcquisitionsUnitAssignmentsHelper(okapiHeaders, vertxContext,
+        lang);
 
     helper.createAcquisitionsUnitAssignment(entity)
-     .thenAccept(unit -> {
-       logInfo("Successfully created new acquisitions unit: {}", unit);
-       asyncResultHandler.handle(succeededFuture(
-           helper.buildResponseWithLocation(String.format(VOUCHER_ACQUISITIONS_UNIT_ASSIGNMENTS_LOCATION_PREFIX, unit.getId()), unit)));
-     })
-     .exceptionally(t -> handleErrorResponse(asyncResultHandler, helper, t));
+      .thenAccept(unit -> {
+        logInfo("Successfully created new acquisitions unit: {}", unit);
+        asyncResultHandler.handle(succeededFuture(helper
+          .buildResponseWithLocation(String.format(VOUCHER_ACQUISITIONS_UNIT_ASSIGNMENTS_LOCATION_PREFIX, unit.getId()), unit)));
+      })
+      .exceptionally(t -> handleErrorResponse(asyncResultHandler, helper, t));
   }
 
   @Validate
   @Override
   public void getVoucherAcquisitionsUnitAssignments(String query, int offset, int limit, String lang,
       Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
-    VoucherAcquisitionsUnitAssignmentsHelper helper = new VoucherAcquisitionsUnitAssignmentsHelper(okapiHeaders, vertxContext, lang);
+    VoucherAcquisitionsUnitAssignmentsHelper helper = new VoucherAcquisitionsUnitAssignmentsHelper(okapiHeaders, vertxContext,
+        lang);
 
     helper.getAcquisitionsUnitAssignments(query, offset, limit)
-     .thenAccept(units -> {
-       logInfo("Successfully retrieved acquisitions unit assignment : {}", (units));
-       asyncResultHandler.handle(succeededFuture(helper.buildOkResponse(units)));
-     })
-     .exceptionally(t -> handleErrorResponse(asyncResultHandler, helper, t));
+      .thenAccept(units -> {
+        logInfo("Successfully retrieved acquisitions unit assignment : {}", (units));
+        asyncResultHandler.handle(succeededFuture(helper.buildOkResponse(units)));
+      })
+      .exceptionally(t -> handleErrorResponse(asyncResultHandler, helper, t));
   }
 
   @Validate
   @Override
   public void putVoucherAcquisitionsUnitAssignmentsById(String id, String lang, AcquisitionsUnitAssignment entity,
       Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
-    VoucherAcquisitionsUnitAssignmentsHelper helper = new VoucherAcquisitionsUnitAssignmentsHelper(okapiHeaders, vertxContext, lang);
+    VoucherAcquisitionsUnitAssignmentsHelper helper = new VoucherAcquisitionsUnitAssignmentsHelper(okapiHeaders, vertxContext,
+        lang);
 
-    if (entity.getId() != null && !entity.getId()
-     .equals(id)) {
-     helper.addProcessingError(MISMATCH_BETWEEN_ID_IN_PATH_AND_BODY.toError());
-     asyncResultHandler.handle(succeededFuture(helper.buildErrorResponse(422)));
-   } else {
-     helper.updateAcquisitionsUnitAssignment(entity.withId(id))
-       .thenAccept(units -> {
+    validateAcqsUnitAssignment(helper, id, entity, asyncResultHandler);
+    helper.updateAcquisitionsUnitAssignment(entity.withId(id))
+      .thenAccept(units -> {
         logInfo("Successfully updated acquisitions unit assignment with id={}", id);
-         asyncResultHandler.handle(succeededFuture(helper.buildNoContentResponse()));
-       })
-       .exceptionally(t -> handleErrorResponse(asyncResultHandler, helper, t));
-   }
+        asyncResultHandler.handle(succeededFuture(helper.buildNoContentResponse()));
+      })
+      .exceptionally(t -> handleErrorResponse(asyncResultHandler, helper, t));
   }
 
   @Validate
   @Override
   public void getVoucherAcquisitionsUnitAssignmentsById(String id, String lang, Map<String, String> okapiHeaders,
       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
-    VoucherAcquisitionsUnitAssignmentsHelper helper = new VoucherAcquisitionsUnitAssignmentsHelper(okapiHeaders, vertxContext, lang);
+    VoucherAcquisitionsUnitAssignmentsHelper helper = new VoucherAcquisitionsUnitAssignmentsHelper(okapiHeaders, vertxContext,
+        lang);
 
     helper.getAcquisitionsUnitAssignment(id)
-     .thenAccept(unit -> {
-       logInfo("Successfully retrieved acquisitions unit assignment: {}", unit);
-       asyncResultHandler.handle(succeededFuture(helper.buildOkResponse(unit)));
-     })
-     .exceptionally(t -> handleErrorResponse(asyncResultHandler, helper, t));
+      .thenAccept(unit -> {
+        logInfo("Successfully retrieved acquisitions unit assignment: {}", unit);
+        asyncResultHandler.handle(succeededFuture(helper.buildOkResponse(unit)));
+      })
+      .exceptionally(t -> handleErrorResponse(asyncResultHandler, helper, t));
   }
 
   @Validate
   @Override
   public void deleteVoucherAcquisitionsUnitAssignmentsById(String id, String lang, Map<String, String> okapiHeaders,
       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
-    VoucherAcquisitionsUnitAssignmentsHelper helper = new VoucherAcquisitionsUnitAssignmentsHelper(okapiHeaders, vertxContext, lang);
+    VoucherAcquisitionsUnitAssignmentsHelper helper = new VoucherAcquisitionsUnitAssignmentsHelper(okapiHeaders, vertxContext,
+        lang);
 
     helper.deleteAcquisitionsUnitAssignment(id)
-     .thenAccept(ok -> {
-       logInfo("Successfully deleted acquisitions unit assignment with id={}", id);
-       asyncResultHandler.handle(succeededFuture(helper.buildNoContentResponse()));
-     })
-     .exceptionally(t -> handleErrorResponse(asyncResultHandler, helper, t));
+      .thenAccept(ok -> {
+        logInfo("Successfully deleted acquisitions unit assignment with id={}", id);
+        asyncResultHandler.handle(succeededFuture(helper.buildNoContentResponse()));
+      })
+      .exceptionally(t -> handleErrorResponse(asyncResultHandler, helper, t));
   }
 
   private void logInfo(String message, Object entry) {
     if (logger.isInfoEnabled()) {
-      logger.info(message, JsonObject.mapFrom(entry).encodePrettily());
+      logger.info(message, JsonObject.mapFrom(entry)
+        .encodePrettily());
     }
   }
-  
+
   private void logInfo(String message, String id) {
     if (logger.isInfoEnabled()) {
       logger.info(message, id);

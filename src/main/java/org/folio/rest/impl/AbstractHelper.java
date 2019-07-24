@@ -172,7 +172,7 @@ public abstract class AbstractHelper {
     return id;
   }
 
-  protected void addProcessingError(Error error) {
+  public void addProcessingError(Error error) {
     processingErrors.getErrors().add(error);
   }
 
