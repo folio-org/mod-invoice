@@ -31,7 +31,12 @@ public class AcquisitionsUnitAssignmentsHelper extends AbstractHelper {
       String endpoint = String.format(GET_UNIT_ASSIGNMENTS_BY_QUERY, limit, offset, buildQuery(query, logger), lang);
 
       handleGetRequest(endpoint, httpClient, ctx, okapiHeaders, logger)
-        .thenApply(jsonUnits -> jsonUnits.mapTo(AcquisitionsUnitAssignmentCollection.class))
+        .thenCompose(jsonUnits -> VertxCompletableFuture.supplyBlockingAsync(ctx, () -> {
+          if (logger.isInfoEnabled()) {
+            logger.info("Successfully retrieved assignments list", jsonUnits.encodePrettily());
+          }
+          return jsonUnits.mapTo(AcquisitionsUnitAssignmentCollection.class);
+        }))
         .thenAccept(future::complete)
         .exceptionally(t -> {
           future.completeExceptionally(t.getCause());
