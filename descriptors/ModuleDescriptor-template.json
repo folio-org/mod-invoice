@@ -180,7 +180,7 @@
         {
           "methods": ["GET"],
           "pathPattern": "/invoice/acquisitions-unit-assignments",
-          "permissionsRequired": ["invoice.acquisitions-units-assignments.assignments.collection.get"],
+          "permissionsRequired": ["invoice.acquisitions-units-assignments.collection.get"],
           "modulePermissions": [
             "invoice-storage.acquisitions-unit-assignments.collection.get"
           ]
@@ -188,7 +188,7 @@
         {
           "methods": ["POST"],
           "pathPattern": "/invoice/acquisitions-unit-assignments",
-          "permissionsRequired": ["invoice.acquisitions-units-assignments.assignments.item.post"],
+          "permissionsRequired": ["invoice.acquisitions-units-assignments.item.post"],
           "modulePermissions": [
             "invoice-storage.acquisitions-unit-assignments.item.post"
           ]
@@ -196,7 +196,7 @@
         {
           "methods": ["GET"],
           "pathPattern": "/invoice/acquisitions-unit-assignments/{id}",
-          "permissionsRequired": ["invoice.acquisitions-units-assignments.assignments.item.get"],
+          "permissionsRequired": ["invoice.acquisitions-units-assignments.item.get"],
           "modulePermissions": [
             "invoice-storage.acquisitions-unit-assignments.item.get"
           ]
@@ -204,7 +204,7 @@
         {
           "methods": ["PUT"],
           "pathPattern": "/invoice/acquisitions-unit-assignments/{id}",
-          "permissionsRequired": ["invoice.acquisitions-units-assignments.assignments.item.put"],
+          "permissionsRequired": ["invoice.acquisitions-units-assignments.item.put"],
           "modulePermissions": [
             "invoice-storage.acquisitions-unit-assignments.item.put"
           ]
@@ -212,7 +212,7 @@
         {
           "methods": ["DELETE"],
           "pathPattern": "/invoice/acquisitions-unit-assignments/{id}",
-          "permissionsRequired": ["invoice.acquisitions-units-assignments.assignments.item.delete"],
+          "permissionsRequired": ["invoice.acquisitions-units-assignments.item.delete"],
           "modulePermissions": [
             "invoice-storage.acquisitions-unit-assignments.item.delete"
           ]
@@ -226,7 +226,7 @@
         {
           "methods": ["GET"],
           "pathPattern": "/voucher/acquisitions-unit-assignments",
-          "permissionsRequired": ["voucher.acquisitions-units-assignments.assignments.collection.get"],
+          "permissionsRequired": ["voucher.acquisitions-units-assignments.collection.get"],
           "modulePermissions": [
             "voucher-storage.acquisitions-unit-assignments.collection.get"
           ]
@@ -234,7 +234,7 @@
         {
           "methods": ["POST"],
           "pathPattern": "/voucher/acquisitions-unit-assignments",
-          "permissionsRequired": ["voucher.acquisitions-units-assignments.assignments.item.post"],
+          "permissionsRequired": ["voucher.acquisitions-units-assignments.item.post"],
           "modulePermissions": [
             "voucher-storage.acquisitions-unit-assignments.item.post"
           ]
@@ -242,7 +242,7 @@
         {
           "methods": ["GET"],
           "pathPattern": "/voucher/acquisitions-unit-assignments/{id}",
-          "permissionsRequired": ["voucher.acquisitions-units-assignments.assignments.item.get"],
+          "permissionsRequired": ["voucher.acquisitions-units-assignments.item.get"],
           "modulePermissions": [
             "voucher-storage.acquisitions-unit-assignments.item.get"
           ]
@@ -250,7 +250,7 @@
         {
           "methods": ["PUT"],
           "pathPattern": "/voucher/acquisitions-unit-assignments/{id}",
-          "permissionsRequired": ["voucher.acquisitions-units-assignments.assignments.item.put"],
+          "permissionsRequired": ["voucher.acquisitions-units-assignments.item.put"],
           "modulePermissions": [
             "voucher-storage.acquisitions-unit-assignments.item.put"
           ]
@@ -258,7 +258,7 @@
         {
           "methods": ["DELETE"],
           "pathPattern": "/voucher/acquisitions-unit-assignments/{id}",
-          "permissionsRequired": ["voucher.acquisitions-units-assignments.assignments.item.delete"],
+          "permissionsRequired": ["voucher.acquisitions-units-assignments.item.delete"],
           "modulePermissions": [
             "voucher-storage.acquisitions-unit-assignments.item.delete"
           ]
@@ -418,82 +418,82 @@
         "voucher.vouchers.item.get",
         "voucher.voucher-lines.item.get",
         "voucher.voucher-lines.item.put",
-        "voucher.acquisitions-units-assignments.assignments.all"
+        "voucher.acquisitions-units-assignments.all"
       ],
       "visible": false
     },
     {
-      "permissionName": "invoice.acquisitions-units-assignments.assignments.collection.get",
+      "permissionName": "invoice.acquisitions-units-assignments.collection.get",
       "displayName": "Acquisitions unit assignment - get assignments",
       "description": "Get a collection of acquisitions unit assignments"
     },
     {
-      "permissionName": "invoice.acquisitions-units-assignments.assignments.item.post",
+      "permissionName": "invoice.acquisitions-units-assignments.item.post",
       "displayName": "Acquisitions unit assignment - create unit assignment",
       "description": "Create a new acquisitions unit assignments"
     },
     {
-      "permissionName": "invoice.acquisitions-units-assignments.assignments.item.get",
+      "permissionName": "invoice.acquisitions-units-assignments.item.get",
       "displayName": "Acquisitions unit assignment - get unit assignment",
       "description": "Fetch an acquisitions unit assignments"
     },
     {
-      "permissionName": "invoice.acquisitions-units-assignments.assignments.item.put",
+      "permissionName": "invoice.acquisitions-units-assignments.item.put",
       "displayName": "Acquisitions unit assignment - update unit assignment",
       "description": "Update an acquisitions unit assignments"
     },
     {
-      "permissionName": "invoice.acquisitions-units-assignments.assignments.item.delete",
+      "permissionName": "invoice.acquisitions-units-assignments.item.delete",
       "displayName": "Acquisitions units - delete unit",
       "description": "Delete an acquisitions unit assignments"
     },
     {
-      "permissionName": "invoice.acquisitions-units-assignments.assignments.all",
+      "permissionName": "invoice.acquisitions-units-assignments.all",
       "displayName": "All acquisitions-unit-assignments perms",
       "description": "All permissions for the acquisitions-unit-assignments",
       "subPermissions": [
-        "invoice.acquisitions-units-assignments.assignments.collection.get",
-        "invoice.acquisitions-units-assignments.assignments.item.post",
-        "invoice.acquisitions-units-assignments.assignments.item.get",
-        "invoice.acquisitions-units-assignments.assignments.item.put",
-        "invoice.acquisitions-units-assignments.assignments.item.delete"
+        "invoice.acquisitions-units-assignments.collection.get",
+        "invoice.acquisitions-units-assignments.item.post",
+        "invoice.acquisitions-units-assignments.item.get",
+        "invoice.acquisitions-units-assignments.item.put",
+        "invoice.acquisitions-units-assignments.item.delete"
       ]
     },
     {
-      "permissionName": "voucher.acquisitions-units-assignments.assignments.collection.get",
+      "permissionName": "voucher.acquisitions-units-assignments.collection.get",
       "displayName": "Acquisitions unit assignment for voucher - get assignments",
       "description": "Get a collection of acquisitions unit assignments"
     },
     {
-      "permissionName": "voucher.acquisitions-units-assignments.assignments.item.post",
+      "permissionName": "voucher.acquisitions-units-assignments.item.post",
       "displayName": "Acquisitions unit assignment for voucher - create unit assignment",
       "description": "Create a new acquisitions unit assignments"
     },
     {
-      "permissionName": "voucher.acquisitions-units-assignments.assignments.item.get",
+      "permissionName": "voucher.acquisitions-units-assignments.item.get",
       "displayName": "Acquisitions unit assignment for voucher - get unit assignment",
       "description": "Fetch an acquisitions unit assignments"
     },
     {
-      "permissionName": "voucher.acquisitions-units-assignments.assignments.item.put",
+      "permissionName": "voucher.acquisitions-units-assignments.item.put",
       "displayName": "Acquisitions unit assignment for voucher - update unit assignment",
       "description": "Update an acquisitions unit assignments"
     },
     {
-      "permissionName": "voucher.acquisitions-units-assignments.assignments.item.delete",
+      "permissionName": "voucher.acquisitions-units-assignments.item.delete",
       "displayName": "Acquisitions unit assignment for voucher - delete unit",
       "description": "Delete an acquisitions unit assignments"
     },
     {
-      "permissionName": "voucher.acquisitions-units-assignments.assignments.all",
+      "permissionName": "voucher.acquisitions-units-assignments.all",
       "displayName": "All acquisitions-unit-assignments perms",
       "description": "All permissions for the voucher acquisitions-unit-assignments",
       "subPermissions": [
-        "voucher.acquisitions-units-assignments.assignments.collection.get",
-        "voucher.acquisitions-units-assignments.assignments.item.post",
-        "voucher.acquisitions-units-assignments.assignments.item.get",
-        "voucher.acquisitions-units-assignments.assignments.item.put",
-        "voucher.acquisitions-units-assignments.assignments.item.delete"
+        "voucher.acquisitions-units-assignments.collection.get",
+        "voucher.acquisitions-units-assignments.item.post",
+        "voucher.acquisitions-units-assignments.item.get",
+        "voucher.acquisitions-units-assignments.item.put",
+        "voucher.acquisitions-units-assignments.item.delete"
       ]
     },
     {
@@ -501,7 +501,7 @@
       "displayName": "Invoice module - all permissions",
       "description": "Entire set of permissions needed to use the invoice module",
       "subPermissions": [
-        "invoice.acquisitions-units-assignments.assignments.all",
+        "invoice.acquisitions-units-assignments.all",
         "invoice.invoices.collection.get",
         "invoice.invoices.item.get",
         "invoice.invoices.item.post",
