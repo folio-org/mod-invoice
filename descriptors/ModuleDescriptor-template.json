@@ -174,52 +174,6 @@
       ]
     },
     {
-      "id": "invoice.acquisitions-unit-assignments",
-      "version": "1.0",
-      "handlers": [
-        {
-          "methods": ["GET"],
-          "pathPattern": "/invoice/acquisitions-unit-assignments",
-          "permissionsRequired": ["invoice.acquisitions-units-assignments.assignments.collection.get"],
-          "modulePermissions": [
-            "invoice-storage.acquisitions-unit-assignments.collection.get"
-          ]
-        },
-        {
-          "methods": ["POST"],
-          "pathPattern": "/invoice/acquisitions-unit-assignments",
-          "permissionsRequired": ["invoice.acquisitions-units-assignments.assignments.item.post"],
-          "modulePermissions": [
-            "invoice-storage.acquisitions-unit-assignments.item.post"
-          ]
-        },
-        {
-          "methods": ["GET"],
-          "pathPattern": "/invoice/acquisitions-unit-assignments/{id}",
-          "permissionsRequired": ["invoice.acquisitions-units-assignments.assignments.item.get"],
-          "modulePermissions": [
-            "invoice-storage.acquisitions-unit-assignments.item.get"
-          ]
-        },
-        {
-          "methods": ["PUT"],
-          "pathPattern": "/invoice/acquisitions-unit-assignments/{id}",
-          "permissionsRequired": ["invoice.acquisitions-units-assignments.assignments.item.put"],
-          "modulePermissions": [
-            "invoice-storage.acquisitions-unit-assignments.item.put"
-          ]
-        },
-        {
-          "methods": ["DELETE"],
-          "pathPattern": "/invoice/acquisitions-unit-assignments/{id}",
-          "permissionsRequired": ["invoice.acquisitions-units-assignments.assignments.item.delete"],
-          "modulePermissions": [
-            "invoice-storage.acquisitions-unit-assignments.item.delete"
-          ]
-        }
-      ]
-    },
-    {
       "id": "_jsonSchemas",
       "version": "1.0",
       "interfaceType" : "multiple",
@@ -250,10 +204,6 @@
     },
     {
       "id": "invoice-storage.invoice-line-number",
-      "version": "1.0"
-    },
-    {
-      "id": "invoice-storage.acquisitions-unit-assignments",
       "version": "1.0"
     },
     {
