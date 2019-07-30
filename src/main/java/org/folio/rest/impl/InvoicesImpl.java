@@ -1,22 +1,22 @@
 package org.folio.rest.impl;
 
+import static io.vertx.core.Future.succeededFuture;
+
+import java.util.Map;
+
+import javax.ws.rs.core.Response;
+
+import org.apache.commons.lang3.StringUtils;
+import org.folio.rest.annotations.Validate;
+import org.folio.rest.jaxrs.model.Invoice;
+import org.folio.rest.jaxrs.model.InvoiceLine;
+
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Context;
 import io.vertx.core.Handler;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
-import org.apache.commons.lang3.StringUtils;
-import org.folio.rest.annotations.Validate;
-import org.folio.rest.jaxrs.model.AcquisitionsUnitAssignment;
-import org.folio.rest.jaxrs.model.Invoice;
-import org.folio.rest.jaxrs.model.InvoiceLine;
-
-import javax.ws.rs.core.Response;
-import java.util.Map;
-
-import static io.vertx.core.Future.succeededFuture;
-import static org.folio.invoices.utils.ErrorCodes.MISMATCH_BETWEEN_ID_IN_PATH_AND_BODY;
 
 public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
 
@@ -24,7 +24,6 @@ public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
   private static final String NOT_SUPPORTED = "Not supported"; // To overcome sonarcloud warning
   private static final String INVOICE_LOCATION_PREFIX = "/invoice/invoices/%s";
   private static final String INVOICE_LINE_LOCATION_PREFIX = "/invoice/invoice-lines/%s";
-  private static final String ACQUISITIONS_UNIT_ASSIGNMENTS_LOCATION_PREFIX = "/invoice/acquisitions-unit-assignments/%s";
   public static final String PROTECTED_AND_MODIFIED_FIELDS = "protectedAndModifiedFields";
 
   @Validate
@@ -168,87 +167,12 @@ public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
     asyncResultHandler.handle(succeededFuture(GetInvoiceInvoiceNumberResponse.respond500WithTextPlain(NOT_SUPPORTED)));
   }
 
-  @Validate
-  @Override
-  public void postInvoiceAcquisitionsUnitAssignments(String lang, AcquisitionsUnitAssignment entity,
-      Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
-    AcquisitionsUnitAssignmentsHelper helper = new AcquisitionsUnitAssignmentsHelper(okapiHeaders, vertxContext, lang);
 
-    helper.createAcquisitionsUnitAssignment(entity)
-      .thenAccept(unit -> {
-        logInfo("Successfully created new acquisitions unit: {}", unit);
-        asyncResultHandler.handle(succeededFuture(
-            helper.buildResponseWithLocation(String.format(ACQUISITIONS_UNIT_ASSIGNMENTS_LOCATION_PREFIX, unit.getId()), unit)));
-      })
-      .exceptionally(t -> handleErrorResponse(asyncResultHandler, helper, t));
-  }
-
-  @Validate
-  @Override
-  public void getInvoiceAcquisitionsUnitAssignments(String query, int offset, int limit, String lang,
-      Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
-    AcquisitionsUnitAssignmentsHelper helper = new AcquisitionsUnitAssignmentsHelper(okapiHeaders, vertxContext, lang);
-
-    helper.getAcquisitionsUnitAssignments(query, offset, limit)
-      .thenAccept(units -> {
-        logInfo("Successfully retrieved acquisitions unit assignment : {}", units);
-        asyncResultHandler.handle(succeededFuture(helper.buildOkResponse(units)));
-      })
-      .exceptionally(t -> handleErrorResponse(asyncResultHandler, helper, t));
-  }
-
-  @Validate
-  @Override
-  public void putInvoiceAcquisitionsUnitAssignmentsById(String id, String lang, AcquisitionsUnitAssignment entity,
-      Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
-    AcquisitionsUnitAssignmentsHelper helper = new AcquisitionsUnitAssignmentsHelper(okapiHeaders, vertxContext, lang);
-
-    if (entity.getId() != null && !entity.getId()
-      .equals(id)) {
-      helper.addProcessingError(MISMATCH_BETWEEN_ID_IN_PATH_AND_BODY.toError());
-      asyncResultHandler.handle(succeededFuture(helper.buildErrorResponse(422)));
-    } else {
-      helper.updateAcquisitionsUnitAssignment(entity.withId(id))
-        .thenAccept(units -> {
-         logInfo("Successfully updated acquisitions unit assignment with id={}", id);
-          asyncResultHandler.handle(succeededFuture(helper.buildNoContentResponse()));
-        })
-        .exceptionally(t -> handleErrorResponse(asyncResultHandler, helper, t));
-    }
-  }
-
-  @Validate
-  @Override
-  public void getInvoiceAcquisitionsUnitAssignmentsById(String id, String lang, Map<String, String> okapiHeaders,
-      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
-    AcquisitionsUnitAssignmentsHelper helper = new AcquisitionsUnitAssignmentsHelper(okapiHeaders, vertxContext, lang);
-
-    helper.getAcquisitionsUnitAssignment(id)
-      .thenAccept(unit -> {
-        logInfo("Successfully retrieved acquisitions unit assignment: {}", unit);
-        asyncResultHandler.handle(succeededFuture(helper.buildOkResponse(unit)));
-      })
-      .exceptionally(t -> handleErrorResponse(asyncResultHandler, helper, t));
-  }
 
   private void logInfo(String message, Object entry) {
     if (logger.isInfoEnabled()) {
       logger.info(message, JsonObject.mapFrom(entry).encodePrettily());
     }
-  }
-
-  @Validate
-  @Override
-  public void deleteInvoiceAcquisitionsUnitAssignmentsById(String id, String lang, Map<String, String> okapiHeaders,
-      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
-    AcquisitionsUnitAssignmentsHelper helper = new AcquisitionsUnitAssignmentsHelper(okapiHeaders, vertxContext, lang);
-
-    helper.deleteAcquisitionsUnitAssignment(id)
-      .thenAccept(ok -> {
-        logInfo("Successfully deleted acquisitions unit assignment with id={}", id);
-        asyncResultHandler.handle(succeededFuture(helper.buildNoContentResponse()));
-      })
-      .exceptionally(t -> handleErrorResponse(asyncResultHandler, helper, t));
   }
 
   private void logInfo(String message, String id) {
