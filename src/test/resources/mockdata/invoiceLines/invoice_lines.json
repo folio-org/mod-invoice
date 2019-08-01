@@ -40,6 +40,8 @@
           "relationToTotal": "In addition to"
         }
       ],
+      "adjustmentsTotal" : 0.22,
+      "total" : 2.00,
       "metadata": {
         "createdDate": "2018-07-19T00:00:00.000+0000",
         "createdByUserId": "28d1057c-d137-11e8-a8d5-f2801f1b9fd1"

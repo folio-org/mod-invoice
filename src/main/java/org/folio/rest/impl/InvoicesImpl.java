@@ -3,6 +3,7 @@ package org.folio.rest.impl;
 import static io.vertx.core.Future.succeededFuture;
 
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 
 import javax.ws.rs.core.Response;
 
@@ -17,6 +18,7 @@ import io.vertx.core.Handler;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
+import me.escoffier.vertx.completablefuture.VertxCompletableFuture;
 
 public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
 
@@ -127,9 +129,12 @@ public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
   public void getInvoiceInvoiceLinesById(String id, String lang, Map<String, String> okapiHeaders,
       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     InvoiceLineHelper invoiceLineHelper = new InvoiceLineHelper(okapiHeaders, vertxContext, lang);
-
+    CompletableFuture<InvoiceLine> future = new VertxCompletableFuture<>(vertxContext);
+    
     invoiceLineHelper.getInvoiceLine(id)
       .thenCompose(invoiceLineHelper::calculateInvoiceLineTotals)
+      .thenCompose(invoiceLineHelper::writeTotalToStorageIfDifferent)
+
       .thenAccept(invoiceLine -> asyncResultHandler.handle(succeededFuture(invoiceLineHelper.buildOkResponse(invoiceLine))))
       .exceptionally(t -> handleErrorResponse(asyncResultHandler, invoiceLineHelper, t));
   }

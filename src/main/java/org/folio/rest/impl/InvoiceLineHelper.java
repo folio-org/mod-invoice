@@ -18,6 +18,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
+import java.util.concurrent.ExecutionException;
 
 import me.escoffier.vertx.completablefuture.VertxCompletableFuture;
 import org.folio.invoices.rest.exceptions.HttpException;
@@ -76,7 +77,27 @@ public class InvoiceLineHelper extends AbstractHelper {
       handleGetRequest(resourceByIdPath(INVOICE_LINES, id, lang), httpClient, ctx, okapiHeaders, logger)
         .thenAccept(jsonInvoiceLine -> {
           logger.info("Successfully retrieved invoice line: " + jsonInvoiceLine.encodePrettily());
-          future.complete(jsonInvoiceLine.mapTo(InvoiceLine.class));
+          
+          // copy
+          InvoiceLine existingInvoiceLine = jsonInvoiceLine.mapTo(InvoiceLine.class);
+          
+          
+          calculateInvoiceLineTotals(existingInvoiceLine)
+          .thenAccept(updatedInvoiceLineTotal -> {
+            Double updatedTotal = updatedInvoiceLineTotal.getTotal();
+            Double existingTotal = existingInvoiceLine.getTotal();
+            logger.info("updatedTotal-> " + updatedTotal + " existingTotal-> " + existingTotal);
+            int retVal = Double.compare(updatedTotal, existingTotal);
+            if(retVal != 0) {
+              writeTotalToStorageIfDifferent(updatedInvoiceLineTotal)
+              .thenAccept(updatedInvLine -> {
+                future.complete(updatedInvoiceLineTotal);
+              });
+            }
+          });
+
+          future.complete(existingInvoiceLine);
+          
         })
         .exceptionally(t -> {
           logger.error("Error getting invoice line", t);
@@ -90,6 +111,12 @@ public class InvoiceLineHelper extends AbstractHelper {
     return future;
   }
 
+  CompletableFuture<InvoiceLine> writeTotalToStorageIfDifferent(InvoiceLine invoiceLine) {
+    JsonObject line = mapFrom(invoiceLine);
+    logger.info(" -- writing invoiceLine to storage -- ");
+    return createRecordInStorage(line, resourcesPath(INVOICE_LINES)).thenApply(invLine -> line.mapTo(InvoiceLine.class));
+  }
+  
   public CompletableFuture<Void> updateInvoiceLine(InvoiceLine invoiceLine) {
 
     return getInvoiceLine(invoiceLine.getId())
@@ -97,6 +124,7 @@ public class InvoiceLineHelper extends AbstractHelper {
         .thenAccept(existedInvoice -> {
           validateInvoiceLine(existedInvoice, invoiceLine, existedInvoiceLine);
           invoiceLine.setInvoiceLineNumber(existedInvoiceLine.getInvoiceLineNumber());
+          calculateInvoiceLineTotals(invoiceLine);
         })
       )
       .thenCompose(ok -> handlePutRequest(resourceByIdPath(INVOICE_LINES, invoiceLine.getId(), lang),
@@ -116,6 +144,7 @@ public class InvoiceLineHelper extends AbstractHelper {
    * @return completable future which might hold {@link InvoiceLine} on success, {@code null} if validation fails or an exception if any issue happens
    */
   CompletableFuture<InvoiceLine> createInvoiceLine(InvoiceLine invoiceLine) {
+
     return getInvoice(invoiceLine)
       .thenApply(this::checkIfInvoiceLineCreationAllowed)
       .thenCompose(invoice -> createInvoiceLine(invoiceLine, invoice));
