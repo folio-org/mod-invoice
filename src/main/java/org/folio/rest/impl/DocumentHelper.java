@@ -9,8 +9,8 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
 import org.folio.invoices.utils.ResourcePathResolver;
-import org.folio.rest.jaxrs.model.Document;
 import org.folio.rest.jaxrs.model.DocumentCollection;
+import org.folio.rest.jaxrs.model.InvoiceDocument;
 
 import io.vertx.core.Context;
 import io.vertx.core.json.JsonObject;
@@ -22,10 +22,13 @@ class DocumentHelper extends AbstractHelper {
     super(getHttpClient(okapiHeaders), okapiHeaders, ctx, lang);
   }
 
-  CompletableFuture<Document> createDocument(String invoiceId, Document document) {
+  CompletableFuture<InvoiceDocument> createDocument(String invoiceId, InvoiceDocument document) {
     JsonObject jsonDocument = JsonObject.mapFrom(document);
     String endpoint = String.format(resourcesPath(ResourcePathResolver.INVOICE_DOCUMENTS_ENDPOINT), invoiceId);
-    return createRecordInStorage(jsonDocument, endpoint).thenApply(document::withId);
+    return createRecordInStorage(jsonDocument, endpoint).thenApply(id -> {
+      document.getDocumentMetadata().setId(id);
+      return document;
+    });
   }
 
   CompletableFuture<DocumentCollection> getDocumentsByInvoiceId(String invoiceId) {
@@ -53,16 +56,16 @@ class DocumentHelper extends AbstractHelper {
 
   private String buildDocumentEndpoint(String invoiceId, String documentId) {
     String invoiceDocumentsEndpoint = String.format(resourcesPath(INVOICE_DOCUMENTS_ENDPOINT), invoiceId);
-    return String.format(invoiceDocumentsEndpoint + "/%s?lang=%s", documentId, lang);
+    return invoiceDocumentsEndpoint + String.format("/%s?lang=%s", documentId, lang);
   }
 
-  CompletableFuture<Document> getDocumentByInvoiceIdAndDocumentId(String invoiceId, String documentId) {
+  CompletableFuture<InvoiceDocument> getDocumentByInvoiceIdAndDocumentId(String invoiceId, String documentId) {
     String endpoint = buildDocumentEndpoint(invoiceId, documentId);
     return handleGetRequest(endpoint, httpClient, ctx, okapiHeaders, logger).thenApply(jsonDocument -> {
       if (logger.isInfoEnabled()) {
         logger.info("Successfully retrieved document by id: " + jsonDocument.encodePrettily());
       }
-      return jsonDocument.mapTo(Document.class);
+      return jsonDocument.mapTo(InvoiceDocument.class);
     });
   }
 }

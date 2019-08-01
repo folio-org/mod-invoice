@@ -1,10 +1,7 @@
 package org.folio.rest.impl;
 
 import static io.vertx.core.Future.succeededFuture;
-<<<<<<< HEAD
 import static org.folio.invoices.utils.ErrorCodes.MISMATCH_BETWEEN_ID_IN_PATH_AND_BODY;
-=======
->>>>>>> master
 
 import java.util.Map;
 
@@ -12,12 +9,8 @@ import javax.ws.rs.core.Response;
 
 import org.apache.commons.lang3.StringUtils;
 import org.folio.rest.annotations.Validate;
-<<<<<<< HEAD
-import org.folio.rest.jaxrs.model.AcquisitionsUnitAssignment;
-import org.folio.rest.jaxrs.model.Document;
-=======
->>>>>>> master
 import org.folio.rest.jaxrs.model.Invoice;
+import org.folio.rest.jaxrs.model.InvoiceDocument;
 import org.folio.rest.jaxrs.model.InvoiceLine;
 
 import io.vertx.core.AsyncResult;
@@ -26,17 +19,6 @@ import io.vertx.core.Handler;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
-import org.apache.commons.lang3.StringUtils;
-import org.folio.rest.annotations.Validate;
-import org.folio.rest.jaxrs.model.AcquisitionsUnitAssignment;
-import org.folio.rest.jaxrs.model.Invoice;
-import org.folio.rest.jaxrs.model.InvoiceLine;
-
-import javax.ws.rs.core.Response;
-import java.util.Map;
-
-import static io.vertx.core.Future.succeededFuture;
-import static org.folio.invoices.utils.ErrorCodes.MISMATCH_BETWEEN_ID_IN_PATH_AND_BODY;
 
 public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
 
@@ -44,7 +26,6 @@ public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
   private static final String NOT_SUPPORTED = "Not supported"; // To overcome sonarcloud warning
   private static final String INVOICE_LOCATION_PREFIX = "/invoice/invoices/%s";
   private static final String INVOICE_LINE_LOCATION_PREFIX = "/invoice/invoice-lines/%s";
-  private static final String ACQUISITIONS_UNIT_ASSIGNMENTS_LOCATION_PREFIX = "/invoice/acquisitions-unit-assignments/%s";
   public static final String PROTECTED_AND_MODIFIED_FIELDS = "protectedAndModifiedFields";
   private static final String DOCUMENTS_LOCATION_PREFIX = "/invoice/invoices/%s/documents/%s";
 
@@ -189,13 +170,12 @@ public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
     asyncResultHandler.handle(succeededFuture(GetInvoiceInvoiceNumberResponse.respond500WithTextPlain(NOT_SUPPORTED)));
   }
 
-
-
-  private void logInfo(String message, Object entry) {
-    if (logger.isInfoEnabled()) {
-      logger.info(message, JsonObject.mapFrom(entry).encodePrettily());
-    }
-    if (!entity.getInvoiceId()
+  @Validate
+  @Override
+  public void postInvoiceInvoicesDocumentsById(String id, String lang, InvoiceDocument entity, Map<String, String> okapiHeaders,
+    Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+    DocumentHelper documentHelper = new DocumentHelper(okapiHeaders, vertxContext, lang);
+    if (!entity.getDocumentMetadata().getInvoiceId()
       .equals(id)) {
       documentHelper.addProcessingError(MISMATCH_BETWEEN_ID_IN_PATH_AND_BODY.toError());
       asyncResultHandler.handle(succeededFuture(documentHelper.buildErrorResponse(422)));
@@ -203,14 +183,24 @@ public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
       documentHelper.createDocument(id, entity)
         .thenAccept(document -> {
           logInfo("Successfully created document with id={}", id);
-          asyncResultHandler.handle(succeededFuture(documentHelper.buildResponseWithLocation(String.format(DOCUMENTS_LOCATION_PREFIX, id, document.getId()), document)));
+          asyncResultHandler.handle(succeededFuture(documentHelper.buildResponseWithLocation(String.format(DOCUMENTS_LOCATION_PREFIX, id, document.getDocumentMetadata().getId()), document)));
         })
         .exceptionally(t -> handleErrorResponse(asyncResultHandler, documentHelper, t));
     }
   }
 
+  @Validate
   @Override
-  public void putInvoiceInvoicesDocumentsByIdAndDocumentId(String id, String documentId, String lang, Document entity,
+  public void getInvoiceInvoicesDocumentsById(String id, String lang, Map<String, String> okapiHeaders,
+    Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+    DocumentHelper documentHelper = new DocumentHelper(okapiHeaders, vertxContext, lang);
+    documentHelper.getDocumentsByInvoiceId(id)
+      .thenAccept(documents -> asyncResultHandler.handle(succeededFuture(documentHelper.buildOkResponse(documents))))
+      .exceptionally(t -> handleErrorResponse(asyncResultHandler, documentHelper, t));
+  }
+
+  @Override
+  public void putInvoiceInvoicesDocumentsByIdAndDocumentId(String id, String documentId, String lang, InvoiceDocument entity,
       Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     asyncResultHandler.handle(succeededFuture(PutInvoiceInvoicesDocumentsByIdAndDocumentIdResponse.respond501WithTextPlain(Response.Status.NOT_IMPLEMENTED.getReasonPhrase())));
   }
@@ -239,6 +229,11 @@ public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
       .exceptionally(t -> handleErrorResponse(asyncResultHandler, documentHelper, t));
   }
 
+  private void logInfo(String message, Object entry) {
+    if (logger.isInfoEnabled()) {
+      logger.info(message, JsonObject.mapFrom(entry).encodePrettily());
+    }
+  }
 
   private void logInfo(String message, String id) {
     if (logger.isInfoEnabled()) {

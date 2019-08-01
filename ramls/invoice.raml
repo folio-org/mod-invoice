@@ -71,7 +71,7 @@ resourceTypes:
         type:
           collection:
             schemaCollection: documentCollection
-            schemaItem: document
+            schemaItem: invoiceDocument
             exampleCollection: !include acq-models/mod-invoice-storage/examples/document_collection.sample
             exampleItem: !include acq-models/mod-invoice-storage/examples/document.sample
         /{documentId}:
@@ -81,7 +81,7 @@ resourceTypes:
               type: UUID
           type:
             collection-item:
-              schema: document
+              schema: invoiceDocument
               exampleItem: !include acq-models/mod-invoice-storage/examples/document.sample
           put:
             responses:
