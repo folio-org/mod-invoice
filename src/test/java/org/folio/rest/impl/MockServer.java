@@ -181,11 +181,6 @@ public class MockServer {
     router.route(HttpMethod.POST, resourceByValuePath(VOUCHER_NUMBER_START)).handler(this::handlePostVoucherStartValue);
     router.route(HttpMethod.POST, resourcesPath(VOUCHERS)).handler(ctx -> handlePostEntry(ctx, Voucher.class, VOUCHERS));
     router.route(HttpMethod.POST, resourcesPath(VOUCHER_LINES)).handler(ctx -> handlePostEntry(ctx, VoucherLine.class, VOUCHER_LINES));
-<<<<<<< HEAD
-    router.route(HttpMethod.POST, resourcesPath(ACQUISITIONS_UNIT_ASSIGNMENTS)).handler(ctx -> handlePostEntry(ctx, AcquisitionsUnitAssignment.class, ACQUISITIONS_UNIT_ASSIGNMENTS));
-    router.route(HttpMethod.POST, resourcesPath(INVOICE_DOCUMENTS_ENDPOINT)).handler(ctx -> handlePostEntry(ctx, Document.class, INVOICE_DOCUMENTS_ENDPOINT));
-=======
->>>>>>> master
 
     router.route(HttpMethod.GET, resourcesPath(INVOICES)).handler(this::handleGetInvoices);
     router.route(HttpMethod.GET, resourcesPath(INVOICE_LINES)).handler(this::handleGetInvoiceLines);
@@ -202,21 +197,10 @@ public class MockServer {
     router.route(HttpMethod.GET, resourcesPath(VOUCHER_NUMBER)).handler(this::handleGetVoucherNumber);
     router.route(HttpMethod.GET, resourcesPath(FUNDS)).handler(this::handleGetFundRecords);
     router.route(HttpMethod.GET,"/configurations/entries").handler(this::handleConfigurationModuleResponse);
-<<<<<<< HEAD
-    router.route(HttpMethod.GET, resourcesPath(ACQUISITIONS_UNIT_ASSIGNMENTS)).handler(this::handleGetAcquisitionsUnitAssignments);
-    router.route(HttpMethod.GET, resourceByIdPath(ACQUISITIONS_UNIT_ASSIGNMENTS)).handler(this::handleGetAcquisitionsUnitAssignment);
-    router.route(HttpMethod.GET, resourceByIdPath(INVOICE_DOCUMENTS_ENDPOINT)).handler(this::handleGetInvoiceDocument);
-=======
->>>>>>> master
 
     router.route(HttpMethod.DELETE, resourceByIdPath(INVOICES)).handler(ctx -> handleDeleteRequest(ctx, INVOICES));
     router.route(HttpMethod.DELETE, resourceByIdPath(INVOICE_LINES)).handler(ctx -> handleDeleteRequest(ctx, INVOICE_LINES));
     router.route(HttpMethod.DELETE, resourceByIdPath(VOUCHER_LINES)).handler(ctx -> handleDeleteRequest(ctx, VOUCHER_LINES));
-<<<<<<< HEAD
-    router.route(HttpMethod.DELETE, resourceByIdPath(ACQUISITIONS_UNIT_ASSIGNMENTS)).handler(ctx -> handleDeleteRequest(ctx, ACQUISITIONS_UNIT_ASSIGNMENTS));
-    router.route(HttpMethod.DELETE, resourceByIdPath(INVOICE_DOCUMENTS_ENDPOINT)).handler(ctx -> handleDeleteRequest(ctx, INVOICE_DOCUMENTS_ENDPOINT));
-=======
->>>>>>> master
 
     router.route(HttpMethod.PUT, resourceByIdPath(INVOICES)).handler(ctx -> handlePutGenericSubObj(ctx, INVOICES));
     router.route(HttpMethod.PUT, resourceByIdPath(INVOICE_LINES)).handler(ctx -> handlePutGenericSubObj(ctx, INVOICE_LINES));
