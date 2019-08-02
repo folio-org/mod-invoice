@@ -86,7 +86,6 @@ public class InvoiceLineHelper extends AbstractHelper {
           calculateInvoiceLineTotals(invoiceLineToRecalculateTotal).thenAccept(invoiceLineWithTotalRecalculated -> {
             Double recalculatedTotal = invoiceLineWithTotalRecalculated.getTotal();
             Double existingTotal = InvoiceLineFromStorage.getTotal();
-            logger.info("updatedTotal-> " + recalculatedTotal + " existingTotal-> " + existingTotal);
             int retVal = Double.compare(recalculatedTotal, existingTotal);
             if (retVal != 0) {
               writeTotalToStorageIfDifferent(invoiceLineWithTotalRecalculated).thenAccept(updatedInvLine -> {
@@ -94,9 +93,7 @@ public class InvoiceLineHelper extends AbstractHelper {
               });
             }
           });
-
           future.complete(InvoiceLineFromStorage);
-
         })
         .exceptionally(t -> {
           logger.error("Error getting invoice line", t);
@@ -106,7 +103,6 @@ public class InvoiceLineHelper extends AbstractHelper {
     } catch (Exception e) {
       future.completeExceptionally(e);
     }
-
     return future;
   }
 
