@@ -100,6 +100,14 @@ public class InvoiceLinesApiTest extends ApiTestBase {
 
     logger.info(JsonObject.mapFrom(resp).encodePrettily());
     assertEquals(id, resp.getId());
+
+    // MODINVOICE-86 calculate the totals and if different from what was retrieved, write it back to storage
+    Double existingTotal = invoiceLinesList.getJsonArray("invoiceLines")
+      .getJsonObject(0)
+      .getDouble("total");
+    assertThat(existingTotal, equalTo(2.00d)); // outdated total in storage
+    double expectedTotal = 2.42d;
+    assertThat(resp.getTotal(), equalTo(expectedTotal)); // updated total after recalculating
   }
 
   @Test
@@ -149,12 +157,19 @@ public class InvoiceLinesApiTest extends ApiTestBase {
 
     InvoiceLine reqData = getMockAsJson(INVOICE_LINE_WITH_APPROVED_INVOICE_SAMPLE_PATH).mapTo(InvoiceLine.class);
     reqData.setInvoiceId(OPEN_INVOICE_ID);
+    Double actualTotal = 2.00d;
+    assertThat(actualTotal, equalTo(reqData.getTotal()));
+
     String body = JsonObject.mapFrom(reqData).encodePrettily();
     final InvoiceLine respData = verifyPostResponse(INVOICE_LINES_PATH, body, prepareHeaders(X_OKAPI_TENANT), APPLICATION_JSON, 201)
       .as(InvoiceLine.class);
 
     String invoiceId = respData.getId();
     String InvoiceLineNo = respData.getInvoiceLineNumber();
+
+    // MODINVOICE-86 Verify total is calculated upon invoice-line creation
+    Double expectedTotal = 2.42d;
+    assertThat(respData.getTotal(), equalTo(expectedTotal));
 
     assertThat(invoiceId, notNullValue());
     assertThat(InvoiceLineNo, notNullValue());
@@ -209,6 +224,14 @@ public class InvoiceLinesApiTest extends ApiTestBase {
     String reqData = getMockData(INVOICE_LINES_MOCK_DATA_PATH + INVOICE_LINE_WITH_APPROVED_EXISTED_INVOICE_ID + ".json");
 
     verifyPut(String.format(INVOICE_LINE_ID_PATH, INVOICE_LINE_WITH_APPROVED_EXISTED_INVOICE_ID), reqData, "", 204);
+
+    // Get updated invoice-line to verify if invoice-line total is calculated
+    final InvoiceLine resp = verifySuccessGet(INVOICE_LINES_PATH + "/" + INVOICE_LINE_WITH_APPROVED_EXISTED_INVOICE_ID,
+        InvoiceLine.class);
+
+     // MODINVOICE-86 Verify total is calculated upon invoice-line update
+    Double expectedTotal = 2.42d;
+    assertThat(resp.getTotal(), equalTo(expectedTotal));
   }
 
   @Test
@@ -421,7 +444,7 @@ public class InvoiceLinesApiTest extends ApiTestBase {
       invoiceLine.setId(invoiceLineId);
       verifyPut(String.format(INVOICE_LINE_ID_PATH, invoiceLineId), JsonObject.mapFrom(invoiceLine).encode(), "", HttpStatus.SC_NO_CONTENT);
       MatcherAssert.assertThat(serverRqRs.row(INVOICE_LINES).get(HttpMethod.GET), hasSize(1));
-      MatcherAssert.assertThat(serverRqRs.row(INVOICES).get(HttpMethod.GET), hasSize(1));
+      MatcherAssert.assertThat(serverRqRs.row(INVOICES).get(HttpMethod.GET), hasSize(3));
       MatcherAssert.assertThat(serverRqRs.row(INVOICE_LINES).get(HttpMethod.PUT), hasSize(1));
       serverRqRs.clear();
 
