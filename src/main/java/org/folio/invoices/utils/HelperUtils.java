@@ -29,7 +29,6 @@ import one.util.streamex.StreamEx;
 import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.apache.commons.lang3.reflect.FieldUtils;
 import org.folio.invoices.rest.exceptions.HttpException;
-import org.folio.rest.impl.InvoicesImpl;
 import org.folio.rest.jaxrs.model.Adjustment;
 import org.folio.rest.jaxrs.model.FundDistribution;
 import org.folio.rest.jaxrs.model.Invoice;
@@ -46,7 +45,6 @@ import io.vertx.core.Context;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
 import me.escoffier.vertx.completablefuture.VertxCompletableFuture;
 
 public class HelperUtils {
@@ -54,8 +52,6 @@ public class HelperUtils {
   private static final String EXCEPTION_CALLING_ENDPOINT_MSG = "Exception calling {} {}";
   private static final String CALLING_ENDPOINT_MSG = "Sending {} {}";
 
-  private static final Logger logger = LoggerFactory.getLogger(HelperUtils.class);
-  
   private HelperUtils() {
 
   }
@@ -157,9 +153,9 @@ public class HelperUtils {
       Context ctx, Map<String, String> okapiHeaders, Logger logger) {
     CompletableFuture<Void> future = new VertxCompletableFuture<>(ctx);
     try {
-      //if (logger.isDebugEnabled()) {
-        logger.info("Sending 'PUT {}' with body: {}", endpoint, recordData.encodePrettily());
-      //}
+      if (logger.isDebugEnabled()) {
+        logger.debug("Sending 'PUT {}' with body: {}", endpoint, recordData.encodePrettily());
+      }
       httpClient
         .request(HttpMethod.PUT, recordData.toBuffer(), endpoint, okapiHeaders)
         .thenApply(HelperUtils::verifyAndExtractBody)
@@ -304,7 +300,6 @@ public class HelperUtils {
   }
 
   public static InvoiceLine calculateInvoiceLineTotals(InvoiceLine invoiceLine, Invoice invoice) {
-    logger.info(" -- calculateInvoiceLineTotals is getting called -- ");
     String currency = invoice.getCurrency();
     CurrencyUnit currencyUnit = Monetary.getCurrency(currency);
     MonetaryAmount subTotal = Money.of(invoiceLine.getSubTotal(), currencyUnit);
@@ -313,9 +308,7 @@ public class HelperUtils {
     MonetaryAmount total = adjustmentTotals.add(subTotal);
     invoiceLine.setAdjustmentsTotal(convertToDoubleWithRounding(adjustmentTotals));
     invoiceLine.setTotal(convertToDoubleWithRounding(total));
-    
-    logger.info(" -- After calculating total -- "+ JsonObject.mapFrom(invoiceLine).encodePrettily());
-    
+
     return invoiceLine;
   }
 }

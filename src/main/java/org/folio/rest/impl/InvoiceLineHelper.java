@@ -18,7 +18,6 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
-import java.util.concurrent.ExecutionException;
 
 import me.escoffier.vertx.completablefuture.VertxCompletableFuture;
 import org.folio.invoices.rest.exceptions.HttpException;
@@ -74,30 +73,30 @@ public class InvoiceLineHelper extends AbstractHelper {
     CompletableFuture<InvoiceLine> future = new VertxCompletableFuture<>(ctx);
 
     try {
+      // 1. GET invoice-line from storage
       handleGetRequest(resourceByIdPath(INVOICE_LINES, id, lang), httpClient, ctx, okapiHeaders, logger)
         .thenAccept(jsonInvoiceLine -> {
           logger.info("Successfully retrieved invoice line: " + jsonInvoiceLine.encodePrettily());
-          
-          // copy
-          InvoiceLine existingInvoiceLine = jsonInvoiceLine.mapTo(InvoiceLine.class);
-          
-          
-          calculateInvoiceLineTotals(existingInvoiceLine)
-          .thenAccept(updatedInvoiceLineTotal -> {
-            Double updatedTotal = updatedInvoiceLineTotal.getTotal();
-            Double existingTotal = existingInvoiceLine.getTotal();
-            logger.info("updatedTotal-> " + updatedTotal + " existingTotal-> " + existingTotal);
-            int retVal = Double.compare(updatedTotal, existingTotal);
-            if(retVal != 0) {
-              writeTotalToStorageIfDifferent(updatedInvoiceLineTotal)
-              .thenAccept(updatedInvLine -> {
-                future.complete(updatedInvoiceLineTotal);
+
+          // 2. Copy invoice-line from storage for future comparison
+          InvoiceLine InvoiceLineFromStorage = jsonInvoiceLine.mapTo(InvoiceLine.class);
+          InvoiceLine invoiceLineToRecalculateTotal = jsonInvoiceLine.mapTo(InvoiceLine.class);
+
+          // 3. Calculate invoice-line totals, if different from storage and write it back to storage
+          calculateInvoiceLineTotals(invoiceLineToRecalculateTotal).thenAccept(invoiceLineWithTotalRecalculated -> {
+            Double recalculatedTotal = invoiceLineWithTotalRecalculated.getTotal();
+            Double existingTotal = InvoiceLineFromStorage.getTotal();
+            logger.info("updatedTotal-> " + recalculatedTotal + " existingTotal-> " + existingTotal);
+            int retVal = Double.compare(recalculatedTotal, existingTotal);
+            if (retVal != 0) {
+              writeTotalToStorageIfDifferent(invoiceLineWithTotalRecalculated).thenAccept(updatedInvLine -> {
+                future.complete(invoiceLineWithTotalRecalculated);
               });
             }
           });
 
-          future.complete(existingInvoiceLine);
-          
+          future.complete(InvoiceLineFromStorage);
+
         })
         .exceptionally(t -> {
           logger.error("Error getting invoice line", t);
@@ -113,7 +112,6 @@ public class InvoiceLineHelper extends AbstractHelper {
 
   CompletableFuture<InvoiceLine> writeTotalToStorageIfDifferent(InvoiceLine invoiceLine) {
     JsonObject line = mapFrom(invoiceLine);
-    logger.info(" -- writing invoiceLine to storage -- ");
     return createRecordInStorage(line, resourcesPath(INVOICE_LINES)).thenApply(invLine -> line.mapTo(InvoiceLine.class));
   }
   
@@ -144,7 +142,6 @@ public class InvoiceLineHelper extends AbstractHelper {
    * @return completable future which might hold {@link InvoiceLine} on success, {@code null} if validation fails or an exception if any issue happens
    */
   CompletableFuture<InvoiceLine> createInvoiceLine(InvoiceLine invoiceLine) {
-
     return getInvoice(invoiceLine)
       .thenApply(this::checkIfInvoiceLineCreationAllowed)
       .thenCompose(invoice -> createInvoiceLine(invoiceLine, invoice));
