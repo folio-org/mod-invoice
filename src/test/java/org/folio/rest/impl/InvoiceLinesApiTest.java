@@ -107,7 +107,9 @@ public class InvoiceLinesApiTest extends ApiTestBase {
       .getDouble("total");
     assertThat(existingTotal, equalTo(2.00d)); // outdated total in storage
     double expectedTotal = 2.42d;
-    assertThat(resp.getTotal(), equalTo(expectedTotal)); // updated total after recalculating
+    
+    final InvoiceLine updatedResponse = verifySuccessGet(INVOICE_LINES_PATH + "/" + id, InvoiceLine.class);
+    assertThat(updatedResponse.getTotal(), equalTo(expectedTotal)); // updated total after recalculating
   }
 
   @Test
@@ -444,7 +446,7 @@ public class InvoiceLinesApiTest extends ApiTestBase {
       invoiceLine.setId(invoiceLineId);
       verifyPut(String.format(INVOICE_LINE_ID_PATH, invoiceLineId), JsonObject.mapFrom(invoiceLine).encode(), "", HttpStatus.SC_NO_CONTENT);
       MatcherAssert.assertThat(serverRqRs.row(INVOICE_LINES).get(HttpMethod.GET), hasSize(1));
-      MatcherAssert.assertThat(serverRqRs.row(INVOICES).get(HttpMethod.GET), hasSize(3));
+      MatcherAssert.assertThat(serverRqRs.row(INVOICES).get(HttpMethod.GET), hasSize(1));
       MatcherAssert.assertThat(serverRqRs.row(INVOICE_LINES).get(HttpMethod.PUT), hasSize(1));
       serverRqRs.clear();
 

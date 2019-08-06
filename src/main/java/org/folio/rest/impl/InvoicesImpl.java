@@ -128,8 +128,7 @@ public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     InvoiceLineHelper invoiceLineHelper = new InvoiceLineHelper(okapiHeaders, vertxContext, lang);
 
-    invoiceLineHelper.getInvoiceLine(id)
-      .thenCompose(invoiceLineHelper::calculateInvoiceLineTotals)
+    invoiceLineHelper.getInvoiceLinePersistTotal(id)
       .thenAccept(invoiceLine -> asyncResultHandler.handle(succeededFuture(invoiceLineHelper.buildOkResponse(invoiceLine))))
       .exceptionally(t -> handleErrorResponse(asyncResultHandler, invoiceLineHelper, t));
   }

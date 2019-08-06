@@ -121,6 +121,7 @@ public class MockServer {
   private static final String ID_PATH_PARAM = "/:" + ID;
   private static final String VALUE_PATH_PARAM = "/:value";
   private static final String TOTAL_RECORDS = "totalRecords";
+  private static final String INVOICE_LINE_VERIFY_TOTAL = "e0d08448-343b-118a-8c2f-4fb50248d672";
 
   static final Header INVOICE_NUMBER_ERROR_X_OKAPI_TENANT = new Header(OKAPI_HEADER_TENANT, INVOICE_NUMBER_ERROR_TENANT);
   static final Header ERROR_X_OKAPI_TENANT = new Header(OKAPI_HEADER_TENANT, ERROR_TENANT);
@@ -362,25 +363,30 @@ public class MockServer {
   }
   
   private void handleGetInvoiceLineById(RoutingContext ctx) {
-    logger.info("handleGetInvoiceLinesById got: GET " + ctx.request().path());
-    String id = ctx.request().getParam(ID);
+    logger.info("handleGetInvoiceLinesById got: GET " + ctx.request()
+      .path());
+    String id = ctx.request()
+      .getParam(ID);
     logger.info("id: " + id);
     if (ID_FOR_INTERNAL_SERVER_ERROR.equals(id)) {
       serverResponse(ctx, 500, APPLICATION_JSON, Response.Status.INTERNAL_SERVER_ERROR.getReasonPhrase());
     } else {
       try {
         String filePath = String.format(MOCK_DATA_PATH_PATTERN, INVOICE_LINES_MOCK_DATA_PATH, id);
-  
         JsonObject invoiceLine = new JsonObject(getMockData(filePath));
-  
         // validate content against schema
-       InvoiceLine invoiceSchema = invoiceLine.mapTo(InvoiceLine.class);
+        InvoiceLine invoiceSchema = invoiceLine.mapTo(InvoiceLine.class);
         invoiceSchema.setId(id);
+        if (id.equals(INVOICE_LINE_VERIFY_TOTAL)) {
+          invoiceSchema.setTotal(2.42d);
+        }
         invoiceLine = JsonObject.mapFrom(invoiceSchema);
         addServerRqRsData(HttpMethod.GET, INVOICE_LINES, invoiceLine);
         serverResponse(ctx, 200, APPLICATION_JSON, invoiceLine.encodePrettily());
       } catch (IOException e) {
-        ctx.response().setStatusCode(404).end(id);
+        ctx.response()
+          .setStatusCode(404)
+          .end(id);
       }
     }
   }
