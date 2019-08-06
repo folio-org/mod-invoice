@@ -88,7 +88,7 @@
           "modulePermissions": [
             "invoice-storage.invoice-lines.item.get",
             "invoice-storage.invoices.item.get",
-            "invoice-storage.invoice-lines.item.post"
+            "invoice-storage.invoice-lines.item.put"
           ]
         },
         {
