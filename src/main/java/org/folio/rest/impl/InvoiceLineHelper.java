@@ -79,7 +79,7 @@ public class InvoiceLineHelper extends AbstractHelper {
           future.complete(jsonInvoiceLine.mapTo(InvoiceLine.class));
         })
         .exceptionally(t -> {
-          logger.error("Error getting invoice line", t);
+          logger.error("Error getting invoice line by id ", id);
           future.completeExceptionally(t);
           return null;
         });
@@ -93,10 +93,9 @@ public class InvoiceLineHelper extends AbstractHelper {
   public CompletableFuture<InvoiceLine> getInvoiceLinePersistTotal(String id) {
     CompletableFuture<InvoiceLine> future = new VertxCompletableFuture<>(ctx);
 
-    try {
       // 1. GET invoice-line from storage
       getInvoiceLine(id).thenAccept(invoiceLineFromStorage -> {
-        logger.info("Successfully retrieved invoice line: " + invoiceLineFromStorage);
+        logger.info("Successfully retrieved invoice line to persist total: " + invoiceLineFromStorage);
 
         // 2. Save invoice-line total from storage for future comparison
         Double existingTotal = invoiceLineFromStorage.getTotal();
@@ -113,14 +112,10 @@ public class InvoiceLineHelper extends AbstractHelper {
         });
       })
         .exceptionally(t -> {
-          logger.error("Error getting invoice line by id ", id);
+          logger.error("Error persisting total for invoice line ", id);
           future.completeExceptionally(t);
           return null;
         });
-    } catch (Exception e) {
-      future.completeExceptionally(e);
-    }
-
     return future;
   }
 
