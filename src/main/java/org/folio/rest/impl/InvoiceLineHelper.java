@@ -93,29 +93,34 @@ public class InvoiceLineHelper extends AbstractHelper {
   public CompletableFuture<InvoiceLine> getInvoiceLinePersistTotal(String id) {
     CompletableFuture<InvoiceLine> future = new VertxCompletableFuture<>(ctx);
 
-      // 1. GET invoice-line from storage
-      getInvoiceLine(id).thenAccept(invoiceLineFromStorage -> {
-        logger.info("Successfully retrieved invoice line to persist total: " + invoiceLineFromStorage);
+    // 1. GET invoice-line from storage
+    getInvoiceLine(id).thenAccept(invoiceLineFromStorage -> {
+      logger.info("Successfully retrieved invoice line to persist total: " + invoiceLineFromStorage);
 
-        // 2. Save invoice-line total from storage for future comparison
-        Double existingTotal = invoiceLineFromStorage.getTotal();
+      // 2. Save invoice-line total from storage for future comparison
+      Double existingTotal = invoiceLineFromStorage.getTotal();
 
-        // 3. Calculate invoice-line totals, if different from storage, write it back to storage
-        calculateInvoiceLineTotals(invoiceLineFromStorage).thenAccept(invoiceLineWithTotalRecalculated -> {
-          Double recalculatedTotal = invoiceLineWithTotalRecalculated.getTotal();
-          if (Double.compare(recalculatedTotal, existingTotal) != 0) {
-            updateInvoiceLineToStorage(invoiceLineWithTotalRecalculated)
-              .thenAccept(updateSuccess -> future.complete(invoiceLineWithTotalRecalculated));
-          } else {
-            future.complete(invoiceLineFromStorage);
-          }
-        });
-      })
-        .exceptionally(t -> {
-          logger.error("Error persisting total for invoice line ", id);
-          future.completeExceptionally(t);
-          return null;
-        });
+      // 3. Calculate invoice-line totals, if different from storage, write it back to storage
+      calculateInvoiceLineTotals(invoiceLineFromStorage).thenAccept(invoiceLineWithTotalRecalculated -> {
+        Double recalculatedTotal = invoiceLineWithTotalRecalculated.getTotal();
+        if (Double.compare(recalculatedTotal, existingTotal) != 0) {
+          updateInvoiceLineToStorage(invoiceLineWithTotalRecalculated)
+            .thenAccept(updateSuccess -> future.complete(invoiceLineWithTotalRecalculated))
+            .exceptionally(t -> {
+              logger.error("Error persisting total to storage for invoice-line ", id);
+              future.completeExceptionally(t);
+              return null;
+            });
+        } else {
+          future.complete(invoiceLineFromStorage);
+        }
+      });
+    })
+      .exceptionally(t -> {
+        logger.error("Error persisting total for invoice line ", id);
+        future.completeExceptionally(t);
+        return null;
+      });
     return future;
   }
 
