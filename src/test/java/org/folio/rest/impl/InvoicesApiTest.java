@@ -110,16 +110,16 @@ public class InvoicesApiTest extends ApiTestBase {
   private static final String INVOICE_ID_WITH_LANG_PATH = INVOICE_ID_PATH + "?lang=%s";
   private static final String INVOICE_PATH_BAD = "/invoice/bad";
   private static final String INVOICE_NUMBER_PATH = "/invoice/invoice-number";
-  static final String INVOICE_MOCK_DATA_PATH = BASE_MOCK_DATA_PATH + "invoices/";
+  public static final String INVOICE_MOCK_DATA_PATH = BASE_MOCK_DATA_PATH + "invoices/";
   private static final String PO_LINE_MOCK_DATA_PATH = BASE_MOCK_DATA_PATH + "poLines/";
   static final String APPROVED_INVOICE_ID = "c0d08448-347b-418a-8c2f-5fb50248d67e";
   static final String REVIEWED_INVOICE_ID = "3773625a-dc0d-4a2d-959e-4a91ee265d67";
-  static final String OPEN_INVOICE_ID = "52fd6ec7-ddc3-4c53-bc26-2779afc27136";
+  public static final String OPEN_INVOICE_ID = "52fd6ec7-ddc3-4c53-bc26-2779afc27136";
   private static final String APPROVED_INVOICE_SAMPLE_PATH = INVOICE_MOCK_DATA_PATH + APPROVED_INVOICE_ID + ".json";
   private static final String REVIEWED_INVOICE_SAMPLE_PATH = INVOICE_MOCK_DATA_PATH + REVIEWED_INVOICE_ID + ".json";
   private static final String REVIEWED_INVOICE_WITH_EXISTING_VOUCHER_SAMPLE_PATH = INVOICE_MOCK_DATA_PATH + "402d0d32-7377-46a7-86ab-542b5684506e.json";
 
-  private static final String OPEN_INVOICE_SAMPLE_PATH = INVOICE_MOCK_DATA_PATH + OPEN_INVOICE_ID + ".json";
+  public static final String OPEN_INVOICE_SAMPLE_PATH = INVOICE_MOCK_DATA_PATH + OPEN_INVOICE_ID + ".json";
   private static final String OPEN_INVOICE_WITH_APPROVED_FILEDS_SAMPLE_PATH = INVOICE_MOCK_DATA_PATH + "d3e13ed1-59da-4f70-bba3-a140e11d30f3.json";
 
   static final String BAD_QUERY = "unprocessableQuery";
@@ -1301,7 +1301,7 @@ public class InvoicesApiTest extends ApiTestBase {
 
       assertThat(serverRqRs.row(INVOICES).get(HttpMethod.GET), hasSize(1));
       assertThat(serverRqRs.row(INVOICES).get(HttpMethod.PUT), hasSize(1));
-      serverRqRs.clear();
+      clearServiceInteractions();
     }
   }
 
@@ -1323,8 +1323,6 @@ public class InvoicesApiTest extends ApiTestBase {
     Headers headers = prepareHeaders(X_OKAPI_TENANT, X_OKAPI_USERID);
 
     verifyPut(String.format(INVOICE_ID_PATH, invoice.getId()), JsonObject.mapFrom(invoice).encode(), headers, APPLICATION_JSON, HttpStatus.SC_UNPROCESSABLE_ENTITY);
-
-    serverRqRs.clear();
   }
 
   @Test
