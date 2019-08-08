@@ -114,7 +114,12 @@ public class InvoiceLineHelper extends AbstractHelper {
         } else {
           future.complete(invoiceLineFromStorage);
         }
-      });
+      })
+        .exceptionally(t -> {
+          logger.error("Error calculating invoice-line totals");
+          future.completeExceptionally(t);
+          return null;
+        });
     })
       .exceptionally(t -> {
         logger.error("Error persisting total for invoice line ", id);

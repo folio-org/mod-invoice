@@ -535,7 +535,7 @@ public class MockServer {
     String tenant = ctx.request().getHeader(OKAPI_HEADER_TENANT);
     addServerRqRsData(HttpMethod.PUT, subObj, ctx.getBodyAsJson());
 
-    if (ID_DOES_NOT_EXIST.equals(id)) {
+    if (ID_DOES_NOT_EXIST.equals(id) || "55e4b6f5-f974-42da-9a77-24d4e8ef0e70".equals(id)) {
       serverResponse(ctx, 404, APPLICATION_JSON, id);
     } else if (ID_FOR_INTERNAL_SERVER_ERROR.equals(id) || ID_FOR_INTERNAL_SERVER_ERROR_PUT.equals(id) || UPDATE_VOUCHER_ERROR_TENANT.equals(tenant)) {
       serverResponse(ctx, 500, APPLICATION_JSON, Response.Status.INTERNAL_SERVER_ERROR.getReasonPhrase());

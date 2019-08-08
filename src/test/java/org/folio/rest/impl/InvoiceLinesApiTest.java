@@ -55,6 +55,8 @@ public class InvoiceLinesApiTest extends ApiTestBase {
 
   private static final String INVOICE_LINE_ADJUSTMENTS_SAMPLE_PATH = INVOICE_LINES_MOCK_DATA_PATH + "29846620-8fb6-4433-b84e-0b6051eb76ec.json";
   private static final String BAD_INVOICE_LINE_ID = "5a34ae0e-5a11-4337-be95-1a20cfdc3161";
+  private static final String UPDATE_INVOICE_TOTAL_ID_DOES_NOT_EXIST = "55e4b6f5-f974-42da-9a77-24d4e8ef0e70";
+
   static final String INVOICE_ID = "invoiceId";
   private static final String NULL = "null";
 
@@ -109,7 +111,39 @@ public class InvoiceLinesApiTest extends ApiTestBase {
     double expectedTotal = 2.42d;
     
     final InvoiceLine updatedResponse = verifySuccessGet(INVOICE_LINES_PATH + "/" + id, InvoiceLine.class);
+
+    List<JsonObject> verifyInvoiceLineTotalInPut = MockServer.getRqRsEntries(HttpMethod.PUT,INVOICE_LINES);
+    assertThat(verifyInvoiceLineTotalInPut.get(0).mapTo(InvoiceLine.class).getTotal(), equalTo(expectedTotal));
+
     assertThat(updatedResponse.getTotal(), equalTo(expectedTotal)); // updated total after recalculating
+  }
+
+  @Test
+  public void getInvoicingInvoiceLinesByIdCalculateTotalExceptionTest() throws Exception {
+    logger.info("=== Test error calculating invoice line while doing get Invoice line By Id ===");
+
+    JsonObject invoiceLinesList = new JsonObject(getMockData(INVOICE_LINES_LIST_PATH));
+    String id = invoiceLinesList.getJsonArray("invoiceLines")
+      .getJsonObject(1)
+      .getString(ID);
+    logger.info(String.format("using mock datafile: %s%s.json", INVOICE_LINES_LIST_PATH, id));
+
+    verifyGet(INVOICE_LINES_PATH + "/" + id, APPLICATION_JSON, 404);
+  }
+
+  @Test
+  public void testGetInvoicingInvoiceLinesByIdUpdateTotalException() throws Exception {
+    logger.info("=== Test 404 id not found exception while updating invoice line after calculating invoice line total ===");
+
+    final Response resp = verifyGet(INVOICE_LINES_PATH + "/" + UPDATE_INVOICE_TOTAL_ID_DOES_NOT_EXIST, APPLICATION_JSON, 404);
+
+    String actual = resp.getBody()
+      .as(Errors.class)
+      .getErrors()
+      .get(0)
+      .getMessage();
+
+    assertEquals(UPDATE_INVOICE_TOTAL_ID_DOES_NOT_EXIST, actual);
   }
 
   @Test
