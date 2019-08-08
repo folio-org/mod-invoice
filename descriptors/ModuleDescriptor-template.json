@@ -110,6 +110,30 @@
           "methods": ["GET"],
           "pathPattern": "/invoice/invoice-number",
           "permissionsRequired": ["invoice.invoice-number.item.get"]
+        },
+        {
+          "methods": ["GET"],
+          "pathPattern": "/invoice/invoices/{id}/documents",
+          "permissionsRequired": ["invoice.invoices.documents.collection.get"],
+          "modulePermissions": ["invoice-storage.invoices.documents.collection.get"]
+        },
+        {
+          "methods": ["POST"],
+          "pathPattern": "/invoice/invoices/{id}/documents",
+          "permissionsRequired": ["invoice.invoices.documents.item.post"],
+          "modulePermissions": ["invoice-storage.invoices.documents.item.post"]
+        },
+        {
+          "methods": ["GET"],
+          "pathPattern": "/invoice/invoices/{id}/documents/{documentId}",
+          "permissionsRequired": ["invoice.invoices.documents.item.get"],
+          "modulePermissions": ["invoice-storage.invoices.documents.item.get"]
+        },
+        {
+          "methods": ["DELETE"],
+          "pathPattern": "/invoice/invoices/{id}/documents/{documentId}",
+          "permissionsRequired": ["invoice.invoices.documents.item.delete"],
+          "modulePermissions": ["invoice-storage.invoices.documents.item.delete"]
         }
       ]
     },
@@ -174,36 +198,6 @@
       ]
     },
     {
-      "id": "document",
-      "version": "1.0",
-      "handlers": [
-        {
-          "methods": ["GET"],
-          "pathPattern": "/invoice/invoices/{id}/documents",
-          "permissionsRequired": ["invoice.invoices.documents.collection.get"],
-          "modulePermissions": ["invoice-storage.invoices.documents.collection.get"]
-        },
-        {
-          "methods": ["POST"],
-          "pathPattern": "/invoice/invoices/{id}/documents",
-          "permissionsRequired": ["invoice.invoices.documents.item.post"],
-          "modulePermissions": ["invoice-storage.invoices.documents.item.post"]
-        },
-        {
-          "methods": ["GET"],
-          "pathPattern": "/invoice/invoices/{id}/documents/{documentId}",
-          "permissionsRequired": ["invoice.invoices.documents.item.get"],
-          "modulePermissions": ["invoice-storage.invoices.documents.item.get"]
-        },
-        {
-          "methods": ["DELETE"],
-          "pathPattern": "/invoice/invoices/{id}/documents/{documentId}",
-          "permissionsRequired": ["invoice.invoices.documents.item.delete"],
-          "modulePermissions": ["invoice-storage.invoices.documents.item.delete"]
-        }
-      ]
-    },
-    {
       "id": "_jsonSchemas",
       "version": "1.0",
       "interfaceType" : "multiple",
@@ -250,10 +244,6 @@
     },
     {
       "id": "voucher-storage.voucher-number",
-      "version": "1.0"
-    },
-    {
-      "id": "invoice-storage.invoices.documents",
       "version": "1.0"
     }
   ],
@@ -413,6 +403,17 @@
       "description": "Modify an existing Document"
     },
     {
+      "permissionName": "invoice.invoices.documents.all",
+      "displayName": "All documents perms",
+      "description": "All permissions for the documents",
+      "subPermissions": [
+        "invoice.invoices.documents.collection.get",
+        "invoice.invoices.documents.item.post",
+        "invoice.invoices.documents.item.get",
+        "invoice.invoices.documents.item.delete"
+      ]
+    },
+    {
       "permissionName": "invoice.all",
       "displayName": "Invoice module - all permissions",
       "description": "Entire set of permissions needed to use the invoice module",
@@ -432,7 +433,8 @@
         "invoice.invoice-number.item.post",
         "voucher-number.start.post",
         "voucher-number.start.get",
-        "voucher.all"
+        "voucher.all",
+        "invoice.invoices.documents.all"
       ],
       "visible": false
     }
