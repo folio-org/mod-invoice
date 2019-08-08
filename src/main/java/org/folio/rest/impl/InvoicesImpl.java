@@ -191,18 +191,11 @@ public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
 
   @Validate
   @Override
-  public void getInvoiceInvoicesDocumentsById(String id, String lang, Map<String, String> okapiHeaders,
-    Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+  public void getInvoiceInvoicesDocumentsById(String id, int offset, int limit, String query, String lang, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     DocumentHelper documentHelper = new DocumentHelper(okapiHeaders, vertxContext, lang);
     documentHelper.getDocumentsByInvoiceId(id)
       .thenAccept(documents -> asyncResultHandler.handle(succeededFuture(documentHelper.buildOkResponse(documents))))
       .exceptionally(t -> handleErrorResponse(asyncResultHandler, documentHelper, t));
-  }
-
-  @Override
-  public void putInvoiceInvoicesDocumentsByIdAndDocumentId(String id, String documentId, String lang, InvoiceDocument entity,
-      Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
-    asyncResultHandler.handle(succeededFuture(PutInvoiceInvoicesDocumentsByIdAndDocumentIdResponse.respond501WithTextPlain(Response.Status.NOT_IMPLEMENTED.getReasonPhrase())));
   }
 
   @Validate

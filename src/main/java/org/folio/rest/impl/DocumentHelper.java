@@ -2,8 +2,7 @@ package org.folio.rest.impl;
 
 import static org.folio.invoices.utils.HelperUtils.handleDeleteRequest;
 import static org.folio.invoices.utils.HelperUtils.handleGetRequest;
-import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_DOCUMENTS_ENDPOINT;
-import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
+import static org.folio.invoices.utils.ResourcePathResolver.*;
 
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -24,7 +23,7 @@ class DocumentHelper extends AbstractHelper {
 
   CompletableFuture<InvoiceDocument> createDocument(String invoiceId, InvoiceDocument document) {
     JsonObject jsonDocument = JsonObject.mapFrom(document);
-    String endpoint = String.format(resourcesPath(ResourcePathResolver.INVOICE_DOCUMENTS_ENDPOINT), invoiceId);
+    String endpoint = String.format(resourcesPath(ResourcePathResolver.INVOICE_DOCUMENTS), invoiceId);
     return createRecordInStorage(jsonDocument, endpoint).thenApply(id -> {
       document.getDocumentMetadata().setId(id);
       return document;
@@ -34,7 +33,7 @@ class DocumentHelper extends AbstractHelper {
   CompletableFuture<DocumentCollection> getDocumentsByInvoiceId(String invoiceId) {
     CompletableFuture<DocumentCollection> future = new VertxCompletableFuture<>(ctx);
 
-    String endpoint = String.format(resourcesPath(ResourcePathResolver.INVOICE_DOCUMENTS_ENDPOINT), invoiceId);
+    String endpoint = resourceByParentIdPath(ResourcePathResolver.INVOICE_DOCUMENTS, invoiceId, lang);
     handleGetRequest(endpoint, httpClient, ctx, okapiHeaders, logger)
       .thenCompose(documents -> VertxCompletableFuture.supplyBlockingAsync(ctx, () -> {
         if (logger.isInfoEnabled()) {
@@ -51,16 +50,12 @@ class DocumentHelper extends AbstractHelper {
   }
 
   CompletableFuture<Void> deleteDocument(String invoiceId, String documentId) {
-    return handleDeleteRequest(buildDocumentEndpoint(invoiceId, documentId), httpClient, ctx, okapiHeaders, logger);
-  }
-
-  private String buildDocumentEndpoint(String invoiceId, String documentId) {
-    String invoiceDocumentsEndpoint = String.format(resourcesPath(INVOICE_DOCUMENTS_ENDPOINT), invoiceId);
-    return invoiceDocumentsEndpoint + String.format("/%s?lang=%s", documentId, lang);
+    String endpoint = resourceByParentIdAndIdPath(INVOICE_DOCUMENTS, invoiceId, documentId, lang);
+    return handleDeleteRequest(endpoint, httpClient, ctx, okapiHeaders, logger);
   }
 
   CompletableFuture<InvoiceDocument> getDocumentByInvoiceIdAndDocumentId(String invoiceId, String documentId) {
-    String endpoint = buildDocumentEndpoint(invoiceId, documentId);
+    String endpoint = resourceByParentIdAndIdPath(INVOICE_DOCUMENTS, invoiceId, documentId, lang);
     return handleGetRequest(endpoint, httpClient, ctx, okapiHeaders, logger).thenApply(jsonDocument -> {
       if (logger.isInfoEnabled()) {
         logger.info("Successfully retrieved document by id: " + jsonDocument.encodePrettily());
