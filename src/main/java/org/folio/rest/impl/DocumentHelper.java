@@ -1,5 +1,6 @@
 package org.folio.rest.impl;
 
+import static org.folio.invoices.utils.HelperUtils.buildQuery;
 import static org.folio.invoices.utils.HelperUtils.handleDeleteRequest;
 import static org.folio.invoices.utils.HelperUtils.handleGetRequest;
 import static org.folio.invoices.utils.ResourcePathResolver.*;
@@ -16,6 +17,7 @@ import io.vertx.core.json.JsonObject;
 import me.escoffier.vertx.completablefuture.VertxCompletableFuture;
 
 class DocumentHelper extends AbstractHelper {
+  private static final String GET_DOCUMENTS_BY_QUERY = resourcesPath(INVOICE_DOCUMENTS) + "?limit=%s&offset=%s%s&lang=%s";
 
   DocumentHelper(Map<String, String> okapiHeaders, Context ctx, String lang) {
     super(getHttpClient(okapiHeaders), okapiHeaders, ctx, lang);
@@ -30,10 +32,11 @@ class DocumentHelper extends AbstractHelper {
     });
   }
 
-  CompletableFuture<DocumentCollection> getDocumentsByInvoiceId(String invoiceId) {
+  CompletableFuture<DocumentCollection> getDocumentsByInvoiceId(String invoiceId, int limit, int offset, String query) {
     CompletableFuture<DocumentCollection> future = new VertxCompletableFuture<>(ctx);
+    String queryParam = buildQuery(query, logger);
+    String endpoint = String.format(GET_DOCUMENTS_BY_QUERY, invoiceId, limit, offset, queryParam, lang);
 
-    String endpoint = resourceByParentIdPath(ResourcePathResolver.INVOICE_DOCUMENTS, invoiceId, lang);
     handleGetRequest(endpoint, httpClient, ctx, okapiHeaders, logger)
       .thenCompose(documents -> VertxCompletableFuture.supplyBlockingAsync(ctx, () -> {
         if (logger.isInfoEnabled()) {

@@ -47,6 +47,8 @@ public class DocumentsApiTest extends ApiTestBase {
 
   @Test
   public void testGetDocument() {
+    logger.info("=== Test get document by id ===");
+
     String endpoint = String.format(DOCUMENT_ENDPOINT_WITH_ID, DOCUMENT_ID);
 
     final InvoiceDocument retrievedDocument = verifySuccessGet(endpoint, InvoiceDocument.class);
@@ -56,7 +58,7 @@ public class DocumentsApiTest extends ApiTestBase {
 
   @Test
   public void testGetDocuments() throws IOException {
-    logger.info("=== Test Get Invoices by without query - get 200 by successful retrieval of invoices ===");
+    logger.info("=== Test Get Invoices by without query - get 200 by successful retrieval of documents ===");
 
     final InvoiceCollection resp = verifySuccessGet(DOCUMENT_ENDPOINT, InvoiceCollection.class);
 
@@ -65,7 +67,7 @@ public class DocumentsApiTest extends ApiTestBase {
 
   @Test
   public void testUpdateDocument() throws IOException {
-    logger.info("=== Test create invoice without id and folioInvoiceNo ===");
+    logger.info("=== Test edit document - error 400 expected ===");
 
     JsonObject jsonBody = new JsonObject(getMockData(INVOICE_DOCUMENT_SAMPLE_PATH));
     String id = jsonBody.getJsonObject("documentMetadata").getString("id");
@@ -75,7 +77,7 @@ public class DocumentsApiTest extends ApiTestBase {
 
   @Test
   public void testDeleteDocument() {
-    logger.info("=== Test delete invoice line by id ===");
+    logger.info("=== Test delete document by id ===");
     verifyDeleteResponse(String.format(DOCUMENT_ENDPOINT_WITH_ID, VALID_UUID), "", 204);
   }
 

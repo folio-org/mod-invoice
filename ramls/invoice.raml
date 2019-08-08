@@ -70,7 +70,7 @@ resourceTypes:
 
       /documents:
         displayName: Document
-        description: Manage documents assoctiated with invoice
+        description: Manage documents associated with invoice
         type:
           collection:
             schemaCollection: documentCollection
@@ -81,10 +81,11 @@ resourceTypes:
           description: Get list of documents
           is: [
             pageable,
-            searchable: {description: "with valid searchable fields: for example metadata.createdDate", example: "metadata.createdDate > '2018-07-19T00:00:00.000+0000'"}
+            searchable: {description: "with valid searchable fields: for example metadata.createdDate", example: "metadata.createdDate > '2018-07-19T00:00:00.000+0000'"},
+            validate
           ]
         /{documentId}:
-          description: Get and Delete a specific invoice. Update operation is not allowed
+          description: Get and Delete a specific document attachments/links. Update operation is not allowed
           uriParameters:
             documentId:
               description: The UUID of a document

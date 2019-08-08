@@ -55,10 +55,6 @@ public class ResourcePathResolver {
     return SUB_OBJECT_COLLECTION_APIS.get(field);
   }
 
-  public static String resourceByParentIdPath(String field, String parentId, String lang) {
-    return String.format(SUB_OBJECT_COLLECTION_APIS.get(field), parentId, lang);
-  }
-
   public static String resourceByParentIdAndIdPath(String field, String parentId, String id, String lang) {
     return String.format(SUB_OBJECT_ITEM_APIS.get(field), parentId, id, lang);
   }
