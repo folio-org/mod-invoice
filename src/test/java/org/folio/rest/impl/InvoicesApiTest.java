@@ -1,8 +1,11 @@
 package org.folio.rest.impl;
 
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
+import static java.util.concurrent.TimeUnit.SECONDS;
 import static java.util.stream.Collectors.groupingBy;
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 import static javax.ws.rs.core.MediaType.TEXT_PLAIN;
+import static org.awaitility.Awaitility.await;
 import static org.folio.invoices.utils.ErrorCodes.FUNDS_NOT_FOUND;
 import static org.folio.invoices.utils.ErrorCodes.FUND_DISTRIBUTIONS_NOT_PRESENT;
 import static org.folio.invoices.utils.ErrorCodes.FUND_DISTRIBUTIONS_PERCENTAGE_SUMMARY_MISMATCH;
@@ -38,6 +41,10 @@ import static org.folio.rest.impl.MockServer.INVOICE_NUMBER_ERROR_X_OKAPI_TENANT
 import static org.folio.rest.impl.MockServer.NON_EXIST_CONFIG_X_OKAPI_TENANT;
 import static org.folio.rest.impl.MockServer.TEST_PREFIX;
 import static org.folio.rest.impl.MockServer.addMockEntry;
+import static org.folio.rest.impl.MockServer.getInvoiceLineSearches;
+import static org.folio.rest.impl.MockServer.getInvoiceRetrievals;
+import static org.folio.rest.impl.MockServer.getInvoiceSearches;
+import static org.folio.rest.impl.MockServer.getInvoiceUpdates;
 import static org.folio.rest.impl.MockServer.getRqRsEntries;
 import static org.folio.rest.impl.MockServer.serverRqRs;
 import static org.folio.rest.impl.VoucherHelper.DEFAULT_SYSTEM_CURRENCY;
@@ -138,7 +145,10 @@ public class InvoicesApiTest extends ApiTestBase {
 
     final InvoiceCollection resp = verifySuccessGet(INVOICE_PATH, InvoiceCollection.class);
 
-    assertEquals(3, resp.getTotalRecords().intValue());
+    assertThat(resp.getTotalRecords(), is(3));
+    assertThat(getInvoiceSearches(), hasSize(1));
+    assertThat(getInvoiceLineSearches(), empty());
+    verifyInvoiceUpdateCalls(0);
   }
 
   @Test
@@ -149,7 +159,10 @@ public class InvoicesApiTest extends ApiTestBase {
 
     final InvoiceCollection resp = verifySuccessGet(endpointQuery, InvoiceCollection.class);
 
-    assertEquals(1, resp.getTotalRecords().intValue());
+    assertThat(resp.getTotalRecords(), is(1));
+    assertThat(getInvoiceSearches(), hasSize(1));
+    assertThat(getInvoiceLineSearches(), empty());
+    verifyInvoiceUpdateCalls(0);
   }
 
   @Test
@@ -193,8 +206,9 @@ public class InvoicesApiTest extends ApiTestBase {
     assertThat(resp.getTotal(), equalTo(17.77d));
 
     // Verify that expected number of external calls made
-    assertThat(getRqRsEntries(HttpMethod.GET, INVOICES), hasSize(1));
-    assertThat(getRqRsEntries(HttpMethod.GET, INVOICE_LINES), hasSize(1));
+    assertThat(getInvoiceRetrievals(), hasSize(1));
+    assertThat(getInvoiceLineSearches(), hasSize(1));
+    verifyInvoiceUpdateCalls(1);
   }
 
   @Test
@@ -222,8 +236,9 @@ public class InvoicesApiTest extends ApiTestBase {
     assertThat(resp.getTotal(), equalTo(15d));
 
     // Verify that expected number of external calls made
-    assertThat(getRqRsEntries(HttpMethod.GET, INVOICES), hasSize(1));
-    assertThat(getRqRsEntries(HttpMethod.GET, INVOICE_LINES), hasSize(1));
+    assertThat(getInvoiceRetrievals(), hasSize(1));
+    assertThat(getInvoiceLineSearches(), hasSize(1));
+    verifyInvoiceUpdateCalls(1);
   }
 
   @Test
@@ -255,8 +270,9 @@ public class InvoicesApiTest extends ApiTestBase {
     assertThat(resp.getTotal(), equalTo(0d));
 
     // Verify that expected number of external calls made
-    assertThat(getRqRsEntries(HttpMethod.GET, INVOICES), hasSize(1));
-    assertThat(getRqRsEntries(HttpMethod.GET, INVOICE_LINES), hasSize(1));
+    assertThat(getInvoiceRetrievals(), hasSize(1));
+    assertThat(getInvoiceLineSearches(), hasSize(1));
+    verifyInvoiceUpdateCalls(1);
   }
 
   @Test
@@ -269,6 +285,10 @@ public class InvoicesApiTest extends ApiTestBase {
     logger.info("Id not found: " + actual);
 
     assertEquals(BAD_INVOICE_ID, actual);
+
+    // Verify that expected number of external calls made
+    assertThat(getInvoiceLineSearches(), empty());
+    verifyInvoiceUpdateCalls(0);
   }
 
   @Test
@@ -284,7 +304,7 @@ public class InvoicesApiTest extends ApiTestBase {
   	String jsonBody = JsonObject.mapFrom(reqData).encode();
 
   	verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, "", 204);
-  	assertThat(serverRqRs.get(INVOICES, HttpMethod.PUT).get(0).getString(FOLIO_INVOICE_NUMBER), not(newInvoiceNumber));
+  	assertThat(getInvoiceUpdates().get(0).getString(FOLIO_INVOICE_NUMBER), not(newInvoiceNumber));
   }
 
   @Test
@@ -306,6 +326,10 @@ public class InvoicesApiTest extends ApiTestBase {
     String jsonBody = JsonObject.mapFrom(reqData).encode();
     Headers headers = prepareHeaders(X_OKAPI_URL, X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USERID);
     verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, headers, "", 204);
+
+    // Verify that expected number of external calls made
+    assertThat(getInvoiceRetrievals(), hasSize(1));
+    assertThat(getInvoiceLineSearches(), hasSize(1));
 
     List<JsonObject> vouchersCreated = serverRqRs.get(VOUCHERS, HttpMethod.POST);
     assertThat(vouchersCreated, notNullValue());
@@ -1108,6 +1132,10 @@ public class InvoicesApiTest extends ApiTestBase {
     assertThat(poId, notNullValue());
     assertThat(folioInvoiceNo, notNullValue());
     assertThat(MockServer.serverRqRs.get(FOLIO_INVOICE_NUMBER, HttpMethod.GET), hasSize(1));
+
+    // Check that invoice in the response and the one in storage are the same
+    Invoice invoiceToStorage = getRqRsEntries(HttpMethod.POST, INVOICES).get(0).mapTo(Invoice.class);
+    assertThat(respData, equalTo(invoiceToStorage));
   }
 
   @Test
@@ -1132,6 +1160,10 @@ public class InvoicesApiTest extends ApiTestBase {
     assertThat(serverRqRs.cellSet(), hasSize(2));
     assertThat(getRqRsEntries(HttpMethod.GET, FOLIO_INVOICE_NUMBER), hasSize(1));
     assertThat(getRqRsEntries(HttpMethod.POST, INVOICES), hasSize(1));
+
+    // Check that invoice in the response and the one in storage are the same
+    Invoice invoiceToStorage = getRqRsEntries(HttpMethod.POST, INVOICES).get(0).mapTo(Invoice.class);
+    assertThat(resp, equalTo(invoiceToStorage));
   }
 
   @Test
@@ -1157,6 +1189,10 @@ public class InvoicesApiTest extends ApiTestBase {
     assertThat(serverRqRs.cellSet(), hasSize(2));
     assertThat(getRqRsEntries(HttpMethod.GET, FOLIO_INVOICE_NUMBER), hasSize(1));
     assertThat(getRqRsEntries(HttpMethod.POST, INVOICES), hasSize(1));
+
+    // Check that invoice in the response and the one in storage are the same
+    Invoice invoiceToStorage = getRqRsEntries(HttpMethod.POST, INVOICES).get(0).mapTo(Invoice.class);
+    assertThat(resp, equalTo(invoiceToStorage));
   }
 
   @Test
@@ -1181,6 +1217,10 @@ public class InvoicesApiTest extends ApiTestBase {
     assertThat(serverRqRs.cellSet(), hasSize(2));
     assertThat(getRqRsEntries(HttpMethod.GET, FOLIO_INVOICE_NUMBER), hasSize(1));
     assertThat(getRqRsEntries(HttpMethod.POST, INVOICES), hasSize(1));
+
+    // Check that invoice in the response and the one in storage are the same
+    Invoice invoiceToStorage = getRqRsEntries(HttpMethod.POST, INVOICES).get(0).mapTo(Invoice.class);
+    assertThat(resp, equalTo(invoiceToStorage));
   }
 
   @Test
@@ -1417,5 +1457,13 @@ public class InvoicesApiTest extends ApiTestBase {
       .map(obj -> (List) obj)
       .get()
       .toArray();
+  }
+
+  void verifyInvoiceUpdateCalls(int msgQty) {
+    logger.debug("Verifying calls to update invoice");
+    // Wait until message is registered
+    await().atLeast(50, MILLISECONDS)
+      .atMost(1, SECONDS)
+      .until(MockServer::getInvoiceUpdates, hasSize(msgQty));
   }
 }

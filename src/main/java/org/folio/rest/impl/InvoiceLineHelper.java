@@ -1,8 +1,6 @@
 package org.folio.rest.impl;
 
 import static io.vertx.core.json.JsonObject.mapFrom;
-import static org.apache.commons.lang3.StringUtils.EMPTY;
-import static org.apache.commons.lang3.StringUtils.isEmpty;
 import static org.folio.invoices.utils.ErrorCodes.PROHIBITED_INVOICE_LINE_CREATION;
 import static org.folio.invoices.utils.HelperUtils.*;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_LINES;
