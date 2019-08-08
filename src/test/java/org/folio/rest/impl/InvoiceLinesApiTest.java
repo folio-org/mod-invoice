@@ -55,7 +55,7 @@ public class InvoiceLinesApiTest extends ApiTestBase {
 
   private static final String INVOICE_LINE_ADJUSTMENTS_SAMPLE_PATH = INVOICE_LINES_MOCK_DATA_PATH + "29846620-8fb6-4433-b84e-0b6051eb76ec.json";
   private static final String BAD_INVOICE_LINE_ID = "5a34ae0e-5a11-4337-be95-1a20cfdc3161";
-  private static final String UPDATE_INVOICE_TOTAL_ID_DOES_NOT_EXIST = "55e4b6f5-f974-42da-9a77-24d4e8ef0e70";
+
 
   static final String INVOICE_ID = "invoiceId";
   private static final String NULL = "null";
