@@ -82,8 +82,10 @@ resourceTypes:
           is: [
             pageable,
             searchable: {description: "with valid searchable fields: for example metadata.createdDate", example: "metadata.createdDate > '2018-07-19T00:00:00.000+0000'"},
-            validate
           ]
+        post:
+          description: Post document attachment/link;
+          is: [validate]
         /{documentId}:
           description: Get and Delete a specific document attachments/links. Update operation is not allowed
           uriParameters:

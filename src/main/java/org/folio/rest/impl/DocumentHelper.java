@@ -1,9 +1,11 @@
 package org.folio.rest.impl;
 
-import static org.folio.invoices.utils.HelperUtils.buildQuery;
+import static org.folio.invoices.utils.HelperUtils.getEndpointWithQuery;
 import static org.folio.invoices.utils.HelperUtils.handleDeleteRequest;
 import static org.folio.invoices.utils.HelperUtils.handleGetRequest;
-import static org.folio.invoices.utils.ResourcePathResolver.*;
+import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_DOCUMENTS;
+import static org.folio.invoices.utils.ResourcePathResolver.resourceByParentIdAndIdPath;
+import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
 
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -34,7 +36,7 @@ class DocumentHelper extends AbstractHelper {
 
   CompletableFuture<DocumentCollection> getDocumentsByInvoiceId(String invoiceId, int limit, int offset, String query) {
     CompletableFuture<DocumentCollection> future = new VertxCompletableFuture<>(ctx);
-    String queryParam = buildQuery(query, logger);
+    String queryParam = getEndpointWithQuery(query, logger);
     String endpoint = String.format(GET_DOCUMENTS_BY_QUERY, invoiceId, limit, offset, queryParam, lang);
 
     handleGetRequest(endpoint, httpClient, ctx, okapiHeaders, logger)
