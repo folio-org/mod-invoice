@@ -175,14 +175,13 @@ public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
   public void postInvoiceInvoicesDocumentsById(String id, String lang, InvoiceDocument entity, Map<String, String> okapiHeaders,
     Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     DocumentHelper documentHelper = new DocumentHelper(okapiHeaders, vertxContext, lang);
-    if (!entity.getDocumentMetadata().getInvoiceId()
-      .equals(id)) {
+    if (!entity.getDocumentMetadata().getInvoiceId().equals(id)) {
       documentHelper.addProcessingError(MISMATCH_BETWEEN_ID_IN_PATH_AND_BODY.toError());
       asyncResultHandler.handle(succeededFuture(documentHelper.buildErrorResponse(422)));
     } else {
       documentHelper.createDocument(id, entity)
         .thenAccept(document -> {
-          logInfo("Successfully created document with id={}", id);
+          logInfo("Successfully created document with id={}", document);
           asyncResultHandler.handle(succeededFuture(documentHelper.buildResponseWithLocation(String.format(DOCUMENTS_LOCATION_PREFIX, id, document.getDocumentMetadata().getId()), document)));
         })
         .exceptionally(t -> handleErrorResponse(asyncResultHandler, documentHelper, t));
