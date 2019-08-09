@@ -31,6 +31,7 @@
           ],
           "modulePermissions": [
             "invoice-storage.invoices.item.get",
+            "invoice-storage.invoices.item.put",
             "invoice-storage.invoice-lines.collection.get"
           ]
         },
@@ -78,7 +79,9 @@
           "modulePermissions": [
             "invoice-storage.invoice-line-number.get",
             "invoice-storage.invoices.item.get",
-            "invoice-storage.invoice-lines.item.post"
+            "invoice-storage.invoices.item.put",
+            "invoice-storage.invoice-lines.item.post",
+            "invoice-storage.invoice-lines.collection.get"
           ]
         },
         {
@@ -95,16 +98,24 @@
           "pathPattern": "/invoice/invoice-lines/{id}",
           "permissionsRequired": ["invoice.invoice-lines.item.put"],
           "modulePermissions": [
-              "invoice-storage.invoice-lines.item.put",
-              "invoice-storage.invoice-lines.item.get",
-              "invoice-storage.invoices.item.get"
+            "invoice-storage.invoice-lines.item.put",
+            "invoice-storage.invoice-lines.item.get",
+            "invoice-storage.invoice-lines.collection.get",
+            "invoice-storage.invoices.item.get",
+            "invoice-storage.invoices.item.put"
           ]
         },
         {
           "methods": ["DELETE"],
           "pathPattern": "/invoice/invoice-lines/{id}",
           "permissionsRequired": ["invoice.invoice-lines.item.delete"],
-          "modulePermissions": ["invoice-storage.invoice-lines.item.delete"]
+          "modulePermissions": [
+            "invoice-storage.invoice-lines.item.get",
+            "invoice-storage.invoice-lines.item.delete",
+            "invoice-storage.invoice-lines.collection.get",
+            "invoice-storage.invoices.item.get",
+            "invoice-storage.invoices.item.put"
+          ]
         },
         {
           "methods": ["GET"],
