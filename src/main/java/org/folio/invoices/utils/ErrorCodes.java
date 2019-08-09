@@ -20,6 +20,7 @@ public enum ErrorCodes {
   PROHIBITED_INVOICE_LINE_CREATION("prohibitedInvoiceLineCreation","It is not allowed to add invoice line to the invoice that has been approved"),
   MISMATCH_BETWEEN_ID_IN_PATH_AND_BODY("idMismatch", "Mismatch between id in path and request body");
 
+
   private final String code;
   private final String description;
 

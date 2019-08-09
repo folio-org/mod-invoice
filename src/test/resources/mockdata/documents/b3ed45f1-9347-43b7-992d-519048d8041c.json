@@ -1,0 +1,16 @@
+{
+  "documentMetadata": {
+    "id": "b3ed45f1-9347-43b7-992d-519048d8041c",
+    "name": "sample.pdf",
+    "invoiceId": "733cafd3-895f-4e33-87b7-bf40dc3c8069",
+    "metadata": {
+      "createdDate": "2018-07-19T00:00:00.000+0000",
+      "createdByUserId": "28d1057c-d137-11e8-a8d5-f2801f1b9fd1"
+    },
+    "url": "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf"
+  },
+  "metadata": {
+    "createdDate": "2018-07-19T00:00:00.000+0000",
+    "createdByUserId": "28d1057c-d137-11e8-a8d5-f2801f1b9fd1"
+  }
+}

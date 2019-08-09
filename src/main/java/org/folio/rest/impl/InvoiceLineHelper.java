@@ -1,8 +1,6 @@
 package org.folio.rest.impl;
 
 import static io.vertx.core.json.JsonObject.mapFrom;
-import static org.apache.commons.lang3.StringUtils.EMPTY;
-import static org.apache.commons.lang3.StringUtils.isEmpty;
 import static org.folio.invoices.utils.ErrorCodes.PROHIBITED_INVOICE_LINE_CREATION;
 import static org.folio.invoices.utils.HelperUtils.*;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_LINES;
@@ -20,6 +18,8 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 
 import me.escoffier.vertx.completablefuture.VertxCompletableFuture;
+
+import org.folio.invoices.events.handlers.MessageAddress;
 import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.invoices.utils.HelperUtils;
 import org.folio.invoices.utils.InvoiceLineProtectedFields;
@@ -32,12 +32,11 @@ import org.folio.rest.tools.client.interfaces.HttpClientInterface;
 
 public class InvoiceLineHelper extends AbstractHelper {
 
-  private static final String INVOICE_ID = "invoiceId";
   private static final String INVOICE_LINE_NUMBER_ENDPOINT = resourcesPath(INVOICE_LINE_NUMBER) + "?" + INVOICE_ID + "=";
   private static final String GET_INVOICE_LINES_BY_QUERY = resourcesPath(INVOICE_LINES) + "?limit=%s&offset=%s%s&lang=%s";
 
   InvoiceLineHelper(Map<String, String> okapiHeaders, Context ctx, String lang) {
-    super(getHttpClient(okapiHeaders), okapiHeaders, ctx, lang);
+    super(okapiHeaders, ctx, lang);
   }
 
   InvoiceLineHelper(HttpClientInterface httpClient, Map<String, String> okapiHeaders, Context ctx, String lang) {
@@ -47,8 +46,7 @@ public class InvoiceLineHelper extends AbstractHelper {
   public CompletableFuture<InvoiceLineCollection> getInvoiceLines(int limit, int offset, String query) {
     CompletableFuture<InvoiceLineCollection> future = new VertxCompletableFuture<>(ctx);
     try {
-      String queryParam = isEmpty(query) ? EMPTY : "&query=" + encodeQuery(query, logger);
-      String endpoint = String.format(GET_INVOICE_LINES_BY_QUERY, limit, offset, queryParam, lang);
+      String endpoint = String.format(GET_INVOICE_LINES_BY_QUERY, limit, offset, getEndpointWithQuery(query, logger), lang);
       handleGetRequest(endpoint, httpClient, ctx, okapiHeaders, logger)
         .thenCompose(jsonInvoiceLines -> VertxCompletableFuture.supplyBlockingAsync(ctx, () -> {
             if (logger.isInfoEnabled()) {
@@ -135,14 +133,16 @@ public class InvoiceLineHelper extends AbstractHelper {
 
   public CompletableFuture<Void> updateInvoiceLine(InvoiceLine invoiceLine) {
 
-    return getInvoiceLine(invoiceLine.getId()).thenCompose(
-        existedInvoiceLine -> new InvoiceHelper(okapiHeaders, ctx, lang).getInvoiceRecord(existedInvoiceLine.getInvoiceId())
-          .thenAccept(existedInvoice -> {
-            validateInvoiceLine(existedInvoice, invoiceLine, existedInvoiceLine);
-            invoiceLine.setInvoiceLineNumber(existedInvoiceLine.getInvoiceLineNumber());
-            HelperUtils.calculateInvoiceLineTotals(invoiceLine, existedInvoice);
-          }))
-      .thenCompose(ok -> updateInvoiceLineToStorage(invoiceLine));
+    return getInvoiceLine(invoiceLine.getId())
+      .thenCompose(existedInvoiceLine -> new InvoiceHelper(okapiHeaders, ctx, lang).getInvoiceRecord(existedInvoiceLine.getInvoiceId())
+        .thenAccept(existedInvoice -> {
+          validateInvoiceLine(existedInvoice, invoiceLine, existedInvoiceLine);
+          invoiceLine.setInvoiceLineNumber(existedInvoiceLine.getInvoiceLineNumber());
+          HelperUtils.calculateInvoiceLineTotals(invoiceLine, existedInvoice);
+        })
+      )
+      .thenCompose(ok -> updateInvoiceLineToStorage(invoiceLine))
+      .thenAccept(ok -> updateInvoice(invoiceLine.getInvoiceId()));
   }
 
   private void validateInvoiceLine(Invoice existedInvoice, InvoiceLine invoiceLine, InvoiceLine existedInvoiceLine) {
@@ -160,7 +160,11 @@ public class InvoiceLineHelper extends AbstractHelper {
   CompletableFuture<InvoiceLine> createInvoiceLine(InvoiceLine invoiceLine) {
     return getInvoice(invoiceLine)
       .thenApply(this::checkIfInvoiceLineCreationAllowed)
-      .thenCompose(invoice -> createInvoiceLine(invoiceLine, invoice));
+      .thenCompose(invoice -> createInvoiceLine(invoiceLine, invoice))
+      .thenApply(line -> {
+        updateInvoice(line.getInvoiceId());
+        return line;
+      });
   }
 
   private Invoice checkIfInvoiceLineCreationAllowed(Invoice invoice) {
@@ -220,6 +224,13 @@ public class InvoiceLineHelper extends AbstractHelper {
   }
 
   public CompletableFuture<Void> deleteInvoiceLine(String id) {
-    return handleDeleteRequest(resourceByIdPath(INVOICE_LINES, id, lang), httpClient, ctx, okapiHeaders, logger);
+    return getInvoiceLine(id)
+      .thenCompose(line -> handleDeleteRequest(resourceByIdPath(INVOICE_LINES, id, lang), httpClient, ctx, okapiHeaders, logger)
+        .thenRun(() -> updateInvoice(line.getInvoiceId())));
+  }
+
+  private void updateInvoice(String invoiceId) {
+    VertxCompletableFuture.runAsync(ctx,
+        () -> sendEvent(MessageAddress.INVOICE_TOTALS, new JsonObject().put(INVOICE_ID, invoiceId)));
   }
 }

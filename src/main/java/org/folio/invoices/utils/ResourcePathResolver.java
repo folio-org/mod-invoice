@@ -20,6 +20,7 @@ public class ResourcePathResolver {
   public static final String INVOICE_LINE_NUMBER = "invoiceLineNumber";
   public static final String VOUCHERS = "vouchers";
   public static final String FUNDS = "funds";
+  public static final String INVOICE_DOCUMENTS = "invoiceDocuments";
 
   private static final Map<String, String> SUB_OBJECT_COLLECTION_APIS;
   private static final Map<String, String> SUB_OBJECT_ITEM_APIS;
@@ -36,6 +37,7 @@ public class ResourcePathResolver {
     apis.put(VOUCHER_NUMBER_START, "/voucher-storage/voucher-number/start");
     apis.put(VOUCHER_NUMBER, "/voucher-storage/voucher-number");
     apis.put(FUNDS, "/finance-storage/funds");
+    apis.put(INVOICE_DOCUMENTS, "/invoice-storage/invoices/%s/documents");
 
     SUB_OBJECT_COLLECTION_APIS = Collections.unmodifiableMap(apis);
     SUB_OBJECT_ITEM_APIS = Collections.unmodifiableMap(
@@ -51,5 +53,9 @@ public class ResourcePathResolver {
 
   public static String resourcesPath(String field) {
     return SUB_OBJECT_COLLECTION_APIS.get(field);
+  }
+
+  public static String resourceByParentIdAndIdPath(String field, String parentId, String id, String lang) {
+    return String.format(SUB_OBJECT_ITEM_APIS.get(field), parentId, id, lang);
   }
 }

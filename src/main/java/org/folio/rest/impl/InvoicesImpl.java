@@ -1,6 +1,7 @@
 package org.folio.rest.impl;
 
 import static io.vertx.core.Future.succeededFuture;
+import static org.folio.invoices.utils.ErrorCodes.MISMATCH_BETWEEN_ID_IN_PATH_AND_BODY;
 
 import java.util.Map;
 
@@ -9,6 +10,7 @@ import javax.ws.rs.core.Response;
 import org.apache.commons.lang3.StringUtils;
 import org.folio.rest.annotations.Validate;
 import org.folio.rest.jaxrs.model.Invoice;
+import org.folio.rest.jaxrs.model.InvoiceDocument;
 import org.folio.rest.jaxrs.model.InvoiceLine;
 
 import io.vertx.core.AsyncResult;
@@ -25,6 +27,7 @@ public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
   private static final String INVOICE_LOCATION_PREFIX = "/invoice/invoices/%s";
   private static final String INVOICE_LINE_LOCATION_PREFIX = "/invoice/invoice-lines/%s";
   public static final String PROTECTED_AND_MODIFIED_FIELDS = "protectedAndModifiedFields";
+  private static final String DOCUMENTS_LOCATION_PREFIX = "/invoice/invoices/%s/documents/%s";
 
   @Validate
   @Override
@@ -166,17 +169,60 @@ public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
     asyncResultHandler.handle(succeededFuture(GetInvoiceInvoiceNumberResponse.respond500WithTextPlain(NOT_SUPPORTED)));
   }
 
+  @Validate
+  @Override
+  public void postInvoiceInvoicesDocumentsById(String id, String lang, InvoiceDocument entity, Map<String, String> okapiHeaders,
+    Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+    DocumentHelper documentHelper = new DocumentHelper(okapiHeaders, vertxContext, lang);
+    if (!entity.getDocumentMetadata().getInvoiceId().equals(id)) {
+      documentHelper.addProcessingError(MISMATCH_BETWEEN_ID_IN_PATH_AND_BODY.toError());
+      asyncResultHandler.handle(succeededFuture(documentHelper.buildErrorResponse(422)));
+    } else {
+      documentHelper.createDocument(id, entity)
+        .thenAccept(document -> {
+          logInfo("Successfully created document with id={}", document);
+          asyncResultHandler.handle(succeededFuture(documentHelper.buildResponseWithLocation(String.format(DOCUMENTS_LOCATION_PREFIX, id, document.getDocumentMetadata().getId()), document)));
+        })
+        .exceptionally(t -> handleErrorResponse(asyncResultHandler, documentHelper, t));
+    }
+  }
 
+  @Validate
+  @Override
+  public void getInvoiceInvoicesDocumentsById(String id, int offset, int limit, String query, String lang, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+    DocumentHelper documentHelper = new DocumentHelper(okapiHeaders, vertxContext, lang);
+    documentHelper.getDocumentsByInvoiceId(id, limit, offset, query)
+      .thenAccept(documents -> asyncResultHandler.handle(succeededFuture(documentHelper.buildOkResponse(documents))))
+      .exceptionally(t -> handleErrorResponse(asyncResultHandler, documentHelper, t));
+  }
+
+  @Validate
+  @Override
+  public void getInvoiceInvoicesDocumentsByIdAndDocumentId(String id, String documentId, String lang,
+      Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+    DocumentHelper documentHelper = new DocumentHelper(okapiHeaders, vertxContext, lang);
+    documentHelper.getDocumentByInvoiceIdAndDocumentId(id, documentId)
+      .thenAccept(document -> {
+        logInfo("Successfully retrieved document: {}", document);
+        asyncResultHandler.handle(succeededFuture(documentHelper.buildOkResponse(document)));
+      })
+      .exceptionally(t -> handleErrorResponse(asyncResultHandler, documentHelper, t));
+  }
+
+  @Validate
+  @Override
+  public void deleteInvoiceInvoicesDocumentsByIdAndDocumentId(String invoiceId, String documentId, String lang,
+      Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+    DocumentHelper documentHelper = new DocumentHelper(okapiHeaders, vertxContext, lang);
+
+    documentHelper.deleteDocument(invoiceId, documentId)
+      .thenAccept(invoiceLine -> asyncResultHandler.handle(succeededFuture(documentHelper.buildNoContentResponse())))
+      .exceptionally(t -> handleErrorResponse(asyncResultHandler, documentHelper, t));
+  }
 
   private void logInfo(String message, Object entry) {
     if (logger.isInfoEnabled()) {
       logger.info(message, JsonObject.mapFrom(entry).encodePrettily());
-    }
-  }
-
-  private void logInfo(String message, String id) {
-    if (logger.isInfoEnabled()) {
-      logger.info(message, id);
     }
   }
 
