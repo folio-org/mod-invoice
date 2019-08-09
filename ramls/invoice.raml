@@ -12,6 +12,8 @@ documentation:
 types:
   invoice: !include acq-models/mod-invoice-storage/schemas/invoice.json
   invoiceCollection: !include acq-models/mod-invoice-storage/schemas/invoice_collection.json
+  invoiceDocument: !include acq-models/mod-invoice-storage/schemas/document.json
+  documentCollection: !include acq-models/mod-invoice-storage/schemas/document_collection.json
   invoiceLine: !include acq-models/mod-invoice-storage/schemas/invoice_line.json
   invoiceLineCollection: !include acq-models/mod-invoice-storage/schemas/invoice_line_collection.json
 
@@ -29,6 +31,7 @@ traits:
 resourceTypes:
   collection: !include raml-util/rtypes/collection.raml
   collection-item: !include raml-util/rtypes/item-collection.raml
+  get-delete: !include raml-util/rtypes/get-delete.raml
   get-only: !include raml-util/rtypes/get-only.raml
 
 /invoice:
@@ -41,7 +44,7 @@ resourceTypes:
         schemaItem: invoice
         exampleCollection: !include acq-models/mod-invoice-storage/examples/invoice_collection.sample
         exampleItem: !include acq-models/mod-invoice-storage/examples/invoice.sample
-  
+
     post:
       description: Post invoice and number of invoice lines;
       is: [validate]
@@ -64,6 +67,36 @@ resourceTypes:
         is: [validate]
       delete:
         description: Delete an invoice with given {id}
+
+      /documents:
+        displayName: Document
+        description: Manage documents associated with invoice
+        type:
+          collection:
+            schemaCollection: documentCollection
+            schemaItem: invoiceDocument
+            exampleCollection: !include acq-models/mod-invoice-storage/examples/document_collection.sample
+            exampleItem: !include acq-models/mod-invoice-storage/examples/document.sample
+        get:
+          description: Get list of documents
+          is: [
+            pageable,
+            searchable: {description: "with valid searchable fields: for example metadata.createdDate", example: "metadata.createdDate > '2018-07-19T00:00:00.000+0000'"},
+          ]
+        post:
+          description: Post document attachment/link;
+          is: [validate]
+        /{documentId}:
+          description: Get and Delete a specific document attachments/links. Update operation is not allowed
+          uriParameters:
+            documentId:
+              description: The UUID of a document
+              type: UUID
+          type:
+            get-delete:
+              schema: invoiceDocument
+              exampleItem: !include acq-models/mod-invoice-storage/examples/document.sample
+
   /invoice-lines:
     displayName: Invoice Lines
     description: Manage Invoice lines

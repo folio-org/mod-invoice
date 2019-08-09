@@ -8,6 +8,7 @@ import static org.apache.commons.lang3.StringUtils.EMPTY;
 import static org.folio.invoices.utils.ResourcePathResolver.FOLIO_INVOICE_NUMBER;
 import static org.folio.invoices.utils.ResourcePathResolver.FUNDS;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICES;
+import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_DOCUMENTS;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_LINES;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_LINE_NUMBER;
 import static org.folio.invoices.utils.ResourcePathResolver.ORDER_LINES;
@@ -26,6 +27,8 @@ import static org.folio.rest.impl.ApiTestBase.ID_FOR_INTERNAL_SERVER_ERROR_PUT;
 import static org.folio.rest.impl.ApiTestBase.INVOICE_LINE_NUMBER_VALUE;
 import static org.folio.rest.impl.ApiTestBase.VOUCHER_NUMBER_VALUE;
 import static org.folio.rest.impl.ApiTestBase.getMockData;
+import static org.folio.rest.impl.DocumentsApiTest.INVOICE_DOCUMENTS_SAMPLE_PATH;
+import static org.folio.rest.impl.DocumentsApiTest.INVOICE_SAMPLE_DOCUMENTS_PATH;
 import static org.folio.rest.impl.InvoiceHelper.INVOICE_CONFIG_MODULE_NAME;
 import static org.folio.rest.impl.InvoiceHelper.LOCALE_SETTINGS;
 import static org.folio.rest.impl.InvoiceHelper.SYSTEM_CONFIG_MODULE_NAME;
@@ -65,7 +68,10 @@ import org.folio.rest.acq.model.finance.FundCollection;
 import org.folio.rest.acq.model.orders.CompositePoLine;
 import org.folio.rest.jaxrs.model.Config;
 import org.folio.rest.jaxrs.model.Configs;
+import org.folio.rest.jaxrs.model.Document;
+import org.folio.rest.jaxrs.model.DocumentCollection;
 import org.folio.rest.jaxrs.model.Invoice;
+import org.folio.rest.jaxrs.model.InvoiceDocument;
 import org.folio.rest.jaxrs.model.InvoiceLine;
 import org.folio.rest.jaxrs.model.InvoiceLineCollection;
 import org.folio.rest.jaxrs.model.Voucher;
@@ -95,7 +101,7 @@ public class MockServer {
   private static final String FUNDS_MOCK_DATA_PATH = BASE_MOCK_DATA_PATH + "fundRecords/";
   private static final String VOUCHER_ID = "voucherId";
   private static final String QUERY = "query";
-  public static final String TEST_PREFIX = "testPrefix";
+  static final String TEST_PREFIX = "testPrefix";
   private static final String INVALID_PREFIX = "12-prefix";
 
   static Table<String, HttpMethod, List<JsonObject>> serverRqRs = HashBasedTable.create();
@@ -196,11 +202,12 @@ public class MockServer {
   private Router defineRoutes() {
     Router router = Router.router(vertx);
     router.route().handler(BodyHandler.create());
-    router.route(HttpMethod.POST, ResourcePathResolver.resourcesPath(INVOICES)).handler(ctx -> handlePostEntry(ctx, Invoice.class, INVOICES));
+    router.route(HttpMethod.POST, resourcesPath(INVOICES)).handler(ctx -> handlePostEntry(ctx, Invoice.class, INVOICES));
     router.route(HttpMethod.POST, resourcesPath(INVOICE_LINES)).handler(ctx -> handlePostEntry(ctx, InvoiceLine.class, INVOICE_LINES));
     router.route(HttpMethod.POST, resourceByValuePath(VOUCHER_NUMBER_START)).handler(this::handlePostVoucherStartValue);
     router.route(HttpMethod.POST, resourcesPath(VOUCHERS)).handler(ctx -> handlePostEntry(ctx, Voucher.class, VOUCHERS));
     router.route(HttpMethod.POST, resourcesPath(VOUCHER_LINES)).handler(ctx -> handlePostEntry(ctx, VoucherLine.class, VOUCHER_LINES));
+    router.route(HttpMethod.POST, "/invoice-storage/invoices/:id/documents").handler(this::handlePostInvoiceDocument);
 
     router.route(HttpMethod.GET, resourcesPath(INVOICES)).handler(this::handleGetInvoices);
     router.route(HttpMethod.GET, resourcesPath(INVOICE_LINES)).handler(this::handleGetInvoiceLines);
@@ -217,10 +224,13 @@ public class MockServer {
     router.route(HttpMethod.GET, resourcesPath(VOUCHER_NUMBER)).handler(this::handleGetVoucherNumber);
     router.route(HttpMethod.GET, resourcesPath(FUNDS)).handler(this::handleGetFundRecords);
     router.route(HttpMethod.GET,"/configurations/entries").handler(this::handleConfigurationModuleResponse);
+    router.route(HttpMethod.GET, "/invoice-storage/invoices/:id/documents").handler(this::handleGetInvoiceDocuments);
+    router.route(HttpMethod.GET, "/invoice-storage/invoices/:id/documents/:documentId").handler(this::handleGetInvoiceDocumentById);
 
     router.route(HttpMethod.DELETE, resourceByIdPath(INVOICES)).handler(ctx -> handleDeleteRequest(ctx, INVOICES));
     router.route(HttpMethod.DELETE, resourceByIdPath(INVOICE_LINES)).handler(ctx -> handleDeleteRequest(ctx, INVOICE_LINES));
     router.route(HttpMethod.DELETE, resourceByIdPath(VOUCHER_LINES)).handler(ctx -> handleDeleteRequest(ctx, VOUCHER_LINES));
+    router.route(HttpMethod.DELETE, "/invoice-storage/invoices/:id/documents/:documentId").handler(ctx -> handleDeleteRequest(ctx, INVOICE_DOCUMENTS));
 
     router.route(HttpMethod.PUT, resourceByIdPath(INVOICES)).handler(ctx -> handlePutGenericSubObj(ctx, INVOICES));
     router.route(HttpMethod.PUT, resourceByIdPath(INVOICE_LINES)).handler(ctx -> handlePutGenericSubObj(ctx, INVOICE_LINES));
@@ -230,6 +240,71 @@ public class MockServer {
 
 
     return router;
+  }
+
+  private void handleGetInvoiceDocuments(RoutingContext ctx) {
+    logger.info("handleDocuments got: {}?{}", ctx.request().path(), ctx.request().query());
+
+    String queryParam = StringUtils.trimToEmpty(ctx.request().getParam(QUERY));
+    String tenant = ctx.request().getHeader(OKAPI_HEADER_TENANT);
+    if (queryParam.contains(BAD_QUERY)) {
+      serverResponse(ctx, 400, APPLICATION_JSON, Response.Status.BAD_REQUEST.getReasonPhrase());
+    } else if (queryParam.contains(ID_FOR_INTERNAL_SERVER_ERROR) || ERROR_TENANT.equals(tenant)) {
+      serverResponse(ctx, 500, APPLICATION_JSON, Response.Status.INTERNAL_SERVER_ERROR.getReasonPhrase());
+    } else {
+      Supplier<List<Document>> getFromFile = () -> {
+        try {
+          return new JsonObject(getMockData(INVOICE_SAMPLE_DOCUMENTS_PATH)).mapTo(DocumentCollection.class).getDocuments();
+        } catch (IOException e) {
+          return Collections.emptyList();
+        }
+      };
+
+      DocumentCollection documentCollection = new DocumentCollection();
+      List<Document> documents  = getMockEntries(INVOICE_DOCUMENTS, Document.class).orElseGet(getFromFile);
+
+      documentCollection.setDocuments(documents);
+      documentCollection.setTotalRecords(documentCollection.getDocuments().size());
+
+      JsonObject documentsJson = JsonObject.mapFrom(documentCollection);
+      logger.info(documentsJson.encodePrettily());
+
+      addServerRqRsData(HttpMethod.GET, INVOICE_DOCUMENTS, documentsJson);
+      serverResponse(ctx, 200, APPLICATION_JSON, documentsJson.encode());
+    }
+  }
+
+  private void handleGetInvoiceDocumentById(RoutingContext ctx) {
+    logger.info("handleGetInvoiceDocumentById got: GET " + ctx.request().path());
+    String documentId = ctx.request().getParam("documentId");
+    logger.info("documentId: " + documentId);
+    if (ID_FOR_INTERNAL_SERVER_ERROR.equals(documentId)) {
+      serverResponse(ctx, 500, APPLICATION_JSON, Response.Status.INTERNAL_SERVER_ERROR.getReasonPhrase());
+    } else {
+      JsonObject document = getMockEntry(INVOICE_DOCUMENTS, documentId).orElseGet(getJsonObjectFromFile(INVOICE_DOCUMENTS_SAMPLE_PATH, documentId));
+      if (document == null) {
+        ctx.response().setStatusCode(404).end(documentId);
+      } else {
+        // validate content against schema
+        InvoiceDocument documentSchema = document.mapTo(InvoiceDocument.class);
+        documentSchema.getDocumentMetadata().setId(documentId);
+        document = JsonObject.mapFrom(documentSchema);
+        addServerRqRsData(HttpMethod.GET, INVOICE_DOCUMENTS, document);
+        serverResponse(ctx, 200, APPLICATION_JSON, document.encodePrettily());
+      }
+    }
+  }
+
+  private void handlePostInvoiceDocument(RoutingContext ctx) {
+    InvoiceDocument invoiceDocument = ctx.getBodyAsJson().mapTo(InvoiceDocument.class);
+    String id = UUID.randomUUID().toString();
+    invoiceDocument.getDocumentMetadata().setId(id);
+    JsonObject jsonDocument = JsonObject.mapFrom(invoiceDocument);
+    addServerRqRsData(HttpMethod.POST, INVOICE_DOCUMENTS, jsonDocument);
+
+    ctx.response().putHeader(HttpHeaders.LOCATION, ctx.request().path() + "/" + id);
+
+    serverResponse(ctx, 201, APPLICATION_JSON, jsonDocument.encodePrettily());
   }
 
   private void handleGetVoucherLines(RoutingContext ctx) {

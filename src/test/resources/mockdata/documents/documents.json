@@ -1,0 +1,23 @@
+{
+  "documents": [
+    {
+      "id": "10a34f8a-98d1-45af-a9f6-14b7174ceb51",
+      "name": "sample.pdf",
+      "invoiceId": "733cafd3-895f-4e33-87b7-bf40dc3c8069",
+      "metadata": {
+        "createdDate": "2018-07-19T00:00:00.000+0000",
+        "createdByUserId": "28d1057c-d137-11e8-a8d5-f2801f1b9fd1"
+      }
+    },
+    {
+      "id": "36c07579-6699-496a-b9d8-b45c0fd90e35",
+      "name": "dummy.pdf",
+      "invoiceId": "733cafd3-895f-4e33-87b7-bf40dc3c8069",
+      "url": "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
+      "metadata": {
+        "createdDate": "2018-07-19T00:00:00.000+0000",
+        "createdByUserId": "28d1057c-d137-11e8-a8d5-f2801f1b9fd1"
+      }
+    }
+  ]
+}

@@ -24,6 +24,7 @@ import java.util.concurrent.TimeoutException;
   InvoiceLinesApiTest.class,
   VouchersApiTest.class,
   VoucherLinesApiTest.class,
+  DocumentsApiTest.class,
   InvoiceSummaryTest.class
 })
 public class ApiTestSuite {

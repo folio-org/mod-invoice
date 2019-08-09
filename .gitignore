@@ -1,4 +1,5 @@
 .idea/
+.vertx/
 .settings/
 *.iml
 /target
