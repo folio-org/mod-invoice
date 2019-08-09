@@ -175,12 +175,6 @@ public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
     }
   }
 
-  private void logInfo(String message, String id) {
-    if (logger.isInfoEnabled()) {
-      logger.info(message, id);
-    }
-  }
-
   private Void handleErrorResponse(Handler<AsyncResult<Response>> asyncResultHandler, AbstractHelper helper, Throwable t) {
     asyncResultHandler.handle(succeededFuture(helper.buildErrorResponse(t)));
     return null;

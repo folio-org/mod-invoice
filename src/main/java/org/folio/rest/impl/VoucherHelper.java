@@ -38,7 +38,7 @@ public class VoucherHelper extends AbstractHelper {
   }
 
   VoucherHelper(Map<String, String> okapiHeaders, Context ctx, String lang) {
-    super(getHttpClient(okapiHeaders), okapiHeaders, ctx, lang);
+    super(okapiHeaders, ctx, lang);
   }
 
   public CompletableFuture<Voucher> getVoucher(String id) {
@@ -60,7 +60,7 @@ public class VoucherHelper extends AbstractHelper {
     return handleGetRequest(resourcesPath(VOUCHER_NUMBER_START), httpClient, ctx, okapiHeaders, logger)
       .thenApply(entry -> entry.mapTo(SequenceNumber.class));
   }
-  
+
   /**
    * This endpoint is a means for the UI to set/reset the start value of the voucher-number sequence
    * @param value start value to be set/reset
@@ -100,7 +100,7 @@ public class VoucherHelper extends AbstractHelper {
     }
     return future;
   }
-  
+
   /**
    * Gets list of voucher
    *

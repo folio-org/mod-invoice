@@ -171,6 +171,28 @@ public class MockServer {
     });
   }
 
+  public static List<JsonObject> getInvoiceSearches() {
+    return getCollectionRecords(getRqRsEntries(HttpMethod.GET, INVOICES));
+  }
+
+  public static List<JsonObject> getInvoiceRetrievals() {
+    return getRqRsEntries(HttpMethod.GET, INVOICES).stream()
+      .filter(json -> json.containsKey(ID))
+      .collect(toList());
+  }
+
+  public static List<JsonObject> getInvoiceUpdates() {
+    return getRqRsEntries(HttpMethod.PUT, INVOICES);
+  }
+
+  public static List<JsonObject> getInvoiceLineSearches() {
+    return getCollectionRecords(getRqRsEntries(HttpMethod.GET, INVOICE_LINES));
+  }
+
+  private static List<JsonObject> getCollectionRecords(List<JsonObject> entries) {
+    return entries.stream().filter(json -> !json.containsKey(ID)).collect(toList());
+  }
+
   private Router defineRoutes() {
     Router router = Router.router(vertx);
     router.route().handler(BodyHandler.create());
@@ -360,7 +382,7 @@ public class MockServer {
       ctx.response().setStatusCode(404).end(id);
     }
   }
-  
+
   private void handleGetInvoiceLineById(RoutingContext ctx) {
     logger.info("handleGetInvoiceLinesById got: GET " + ctx.request().path());
     String id = ctx.request().getParam(ID);
@@ -368,19 +390,16 @@ public class MockServer {
     if (ID_FOR_INTERNAL_SERVER_ERROR.equals(id)) {
       serverResponse(ctx, 500, APPLICATION_JSON, Response.Status.INTERNAL_SERVER_ERROR.getReasonPhrase());
     } else {
-      try {
-        String filePath = String.format(MOCK_DATA_PATH_PATTERN, INVOICE_LINES_MOCK_DATA_PATH, id);
-  
-        JsonObject invoiceLine = new JsonObject(getMockData(filePath));
-  
+      JsonObject invoiceLine = getMockEntry(INVOICE_LINES, id).orElseGet(getJsonObjectFromFile(INVOICE_LINES_MOCK_DATA_PATH, id));
+      if (invoiceLine != null) {
         // validate content against schema
-       InvoiceLine invoiceSchema = invoiceLine.mapTo(InvoiceLine.class);
+        InvoiceLine invoiceSchema = invoiceLine.mapTo(InvoiceLine.class);
         invoiceSchema.setId(id);
         invoiceLine = JsonObject.mapFrom(invoiceSchema);
         addServerRqRsData(HttpMethod.GET, INVOICE_LINES, invoiceLine);
         serverResponse(ctx, 200, APPLICATION_JSON, invoiceLine.encodePrettily());
-      } catch (IOException e) {
-        ctx.response().setStatusCode(404).end(id);
+      } else {
+        serverResponse(ctx, 404, APPLICATION_JSON, id);
       }
     }
   }
@@ -498,8 +517,8 @@ public class MockServer {
       .end(body);
   }
 
-  public static void addMockEntry(String objName, JsonObject data) {
-    addServerRqRsData(HttpMethod.OTHER, objName, data);
+  public static void addMockEntry(String objName, Object data) {
+    addServerRqRsData(HttpMethod.OTHER, objName, data instanceof JsonObject ? (JsonObject) data : JsonObject.mapFrom(data));
   }
 
   private Optional<JsonObject> getMockEntry(String objName, String id) {
@@ -546,7 +565,7 @@ public class MockServer {
     }
   }
 
-  
+
   private void handleGetInvoiceLineNumber(RoutingContext ctx) {
     if(INVOICE_LINE_NUMBER_ERROR_TENANT.equals(ctx.request().getHeader(OKAPI_HEADER_TENANT))) {
       ctx.response()
@@ -647,7 +666,7 @@ public class MockServer {
       serverResponse(ctx, 200, APPLICATION_JSON, vouchersJson.encode());
     }
   }
-  
+
   private void handleGetSequence(RoutingContext ctx) {
     if (ERROR_TENANT.equals(ctx.request().getHeader(OKAPI_HEADER_TENANT))) {
       serverResponse(ctx, 500, TEXT_PLAIN, INTERNAL_SERVER_ERROR.getReasonPhrase());

@@ -23,6 +23,7 @@ import static org.folio.invoices.utils.HelperUtils.convertToDoubleWithRounding;
 import static org.folio.invoices.utils.HelperUtils.encodeQuery;
 import static org.folio.invoices.utils.HelperUtils.findChangedProtectedFields;
 import static org.folio.invoices.utils.HelperUtils.getEndpointWithQuery;
+import static org.folio.invoices.utils.HelperUtils.getHttpClient;
 import static org.folio.invoices.utils.HelperUtils.getInvoiceById;
 import static org.folio.invoices.utils.HelperUtils.handleDeleteRequest;
 import static org.folio.invoices.utils.HelperUtils.handleGetRequest;
@@ -67,7 +68,6 @@ import org.folio.rest.jaxrs.model.FundDistribution;
 import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.jaxrs.model.InvoiceCollection;
 import org.folio.rest.jaxrs.model.InvoiceLine;
-import org.folio.rest.jaxrs.model.InvoiceLineCollection;
 import org.folio.rest.jaxrs.model.Parameter;
 import org.folio.rest.jaxrs.model.SequenceNumber;
 import org.folio.rest.jaxrs.model.Voucher;
@@ -97,11 +97,14 @@ public class InvoiceHelper extends AbstractHelper {
 
   private static final String DEFAULT_ACCOUNTING_CODE = "tmp_code";
 
+  // Using variable to "cache" lines for particular invoice base on assumption that the helper is stateful and new instance is used
+  private List<InvoiceLine> invoiceLines;
+
   private final InvoiceLineHelper invoiceLineHelper;
   private final VoucherHelper voucherHelper;
   private final VoucherLineHelper voucherLineHelper;
 
-  InvoiceHelper(Map<String, String> okapiHeaders, Context ctx, String lang) {
+  public InvoiceHelper(Map<String, String> okapiHeaders, Context ctx, String lang) {
     super(getHttpClient(okapiHeaders), okapiHeaders, ctx, lang);
     invoiceLineHelper = new InvoiceLineHelper(httpClient, okapiHeaders, ctx, lang);
     voucherHelper = new VoucherHelper(httpClient, okapiHeaders, ctx, lang);
@@ -111,10 +114,10 @@ public class InvoiceHelper extends AbstractHelper {
   public CompletableFuture<Invoice> createInvoice(Invoice invoice) {
     return generateFolioInvoiceNumber()
       .thenApply(invoice::withFolioInvoiceNo)
+      .thenApply(this::withCalculatedTotals)
       .thenApply(JsonObject::mapFrom)
       .thenCompose(jsonInvoice -> createRecordInStorage(jsonInvoice, resourcesPath(INVOICES)))
-      .thenApply(invoice::withId)
-      .thenApply(this::withCalculatedTotals);
+      .thenApply(invoice::withId);
   }
 
   /**
@@ -127,7 +130,12 @@ public class InvoiceHelper extends AbstractHelper {
     CompletableFuture<Invoice> future = new VertxCompletableFuture<>(ctx);
     getInvoiceRecord(id)
       // To calculate totals, related invoice lines have to be retrieved
-      .thenCompose(invoice -> getInvoiceLinesWithTotals(invoice).thenApply(lines -> withCalculatedTotals(invoice, lines)))
+      .thenCompose(invoice -> recalculateTotals(invoice).thenApply(isOutOfSync -> {
+        if (isOutOfSync) {
+          updateOutOfSyncInvoice(invoice);
+        }
+        return invoice;
+      }))
       .thenAccept(future::complete)
       .exceptionally(t -> {
         logger.error("Failed to get an Invoice by id={}", t.getCause(), id);
@@ -189,8 +197,48 @@ public class InvoiceHelper extends AbstractHelper {
         setSystemGeneratedData(invoiceFromStorage, invoice);
         return invoiceFromStorage;
       })
-      .thenCompose(invoiceFromStorage -> handleInvoiceStatusTransition(invoice, invoiceFromStorage))
-      .thenCompose(aVoid -> updateInvoiceRecord(invoice));
+      .thenCompose(invoiceFromStorage -> recalculateTotals(invoice)
+        .thenCompose(ok -> handleInvoiceStatusTransition(invoice, invoiceFromStorage)))
+      .thenCompose(ok -> updateInvoiceRecord(invoice));
+  }
+
+  /**
+   * Updates invoice in the storage without blocking main flow (i.e. async call)
+   * @param invoice invoice which needs updates in storage
+   */
+  private void updateOutOfSyncInvoice(Invoice invoice) {
+    logger.info("Invoice totals are out of sync in the storage");
+    VertxCompletableFuture.runAsync(ctx, () -> {
+      // Create new instance of the helper to initiate new http client because current one might be closed in the middle of work
+      InvoiceHelper helper = new InvoiceHelper(okapiHeaders, ctx, lang);
+      helper.updateInvoiceRecord(invoice)
+        .handle((ok, fail) -> {
+          // the http client  needs to closed regardless of the result
+          helper.closeHttpClient();
+          return null;
+        });
+    });
+  }
+
+  /**
+   * Gets invoice lines from the storage and updates total values of the invoice
+   * @param invoice invoice to update totals for
+   * @return {code true} if adjustments total, sub total or grand total value is different to original one
+   */
+  public CompletableFuture<Boolean> recalculateTotals(Invoice invoice) {
+    return getInvoiceLinesWithTotals(invoice).thenApply(lines -> {
+      // 1. Get original values
+      Double total = invoice.getTotal();
+      Double subTotal = invoice.getSubTotal();
+      Double adjustmentsTotal = invoice.getAdjustmentsTotal();
+
+      // 2. Recalculate totals
+      withCalculatedTotals(invoice, lines);
+
+      // 3. Compare if anything has changed
+      return !(Objects.equals(total, invoice.getTotal()) && Objects.equals(subTotal, invoice.getSubTotal())
+          && Objects.equals(adjustmentsTotal, invoice.getAdjustmentsTotal()));
+    });
   }
 
   private void setSystemGeneratedData(Invoice invoiceFromStorage, Invoice invoice) {
@@ -224,13 +272,13 @@ public class InvoiceHelper extends AbstractHelper {
 
     return loadTenantConfiguration(SYSTEM_CONFIG_QUERY, VOUCHER_NUMBER_PREFIX_CONFIG_QUERY)
       .thenCompose(ok -> getInvoiceLinesWithTotals(invoice))
-      .thenApply(invoiceLines -> {
-        verifyInvoiceLineNotEmpty(invoiceLines);
-        validateInvoiceLineFundDistributions(invoiceLines);
-        return invoiceLines;
+      .thenApply(lines -> {
+        verifyInvoiceLineNotEmpty(lines);
+        validateInvoiceLineFundDistributions(lines);
+        return lines;
       })
-      .thenCompose(invoiceLines -> prepareVoucher(invoice)
-          .thenCompose(voucher -> handleVoucherWithLines(invoiceLines, voucher))
+      .thenCompose(lines -> prepareVoucher(invoice)
+          .thenCompose(voucher -> handleVoucherWithLines(lines, voucher))
       );
   }
 
@@ -585,7 +633,7 @@ public class InvoiceHelper extends AbstractHelper {
     }
   }
 
-  private CompletableFuture<Void> updateInvoiceRecord(Invoice updatedInvoice) {
+  public CompletableFuture<Void> updateInvoiceRecord(Invoice updatedInvoice) {
     JsonObject jsonInvoice = JsonObject.mapFrom(updatedInvoice);
     String path = resourceByIdPath(INVOICES, updatedInvoice.getId(), lang);
     return handlePutRequest(path, jsonInvoice, httpClient, ctx, okapiHeaders, logger);
@@ -634,10 +682,14 @@ public class InvoiceHelper extends AbstractHelper {
   }
 
   private CompletableFuture<List<InvoiceLine>> fetchInvoiceLinesByInvoiceId(String invoiceId) {
+    if (invoiceLines != null) {
+      return CompletableFuture.completedFuture(invoiceLines);
+    }
+
     String query = String.format(QUERY_BY_INVOICE_ID, invoiceId);
     // Assuming that the invoice will never contain more than Integer.MAX_VALUE invoiceLines.
     return invoiceLineHelper.getInvoiceLines(Integer.MAX_VALUE, 0, query)
-      .thenApply(InvoiceLineCollection::getInvoiceLines);
+      .thenApply(invoiceLineCollection -> invoiceLines = invoiceLineCollection.getInvoiceLines());
   }
 
   private CompletableFuture<List<InvoiceLine>> getInvoiceLinesWithTotals(Invoice invoice) {
