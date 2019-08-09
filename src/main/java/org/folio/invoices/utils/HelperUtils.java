@@ -2,16 +2,20 @@ package org.folio.invoices.utils;
 
 import static java.util.Objects.nonNull;
 import static java.util.stream.Collectors.toList;
+import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
+import static javax.ws.rs.core.MediaType.TEXT_PLAIN;
 import static org.apache.commons.lang3.StringUtils.EMPTY;
 import static org.apache.commons.lang3.StringUtils.isEmpty;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICES;
 import static org.folio.invoices.utils.ResourcePathResolver.VOUCHERS;
 import static org.folio.invoices.utils.ResourcePathResolver.VOUCHER_LINES;
 import static org.folio.invoices.utils.ResourcePathResolver.resourceByIdPath;
+import static org.folio.rest.RestVerticle.OKAPI_HEADER_TENANT;
 
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -25,7 +29,11 @@ import javax.money.Monetary;
 import javax.money.MonetaryAmount;
 import javax.money.convert.CurrencyConversion;
 
+import io.vertx.core.eventbus.Message;
+import io.vertx.core.http.HttpHeaders;
 import one.util.streamex.StreamEx;
+
+import org.apache.commons.collections4.map.CaseInsensitiveMap;
 import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.apache.commons.lang3.reflect.FieldUtils;
 import org.folio.invoices.rest.exceptions.HttpException;
@@ -35,8 +43,10 @@ import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.jaxrs.model.InvoiceLine;
 import org.folio.rest.jaxrs.model.Voucher;
 import org.folio.rest.jaxrs.model.VoucherLine;
+import org.folio.rest.tools.client.HttpClientFactory;
 import org.folio.rest.tools.client.Response;
 import org.folio.rest.tools.client.interfaces.HttpClientInterface;
+import org.folio.rest.tools.utils.TenantTool;
 import org.javamoney.moneta.Money;
 import org.javamoney.moneta.function.MonetaryFunctions;
 import org.javamoney.moneta.function.MonetaryOperators;
@@ -49,11 +59,27 @@ import me.escoffier.vertx.completablefuture.VertxCompletableFuture;
 
 public class HelperUtils {
 
+  public static final String INVOICE_ID = "invoiceId";
+  public static final String LANG = "lang";
+  public static final String OKAPI_URL = "X-Okapi-Url";
+
   private static final String EXCEPTION_CALLING_ENDPOINT_MSG = "Exception calling {} {}";
   private static final String CALLING_ENDPOINT_MSG = "Sending {} {}";
 
   private HelperUtils() {
 
+  }
+
+  public static HttpClientInterface getHttpClient(Map<String, String> okapiHeaders) {
+    final String okapiURL = okapiHeaders.getOrDefault(OKAPI_URL, "");
+    final String tenantId = TenantTool.calculateTenantId(okapiHeaders.get(OKAPI_HEADER_TENANT));
+
+    HttpClientInterface httpClient = HttpClientFactory.getHttpClient(okapiURL, tenantId);
+
+    Map<String, String> customHeader = new HashMap<>();
+    customHeader.put(HttpHeaders.ACCEPT.toString(), APPLICATION_JSON + ", " + TEXT_PLAIN);
+    httpClient.setDefaultHeaders(customHeader);
+    return httpClient;
   }
 
   public static CompletableFuture<Invoice> getInvoiceById(String id, String lang, HttpClientInterface httpClient, Context ctx,
@@ -90,10 +116,6 @@ public class HelperUtils {
       throw new CompletionException(
         new HttpException(response.getCode(), response.getError().getString("errorMessage")));
     }
-  }
-
-  public static String buildQuery(String query, Logger logger) {
-    return isEmpty(query) ? EMPTY : "&query=" + encodeQuery(query, logger);
   }
 
   /**
@@ -310,5 +332,13 @@ public class HelperUtils {
     invoiceLine.setTotal(convertToDoubleWithRounding(total));
 
     return invoiceLine;
+  }
+
+  public static Map<String, String> getOkapiHeaders(Message<JsonObject> message) {
+    Map<String, String> okapiHeaders = new CaseInsensitiveMap<>();
+    message.headers()
+      .entries()
+      .forEach(entry -> okapiHeaders.put(entry.getKey(), entry.getValue()));
+    return okapiHeaders;
   }
 }

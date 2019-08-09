@@ -33,6 +33,7 @@ import static org.folio.rest.impl.InvoicesApiTest.OPEN_INVOICE_ID;
 import static org.folio.rest.impl.InvoicesApiTest.REVIEWED_INVOICE_ID;
 import static org.folio.rest.impl.InvoicesImpl.PROTECTED_AND_MODIFIED_FIELDS;
 import static org.folio.rest.impl.MockServer.INVOICE_LINE_NUMBER_ERROR_X_OKAPI_TENANT;
+import static org.folio.rest.impl.MockServer.addMockEntry;
 import static org.folio.rest.impl.MockServer.serverRqRs;
 import static org.hamcrest.Matchers.*;
 import static org.junit.Assert.assertEquals;
@@ -49,7 +50,7 @@ public class InvoiceLinesApiTest extends ApiTestBase {
 
   static final String INVOICE_LINES_MOCK_DATA_PATH = BASE_MOCK_DATA_PATH + "invoiceLines/";
   static final String INVOICE_LINES_LIST_PATH = INVOICE_LINES_MOCK_DATA_PATH + "invoice_lines.json";
-  private static final String INVOICE_LINES_PATH = "/invoice/invoice-lines";
+  static final String INVOICE_LINES_PATH = "/invoice/invoice-lines";
   private static final String INVOICE_LINE_ID_PATH = INVOICE_LINES_PATH + "/%s";
 
 
@@ -118,6 +119,7 @@ public class InvoiceLinesApiTest extends ApiTestBase {
   public void deleteInvoicingInvoiceLinesByIdTest() {
     logger.info("=== Test delete invoice line by id ===");
 
+    addMockEntry(INVOICE_LINES, JsonObject.mapFrom(new InvoiceLine().withId(VALID_UUID).withInvoiceId(VALID_UUID)));
     verifyDeleteResponse(String.format(INVOICE_LINE_ID_PATH, VALID_UUID), "", 204);
   }
 
@@ -209,6 +211,8 @@ public class InvoiceLinesApiTest extends ApiTestBase {
     String reqData = getMockData(INVOICE_LINES_MOCK_DATA_PATH + INVOICE_LINE_WITH_APPROVED_EXISTED_INVOICE_ID + ".json");
 
     verifyPut(String.format(INVOICE_LINE_ID_PATH, INVOICE_LINE_WITH_APPROVED_EXISTED_INVOICE_ID), reqData, "", 204);
+
+    verifyInvoiceSummaryUpdateEvent(1);
   }
 
   @Test
@@ -216,6 +220,8 @@ public class InvoiceLinesApiTest extends ApiTestBase {
     String reqData = getMockData(INVOICE_LINES_MOCK_DATA_PATH + INVOICE_LINE_WITH_INTERNAL_ERROR_ON_GET_INVOICE + ".json");
 
     verifyPut(String.format(INVOICE_LINE_ID_PATH, INVOICE_LINE_WITH_APPROVED_EXISTED_INVOICE_ID), reqData, APPLICATION_JSON, 500);
+
+    verifyInvoiceSummaryUpdateEvent(0);
   }
 
   @Test
@@ -224,8 +230,9 @@ public class InvoiceLinesApiTest extends ApiTestBase {
     reqData.setId(ID_DOES_NOT_EXIST);
     String jsonBody = JsonObject.mapFrom(reqData).encode();
 
-    verifyPut(String.format(INVOICE_LINE_ID_PATH, ID_DOES_NOT_EXIST), jsonBody,
-        APPLICATION_JSON, 404);
+    verifyPut(String.format(INVOICE_LINE_ID_PATH, ID_DOES_NOT_EXIST), jsonBody, APPLICATION_JSON, 404);
+
+    verifyInvoiceSummaryUpdateEvent(0);
   }
 
   @Test
@@ -235,6 +242,8 @@ public class InvoiceLinesApiTest extends ApiTestBase {
     String jsonBody = JsonObject.mapFrom(reqData).encode();
 
     verifyPut(String.format(INVOICE_LINE_ID_PATH, ID_FOR_INTERNAL_SERVER_ERROR), jsonBody, APPLICATION_JSON, 500);
+
+    verifyInvoiceSummaryUpdateEvent(0);
   }
 
   @Test
@@ -244,6 +253,8 @@ public class InvoiceLinesApiTest extends ApiTestBase {
     String jsonBody = JsonObject.mapFrom(reqData).encode();
 
     verifyPut(String.format(INVOICE_LINE_ID_PATH, ID_BAD_FORMAT), jsonBody, APPLICATION_JSON, 422);
+
+    verifyInvoiceSummaryUpdateEvent(0);
   }
 
   @Test
@@ -254,6 +265,7 @@ public class InvoiceLinesApiTest extends ApiTestBase {
 
     verifyPut(endpoint, reqData, TEXT_PLAIN, 400);
 
+    verifyInvoiceSummaryUpdateEvent(0);
   }
 
   @Test
@@ -423,8 +435,9 @@ public class InvoiceLinesApiTest extends ApiTestBase {
       MatcherAssert.assertThat(serverRqRs.row(INVOICE_LINES).get(HttpMethod.GET), hasSize(1));
       MatcherAssert.assertThat(serverRqRs.row(INVOICES).get(HttpMethod.GET), hasSize(1));
       MatcherAssert.assertThat(serverRqRs.row(INVOICE_LINES).get(HttpMethod.PUT), hasSize(1));
-      serverRqRs.clear();
 
+    verifyInvoiceSummaryUpdateEvent(1);
+    clearServiceInteractions();
   }
 
   @Test
@@ -436,9 +449,15 @@ public class InvoiceLinesApiTest extends ApiTestBase {
     invoiceLine.setId(INVOICE_LINE_WITH_APPROVED_EXISTED_INVOICE_ID);
     verifyPut(String.format(INVOICE_LINE_ID_PATH, invoiceLine.getId()), JsonObject.mapFrom(invoiceLine).encode(), "", HttpStatus.SC_NO_CONTENT);
 
+    verifyInvoiceSummaryUpdateEvent(1);
+    clearServiceInteractions();
+
     // Invoice line updated (invoice status = OPEN) - protected field not modified
     invoiceLine.setId(INVOICE_LINE_WITH_OPEN_EXISTED_INVOICE_ID);
     verifyPut(String.format(INVOICE_LINE_ID_PATH, invoiceLine.getId()), JsonObject.mapFrom(invoiceLine).encode(), "", HttpStatus.SC_NO_CONTENT);
+
+    verifyInvoiceSummaryUpdateEvent(1);
+    clearServiceInteractions();
 
     // Invoice line updated (invoice status = APPROVED) - all protected fields modified
 
@@ -485,5 +504,7 @@ public class InvoiceLinesApiTest extends ApiTestBase {
     Object[] expected = updatedFields.keySet().stream().map(InvoiceLineProtectedFields::getFieldName).toArray();
     MatcherAssert.assertThat(failedFieldNames.length, is(expected.length));
     MatcherAssert.assertThat(expected, Matchers.arrayContainingInAnyOrder(failedFieldNames));
+
+    verifyInvoiceSummaryUpdateEvent(0);
   }
 }

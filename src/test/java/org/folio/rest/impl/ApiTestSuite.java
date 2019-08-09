@@ -4,6 +4,8 @@ import io.restassured.RestAssured;
 import io.vertx.core.DeploymentOptions;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
+
+import org.folio.invoices.events.handlers.InvoiceSummaryTest;
 import org.folio.rest.RestVerticle;
 import org.folio.rest.tools.utils.NetworkUtils;
 import org.junit.AfterClass;
@@ -23,6 +25,7 @@ import java.util.concurrent.TimeoutException;
   VouchersApiTest.class,
   VoucherLinesApiTest.class,
   DocumentsApiTest.class
+  InvoiceSummaryTest.class
 })
 public class ApiTestSuite {
 

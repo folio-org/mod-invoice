@@ -31,6 +31,7 @@
           ],
           "modulePermissions": [
             "invoice-storage.invoices.item.get",
+            "invoice-storage.invoices.item.put",
             "invoice-storage.invoice-lines.collection.get"
           ]
         },
@@ -78,7 +79,9 @@
           "modulePermissions": [
             "invoice-storage.invoice-line-number.get",
             "invoice-storage.invoices.item.get",
-            "invoice-storage.invoice-lines.item.post"
+            "invoice-storage.invoices.item.put",
+            "invoice-storage.invoice-lines.item.post",
+            "invoice-storage.invoice-lines.collection.get"
           ]
         },
         {
@@ -95,16 +98,24 @@
           "pathPattern": "/invoice/invoice-lines/{id}",
           "permissionsRequired": ["invoice.invoice-lines.item.put"],
           "modulePermissions": [
-              "invoice-storage.invoice-lines.item.put",
-              "invoice-storage.invoice-lines.item.get",
-              "invoice-storage.invoices.item.get"
+            "invoice-storage.invoice-lines.item.put",
+            "invoice-storage.invoice-lines.item.get",
+            "invoice-storage.invoice-lines.collection.get",
+            "invoice-storage.invoices.item.get",
+            "invoice-storage.invoices.item.put"
           ]
         },
         {
           "methods": ["DELETE"],
           "pathPattern": "/invoice/invoice-lines/{id}",
           "permissionsRequired": ["invoice.invoice-lines.item.delete"],
-          "modulePermissions": ["invoice-storage.invoice-lines.item.delete"]
+          "modulePermissions": [
+            "invoice-storage.invoice-lines.item.get",
+            "invoice-storage.invoice-lines.item.delete",
+            "invoice-storage.invoice-lines.collection.get",
+            "invoice-storage.invoices.item.get",
+            "invoice-storage.invoices.item.put"
+          ]
         },
         {
           "methods": ["GET"],
@@ -346,43 +357,6 @@
       "visible": false
     },
     {
-      "permissionName": "invoice.acquisitions-units-assignments.assignments.collection.get",
-      "displayName": "Acquisitions unit assignment - get assignments",
-      "description": "Get a collection of acquisitions unit assignments"
-    },
-    {
-      "permissionName": "invoice.acquisitions-units-assignments.assignments.item.post",
-      "displayName": "Acquisitions unit assignment - create unit assignment",
-      "description": "Create a new acquisitions unit assignments"
-    },
-    {
-      "permissionName": "invoice.acquisitions-units-assignments.assignments.item.get",
-      "displayName": "Acquisitions unit assignment - get unit assignment",
-      "description": "Fetch an acquisitions unit assignments"
-    },
-    {
-      "permissionName": "invoice.acquisitions-units-assignments.assignments.item.put",
-      "displayName": "Acquisitions unit assignment - update unit assignment",
-      "description": "Update an acquisitions unit assignments"
-    },
-    {
-      "permissionName": "invoice.acquisitions-units-assignments.assignments.item.delete",
-      "displayName": "Acquisitions units - delete unit",
-      "description": "Delete an acquisitions unit assignments"
-    },
-    {
-      "permissionName": "invoice.acquisitions-units-assignments.assignments.all",
-      "displayName": "All acquisitions-unit-assignments perms",
-      "description": "All permissions for the acquisitions-unit-assignments",
-      "subPermissions": [
-        "invoice.acquisitions-units-assignments.assignments.collection.get",
-        "invoice.acquisitions-units-assignments.assignments.item.post",
-        "invoice.acquisitions-units-assignments.assignments.item.get",
-        "invoice.acquisitions-units-assignments.assignments.item.put",
-        "invoice.acquisitions-units-assignments.assignments.item.delete"
-      ]
-    },
-    {
       "permissionName": "invoice.invoices.documents.collection.get",
       "displayName": "Document - get collection of Documents",
       "description": "Get collection of Documents"
@@ -418,7 +392,6 @@
       "displayName": "Invoice module - all permissions",
       "description": "Entire set of permissions needed to use the invoice module",
       "subPermissions": [
-        "invoice.acquisitions-units-assignments.assignments.all",
         "invoice.invoices.collection.get",
         "invoice.invoices.item.get",
         "invoice.invoices.item.post",

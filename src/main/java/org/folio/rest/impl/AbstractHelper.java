@@ -3,21 +3,21 @@ package org.folio.rest.impl;
 import static javax.ws.rs.core.HttpHeaders.CONTENT_TYPE;
 import static javax.ws.rs.core.HttpHeaders.LOCATION;
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
-import static javax.ws.rs.core.MediaType.TEXT_PLAIN;
 import static javax.ws.rs.core.Response.Status.CREATED;
 import static javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
 import static org.folio.invoices.utils.ErrorCodes.GENERIC_ERROR_CODE;
 import static org.folio.invoices.utils.ErrorCodes.MOD_CONFIG_ERROR;
 import static org.folio.invoices.utils.ErrorCodes.PROHIBITED_FIELD_CHANGING;
+import static org.folio.invoices.utils.HelperUtils.LANG;
+import static org.folio.invoices.utils.HelperUtils.OKAPI_URL;
 import static org.folio.invoices.utils.HelperUtils.encodeQuery;
+import static org.folio.invoices.utils.HelperUtils.getHttpClient;
 import static org.folio.invoices.utils.HelperUtils.handleGetRequest;
 import static org.folio.invoices.utils.HelperUtils.verifyAndExtractBody;
-import static org.folio.rest.RestVerticle.OKAPI_HEADER_TENANT;
 import static org.folio.rest.impl.InvoicesImpl.PROTECTED_AND_MODIFIED_FIELDS;
 
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -29,16 +29,15 @@ import javax.money.convert.MonetaryConversions;
 import javax.ws.rs.core.Response;
 
 import org.apache.commons.collections4.CollectionUtils;
+import org.folio.invoices.events.handlers.MessageAddress;
 import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.rest.jaxrs.model.Configs;
 import org.folio.rest.jaxrs.model.Error;
 import org.folio.rest.jaxrs.model.Errors;
-import org.folio.rest.tools.client.HttpClientFactory;
 import org.folio.rest.tools.client.interfaces.HttpClientInterface;
-import org.folio.rest.tools.utils.TenantTool;
 
 import io.vertx.core.Context;
-import io.vertx.core.http.HttpHeaders;
+import io.vertx.core.eventbus.DeliveryOptions;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
@@ -50,11 +49,9 @@ public abstract class AbstractHelper {
 
   public static final String ID = "id";
   public static final String ERROR_CAUSE = "cause";
-  public static final String OKAPI_URL = "X-Okapi-Url";
   public static final String DEFAULT_SYSTEM_CURRENCY = "USD";
   public static final String CONFIG_QUERY = "module==%s and configName==%s";
   public static final String QUERY_BY_INVOICE_ID = "invoiceId==%s";
-  static final String SEARCH_PARAMS = "?limit=%s&offset=%s%s&lang=%s";
 
   private final Errors processingErrors = new Errors();
   private ExchangeRateProvider exchangeRateProvider;
@@ -67,7 +64,6 @@ public abstract class AbstractHelper {
 
 
   AbstractHelper(HttpClientInterface httpClient, Map<String, String> okapiHeaders, Context ctx, String lang) {
-    setDefaultHeaders(httpClient);
     this.httpClient = httpClient;
     this.okapiHeaders = okapiHeaders;
     this.ctx = ctx;
@@ -75,10 +71,7 @@ public abstract class AbstractHelper {
   }
 
   AbstractHelper(Map<String, String> okapiHeaders, Context ctx, String lang) {
-    this.httpClient = getHttpClient(okapiHeaders, true);
-    this.okapiHeaders = okapiHeaders;
-    this.ctx = ctx;
-    this.lang = lang;
+    this(getHttpClient(okapiHeaders), okapiHeaders, ctx, lang);
   }
 
   /**
@@ -176,42 +169,9 @@ public abstract class AbstractHelper {
     processingErrors.getErrors().add(error);
   }
 
-  protected void addProcessingErrors(List<Error> errors) {
-    processingErrors.getErrors().addAll(errors);
-  }
-
   protected Errors getProcessingErrors() {
     processingErrors.setTotalRecords(processingErrors.getErrors().size());
     return processingErrors;
-  }
-
-  /**
-   * Some requests do not have body and in happy flow do not produce response body. The Accept header is required for calls to storage
-   */
-  private static void setDefaultHeaders(HttpClientInterface httpClient) {
-    Map<String, String> customHeader = new HashMap<>();
-    customHeader.put(HttpHeaders.ACCEPT.toString(), APPLICATION_JSON + ", " + TEXT_PLAIN);
-    httpClient.setDefaultHeaders(customHeader);
-  }
-
-  public static HttpClientInterface getHttpClient(Map<String, String> okapiHeaders, boolean setDefaultHeaders) {
-    final String okapiURL = okapiHeaders.getOrDefault(OKAPI_URL, "");
-    final String tenantId = TenantTool.calculateTenantId(okapiHeaders.get(OKAPI_HEADER_TENANT));
-
-    HttpClientInterface httpClient = HttpClientFactory.getHttpClient(okapiURL, tenantId);
-
-    // Some requests do not have body and in happy flow do not produce response body. The Accept header is required for calls to storage
-    if (setDefaultHeaders) {
-      setDefaultHeaders(httpClient);
-    }
-    return httpClient;
-  }
-
-  public static HttpClientInterface getHttpClient(Map<String, String> okapiHeaders) {
-    final String okapiURL = okapiHeaders.getOrDefault(OKAPI_URL, "");
-    final String tenantId = TenantTool.calculateTenantId(okapiHeaders.get(OKAPI_HEADER_TENANT));
-
-    return HttpClientFactory.getHttpClient(okapiURL, tenantId);
   }
 
   protected void verifyThatProtectedFieldsUnchanged(Set<String> fields) {
@@ -243,7 +203,7 @@ public abstract class AbstractHelper {
 
     return code;
   }
-  
+
   public Response buildErrorResponse(int code) {
     final Response.ResponseBuilder responseBuilder;
     switch (code) {
@@ -298,5 +258,18 @@ public abstract class AbstractHelper {
         .header(CONTENT_TYPE, APPLICATION_JSON)
         .header(LOCATION, endpoint).entity(body).build();
     }
+  }
+
+  protected void sendEvent(MessageAddress messageAddress, JsonObject data) {
+    DeliveryOptions deliveryOptions = new DeliveryOptions();
+
+    // Add okapi headers
+    okapiHeaders.forEach(deliveryOptions::addHeader);
+
+    data.put(LANG, lang);
+
+    ctx.owner()
+      .eventBus()
+      .send(messageAddress.address, data, deliveryOptions);
   }
 }
