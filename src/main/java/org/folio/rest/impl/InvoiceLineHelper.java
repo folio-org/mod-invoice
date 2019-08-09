@@ -105,15 +105,14 @@ public class InvoiceLineHelper extends AbstractHelper {
         Double recalculatedTotal = invoiceLineWithTotalRecalculated.getTotal();
         if (Double.compare(recalculatedTotal, existingTotal) != 0) {
           updateInvoiceLineToStorage(invoiceLineWithTotalRecalculated)
-            .thenAccept(updateSuccess -> future.complete(invoiceLineWithTotalRecalculated))
             .exceptionally(t -> {
               logger.error("Error persisting total to storage for invoice-line ", id);
-              future.completeExceptionally(t);
               return null;
             });
         } else {
           future.complete(invoiceLineFromStorage);
         }
+        future.complete(invoiceLineWithTotalRecalculated);
       })
         .exceptionally(t -> {
           logger.error("Error calculating invoice-line totals");

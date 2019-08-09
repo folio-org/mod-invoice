@@ -112,9 +112,6 @@ public class InvoiceLinesApiTest extends ApiTestBase {
     
     final InvoiceLine updatedResponse = verifySuccessGet(INVOICE_LINES_PATH + "/" + id, InvoiceLine.class);
 
-    List<JsonObject> verifyInvoiceLineTotalInPut = MockServer.getRqRsEntries(HttpMethod.PUT,INVOICE_LINES);
-    assertThat(verifyInvoiceLineTotalInPut.get(0).mapTo(InvoiceLine.class).getTotal(), equalTo(expectedTotal));
-
     assertThat(updatedResponse.getTotal(), equalTo(expectedTotal)); // updated total after recalculating
   }
 
@@ -133,17 +130,13 @@ public class InvoiceLinesApiTest extends ApiTestBase {
 
   @Test
   public void testGetInvoicingInvoiceLinesByIdUpdateTotalException() throws Exception {
-    logger.info("=== Test 404 id not found exception while updating invoice line after calculating invoice line total ===");
+    logger.info("=== Test 200 when correct calculated invoice line total is returned without waiting to update in storage ===");
 
-    final Response resp = verifyGet(INVOICE_LINES_PATH + "/" + UPDATE_INVOICE_TOTAL_ID_DOES_NOT_EXIST, APPLICATION_JSON, 404);
+    final Response resp = verifyGet(INVOICE_LINES_PATH + "/" + CALCULATE_INVOICE_LINE_TOTAL_, APPLICATION_JSON, 200);
 
-    String actual = resp.getBody()
-      .as(Errors.class)
-      .getErrors()
-      .get(0)
-      .getMessage();
-
-    assertEquals(UPDATE_INVOICE_TOTAL_ID_DOES_NOT_EXIST, actual);
+    resp.getBody().as(InvoiceLine.class).getTotal();
+    Double expectedTotal = 4.62;
+    assertThat(resp.getBody().as(InvoiceLine.class).getTotal(), equalTo(expectedTotal));
   }
 
   @Test

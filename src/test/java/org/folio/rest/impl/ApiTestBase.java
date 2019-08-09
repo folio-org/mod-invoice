@@ -48,7 +48,7 @@ public class ApiTestBase {
   static final String INVALID_LANG = "english";
 
   static final String ID_DOES_NOT_EXIST = "d25498e7-3ae6-45fe-9612-ec99e2700d2f";
-  static final String UPDATE_INVOICE_TOTAL_ID_DOES_NOT_EXIST = "55e4b6f5-f974-42da-9a77-24d4e8ef0e70";
+  static final String CALCULATE_INVOICE_LINE_TOTAL_ = "55e4b6f5-f974-42da-9a77-24d4e8ef0e70";
   static final String ID_FOR_INTERNAL_SERVER_ERROR = "168f8a86-d26c-406e-813f-c7527f241ac3";
   static final String ID_FOR_INTERNAL_SERVER_ERROR_PUT = "bad500bb-bbbb-500b-bbbb-bbbbbbbbbbbb";
 
