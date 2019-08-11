@@ -12,6 +12,7 @@ import io.vertx.core.Context;
 import io.vertx.core.json.JsonObject;
 
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -88,38 +89,57 @@ public class InvoiceLineHelper extends AbstractHelper {
     return future;
   }
 
+  private void updateOutOfSyncInvoiceLine(InvoiceLine invoiceLine) {
+    VertxCompletableFuture.runAsync(ctx, () -> {
+      InvoiceLineHelper helper = new InvoiceLineHelper(okapiHeaders, ctx, lang);
+      helper.updateInvoiceLineToStorage(invoiceLine)
+        .handle((ok, fail) -> {
+          helper.closeHttpClient();
+          return null;
+        });
+    });
+  }
+
+  /**
+   * Calculate invoice line total and compare with original value if it has changed
+   *
+   * @param invoiceLineFromStorage invoice line to update totals for
+   * @return {code true} if grand total value is different to original one
+   */
+  public CompletableFuture<Boolean> reCalculateInvoiceLineTotals(InvoiceLine invoiceLineFromStorage) {
+
+    // 1. Get original values
+    Double existingTotal = invoiceLineFromStorage.getTotal();
+
+    // 2. Recalculate totals
+    return calculateInvoiceLineTotals(invoiceLineFromStorage).thenApply(invoiceLineWithTotalRecalculated -> {
+      Double recalculatedTotal = invoiceLineWithTotalRecalculated.getTotal();
+
+      // 3. Compare if anything has changed
+      return !Objects.equals(existingTotal, recalculatedTotal);
+    });
+  }
+
+  /**
+   * Gets invoice line by id and calculate total
+   *
+   * @param id invoice line uuid
+   * @return completable future with {@link InvoiceLine} on success or an exception if processing fails
+   */
   public CompletableFuture<InvoiceLine> getInvoiceLinePersistTotal(String id) {
     CompletableFuture<InvoiceLine> future = new VertxCompletableFuture<>(ctx);
 
-    // 1. GET invoice-line from storage
-    getInvoiceLine(id).thenAccept(invoiceLineFromStorage -> {
-      logger.info("Successfully retrieved invoice line to persist total: " + invoiceLineFromStorage);
-
-      // 2. Save invoice-line total from storage for future comparison
-      Double existingTotal = invoiceLineFromStorage.getTotal();
-
-      // 3. Calculate invoice-line totals, if different from storage, write it back to storage
-      calculateInvoiceLineTotals(invoiceLineFromStorage).thenAccept(invoiceLineWithTotalRecalculated -> {
-        Double recalculatedTotal = invoiceLineWithTotalRecalculated.getTotal();
-        if (Double.compare(recalculatedTotal, existingTotal) != 0) {
-          updateInvoiceLineToStorage(invoiceLineWithTotalRecalculated)
-            .exceptionally(t -> {
-              logger.error("Error persisting total to storage for invoice-line ", id);
-              return null;
-            });
-        } else {
-          future.complete(invoiceLineFromStorage);
+    // GET invoice-line from storage
+    getInvoiceLine(id)
+      .thenCompose(invoiceLineFromStorage -> reCalculateInvoiceLineTotals(invoiceLineFromStorage).thenApply(isTotalOutOfSync -> {
+        if (isTotalOutOfSync) {
+          updateOutOfSyncInvoiceLine(invoiceLineFromStorage);
         }
-        future.complete(invoiceLineWithTotalRecalculated);
-      })
-        .exceptionally(t -> {
-          logger.error("Error calculating invoice-line totals");
-          future.completeExceptionally(t);
-          return null;
-        });
-    })
+        return invoiceLineFromStorage;
+      }))
+      .thenAccept(future::complete)
       .exceptionally(t -> {
-        logger.error("Error persisting total for invoice line ", id);
+        logger.error("Failed to get an Invoice Line by id={}", t.getCause(), id);
         future.completeExceptionally(t);
         return null;
       });
