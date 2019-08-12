@@ -110,13 +110,16 @@ public class InvoiceLineHelper extends AbstractHelper {
 
     // 1. Get original values
     Double existingTotal = invoiceLineFromStorage.getTotal();
-
+    Double subTotal = invoiceLineFromStorage.getSubTotal();
+    Double adjustmentsTotal = invoiceLineFromStorage.getAdjustmentsTotal();
+    
     // 2. Recalculate totals
     return calculateInvoiceLineTotals(invoiceLineFromStorage).thenApply(invoiceLineWithTotalRecalculated -> {
       Double recalculatedTotal = invoiceLineWithTotalRecalculated.getTotal();
 
       // 3. Compare if anything has changed
-      return !Objects.equals(existingTotal, recalculatedTotal);
+      return !(Objects.equals(existingTotal, recalculatedTotal)) &&  Objects.equals(subTotal, invoiceLineFromStorage.getSubTotal())
+          && Objects.equals(adjustmentsTotal, invoiceLineFromStorage.getAdjustmentsTotal());
     });
   }
 
