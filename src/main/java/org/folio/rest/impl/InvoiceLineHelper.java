@@ -12,6 +12,7 @@ import io.vertx.core.Context;
 import io.vertx.core.json.JsonObject;
 
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -77,7 +78,7 @@ public class InvoiceLineHelper extends AbstractHelper {
           future.complete(jsonInvoiceLine.mapTo(InvoiceLine.class));
         })
         .exceptionally(t -> {
-          logger.error("Error getting invoice line", t);
+          logger.error("Error getting invoice line by id ", id);
           future.completeExceptionally(t);
           return null;
         });
@@ -88,6 +89,71 @@ public class InvoiceLineHelper extends AbstractHelper {
     return future;
   }
 
+  private void updateOutOfSyncInvoiceLine(InvoiceLine invoiceLine) {
+    VertxCompletableFuture.runAsync(ctx, () -> {
+      InvoiceLineHelper helper = new InvoiceLineHelper(okapiHeaders, ctx, lang);
+      helper.updateInvoiceLineToStorage(invoiceLine)
+        .handle((ok, fail) -> {
+          helper.closeHttpClient();
+          return null;
+        });
+    });
+  }
+
+  /**
+   * Calculate invoice line total and compare with original value if it has changed
+   *
+   * @param invoiceLineFromStorage invoice line to update totals for
+   * @return {code true} if grand total value is different to original one
+   */
+  public CompletableFuture<Boolean> reCalculateInvoiceLineTotals(InvoiceLine invoiceLineFromStorage) {
+
+    // 1. Get original values
+    Double existingTotal = invoiceLineFromStorage.getTotal();
+    Double subTotal = invoiceLineFromStorage.getSubTotal();
+    Double adjustmentsTotal = invoiceLineFromStorage.getAdjustmentsTotal();
+    
+    // 2. Recalculate totals
+    return calculateInvoiceLineTotals(invoiceLineFromStorage).thenApply(invoiceLineWithTotalRecalculated -> {
+      Double recalculatedTotal = invoiceLineWithTotalRecalculated.getTotal();
+
+      // 3. Compare if anything has changed
+      return !(Objects.equals(existingTotal, recalculatedTotal)) &&  Objects.equals(subTotal, invoiceLineFromStorage.getSubTotal())
+          && Objects.equals(adjustmentsTotal, invoiceLineFromStorage.getAdjustmentsTotal());
+    });
+  }
+
+  /**
+   * Gets invoice line by id and calculate total
+   *
+   * @param id invoice line uuid
+   * @return completable future with {@link InvoiceLine} on success or an exception if processing fails
+   */
+  public CompletableFuture<InvoiceLine> getInvoiceLinePersistTotal(String id) {
+    CompletableFuture<InvoiceLine> future = new VertxCompletableFuture<>(ctx);
+
+    // GET invoice-line from storage
+    getInvoiceLine(id)
+      .thenCompose(invoiceLineFromStorage -> reCalculateInvoiceLineTotals(invoiceLineFromStorage).thenApply(isTotalOutOfSync -> {
+        if (isTotalOutOfSync) {
+          updateOutOfSyncInvoiceLine(invoiceLineFromStorage);
+        }
+        return invoiceLineFromStorage;
+      }))
+      .thenAccept(future::complete)
+      .exceptionally(t -> {
+        logger.error("Failed to get an Invoice Line by id={}", t.getCause(), id);
+        future.completeExceptionally(t);
+        return null;
+      });
+    return future;
+  }
+
+  public CompletableFuture<Void> updateInvoiceLineToStorage(InvoiceLine invoiceLine) {
+    return handlePutRequest(resourceByIdPath(INVOICE_LINES, invoiceLine.getId(), lang), JsonObject.mapFrom(invoiceLine), httpClient,
+        ctx, okapiHeaders, logger);
+  }
+
   public CompletableFuture<Void> updateInvoiceLine(InvoiceLine invoiceLine) {
 
     return getInvoiceLine(invoiceLine.getId())
@@ -95,10 +161,10 @@ public class InvoiceLineHelper extends AbstractHelper {
         .thenAccept(existedInvoice -> {
           validateInvoiceLine(existedInvoice, invoiceLine, existedInvoiceLine);
           invoiceLine.setInvoiceLineNumber(existedInvoiceLine.getInvoiceLineNumber());
+          HelperUtils.calculateInvoiceLineTotals(invoiceLine, existedInvoice);
         })
       )
-      .thenCompose(ok -> handlePutRequest(resourceByIdPath(INVOICE_LINES, invoiceLine.getId(), lang),
-          JsonObject.mapFrom(invoiceLine), httpClient, ctx, okapiHeaders, logger))
+      .thenCompose(ok -> updateInvoiceLineToStorage(invoiceLine))
       .thenAccept(ok -> updateInvoice(invoiceLine.getInvoiceId()));
   }
 

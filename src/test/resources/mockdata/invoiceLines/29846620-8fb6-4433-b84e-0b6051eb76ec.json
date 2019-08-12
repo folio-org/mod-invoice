@@ -26,6 +26,7 @@
   "productIdType": "8261054f-be78-422d-bd51-4ed9f33c3422",
   "comment": "Sample invoice line",
   "subTotal": 20.02,
+  "total": 27.04,
   "quantity": 3,
   "releaseEncumbrance": true,
   "subscriptionInfo": "Subscription information",
