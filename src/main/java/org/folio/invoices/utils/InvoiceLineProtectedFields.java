@@ -7,6 +7,7 @@ import java.util.stream.Collectors;
 public enum InvoiceLineProtectedFields {
 
   ADJUSTMENTS("adjustments"),
+  ADJUSTMENTS_TOTAL("adjustmentsTotal"),
   FUND_DISTRIBUTIONS("fundDistributions"),
   INVOICE_ID("invoiceId"),
   INVOICE_LINE_NUMBER("invoiceLineNumber"),
@@ -16,7 +17,9 @@ public enum InvoiceLineProtectedFields {
   QUANTITY("quantity"),
   SUBSCRIPTION_INFO("subscriptionInfo"),
   SUBSCRIPTION_START("subscriptionStart"),
-  SUBSCRIPTION_END("subscriptionEnd");
+  SUBSCRIPTION_END("subscriptionEnd"),
+  SUB_TOTAL("subTotal"),
+  TOTAL("total");
 
 
   InvoiceLineProtectedFields(String field) {

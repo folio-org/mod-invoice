@@ -7,6 +7,7 @@ import java.util.stream.Collectors;
 public enum InvoiceProtectedFields {
 
   ADJUSTMENTS("adjustments"),
+  ADJUSTMENTS_TOTAL("adjustmentsTotal"),
   APPROVED_BY("approvedBy"),
   APPROVAL_DATE("approvalDate"),
   CHK_SUBSCRIPTION_OVERLAP("chkSubscriptionOverlap"),
@@ -20,6 +21,8 @@ public enum InvoiceProtectedFields {
   VOUCHER_NUMBER("voucherNumber"),
   PAYMENT_ID("paymentId"),
   PO_NUMBERS("poNumbers"),
+  SUB_TOTAL("subTotal"),
+  TOTAL("total"),
   VENDOR_ID("vendorId");
 
   InvoiceProtectedFields(String field) {

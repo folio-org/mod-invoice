@@ -60,6 +60,7 @@ import me.escoffier.vertx.completablefuture.VertxCompletableFuture;
 public class HelperUtils {
 
   public static final String INVOICE_ID = "invoiceId";
+  public static final String INVOICE = "invoice";
   public static final String LANG = "lang";
   public static final String OKAPI_URL = "X-Okapi-Url";
 
@@ -242,9 +243,9 @@ public class HelperUtils {
       .doubleValue();
   }
 
-  public static boolean isFieldsVerificationNeeded(Invoice existedInvoice) {
-    return existedInvoice.getStatus() == Invoice.Status.APPROVED || existedInvoice.getStatus() == Invoice.Status.PAID
-        || existedInvoice.getStatus() == Invoice.Status.CANCELLED;
+  public static boolean isPostApproval(Invoice invoice) {
+    return invoice.getStatus() == Invoice.Status.APPROVED || invoice.getStatus() == Invoice.Status.PAID
+        || invoice.getStatus() == Invoice.Status.CANCELLED;
   }
 
   public static Set<String> findChangedProtectedFields(Object newObject, Object existedObject, List<String> protectedFields) {
@@ -322,14 +323,16 @@ public class HelperUtils {
   }
 
   public static InvoiceLine calculateInvoiceLineTotals(InvoiceLine invoiceLine, Invoice invoice) {
-    String currency = invoice.getCurrency();
-    CurrencyUnit currencyUnit = Monetary.getCurrency(currency);
-    MonetaryAmount subTotal = Money.of(invoiceLine.getSubTotal(), currencyUnit);
+    if (!isPostApproval(invoice)) {
+      String currency = invoice.getCurrency();
+      CurrencyUnit currencyUnit = Monetary.getCurrency(currency);
+      MonetaryAmount subTotal = Money.of(invoiceLine.getSubTotal(), currencyUnit);
 
-    MonetaryAmount adjustmentTotals = calculateAdjustmentsTotal(invoiceLine.getAdjustments(), subTotal);
-    MonetaryAmount total = adjustmentTotals.add(subTotal);
-    invoiceLine.setAdjustmentsTotal(convertToDoubleWithRounding(adjustmentTotals));
-    invoiceLine.setTotal(convertToDoubleWithRounding(total));
+      MonetaryAmount adjustmentTotals = calculateAdjustmentsTotal(invoiceLine.getAdjustments(), subTotal);
+      MonetaryAmount total = adjustmentTotals.add(subTotal);
+      invoiceLine.setAdjustmentsTotal(convertToDoubleWithRounding(adjustmentTotals));
+      invoiceLine.setTotal(convertToDoubleWithRounding(total));
+    }
 
     return invoiceLine;
   }

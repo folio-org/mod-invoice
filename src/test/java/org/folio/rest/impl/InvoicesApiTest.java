@@ -200,6 +200,25 @@ public class InvoicesApiTest extends ApiTestBase {
     logger.info(JsonObject.mapFrom(resp).encodePrettily());
     assertThat(resp.getId(), equalTo(APPROVED_INVOICE_ID));
 
+    // Verify that expected number of external calls made
+    assertThat(getInvoiceRetrievals(), hasSize(1));
+    assertThat(getInvoiceLineSearches(), empty());
+    verifyInvoiceUpdateCalls(0);
+  }
+
+  @Test
+  public void testGetOutdatedOpenInvoiceById() {
+    logger.info("=== Test Get Invoice By Id - invoice totals are outdated ===");
+    Invoice invoice = getMockAsJson(APPROVED_INVOICE_SAMPLE_PATH).mapTo(Invoice.class);
+    invoice.setStatus(Invoice.Status.OPEN);
+    invoice.setAdjustmentsTotal(5.05d);
+    invoice.setSubTotal(10.10d);
+    invoice.setTotal(15.15d);
+
+    addMockEntry(INVOICES, invoice);
+
+    final Invoice resp = verifySuccessGet(String.format(INVOICE_ID_PATH, invoice.getId()), Invoice.class);
+
     /* The invoice has 2 not prorated adjustments, 3 related invoice lines and each one has adjustment */
     assertThat(resp.getAdjustmentsTotal(), equalTo(7.17d));
     assertThat(resp.getSubTotal(), equalTo(10.6d));
@@ -218,6 +237,7 @@ public class InvoicesApiTest extends ApiTestBase {
     // ===  Preparing invoice for test with random id to make sure no lines exists  ===
     String id = UUID.randomUUID().toString();
     Invoice invoice = new JsonObject(getMockData(APPROVED_INVOICE_SAMPLE_PATH)).mapTo(Invoice.class);
+    invoice.setStatus(Invoice.Status.OPEN);
     invoice.setId(id);
     invoice.setLockTotal(true);
     invoice.setTotal(15d);
@@ -226,9 +246,6 @@ public class InvoicesApiTest extends ApiTestBase {
 
     // ===  Run test  ===
     final Invoice resp = verifySuccessGet(String.format(INVOICE_ID_PATH, id), Invoice.class);
-
-    logger.info(JsonObject.mapFrom(resp).encodePrettily());
-    assertThat(resp.getId(), equalTo(id));
 
     /* The invoice has 2 not prorated adjustments one with fixed amount and another with percentage type */
     assertThat(resp.getAdjustmentsTotal(), equalTo(5.06d));
@@ -247,7 +264,7 @@ public class InvoicesApiTest extends ApiTestBase {
 
     // ===  Preparing invoice for test with random id to make sure no lines exists  ===
     String id = UUID.randomUUID().toString();
-    Invoice invoice = new JsonObject(getMockData(APPROVED_INVOICE_SAMPLE_PATH)).mapTo(Invoice.class);
+    Invoice invoice = new JsonObject(getMockData(OPEN_INVOICE_SAMPLE_PATH)).mapTo(Invoice.class);
     invoice.setId(id);
     invoice.getAdjustments().forEach(adj -> adj.setProrate(Adjustment.Prorate.BY_LINE));
     // Setting totals to verify that they are re-calculated
@@ -273,6 +290,20 @@ public class InvoicesApiTest extends ApiTestBase {
     assertThat(getInvoiceRetrievals(), hasSize(1));
     assertThat(getInvoiceLineSearches(), hasSize(1));
     verifyInvoiceUpdateCalls(1);
+  }
+
+  @Test
+  public void testGetInvoiceByIdUpdateTotalException() {
+    logger.info("=== Test success response when error happens while updating record back in storage ===");
+
+    Invoice invoice = getMockAsJson(APPROVED_INVOICE_SAMPLE_PATH).mapTo(Invoice.class)
+      .withId(ID_FOR_INTERNAL_SERVER_ERROR_PUT)
+      .withStatus(Invoice.Status.OPEN)
+      .withTotal(100.500d);
+
+    addMockEntry(INVOICES, invoice);
+
+    verifySuccessGet(String.format(INVOICE_ID_PATH, invoice.getId()), Invoice.class);
   }
 
   @Test
@@ -814,9 +845,6 @@ public class InvoicesApiTest extends ApiTestBase {
 
     addMockEntry(INVOICE_LINES, JsonObject.mapFrom(invoiceLine));
     prepareMockVoucher(id);
-
-
-    addMockEntry(INVOICE_LINES, JsonObject.mapFrom(invoiceLine));
 
     String jsonBody = JsonObject.mapFrom(reqData).encode();
 

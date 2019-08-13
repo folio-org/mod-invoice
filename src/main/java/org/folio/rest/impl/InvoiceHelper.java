@@ -28,13 +28,14 @@ import static org.folio.invoices.utils.HelperUtils.getInvoiceById;
 import static org.folio.invoices.utils.HelperUtils.handleDeleteRequest;
 import static org.folio.invoices.utils.HelperUtils.handleGetRequest;
 import static org.folio.invoices.utils.HelperUtils.handlePutRequest;
-import static org.folio.invoices.utils.HelperUtils.isFieldsVerificationNeeded;
+import static org.folio.invoices.utils.HelperUtils.isPostApproval;
 import static org.folio.invoices.utils.ResourcePathResolver.FOLIO_INVOICE_NUMBER;
 import static org.folio.invoices.utils.ResourcePathResolver.FUNDS;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICES;
 import static org.folio.invoices.utils.ResourcePathResolver.ORDER_LINES;
 import static org.folio.invoices.utils.ResourcePathResolver.resourceByIdPath;
 import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
+import static me.escoffier.vertx.completablefuture.VertxCompletableFuture.completedFuture;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -129,13 +130,19 @@ public class InvoiceHelper extends AbstractHelper {
   public CompletableFuture<Invoice> getInvoice(String id) {
     CompletableFuture<Invoice> future = new VertxCompletableFuture<>(ctx);
     getInvoiceRecord(id)
-      // To calculate totals, related invoice lines have to be retrieved
-      .thenCompose(invoice -> recalculateTotals(invoice).thenApply(isOutOfSync -> {
-        if (isOutOfSync) {
-          updateOutOfSyncInvoice(invoice);
+      .thenCompose(invoice -> {
+        // If invoice was approved already, the totals are fixed at this point and should not be recalculated
+        if (isPostApproval(invoice)) {
+          return completedFuture(invoice);
         }
-        return invoice;
-      }))
+
+        return recalculateTotals(invoice).thenApply(isOutOfSync -> {
+          if (isOutOfSync) {
+            updateOutOfSyncInvoice(invoice);
+          }
+          return invoice;
+        });
+      })
       .thenAccept(future::complete)
       .exceptionally(t -> {
         logger.error("Failed to get an Invoice by id={}", t.getCause(), id);
@@ -192,13 +199,13 @@ public class InvoiceHelper extends AbstractHelper {
     logger.debug("Updating invoice...");
 
     return getInvoiceRecord(invoice.getId())
-      .thenApply(invoiceFromStorage -> {
+      .thenCompose(invoiceFromStorage -> {
         validateInvoice(invoice, invoiceFromStorage);
         setSystemGeneratedData(invoiceFromStorage, invoice);
-        return invoiceFromStorage;
+
+        return recalculateTotals(invoice, invoiceFromStorage)
+          .thenCompose(ok -> handleInvoiceStatusTransition(invoice, invoiceFromStorage));
       })
-      .thenCompose(invoiceFromStorage -> recalculateTotals(invoice)
-        .thenCompose(ok -> handleInvoiceStatusTransition(invoice, invoiceFromStorage)))
       .thenCompose(ok -> updateInvoiceRecord(invoice));
   }
 
@@ -241,6 +248,14 @@ public class InvoiceHelper extends AbstractHelper {
     });
   }
 
+  private CompletableFuture<Boolean> recalculateTotals(Invoice updatedInvoice, Invoice invoiceFromStorage) {
+    // If invoice was approved, the totals are already fixed and should not be recalculated
+    if (isPostApproval(invoiceFromStorage)) {
+      return completedFuture(false);
+    }
+    return recalculateTotals(updatedInvoice);
+  }
+
   private void setSystemGeneratedData(Invoice invoiceFromStorage, Invoice invoice) {
     invoice.withFolioInvoiceNo(invoiceFromStorage.getFolioInvoiceNo());
   }
@@ -251,11 +266,11 @@ public class InvoiceHelper extends AbstractHelper {
     } else if (isTransitionToPaid(invoiceFromStorage, invoice)) {
       return payInvoice(invoice);
     }
-    return VertxCompletableFuture.completedFuture(null);
+    return completedFuture(null);
   }
 
   private boolean isTransitionToApproved(Invoice invoiceFromStorage, Invoice invoice) {
-    return (invoiceFromStorage.getStatus() == Invoice.Status.REVIEWED || invoiceFromStorage.getStatus() == Invoice.Status.OPEN) && invoice.getStatus() == Invoice.Status.APPROVED;
+    return invoice.getStatus() == Invoice.Status.APPROVED && !isPostApproval(invoiceFromStorage);
   }
 
   /**
@@ -312,7 +327,7 @@ public class InvoiceHelper extends AbstractHelper {
     return voucherHelper.getVoucherByInvoiceId(invoice.getId())
       .thenCompose(voucher -> {
         if (Objects.nonNull(voucher)) {
-          return VertxCompletableFuture.completedFuture(voucher);
+          return completedFuture(voucher);
         }
         return buildNewVoucher(invoice);
       })
@@ -614,15 +629,14 @@ public class InvoiceHelper extends AbstractHelper {
     if(invoice.getLockTotal() && Objects.isNull(invoice.getTotal())) {
       addProcessingError(INVOICE_TOTAL_REQUIRED.toError());
     }
-    if ((invoice.getStatus() == Invoice.Status.OPEN || invoice.getStatus() == Invoice.Status.REVIEWED)
-      && (invoice.getApprovalDate() != null || invoice.getApprovedBy() != null)) {
+    if (!isPostApproval(invoice) && (invoice.getApprovalDate() != null || invoice.getApprovedBy() != null)) {
       addProcessingError(INCOMPATIBLE_INVOICE_FIELDS_ON_STATUS_TRANSITION.toError());
     }
     return getErrors().isEmpty();
   }
 
   private void validateInvoice(Invoice invoice, Invoice invoiceFromStorage) {
-    if(isFieldsVerificationNeeded(invoiceFromStorage)) {
+    if(isPostApproval(invoiceFromStorage)) {
       Set<String> fields = findChangedProtectedFields(invoice, invoiceFromStorage, InvoiceProtectedFields.getFieldNames());
 
       // "total" depends on value of "lockTotal": if value is true, total is required; if false, read-only (system calculated)
@@ -683,7 +697,7 @@ public class InvoiceHelper extends AbstractHelper {
 
   private CompletableFuture<List<InvoiceLine>> fetchInvoiceLinesByInvoiceId(String invoiceId) {
     if (invoiceLines != null) {
-      return CompletableFuture.completedFuture(invoiceLines);
+      return completedFuture(invoiceLines);
     }
 
     String query = String.format(QUERY_BY_INVOICE_ID, invoiceId);

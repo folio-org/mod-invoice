@@ -1,5 +1,6 @@
 package org.folio.invoices.events.handlers;
 
+import static org.folio.invoices.utils.HelperUtils.INVOICE;
 import static org.folio.invoices.utils.HelperUtils.INVOICE_ID;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICES;
 import static org.folio.rest.impl.InvoicesApiTest.OPEN_INVOICE_ID;
@@ -88,10 +89,9 @@ public class InvoiceSummaryTest extends ApiTestBase {
       .withSubTotal(10d)
       .withTotal(15d)
       .withCurrency("USD");
-    MockServer.addMockEntry(INVOICES, invoice);
 
-    sendEvent(createBody(VALID_UUID), context.asyncAssertSuccess(result -> {
-      assertThat(getInvoiceRetrievals(), hasSize(1));
+    sendEvent(createBody(invoice), context.asyncAssertSuccess(result -> {
+      assertThat(getInvoiceRetrievals(), empty());
       assertThat(getInvoiceLineSearches(), hasSize(1));
       assertThat(getInvoiceUpdates(), hasSize(1));
 
@@ -136,6 +136,10 @@ public class InvoiceSummaryTest extends ApiTestBase {
 
   private JsonObject createBody(String id) {
     return new JsonObject().put(INVOICE_ID, id);
+  }
+
+  private JsonObject createBody(Invoice invoice) {
+    return new JsonObject().put(INVOICE, JsonObject.mapFrom(invoice));
   }
 
   private void sendEvent(JsonObject data, Handler<AsyncResult<Message<String>>> replyHandler) {

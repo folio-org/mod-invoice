@@ -182,9 +182,7 @@ public class MockServer {
   }
 
   public static List<JsonObject> getInvoiceRetrievals() {
-    return getRqRsEntries(HttpMethod.GET, INVOICES).stream()
-      .filter(json -> json.containsKey(ID))
-      .collect(toList());
+    return getRecordsByIds(getRqRsEntries(HttpMethod.GET, INVOICES));
   }
 
   public static List<JsonObject> getInvoiceUpdates() {
@@ -195,8 +193,20 @@ public class MockServer {
     return getCollectionRecords(getRqRsEntries(HttpMethod.GET, INVOICE_LINES));
   }
 
+  public static List<JsonObject> getInvoiceLineRetrievals() {
+    return getRecordsByIds(getRqRsEntries(HttpMethod.GET, INVOICE_LINES));
+  }
+
+  public static List<JsonObject> getInvoiceLineUpdates() {
+    return getRqRsEntries(HttpMethod.PUT, INVOICE_LINES);
+  }
+
   private static List<JsonObject> getCollectionRecords(List<JsonObject> entries) {
     return entries.stream().filter(json -> !json.containsKey(ID)).collect(toList());
+  }
+
+  private static List<JsonObject> getRecordsByIds(List<JsonObject> entries) {
+    return entries.stream().filter(json -> json.containsKey(ID)).collect(toList());
   }
 
   private Router defineRoutes() {
