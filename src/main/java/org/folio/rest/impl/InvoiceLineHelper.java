@@ -1,6 +1,7 @@
 package org.folio.rest.impl;
 
 import static io.vertx.core.json.JsonObject.mapFrom;
+import static java.util.UUID.randomUUID;
 import static org.folio.invoices.utils.ErrorCodes.PROHIBITED_INVOICE_LINE_CREATION;
 import static org.folio.invoices.utils.HelperUtils.*;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_LINES;
@@ -14,15 +15,12 @@ import io.vertx.core.json.JsonObject;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
 
 import me.escoffier.vertx.completablefuture.VertxCompletableFuture;
 
 import org.folio.invoices.events.handlers.MessageAddress;
 import org.folio.invoices.rest.exceptions.HttpException;
-import org.folio.invoices.utils.HelperUtils;
 import org.folio.invoices.utils.InvoiceLineProtectedFields;
 
 import org.folio.rest.jaxrs.model.Invoice;
@@ -220,15 +218,13 @@ public class InvoiceLineHelper extends AbstractHelper {
    * @return completable future which might hold {@link InvoiceLine} on success or an exception if any issue happens
    */
   CompletableFuture<InvoiceLine> createInvoiceLine(InvoiceLine invoiceLine, Invoice invoice) {
-    invoiceLine.setId(UUID.randomUUID()
-      .toString());
+    invoiceLine.setId(randomUUID().toString());
     invoiceLine.setInvoiceId(invoice.getId());
 
-    JsonObject line = mapFrom(invoiceLine);
-
-    return generateLineNumber(invoice).thenAccept(lineNumber -> line.put(INVOICE_LINE_NUMBER, lineNumber))
-      .thenAccept(t -> HelperUtils.calculateInvoiceLineTotals(invoiceLine, invoice))
-      .thenCompose(v -> createInvoiceLineSummary(invoiceLine, line));
+    return generateLineNumber(invoice).thenAccept(invoiceLine::setInvoiceLineNumber)
+      .thenAccept(ok -> calculateInvoiceLineTotals(invoiceLine, invoice))
+      .thenCompose(ok -> createRecordInStorage(mapFrom(invoiceLine), resourcesPath(INVOICE_LINES)))
+      .thenApply(invoiceLine::withId);
   }
 
   private CompletableFuture<String> generateLineNumber(Invoice invoice) {
@@ -237,13 +233,6 @@ public class InvoiceLineHelper extends AbstractHelper {
         SequenceNumber sequenceNumber = sequenceNumberJson.mapTo(SequenceNumber.class);
         return buildInvoiceLineNumber(invoice.getFolioInvoiceNo(), sequenceNumber.getSequenceNumber());
       });
-  }
-
-  private CompletionStage<InvoiceLine> createInvoiceLineSummary(InvoiceLine invoiceLine, JsonObject line) {
-    return createRecordInStorage(line, resourcesPath(INVOICE_LINES))
-      // After generating line number, set id and line number of the created Invoice Line
-      .thenApply(id -> invoiceLine.withId(id)
-        .withInvoiceLineNumber(line.getString(INVOICE_LINE_NUMBER)));
   }
 
   private String buildInvoiceLineNumber(String folioInvoiceNumber, String sequence) {

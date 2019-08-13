@@ -41,6 +41,7 @@ import static org.folio.rest.impl.MockServer.INVOICE_NUMBER_ERROR_X_OKAPI_TENANT
 import static org.folio.rest.impl.MockServer.NON_EXIST_CONFIG_X_OKAPI_TENANT;
 import static org.folio.rest.impl.MockServer.TEST_PREFIX;
 import static org.folio.rest.impl.MockServer.addMockEntry;
+import static org.folio.rest.impl.MockServer.getInvoiceCreations;
 import static org.folio.rest.impl.MockServer.getInvoiceLineSearches;
 import static org.folio.rest.impl.MockServer.getInvoiceRetrievals;
 import static org.folio.rest.impl.MockServer.getInvoiceSearches;
@@ -1162,8 +1163,7 @@ public class InvoicesApiTest extends ApiTestBase {
     assertThat(MockServer.serverRqRs.get(FOLIO_INVOICE_NUMBER, HttpMethod.GET), hasSize(1));
 
     // Check that invoice in the response and the one in storage are the same
-    Invoice invoiceToStorage = getRqRsEntries(HttpMethod.POST, INVOICES).get(0).mapTo(Invoice.class);
-    assertThat(respData, equalTo(invoiceToStorage));
+    compareRecordWithSentToStorage(respData);
   }
 
   @Test
@@ -1187,11 +1187,8 @@ public class InvoicesApiTest extends ApiTestBase {
     // Verify that expected number of external calls made
     assertThat(serverRqRs.cellSet(), hasSize(2));
     assertThat(getRqRsEntries(HttpMethod.GET, FOLIO_INVOICE_NUMBER), hasSize(1));
-    assertThat(getRqRsEntries(HttpMethod.POST, INVOICES), hasSize(1));
 
-    // Check that invoice in the response and the one in storage are the same
-    Invoice invoiceToStorage = getRqRsEntries(HttpMethod.POST, INVOICES).get(0).mapTo(Invoice.class);
-    assertThat(resp, equalTo(invoiceToStorage));
+    compareRecordWithSentToStorage(resp);
   }
 
   @Test
@@ -1216,11 +1213,8 @@ public class InvoicesApiTest extends ApiTestBase {
     // Verify that expected number of external calls made
     assertThat(serverRqRs.cellSet(), hasSize(2));
     assertThat(getRqRsEntries(HttpMethod.GET, FOLIO_INVOICE_NUMBER), hasSize(1));
-    assertThat(getRqRsEntries(HttpMethod.POST, INVOICES), hasSize(1));
 
-    // Check that invoice in the response and the one in storage are the same
-    Invoice invoiceToStorage = getRqRsEntries(HttpMethod.POST, INVOICES).get(0).mapTo(Invoice.class);
-    assertThat(resp, equalTo(invoiceToStorage));
+    compareRecordWithSentToStorage(resp);
   }
 
   @Test
@@ -1244,11 +1238,8 @@ public class InvoicesApiTest extends ApiTestBase {
     // Verify that expected number of external calls made
     assertThat(serverRqRs.cellSet(), hasSize(2));
     assertThat(getRqRsEntries(HttpMethod.GET, FOLIO_INVOICE_NUMBER), hasSize(1));
-    assertThat(getRqRsEntries(HttpMethod.POST, INVOICES), hasSize(1));
 
-    // Check that invoice in the response and the one in storage are the same
-    Invoice invoiceToStorage = getRqRsEntries(HttpMethod.POST, INVOICES).get(0).mapTo(Invoice.class);
-    assertThat(resp, equalTo(invoiceToStorage));
+    compareRecordWithSentToStorage(resp);
   }
 
   @Test
@@ -1493,5 +1484,12 @@ public class InvoicesApiTest extends ApiTestBase {
     await().atLeast(50, MILLISECONDS)
       .atMost(1, SECONDS)
       .until(MockServer::getInvoiceUpdates, hasSize(msgQty));
+  }
+
+  private void compareRecordWithSentToStorage(Invoice invoice) {
+    // Verify that invoice sent to storage is the same as in response
+    assertThat(getInvoiceCreations(), hasSize(1));
+    Invoice invoiceToStorage = getInvoiceCreations().get(0).mapTo(Invoice.class);
+    assertThat(invoice, equalTo(invoiceToStorage));
   }
 }
