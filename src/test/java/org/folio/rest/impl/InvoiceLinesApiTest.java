@@ -179,6 +179,7 @@ public class InvoiceLinesApiTest extends ApiTestBase {
 
   @Test
   public void deleteInvoiceLinesBadLanguageTest() {
+    logger.info("=== Test to verify bad request error due to incorrect lang parameter value ===");
     String endpoint = String.format(INVOICE_LINE_ID_PATH, VALID_UUID) + String.format("?%s=%s", LANG_PARAM, INVALID_LANG) ;
 
     verifyDeleteResponse(endpoint, TEXT_PLAIN, 400);
@@ -528,12 +529,14 @@ public class InvoiceLinesApiTest extends ApiTestBase {
     verifyPut(String.format(INVOICE_LINE_ID_PATH, invoiceLine.getId()), JsonObject.mapFrom(invoiceLine).encode(), "", HttpStatus.SC_NO_CONTENT);
 
     verifyInvoiceSummaryUpdateEvent(0);
+    clearServiceInteractions();
 
     // Invoice line updated (invoice status = OPEN) - protected field not modified
     invoiceLine.setId(INVOICE_LINE_WITH_OPEN_EXISTED_INVOICE_ID);
     verifyPut(String.format(INVOICE_LINE_ID_PATH, invoiceLine.getId()), JsonObject.mapFrom(invoiceLine).encode(), "", HttpStatus.SC_NO_CONTENT);
 
     verifyInvoiceSummaryUpdateEvent(0);
+    clearServiceInteractions();
 
     // Invoice line updated (invoice status = APPROVED) - all protected fields modified
 
@@ -582,6 +585,7 @@ public class InvoiceLinesApiTest extends ApiTestBase {
     MatcherAssert.assertThat(expected, Matchers.arrayContainingInAnyOrder(failedFieldNames));
 
     verifyInvoiceSummaryUpdateEvent(0);
+    clearServiceInteractions();
   }
 
   private void verifyInvoiceLineUpdateCalls(int msgQty) {

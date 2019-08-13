@@ -109,7 +109,7 @@ public class InvoiceLineHelper extends AbstractHelper {
    * @param invoice invoice record
    * @return {code true} if any total value is different to original one
    */
-  private Boolean reCalculateInvoiceLineTotals(InvoiceLine invoiceLine, Invoice invoice) {
+  private boolean reCalculateInvoiceLineTotals(InvoiceLine invoiceLine, Invoice invoice) {
 
     // 1. Get original values
     Double existingTotal = invoiceLine.getTotal();
@@ -123,6 +123,19 @@ public class InvoiceLineHelper extends AbstractHelper {
     return !(Objects.equals(existingTotal, invoiceLine.getTotal())
         && Objects.equals(subTotal, invoiceLine.getSubTotal())
         && Objects.equals(adjustmentsTotal, invoiceLine.getAdjustmentsTotal()));
+  }
+
+  /**
+   * Compares totals of 2 invoice lines
+   *
+   * @param invoiceLine1 first invoice line
+   * @param invoiceLine2 second invoice line
+   * @return {code true} if any total value is different to original one
+   */
+  private boolean areTotalsEqual(InvoiceLine invoiceLine1, InvoiceLine invoiceLine2) {
+    return Objects.equals(invoiceLine1.getTotal(), invoiceLine2.getTotal())
+      && Objects.equals(invoiceLine1.getSubTotal(), invoiceLine2.getSubTotal())
+      && Objects.equals(invoiceLine1.getAdjustmentsTotal(), invoiceLine2.getAdjustmentsTotal());
   }
 
   /**
@@ -168,12 +181,12 @@ public class InvoiceLineHelper extends AbstractHelper {
         invoiceLine.setInvoiceLineNumber(invoiceLineFromStorage.getInvoiceLineNumber());
 
         // 4. Recalculate totals before update which also indicates if invoice requires update
-        Boolean isTotalOutOfSync = reCalculateInvoiceLineTotals(invoiceLineFromStorage, invoice);
+        calculateInvoiceLineTotals(invoiceLine, invoice);
 
         // 5. Update invoice line in storage
         return updateInvoiceLineToStorage(invoiceLine).thenRun(() -> {
           // 6. Trigger invoice update event only if this is required
-          if (isTotalOutOfSync) {
+          if (!areTotalsEqual(invoiceLine, invoiceLineFromStorage)) {
             updateInvoice(invoice);
           }
         });
