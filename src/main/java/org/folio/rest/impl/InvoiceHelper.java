@@ -314,7 +314,8 @@ public class InvoiceHelper extends AbstractHelper {
         if (Objects.nonNull(voucher)) {
           return VertxCompletableFuture.completedFuture(voucher);
         }
-        return buildNewVoucher(invoice);
+        return buildNewVoucher(invoice)
+          .thenApply(createdVoucher -> createdVoucher.withAcqUnitIds(invoice.getAcqUnitIds()));
       })
       .thenApply(voucher -> {
         invoice.setVoucherNumber(voucher.getVoucherNumber());
