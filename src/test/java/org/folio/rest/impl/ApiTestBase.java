@@ -25,8 +25,8 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.Stream;
@@ -83,7 +83,7 @@ public class ApiTestBase {
   private static boolean runningOnOwn;
 
   // The variable is defined in main thread but the value is going to be inserted in vert.x event loop thread
-  private static volatile List<Message<JsonObject>> eventMessages = new ArrayList<>();
+  private static List<Message<JsonObject>> eventMessages = new CopyOnWriteArrayList<>();
 
   /**
    * Define unit test specific beans to override actual ones
@@ -263,8 +263,8 @@ public class ApiTestBase {
 
   void verifyInvoiceSummaryUpdateEvent(int msgQty) {
     logger.debug("Verifying event bus messages");
-    // Wait until event bus registers message
 
+    // Wait until event bus registers message
     await().atLeast(50, MILLISECONDS)
       .atMost(1, SECONDS)
       .until(() -> eventMessages, hasSize(msgQty));
