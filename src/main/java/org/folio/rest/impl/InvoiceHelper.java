@@ -318,9 +318,9 @@ public class InvoiceHelper extends AbstractHelper {
       })
       .thenApply(voucher -> {
         invoice.setVoucherNumber(voucher.getVoucherNumber());
+        voucher.setAcqUnitIds(invoice.getAcqUnitIds());
         return withRequiredFields(voucher, invoice);
-      })
-      .thenApply(createdVoucher -> createdVoucher.withAcqUnitIds(invoice.getAcqUnitIds()));
+      });
   }
 
   /**
