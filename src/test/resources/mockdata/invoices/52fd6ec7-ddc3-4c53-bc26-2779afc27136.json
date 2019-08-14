@@ -1,6 +1,10 @@
 {
   "id": "52fd6ec7-ddc3-4c53-bc26-2779afc27136",
   "accountingCode": "1345",
+  "acqUnitIds": [
+    "1895e539-8dac-441e-b1f5-aab62b3fde60",
+    "47f504bd-0c1b-498e-a2ae-e2f0a0cea273"
+  ],
   "chkSubscriptionOverlap": false,
   "currency": "USD",
   "folioInvoiceNo": "123invoicenumber45",
