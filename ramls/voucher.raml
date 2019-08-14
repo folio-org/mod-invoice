@@ -12,6 +12,7 @@ documentation:
 types:
   sequenceNumber: !include acq-models/common/schemas/sequence_number.json
   voucherLine: !include acq-models/mod-invoice-storage/schemas/voucher_line.json
+  voucherLineCollection: !include acq-models/mod-invoice-storage/schemas/voucher_line_collection.json
   voucher: !include acq-models/mod-invoice-storage/schemas/voucher.json
   voucherCollection: !include acq-models/mod-invoice-storage/schemas/voucher_collection.json
   errors: !include raml-util/schemas/errors.schema
@@ -27,6 +28,7 @@ traits:
 
 resourceTypes:
   get-only: !include raml-util/rtypes/get-only.raml
+  collection-get: !include raml-util/rtypes/collection-get.raml
 
 /voucher:
   /vouchers:
@@ -52,34 +54,47 @@ resourceTypes:
           exampleCollection: !include acq-models/mod-invoice-storage/examples/voucher.sample
       get:
         description: Return an voucher with given {id}
-  /voucher-lines/{id}:
-    uriParameters:
-      id:
-        description: The UUID of a voucher line
-        type: UUID  
+  /voucher-lines:
     displayName: Voucher Lines
-    description: Get specific voucher lines
-    is: [validate, language]
+    description: Manage Voucher lines
     type:
-      get-only:
-        schema: voucherLine
-        exampleCollection: !include acq-models/mod-invoice-storage/examples/voucher_line.sample
+      collection-get:
+        schemaCollection: voucherLineCollection
+        schemaItem: voucherLine
+        exampleCollection: !include acq-models/mod-invoice-storage/examples/voucher_line_collection.sample
+        exampleItem: !include acq-models/mod-invoice-storage/examples/voucher_line.sample
     get:
-      description: Return an voucher line with given {id}
-    put:
-      description: Update a voucher line with given {id}
-      body:
-        application/json:
-          type: voucherLine
-          example:
-            strict: false
-            value: !include acq-models/mod-invoice-storage/examples/voucher_line.sample
+      description: Retrieve a list of voucher lines.
+    is: [ pageable, searchable: {description: "using CQL (indexes for voucher line)", example: "amount>==\"10\""}, validate ]
+    /{id}:
+      uriParameters:
+        id:
+          description: The UUID of a voucher line
+          type: UUID
+      displayName: Voucher Lines
+      description: Get specific voucher lines
+      is: [validate, language]
+      type:
+        get-only:
+          schema: voucherLine
+          exampleCollection: !include acq-models/mod-invoice-storage/examples/voucher_line.sample
+      get:
+        description: Return an voucher line with given {id}
+      put:
+        description: Update a voucher line with given {id}
+        body:
+          application/json:
+            type: voucherLine
+            example:
+              strict: false
+              value: !include acq-models/mod-invoice-storage/examples/voucher_line.sample
+
   /voucher-number/start/{value}:
     displayName: Voucher Number
     description: Manage voucher number
     is: [validate, language]
     post:
-      description: (Re)set the start value of the voucher number sequence 
+      description: (Re)set the start value of the voucher number sequence
       responses:
         204:
           description: "Start value successfully updated"

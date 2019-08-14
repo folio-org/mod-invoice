@@ -173,6 +173,14 @@
         },
         {
           "methods": ["GET"],
+          "pathPattern": "/voucher/voucher-lines",
+          "permissionsRequired": ["voucher.voucher-lines.collection.get"],
+          "modulePermissions": [
+            "voucher-storage.voucher-lines.collection.get"
+          ]
+        },
+        {
+          "methods": ["GET"],
           "pathPattern": "/voucher/voucher-lines/{id}",
           "permissionsRequired": ["voucher.voucher-lines.item.get"],
           "modulePermissions": [

@@ -1,12 +1,14 @@
 package org.folio.rest.impl;
 
 import static io.vertx.core.Future.succeededFuture;
+
 import java.util.Map;
+
 import javax.ws.rs.core.Response;
 
 import org.apache.commons.lang3.StringUtils;
 import org.folio.rest.annotations.Validate;
-
+import org.folio.rest.jaxrs.model.VoucherLine;
 
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Context;
@@ -14,8 +16,6 @@ import io.vertx.core.Handler;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
-
-import org.folio.rest.jaxrs.model.VoucherLine;
 
 public class VouchersImpl implements org.folio.rest.jaxrs.resource.Voucher {
 
@@ -36,7 +36,17 @@ public class VouchersImpl implements org.folio.rest.jaxrs.resource.Voucher {
       .thenAccept(voucher -> asyncResultHandler.handle(succeededFuture(helper.buildOkResponse(voucher))))
       .exceptionally(t -> handleErrorResponse(asyncResultHandler, helper, t));
   }
-  
+
+  @Override
+  @Validate
+  public void getVoucherVoucherLines(int offset, int limit, String query, String lang, Map<String, String> okapiHeaders,
+      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+    VoucherLineHelper voucherLineHelper = new VoucherLineHelper(okapiHeaders, vertxContext, lang);
+    voucherLineHelper.getVoucherLines(limit, offset, query)
+      .thenAccept(voucherLines -> asyncResultHandler.handle(succeededFuture(voucherLineHelper.buildOkResponse(voucherLines))))
+      .exceptionally(t -> handleErrorResponse(asyncResultHandler, voucherLineHelper, t));
+  }
+
   @Validate
   @Override
   public void getVoucherVoucherLinesById(String id, String lang, Map<String, String> okapiHeaders,
