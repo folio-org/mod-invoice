@@ -61,6 +61,7 @@ import static org.hamcrest.core.Is.is;
 import static org.hamcrest.core.IsEqual.equalTo;
 import static org.hamcrest.core.IsNot.not;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -78,6 +79,7 @@ import javax.money.Monetary;
 import javax.money.MonetaryAmount;
 import javax.money.convert.MonetaryConversions;
 
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.reflect.FieldUtils;
 import org.apache.http.HttpStatus;
 import org.folio.invoices.utils.InvoiceProtectedFields;
@@ -118,7 +120,7 @@ public class InvoicesApiTest extends ApiTestBase {
   private static final String INVOICE_ID_WITH_LANG_PATH = INVOICE_ID_PATH + "?lang=%s";
   private static final String INVOICE_PATH_BAD = "/invoice/bad";
   private static final String INVOICE_NUMBER_PATH = "/invoice/invoice-number";
-  public static final String INVOICE_MOCK_DATA_PATH = BASE_MOCK_DATA_PATH + "invoices/";
+  static final String INVOICE_MOCK_DATA_PATH = BASE_MOCK_DATA_PATH + "invoices/";
   private static final String PO_LINE_MOCK_DATA_PATH = BASE_MOCK_DATA_PATH + "poLines/";
   static final String APPROVED_INVOICE_ID = "c0d08448-347b-418a-8c2f-5fb50248d67e";
   static final String REVIEWED_INVOICE_ID = "3773625a-dc0d-4a2d-959e-4a91ee265d67";
@@ -370,6 +372,7 @@ public class InvoicesApiTest extends ApiTestBase {
     assertThat(voucherCreated.getVoucherNumber(), equalTo(TEST_PREFIX + VOUCHER_NUMBER_VALUE));
     assertThat(voucherCreated.getSystemCurrency(), equalTo("GBP"));
     verifyTransitionToApproved(voucherCreated, invoiceLines);
+    checkVoucherAcqUnitIdsList(voucherCreated, reqData);
   }
 
   @Test
@@ -402,6 +405,7 @@ public class InvoicesApiTest extends ApiTestBase {
     assertThat(voucherCreated.getSystemCurrency(), equalTo(DEFAULT_SYSTEM_CURRENCY));
     assertThat(voucherCreated.getVoucherNumber(), equalTo(VOUCHER_NUMBER_VALUE));
     verifyTransitionToApproved(voucherCreated, invoiceLines);
+    checkVoucherAcqUnitIdsList(voucherCreated, reqData);
   }
 
   @Test
@@ -1478,7 +1482,7 @@ public class InvoicesApiTest extends ApiTestBase {
       .toArray();
   }
 
-  void verifyInvoiceUpdateCalls(int msgQty) {
+  private void verifyInvoiceUpdateCalls(int msgQty) {
     logger.debug("Verifying calls to update invoice");
     // Wait until message is registered
     await().atLeast(50, MILLISECONDS)
@@ -1491,5 +1495,9 @@ public class InvoicesApiTest extends ApiTestBase {
     assertThat(getInvoiceCreations(), hasSize(1));
     Invoice invoiceToStorage = getInvoiceCreations().get(0).mapTo(Invoice.class);
     assertThat(invoice, equalTo(invoiceToStorage));
+  }
+
+  private void checkVoucherAcqUnitIdsList(Voucher voucherCreated, Invoice invoice) {
+    assertTrue("acqUnitId lists are equal", CollectionUtils.isEqualCollection(voucherCreated.getAcqUnitIds(), invoice.getAcqUnitIds()));
   }
 }

@@ -36,6 +36,10 @@
     {
       "id": "9917d4a6-fbb2-4ed6-946d-6cf8c42369e4",
       "accountingCode": "7858",
+      "acqUnitIds": [
+        "1895e539-8dac-441e-b1f5-aab62b3fde60",
+        "47f504bd-0c1b-498e-a2ae-e2f0a0cea273"
+      ],
       "currency": "USD",
       "folioInvoiceNo": "123invoicenumber456",
       "invoiceDate": "2018-08-21T00:00:00.000+0000",
