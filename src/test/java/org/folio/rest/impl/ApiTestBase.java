@@ -25,8 +25,8 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.Stream;
@@ -35,6 +35,7 @@ import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 import static org.awaitility.Awaitility.await;
+import static org.folio.invoices.utils.HelperUtils.INVOICE;
 import static org.folio.invoices.utils.HelperUtils.INVOICE_ID;
 import static org.folio.invoices.utils.HelperUtils.OKAPI_URL;
 import static org.folio.rest.RestVerticle.OKAPI_HEADER_TENANT;
@@ -69,7 +70,6 @@ public class ApiTestBase {
   static final String INVALID_LANG = "english";
 
   public static final String ID_DOES_NOT_EXIST = "d25498e7-3ae6-45fe-9612-ec99e2700d2f";
-  static final String CALCULATE_INVOICE_LINE_TOTAL = "55e4b6f5-f974-42da-9a77-24d4e8ef0e70";
   static final String ID_FOR_INTERNAL_SERVER_ERROR = "168f8a86-d26c-406e-813f-c7527f241ac3";
   static final String ID_FOR_INTERNAL_SERVER_ERROR_PUT = "bad500bb-bbbb-500b-bbbb-bbbbbbbbbbbb";
 
@@ -83,7 +83,7 @@ public class ApiTestBase {
   private static boolean runningOnOwn;
 
   // The variable is defined in main thread but the value is going to be inserted in vert.x event loop thread
-  private static volatile List<Message<JsonObject>> eventMessages = new ArrayList<>();
+  private static List<Message<JsonObject>> eventMessages = new CopyOnWriteArrayList<>();
 
   /**
    * Define unit test specific beans to override actual ones
@@ -224,8 +224,9 @@ public class ApiTestBase {
         .extract()
           .response();
 
-    // No events are expected for any GET operations
-    verifyInvoiceSummaryUpdateEvent(0);
+    if (!url.startsWith(INVOICE_LINES_PATH)) {
+      verifyInvoiceSummaryUpdateEvent(0);
+    }
 
     return response;
   }
@@ -262,17 +263,25 @@ public class ApiTestBase {
 
   void verifyInvoiceSummaryUpdateEvent(int msgQty) {
     logger.debug("Verifying event bus messages");
+
     // Wait until event bus registers message
     await().atLeast(50, MILLISECONDS)
       .atMost(1, SECONDS)
       .until(() -> eventMessages, hasSize(msgQty));
+
     for (int i = 0; i < msgQty; i++) {
       Message<JsonObject> message = eventMessages.get(i);
       assertThat(message.address(), equalTo(MessageAddress.INVOICE_TOTALS.address));
       assertThat(message.headers(), not(emptyIterable()));
-      assertThat(message.body(), notNullValue());
-      assertThat(message.body().getString(INVOICE_ID), not(isEmptyOrNullString()));
-      assertThat(message.body().getString(HelperUtils.LANG), not(isEmptyOrNullString()));
+
+      JsonObject body = message.body();
+      assertThat(body, notNullValue());
+      assertThat(body.getString(HelperUtils.LANG), not(isEmptyOrNullString()));
+      if (body.containsKey(INVOICE_ID)) {
+        assertThat(body.getString(INVOICE_ID), not(isEmptyOrNullString()));
+      } else {
+        assertThat(body.getJsonObject(INVOICE), notNullValue());
+      }
     }
   }
 

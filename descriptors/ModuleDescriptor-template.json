@@ -90,8 +90,10 @@
           "permissionsRequired": ["invoice.invoice-lines.item.get"],
           "modulePermissions": [
             "invoice-storage.invoice-lines.item.get",
+            "invoice-storage.invoice-lines.item.put",
+            "invoice-storage.invoice-lines.collection.get",
             "invoice-storage.invoices.item.get",
-            "invoice-storage.invoice-lines.item.put"
+            "invoice-storage.invoices.item.put"
           ]
         },
         {

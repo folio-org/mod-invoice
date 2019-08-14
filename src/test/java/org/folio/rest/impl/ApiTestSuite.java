@@ -4,6 +4,8 @@ import io.restassured.RestAssured;
 import io.vertx.core.DeploymentOptions;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
+import io.vertx.core.logging.Logger;
+import io.vertx.core.logging.LoggerFactory;
 
 import org.folio.invoices.events.handlers.InvoiceSummaryTest;
 import org.folio.rest.RestVerticle;
@@ -28,6 +30,7 @@ import java.util.concurrent.TimeoutException;
   InvoiceSummaryTest.class
 })
 public class ApiTestSuite {
+  private static final Logger logger = LoggerFactory.getLogger(ApiTestSuite.class);
 
   private static final int okapiPort = NetworkUtils.nextFreePort();
   static final int mockPort = NetworkUtils.nextFreePort();
@@ -37,6 +40,8 @@ public class ApiTestSuite {
 
   @BeforeClass
   public static void before() throws InterruptedException, ExecutionException, TimeoutException {
+    logger.info("=== Initializing mock server - START ===");
+
     if (vertx == null) {
       vertx = Vertx.vertx();
     }
@@ -63,6 +68,8 @@ public class ApiTestSuite {
     });
     deploymentComplete.get(60, TimeUnit.SECONDS);
     initialised = true;
+
+    logger.info("=== Initializing mock server - END ===");
   }
 
   @AfterClass

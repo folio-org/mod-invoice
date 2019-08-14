@@ -182,21 +182,39 @@ public class MockServer {
   }
 
   public static List<JsonObject> getInvoiceRetrievals() {
-    return getRqRsEntries(HttpMethod.GET, INVOICES).stream()
-      .filter(json -> json.containsKey(ID))
-      .collect(toList());
+    return getRecordsByIds(getRqRsEntries(HttpMethod.GET, INVOICES));
   }
 
   public static List<JsonObject> getInvoiceUpdates() {
     return getRqRsEntries(HttpMethod.PUT, INVOICES);
   }
 
+  public static List<JsonObject> getInvoiceCreations() {
+    return getRqRsEntries(HttpMethod.POST, INVOICES);
+  }
+
   public static List<JsonObject> getInvoiceLineSearches() {
     return getCollectionRecords(getRqRsEntries(HttpMethod.GET, INVOICE_LINES));
   }
 
+  public static List<JsonObject> getInvoiceLineRetrievals() {
+    return getRecordsByIds(getRqRsEntries(HttpMethod.GET, INVOICE_LINES));
+  }
+
+  public static List<JsonObject> getInvoiceLineUpdates() {
+    return getRqRsEntries(HttpMethod.PUT, INVOICE_LINES);
+  }
+
+  public static List<JsonObject> getInvoiceLineCreations() {
+    return getRqRsEntries(HttpMethod.POST, INVOICE_LINES);
+  }
+
   private static List<JsonObject> getCollectionRecords(List<JsonObject> entries) {
     return entries.stream().filter(json -> !json.containsKey(ID)).collect(toList());
+  }
+
+  private static List<JsonObject> getRecordsByIds(List<JsonObject> entries) {
+    return entries.stream().filter(json -> json.containsKey(ID)).collect(toList());
   }
 
   private Router defineRoutes() {
