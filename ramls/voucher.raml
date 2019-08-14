@@ -60,9 +60,7 @@ resourceTypes:
     type:
       collection-get:
         schemaCollection: voucherLineCollection
-        schemaItem: voucherLine
         exampleCollection: !include acq-models/mod-invoice-storage/examples/voucher_line_collection.sample
-        exampleItem: !include acq-models/mod-invoice-storage/examples/voucher_line.sample
     get:
       description: Retrieve a list of voucher lines.
     is: [ pageable, searchable: {description: "using CQL (indexes for voucher line)", example: "amount>==\"10\""}, validate ]
