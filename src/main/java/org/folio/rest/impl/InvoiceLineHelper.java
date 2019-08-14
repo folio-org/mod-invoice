@@ -1,7 +1,6 @@
 package org.folio.rest.impl;
 
 import static io.vertx.core.json.JsonObject.mapFrom;
-import static java.util.UUID.randomUUID;
 import static org.folio.invoices.utils.ErrorCodes.PROHIBITED_INVOICE_LINE_CREATION;
 import static org.folio.invoices.utils.HelperUtils.*;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_LINES;
@@ -150,7 +149,7 @@ public class InvoiceLineHelper extends AbstractHelper {
     // GET invoice-line from storage
     getInvoiceLine(id)
       .thenCompose(invoiceLineFromStorage -> getInvoice(invoiceLineFromStorage).thenApply(invoice -> {
-        Boolean isTotalOutOfSync = reCalculateInvoiceLineTotals(invoiceLineFromStorage, invoice);
+        boolean isTotalOutOfSync = reCalculateInvoiceLineTotals(invoiceLineFromStorage, invoice);
         if (isTotalOutOfSync) {
           updateOutOfSyncInvoiceLine(invoiceLineFromStorage, invoice);
         }
@@ -231,9 +230,6 @@ public class InvoiceLineHelper extends AbstractHelper {
    * @return completable future which might hold {@link InvoiceLine} on success or an exception if any issue happens
    */
   CompletableFuture<InvoiceLine> createInvoiceLine(InvoiceLine invoiceLine, Invoice invoice) {
-    invoiceLine.setId(randomUUID().toString());
-    invoiceLine.setInvoiceId(invoice.getId());
-
     return generateLineNumber(invoice).thenAccept(invoiceLine::setInvoiceLineNumber)
       .thenAccept(ok -> calculateInvoiceLineTotals(invoiceLine, invoice))
       .thenCompose(ok -> createRecordInStorage(mapFrom(invoiceLine), resourcesPath(INVOICE_LINES)))

@@ -322,7 +322,7 @@ public class HelperUtils {
     return convertToDoubleWithRounding(convertedAmount);
   }
 
-  public static InvoiceLine calculateInvoiceLineTotals(InvoiceLine invoiceLine, Invoice invoice) {
+  public static void calculateInvoiceLineTotals(InvoiceLine invoiceLine, Invoice invoice) {
     if (!isPostApproval(invoice)) {
       String currency = invoice.getCurrency();
       CurrencyUnit currencyUnit = Monetary.getCurrency(currency);
@@ -333,8 +333,6 @@ public class HelperUtils {
       invoiceLine.setAdjustmentsTotal(convertToDoubleWithRounding(adjustmentTotals));
       invoiceLine.setTotal(convertToDoubleWithRounding(total));
     }
-
-    return invoiceLine;
   }
 
   public static Map<String, String> getOkapiHeaders(Message<JsonObject> message) {
