@@ -314,13 +314,13 @@ public class InvoiceHelper extends AbstractHelper {
         if (Objects.nonNull(voucher)) {
           return VertxCompletableFuture.completedFuture(voucher);
         }
-        return buildNewVoucher(invoice)
-          .thenApply(createdVoucher -> createdVoucher.withAcqUnitIds(invoice.getAcqUnitIds()));
+        return buildNewVoucher(invoice);
       })
       .thenApply(voucher -> {
         invoice.setVoucherNumber(voucher.getVoucherNumber());
         return withRequiredFields(voucher, invoice);
-      });
+      })
+      .thenApply(createdVoucher -> createdVoucher.withAcqUnitIds(invoice.getAcqUnitIds()));
   }
 
   /**
