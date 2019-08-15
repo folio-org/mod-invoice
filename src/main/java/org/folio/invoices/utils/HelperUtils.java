@@ -70,7 +70,7 @@ public class HelperUtils {
   private HelperUtils() {
 
   }
-
+  
   public static HttpClientInterface getHttpClient(Map<String, String> okapiHeaders) {
     final String okapiURL = okapiHeaders.getOrDefault(OKAPI_URL, "");
     final String tenantId = TenantTool.calculateTenantId(okapiHeaders.get(OKAPI_HEADER_TENANT));
@@ -132,7 +132,7 @@ public class HelperUtils {
       throw new CompletionException(e);
     }
   }
-
+  
   public static String getEndpointWithQuery(String query, Logger logger) {
     return isEmpty(query) ? EMPTY : "&query=" + encodeQuery(query, logger);
   }
@@ -164,7 +164,9 @@ public class HelperUtils {
     return future;
   }
 
-
+  public static String buildQuery(String query, Logger logger) {
+    return isEmpty(query) ? EMPTY : "&query=" + encodeQuery(query, logger);
+  }
   /**
    * A common method to update an entry in the storage
    *
@@ -279,6 +281,11 @@ public class HelperUtils {
     return StreamEx.of(ids).map(id -> "id==" + id).joining(" or ");
   }
 
+  public static String convertIdsToCqlQuery(List<String> values, String fieldName, boolean strictMatch) {
+    String prefix = fieldName + (strictMatch ? "==(" : "=(");
+    return StreamEx.of(values).joining(" or ", prefix, ")");
+  }
+  
   /**
    * Wait for all requests completion and collect all resulting objects. In case any failed, complete resulting future with the exception
    * @param futures list of futures and each produces resulting object on completion

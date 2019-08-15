@@ -16,6 +16,7 @@ import static org.folio.invoices.utils.ErrorCodes.PO_LINE_NOT_FOUND;
 import static org.folio.invoices.utils.ErrorCodes.PO_LINE_UPDATE_FAILURE;
 import static org.folio.invoices.utils.ErrorCodes.VOUCHER_NOT_FOUND;
 import static org.folio.invoices.utils.ErrorCodes.VOUCHER_NUMBER_PREFIX_NOT_ALPHA;
+import static org.folio.invoices.utils.ErrorCodes.USER_HAS_NO_ACQ_PERMISSIONS;
 import static org.folio.invoices.utils.HelperUtils.calculateAdjustmentsTotal;
 import static org.folio.invoices.utils.HelperUtils.calculateVoucherLineAmount;
 import static org.folio.invoices.utils.HelperUtils.collectResultsOnSuccess;
@@ -29,6 +30,7 @@ import static org.folio.invoices.utils.HelperUtils.handleDeleteRequest;
 import static org.folio.invoices.utils.HelperUtils.handleGetRequest;
 import static org.folio.invoices.utils.HelperUtils.handlePutRequest;
 import static org.folio.invoices.utils.HelperUtils.isPostApproval;
+import org.folio.invoices.utils.AcqDesiredPermissions;
 import static org.folio.invoices.utils.ResourcePathResolver.FOLIO_INVOICE_NUMBER;
 import static org.folio.invoices.utils.ResourcePathResolver.FUNDS;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICES;
@@ -36,6 +38,9 @@ import static org.folio.invoices.utils.ResourcePathResolver.ORDER_LINES;
 import static org.folio.invoices.utils.ResourcePathResolver.resourceByIdPath;
 import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
 import static me.escoffier.vertx.completablefuture.VertxCompletableFuture.completedFuture;
+import static org.folio.invoices.utils.AcqDesiredPermissions.ASSIGN;
+import static org.folio.rest.RestVerticle.OKAPI_HEADER_PERMISSIONS;
+import static org.folio.invoices.utils.ProtectedOperationType.CREATE;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -56,9 +61,11 @@ import javax.money.convert.CurrencyConversion;
 
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.folio.HttpStatus;
 import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.invoices.utils.HelperUtils;
 import org.folio.invoices.utils.InvoiceProtectedFields;
+import org.folio.invoices.utils.ProtectedOperationType;
 import org.folio.rest.acq.model.finance.Fund;
 import org.folio.rest.acq.model.finance.FundCollection;
 import org.folio.rest.acq.model.orders.CompositePoLine;
@@ -77,6 +84,7 @@ import org.javamoney.moneta.Money;
 import org.javamoney.moneta.function.MonetaryFunctions;
 
 import io.vertx.core.Context;
+import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import me.escoffier.vertx.completablefuture.VertxCompletableFuture;
 import one.util.streamex.StreamEx;
@@ -97,23 +105,28 @@ public class InvoiceHelper extends AbstractHelper {
   private static final String GET_FUNDS_BY_QUERY = resourcesPath(FUNDS) + "?query=%s&limit=%s&lang=%s";
 
   private static final String DEFAULT_ACCOUNTING_CODE = "tmp_code";
-
+  public static final String EMPTY_ARRAY = "[]";
+  
   // Using variable to "cache" lines for particular invoice base on assumption that the helper is stateful and new instance is used
   private List<InvoiceLine> invoiceLines;
 
   private final InvoiceLineHelper invoiceLineHelper;
   private final VoucherHelper voucherHelper;
   private final VoucherLineHelper voucherLineHelper;
+  private final ProtectionHelper protectionHelper;
 
   public InvoiceHelper(Map<String, String> okapiHeaders, Context ctx, String lang) {
     super(getHttpClient(okapiHeaders), okapiHeaders, ctx, lang);
     invoiceLineHelper = new InvoiceLineHelper(httpClient, okapiHeaders, ctx, lang);
     voucherHelper = new VoucherHelper(httpClient, okapiHeaders, ctx, lang);
     voucherLineHelper = new VoucherLineHelper(httpClient, okapiHeaders, ctx, lang);
+    protectionHelper = new ProtectionHelper(httpClient, okapiHeaders, ctx, lang);
   }
 
   public CompletableFuture<Invoice> createInvoice(Invoice invoice) {
-    return generateFolioInvoiceNumber()
+    verifyUserHasAssignPermission(invoice);
+    return protectionHelper.isOperationRestricted(invoice.getAcqUnitIds(), ProtectedOperationType.CREATE)
+      .thenCompose(v -> generateFolioInvoiceNumber())
       .thenApply(invoice::withFolioInvoiceNo)
       .thenApply(this::withCalculatedTotals)
       .thenApply(JsonObject::mapFrom)
@@ -121,6 +134,22 @@ public class InvoiceHelper extends AbstractHelper {
       .thenApply(invoice::withId);
   }
 
+  private void verifyUserHasAssignPermission(Invoice invoice) {
+    if (CollectionUtils.isNotEmpty(invoice.getAcqUnitIds()) && isUserDoesNotHaveDesiredPermission(ASSIGN)){
+      throw new HttpException(HttpStatus.HTTP_FORBIDDEN.toInt(), USER_HAS_NO_ACQ_PERMISSIONS);
+    }
+  }
+  
+  private boolean isUserDoesNotHaveDesiredPermission(AcqDesiredPermissions acqPerm) {
+    return !getProvidedPermissions().contains(acqPerm.getPermission());
+  }
+  
+  private List<String> getProvidedPermissions() {
+    return new JsonArray(okapiHeaders.getOrDefault(OKAPI_HEADER_PERMISSIONS, EMPTY_ARRAY)).stream().
+      map(Object::toString)
+      .collect(Collectors.toList());
+  }
+  
   /**
    * Gets invoice by id and calculates totals
    *
