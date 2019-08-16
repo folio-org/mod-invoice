@@ -19,7 +19,6 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 
-
 public class VoucherLinesApiTest extends ApiTestBase {
 
   private static final Logger logger = LoggerFactory.getLogger(VoucherLinesApiTest.class);
@@ -32,7 +31,6 @@ public class VoucherLinesApiTest extends ApiTestBase {
   private static final String VOUCHER_LINES_ID_PATH = "/voucher/voucher-lines" + "/%s";
   private static final String NOT_FOUND_VOUCHER_LINE_ID = "5a34ae0e-5a11-4337-be95-1a20cfdc3161";
   private static final String INVALID_VOUCHER_LINE_ID = "invalidVoucherLineId";
-
 
   @Test
   public void getInvoicingInvoiceLinesTest() {
@@ -106,8 +104,7 @@ public class VoucherLinesApiTest extends ApiTestBase {
   public void testPutVouchersVoucherLinesByNonExistentId() throws Exception {
     VoucherLine reqData = getMockAsJson(VOUCHER_LINE_PATH).mapTo(VoucherLine.class);
     reqData.setId(ID_DOES_NOT_EXIST);
-    String jsonBody = JsonObject.mapFrom(reqData)
-      .encode();
+    String jsonBody = JsonObject.mapFrom(reqData).encode();
 
     verifyPut(String.format(VOUCHER_LINES_ID_PATH, ID_DOES_NOT_EXIST), jsonBody, APPLICATION_JSON, 404);
   }
@@ -116,8 +113,7 @@ public class VoucherLinesApiTest extends ApiTestBase {
   public void testPutVouchersVoucherLinesInvalidIdFormat() throws Exception {
     VoucherLine reqData = getMockAsJson(VOUCHER_LINE_PATH).mapTo(VoucherLine.class);
     reqData.setId(ID_BAD_FORMAT);
-    String jsonBody = JsonObject.mapFrom(reqData)
-      .encode();
+    String jsonBody = JsonObject.mapFrom(reqData).encode();
 
     verifyPut(String.format(VOUCHER_LINES_ID_PATH, ID_BAD_FORMAT), jsonBody, APPLICATION_JSON, 422);
   }
