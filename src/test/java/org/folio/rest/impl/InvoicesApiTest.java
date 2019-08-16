@@ -39,6 +39,7 @@ import static org.folio.rest.impl.MockServer.ERROR_X_OKAPI_TENANT;
 import static org.folio.rest.impl.MockServer.INVALID_PREFIX_CONFIG_X_OKAPI_TENANT;
 import static org.folio.rest.impl.MockServer.INVOICE_NUMBER_ERROR_X_OKAPI_TENANT;
 import static org.folio.rest.impl.MockServer.NON_EXIST_CONFIG_X_OKAPI_TENANT;
+import static org.folio.rest.RestVerticle.OKAPI_HEADER_PERMISSIONS;
 import static org.folio.rest.impl.MockServer.TEST_PREFIX;
 import static org.folio.rest.impl.MockServer.addMockEntry;
 import static org.folio.rest.impl.MockServer.getInvoiceCreations;
@@ -82,6 +83,7 @@ import javax.money.convert.MonetaryConversions;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.reflect.FieldUtils;
 import org.apache.http.HttpStatus;
+import org.folio.invoices.utils.AcqDesiredPermissions;
 import org.folio.invoices.utils.InvoiceProtectedFields;
 import org.folio.rest.acq.model.VoucherLineCollection;
 import org.folio.rest.acq.model.finance.Fund;
@@ -104,9 +106,11 @@ import org.javamoney.moneta.function.MonetaryOperators;
 import org.javamoney.moneta.spi.DefaultNumberValue;
 import org.junit.Test;
 
+import io.restassured.http.Header;
 import io.restassured.http.Headers;
 import io.restassured.response.Response;
 import io.vertx.core.http.HttpMethod;
+import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
@@ -115,7 +119,7 @@ public class InvoicesApiTest extends ApiTestBase {
 
   private static final Logger logger = LoggerFactory.getLogger(InvoicesApiTest.class);
 
-  private static final String INVOICE_PATH = "/invoice/invoices";
+  public static final String INVOICE_PATH = "/invoice/invoices";
 	private static final String INVOICE_ID_PATH = INVOICE_PATH+ "/%s";
   private static final String INVOICE_ID_WITH_LANG_PATH = INVOICE_ID_PATH + "?lang=%s";
   private static final String INVOICE_PATH_BAD = "/invoice/bad";
@@ -125,7 +129,7 @@ public class InvoicesApiTest extends ApiTestBase {
   static final String APPROVED_INVOICE_ID = "c0d08448-347b-418a-8c2f-5fb50248d67e";
   static final String REVIEWED_INVOICE_ID = "3773625a-dc0d-4a2d-959e-4a91ee265d67";
   public static final String OPEN_INVOICE_ID = "52fd6ec7-ddc3-4c53-bc26-2779afc27136";
-  private static final String APPROVED_INVOICE_SAMPLE_PATH = INVOICE_MOCK_DATA_PATH + APPROVED_INVOICE_ID + ".json";
+  public static final String APPROVED_INVOICE_SAMPLE_PATH = INVOICE_MOCK_DATA_PATH + APPROVED_INVOICE_ID + ".json";
   private static final String REVIEWED_INVOICE_SAMPLE_PATH = INVOICE_MOCK_DATA_PATH + REVIEWED_INVOICE_ID + ".json";
   private static final String REVIEWED_INVOICE_WITH_EXISTING_VOUCHER_SAMPLE_PATH = INVOICE_MOCK_DATA_PATH + "402d0d32-7377-46a7-86ab-542b5684506e.json";
 
@@ -141,7 +145,8 @@ public class InvoicesApiTest extends ApiTestBase {
   private static final String STATUS = "status";
   private static final String INVALID_CURRENCY = "ABC";
 
-
+  public static final Header ALL_DESIRED_PERMISSIONS_HEADER = new Header(OKAPI_HEADER_PERMISSIONS, new JsonArray(AcqDesiredPermissions.getValues()).encode());
+  
   @Test
   public void testGetInvoicingInvoices() {
     logger.info("=== Test Get Invoices by without query - get 200 by successful retrieval of invoices ===");

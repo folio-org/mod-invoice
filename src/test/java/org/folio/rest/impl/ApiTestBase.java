@@ -61,7 +61,9 @@ public class ApiTestBase {
   static final Header X_OKAPI_TOKEN = new Header(OKAPI_HEADER_TOKEN, "eyJhbGciOiJIUzI1NiJ9");
   static final Header X_OKAPI_TENANT = new Header(OKAPI_HEADER_TENANT, "invoiceimpltest");
   static final Header X_OKAPI_USERID = new Header(OKAPI_USERID_HEADER, "d1d0a10b-c563-4c4b-ae22-e5a0c11623eb");
-
+  protected static final Header EXIST_CONFIG_X_OKAPI_TENANT_LIMIT_10 = new Header(OKAPI_HEADER_TENANT, "test_diku_limit_10");
+  public static final Header X_OKAPI_USER_ID = new Header(OKAPI_USERID_HEADER, "440c89e3-7f6c-578a-9ea8-310dad23605e");
+  
   static final String BASE_MOCK_DATA_PATH = "mockdata/";
 
   static final String INVOICE_LINE_NUMBER_VALUE = "1";
@@ -72,6 +74,7 @@ public class ApiTestBase {
   public static final String ID_DOES_NOT_EXIST = "d25498e7-3ae6-45fe-9612-ec99e2700d2f";
   static final String ID_FOR_INTERNAL_SERVER_ERROR = "168f8a86-d26c-406e-813f-c7527f241ac3";
   static final String ID_FOR_INTERNAL_SERVER_ERROR_PUT = "bad500bb-bbbb-500b-bbbb-bbbbbbbbbbbb";
+  public static final String PROTECTED_READ_ONLY_TENANT = "protected_read";
 
   static {
     System.setProperty(LoggerFactory.LOGGER_DELEGATE_FACTORY_CLASS_NAME, "io.vertx.core.logging.Log4j2LogDelegateFactory");
@@ -131,7 +134,7 @@ public class ApiTestBase {
     }
   }
 
-  static String getMockData(String path) throws IOException {
+  protected static String getMockData(String path) throws IOException {
     logger.info("Using mock datafile: {}", path);
     try (InputStream resourceAsStream = ApiTestBase.class.getClassLoader().getResourceAsStream(path)) {
       if (resourceAsStream != null) {
@@ -159,7 +162,7 @@ public class ApiTestBase {
     return verifyPostResponse(url, body.encode(), headers, expectedContentType, expectedCode);
   }
 
-  Response verifyPostResponse(String url, String body, Headers headers, String expectedContentType, int expectedCode) {
+  public Response verifyPostResponse(String url, String body, Headers headers, String expectedContentType, int expectedCode) {
     Response response = RestAssured
       .with()
         .header(X_OKAPI_URL)
@@ -212,7 +215,7 @@ public class ApiTestBase {
     return verifyGet(url, headers, expectedContentType, expectedCode);
   }
 
-  Response verifyGet(String url, Headers headers, String expectedContentType, int expectedCode) {
+  public Response verifyGet(String url, Headers headers, String expectedContentType, int expectedCode) {
     Response response = RestAssured
       .with()
         .headers(headers)
@@ -257,7 +260,7 @@ public class ApiTestBase {
     return response;
   }
 
-  Headers prepareHeaders(Header... headers) {
+  protected Headers prepareHeaders(Header... headers) {
     return new Headers(headers);
   }
 
@@ -283,6 +286,10 @@ public class ApiTestBase {
         assertThat(body.getJsonObject(INVOICE), notNullValue());
       }
     }
+  }
+  
+  public static String encodePrettily(Object entity) {
+    return JsonObject.mapFrom(entity).encodePrettily();
   }
 
 }
