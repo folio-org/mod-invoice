@@ -93,6 +93,12 @@
       <version>1.3</version>
       <type>pom</type>
     </dependency>
+    <dependency>
+      <groupId>pl.pragmatists</groupId>
+      <artifactId>JUnitParams</artifactId>
+      <version>1.1.1</version>
+      <scope>test</scope>
+    </dependency>
   </dependencies>
 
   <build>
@@ -124,8 +130,7 @@
             <exclude>org/folio/rest/impl/*Test.java</exclude>
           </excludes>
           <includes>
-            <include>org/folio/rest/impl/StorageTestSuite.java</include>
-            <include>org/folio/rest/**</include>
+            <include>org/folio/rest/impl/ApiTestSuite.java</include>
           </includes>
           <systemPropertyVariables>
             <vertx.logger-delegate-factory-class-name>io.vertx.core.logging.Log4j2LogDelegateFactory</vertx.logger-delegate-factory-class-name>
@@ -188,6 +193,17 @@
             <configuration>
               <sourceDirectory>${basedir}/ramls/acq-models/mod-finance/schemas</sourceDirectory>
               <targetPackage>org.folio.rest.acq.model.finance</targetPackage>
+              <generateBuilders>true</generateBuilders>
+            </configuration>
+          </execution>
+          <execution>
+            <id>mod-orders-storage</id>
+            <goals>
+              <goal>generate</goal>
+            </goals>
+            <configuration>
+              <sourceDirectory>${basedir}/ramls/acq-models/acquisitions-unit/schemas</sourceDirectory>
+              <targetPackage>org.folio.rest.acq.model.units</targetPackage>
               <generateBuilders>true</generateBuilders>
             </configuration>
           </execution>

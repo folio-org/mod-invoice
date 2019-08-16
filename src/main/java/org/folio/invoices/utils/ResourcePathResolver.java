@@ -10,6 +10,8 @@ public class ResourcePathResolver {
   private ResourcePathResolver() {
   }
 
+  public static final String ACQUISITIONS_UNITS = "acquisitionsUnits";
+  public static final String ACQUISITIONS_MEMBERSHIPS = "acquisitionsMemberships";
   public static final String INVOICES = "invoices";
   public static final String INVOICE_LINES = "invoiceLines";
   public static final String ORDER_LINES = "orderLines";
@@ -27,6 +29,8 @@ public class ResourcePathResolver {
 
   static {
     Map<String, String> apis = new HashMap<>();
+    apis.put(ACQUISITIONS_UNITS, "/acquisitions-units/units");
+    apis.put(ACQUISITIONS_MEMBERSHIPS, "/acquisitions-units/memberships");
     apis.put(INVOICES, "/invoice-storage/invoices");
     apis.put(INVOICE_LINES, "/invoice-storage/invoice-lines");
     apis.put(INVOICE_LINE_NUMBER, "/invoice-storage/invoice-line-number");

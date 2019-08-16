@@ -1,30 +1,14 @@
 package org.folio.rest.impl;
 
-import io.restassured.response.Response;
-import io.vertx.core.http.HttpMethod;
-import io.vertx.core.json.JsonObject;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
-import org.apache.commons.lang3.reflect.FieldUtils;
-import org.apache.http.HttpStatus;
-import org.folio.invoices.utils.InvoiceLineProtectedFields;
-import org.folio.rest.jaxrs.model.Adjustment;
-import org.folio.rest.jaxrs.model.Errors;
-import org.folio.rest.jaxrs.model.Error;
-import org.folio.rest.jaxrs.model.InvoiceLine;
-import org.hamcrest.MatcherAssert;
-import org.hamcrest.Matchers;
-import org.junit.Test;
-
-import java.io.IOException;
-import java.util.*;
-
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 import static javax.ws.rs.core.MediaType.TEXT_PLAIN;
 import static org.awaitility.Awaitility.await;
 import static org.folio.invoices.utils.ErrorCodes.PROHIBITED_INVOICE_LINE_CREATION;
+import static org.folio.invoices.utils.HelperUtils.getNoAcqUnitCQL;
+import static org.folio.invoices.utils.ResourcePathResolver.ACQUISITIONS_MEMBERSHIPS;
+import static org.folio.invoices.utils.ResourcePathResolver.ACQUISITIONS_UNITS;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_LINES;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_LINE_NUMBER;
 import static org.folio.rest.impl.AbstractHelper.ID;
@@ -39,13 +23,43 @@ import static org.folio.rest.impl.MockServer.getInvoiceLineCreations;
 import static org.folio.rest.impl.MockServer.getInvoiceLineRetrievals;
 import static org.folio.rest.impl.MockServer.getInvoiceLineUpdates;
 import static org.folio.rest.impl.MockServer.getInvoiceRetrievals;
-import static org.hamcrest.Matchers.*;
-import static org.junit.Assert.assertEquals;
-import static org.hamcrest.Matchers.notNullValue;
+import static org.folio.rest.impl.MockServer.getQueryParams;
+import static org.folio.rest.impl.ProtectionHelper.ACQUISITIONS_UNIT_IDS;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.endsWith;
 import static org.hamcrest.Matchers.equalTo;
-import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.hasSize;
+import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.not;
+import static org.hamcrest.Matchers.notNullValue;
+import static org.junit.Assert.assertEquals;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+
+import org.apache.commons.lang3.reflect.FieldUtils;
+import org.apache.http.HttpStatus;
+import org.folio.invoices.utils.InvoiceLineProtectedFields;
+import org.folio.rest.jaxrs.model.Adjustment;
+import org.folio.rest.jaxrs.model.Error;
+import org.folio.rest.jaxrs.model.Errors;
+import org.folio.rest.jaxrs.model.InvoiceLine;
+import org.folio.rest.jaxrs.model.InvoiceLineCollection;
+import org.hamcrest.MatcherAssert;
+import org.hamcrest.Matchers;
+import org.junit.Test;
+
+import io.restassured.response.Response;
+import io.vertx.core.http.HttpMethod;
+import io.vertx.core.json.JsonObject;
+import io.vertx.core.logging.Logger;
+import io.vertx.core.logging.LoggerFactory;
 
 
 public class InvoiceLinesApiTest extends ApiTestBase {
@@ -54,7 +68,7 @@ public class InvoiceLinesApiTest extends ApiTestBase {
 
   static final String INVOICE_LINES_MOCK_DATA_PATH = BASE_MOCK_DATA_PATH + "invoiceLines/";
   static final String INVOICE_LINES_LIST_PATH = INVOICE_LINES_MOCK_DATA_PATH + "invoice_lines.json";
-  static final String INVOICE_LINES_PATH = "/invoice/invoice-lines";
+  public static final String INVOICE_LINES_PATH = "/invoice/invoice-lines";
   private static final String INVOICE_LINE_ID_PATH = INVOICE_LINES_PATH + "/%s";
 
 
@@ -74,7 +88,40 @@ public class InvoiceLinesApiTest extends ApiTestBase {
 
   @Test
   public void getInvoicingInvoiceLinesTest() {
-    verifyGet(INVOICE_LINES_PATH, APPLICATION_JSON, 200);
+    verifyGet(INVOICE_LINES_PATH, prepareHeaders(X_OKAPI_PROTECTED_READ_TENANT), APPLICATION_JSON, 200);
+
+    assertThat(MockServer.serverRqRs.get(ACQUISITIONS_UNITS, HttpMethod.GET), hasSize(1));
+    assertThat(MockServer.serverRqRs.get(ACQUISITIONS_MEMBERSHIPS, HttpMethod.GET), hasSize(1));
+
+    List<String> queryParams = getQueryParams(INVOICE_LINES);
+    assertThat(queryParams, hasSize(1));
+    assertThat(queryParams.get(0), equalTo(getNoAcqUnitCQL(INVOICE_LINES)));
+  }
+
+  @Test
+  public void testGetInvoiceLinesByInvoiceId() {
+    logger.info("=== Test Get Invoice lines - by Invoice id ===");
+
+    String sortBy = " sortBy subTotal";
+    String cql = String.format("%s==%s", INVOICE_ID, APPROVED_INVOICE_ID);
+    String endpointQuery = String.format("%s?query=%s%s", INVOICE_LINES_PATH, cql, sortBy);
+
+    final InvoiceLineCollection invoiceLineCollection = verifySuccessGet(endpointQuery, InvoiceLineCollection.class, X_OKAPI_PROTECTED_READ_TENANT);
+
+    assertThat(invoiceLineCollection.getTotalRecords(), is(3));
+
+
+    assertThat(MockServer.serverRqRs.get(ACQUISITIONS_UNITS, HttpMethod.GET), hasSize(1));
+    assertThat(MockServer.serverRqRs.get(ACQUISITIONS_MEMBERSHIPS, HttpMethod.GET), hasSize(1));
+
+    List<String> queryParams = getQueryParams(INVOICE_LINES);
+    assertThat(queryParams, hasSize(1));
+    String queryToStorage = queryParams.get(0);
+    assertThat(queryToStorage, containsString("(" + cql + ")"));
+    assertThat(queryToStorage, containsString(APPROVED_INVOICE_ID));
+    assertThat(queryToStorage, not(containsString(ACQUISITIONS_UNIT_IDS + "=")));
+    assertThat(queryToStorage, containsString(getNoAcqUnitCQL(INVOICE_LINES)));
+    assertThat(queryToStorage, endsWith(sortBy));
   }
 
   @Test
