@@ -44,6 +44,7 @@ import static org.folio.rest.impl.InvoicesApiTest.INVOICE_MOCK_DATA_PATH;
 import static org.folio.rest.impl.VoucherLinesApiTest.VOUCHER_LINES_MOCK_DATA_PATH;
 import static org.folio.rest.impl.VouchersApiTest.VOUCHERS_LIST_PATH;
 import static org.folio.rest.impl.VouchersApiTest.VOUCHER_MOCK_DATA_PATH;
+import static org.folio.rest.impl.ProtectionHelper.ACQUISITIONS_UNIT_ID;
 import static org.junit.Assert.fail;
 
 import java.io.IOException;
@@ -58,12 +59,13 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Function;
 import java.util.function.Supplier;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import javax.ws.rs.core.Response;
 
 import org.apache.commons.lang3.StringUtils;
 import org.folio.invoices.utils.ResourcePathResolver;
-import org.folio.rest.acq.model.AcquisitionsUnit;
 import org.folio.rest.acq.model.SequenceNumber;
 import org.folio.rest.acq.model.VoucherLine;
 import org.folio.rest.acq.model.VoucherLineCollection;
@@ -71,6 +73,7 @@ import org.folio.rest.acq.model.finance.Fund;
 import org.folio.rest.acq.model.finance.FundCollection;
 import org.folio.rest.acq.model.orders.CompositePoLine;
 import org.folio.rest.acq.model.AcquisitionsUnitCollection;
+import org.folio.rest.acq.model.AcquisitionsUnitMembershipCollection;
 import org.folio.rest.jaxrs.model.Config;
 import org.folio.rest.jaxrs.model.Configs;
 import org.folio.rest.jaxrs.model.Document;
@@ -150,6 +153,8 @@ public class MockServer {
   static final Header GET_VOUCHER_LINE_ERROR_X_OKAPI_TENANT = new Header(OKAPI_HEADER_TENANT, GET_VOUCHER_LINES_ERROR_TENANT);
   static final Header DELETE_VOUCHER_LINE_ERROR_X_OKAPI_TENANT = new Header(OKAPI_HEADER_TENANT, DELETE_VOUCHER_LINES_ERROR_TENANT);
   static final Header NON_EXIST_CONFIG_X_OKAPI_TENANT = new Header(OKAPI_HEADER_TENANT, NON_EXIST_CONFIG_TENANT);
+  static final String X_ECHO_STATUS = "X-Okapi-Echo-Status";
+//  static final String INTERNAL_SERVER_ERROR = "Internal Server Error";
 
   private final int port;
   private final Vertx vertx;
@@ -242,8 +247,11 @@ public class MockServer {
     router.route(HttpMethod.POST, resourcesPath(VOUCHERS)).handler(ctx -> handlePostEntry(ctx, Voucher.class, VOUCHERS));
     router.route(HttpMethod.POST, resourcesPath(VOUCHER_LINES)).handler(ctx -> handlePostEntry(ctx, VoucherLine.class, VOUCHER_LINES));
     router.route(HttpMethod.POST, "/invoice-storage/invoices/:id/documents").handler(this::handlePostInvoiceDocument);
+    router.route(HttpMethod.POST, resourcesPath(ACQUISITIONS_UNITS)).handler(ctx -> handlePostGenericSubObj(ctx, ACQUISITIONS_UNITS));
+    router.route(HttpMethod.POST, resourcesPath(ACQUISITIONS_MEMBERSHIPS)).handler(ctx -> handlePostGenericSubObj(ctx, ACQUISITIONS_MEMBERSHIPS));
 
     router.route(HttpMethod.GET, resourcesPath(ACQUISITIONS_UNITS)).handler(this::handleGetAcquisitionsUnits);
+    router.route(HttpMethod.GET, resourcesPath(ACQUISITIONS_MEMBERSHIPS)).handler(this::handleGetAcquisitionsMemberships);
     router.route(HttpMethod.GET, resourcesPath(INVOICES)).handler(this::handleGetInvoices);
     router.route(HttpMethod.GET, resourcesPath(INVOICE_LINES)).handler(this::handleGetInvoiceLines);
     router.route(HttpMethod.GET, resourceByIdPath(INVOICES)).handler(this::handleGetInvoiceById);
@@ -277,6 +285,38 @@ public class MockServer {
     return router;
   }
 
+  private void handleGetAcquisitionsMemberships(RoutingContext ctx) {
+    logger.info("handleGetAcquisitionsMemberships got: " + ctx.request().path());
+
+    String query = StringUtils.trimToEmpty(ctx.request().getParam("query"));
+    if (query.contains(BAD_QUERY)) {
+      serverResponse(ctx, 400, APPLICATION_JSON, Response.Status.BAD_REQUEST.getReasonPhrase());
+    } else {
+
+      Matcher userIdMatcher = Pattern.compile(".*userId==(\\S+).*").matcher(query);
+      final String userId = userIdMatcher.find() ? userIdMatcher.group(1) : EMPTY;
+
+      AcquisitionsUnitMembershipCollection memberships;
+      try {
+        memberships = new JsonObject(ApiTestBase.getMockData(ACQUISITIONS_MEMBERSHIPS_COLLECTION)).mapTo(AcquisitionsUnitMembershipCollection.class);
+      } catch (IOException e) {
+        memberships = new AcquisitionsUnitMembershipCollection();
+      }
+
+      if (StringUtils.isNotEmpty(userId)) {
+        memberships.getAcquisitionsUnitMemberships().removeIf(membership -> !membership.getUserId().equals(userId));
+        List<String> acquisitionsUnitIds = extractIdsFromQuery(ACQUISITIONS_UNIT_ID, query);
+          if (!acquisitionsUnitIds.isEmpty()) {
+            memberships.getAcquisitionsUnitMemberships().removeIf(membership -> !acquisitionsUnitIds.contains(membership.getAcquisitionsUnitId()));
+          }
+      }
+
+      JsonObject data = JsonObject.mapFrom(memberships.withTotalRecords(memberships.getAcquisitionsUnitMemberships().size()));
+      addServerRqRsData(HttpMethod.GET, ACQUISITIONS_MEMBERSHIPS, data);
+      serverResponse(ctx, 200, APPLICATION_JSON, data.encodePrettily());
+    }
+  }
+  
   private void handleGetAcquisitionsUnits(RoutingContext ctx) {
     logger.info("handleGetAcquisitionsUnits got: " + ctx.request().path());
     String tenant = ctx.request().getHeader(OKAPI_HEADER_TENANT);
@@ -317,6 +357,16 @@ public class MockServer {
       JsonObject data = JsonObject.mapFrom(units.withTotalRecords(units.getAcquisitionsUnits().size()));
       addServerRqRsData(HttpMethod.GET, ACQUISITIONS_UNITS, data);
       serverResponse(ctx, 200, APPLICATION_JSON, data.encodePrettily());
+    }
+  }
+
+
+  private List<String> extractIdsFromQuery(String fieldName, String query) {
+    Matcher matcher = Pattern.compile(".*" + fieldName + "==\\((.+)\\).*").matcher(query);
+    if (matcher.find()) {
+      return StreamEx.split(matcher.group(1), " or ").toList();
+    } else {
+      return Collections.emptyList();
     }
   }
   
@@ -478,6 +528,50 @@ public class MockServer {
     }
   }
 
+  private void handlePostGenericSubObj(RoutingContext ctx, String subObj) {
+    logger.info("got: " + ctx.getBodyAsString());
+
+    String echoStatus = ctx.request().getHeader(X_ECHO_STATUS);
+
+    int status = 201;
+    String respBody = "";
+    String contentType = APPLICATION_JSON;
+
+    if (echoStatus != null) {
+      try {
+        status = Integer.parseInt(echoStatus);
+      } catch (NumberFormatException e) {
+        logger.error("Exception parsing " + X_ECHO_STATUS, e);
+      }
+    }
+    ctx.response().setStatusCode(status);
+
+    JsonObject body = null;
+    switch (status) {
+      case 201:
+//        String id = UUID.randomUUID().toString();
+//        body = ctx.getBodyAsJson();
+//        body.put(ID, id);
+//        T entry = body.mapTo(tClass);
+//        addServerRqRsData(HttpMethod.POST, entryName, body);
+//
+//        serverResponse(ctx, 201, APPLICATION_JSON, JsonObject.mapFrom(entry).encodePrettily());
+        break;
+      case 400:
+        respBody = "Unable to add -- malformed JSON at 13:3";
+        break;
+      case 403:
+        respBody = "Access requires permission: foo.bar.baz";
+        break;
+      case 500:
+        respBody = "Internal Server Error";
+        break;
+    }
+
+    addServerRqRsData(HttpMethod.POST, subObj, body);
+    serverResponse(ctx, status, contentType, respBody);
+  }
+  
   private <T> void handlePostEntry(RoutingContext ctx, Class<T> tClass, String entryName) {
     logger.info("got: " + ctx.getBodyAsString());
     String tenant = ctx.request().getHeader(OKAPI_HEADER_TENANT);

@@ -21,7 +21,7 @@ import me.escoffier.vertx.completablefuture.VertxCompletableFuture;
 import org.folio.invoices.events.handlers.MessageAddress;
 import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.invoices.utils.InvoiceLineProtectedFields;
-
+import org.folio.invoices.utils.ProtectedOperationType;
 import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.jaxrs.model.InvoiceLine;
 import org.folio.rest.jaxrs.model.InvoiceLineCollection;
@@ -33,12 +33,16 @@ public class InvoiceLineHelper extends AbstractHelper {
   private static final String INVOICE_LINE_NUMBER_ENDPOINT = resourcesPath(INVOICE_LINE_NUMBER) + "?" + INVOICE_ID + "=";
   private static final String GET_INVOICE_LINES_BY_QUERY = resourcesPath(INVOICE_LINES) + "?limit=%s&offset=%s%s&lang=%s";
 
+  private final ProtectionHelper protectionHelper;
+  
   InvoiceLineHelper(Map<String, String> okapiHeaders, Context ctx, String lang) {
     super(okapiHeaders, ctx, lang);
+    protectionHelper = new ProtectionHelper(httpClient, okapiHeaders, ctx, lang);
   }
 
   InvoiceLineHelper(HttpClientInterface httpClient, Map<String, String> okapiHeaders, Context ctx, String lang) {
     super(httpClient, okapiHeaders, ctx, lang);
+    protectionHelper = new ProtectionHelper(httpClient, okapiHeaders, ctx, lang);
   }
 
   public CompletableFuture<InvoiceLineCollection> getInvoiceLines(int limit, int offset, String query) {
@@ -206,7 +210,8 @@ public class InvoiceLineHelper extends AbstractHelper {
    */
   CompletableFuture<InvoiceLine> createInvoiceLine(InvoiceLine invoiceLine) {
     return getInvoice(invoiceLine).thenApply(this::checkIfInvoiceLineCreationAllowed)
-      .thenCompose(invoice -> createInvoiceLine(invoiceLine, invoice).thenApply(line -> {
+        .thenCompose(invoice -> protectionHelper.isOperationRestricted(invoice.getAcqUnitIds(),ProtectedOperationType.CREATE).thenApply(v -> invoice))
+        .thenCompose(invoice -> createInvoiceLine(invoiceLine, invoice).thenApply(line -> {
         updateInvoice(invoice);
         return line;
       }));

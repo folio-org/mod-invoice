@@ -54,7 +54,7 @@ public class InvoiceLinesApiTest extends ApiTestBase {
 
   static final String INVOICE_LINES_MOCK_DATA_PATH = BASE_MOCK_DATA_PATH + "invoiceLines/";
   static final String INVOICE_LINES_LIST_PATH = INVOICE_LINES_MOCK_DATA_PATH + "invoice_lines.json";
-  static final String INVOICE_LINES_PATH = "/invoice/invoice-lines";
+  public static final String INVOICE_LINES_PATH = "/invoice/invoice-lines";
   private static final String INVOICE_LINE_ID_PATH = INVOICE_LINES_PATH + "/%s";
 
 
@@ -190,6 +190,7 @@ public class InvoiceLinesApiTest extends ApiTestBase {
     logger.info("=== Test create invoice line - 201 successfully created ===");
 
     InvoiceLine reqData = getMockAsJson(INVOICE_LINE_WITH_APPROVED_INVOICE_SAMPLE_PATH).mapTo(InvoiceLine.class);
+    List<String> NON_EXISTENT_UNITS = Arrays.asList("1895e539-8dac-441e-b1f5-aab62b3fde60", "47f504bd-0c1b-498e-a2ae-e2f0a0cea273");
     reqData.setInvoiceId(OPEN_INVOICE_ID);
     Double actualTotal = 2.00d;
     assertThat(actualTotal, equalTo(reqData.getTotal()));

@@ -2,8 +2,10 @@ package org.folio.rest.impl.protection;
 
 
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICES;
+import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_LINES;
 import static org.folio.rest.RestVerticle.OKAPI_USERID_HEADER;
 import static org.folio.rest.impl.InvoicesApiTest.APPROVED_INVOICE_SAMPLE_PATH;
+import static org.folio.rest.impl.InvoicesApiTest.REVIEWED_INVOICE_SAMPLE_PATH;
 import static org.folio.rest.impl.MockServer.addMockEntry;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasSize;
@@ -16,6 +18,8 @@ import java.util.List;
 import org.folio.rest.impl.ApiTestBase;
 import org.folio.rest.impl.MockServer;
 import org.folio.rest.jaxrs.model.Invoice;
+import org.folio.rest.jaxrs.model.InvoiceLine;
+import org.folio.rest.jaxrs.model.InvoiceLine.InvoiceLineStatus;
 import org.hamcrest.Matcher;
 
 import io.restassured.http.Header;
@@ -50,9 +54,27 @@ public abstract class ProtectedEntityTestBase extends ApiTestBase {
   }
 
   public Invoice prepareInvoice(List<String> acqUnitsIds) throws IOException {
-    Invoice invoice = new JsonObject(getMockData(APPROVED_INVOICE_SAMPLE_PATH)).mapTo(Invoice.class);
+//    Invoice invoice = new JsonObject(getMockData(APPROVED_INVOICE_SAMPLE_PATH)).mapTo(Invoice.class);
+    Invoice invoice = new JsonObject(getMockData(REVIEWED_INVOICE_SAMPLE_PATH)).mapTo(Invoice.class);
     invoice.setAcqUnitIds(acqUnitsIds);
     addMockEntry(INVOICES, JsonObject.mapFrom(invoice));
     return invoice;
+  }
+  
+  public InvoiceLine prepareInvoiceLine(List<String> acqUnitsIds) throws IOException {
+    Invoice invoice = prepareInvoice(acqUnitsIds);
+    InvoiceLine invoiceLine = getMinimalContentInvoiceLine(invoice.getId());
+    
+    addMockEntry(INVOICE_LINES, JsonObject.mapFrom(invoiceLine));
+    return invoiceLine;
+  }
+  
+  public InvoiceLine getMinimalContentInvoiceLine(String invoiceId) {
+    return new InvoiceLine().withDescription("Some description")
+      .withInvoiceId(invoiceId)
+      .withInvoiceLineStatus(InvoiceLineStatus.OPEN)
+      .withSubTotal(2.2d)
+      .withQuantity(3)
+      .withReleaseEncumbrance(false);
   }
 }
