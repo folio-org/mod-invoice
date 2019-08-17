@@ -51,7 +51,7 @@ public abstract class ProtectedEntityTestBase extends ApiTestBase {
 
   public Invoice prepareInvoice(List<String> acqUnitsIds) throws IOException {
     Invoice invoice = new JsonObject(getMockData(APPROVED_INVOICE_SAMPLE_PATH)).mapTo(Invoice.class);
-    invoice.setAcqUnitIds(NON_EXISTENT_UNITS);
+    invoice.setAcqUnitIds(acqUnitsIds);
     addMockEntry(INVOICES, JsonObject.mapFrom(invoice));
     return invoice;
   }

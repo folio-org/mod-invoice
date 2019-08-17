@@ -1,6 +1,6 @@
 package org.folio.invoices.utils;
 
-import org.folio.rest.jaxrs.model.AcquisitionsUnit;
+import org.folio.rest.acq.model.AcquisitionsUnit;
 
 public enum ProtectedOperationType {
 

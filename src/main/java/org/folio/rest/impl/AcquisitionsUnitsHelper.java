@@ -16,10 +16,10 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
-import org.folio.rest.jaxrs.model.AcquisitionsUnit;
-import org.folio.rest.jaxrs.model.AcquisitionsUnitCollection;
-import org.folio.rest.jaxrs.model.AcquisitionsUnitMembership;
-import org.folio.rest.jaxrs.model.AcquisitionsUnitMembershipCollection;
+import org.folio.rest.acq.model.AcquisitionsUnit;
+import org.folio.rest.acq.model.AcquisitionsUnitCollection;
+import org.folio.rest.acq.model.AcquisitionsUnitMembership;
+import org.folio.rest.acq.model.AcquisitionsUnitMembershipCollection;
 import org.folio.rest.tools.client.interfaces.HttpClientInterface;
 
 import io.vertx.core.Context;

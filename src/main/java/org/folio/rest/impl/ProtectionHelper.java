@@ -14,8 +14,8 @@ import org.apache.commons.collections4.CollectionUtils;
 import org.folio.HttpStatus;
 import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.invoices.utils.ProtectedOperationType;
-import org.folio.rest.jaxrs.model.AcquisitionsUnit;
-import org.folio.rest.jaxrs.model.AcquisitionsUnitCollection;
+import org.folio.rest.acq.model.AcquisitionsUnit;
+import org.folio.rest.acq.model.AcquisitionsUnitCollection;
 import org.folio.rest.tools.client.interfaces.HttpClientInterface;
 
 import io.vertx.core.Context;
