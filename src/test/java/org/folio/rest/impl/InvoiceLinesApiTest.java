@@ -79,7 +79,7 @@ public class InvoiceLinesApiTest extends ApiTestBase {
 
   @Test
   public void testGetInvoiceLinesInternalServerError() {
-    logger.info("=== Test Get Order Lines by query - emulating 500 from storage ===");
+    logger.info("=== Test Get Invoice Lines by query - emulating 500 from storage ===");
 
     String endpointQuery = String.format("%s?query=%s", INVOICE_LINES_PATH, ID_FOR_INTERNAL_SERVER_ERROR);
 
@@ -88,7 +88,7 @@ public class InvoiceLinesApiTest extends ApiTestBase {
 
   @Test
   public void testGetInvoiceLinesBadQuery() {
-    logger.info("=== Test Get Order Lines by query - unprocessable query to emulate 400 from storage ===");
+    logger.info("=== Test Get Invoice Lines by query - unprocessable query to emulate 400 from storage ===");
 
     String endpointQuery = String.format("%s?query=%s", INVOICE_LINES_PATH, BAD_QUERY);
 
