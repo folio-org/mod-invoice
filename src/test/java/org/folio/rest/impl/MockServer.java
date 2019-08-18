@@ -318,9 +318,12 @@ public class MockServer {
   }
   
   private void handleGetAcquisitionsUnits(RoutingContext ctx) {
-    logger.info("handleGetAcquisitionsUnits got: " + ctx.request().path());
-    String tenant = ctx.request().getHeader(OKAPI_HEADER_TENANT);
-    String query = StringUtils.trimToEmpty(ctx.request().getParam("query"));
+    logger.info("handleGetAcquisitionsUnits got: " + ctx.request()
+      .path());
+    String tenant = ctx.request()
+      .getHeader(OKAPI_HEADER_TENANT);
+    String query = StringUtils.trimToEmpty(ctx.request()
+      .getParam("query"));
 
     AcquisitionsUnitCollection units;
 
@@ -335,31 +338,32 @@ public class MockServer {
     }
 
     if (query.contains(BAD_QUERY)) {
-      logger.info(" -- inside bad query 400 -- ");
       serverResponse(ctx, 400, APPLICATION_JSON, Response.Status.BAD_REQUEST.getReasonPhrase());
     } else {
-      logger.info(" -- inside else -- ");
-      
-      if(query.contains("name==")) {
+
+      if (query.contains("name==")) {
         String name = query.replace("name==", "");
         if (StringUtils.isNotEmpty(name)) {
-          units.getAcquisitionsUnits().removeIf(unit -> !unit.getName().equals(name));
+          units.getAcquisitionsUnits()
+            .removeIf(unit -> !unit.getName()
+              .equals(name));
         }
       }
 
-      if(query.contains("id==")) {
+      if (query.contains("id==")) {
         List<String> ids = extractIdsFromQuery(query);
         if (!ids.isEmpty()) {
-          units.getAcquisitionsUnits().removeIf(unit -> !ids.contains(unit.getId()));
+          units.getAcquisitionsUnits()
+            .removeIf(unit -> !ids.contains(unit.getId()));
         }
       }
 
-      JsonObject data = JsonObject.mapFrom(units.withTotalRecords(units.getAcquisitionsUnits().size()));
+      JsonObject data = JsonObject.mapFrom(units.withTotalRecords(units.getAcquisitionsUnits()
+        .size()));
       addServerRqRsData(HttpMethod.GET, ACQUISITIONS_UNITS, data);
       serverResponse(ctx, 200, APPLICATION_JSON, data.encodePrettily());
     }
   }
-
 
   private List<String> extractIdsFromQuery(String fieldName, String query) {
     Matcher matcher = Pattern.compile(".*" + fieldName + "==\\((.+)\\).*").matcher(query);
@@ -369,7 +373,7 @@ public class MockServer {
       return Collections.emptyList();
     }
   }
-  
+
   private void handleGetInvoiceDocuments(RoutingContext ctx) {
     logger.info("handleDocuments got: {}?{}", ctx.request().path(), ctx.request().query());
 

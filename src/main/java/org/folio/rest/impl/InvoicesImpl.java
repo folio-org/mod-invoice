@@ -28,21 +28,6 @@ public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
   private static final String INVOICE_LINE_LOCATION_PREFIX = "/invoice/invoice-lines/%s";
   public static final String PROTECTED_AND_MODIFIED_FIELDS = "protectedAndModifiedFields";
   private static final String DOCUMENTS_LOCATION_PREFIX = "/invoice/invoices/%s/documents/%s";
-
-//  @Validate
-//  @Override
-//  public void postInvoiceInvoices(String lang, Invoice invoice, Map<String, String> okapiHeaders,
-//      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
-//    InvoiceHelper helper = new InvoiceHelper(okapiHeaders, vertxContext, lang);
-//
-//    helper
-//    .validateIncomingInvoice(invoice);
-//
-//    helper.createInvoice(invoice)
-//      .thenAccept(invoiceWithId -> asyncResultHandler.handle(succeededFuture(helper
-//        .buildResponseWithLocation(String.format(INVOICE_LOCATION_PREFIX, invoiceWithId.getId()), invoiceWithId))))
-//      .exceptionally(t -> handleErrorResponse(asyncResultHandler, helper, t));
-//  }
   
   @Validate
   @Override

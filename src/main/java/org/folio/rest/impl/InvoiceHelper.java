@@ -40,7 +40,6 @@ import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
 import static me.escoffier.vertx.completablefuture.VertxCompletableFuture.completedFuture;
 import static org.folio.invoices.utils.AcqDesiredPermissions.ASSIGN;
 import static org.folio.rest.RestVerticle.OKAPI_HEADER_PERMISSIONS;
-import static org.folio.invoices.utils.ProtectedOperationType.CREATE;
 
 import java.util.ArrayList;
 import java.util.Collections;
