@@ -247,8 +247,6 @@ public class MockServer {
     router.route(HttpMethod.POST, resourcesPath(VOUCHERS)).handler(ctx -> handlePostEntry(ctx, Voucher.class, VOUCHERS));
     router.route(HttpMethod.POST, resourcesPath(VOUCHER_LINES)).handler(ctx -> handlePostEntry(ctx, VoucherLine.class, VOUCHER_LINES));
     router.route(HttpMethod.POST, "/invoice-storage/invoices/:id/documents").handler(this::handlePostInvoiceDocument);
-    router.route(HttpMethod.POST, resourcesPath(ACQUISITIONS_UNITS)).handler(ctx -> handlePostGenericSubObj(ctx, ACQUISITIONS_UNITS));
-    router.route(HttpMethod.POST, resourcesPath(ACQUISITIONS_MEMBERSHIPS)).handler(ctx -> handlePostGenericSubObj(ctx, ACQUISITIONS_MEMBERSHIPS));
 
     router.route(HttpMethod.GET, resourcesPath(ACQUISITIONS_UNITS)).handler(this::handleGetAcquisitionsUnits);
     router.route(HttpMethod.GET, resourcesPath(ACQUISITIONS_MEMBERSHIPS)).handler(this::handleGetAcquisitionsMemberships);
@@ -530,50 +528,6 @@ public class MockServer {
       addServerRqRsData(HttpMethod.GET, INVOICE_LINES, invoiceLinesJson);
       serverResponse(ctx, 200, APPLICATION_JSON, invoiceLinesJson.encode());
     }
-  }
-
-  private void handlePostGenericSubObj(RoutingContext ctx, String subObj) {
-    logger.info("got: " + ctx.getBodyAsString());
-
-    String echoStatus = ctx.request().getHeader(X_ECHO_STATUS);
-
-    int status = 201;
-    String respBody = "";
-    String contentType = APPLICATION_JSON;
-
-    if (echoStatus != null) {
-      try {
-        status = Integer.parseInt(echoStatus);
-      } catch (NumberFormatException e) {
-        logger.error("Exception parsing " + X_ECHO_STATUS, e);
-      }
-    }
-    ctx.response().setStatusCode(status);
-
-    JsonObject body = null;
-    switch (status) {
-      case 201:
-//        String id = UUID.randomUUID().toString();
-//        body = ctx.getBodyAsJson();
-//        body.put(ID, id);
-//        T entry = body.mapTo(tClass);
-//        addServerRqRsData(HttpMethod.POST, entryName, body);
-//
-//        serverResponse(ctx, 201, APPLICATION_JSON, JsonObject.mapFrom(entry).encodePrettily());
-        break;
-      case 400:
-        respBody = "Unable to add -- malformed JSON at 13:3";
-        break;
-      case 403:
-        respBody = "Access requires permission: foo.bar.baz";
-        break;
-      case 500:
-        respBody = "Internal Server Error";
-        break;
-    }
-
-    addServerRqRsData(HttpMethod.POST, subObj, body);
-    serverResponse(ctx, status, contentType, respBody);
   }
   
   private <T> void handlePostEntry(RoutingContext ctx, Class<T> tClass, String entryName) {

@@ -26,10 +26,6 @@ public class AcquisitionsUnitsHelper extends AbstractHelper {
     super(httpClient, okapiHeaders, ctx, lang);
   }
 
-  AcquisitionsUnitsHelper(Map<String, String> okapiHeaders, Context ctx, String lang) {
-    super(okapiHeaders, ctx, lang);
-  }
-
   CompletableFuture<AcquisitionsUnitCollection> getAcquisitionsUnits(String query, int offset, int limit) {
     CompletableFuture<AcquisitionsUnitCollection> future = new VertxCompletableFuture<>(ctx);
 

@@ -57,7 +57,7 @@ public class InvoiceLinesProtectionTest extends ProtectedEntityTestBase {
     final Headers headers = prepareHeaders(EXIST_CONFIG_X_OKAPI_TENANT_LIMIT_10, X_OKAPI_USER_ID);
 
     Errors errors = operation
-      .process(INVOICE_LINES_PATH, encodePrettily(prepareInvoiceLine(UNPROCESSABLE_BAD_UNITS)), headers, APPLICATION_JSON,
+      .process(INVOICE_LINES_PATH, encodePrettily(prepareInvoiceLine(BAD_UNITS)), headers, APPLICATION_JSON,
           HttpStatus.HTTP_BAD_REQUEST.toInt())
       .as(Errors.class);
 

@@ -654,14 +654,14 @@ public class InvoiceHelper extends AbstractHelper {
       .toArray(CompletableFuture[]::new));
   }
 
-  public boolean validateIncomingInvoice(Invoice invoice) {
+  public CompletableFuture<Boolean> validateIncomingInvoice(Invoice invoice) {
     if(invoice.getLockTotal() && Objects.isNull(invoice.getTotal())) {
       addProcessingError(INVOICE_TOTAL_REQUIRED.toError());
     }
     if (!isPostApproval(invoice) && (invoice.getApprovalDate() != null || invoice.getApprovedBy() != null)) {
       addProcessingError(INCOMPATIBLE_INVOICE_FIELDS_ON_STATUS_TRANSITION.toError());
     }
-    return getErrors().isEmpty();
+    return completedFuture(getErrors().isEmpty());
   }
 
   private void validateInvoice(Invoice invoice, Invoice invoiceFromStorage) {

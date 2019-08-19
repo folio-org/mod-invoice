@@ -2,12 +2,14 @@ package org.folio.rest.impl;
 
 import static io.vertx.core.Future.succeededFuture;
 import static org.folio.invoices.utils.ErrorCodes.MISMATCH_BETWEEN_ID_IN_PATH_AND_BODY;
+import static org.folio.invoices.utils.ErrorCodes.GENERIC_ERROR_CODE;
 
 import java.util.Map;
 
 import javax.ws.rs.core.Response;
 
 import org.apache.commons.lang3.StringUtils;
+import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.rest.annotations.Validate;
 import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.jaxrs.model.InvoiceDocument;
@@ -35,14 +37,22 @@ public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     InvoiceHelper helper = new InvoiceHelper(okapiHeaders, vertxContext, lang);
 
-    if (!helper.validateIncomingInvoice(invoice)) {
-      asyncResultHandler.handle(succeededFuture(helper.buildErrorResponse(422)));
-      return;
-    }
-
-    helper.createInvoice(invoice)
-      .thenAccept(invoiceWithId -> asyncResultHandler.handle(succeededFuture(helper
-        .buildResponseWithLocation(String.format(INVOICE_LOCATION_PREFIX, invoiceWithId.getId()), invoiceWithId))))
+    helper.validateIncomingInvoice(invoice)
+      .thenAccept(isValid -> {
+        if (isValid) {
+          helper.createInvoice(invoice)
+            .thenAccept(invoiceWithId -> {
+              asyncResultHandler.handle(succeededFuture(
+                  helper.buildResponseWithLocation(String.format(INVOICE_LOCATION_PREFIX, invoiceWithId.getId()), invoiceWithId)));
+            })
+            .exceptionally(t -> {
+              logger.error("Failed to create invoice with id={}", t, invoice.getId());
+              return handleErrorResponse(asyncResultHandler, helper, t);
+            });
+        } else {
+          asyncResultHandler.handle(succeededFuture(helper.buildErrorResponse(422)));
+        }
+      })
       .exceptionally(t -> handleErrorResponse(asyncResultHandler, helper, t));
   }
 
@@ -81,13 +91,21 @@ public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
     InvoiceHelper invoiceHelper = new InvoiceHelper(okapiHeaders, vertxContext, lang);
 
     // Validate incoming invoice first to avoid extra calls to other services if content is invalid
-    if (!invoiceHelper.validateIncomingInvoice(invoice)) {
-      asyncResultHandler.handle(succeededFuture(invoiceHelper.buildErrorResponse(422)));
-      return;
-    }
-
-    invoiceHelper.updateInvoice(invoice)
-      .thenAccept(ok -> asyncResultHandler.handle(succeededFuture(invoiceHelper.buildNoContentResponse())))
+    invoiceHelper.validateIncomingInvoice(invoice)
+      .thenAccept(isValid -> {
+        if (isValid) {
+          invoiceHelper.updateInvoice(invoice)
+            .thenAccept(ok -> {
+              asyncResultHandler.handle(succeededFuture(invoiceHelper.buildNoContentResponse()));
+            })
+            .exceptionally(t -> {
+              logger.error("Failed to update invoice with id={}", t, invoice.getId());
+              return handleErrorResponse(asyncResultHandler, invoiceHelper, t);
+            });
+        } else {
+          asyncResultHandler.handle(succeededFuture(invoiceHelper.buildErrorResponse(422)));
+        }
+      })
       .exceptionally(fail -> handleErrorResponse(asyncResultHandler, invoiceHelper, fail));
   }
 

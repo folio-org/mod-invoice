@@ -1,8 +1,11 @@
 package org.folio.rest.impl.protection;
 
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
+import static org.folio.invoices.utils.ErrorCodes.GENERIC_ERROR_CODE;
 import static org.folio.invoices.utils.ErrorCodes.INVOICE_UNITS_NOT_FOUND;
+import static org.folio.invoices.utils.ErrorCodes.USER_HAS_NO_ACQ_PERMISSIONS;
 import static org.folio.invoices.utils.ErrorCodes.USER_HAS_NO_PERMISSIONS;
+import static org.folio.rest.impl.InvoiceLinesApiTest.INVOICE_LINES_PATH;
 import static org.folio.rest.impl.InvoicesApiTest.ALL_DESIRED_PERMISSIONS_HEADER;
 import static org.folio.rest.impl.InvoicesApiTest.INVOICE_PATH;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -10,11 +13,13 @@ import static org.hamcrest.collection.IsCollectionWithSize.hasSize;
 import static org.hamcrest.core.IsEqual.equalTo;
 
 import java.io.IOException;
+import java.util.Collections;
 
 import io.restassured.response.Response;
 
 import org.folio.HttpStatus;
 import org.folio.rest.jaxrs.model.Errors;
+import org.folio.rest.jaxrs.model.Invoice;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -95,5 +100,44 @@ public class InvoicesProtectionTest extends ProtectedEntityTestBase {
       .getCode(), equalTo(USER_HAS_NO_PERMISSIONS.getCode()));
 
     validateNumberOfRequests(1, 1);
+  }
+  
+  @Test
+  @Parameters({
+    "CREATE"
+  })
+  public void testModifyUnitsList(ProtectedOperations operation) throws IOException {
+    logger.info("=== Test user without desired permissions modifying acqUnitsIds ===");
+
+    Headers headers = prepareHeaders(EXIST_CONFIG_X_OKAPI_TENANT_LIMIT_10, X_OKAPI_USER_WITH_UNITS_ASSIGNED_TO_ORDER);
+    Invoice invoice = prepareInvoice(Collections.emptyList());
+    invoice.setAcqUnitIds(PROTECTED_UNITS);
+    Errors errors = operation.process(INVOICE_PATH, encodePrettily(invoice),
+      headers, APPLICATION_JSON, HttpStatus.HTTP_FORBIDDEN.toInt()).as(Errors.class);
+    assertThat(errors.getErrors(), hasSize(1));
+    assertThat(errors.getErrors().get(0).getCode(), equalTo(USER_HAS_NO_ACQ_PERMISSIONS.getCode()));
+
+    validateNumberOfRequests(0, 0);
+  }
+  
+  @Test
+  @Parameters({ "CREATE" })
+  public void testOperationWithUnprocessableBadUnits(ProtectedOperations operation) throws IOException {
+    logger.info(
+        "=== Invoice-lines protection: Test corresponding invoice contains unprocessable bad units - expecting of call only to Units API ===");
+
+    final Headers headers = prepareHeaders(EXIST_CONFIG_X_OKAPI_TENANT_LIMIT_10, X_OKAPI_USER_ID);
+
+    Errors errors = operation
+      .process(INVOICE_PATH, encodePrettily(prepareInvoice(BAD_UNITS)), headers, APPLICATION_JSON,
+          HttpStatus.HTTP_FORBIDDEN.toInt())
+      .as(Errors.class);
+
+    assertThat(errors.getErrors(), hasSize(1));
+    assertThat(errors.getErrors()
+      .get(0)
+      .getCode(), equalTo(USER_HAS_NO_ACQ_PERMISSIONS.getCode()));
+    // Verify number of sub-requests
+    validateNumberOfRequests(0, 0);
   }
 }
