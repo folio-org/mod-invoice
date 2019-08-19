@@ -133,8 +133,8 @@ public class MockServer {
   private static final String VOUCHER_LINES_COLLECTION = BASE_MOCK_DATA_PATH + "voucherLines/voucher_lines.json";
   private static final String PO_LINES_MOCK_DATA_PATH = BASE_MOCK_DATA_PATH + "poLines/";
   private static final String ACQUISITIONS_UNITS_MOCK_DATA_PATH = BASE_MOCK_DATA_PATH + "acquisitionsUnits/units";
-  static final String ACQUISITIONS_UNITS_COLLECTION = ACQUISITIONS_UNITS_MOCK_DATA_PATH + "/units.json";
-  static final String ACQUISITIONS_MEMBERSHIPS_COLLECTION = ACQUISITIONS_UNITS_MOCK_DATA_PATH + "/memberships.json";
+  private static final String ACQUISITIONS_UNITS_COLLECTION = ACQUISITIONS_UNITS_MOCK_DATA_PATH + "/units.json";
+  private static final String ACQUISITIONS_MEMBERSHIPS_COLLECTION = ACQUISITIONS_UNITS_MOCK_DATA_PATH + "/memberships.json";
   private static final String ID_PATH_PARAM = "/:" + ID;
   private static final String VALUE_PATH_PARAM = "/:value";
   private static final String TOTAL_RECORDS = "totalRecords";
@@ -153,8 +153,6 @@ public class MockServer {
   static final Header GET_VOUCHER_LINE_ERROR_X_OKAPI_TENANT = new Header(OKAPI_HEADER_TENANT, GET_VOUCHER_LINES_ERROR_TENANT);
   static final Header DELETE_VOUCHER_LINE_ERROR_X_OKAPI_TENANT = new Header(OKAPI_HEADER_TENANT, DELETE_VOUCHER_LINES_ERROR_TENANT);
   static final Header NON_EXIST_CONFIG_X_OKAPI_TENANT = new Header(OKAPI_HEADER_TENANT, NON_EXIST_CONFIG_TENANT);
-  static final String X_ECHO_STATUS = "X-Okapi-Echo-Status";
-//  static final String INTERNAL_SERVER_ERROR = "Internal Server Error";
 
   private final int port;
   private final Vertx vertx;
@@ -284,37 +282,45 @@ public class MockServer {
   }
 
   private void handleGetAcquisitionsMemberships(RoutingContext ctx) {
-    logger.info("handleGetAcquisitionsMemberships got: " + ctx.request().path());
+    logger.info("handleGetAcquisitionsMemberships got: " + ctx.request()
+      .path());
 
-    String query = StringUtils.trimToEmpty(ctx.request().getParam("query"));
+    String query = StringUtils.trimToEmpty(ctx.request()
+      .getParam("query"));
     if (query.contains(BAD_QUERY)) {
       serverResponse(ctx, 400, APPLICATION_JSON, Response.Status.BAD_REQUEST.getReasonPhrase());
     } else {
 
-      Matcher userIdMatcher = Pattern.compile(".*userId==(\\S+).*").matcher(query);
+      Matcher userIdMatcher = Pattern.compile(".*userId==(\\S+).*")
+        .matcher(query);
       final String userId = userIdMatcher.find() ? userIdMatcher.group(1) : EMPTY;
 
       AcquisitionsUnitMembershipCollection memberships;
       try {
-        memberships = new JsonObject(ApiTestBase.getMockData(ACQUISITIONS_MEMBERSHIPS_COLLECTION)).mapTo(AcquisitionsUnitMembershipCollection.class);
+        memberships = new JsonObject(ApiTestBase.getMockData(ACQUISITIONS_MEMBERSHIPS_COLLECTION))
+          .mapTo(AcquisitionsUnitMembershipCollection.class);
       } catch (IOException e) {
         memberships = new AcquisitionsUnitMembershipCollection();
       }
 
       if (StringUtils.isNotEmpty(userId)) {
-        memberships.getAcquisitionsUnitMemberships().removeIf(membership -> !membership.getUserId().equals(userId));
+        memberships.getAcquisitionsUnitMemberships()
+          .removeIf(membership -> !membership.getUserId()
+            .equals(userId));
         List<String> acquisitionsUnitIds = extractIdsFromQuery(ACQUISITIONS_UNIT_ID, query);
-          if (!acquisitionsUnitIds.isEmpty()) {
-            memberships.getAcquisitionsUnitMemberships().removeIf(membership -> !acquisitionsUnitIds.contains(membership.getAcquisitionsUnitId()));
-          }
+        if (!acquisitionsUnitIds.isEmpty()) {
+          memberships.getAcquisitionsUnitMemberships()
+            .removeIf(membership -> !acquisitionsUnitIds.contains(membership.getAcquisitionsUnitId()));
+        }
       }
 
-      JsonObject data = JsonObject.mapFrom(memberships.withTotalRecords(memberships.getAcquisitionsUnitMemberships().size()));
+      JsonObject data = JsonObject.mapFrom(memberships.withTotalRecords(memberships.getAcquisitionsUnitMemberships()
+        .size()));
       addServerRqRsData(HttpMethod.GET, ACQUISITIONS_MEMBERSHIPS, data);
       serverResponse(ctx, 200, APPLICATION_JSON, data.encodePrettily());
     }
   }
-  
+
   private void handleGetAcquisitionsUnits(RoutingContext ctx) {
     logger.info("handleGetAcquisitionsUnits got: " + ctx.request()
       .path());
@@ -338,15 +344,6 @@ public class MockServer {
     if (query.contains(BAD_QUERY)) {
       serverResponse(ctx, 400, APPLICATION_JSON, Response.Status.BAD_REQUEST.getReasonPhrase());
     } else {
-
-      if (query.contains("name==")) {
-        String name = query.replace("name==", "");
-        if (StringUtils.isNotEmpty(name)) {
-          units.getAcquisitionsUnits()
-            .removeIf(unit -> !unit.getName()
-              .equals(name));
-        }
-      }
 
       if (query.contains("id==")) {
         List<String> ids = extractIdsFromQuery(query);
@@ -529,7 +526,7 @@ public class MockServer {
       serverResponse(ctx, 200, APPLICATION_JSON, invoiceLinesJson.encode());
     }
   }
-  
+
   private <T> void handlePostEntry(RoutingContext ctx, Class<T> tClass, String entryName) {
     logger.info("got: " + ctx.getBodyAsString());
     String tenant = ctx.request().getHeader(OKAPI_HEADER_TENANT);

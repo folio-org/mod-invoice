@@ -190,7 +190,6 @@ public class InvoiceLinesApiTest extends ApiTestBase {
     logger.info("=== Test create invoice line - 201 successfully created ===");
 
     InvoiceLine reqData = getMockAsJson(INVOICE_LINE_WITH_APPROVED_INVOICE_SAMPLE_PATH).mapTo(InvoiceLine.class);
-    List<String> NON_EXISTENT_UNITS = Arrays.asList("1895e539-8dac-441e-b1f5-aab62b3fde60", "47f504bd-0c1b-498e-a2ae-e2f0a0cea273");
     reqData.setInvoiceId(OPEN_INVOICE_ID);
     Double actualTotal = 2.00d;
     assertThat(actualTotal, equalTo(reqData.getTotal()));

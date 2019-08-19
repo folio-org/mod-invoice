@@ -44,21 +44,15 @@ public class ResourcePathResolver {
     apis.put(INVOICE_DOCUMENTS, "/invoice-storage/invoices/%s/documents");
 
     SUB_OBJECT_COLLECTION_APIS = Collections.unmodifiableMap(apis);
-    SUB_OBJECT_ITEM_APIS = Collections.unmodifiableMap(
-        apis.entrySet()
-            .stream()
-            .collect(Collectors.toMap(Map.Entry::getKey, v -> v.getValue() + "/%s?lang=%s"))
-      );
+    SUB_OBJECT_ITEM_APIS = Collections.unmodifiableMap(apis.entrySet()
+      .stream()
+      .collect(Collectors.toMap(Map.Entry::getKey, v -> v.getValue() + "/%s?lang=%s")));
   }
 
   public static String resourceByIdPath(String field, String id, String lang) {
     return String.format(SUB_OBJECT_ITEM_APIS.get(field), id, lang);
   }
 
-  public static String resourceByIdPath(String field, String id) {
-    return SUB_OBJECT_ITEM_APIS.get(field) + id;
-  }
-  
   public static String resourcesPath(String field) {
     return SUB_OBJECT_COLLECTION_APIS.get(field);
   }

@@ -31,7 +31,8 @@ public class ProtectionHelper extends AbstractHelper {
   }
 
   /**
-   * This method determines status of operation restriction based on unit IDs from {@link CompositePurchaseOrder}.
+   * This method determines status of operation restriction based on unit IDs from {@link Invoice}.
+   * 
    * @param unitIds list of unit IDs.
    *
    * @throws HttpException if user hasn't permissions or units not found
@@ -41,24 +42,24 @@ public class ProtectionHelper extends AbstractHelper {
   }
 
   /**
-   * This method determines status of operation restriction based on unit IDs from {@link CompositePurchaseOrder}.
+   * This method determines status of operation restriction based on unit IDs from {@link Invoice}.
+   * 
    * @param unitIds list of unit IDs.
    *
    * @throws HttpException if user hasn't permissions or units not found
    */
   public CompletableFuture<Void> isOperationRestricted(List<String> unitIds, Set<ProtectedOperationType> operations) {
     if (CollectionUtils.isNotEmpty(unitIds)) {
-      return getUnitsByIds(unitIds)
-        .thenCompose(units -> {
-          if (unitIds.size() == units.size()) {
-            if (applyMergingStrategy(units, operations)) {
-              return verifyUserIsMemberOfOrdersUnits(unitIds);
-            }
-            return CompletableFuture.completedFuture(null);
-          } else {
-            throw new HttpException(HttpStatus.HTTP_VALIDATION_ERROR.toInt(), INVOICE_UNITS_NOT_FOUND);
+      return getUnitsByIds(unitIds).thenCompose(units -> {
+        if (unitIds.size() == units.size()) {
+          if (applyMergingStrategy(units, operations)) {
+            return verifyUserIsMemberOfInvoiceUnits(unitIds);
           }
-        });
+          return CompletableFuture.completedFuture(null);
+        } else {
+          throw new HttpException(HttpStatus.HTTP_VALIDATION_ERROR.toInt(), INVOICE_UNITS_NOT_FOUND);
+        }
+      });
     } else {
       return CompletableFuture.completedFuture(null);
     }
@@ -69,8 +70,9 @@ public class ProtectionHelper extends AbstractHelper {
    *
    * @return list of unit ids associated with user.
    */
-  private CompletableFuture<Void> verifyUserIsMemberOfOrdersUnits(List<String> unitIdsAssignedToOrder) {
-    String query = String.format("userId==%s AND %s", getCurrentUserId(), convertIdsToCqlQuery(unitIdsAssignedToOrder, ACQUISITIONS_UNIT_ID, true));
+  private CompletableFuture<Void> verifyUserIsMemberOfInvoiceUnits(List<String> unitIdsAssignedToInvoice) {
+    String query = String.format("userId==%s AND %s", getCurrentUserId(),
+        convertIdsToCqlQuery(unitIdsAssignedToInvoice, ACQUISITIONS_UNIT_ID, true));
     return acquisitionsUnitsHelper.getAcquisitionsUnitsMemberships(query, 0, 0)
       .thenAccept(unit -> {
         if (unit.getTotalRecords() == 0) {
@@ -81,6 +83,7 @@ public class ProtectionHelper extends AbstractHelper {
 
   /**
    * This method returns list of {@link AcquisitionsUnit} based on list of unit ids
+   * 
    * @param unitIds list of unit ids
    *
    * @return list of {@link AcquisitionsUnit}
@@ -98,7 +101,9 @@ public class ProtectionHelper extends AbstractHelper {
    * @return true if operation is protected, otherwise - false.
    */
   private Boolean applyMergingStrategy(List<AcquisitionsUnit> units, Set<ProtectedOperationType> operations) {
-    return units.stream().allMatch(unit -> operations.stream().anyMatch(operation -> operation.isProtected(unit)));
+    return units.stream()
+      .allMatch(unit -> operations.stream()
+        .anyMatch(operation -> operation.isProtected(unit)));
   }
 
 }

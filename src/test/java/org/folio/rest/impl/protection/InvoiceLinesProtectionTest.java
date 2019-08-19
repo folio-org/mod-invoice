@@ -1,6 +1,7 @@
 package org.folio.rest.impl.protection;
 
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
+
 import static org.folio.invoices.utils.ErrorCodes.INVOICE_UNITS_NOT_FOUND;
 import static org.folio.invoices.utils.ErrorCodes.GENERIC_ERROR_CODE;
 import static org.folio.invoices.utils.ErrorCodes.USER_HAS_NO_PERMISSIONS;
@@ -34,7 +35,7 @@ public class InvoiceLinesProtectionTest extends ProtectedEntityTestBase {
     logger.info(
         "=== Invoice-lines protection: Test corresponding invoice contains non-existent units - expecting of call only to Units API ===");
 
-    final Headers headers = prepareHeaders(EXIST_CONFIG_X_OKAPI_TENANT_LIMIT_10, X_OKAPI_USER_ID);
+    final Headers headers = prepareHeaders(EXIST_CONFIG_X_OKAPI_TENANT_LIMIT_10, X_OKAPI_USERID);
     Errors errors = operation
       .process(INVOICE_LINES_PATH, encodePrettily(prepareInvoiceLine(NON_EXISTENT_UNITS)), headers, APPLICATION_JSON,
           HttpStatus.HTTP_VALIDATION_ERROR.toInt())
@@ -54,7 +55,7 @@ public class InvoiceLinesProtectionTest extends ProtectedEntityTestBase {
     logger.info(
         "=== Invoice-lines protection: Test corresponding invoice contains unprocessable bad units - expecting of call only to Units API ===");
 
-    final Headers headers = prepareHeaders(EXIST_CONFIG_X_OKAPI_TENANT_LIMIT_10, X_OKAPI_USER_ID);
+    final Headers headers = prepareHeaders(EXIST_CONFIG_X_OKAPI_TENANT_LIMIT_10, X_OKAPI_USERID);
 
     Errors errors = operation
       .process(INVOICE_LINES_PATH, encodePrettily(prepareInvoiceLine(BAD_UNITS)), headers, APPLICATION_JSON,
@@ -75,7 +76,7 @@ public class InvoiceLinesProtectionTest extends ProtectedEntityTestBase {
     logger.info(
         "=== Invoice-lines protection: Test corresponding invoice has units allowed operation - expecting of call only to Units API ===");
 
-    final Headers headers = prepareHeaders(EXIST_CONFIG_X_OKAPI_TENANT_LIMIT_10, X_OKAPI_USER_ID);
+    final Headers headers = prepareHeaders(EXIST_CONFIG_X_OKAPI_TENANT_LIMIT_10, X_OKAPI_USERID);
     operation.process(INVOICE_LINES_PATH, encodePrettily(prepareInvoiceLine(NOT_PROTECTED_UNITS)), headers,
         operation.getContentType(), operation.getCode());
 
@@ -86,7 +87,7 @@ public class InvoiceLinesProtectionTest extends ProtectedEntityTestBase {
   @Parameters({ "CREATE" })
   public void testWithRestrictedUnitsAndAllowedUser(ProtectedOperations operation) throws IOException {
     logger.info(
-        "=== Invoice-lines protection: Test corresponding invoice has units, units protect operation, user is member of order's units - expecting of calls to Units, Memberships APIs and allowance of operation ===");
+        "=== Invoice-lines protection: Test corresponding invoice has units, units protect operation, user is member of invoice units - expecting of calls to Units, Memberships APIs and allowance of operation ===");
 
     operation.process(INVOICE_LINES_PATH, encodePrettily(prepareInvoiceLine(PROTECTED_UNITS)),
         prepareHeaders(EXIST_CONFIG_X_OKAPI_TENANT_LIMIT_10, X_OKAPI_USER_WITH_UNITS_ASSIGNED_TO_ORDER), operation.getContentType(),
@@ -99,7 +100,7 @@ public class InvoiceLinesProtectionTest extends ProtectedEntityTestBase {
   @Parameters({ "CREATE" })
   public void testWithProtectedUnitsAndForbiddenUser(ProtectedOperations operation) throws IOException {
     logger.info(
-        "=== Invoice-lines protection: Test corresponding invoice has units, units protect operation, user isn't member of order's units - expecting of calls to Units, Memberships APIs and restriction of operation ===");
+        "=== Invoice-lines protection: Test corresponding invoice has units, units protect operation, user isn't member of invoice units - expecting of calls to Units, Memberships APIs and restriction of operation ===");
 
     final Headers headers = prepareHeaders(EXIST_CONFIG_X_OKAPI_TENANT_LIMIT_10, X_OKAPI_USER_WITH_UNITS_NOT_ASSIGNED_TO_ORDER);
     Errors errors = operation

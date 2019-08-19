@@ -204,14 +204,17 @@ public class InvoiceLineHelper extends AbstractHelper {
   }
 
   /**
-   * Creates Invoice Line if its content is valid
+   * Creates Invoice Line if its content is valid and if user has permission
+   * 
    * @param invoiceLine {@link InvoiceLine} to be created
-   * @return completable future which might hold {@link InvoiceLine} on success, {@code null} if validation fails or an exception if any issue happens
+   * @return completable future which might hold {@link InvoiceLine} on success, {@code null} if validation fails or an exception if
+   *         any issue happens
    */
   CompletableFuture<InvoiceLine> createInvoiceLine(InvoiceLine invoiceLine) {
     return getInvoice(invoiceLine).thenApply(this::checkIfInvoiceLineCreationAllowed)
-        .thenCompose(invoice -> protectionHelper.isOperationRestricted(invoice.getAcqUnitIds(),ProtectedOperationType.CREATE).thenApply(v -> invoice))
-        .thenCompose(invoice -> createInvoiceLine(invoiceLine, invoice).thenApply(line -> {
+      .thenCompose(invoice -> protectionHelper.isOperationRestricted(invoice.getAcqUnitIds(), ProtectedOperationType.CREATE)
+        .thenApply(v -> invoice))
+      .thenCompose(invoice -> createInvoiceLine(invoiceLine, invoice).thenApply(line -> {
         updateInvoice(invoice);
         return line;
       }));
