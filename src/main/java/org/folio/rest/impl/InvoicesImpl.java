@@ -2,14 +2,12 @@ package org.folio.rest.impl;
 
 import static io.vertx.core.Future.succeededFuture;
 import static org.folio.invoices.utils.ErrorCodes.MISMATCH_BETWEEN_ID_IN_PATH_AND_BODY;
-import static org.folio.invoices.utils.ErrorCodes.GENERIC_ERROR_CODE;
 
 import java.util.Map;
 
 import javax.ws.rs.core.Response;
 
 import org.apache.commons.lang3.StringUtils;
-import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.rest.annotations.Validate;
 import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.jaxrs.model.InvoiceDocument;
@@ -30,7 +28,7 @@ public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
   private static final String INVOICE_LINE_LOCATION_PREFIX = "/invoice/invoice-lines/%s";
   public static final String PROTECTED_AND_MODIFIED_FIELDS = "protectedAndModifiedFields";
   private static final String DOCUMENTS_LOCATION_PREFIX = "/invoice/invoices/%s/documents/%s";
-  
+
   @Validate
   @Override
   public void postInvoiceInvoices(String lang, Invoice invoice, Map<String, String> okapiHeaders,
@@ -41,12 +39,10 @@ public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
       .thenAccept(isValid -> {
         if (isValid) {
           helper.createInvoice(invoice)
-            .thenAccept(invoiceWithId -> {
-              asyncResultHandler.handle(succeededFuture(
-                  helper.buildResponseWithLocation(String.format(INVOICE_LOCATION_PREFIX, invoiceWithId.getId()), invoiceWithId)));
-            })
+            .thenAccept(invoiceWithId -> asyncResultHandler.handle(succeededFuture(
+                helper.buildResponseWithLocation(String.format(INVOICE_LOCATION_PREFIX, invoiceWithId.getId()), invoiceWithId))))
             .exceptionally(t -> {
-              logger.error("Failed to create invoice with id={}", t, invoice.getId());
+              logger.error("Failed to create invoice ", t);
               return handleErrorResponse(asyncResultHandler, helper, t);
             });
         } else {
@@ -95,9 +91,7 @@ public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
       .thenAccept(isValid -> {
         if (isValid) {
           invoiceHelper.updateInvoice(invoice)
-            .thenAccept(ok -> {
-              asyncResultHandler.handle(succeededFuture(invoiceHelper.buildNoContentResponse()));
-            })
+            .thenAccept(ok -> asyncResultHandler.handle(succeededFuture(invoiceHelper.buildNoContentResponse())))
             .exceptionally(t -> {
               logger.error("Failed to update invoice with id={}", t, invoice.getId());
               return handleErrorResponse(asyncResultHandler, invoiceHelper, t);

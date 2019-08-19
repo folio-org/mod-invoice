@@ -119,25 +119,4 @@ public class InvoicesProtectionTest extends ProtectedEntityTestBase {
 
     validateNumberOfRequests(0, 0);
   }
-  
-  @Test
-  @Parameters({ "CREATE" })
-  public void testOperationWithUnprocessableBadUnits(ProtectedOperations operation) throws IOException {
-    logger.info(
-        "=== Invoice-lines protection: Test corresponding invoice contains unprocessable bad units - expecting of call only to Units API ===");
-
-    final Headers headers = prepareHeaders(EXIST_CONFIG_X_OKAPI_TENANT_LIMIT_10, X_OKAPI_USER_ID);
-
-    Errors errors = operation
-      .process(INVOICE_PATH, encodePrettily(prepareInvoice(BAD_UNITS)), headers, APPLICATION_JSON,
-          HttpStatus.HTTP_FORBIDDEN.toInt())
-      .as(Errors.class);
-
-    assertThat(errors.getErrors(), hasSize(1));
-    assertThat(errors.getErrors()
-      .get(0)
-      .getCode(), equalTo(USER_HAS_NO_ACQ_PERMISSIONS.getCode()));
-    // Verify number of sub-requests
-    validateNumberOfRequests(0, 0);
-  }
 }
