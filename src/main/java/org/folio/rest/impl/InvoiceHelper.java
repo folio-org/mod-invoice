@@ -1,5 +1,6 @@
 package org.folio.rest.impl;
 
+import static java.util.UUID.randomUUID;
 import static java.util.concurrent.CompletableFuture.allOf;
 import static java.util.stream.Collectors.groupingBy;
 import static java.util.stream.Collectors.toList;
@@ -17,6 +18,7 @@ import static org.folio.invoices.utils.ErrorCodes.PO_LINE_UPDATE_FAILURE;
 import static org.folio.invoices.utils.ErrorCodes.VOUCHER_NOT_FOUND;
 import static org.folio.invoices.utils.ErrorCodes.VOUCHER_NUMBER_PREFIX_NOT_ALPHA;
 import static org.folio.invoices.utils.HelperUtils.calculateAdjustmentsTotal;
+import static org.folio.invoices.utils.HelperUtils.calculateInvoiceLineTotals;
 import static org.folio.invoices.utils.HelperUtils.calculateVoucherLineAmount;
 import static org.folio.invoices.utils.HelperUtils.collectResultsOnSuccess;
 import static org.folio.invoices.utils.HelperUtils.convertToDoubleWithRounding;
@@ -37,6 +39,8 @@ import static org.folio.invoices.utils.ResourcePathResolver.resourceByIdPath;
 import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
 import static me.escoffier.vertx.completablefuture.VertxCompletableFuture.completedFuture;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
@@ -99,7 +103,7 @@ public class InvoiceHelper extends AbstractHelper {
   private static final String DEFAULT_ACCOUNTING_CODE = "tmp_code";
 
   // Using variable to "cache" lines for particular invoice base on assumption that the helper is stateful and new instance is used
-  private List<InvoiceLine> invoiceLines;
+  private List<InvoiceLine> storedInvoiceLines;
 
   private final InvoiceLineHelper invoiceLineHelper;
   private final VoucherHelper voucherHelper;
@@ -113,10 +117,8 @@ public class InvoiceHelper extends AbstractHelper {
   }
 
   public CompletableFuture<Invoice> createInvoice(Invoice invoice) {
-    return generateFolioInvoiceNumber()
-      .thenApply(invoice::withFolioInvoiceNo)
-      .thenApply(this::withCalculatedTotals)
-      .thenApply(JsonObject::mapFrom)
+    return updateWithSystemGeneratedData(invoice)
+      .thenApply(ok -> JsonObject.mapFrom(invoice))
       .thenCompose(jsonInvoice -> createRecordInStorage(jsonInvoice, resourcesPath(INVOICES)))
       .thenApply(invoice::withId);
   }
@@ -233,19 +235,41 @@ public class InvoiceHelper extends AbstractHelper {
    * @return {code true} if adjustments total, sub total or grand total value is different to original one
    */
   public CompletableFuture<Boolean> recalculateTotals(Invoice invoice) {
-    return getInvoiceLinesWithTotals(invoice).thenApply(lines -> {
-      // 1. Get original values
-      Double total = invoice.getTotal();
-      Double subTotal = invoice.getSubTotal();
-      Double adjustmentsTotal = invoice.getAdjustmentsTotal();
+    return getInvoiceLinesWithTotals(invoice).thenApply(lines -> recalculateTotals(invoice, lines));
+  }
 
-      // 2. Recalculate totals
-      withCalculatedTotals(invoice, lines);
+  private CompletableFuture<Void> updateWithSystemGeneratedData(Invoice invoice) {
+    return generateFolioInvoiceNumber()
+      .thenApply(invoice::withFolioInvoiceNo)
+      .thenAccept(this::calculateTotals)
+      .thenAccept(ok -> generateAdjustmentsIds(invoice));
+  }
 
-      // 3. Compare if anything has changed
-      return !(Objects.equals(total, invoice.getTotal()) && Objects.equals(subTotal, invoice.getSubTotal())
-          && Objects.equals(adjustmentsTotal, invoice.getAdjustmentsTotal()));
-    });
+  private void generateAdjustmentsIds(Invoice invoice) {
+    invoice.getAdjustments()
+      .stream()
+      .filter(adj -> adj.getId() == null)
+      .forEach(adjustment -> adjustment.setId(randomUUID().toString()));
+  }
+
+  /**
+   * Updates total values of the invoice
+   * @param invoice invoice to update totals for
+   * @param lines invoice lines for the invoice
+   * @return {code true} if adjustments total, sub total or grand total value is different to original one
+   */
+  private boolean recalculateTotals(Invoice invoice, List<InvoiceLine> lines) {
+    // 1. Get original values
+    Double total = invoice.getTotal();
+    Double subTotal = invoice.getSubTotal();
+    Double adjustmentsTotal = invoice.getAdjustmentsTotal();
+
+    // 2. Recalculate totals
+    calculateTotals(invoice, lines);
+
+    // 3. Compare if anything has changed
+    return !(Objects.equals(total, invoice.getTotal()) && Objects.equals(subTotal, invoice.getSubTotal())
+        && Objects.equals(adjustmentsTotal, invoice.getAdjustmentsTotal()));
   }
 
   private CompletableFuture<Boolean> recalculateTotals(Invoice updatedInvoice, Invoice invoiceFromStorage) {
@@ -253,11 +277,171 @@ public class InvoiceHelper extends AbstractHelper {
     if (isPostApproval(invoiceFromStorage)) {
       return completedFuture(false);
     }
-    return recalculateTotals(updatedInvoice);
+
+    return processProratedAdjustments(updatedInvoice, invoiceFromStorage).thenCompose(ok -> recalculateTotals(updatedInvoice));
+  }
+
+  private CompletableFuture<Void> processProratedAdjustments(Invoice updatedInvoice, Invoice invoiceFromStorage) {
+    List<Adjustment> currentAdjustments = getProratedAdjustments(updatedInvoice);
+
+    // Skip if prorated adjustments are the same in incoming invoice and from storage
+    if (CollectionUtils.isEqualCollection(currentAdjustments, getProratedAdjustments(invoiceFromStorage))) {
+      return completedFuture(null);
+    }
+
+    return fetchInvoiceLinesByInvoiceId(updatedInvoice.getId()).thenCompose(lines -> {
+      if (lines.isEmpty()) {
+        return completedFuture(null);
+      }
+
+      // Collecting original hash codes. Once any update to invoice line is done, the new hash code will be generated
+      Set<Integer> originalLineHashCodes = lines.stream()
+        .map(InvoiceLine::hashCode)
+        .collect(Collectors.toSet());
+
+      // Remove previously applied prorated adjustments if they are no longer available at invoice level
+      filterDeletedAdjustments(currentAdjustments, lines);
+
+      // Apply prorated adjustments to each invoice line
+      applyProratedAdjustment(currentAdjustments, lines, updatedInvoice);
+
+      return VertxCompletableFuture.allOf(ctx, lines.stream()
+        .filter(line -> !originalLineHashCodes.contains(line.hashCode()))
+        .map(invoiceLine -> {
+          calculateInvoiceLineTotals(invoiceLine, updatedInvoice);
+          return invoiceLineHelper.updateInvoiceLineToStorage(invoiceLine)
+            .thenAccept(ok -> {
+              storedInvoiceLines.removeIf(line -> line.getId()
+                .equals(invoiceLine.getId()));
+              storedInvoiceLines.add(invoiceLine);
+            });
+        })
+        .toArray(CompletableFuture[]::new));
+    });
+  }
+
+  /**
+   * Removes adjustments at invoice line level based on invoice's prorated adjustments which are no longer available
+   * @param proratedAdjustments list of prorated adjustments available at invoice level
+   * @param invoiceLines list of invoice lines associated with current invoice
+   */
+  private void filterDeletedAdjustments(List<Adjustment> proratedAdjustments, List<InvoiceLine> invoiceLines) {
+    List<String> adjIds = proratedAdjustments.stream()
+      .map(Adjustment::getId)
+      .collect(toList());
+
+    invoiceLines.forEach(line -> line.getAdjustments()
+      .removeIf(adj -> !adjIds.contains(adj.getAdjustmentId())));
+  }
+
+  private void applyProratedAdjustment(List<Adjustment> proratedAdjustments, List<InvoiceLine> lines, Invoice invoice) {
+    CurrencyUnit currencyUnit = Monetary.getCurrency(invoice.getCurrency());
+
+    for (Adjustment adjustment : proratedAdjustments) {
+      switch (adjustment.getProrate()) {
+      case BY_LINE:
+        applyProratedAdjustmentByLines(adjustment, lines, currencyUnit);
+        break;
+      case BY_AMOUNT:
+        applyProratedAdjustmentByAmount(adjustment, lines, currencyUnit);
+        break;
+      case BY_QUANTITY:
+        applyProratedAdjustmentByQuantity(adjustment, lines, currencyUnit);
+        break;
+      default:
+        logger.warn("Unexpected {} adjustment's prorate type for invoice with id={}", adjustment.getProrate(), invoice.getId());
+      }
+    }
+  }
+
+  /**
+   * Each invoiceLine gets adjustment value divided by quantity of lines
+   */
+  private void applyProratedAdjustmentByLines(Adjustment adjustment, List<InvoiceLine> lines, CurrencyUnit currencyUnit) {
+    Adjustment proratedAdjustment = prepareAdjustmentForLine(adjustment);
+
+    if (adjustment.getType() == Adjustment.Type.AMOUNT) {
+      proratedAdjustment.setValue(convertToDoubleWithRounding(Money.of(adjustment.getValue(), currencyUnit)
+        .divide(lines.size())));
+    } else {
+      proratedAdjustment.setValue(BigDecimal.valueOf(adjustment.getValue())
+        .divide(BigDecimal.valueOf(lines.size()), 2, RoundingMode.HALF_EVEN)
+        .doubleValue());
+    }
+
+    lines.forEach(line -> addAdjustmentToLine(line, proratedAdjustment));
+  }
+
+  /**
+   * Each invoiceLine gets a portion of the amount proportionate to the invoiceLine's contribution to the invoice subTotal.
+   * Prorated percentage adjustments of this type aren't split but rather each invoiceLine gets an adjustment of that percentage
+   */
+  private void applyProratedAdjustmentByAmount(Adjustment adjustment, List<InvoiceLine> lines, CurrencyUnit currencyUnit) {
+    MonetaryAmount grandSubTotal = calculateSubTotal(lines, currencyUnit);
+    if (adjustment.getType() == Adjustment.Type.AMOUNT && grandSubTotal.isZero()) {
+      // If subTotal is zero it is unclear how to apply prorated adjustment
+      return;
+    }
+
+    for (InvoiceLine line : lines) {
+      Adjustment proratedAdjustment = prepareAdjustmentForLine(adjustment);
+
+      if (adjustment.getType() == Adjustment.Type.AMOUNT) {
+        proratedAdjustment.setValue(convertToDoubleWithRounding(Money.of(adjustment.getValue(), currencyUnit)
+          .multiply(line.getSubTotal())
+          .divide(grandSubTotal.getNumber())));
+      }
+
+      addAdjustmentToLine(line, proratedAdjustment);
+    }
+  }
+
+  /**
+   * Each invoiceLine gets an portion of the amount proportionate to the invoiceLine's quantity.
+   */
+  private void applyProratedAdjustmentByQuantity(Adjustment adjustment, List<InvoiceLine> lines, CurrencyUnit currencyUnit) {
+    if (adjustment.getType() == Adjustment.Type.PERCENTAGE) {
+      /*
+       * "By quantity" prorated percentage adjustments don't make sense and the client should not use that combination. We will also
+       * need to validate this on the backend and return an error response in the case where someone makes a call directly to the
+       * API with the combo.
+       */
+      return;
+    }
+
+    for (InvoiceLine line : lines) {
+      Adjustment proratedAdjustment = prepareAdjustmentForLine(adjustment)
+        .withValue(convertToDoubleWithRounding(Money.of(adjustment.getValue(), currencyUnit)
+          .multiply(line.getQuantity())
+          .divide(getTotalQuantities(lines))));
+
+      addAdjustmentToLine(line, proratedAdjustment);
+    }
+  }
+
+  private Adjustment prepareAdjustmentForLine(Adjustment adjustment) {
+    return JsonObject.mapFrom(adjustment)
+      .mapTo(adjustment.getClass())
+      .withId(null)
+      .withAdjustmentId(adjustment.getId());
+  }
+
+  private Integer getTotalQuantities(List<InvoiceLine> lines) {
+    return lines.stream().map(InvoiceLine::getQuantity).reduce(0, Integer::sum);
+  }
+
+  private void addAdjustmentToLine(InvoiceLine line, Adjustment proratedAdjustment) {
+    List<Adjustment> lineAdjustments = line.getAdjustments();
+    if (!lineAdjustments.contains(proratedAdjustment)) {
+      // Just in case there was adjustment with this uuid but now updated, remove it
+      lineAdjustments.removeIf(adj -> proratedAdjustment.getAdjustmentId().equals(adj.getAdjustmentId()));
+      lineAdjustments.add(proratedAdjustment);
+    }
   }
 
   private void setSystemGeneratedData(Invoice invoiceFromStorage, Invoice invoice) {
     invoice.withFolioInvoiceNo(invoiceFromStorage.getFolioInvoiceNo());
+    generateAdjustmentsIds(invoice);
   }
 
   private CompletionStage<Void> handleInvoiceStatusTransition(Invoice invoice, Invoice invoiceFromStorage) {
@@ -697,14 +881,14 @@ public class InvoiceHelper extends AbstractHelper {
   }
 
   private CompletableFuture<List<InvoiceLine>> fetchInvoiceLinesByInvoiceId(String invoiceId) {
-    if (invoiceLines != null) {
-      return completedFuture(invoiceLines);
+    if (storedInvoiceLines != null) {
+      return completedFuture(storedInvoiceLines);
     }
 
     String query = String.format(QUERY_BY_INVOICE_ID, invoiceId);
     // Assuming that the invoice will never contain more than Integer.MAX_VALUE invoiceLines.
     return invoiceLineHelper.getInvoiceLines(Integer.MAX_VALUE, 0, query)
-      .thenApply(invoiceLineCollection -> invoiceLines = invoiceLineCollection.getInvoiceLines());
+      .thenApply(invoiceLineCollection -> storedInvoiceLines = invoiceLineCollection.getInvoiceLines());
   }
 
   private CompletableFuture<List<InvoiceLine>> getInvoiceLinesWithTotals(Invoice invoice) {
@@ -799,11 +983,11 @@ public class InvoiceHelper extends AbstractHelper {
       .thenApply(seqNumber -> seqNumber.mapTo(SequenceNumber.class).getSequenceNumber());
   }
 
-  private Invoice withCalculatedTotals(Invoice invoice) {
-    return withCalculatedTotals(invoice, Collections.emptyList());
+  private void calculateTotals(Invoice invoice) {
+    calculateTotals(invoice, Collections.emptyList());
   }
 
-  private Invoice withCalculatedTotals(Invoice invoice, List<InvoiceLine> lines) {
+  private void calculateTotals(Invoice invoice, List<InvoiceLine> lines) {
     CurrencyUnit currency = Monetary.getCurrency(invoice.getCurrency());
 
     // 1. Sub-total
@@ -819,15 +1003,14 @@ public class InvoiceHelper extends AbstractHelper {
     }
     invoice.setAdjustmentsTotal(convertToDoubleWithRounding(adjustmentsTotal));
     invoice.setSubTotal(convertToDoubleWithRounding(subTotal));
-
-    return invoice;
   }
 
   private List<Adjustment> getNotProratedAdjustments(Invoice invoice) {
-    return invoice.getAdjustments()
-      .stream()
-      .filter(adj -> adj.getProrate() == Adjustment.Prorate.NOT_PRORATED)
-      .collect(toList());
+    return HelperUtils.getNotProratedAdjustments(invoice.getAdjustments());
+  }
+
+  private List<Adjustment> getProratedAdjustments(Invoice invoice) {
+    return HelperUtils.getProratedAdjustments(invoice.getAdjustments());
   }
 
   private MonetaryAmount calculateSubTotal(List<InvoiceLine> lines, CurrencyUnit currency) {

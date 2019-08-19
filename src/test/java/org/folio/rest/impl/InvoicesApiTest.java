@@ -115,8 +115,8 @@ public class InvoicesApiTest extends ApiTestBase {
 
   private static final Logger logger = LoggerFactory.getLogger(InvoicesApiTest.class);
 
-  private static final String INVOICE_PATH = "/invoice/invoices";
-	private static final String INVOICE_ID_PATH = INVOICE_PATH+ "/%s";
+  static final String INVOICE_PATH = "/invoice/invoices";
+	static final String INVOICE_ID_PATH = INVOICE_PATH+ "/%s";
   private static final String INVOICE_ID_WITH_LANG_PATH = INVOICE_ID_PATH + "?lang=%s";
   private static final String INVOICE_PATH_BAD = "/invoice/bad";
   private static final String INVOICE_NUMBER_PATH = "/invoice/invoice-number";

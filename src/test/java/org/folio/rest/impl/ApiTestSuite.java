@@ -27,7 +27,8 @@ import java.util.concurrent.TimeoutException;
   VouchersApiTest.class,
   VoucherLinesApiTest.class,
   DocumentsApiTest.class,
-  InvoiceSummaryTest.class
+  InvoiceSummaryTest.class,
+  InvoicesProratedAdjustmentsTest.class
 })
 public class ApiTestSuite {
   private static final Logger logger = LoggerFactory.getLogger(ApiTestSuite.class);

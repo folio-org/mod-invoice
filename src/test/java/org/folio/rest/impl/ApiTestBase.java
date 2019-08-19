@@ -155,18 +155,14 @@ public class ApiTestBase {
     return new JsonObject();
   }
 
-  Response verifyPostResponse(String url, JsonObject body, Headers headers, String expectedContentType, int expectedCode) {
-    return verifyPostResponse(url, body.encode(), headers, expectedContentType, expectedCode);
-  }
-
-  Response verifyPostResponse(String url, String body, Headers headers, String expectedContentType, int expectedCode) {
+  Response verifyPostResponse(String url, Object body, Headers headers, String expectedContentType, int expectedCode) {
     Response response = RestAssured
       .with()
         .header(X_OKAPI_URL)
         .header(X_OKAPI_TOKEN)
         .headers(headers)
         .contentType(APPLICATION_JSON)
-        .body(body)
+        .body(convertToString(body))
       .post(url)
         .then()
           .log()
@@ -182,22 +178,17 @@ public class ApiTestBase {
     return response;
   }
 
-  Response verifyPut(String url, String body, String expectedContentType, int expectedCode) {
+  Response verifyPut(String url, Object body, String expectedContentType, int expectedCode) {
     Headers headers = prepareHeaders(X_OKAPI_URL, X_OKAPI_TENANT, X_OKAPI_TOKEN);
     return verifyPut(url, body, headers,expectedContentType, expectedCode);
   }
 
-  Response verifyPut(String url, JsonObject body, String expectedContentType, int expectedCode) {
-    Headers headers = prepareHeaders(X_OKAPI_URL, X_OKAPI_TENANT, X_OKAPI_TOKEN);
-    return verifyPut(url, body.encode(), headers,expectedContentType, expectedCode);
-  }
-
-  Response verifyPut(String url, String body, Headers headers, String expectedContentType, int expectedCode) {
+  Response verifyPut(String url, Object body, Headers headers, String expectedContentType, int expectedCode) {
     return RestAssured
       .with()
         .headers(headers)
         .header(X_OKAPI_URL)
-        .body(body)
+        .body(convertToString(body))
         .contentType(APPLICATION_JSON)
       .put(url)
         .then()
@@ -240,6 +231,12 @@ public class ApiTestBase {
     return verifyDeleteResponse(url, headers, expectedContentType, expectedCode);
   }
 
+  @SuppressWarnings("unchecked")
+  <T> T copyObject(T object) {
+    return JsonObject.mapFrom(object)
+      .mapTo((Class<T>) object.getClass());
+  }
+
   Response verifyDeleteResponse(String url, Headers headers, String expectedContentType, int expectedCode) {
     Response response = RestAssured
       .with()
@@ -259,6 +256,16 @@ public class ApiTestBase {
 
   Headers prepareHeaders(Header... headers) {
     return new Headers(headers);
+  }
+
+  String convertToString(Object body) {
+    if (body instanceof String) {
+      return body.toString();
+    } else if (body instanceof JsonObject) {
+      return ((JsonObject) body).encodePrettily();
+    } else {
+      return JsonObject.mapFrom(body).encodePrettily();
+    }
   }
 
   void verifyInvoiceSummaryUpdateEvent(int msgQty) {

@@ -11,6 +11,7 @@ import static org.folio.invoices.utils.ResourcePathResolver.VOUCHERS;
 import static org.folio.invoices.utils.ResourcePathResolver.VOUCHER_LINES;
 import static org.folio.invoices.utils.ResourcePathResolver.resourceByIdPath;
 import static org.folio.rest.RestVerticle.OKAPI_HEADER_TENANT;
+import static org.folio.rest.jaxrs.model.Adjustment.Prorate.NOT_PRORATED;
 
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
@@ -23,6 +24,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
+import java.util.function.Predicate;
 
 import javax.money.CurrencyUnit;
 import javax.money.Monetary;
@@ -66,6 +68,8 @@ public class HelperUtils {
 
   private static final String EXCEPTION_CALLING_ENDPOINT_MSG = "Exception calling {} {}";
   private static final String CALLING_ENDPOINT_MSG = "Sending {} {}";
+
+  private static final Predicate<Adjustment> NOT_PRORATED_ADJUSTMENTS_PREDICATE = adj -> adj.getProrate() == NOT_PRORATED;
 
   private HelperUtils() {
 
@@ -341,5 +345,19 @@ public class HelperUtils {
       .entries()
       .forEach(entry -> okapiHeaders.put(entry.getKey(), entry.getValue()));
     return okapiHeaders;
+  }
+
+  public static List<Adjustment> getNotProratedAdjustments(List<Adjustment> adjustments) {
+    return filterAdjustments(adjustments, NOT_PRORATED_ADJUSTMENTS_PREDICATE);
+  }
+
+  public static List<Adjustment> getProratedAdjustments(List<Adjustment> adjustments) {
+    return filterAdjustments(adjustments, NOT_PRORATED_ADJUSTMENTS_PREDICATE.negate());
+  }
+
+  private static List<Adjustment> filterAdjustments(List<Adjustment> adjustments, Predicate<Adjustment> predicate) {
+    return adjustments.stream()
+      .filter(predicate)
+      .collect(toList());
   }
 }
