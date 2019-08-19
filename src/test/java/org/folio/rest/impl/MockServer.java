@@ -16,6 +16,8 @@ import static org.folio.invoices.utils.ResourcePathResolver.VOUCHERS;
 import static org.folio.invoices.utils.ResourcePathResolver.VOUCHER_LINES;
 import static org.folio.invoices.utils.ResourcePathResolver.VOUCHER_NUMBER;
 import static org.folio.invoices.utils.ResourcePathResolver.VOUCHER_NUMBER_START;
+import static org.folio.invoices.utils.ResourcePathResolver.ACQUISITIONS_UNITS;
+import static org.folio.invoices.utils.ResourcePathResolver.ACQUISITIONS_MEMBERSHIPS;
 import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
 import static org.folio.rest.RestVerticle.OKAPI_HEADER_TENANT;
 import static org.folio.rest.impl.AbstractHelper.ID;
@@ -25,6 +27,7 @@ import static org.folio.rest.impl.ApiTestBase.ID_DOES_NOT_EXIST;
 import static org.folio.rest.impl.ApiTestBase.ID_FOR_INTERNAL_SERVER_ERROR;
 import static org.folio.rest.impl.ApiTestBase.ID_FOR_INTERNAL_SERVER_ERROR_PUT;
 import static org.folio.rest.impl.ApiTestBase.INVOICE_LINE_NUMBER_VALUE;
+import static org.folio.rest.impl.ApiTestBase.PROTECTED_READ_ONLY_TENANT;
 import static org.folio.rest.impl.ApiTestBase.VOUCHER_NUMBER_VALUE;
 import static org.folio.rest.impl.ApiTestBase.getMockData;
 import static org.folio.rest.impl.DocumentsApiTest.INVOICE_DOCUMENTS_SAMPLE_PATH;
@@ -41,6 +44,7 @@ import static org.folio.rest.impl.InvoicesApiTest.INVOICE_MOCK_DATA_PATH;
 import static org.folio.rest.impl.VoucherLinesApiTest.VOUCHER_LINES_MOCK_DATA_PATH;
 import static org.folio.rest.impl.VouchersApiTest.VOUCHERS_LIST_PATH;
 import static org.folio.rest.impl.VouchersApiTest.VOUCHER_MOCK_DATA_PATH;
+import static org.folio.rest.impl.ProtectionHelper.ACQUISITIONS_UNIT_ID;
 import static org.junit.Assert.fail;
 
 import java.io.IOException;
@@ -55,6 +59,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Function;
 import java.util.function.Supplier;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import javax.ws.rs.core.Response;
 
@@ -66,6 +72,8 @@ import org.folio.rest.acq.model.VoucherLineCollection;
 import org.folio.rest.acq.model.finance.Fund;
 import org.folio.rest.acq.model.finance.FundCollection;
 import org.folio.rest.acq.model.orders.CompositePoLine;
+import org.folio.rest.acq.model.AcquisitionsUnitCollection;
+import org.folio.rest.acq.model.AcquisitionsUnitMembershipCollection;
 import org.folio.rest.jaxrs.model.Config;
 import org.folio.rest.jaxrs.model.Configs;
 import org.folio.rest.jaxrs.model.Document;
@@ -124,6 +132,9 @@ public class MockServer {
   private static final String INVOICE_LINES_COLLECTION = BASE_MOCK_DATA_PATH + "invoiceLines/invoice_lines.json";
   private static final String VOUCHER_LINES_COLLECTION = BASE_MOCK_DATA_PATH + "voucherLines/voucher_lines.json";
   private static final String PO_LINES_MOCK_DATA_PATH = BASE_MOCK_DATA_PATH + "poLines/";
+  private static final String ACQUISITIONS_UNITS_MOCK_DATA_PATH = BASE_MOCK_DATA_PATH + "acquisitionsUnits/units";
+  private static final String ACQUISITIONS_UNITS_COLLECTION = ACQUISITIONS_UNITS_MOCK_DATA_PATH + "/units.json";
+  private static final String ACQUISITIONS_MEMBERSHIPS_COLLECTION = ACQUISITIONS_UNITS_MOCK_DATA_PATH + "/memberships.json";
   private static final String ID_PATH_PARAM = "/:" + ID;
   private static final String VALUE_PATH_PARAM = "/:value";
   private static final String TOTAL_RECORDS = "totalRecords";
@@ -177,6 +188,14 @@ public class MockServer {
     });
   }
 
+  public static List<JsonObject> getAcqUnitsSearches() {
+    return serverRqRs.get(ACQUISITIONS_UNITS, HttpMethod.GET);
+  }
+  
+  public static List<JsonObject> getAcqMembershipsSearches() {
+    return serverRqRs.get(ACQUISITIONS_MEMBERSHIPS, HttpMethod.GET);
+  }
+  
   public static List<JsonObject> getInvoiceSearches() {
     return getCollectionRecords(getRqRsEntries(HttpMethod.GET, INVOICES));
   }
@@ -227,6 +246,8 @@ public class MockServer {
     router.route(HttpMethod.POST, resourcesPath(VOUCHER_LINES)).handler(ctx -> handlePostEntry(ctx, VoucherLine.class, VOUCHER_LINES));
     router.route(HttpMethod.POST, "/invoice-storage/invoices/:id/documents").handler(this::handlePostInvoiceDocument);
 
+    router.route(HttpMethod.GET, resourcesPath(ACQUISITIONS_UNITS)).handler(this::handleGetAcquisitionsUnits);
+    router.route(HttpMethod.GET, resourcesPath(ACQUISITIONS_MEMBERSHIPS)).handler(this::handleGetAcquisitionsMemberships);
     router.route(HttpMethod.GET, resourcesPath(INVOICES)).handler(this::handleGetInvoices);
     router.route(HttpMethod.GET, resourcesPath(INVOICE_LINES)).handler(this::handleGetInvoiceLines);
     router.route(HttpMethod.GET, resourceByIdPath(INVOICES)).handler(this::handleGetInvoiceById);
@@ -258,6 +279,94 @@ public class MockServer {
 
 
     return router;
+  }
+
+  private void handleGetAcquisitionsMemberships(RoutingContext ctx) {
+    logger.info("handleGetAcquisitionsMemberships got: " + ctx.request()
+      .path());
+
+    String query = StringUtils.trimToEmpty(ctx.request()
+      .getParam("query"));
+    if (query.contains(BAD_QUERY)) {
+      serverResponse(ctx, 400, APPLICATION_JSON, Response.Status.BAD_REQUEST.getReasonPhrase());
+    } else {
+
+      Matcher userIdMatcher = Pattern.compile(".*userId==(\\S+).*")
+        .matcher(query);
+      final String userId = userIdMatcher.find() ? userIdMatcher.group(1) : EMPTY;
+
+      AcquisitionsUnitMembershipCollection memberships;
+      try {
+        memberships = new JsonObject(ApiTestBase.getMockData(ACQUISITIONS_MEMBERSHIPS_COLLECTION))
+          .mapTo(AcquisitionsUnitMembershipCollection.class);
+      } catch (IOException e) {
+        memberships = new AcquisitionsUnitMembershipCollection();
+      }
+
+      if (StringUtils.isNotEmpty(userId)) {
+        memberships.getAcquisitionsUnitMemberships()
+          .removeIf(membership -> !membership.getUserId()
+            .equals(userId));
+        List<String> acquisitionsUnitIds = extractIdsFromQuery(ACQUISITIONS_UNIT_ID, query);
+        if (!acquisitionsUnitIds.isEmpty()) {
+          memberships.getAcquisitionsUnitMemberships()
+            .removeIf(membership -> !acquisitionsUnitIds.contains(membership.getAcquisitionsUnitId()));
+        }
+      }
+
+      JsonObject data = JsonObject.mapFrom(memberships.withTotalRecords(memberships.getAcquisitionsUnitMemberships()
+        .size()));
+      addServerRqRsData(HttpMethod.GET, ACQUISITIONS_MEMBERSHIPS, data);
+      serverResponse(ctx, 200, APPLICATION_JSON, data.encodePrettily());
+    }
+  }
+
+  private void handleGetAcquisitionsUnits(RoutingContext ctx) {
+    logger.info("handleGetAcquisitionsUnits got: " + ctx.request()
+      .path());
+    String tenant = ctx.request()
+      .getHeader(OKAPI_HEADER_TENANT);
+    String query = StringUtils.trimToEmpty(ctx.request()
+      .getParam("query"));
+
+    AcquisitionsUnitCollection units;
+
+    try {
+      if (PROTECTED_READ_ONLY_TENANT.equals(tenant)) {
+        units = new AcquisitionsUnitCollection();
+      } else {
+        units = new JsonObject(ApiTestBase.getMockData(ACQUISITIONS_UNITS_COLLECTION)).mapTo(AcquisitionsUnitCollection.class);
+      }
+    } catch (IOException e) {
+      units = new AcquisitionsUnitCollection();
+    }
+
+    if (query.contains(BAD_QUERY)) {
+      serverResponse(ctx, 400, APPLICATION_JSON, Response.Status.BAD_REQUEST.getReasonPhrase());
+    } else {
+
+      if (query.contains("id==")) {
+        List<String> ids = extractIdsFromQuery(query);
+        if (!ids.isEmpty()) {
+          units.getAcquisitionsUnits()
+            .removeIf(unit -> !ids.contains(unit.getId()));
+        }
+      }
+
+      JsonObject data = JsonObject.mapFrom(units.withTotalRecords(units.getAcquisitionsUnits()
+        .size()));
+      addServerRqRsData(HttpMethod.GET, ACQUISITIONS_UNITS, data);
+      serverResponse(ctx, 200, APPLICATION_JSON, data.encodePrettily());
+    }
+  }
+
+  private List<String> extractIdsFromQuery(String fieldName, String query) {
+    Matcher matcher = Pattern.compile(".*" + fieldName + "==\\((.+)\\).*").matcher(query);
+    if (matcher.find()) {
+      return StreamEx.split(matcher.group(1), " or ").toList();
+    } else {
+      return Collections.emptyList();
+    }
   }
 
   private void handleGetInvoiceDocuments(RoutingContext ctx) {

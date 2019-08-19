@@ -15,6 +15,7 @@ import static org.folio.invoices.utils.HelperUtils.getHttpClient;
 import static org.folio.invoices.utils.HelperUtils.handleGetRequest;
 import static org.folio.invoices.utils.HelperUtils.verifyAndExtractBody;
 import static org.folio.rest.impl.InvoicesImpl.PROTECTED_AND_MODIFIED_FIELDS;
+import static org.folio.rest.RestVerticle.OKAPI_USERID_HEADER;
 
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -52,6 +53,7 @@ public abstract class AbstractHelper {
   public static final String DEFAULT_SYSTEM_CURRENCY = "USD";
   public static final String CONFIG_QUERY = "module==%s and configName==%s";
   public static final String QUERY_BY_INVOICE_ID = "invoiceId==%s";
+  static final String SEARCH_PARAMS = "?limit=%s&offset=%s%s&lang=%s";
 
   private final Errors processingErrors = new Errors();
   private ExchangeRateProvider exchangeRateProvider;
@@ -74,6 +76,10 @@ public abstract class AbstractHelper {
     this(getHttpClient(okapiHeaders), okapiHeaders, ctx, lang);
   }
 
+  protected String getCurrentUserId() {
+    return okapiHeaders.get(OKAPI_USERID_HEADER);
+  }
+  
   /**
    * Retrieve configuration by moduleName and configName from mod-configuration.
    * @param searchCriteria name of the module for which the configuration is to be retrieved
@@ -208,6 +214,7 @@ public abstract class AbstractHelper {
     final Response.ResponseBuilder responseBuilder;
     switch (code) {
       case 400:
+      case 403:
       case 404:
       case 422:
         responseBuilder = Response.status(code);

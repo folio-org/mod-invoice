@@ -164,7 +164,9 @@ public class HelperUtils {
     return future;
   }
 
-
+  public static String buildQuery(String query, Logger logger) {
+    return isEmpty(query) ? EMPTY : "&query=" + encodeQuery(query, logger);
+  }
   /**
    * A common method to update an entry in the storage
    *
@@ -277,6 +279,11 @@ public class HelperUtils {
    */
   public static String convertIdsToCqlQuery(List<String> ids) {
     return StreamEx.of(ids).map(id -> "id==" + id).joining(" or ");
+  }
+
+  public static String convertIdsToCqlQuery(List<String> values, String fieldName, boolean strictMatch) {
+    String prefix = fieldName + (strictMatch ? "==(" : "=(");
+    return StreamEx.of(values).joining(" or ", prefix, ")");
   }
 
   /**

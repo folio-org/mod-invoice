@@ -9,6 +9,8 @@ import io.vertx.core.logging.LoggerFactory;
 
 import org.folio.invoices.events.handlers.InvoiceSummaryTest;
 import org.folio.rest.RestVerticle;
+import org.folio.rest.impl.protection.InvoiceLinesProtectionTest;
+import org.folio.rest.impl.protection.InvoicesProtectionTest;
 import org.folio.rest.tools.utils.NetworkUtils;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -23,6 +25,8 @@ import java.util.concurrent.TimeoutException;
 @RunWith(Suite.class)
 @Suite.SuiteClasses({
   InvoicesApiTest.class,
+  InvoicesProtectionTest.class,
+  InvoiceLinesProtectionTest.class,
   InvoiceLinesApiTest.class,
   VouchersApiTest.class,
   VoucherLinesApiTest.class,

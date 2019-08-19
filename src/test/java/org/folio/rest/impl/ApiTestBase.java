@@ -13,6 +13,11 @@ import io.vertx.core.logging.LoggerFactory;
 import org.apache.commons.io.IOUtils;
 import org.folio.invoices.events.handlers.MessageAddress;
 import org.folio.invoices.utils.HelperUtils;
+import org.folio.rest.jaxrs.model.Invoice;
+import org.folio.rest.jaxrs.model.InvoiceLine;
+import org.folio.rest.jaxrs.model.Invoice.Source;
+import org.folio.rest.jaxrs.model.Invoice.Status;
+import org.folio.rest.jaxrs.model.InvoiceLine.InvoiceLineStatus;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
@@ -25,7 +30,9 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.Date;
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
@@ -60,7 +67,8 @@ public class ApiTestBase {
   public static final Header X_OKAPI_URL = new Header(OKAPI_URL, "http://localhost:" + mockPort);
   static final Header X_OKAPI_TOKEN = new Header(OKAPI_HEADER_TOKEN, "eyJhbGciOiJIUzI1NiJ9");
   static final Header X_OKAPI_TENANT = new Header(OKAPI_HEADER_TENANT, "invoiceimpltest");
-  static final Header X_OKAPI_USERID = new Header(OKAPI_USERID_HEADER, "d1d0a10b-c563-4c4b-ae22-e5a0c11623eb");
+  protected static final Header X_OKAPI_USERID = new Header(OKAPI_USERID_HEADER, "d1d0a10b-c563-4c4b-ae22-e5a0c11623eb");
+  protected static final Header EXIST_CONFIG_X_OKAPI_TENANT_LIMIT_10 = new Header(OKAPI_HEADER_TENANT, "test_diku_limit_10");
 
   static final String BASE_MOCK_DATA_PATH = "mockdata/";
 
@@ -68,10 +76,13 @@ public class ApiTestBase {
   static final String VOUCHER_NUMBER_VALUE = "1";
   static final String LANG_PARAM = "lang";
   static final String INVALID_LANG = "english";
+  public static final String BAD_QUERY = "unprocessableQuery";
 
   public static final String ID_DOES_NOT_EXIST = "d25498e7-3ae6-45fe-9612-ec99e2700d2f";
   static final String ID_FOR_INTERNAL_SERVER_ERROR = "168f8a86-d26c-406e-813f-c7527f241ac3";
   static final String ID_FOR_INTERNAL_SERVER_ERROR_PUT = "bad500bb-bbbb-500b-bbbb-bbbbbbbbbbbb";
+  protected static final String MIN_INVOICE_ID = UUID.randomUUID().toString();
+  protected static final String PROTECTED_READ_ONLY_TENANT = "protected_read";
 
   static {
     System.setProperty(LoggerFactory.LOGGER_DELEGATE_FACTORY_CLASS_NAME, "io.vertx.core.logging.Log4j2LogDelegateFactory");
@@ -131,7 +142,7 @@ public class ApiTestBase {
     }
   }
 
-  static String getMockData(String path) throws IOException {
+  protected static String getMockData(String path) throws IOException {
     logger.info("Using mock datafile: {}", path);
     try (InputStream resourceAsStream = ApiTestBase.class.getClassLoader().getResourceAsStream(path)) {
       if (resourceAsStream != null) {
@@ -159,7 +170,7 @@ public class ApiTestBase {
     return verifyPostResponse(url, body.encode(), headers, expectedContentType, expectedCode);
   }
 
-  Response verifyPostResponse(String url, String body, Headers headers, String expectedContentType, int expectedCode) {
+  public Response verifyPostResponse(String url, String body, Headers headers, String expectedContentType, int expectedCode) {
     Response response = RestAssured
       .with()
         .header(X_OKAPI_URL)
@@ -212,7 +223,7 @@ public class ApiTestBase {
     return verifyGet(url, headers, expectedContentType, expectedCode);
   }
 
-  Response verifyGet(String url, Headers headers, String expectedContentType, int expectedCode) {
+  public Response verifyGet(String url, Headers headers, String expectedContentType, int expectedCode) {
     Response response = RestAssured
       .with()
         .headers(headers)
@@ -257,7 +268,7 @@ public class ApiTestBase {
     return response;
   }
 
-  Headers prepareHeaders(Header... headers) {
+  protected Headers prepareHeaders(Header... headers) {
     return new Headers(headers);
   }
 
@@ -285,4 +296,28 @@ public class ApiTestBase {
     }
   }
 
+  public static String encodePrettily(Object entity) {
+    return JsonObject.mapFrom(entity)
+      .encodePrettily();
+  }
+
+  protected Invoice getMinimalContentInvoice() {
+    return new Invoice().withCurrency("EUR")
+      .withId(MIN_INVOICE_ID)
+      .withInvoiceDate(new Date(System.currentTimeMillis()))
+      .withPaymentMethod("EFT")
+      .withStatus(Status.REVIEWED)
+      .withSource(Source.API)
+      .withVendorInvoiceNo("YK75851")
+      .withVendorId("168f8a63-d612-406e-813f-c7527f241ac3");
+  }
+
+  protected InvoiceLine getMinimalContentInvoiceLine(String invoiceId) {
+    return new InvoiceLine().withDescription("Some description")
+      .withInvoiceId(invoiceId)
+      .withInvoiceLineStatus(InvoiceLineStatus.OPEN)
+      .withSubTotal(2.2d)
+      .withQuantity(3)
+      .withReleaseEncumbrance(false);
+  }
 }
