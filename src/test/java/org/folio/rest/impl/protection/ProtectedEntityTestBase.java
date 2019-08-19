@@ -31,9 +31,9 @@ public abstract class ProtectedEntityTestBase extends ApiTestBase {
   public static final List<String> NON_EXISTENT_UNITS = Arrays.asList(NON_EXISTENT_UNIT_ID, "0f2bb7a2-728f-4e07-9268-082577a7bedb");
   public static final List<String> BAD_UNITS = Arrays.asList(BAD_QUERY, BAD_QUERY);
 
-  private static final String USER_IS_NOT_MEMBER_OF_ORDERS_UNITS = "7007ed1b-85ab-46e8-9524-fada8521dfd5";
-  static final Header X_OKAPI_USER_WITH_UNITS_NOT_ASSIGNED_TO_ORDER = new Header(OKAPI_USERID_HEADER,
-      USER_IS_NOT_MEMBER_OF_ORDERS_UNITS);
+  private static final String USER_IS_NOT_MEMBER_OF_INVOICE_UNITS = "7007ed1b-85ab-46e8-9524-fada8521dfd5";
+  static final Header X_OKAPI_USER_WITH_UNITS_NOT_ASSIGNED_TO_INVOICE = new Header(OKAPI_USERID_HEADER,
+      USER_IS_NOT_MEMBER_OF_INVOICE_UNITS);
 
   private static final String USER_IS_MEMBER_OF_ORDER_UNITS = "6b4be232-5ad9-47a6-80b1-8c1acabd6212";
   static final Header X_OKAPI_USER_WITH_UNITS_ASSIGNED_TO_ORDER = new Header(OKAPI_USERID_HEADER, USER_IS_MEMBER_OF_ORDER_UNITS);

@@ -102,7 +102,7 @@ public class InvoiceLinesProtectionTest extends ProtectedEntityTestBase {
     logger.info(
         "=== Invoice-lines protection: Test corresponding invoice has units, units protect operation, user isn't member of invoice units - expecting of calls to Units, Memberships APIs and restriction of operation ===");
 
-    final Headers headers = prepareHeaders(EXIST_CONFIG_X_OKAPI_TENANT_LIMIT_10, X_OKAPI_USER_WITH_UNITS_NOT_ASSIGNED_TO_ORDER);
+    final Headers headers = prepareHeaders(EXIST_CONFIG_X_OKAPI_TENANT_LIMIT_10, X_OKAPI_USER_WITH_UNITS_NOT_ASSIGNED_TO_INVOICE);
     Errors errors = operation
       .process(INVOICE_LINES_PATH, encodePrettily(prepareInvoiceLine(PROTECTED_UNITS)), headers, APPLICATION_JSON,
           HttpStatus.HTTP_FORBIDDEN.toInt())

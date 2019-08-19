@@ -87,7 +87,7 @@ public class InvoicesProtectionTest extends ProtectedEntityTestBase {
         "=== Invoices protection: Test corresponding order has units, units protect operation, user isn't member of order's units - expecting of calls to Units, Memberships APIs and restriction of operation ===");
 
     Headers headers = prepareHeaders(EXIST_CONFIG_X_OKAPI_TENANT_LIMIT_10, ALL_DESIRED_PERMISSIONS_HEADER,
-        X_OKAPI_USER_WITH_UNITS_NOT_ASSIGNED_TO_ORDER);
+        X_OKAPI_USER_WITH_UNITS_NOT_ASSIGNED_TO_INVOICE);
     Errors errors = operation
       .process(INVOICE_PATH, encodePrettily(prepareInvoice(PROTECTED_UNITS)), headers, APPLICATION_JSON,
           HttpStatus.HTTP_FORBIDDEN.toInt())
