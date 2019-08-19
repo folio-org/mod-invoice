@@ -17,7 +17,7 @@ import io.vertx.core.Context;
 import me.escoffier.vertx.completablefuture.VertxCompletableFuture;
 
 public class AcquisitionsUnitsHelper extends AbstractHelper {
-  static final String ACQUISITIONS_UNIT_IDS = "acqUnitIds";
+  private static final String ACQUISITIONS_UNIT_IDS = "acqUnitIds";
   static final String NO_ACQ_UNIT_ASSIGNED_CQL = "cql.allRecords=1 not " + ACQUISITIONS_UNIT_IDS + " <> []";
   private static final String GET_UNITS_BY_QUERY = resourcesPath(ACQUISITIONS_UNITS) + SEARCH_PARAMS;
   private static final String GET_UNITS_MEMBERSHIPS_BY_QUERY = resourcesPath(ACQUISITIONS_MEMBERSHIPS) + SEARCH_PARAMS;
