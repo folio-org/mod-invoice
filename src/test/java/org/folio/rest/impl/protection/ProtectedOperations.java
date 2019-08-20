@@ -8,7 +8,6 @@ import io.restassured.http.Headers;
 import io.restassured.response.Response;
 import io.vertx.core.json.JsonObject;
 
-
 enum ProtectedOperations {
 
   CREATE(201,  APPLICATION_JSON) {
@@ -64,6 +63,4 @@ enum ProtectedOperations {
   private static ApiTestBase apiTestBase = new ApiTestBase();
 
   abstract Response process(String url, String body, Headers headers, String expectedContentType, int expectedCode);
-
-
 }

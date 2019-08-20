@@ -42,7 +42,7 @@ import me.escoffier.vertx.completablefuture.VertxCompletableFuture;
 public class InvoiceLineHelper extends AbstractHelper {
 
   private static final String INVOICE_LINE_NUMBER_ENDPOINT = resourcesPath(INVOICE_LINE_NUMBER) + "?" + INVOICE_ID + "=";
-  public static final String GET_INVOICE_LINES_BY_QUERY = resourcesPath(INVOICE_LINES) + "?limit=%s&offset=%s%s&lang=%s";
+  public static final String GET_INVOICE_LINES_BY_QUERY = resourcesPath(INVOICE_LINES) + SEARCH_PARAMS;
 
   private final ProtectionHelper protectionHelper;
 
@@ -163,10 +163,7 @@ public class InvoiceLineHelper extends AbstractHelper {
 
     // GET invoice-line from storage
     getInvoiceLine(id)
-      .thenCompose(invoiceLineFromStorage -> getInvoice(invoiceLineFromStorage)
-      .thenCompose(invoice ->  protectionHelper.isOperationRestricted(invoice.getAcqUnitIds(), READ)
-        .thenApply(aVoid -> invoice))
-      .thenApply(invoice -> {
+      .thenCompose(invoiceLineFromStorage -> getInvoiceAndCheckProtection(invoiceLineFromStorage).thenApply(invoice -> {
         boolean isTotalOutOfSync = reCalculateInvoiceLineTotals(invoiceLineFromStorage, invoice);
         if (isTotalOutOfSync) {
           updateOutOfSyncInvoiceLine(invoiceLineFromStorage, invoice);
@@ -239,6 +236,12 @@ public class InvoiceLineHelper extends AbstractHelper {
 
   private CompletableFuture<Invoice> getInvoice(InvoiceLine invoiceLine) {
     return getInvoiceById(invoiceLine.getInvoiceId(), lang, httpClient, ctx, okapiHeaders, logger);
+  }
+
+  private CompletableFuture<Invoice> getInvoiceAndCheckProtection(InvoiceLine invoiceLineFromStorage) {
+    return getInvoice(invoiceLineFromStorage)
+      .thenCompose(invoice -> protectionHelper.isOperationRestricted(invoice.getAcqUnitIds(), READ)
+        .thenApply(aVoid -> invoice));
   }
 
   /**

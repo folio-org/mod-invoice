@@ -166,14 +166,6 @@ public class MockServer {
     this.vertx = Vertx.vertx();
   }
 
-  public static List<JsonObject> getAcqUnitsSearches() {
-    return serverRqRs.get(ACQUISITIONS_UNITS, HttpMethod.GET);
-  }
-
-  public static List<JsonObject> getAcqMembershipsSearches() {
-    return serverRqRs.get(ACQUISITIONS_MEMBERSHIPS, HttpMethod.GET);
-  }
-
   void start() throws InterruptedException, ExecutionException, TimeoutException {
     // Setup Mock Server...
     HttpServer server = vertx.createHttpServer();
@@ -198,6 +190,14 @@ public class MockServer {
         logger.info("Successfully shut down mock server");
       }
     });
+  }
+
+  public static List<JsonObject> getAcqUnitsSearches() {
+    return getRqRsEntries(HttpMethod.GET, ACQUISITIONS_UNITS);
+  }
+
+  public static List<JsonObject> getAcqMembershipsSearches() {
+    return getRqRsEntries(HttpMethod.GET, ACQUISITIONS_MEMBERSHIPS);
   }
 
   public static List<JsonObject> getInvoiceSearches() {
@@ -320,12 +320,17 @@ public class MockServer {
 
   private void handleGetAcquisitionsUnits(RoutingContext ctx) {
     logger.info("handleGetAcquisitionsUnits got: " + ctx.request().path());
-    String tenant = ctx.request().getHeader(OKAPI_HEADER_TENANT);
+
     String query = StringUtils.trimToEmpty(ctx.request().getParam("query"));
+    if (query.contains(BAD_QUERY)) {
+      serverResponse(ctx, 400, APPLICATION_JSON, Response.Status.BAD_REQUEST.getReasonPhrase());
+      return;
+    }
 
     AcquisitionsUnitCollection units;
 
     try {
+      String tenant = ctx.request().getHeader(OKAPI_HEADER_TENANT);
       if (PROTECTED_READ_ONLY_TENANT.equals(tenant)) {
         units = new AcquisitionsUnitCollection();
       } else {
@@ -335,28 +340,16 @@ public class MockServer {
       units = new AcquisitionsUnitCollection();
     }
 
-    if (query.contains(BAD_QUERY)) {
-      serverResponse(ctx, 400, APPLICATION_JSON, Response.Status.BAD_REQUEST.getReasonPhrase());
-    } else {
-
-      if(query.contains("name==")) {
-        String name = query.replace("name==", "");
-        if (StringUtils.isNotEmpty(name)) {
-          units.getAcquisitionsUnits().removeIf(unit -> !unit.getName().equals(name));
-        }
+    if (query.contains("id==")) {
+      List<String> ids = extractIdsFromQuery(query);
+      if (!ids.isEmpty()) {
+        units.getAcquisitionsUnits().removeIf(unit -> !ids.contains(unit.getId()));
       }
-
-      if(query.contains("id==")) {
-        List<String> ids = extractIdsFromQuery(query);
-        if (!ids.isEmpty()) {
-          units.getAcquisitionsUnits().removeIf(unit -> !ids.contains(unit.getId()));
-        }
-      }
-
-      JsonObject data = JsonObject.mapFrom(units.withTotalRecords(units.getAcquisitionsUnits().size()));
-      addServerRqRsData(HttpMethod.GET, ACQUISITIONS_UNITS, data);
-      serverResponse(ctx, 200, APPLICATION_JSON, data.encodePrettily());
     }
+
+    JsonObject data = JsonObject.mapFrom(units.withTotalRecords(units.getAcquisitionsUnits().size()));
+    addServerRqRsData(HttpMethod.GET, ACQUISITIONS_UNITS, data);
+    serverResponse(ctx, 200, APPLICATION_JSON, data.encodePrettily());
   }
 
   private void handleGetInvoiceDocuments(RoutingContext ctx) {

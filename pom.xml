@@ -126,9 +126,6 @@
         <artifactId>maven-surefire-plugin</artifactId>
         <version>2.22.2</version>
         <configuration>
-          <excludes>
-            <exclude>org/folio/rest/impl/*Test.java</exclude>
-          </excludes>
           <includes>
             <include>org/folio/rest/impl/ApiTestSuite.java</include>
           </includes>
@@ -197,7 +194,7 @@
             </configuration>
           </execution>
           <execution>
-            <id>mod-orders-storage</id>
+            <id>acquisitions-unit</id>
             <goals>
               <goal>generate</goal>
             </goals>

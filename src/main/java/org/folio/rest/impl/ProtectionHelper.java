@@ -1,6 +1,6 @@
 package org.folio.rest.impl;
 
-import static org.folio.invoices.utils.ErrorCodes.INVOICE_UNITS_NOT_FOUND;
+import static org.folio.invoices.utils.ErrorCodes.ACQ_UNITS_NOT_FOUND;
 import static org.folio.invoices.utils.ErrorCodes.USER_HAS_NO_PERMISSIONS;
 import static org.folio.invoices.utils.HelperUtils.convertIdsToCqlQuery;
 import static org.folio.invoices.utils.HelperUtils.getEndpointWithQuery;
@@ -25,6 +25,8 @@ import org.folio.rest.acq.model.units.AcquisitionsUnit;
 import org.folio.rest.acq.model.units.AcquisitionsUnitCollection;
 import org.folio.rest.acq.model.units.AcquisitionsUnitMembership;
 import org.folio.rest.acq.model.units.AcquisitionsUnitMembershipCollection;
+import org.folio.rest.jaxrs.model.Error;
+import org.folio.rest.jaxrs.model.Parameter;
 import org.folio.rest.tools.client.interfaces.HttpClientInterface;
 
 import io.vertx.core.Context;
@@ -42,7 +44,7 @@ public class ProtectionHelper extends AbstractHelper {
 }
 
   /**
-   * This method determines status of operation restriction based on unit IDs from {@link CompositePurchaseOrder}.
+   * This method determines status of operation restriction based on unit IDs.
    * @param unitIds list of unit IDs.
    *
    * @throws HttpException if user hasn't permissions or units not found
@@ -53,11 +55,14 @@ public class ProtectionHelper extends AbstractHelper {
         .thenCompose(units -> {
           if (unitIds.size() == units.size()) {
             if (applyMergingStrategy(units, operation)) {
-              return verifyUserIsMemberOfOrdersUnits(unitIds);
+              return verifyUserIsMemberOfAcqUnits(unitIds);
             }
             return CompletableFuture.completedFuture(null);
           } else {
-            throw new HttpException(HttpStatus.HTTP_VALIDATION_ERROR.toInt(), INVOICE_UNITS_NOT_FOUND);
+            Error error = ACQ_UNITS_NOT_FOUND.toError();
+            unitIds.removeAll(units.stream().map(AcquisitionsUnit::getId).collect(Collectors.toSet()));
+            error.getParameters().add(new Parameter().withKey(ACQUISITIONS_UNIT_IDS).withValue(unitIds.toString()));
+            throw new HttpException(HttpStatus.HTTP_VALIDATION_ERROR.toInt(), error);
           }
         });
     } else {
@@ -70,8 +75,9 @@ public class ProtectionHelper extends AbstractHelper {
    *
    * @return list of unit ids associated with user.
    */
-  private CompletableFuture<Void> verifyUserIsMemberOfOrdersUnits(List<String> unitIdsAssignedToOrder) {
-    String query = String.format("userId==%s AND %s", getCurrentUserId(), convertIdsToCqlQuery(unitIdsAssignedToOrder, ACQUISITIONS_UNIT_ID, true));
+  private CompletableFuture<Void> verifyUserIsMemberOfAcqUnits(List<String> unitIds) {
+    String query = String.format("userId==%s AND %s", getCurrentUserId(),
+        convertIdsToCqlQuery(unitIds, ACQUISITIONS_UNIT_ID, true));
     return getAcquisitionsUnitsMemberships(query, 0, 0)
       .thenAccept(unit -> {
         if (unit.getTotalRecords() == 0) {

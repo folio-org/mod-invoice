@@ -20,7 +20,7 @@ import io.vertx.core.json.JsonObject;
 import me.escoffier.vertx.completablefuture.VertxCompletableFuture;
 
 class DocumentHelper extends AbstractHelper {
-  private static final String GET_DOCUMENTS_BY_QUERY = resourcesPath(INVOICE_DOCUMENTS) + "?limit=%s&offset=%s%s&lang=%s";
+  private static final String GET_DOCUMENTS_BY_QUERY = resourcesPath(INVOICE_DOCUMENTS) + SEARCH_PARAMS;
 
   DocumentHelper(Map<String, String> okapiHeaders, Context ctx, String lang) {
     super(getHttpClient(okapiHeaders), okapiHeaders, ctx, lang);

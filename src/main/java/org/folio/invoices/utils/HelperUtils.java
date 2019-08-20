@@ -109,10 +109,10 @@ public class HelperUtils {
     return handleGetRequest(endpoint, httpClient, ctx, okapiHeaders, logger);
   }
 
-  public static CompletableFuture<JsonObject> getVoucherById(String id, String lang, HttpClientInterface httpClient, Context ctx,
+  public static CompletableFuture<Voucher> getVoucherById(String id, String lang, HttpClientInterface httpClient, Context ctx,
       Map<String, String> okapiHeaders, Logger logger) {
     String endpoint = resourceByIdPath(VOUCHERS, id, lang);
-    return handleGetRequest(endpoint, httpClient, ctx, okapiHeaders, logger);
+    return handleGetRequest(endpoint, httpClient, ctx, okapiHeaders, logger).thenApplyAsync(json -> json.mapTo(Voucher.class));
   }
 
   public static JsonObject verifyAndExtractBody(Response response) {
@@ -176,7 +176,9 @@ public class HelperUtils {
           return verifyAndExtractBody(response);
         })
         .thenAccept(body -> {
-          logger.debug("The response body for GET {}: {}", endpoint, nonNull(body) ? body.encodePrettily() : null);
+          if (logger.isInfoEnabled()) {
+            logger.info("The response body for GET {}: {}", endpoint, nonNull(body) ? body.encodePrettily() : null);
+          }
           future.complete(body);
         })
         .exceptionally(t -> {

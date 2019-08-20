@@ -23,8 +23,6 @@ import static org.folio.invoices.utils.HelperUtils.calculateInvoiceLineTotals;
 import static org.folio.invoices.utils.HelperUtils.calculateVoucherAmount;
 import static org.folio.invoices.utils.HelperUtils.convertToDoubleWithRounding;
 import static org.folio.invoices.utils.HelperUtils.getNoAcqUnitCQL;
-import static org.folio.invoices.utils.ResourcePathResolver.ACQUISITIONS_MEMBERSHIPS;
-import static org.folio.invoices.utils.ResourcePathResolver.ACQUISITIONS_UNITS;
 import static org.folio.invoices.utils.ResourcePathResolver.FOLIO_INVOICE_NUMBER;
 import static org.folio.invoices.utils.ResourcePathResolver.FUNDS;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICES;
@@ -45,6 +43,8 @@ import static org.folio.rest.impl.MockServer.INVOICE_NUMBER_ERROR_X_OKAPI_TENANT
 import static org.folio.rest.impl.MockServer.NON_EXIST_CONFIG_X_OKAPI_TENANT;
 import static org.folio.rest.impl.MockServer.TEST_PREFIX;
 import static org.folio.rest.impl.MockServer.addMockEntry;
+import static org.folio.rest.impl.MockServer.getAcqMembershipsSearches;
+import static org.folio.rest.impl.MockServer.getAcqUnitsSearches;
 import static org.folio.rest.impl.MockServer.getInvoiceCreations;
 import static org.folio.rest.impl.MockServer.getInvoiceLineSearches;
 import static org.folio.rest.impl.MockServer.getInvoiceRetrievals;
@@ -149,7 +149,6 @@ public class InvoicesApiTest extends ApiTestBase {
   private static final String STATUS = "status";
   private static final String INVALID_CURRENCY = "ABC";
 
-
   @Test
   public void testGetInvoicingInvoices() {
     logger.info("=== Test Get Invoices by without query - get 200 by successful retrieval of invoices ===");
@@ -159,8 +158,8 @@ public class InvoicesApiTest extends ApiTestBase {
     assertThat(resp.getTotalRecords(), is(3));
     assertThat(getInvoiceSearches(), hasSize(1));
     assertThat(getInvoiceLineSearches(), empty());
-    assertThat(MockServer.serverRqRs.get(ACQUISITIONS_UNITS, HttpMethod.GET), hasSize(1));
-    assertThat(MockServer.serverRqRs.get(ACQUISITIONS_MEMBERSHIPS, HttpMethod.GET), hasSize(1));
+    assertThat(getAcqUnitsSearches(), hasSize(1));
+    assertThat(getAcqMembershipsSearches(), hasSize(1));
     verifyInvoiceUpdateCalls(0);
 
     List<String> queryParams = getQueryParams(INVOICES);
@@ -180,8 +179,8 @@ public class InvoicesApiTest extends ApiTestBase {
 
     assertThat(resp.getTotalRecords(), is(1));
     assertThat(getInvoiceSearches(), hasSize(1));
-    assertThat(MockServer.serverRqRs.get(ACQUISITIONS_UNITS, HttpMethod.GET), hasSize(1));
-    assertThat(MockServer.serverRqRs.get(ACQUISITIONS_MEMBERSHIPS, HttpMethod.GET), hasSize(1));
+    assertThat(getAcqUnitsSearches(), hasSize(1));
+    assertThat(getAcqMembershipsSearches(), hasSize(1));
     assertThat(getInvoiceLineSearches(), empty());
     verifyInvoiceUpdateCalls(0);
 
@@ -195,15 +194,15 @@ public class InvoicesApiTest extends ApiTestBase {
   }
 
   @Test
-  public void testGetOrdersForUserAssignedToAcqUnits() {
-    logger.info("=== Test Get Orders by query - user assigned to acq units ===");
+  public void testGetInvoicesForUserAssignedToAcqUnits() {
+    logger.info("=== Test Get Invoices by query - user assigned to acq units ===");
 
     Headers headers = prepareHeaders(X_OKAPI_URL, NON_EXIST_CONFIG_X_OKAPI_TENANT, X_OKAPI_USER_ID_WITH_ACQ_UNITS);
     verifyGet(INVOICE_PATH, headers, APPLICATION_JSON, 200);
 
-    assertThat(MockServer.serverRqRs.get(INVOICES, HttpMethod.GET), hasSize(1));
-    assertThat(MockServer.serverRqRs.get(ACQUISITIONS_UNITS, HttpMethod.GET), hasSize(1));
-    assertThat(MockServer.serverRqRs.get(ACQUISITIONS_MEMBERSHIPS, HttpMethod.GET), hasSize(1));
+    assertThat(getInvoiceSearches(), hasSize(1));
+    assertThat(getAcqUnitsSearches(), hasSize(1));
+    assertThat(getAcqMembershipsSearches(), hasSize(1));
 
     List<String> queryParams = getQueryParams(INVOICES);
     assertThat(queryParams, hasSize(1));
@@ -211,8 +210,7 @@ public class InvoicesApiTest extends ApiTestBase {
     assertThat(queryToStorage, containsString(ACQUISITIONS_UNIT_IDS + "="));
     assertThat(queryToStorage, containsString(getNoAcqUnitCQL(INVOICES)));
 
-    MockServer.serverRqRs.get(ACQUISITIONS_MEMBERSHIPS, HttpMethod.GET)
-      .get(0)
+    getAcqMembershipsSearches().get(0)
       .mapTo(AcquisitionsUnitMembershipCollection.class)
       .getAcquisitionsUnitMemberships()
       .forEach(member -> assertThat(queryToStorage, containsString(member.getAcquisitionsUnitId())));
@@ -1215,7 +1213,7 @@ public class InvoicesApiTest extends ApiTestBase {
 
     assertThat(poId, notNullValue());
     assertThat(folioInvoiceNo, notNullValue());
-    assertThat(MockServer.serverRqRs.get(FOLIO_INVOICE_NUMBER, HttpMethod.GET), hasSize(1));
+    assertThat(getRqRsEntries(HttpMethod.GET, FOLIO_INVOICE_NUMBER), hasSize(1));
 
     // Check that invoice in the response and the one in storage are the same
     compareRecordWithSentToStorage(respData);
@@ -1308,7 +1306,7 @@ public class InvoicesApiTest extends ApiTestBase {
 
     verifyPostResponse(INVOICE_PATH, body, prepareHeaders(ERROR_X_OKAPI_TENANT), APPLICATION_JSON, 500);
 
-    assertThat(MockServer.serverRqRs.get(FOLIO_INVOICE_NUMBER, HttpMethod.GET), hasSize(1));
+    assertThat(getRqRsEntries(HttpMethod.GET, FOLIO_INVOICE_NUMBER), hasSize(1));
   }
 
   @Test
