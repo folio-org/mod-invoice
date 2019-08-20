@@ -18,7 +18,7 @@
           "methods": ["POST"],
           "pathPattern": "/invoice/invoices",
           "permissionsRequired": ["invoice.invoices.item.post"],
-          "permissionsDesired": ["invoice.acquisitions-units-assignments.item.post"],
+          "permissionsDesired": ["invoices.acquisitions-units-assignments.assign"],
           "modulePermissions": [
             "invoice-storage.invoices.item.post",
             "invoice-storage.invoice-number.get",

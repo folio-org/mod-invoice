@@ -36,7 +36,7 @@ public abstract class ProtectedEntityTestBase extends ApiTestBase {
       USER_IS_NOT_MEMBER_OF_INVOICE_UNITS);
 
   private static final String USER_IS_MEMBER_OF_INVOICE_UNITS = "6b4be232-5ad9-47a6-80b1-8c1acabd6212";
-  static final Header X_OKAPI_USER_WITH_UNITS_ASSIGNED_TO_INVOICE = new Header(OKAPI_USERID_HEADER, USER_IS_MEMBER_OF_INVOICE_UNITS);
+  static final Header X_OKAPI_USER_WITH_UNITS_ASSIGNED_TO_RECORD = new Header(OKAPI_USERID_HEADER, USER_IS_MEMBER_OF_INVOICE_UNITS);
 
   static void validateNumberOfRequests(int numOfUnitRqs, int numOfMembershipRqs) {
     assertThat(MockServer.getAcqUnitsSearches(), getMatcher(numOfUnitRqs));

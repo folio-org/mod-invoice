@@ -1,6 +1,6 @@
 package org.folio.rest.impl;
 
-import static org.folio.invoices.utils.ErrorCodes.INVOICE_UNITS_NOT_FOUND;
+import static org.folio.invoices.utils.ErrorCodes.ACQ_UNITS_NOT_FOUND;
 import static org.folio.invoices.utils.ErrorCodes.USER_HAS_NO_PERMISSIONS;
 import static org.folio.invoices.utils.HelperUtils.convertIdsToCqlQuery;
 
@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.stream.Collectors;
 
 import org.apache.commons.collections4.CollectionUtils;
 import org.folio.HttpStatus;
@@ -17,12 +18,15 @@ import org.folio.invoices.utils.ProtectedOperationType;
 import org.folio.rest.acq.model.AcquisitionsUnit;
 import org.folio.rest.acq.model.AcquisitionsUnitCollection;
 import org.folio.rest.tools.client.interfaces.HttpClientInterface;
+import org.folio.rest.jaxrs.model.Error;
+import org.folio.rest.jaxrs.model.Parameter;
 
 import io.vertx.core.Context;
 
 public class ProtectionHelper extends AbstractHelper {
 
   public static final String ACQUISITIONS_UNIT_ID = "acquisitionsUnitId";
+  public static final String ACQUISITIONS_UNIT_IDS = "acqUnitIds";
   private AcquisitionsUnitsHelper acquisitionsUnitsHelper;
 
   public ProtectionHelper(HttpClientInterface httpClient, Map<String, String> okapiHeaders, Context ctx, String lang) {
@@ -42,7 +46,7 @@ public class ProtectionHelper extends AbstractHelper {
   }
 
   /**
-   * This method determines status of operation restriction based on unit IDs from {@link Invoice}.
+   * This method determines status of operation restriction based on unit IDs.
    * 
    * @param unitIds list of unit IDs.
    *
@@ -53,11 +57,14 @@ public class ProtectionHelper extends AbstractHelper {
       return getUnitsByIds(unitIds).thenCompose(units -> {
         if (unitIds.size() == units.size()) {
           if (applyMergingStrategy(units, operations)) {
-            return verifyUserIsMemberOfInvoiceUnits(unitIds);
+            return verifyUserIsMemberOfAcqUnits(unitIds);
           }
           return CompletableFuture.completedFuture(null);
         } else {
-          throw new HttpException(HttpStatus.HTTP_VALIDATION_ERROR.toInt(), INVOICE_UNITS_NOT_FOUND);
+          Error error = ACQ_UNITS_NOT_FOUND.toError();
+          unitIds.removeAll(units.stream().map(AcquisitionsUnit::getId).collect(Collectors.toSet()));
+          error.getParameters().add(new Parameter().withKey(ACQUISITIONS_UNIT_IDS).withValue(unitIds.toString()));
+          throw new HttpException(HttpStatus.HTTP_VALIDATION_ERROR.toInt(), error);
         }
       });
     } else {
@@ -70,7 +77,7 @@ public class ProtectionHelper extends AbstractHelper {
    *
    * @return list of unit ids associated with user.
    */
-  private CompletableFuture<Void> verifyUserIsMemberOfInvoiceUnits(List<String> unitIdsAssignedToInvoice) {
+  private CompletableFuture<Void> verifyUserIsMemberOfAcqUnits(List<String> unitIdsAssignedToInvoice) {
     String query = String.format("userId==%s AND %s", getCurrentUserId(),
         convertIdsToCqlQuery(unitIdsAssignedToInvoice, ACQUISITIONS_UNIT_ID, true));
     return acquisitionsUnitsHelper.getAcquisitionsUnitsMemberships(query, 0, 0)

@@ -2,11 +2,12 @@ package org.folio.rest.impl.protection;
 
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 
-import static org.folio.invoices.utils.ErrorCodes.INVOICE_UNITS_NOT_FOUND;
+import static org.folio.invoices.utils.ErrorCodes.ACQ_UNITS_NOT_FOUND;
 import static org.folio.invoices.utils.ErrorCodes.USER_HAS_NO_ACQ_PERMISSIONS;
 import static org.folio.invoices.utils.ErrorCodes.USER_HAS_NO_PERMISSIONS;
 import static org.folio.rest.impl.InvoicesApiTest.ALL_DESIRED_PERMISSIONS_HEADER;
 import static org.folio.rest.impl.InvoicesApiTest.INVOICE_PATH;
+import static org.folio.rest.impl.ProtectionHelper.ACQUISITIONS_UNIT_IDS;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.collection.IsCollectionWithSize.hasSize;
 import static org.hamcrest.core.IsEqual.equalTo;
@@ -47,7 +48,9 @@ public class InvoicesProtectionTest extends ProtectedEntityTestBase {
     assertThat(errors.getErrors(), hasSize(1));
     assertThat(errors.getErrors()
       .get(0)
-      .getCode(), equalTo(INVOICE_UNITS_NOT_FOUND.getCode()));
+      .getCode(), equalTo(ACQ_UNITS_NOT_FOUND.getCode()));
+    assertThat(errors.getErrors().get(0).getParameters().get(0).getKey(), equalTo(ACQUISITIONS_UNIT_IDS));
+    
     // Verify number of sub-requests
     validateNumberOfRequests(1, 0);
   }
@@ -72,7 +75,7 @@ public class InvoicesProtectionTest extends ProtectedEntityTestBase {
         "=== Invoices protection: Test corresponding invoice has appropriate units, units protect operation, user is member of invoice's units - expecting of calls to Units, Memberships APIs and allowance of operation ===");
 
     Headers headers = prepareHeaders(EXIST_CONFIG_X_OKAPI_TENANT_LIMIT_10, ALL_DESIRED_PERMISSIONS_HEADER,
-        X_OKAPI_USER_WITH_UNITS_ASSIGNED_TO_INVOICE);
+        X_OKAPI_USER_WITH_UNITS_ASSIGNED_TO_RECORD);
     Response resp = operation.process(INVOICE_PATH, encodePrettily(prepareInvoice(PROTECTED_UNITS)), headers, operation.getContentType(),
         operation.getCode());
 
@@ -108,7 +111,7 @@ public class InvoicesProtectionTest extends ProtectedEntityTestBase {
   public void testModifyUnitsList(ProtectedOperations operation) throws IOException {
     logger.info("=== Invoices protection: Test user without desired permissions modifying acqUnitsIds ===");
 
-    Headers headers = prepareHeaders(EXIST_CONFIG_X_OKAPI_TENANT_LIMIT_10, X_OKAPI_USER_WITH_UNITS_ASSIGNED_TO_INVOICE);
+    Headers headers = prepareHeaders(EXIST_CONFIG_X_OKAPI_TENANT_LIMIT_10, X_OKAPI_USER_WITH_UNITS_ASSIGNED_TO_RECORD);
     Invoice invoice = prepareInvoice(Collections.emptyList());
     invoice.setAcqUnitIds(PROTECTED_UNITS);
     Errors errors = operation.process(INVOICE_PATH, encodePrettily(invoice),

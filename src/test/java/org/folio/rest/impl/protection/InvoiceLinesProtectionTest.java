@@ -2,7 +2,7 @@ package org.folio.rest.impl.protection;
 
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 
-import static org.folio.invoices.utils.ErrorCodes.INVOICE_UNITS_NOT_FOUND;
+import static org.folio.invoices.utils.ErrorCodes.ACQ_UNITS_NOT_FOUND;
 import static org.folio.invoices.utils.ErrorCodes.GENERIC_ERROR_CODE;
 import static org.folio.invoices.utils.ErrorCodes.USER_HAS_NO_PERMISSIONS;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -44,7 +44,7 @@ public class InvoiceLinesProtectionTest extends ProtectedEntityTestBase {
     assertThat(errors.getErrors(), hasSize(1));
     assertThat(errors.getErrors()
       .get(0)
-      .getCode(), equalTo(INVOICE_UNITS_NOT_FOUND.getCode()));
+      .getCode(), equalTo(ACQ_UNITS_NOT_FOUND.getCode()));
     // Verify number of sub-requests
     validateNumberOfRequests(1, 0);
   }
@@ -90,7 +90,7 @@ public class InvoiceLinesProtectionTest extends ProtectedEntityTestBase {
         "=== Invoice-lines protection: Test corresponding invoice has units, units protect operation, user is member of invoice units - expecting of calls to Units, Memberships APIs and allowance of operation ===");
 
     operation.process(INVOICE_LINES_PATH, encodePrettily(prepareInvoiceLine(PROTECTED_UNITS)),
-        prepareHeaders(EXIST_CONFIG_X_OKAPI_TENANT_LIMIT_10, X_OKAPI_USER_WITH_UNITS_ASSIGNED_TO_INVOICE), operation.getContentType(),
+        prepareHeaders(EXIST_CONFIG_X_OKAPI_TENANT_LIMIT_10, X_OKAPI_USER_WITH_UNITS_ASSIGNED_TO_RECORD), operation.getContentType(),
         operation.getCode());
 
     validateNumberOfRequests(1, 1);
