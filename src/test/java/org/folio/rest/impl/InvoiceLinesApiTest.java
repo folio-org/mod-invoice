@@ -7,8 +7,6 @@ import static javax.ws.rs.core.MediaType.TEXT_PLAIN;
 import static org.awaitility.Awaitility.await;
 import static org.folio.invoices.utils.ErrorCodes.PROHIBITED_INVOICE_LINE_CREATION;
 import static org.folio.invoices.utils.HelperUtils.getNoAcqUnitCQL;
-import static org.folio.invoices.utils.ResourcePathResolver.ACQUISITIONS_MEMBERSHIPS;
-import static org.folio.invoices.utils.ResourcePathResolver.ACQUISITIONS_UNITS;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_LINES;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_LINE_NUMBER;
 import static org.folio.rest.impl.AbstractHelper.ID;
@@ -19,6 +17,8 @@ import static org.folio.rest.impl.InvoicesApiTest.REVIEWED_INVOICE_ID;
 import static org.folio.rest.impl.InvoicesImpl.PROTECTED_AND_MODIFIED_FIELDS;
 import static org.folio.rest.impl.MockServer.INVOICE_LINE_NUMBER_ERROR_X_OKAPI_TENANT;
 import static org.folio.rest.impl.MockServer.addMockEntry;
+import static org.folio.rest.impl.MockServer.getAcqMembershipsSearches;
+import static org.folio.rest.impl.MockServer.getAcqUnitsSearches;
 import static org.folio.rest.impl.MockServer.getInvoiceLineCreations;
 import static org.folio.rest.impl.MockServer.getInvoiceLineRetrievals;
 import static org.folio.rest.impl.MockServer.getInvoiceLineUpdates;
@@ -90,8 +90,8 @@ public class InvoiceLinesApiTest extends ApiTestBase {
   public void getInvoicingInvoiceLinesTest() {
     verifyGet(INVOICE_LINES_PATH, prepareHeaders(X_OKAPI_PROTECTED_READ_TENANT), APPLICATION_JSON, 200);
 
-    assertThat(MockServer.serverRqRs.get(ACQUISITIONS_UNITS, HttpMethod.GET), hasSize(1));
-    assertThat(MockServer.serverRqRs.get(ACQUISITIONS_MEMBERSHIPS, HttpMethod.GET), hasSize(1));
+    assertThat(getAcqUnitsSearches(), hasSize(1));
+    assertThat(getAcqMembershipsSearches(), hasSize(1));
 
     List<String> queryParams = getQueryParams(INVOICE_LINES);
     assertThat(queryParams, hasSize(1));
@@ -110,9 +110,8 @@ public class InvoiceLinesApiTest extends ApiTestBase {
 
     assertThat(invoiceLineCollection.getTotalRecords(), is(3));
 
-
-    assertThat(MockServer.serverRqRs.get(ACQUISITIONS_UNITS, HttpMethod.GET), hasSize(1));
-    assertThat(MockServer.serverRqRs.get(ACQUISITIONS_MEMBERSHIPS, HttpMethod.GET), hasSize(1));
+    assertThat(getAcqUnitsSearches(), hasSize(1));
+    assertThat(getAcqMembershipsSearches(), hasSize(1));
 
     List<String> queryParams = getQueryParams(INVOICE_LINES);
     assertThat(queryParams, hasSize(1));
@@ -147,28 +146,17 @@ public class InvoiceLinesApiTest extends ApiTestBase {
   public void getInvoicingInvoiceLinesByIdTest() {
     logger.info("=== Test Get Invoice line By Id ===");
 
-    final InvoiceLine resp = verifySuccessGet(String.format(INVOICE_LINE_ID_PATH, INVOICE_LINE_WITH_OPEN_EXISTED_INVOICE_ID),
-        InvoiceLine.class);
-
-    logger.info(JsonObject.mapFrom(resp).encodePrettily());
-
-    // MODINVOICE-86 calculate the totals and if different from what was retrieved, write it back to storage
-    verifyInvoiceLineUpdateCalls(0);
-    verifyInvoiceSummaryUpdateEvent(0);
+    verifySuccessGetById(INVOICE_LINE_WITH_OPEN_EXISTED_INVOICE_ID, false, false);
   }
 
   @Test
   public void testGetInvoicingInvoiceLinesByIdUpdateTotal() {
     logger.info("=== Test 200 when correct calculated invoice line total is returned without waiting to update in storage ===");
 
-    final InvoiceLine resp = verifySuccessGet(INVOICE_LINES_PATH + "/" + INVOICE_LINE_OUTDATED_TOTAL, InvoiceLine.class);
+    final InvoiceLine resp = verifySuccessGetById(INVOICE_LINE_OUTDATED_TOTAL, true, true);
 
     Double expectedTotal = 4.62;
     assertThat(resp.getTotal(), equalTo(expectedTotal));
-
-    // MODINVOICE-86 Check that invoice line update called which also triggered invoice update
-    verifyInvoiceLineUpdateCalls(1);
-    verifyInvoiceSummaryUpdateEvent(1);
   }
 
   @Test
@@ -178,14 +166,11 @@ public class InvoiceLinesApiTest extends ApiTestBase {
     InvoiceLine invoiceLine = getMockAsJson(INVOICE_LINE_OUTDATED_TOTAL_PATH).mapTo(InvoiceLine.class);
     addMockEntry(INVOICE_LINES, invoiceLine.withId(ID_FOR_INTERNAL_SERVER_ERROR_PUT));
 
-    final Response resp = verifyGet(INVOICE_LINES_PATH + "/" + invoiceLine.getId(), APPLICATION_JSON, 200);
+    // Check that invoice line update called which is expected to fail so invoice update is not triggered
+    final InvoiceLine resp = verifySuccessGetById(invoiceLine.getId(), true, false);
 
     Double expectedTotal = 4.62;
-    assertThat(resp.getBody().as(InvoiceLine.class).getTotal(), equalTo(expectedTotal));
-
-    // Check that invoice line update called which is expected to fail so invoice update is not triggered
-    verifyInvoiceLineUpdateCalls(1);
-    verifyInvoiceSummaryUpdateEvent(0);
+    assertThat(resp.getTotal(), equalTo(expectedTotal));
   }
 
   @Test
@@ -206,7 +191,6 @@ public class InvoiceLinesApiTest extends ApiTestBase {
 
     addMockEntry(INVOICE_LINES, JsonObject.mapFrom(new InvoiceLine().withId(VALID_UUID).withInvoiceId(VALID_UUID)));
     verifyDeleteResponse(String.format(INVOICE_LINE_ID_PATH, VALID_UUID), "", 204);
-    verifyInvoiceSummaryUpdateEvent(1);
   }
 
   @Test
@@ -535,7 +519,7 @@ public class InvoiceLinesApiTest extends ApiTestBase {
     double incorrectAdjustmentTotal = invoiceLine.getDouble("adjustmentsTotal");
     logger.info(String.format("using mock datafile: %s%s.json", INVOICE_LINES_LIST_PATH, id));
 
-    final InvoiceLine resp = verifySuccessGet(INVOICE_LINES_PATH + "/" + id, InvoiceLine.class);
+    final InvoiceLine resp = verifySuccessGetById(id, true, true);
 
     logger.info(JsonObject.mapFrom(resp).encodePrettily());
     assertEquals(id, resp.getId());
@@ -648,5 +632,15 @@ public class InvoiceLinesApiTest extends ApiTestBase {
     assertThat(getInvoiceLineCreations(), hasSize(1));
     InvoiceLine invoiceLineToStorage = getInvoiceLineCreations().get(0).mapTo(InvoiceLine.class);
     assertThat(invoiceLine, equalTo(invoiceLineToStorage));
+  }
+
+  private InvoiceLine verifySuccessGetById(String id, boolean asyncLineUpdate, boolean asyncInvoiceUpdate) {
+    InvoiceLine invoiceLine = verifySuccessGet(String.format(INVOICE_LINE_ID_PATH, id), InvoiceLine.class);
+
+    // MODINVOICE-86 calculate the totals and if different from what was retrieved, write it back to storage
+    verifyInvoiceLineUpdateCalls(asyncLineUpdate ? 1 : 0);
+    verifyInvoiceSummaryUpdateEvent(asyncInvoiceUpdate ? 1 : 0);
+
+    return invoiceLine;
   }
 }
