@@ -14,6 +14,7 @@ import static org.folio.invoices.utils.HelperUtils.encodeQuery;
 import static org.folio.invoices.utils.HelperUtils.getHttpClient;
 import static org.folio.invoices.utils.HelperUtils.handleGetRequest;
 import static org.folio.invoices.utils.HelperUtils.verifyAndExtractBody;
+import static org.folio.rest.RestVerticle.OKAPI_USERID_HEADER;
 import static org.folio.rest.impl.InvoicesImpl.PROTECTED_AND_MODIFIED_FIELDS;
 import static org.folio.rest.RestVerticle.OKAPI_USERID_HEADER;
 
@@ -278,5 +279,9 @@ public abstract class AbstractHelper {
     ctx.owner()
       .eventBus()
       .send(messageAddress.address, data, deliveryOptions);
+  }
+
+  protected String getCurrentUserId() {
+    return okapiHeaders.get(OKAPI_USERID_HEADER);
   }
 }

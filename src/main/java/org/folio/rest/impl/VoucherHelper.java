@@ -31,7 +31,7 @@ public class VoucherHelper extends AbstractHelper {
 
   private static final String CALLING_ENDPOINT_MSG = "Sending {} {}";
   private static final String EXCEPTION_CALLING_ENDPOINT_MSG = "Exception calling {} {}";
-  private static final String GET_VOUCHERS_BY_QUERY = resourcesPath(VOUCHERS) + "?limit=%s&offset=%s%s&lang=%s";
+  private static final String GET_VOUCHERS_BY_QUERY = resourcesPath(VOUCHERS) + SEARCH_PARAMS;
 
   VoucherHelper(HttpClientInterface httpClient, Map<String, String> okapiHeaders, Context ctx, String lang) {
     super(httpClient, okapiHeaders, ctx, lang);
@@ -43,10 +43,8 @@ public class VoucherHelper extends AbstractHelper {
 
   public CompletableFuture<Voucher> getVoucher(String id) {
     CompletableFuture<Voucher> future = new VertxCompletableFuture<>(ctx);
-    getVoucherById(id, lang, httpClient, ctx, okapiHeaders, logger).thenAccept(jsonInvoice -> {
-      logger.info("Successfully retrieved voucher by id: " + jsonInvoice.encodePrettily());
-      future.complete(jsonInvoice.mapTo(Voucher.class));
-    })
+    getVoucherById(id, lang, httpClient, ctx, okapiHeaders, logger)
+      .thenAccept(future::complete)
       .exceptionally(t -> {
         logger.error("Failed to retrieve Voucher", t.getCause());
         future.completeExceptionally(t);

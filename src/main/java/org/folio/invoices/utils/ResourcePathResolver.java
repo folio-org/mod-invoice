@@ -29,8 +29,8 @@ public class ResourcePathResolver {
 
   static {
     Map<String, String> apis = new HashMap<>();
-    apis.put(ACQUISITIONS_UNITS, "/acquisitions-units-storage/units");
-    apis.put(ACQUISITIONS_MEMBERSHIPS, "/acquisitions-units-storage/memberships");
+    apis.put(ACQUISITIONS_UNITS, "/acquisitions-units/units");
+    apis.put(ACQUISITIONS_MEMBERSHIPS, "/acquisitions-units/memberships");
     apis.put(INVOICES, "/invoice-storage/invoices");
     apis.put(INVOICE_LINES, "/invoice-storage/invoice-lines");
     apis.put(INVOICE_LINE_NUMBER, "/invoice-storage/invoice-line-number");
@@ -44,9 +44,11 @@ public class ResourcePathResolver {
     apis.put(INVOICE_DOCUMENTS, "/invoice-storage/invoices/%s/documents");
 
     SUB_OBJECT_COLLECTION_APIS = Collections.unmodifiableMap(apis);
-    SUB_OBJECT_ITEM_APIS = Collections.unmodifiableMap(apis.entrySet()
-      .stream()
-      .collect(Collectors.toMap(Map.Entry::getKey, v -> v.getValue() + "/%s?lang=%s")));
+    SUB_OBJECT_ITEM_APIS = Collections.unmodifiableMap(
+        apis.entrySet()
+            .stream()
+            .collect(Collectors.toMap(Map.Entry::getKey, v -> v.getValue() + "/%s?lang=%s"))
+      );
   }
 
   public static String resourceByIdPath(String field, String id, String lang) {

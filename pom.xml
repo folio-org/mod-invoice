@@ -22,17 +22,11 @@
     <generated_sources_dir>${project.build.directory}/generated-sources</generated_sources_dir>
     <jsonschema2pojo_output_dir>${generated_sources_dir}/jsonschema2pojo</jsonschema2pojo_output_dir>
     <ramlfiles_path>${basedir}/ramls</ramlfiles_path>
-    <ramlfiles_util_path>${ramlfiles_path}/raml-util</ramlfiles_util_path>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <mod-configuration-client.version>5.1.0</mod-configuration-client.version>
   </properties>
 
   <dependencies>
-    <dependency>
-      <groupId>org.folio</groupId>
-      <artifactId>domain-models-api-interfaces</artifactId>
-      <version>${raml-module-builder.version}</version>
-    </dependency>
     <dependency>
       <groupId>org.folio</groupId>
       <artifactId>domain-models-runtime</artifactId>
@@ -132,15 +126,16 @@
         <artifactId>maven-surefire-plugin</artifactId>
         <version>2.22.2</version>
         <configuration>
-          <excludes>
-            <exclude>org/folio/rest/impl/**Test.class</exclude>
-          </excludes>
           <includes>
             <include>org/folio/rest/impl/ApiTestSuite.class</include>
           </includes>
           <systemPropertyVariables>
             <vertx.logger-delegate-factory-class-name>io.vertx.core.logging.Log4j2LogDelegateFactory</vertx.logger-delegate-factory-class-name>
           </systemPropertyVariables>
+          <!-- TODO: update to version 3.0.0 and remove useSystemClassLoader
+               https://issues.folio.org/browse/FOLIO-1609
+               https://issues.apache.org/jira/browse/SUREFIRE-1588
+          -->
           <useSystemClassLoader>false</useSystemClassLoader>
         </configuration>
       </plugin>
@@ -199,13 +194,13 @@
             </configuration>
           </execution>
           <execution>
-            <id>acquisition-units</id>
+            <id>acquisitions-unit</id>
             <goals>
               <goal>generate</goal>
             </goals>
             <configuration>
               <sourceDirectory>${basedir}/ramls/acq-models/acquisitions-unit/schemas</sourceDirectory>
-              <targetPackage>org.folio.rest.acq.model</targetPackage>
+              <targetPackage>org.folio.rest.acq.model.units</targetPackage>
               <generateBuilders>true</generateBuilders>
             </configuration>
           </execution>

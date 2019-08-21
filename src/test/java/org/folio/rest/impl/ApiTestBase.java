@@ -1,43 +1,5 @@
 package org.folio.rest.impl;
 
-import io.restassured.RestAssured;
-import io.restassured.http.Header;
-import io.restassured.http.Headers;
-import io.restassured.response.Response;
-import io.vertx.core.Handler;
-import io.vertx.core.eventbus.Message;
-import io.vertx.core.json.JsonObject;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
-
-import org.apache.commons.io.IOUtils;
-import org.folio.invoices.events.handlers.MessageAddress;
-import org.folio.invoices.utils.HelperUtils;
-import org.folio.rest.jaxrs.model.Invoice;
-import org.folio.rest.jaxrs.model.InvoiceLine;
-import org.folio.rest.jaxrs.model.Invoice.Source;
-import org.folio.rest.jaxrs.model.Invoice.Status;
-import org.folio.rest.jaxrs.model.InvoiceLine.InvoiceLineStatus;
-import org.junit.AfterClass;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Primary;
-
-import java.io.IOException;
-import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.util.Date;
-import java.util.List;
-import java.util.UUID;
-import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeoutException;
-import java.util.stream.Stream;
-
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
@@ -59,6 +21,41 @@ import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.junit.Assert.fail;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.Date;
+import java.util.List;
+import java.util.UUID;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeoutException;
+import java.util.stream.Stream;
+
+import org.apache.commons.io.IOUtils;
+import org.folio.invoices.events.handlers.MessageAddress;
+import org.folio.invoices.utils.HelperUtils;
+import org.folio.rest.jaxrs.model.Invoice;
+import org.folio.rest.jaxrs.model.InvoiceLine;
+import org.junit.AfterClass;
+import org.junit.Before;
+import org.junit.BeforeClass;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
+
+import io.restassured.RestAssured;
+import io.restassured.http.Header;
+import io.restassured.http.Headers;
+import io.restassured.response.Response;
+import io.vertx.core.Handler;
+import io.vertx.core.eventbus.Message;
+import io.vertx.core.json.JsonObject;
+import io.vertx.core.logging.Logger;
+import io.vertx.core.logging.LoggerFactory;
+
 public class ApiTestBase {
 
   public static final String VALID_UUID = "8d3881f6-dd93-46f0-b29d-1c36bdb5c9f9";
@@ -66,9 +63,12 @@ public class ApiTestBase {
   static final String FOLIO_INVOICE_NUMBER_VALUE = "228D126";
   public static final Header X_OKAPI_URL = new Header(OKAPI_URL, "http://localhost:" + mockPort);
   static final Header X_OKAPI_TOKEN = new Header(OKAPI_HEADER_TOKEN, "eyJhbGciOiJIUzI1NiJ9");
-  static final Header X_OKAPI_TENANT = new Header(OKAPI_HEADER_TENANT, "invoiceimpltest");
-  protected static final Header X_OKAPI_USERID = new Header(OKAPI_USERID_HEADER, "d1d0a10b-c563-4c4b-ae22-e5a0c11623eb");
-  protected static final Header EXIST_CONFIG_X_OKAPI_TENANT_LIMIT_10 = new Header(OKAPI_HEADER_TENANT, "test_diku_limit_10");
+  public static final Header X_OKAPI_TENANT = new Header(OKAPI_HEADER_TENANT, "invoiceimpltest");
+  public static final Header X_OKAPI_USER_ID = new Header(OKAPI_USERID_HEADER, "d1d0a10b-c563-4c4b-ae22-e5a0c11623eb");
+  public static final String PROTECTED_READ_ONLY_TENANT = "protected_read";
+  public static final Header X_OKAPI_PROTECTED_READ_TENANT = new Header(OKAPI_HEADER_TENANT, PROTECTED_READ_ONLY_TENANT);
+  public static final String USER_ID_ASSIGNED_TO_ACQ_UNITS = "480dba68-ee84-4b9c-a374-7e824fc49227";
+  static final Header X_OKAPI_USER_ID_WITH_ACQ_UNITS = new Header(OKAPI_USERID_HEADER, USER_ID_ASSIGNED_TO_ACQ_UNITS);
 
   static final String BASE_MOCK_DATA_PATH = "mockdata/";
 
@@ -76,13 +76,12 @@ public class ApiTestBase {
   static final String VOUCHER_NUMBER_VALUE = "1";
   static final String LANG_PARAM = "lang";
   static final String INVALID_LANG = "english";
-  public static final String BAD_QUERY = "unprocessableQuery";
 
   public static final String ID_DOES_NOT_EXIST = "d25498e7-3ae6-45fe-9612-ec99e2700d2f";
   static final String ID_FOR_INTERNAL_SERVER_ERROR = "168f8a86-d26c-406e-813f-c7527f241ac3";
   static final String ID_FOR_INTERNAL_SERVER_ERROR_PUT = "bad500bb-bbbb-500b-bbbb-bbbbbbbbbbbb";
-  protected static final String MIN_INVOICE_ID = UUID.randomUUID().toString();
-  protected static final String PROTECTED_READ_ONLY_TENANT = "protected_read";
+
+  public static final String MIN_INVOICE_ID = UUID.randomUUID().toString();
 
   static {
     System.setProperty(LoggerFactory.LOGGER_DELEGATE_FACTORY_CLASS_NAME, "io.vertx.core.logging.Log4j2LogDelegateFactory");
@@ -131,6 +130,7 @@ public class ApiTestBase {
   protected void clearServiceInteractions() {
     eventMessages.clear();
     MockServer.serverRqRs.clear();
+    MockServer.serverRqQueries.clear();
   }
 
   @AfterClass
@@ -142,7 +142,7 @@ public class ApiTestBase {
     }
   }
 
-  protected static String getMockData(String path) throws IOException {
+  static String getMockData(String path) throws IOException {
     logger.info("Using mock datafile: {}", path);
     try (InputStream resourceAsStream = ApiTestBase.class.getClassLoader().getResourceAsStream(path)) {
       if (resourceAsStream != null) {
@@ -194,16 +194,16 @@ public class ApiTestBase {
   }
 
   Response verifyPut(String url, String body, String expectedContentType, int expectedCode) {
-    Headers headers = prepareHeaders(X_OKAPI_URL, X_OKAPI_TENANT, X_OKAPI_TOKEN);
+    Headers headers = prepareHeaders(X_OKAPI_TENANT, X_OKAPI_TOKEN);
     return verifyPut(url, body, headers,expectedContentType, expectedCode);
   }
 
   Response verifyPut(String url, JsonObject body, String expectedContentType, int expectedCode) {
-    Headers headers = prepareHeaders(X_OKAPI_URL, X_OKAPI_TENANT, X_OKAPI_TOKEN);
+    Headers headers = prepareHeaders(X_OKAPI_TENANT, X_OKAPI_TOKEN);
     return verifyPut(url, body.encode(), headers,expectedContentType, expectedCode);
   }
 
-  Response verifyPut(String url, String body, Headers headers, String expectedContentType, int expectedCode) {
+  public Response verifyPut(String url, String body, Headers headers, String expectedContentType, int expectedCode) {
     return RestAssured
       .with()
         .headers(headers)
@@ -219,7 +219,7 @@ public class ApiTestBase {
   }
 
   Response verifyGet(String url, String expectedContentType, int expectedCode) {
-    Headers headers = prepareHeaders(X_OKAPI_URL, X_OKAPI_TENANT);
+    Headers headers = prepareHeaders(X_OKAPI_TENANT);
     return verifyGet(url, headers, expectedContentType, expectedCode);
   }
 
@@ -227,6 +227,7 @@ public class ApiTestBase {
     Response response = RestAssured
       .with()
         .headers(headers)
+        .header(X_OKAPI_URL)
       .get(url)
         .then()
         .log().all()
@@ -246,15 +247,20 @@ public class ApiTestBase {
     return verifyGet(url, APPLICATION_JSON, 200).as(clazz);
   }
 
+  <T> T verifySuccessGet(String url, Class<T> clazz, Header header) {
+    return verifyGet(url, prepareHeaders(header), APPLICATION_JSON, 200).as(clazz);
+  }
+
   Response verifyDeleteResponse(String url, String expectedContentType, int expectedCode) {
-    Headers headers =  prepareHeaders(X_OKAPI_URL, X_OKAPI_TENANT);
+    Headers headers =  prepareHeaders(X_OKAPI_TENANT);
     return verifyDeleteResponse(url, headers, expectedContentType, expectedCode);
   }
 
-  Response verifyDeleteResponse(String url, Headers headers, String expectedContentType, int expectedCode) {
+  public Response verifyDeleteResponse(String url, Headers headers, String expectedContentType, int expectedCode) {
     Response response = RestAssured
       .with()
         .headers(headers)
+        .header(X_OKAPI_URL)
       .delete(url)
         .then()
           .statusCode(expectedCode)
@@ -268,7 +274,7 @@ public class ApiTestBase {
     return response;
   }
 
-  protected Headers prepareHeaders(Header... headers) {
+  public Headers prepareHeaders(Header... headers) {
     return new Headers(headers);
   }
 
@@ -296,28 +302,37 @@ public class ApiTestBase {
     }
   }
 
-  public static String encodePrettily(Object entity) {
-    return JsonObject.mapFrom(entity)
-      .encodePrettily();
-  }
-
-  protected Invoice getMinimalContentInvoice() {
-    return new Invoice().withCurrency("EUR")
+  public static Invoice getMinimalContentInvoice() {
+    return new Invoice()
       .withId(MIN_INVOICE_ID)
-      .withInvoiceDate(new Date(System.currentTimeMillis()))
-      .withPaymentMethod("EFT")
-      .withStatus(Status.REVIEWED)
-      .withSource(Source.API)
-      .withVendorInvoiceNo("YK75851")
-      .withVendorId("168f8a63-d612-406e-813f-c7527f241ac3");
+      .withAccountingCode("CODE")
+      .withCurrency("EUR")
+      .withExportToAccounting(false)
+      .withInvoiceDate(new Date())
+      .withPaymentMethod("Cash")
+      .withStatus(Invoice.Status.OPEN)
+      .withSource(Invoice.Source.API)
+      .withVendorInvoiceNo("vendorNumber")
+      .withVendorId(UUID.randomUUID().toString())
+      .withTotal(0.0)
+      .withSubTotal(0.0)
+      .withAdjustmentsTotal(0.0);
   }
 
-  protected InvoiceLine getMinimalContentInvoiceLine(String invoiceId) {
-    return new InvoiceLine().withDescription("Some description")
+  public static InvoiceLine getMinimalContentInvoiceLine() {
+    return getMinimalContentInvoiceLine(MIN_INVOICE_ID);
+  }
+
+  public static InvoiceLine getMinimalContentInvoiceLine(String invoiceId) {
+    return new InvoiceLine()
+      .withId(UUID.randomUUID().toString())
+      .withDescription("Test line")
       .withInvoiceId(invoiceId)
-      .withInvoiceLineStatus(InvoiceLineStatus.OPEN)
-      .withSubTotal(2.2d)
-      .withQuantity(3)
-      .withReleaseEncumbrance(false);
+      .withInvoiceLineStatus(InvoiceLine.InvoiceLineStatus.OPEN)
+      .withSubTotal(1.0)
+      .withQuantity(1)
+      .withAdjustmentsTotal(0.0)
+      .withTotal(1.0)
+      .withReleaseEncumbrance(true);
   }
 }

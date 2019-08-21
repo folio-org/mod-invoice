@@ -1,43 +1,53 @@
 package org.folio.rest.impl;
 
 import static io.vertx.core.json.JsonObject.mapFrom;
+import static org.apache.commons.lang3.StringUtils.isEmpty;
 import static org.folio.invoices.utils.ErrorCodes.PROHIBITED_INVOICE_LINE_CREATION;
-import static org.folio.invoices.utils.HelperUtils.*;
+import static org.folio.invoices.utils.HelperUtils.INVOICE;
+import static org.folio.invoices.utils.HelperUtils.INVOICE_ID;
+import static org.folio.invoices.utils.HelperUtils.calculateInvoiceLineTotals;
+import static org.folio.invoices.utils.HelperUtils.combineCqlExpressions;
+import static org.folio.invoices.utils.HelperUtils.findChangedProtectedFields;
+import static org.folio.invoices.utils.HelperUtils.getEndpointWithQuery;
+import static org.folio.invoices.utils.HelperUtils.getHttpClient;
+import static org.folio.invoices.utils.HelperUtils.getInvoiceById;
+import static org.folio.invoices.utils.HelperUtils.handleDeleteRequest;
+import static org.folio.invoices.utils.HelperUtils.handleGetRequest;
+import static org.folio.invoices.utils.HelperUtils.handlePutRequest;
+import static org.folio.invoices.utils.HelperUtils.isPostApproval;
+import static org.folio.invoices.utils.ProtectedOperationType.READ;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_LINES;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_LINE_NUMBER;
 import static org.folio.invoices.utils.ResourcePathResolver.resourceByIdPath;
 import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
-
-import io.vertx.core.Context;
-import io.vertx.core.json.JsonObject;
 
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 
-import me.escoffier.vertx.completablefuture.VertxCompletableFuture;
-
 import org.folio.invoices.events.handlers.MessageAddress;
 import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.invoices.utils.InvoiceLineProtectedFields;
-import org.folio.invoices.utils.ProtectedOperationType;
 import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.jaxrs.model.InvoiceLine;
 import org.folio.rest.jaxrs.model.InvoiceLineCollection;
 import org.folio.rest.jaxrs.model.SequenceNumber;
 import org.folio.rest.tools.client.interfaces.HttpClientInterface;
 
+import io.vertx.core.Context;
+import io.vertx.core.json.JsonObject;
+import me.escoffier.vertx.completablefuture.VertxCompletableFuture;
+
 public class InvoiceLineHelper extends AbstractHelper {
 
   private static final String INVOICE_LINE_NUMBER_ENDPOINT = resourcesPath(INVOICE_LINE_NUMBER) + "?" + INVOICE_ID + "=";
-  private static final String GET_INVOICE_LINES_BY_QUERY = resourcesPath(INVOICE_LINES) + "?limit=%s&offset=%s%s&lang=%s";
+  public static final String GET_INVOICE_LINES_BY_QUERY = resourcesPath(INVOICE_LINES) + SEARCH_PARAMS;
 
   private final ProtectionHelper protectionHelper;
-  
+
   InvoiceLineHelper(Map<String, String> okapiHeaders, Context ctx, String lang) {
-    super(okapiHeaders, ctx, lang);
-    protectionHelper = new ProtectionHelper(httpClient, okapiHeaders, ctx, lang);
+    this(getHttpClient(okapiHeaders), okapiHeaders, ctx, lang);
   }
 
   InvoiceLineHelper(HttpClientInterface httpClient, Map<String, String> okapiHeaders, Context ctx, String lang) {
@@ -46,27 +56,28 @@ public class InvoiceLineHelper extends AbstractHelper {
   }
 
   public CompletableFuture<InvoiceLineCollection> getInvoiceLines(int limit, int offset, String query) {
-    CompletableFuture<InvoiceLineCollection> future = new VertxCompletableFuture<>(ctx);
-    try {
-      String endpoint = String.format(GET_INVOICE_LINES_BY_QUERY, limit, offset, getEndpointWithQuery(query, logger), lang);
-      handleGetRequest(endpoint, httpClient, ctx, okapiHeaders, logger)
-        .thenCompose(jsonInvoiceLines -> VertxCompletableFuture.supplyBlockingAsync(ctx, () -> {
-            if (logger.isInfoEnabled()) {
-              logger.info("Successfully retrieved invoice lines: {}", jsonInvoiceLines.encodePrettily());
-            }
-            return jsonInvoiceLines.mapTo(InvoiceLineCollection.class);
-          })
-        )
-        .thenAccept(future::complete)
-        .exceptionally(t -> {
-          future.completeExceptionally(t);
-          return null;
-        });
-    } catch (Exception e) {
-      future.completeExceptionally(e);
-    }
+    return protectionHelper.buildAcqUnitsCqlExprToSearchRecords(INVOICE_LINES)
+      .thenCompose(acqUnitsCqlExpr -> {
+        String queryParam;
+        if (isEmpty(query)) {
+          queryParam = getEndpointWithQuery(acqUnitsCqlExpr, logger);
+        } else {
+          queryParam = getEndpointWithQuery(combineCqlExpressions("and", acqUnitsCqlExpr, query), logger);
+        }
+        String endpoint = String.format(GET_INVOICE_LINES_BY_QUERY, limit, offset, queryParam, lang);
+        return getInvoiceLineCollection(endpoint);
+      });
+  }
 
-    return future;
+  CompletableFuture<InvoiceLineCollection> getInvoiceLineCollection(String endpoint) {
+    return handleGetRequest(endpoint, httpClient, ctx, okapiHeaders, logger)
+      .thenCompose(jsonInvoiceLines -> VertxCompletableFuture.supplyBlockingAsync(ctx, () -> {
+        if (logger.isInfoEnabled()) {
+          logger.info("Successfully retrieved invoice lines: {}", jsonInvoiceLines.encodePrettily());
+        }
+          return jsonInvoiceLines.mapTo(InvoiceLineCollection.class);
+        })
+      );
   }
 
   public CompletableFuture<InvoiceLine> getInvoiceLine(String id) {
@@ -152,7 +163,7 @@ public class InvoiceLineHelper extends AbstractHelper {
 
     // GET invoice-line from storage
     getInvoiceLine(id)
-      .thenCompose(invoiceLineFromStorage -> getInvoice(invoiceLineFromStorage).thenApply(invoice -> {
+      .thenCompose(invoiceLineFromStorage -> getInvoiceAndCheckProtection(invoiceLineFromStorage).thenApply(invoice -> {
         boolean isTotalOutOfSync = reCalculateInvoiceLineTotals(invoiceLineFromStorage, invoice);
         if (isTotalOutOfSync) {
           updateOutOfSyncInvoiceLine(invoiceLineFromStorage, invoice);
@@ -204,16 +215,12 @@ public class InvoiceLineHelper extends AbstractHelper {
   }
 
   /**
-   * Creates Invoice Line if its content is valid and if user has permission
-   * 
+   * Creates Invoice Line if its content is valid
    * @param invoiceLine {@link InvoiceLine} to be created
-   * @return completable future which might hold {@link InvoiceLine} on success, {@code null} if validation fails or an exception if
-   *         any issue happens
+   * @return completable future which might hold {@link InvoiceLine} on success, {@code null} if validation fails or an exception if any issue happens
    */
   CompletableFuture<InvoiceLine> createInvoiceLine(InvoiceLine invoiceLine) {
     return getInvoice(invoiceLine).thenApply(this::checkIfInvoiceLineCreationAllowed)
-      .thenCompose(invoice -> protectionHelper.isOperationRestricted(invoice.getAcqUnitIds(), ProtectedOperationType.CREATE)
-        .thenApply(v -> invoice))
       .thenCompose(invoice -> createInvoiceLine(invoiceLine, invoice).thenApply(line -> {
         updateInvoice(invoice);
         return line;
@@ -229,6 +236,12 @@ public class InvoiceLineHelper extends AbstractHelper {
 
   private CompletableFuture<Invoice> getInvoice(InvoiceLine invoiceLine) {
     return getInvoiceById(invoiceLine.getInvoiceId(), lang, httpClient, ctx, okapiHeaders, logger);
+  }
+
+  private CompletableFuture<Invoice> getInvoiceAndCheckProtection(InvoiceLine invoiceLineFromStorage) {
+    return getInvoice(invoiceLineFromStorage)
+      .thenCompose(invoice -> protectionHelper.isOperationRestricted(invoice.getAcqUnitIds(), READ)
+        .thenApply(aVoid -> invoice));
   }
 
   /**

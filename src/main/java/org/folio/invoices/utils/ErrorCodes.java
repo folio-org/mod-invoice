@@ -18,11 +18,9 @@ public enum ErrorCodes {
   FUNDS_NOT_FOUND("fundsNotFound", "Fund records are not found"),
   VOUCHER_NUMBER_PREFIX_NOT_ALPHA("voucherNumberPrefixNotAlpha", "Voucher number prefix must contains only Unicode letters"),
   PROHIBITED_INVOICE_LINE_CREATION("prohibitedInvoiceLineCreation","It is not allowed to add invoice line to the invoice that has been approved"),
-  ACQ_UNITS_NOT_FOUND("acqUnitsNotFound", "Acquisition units not found"),
+  MISMATCH_BETWEEN_ID_IN_PATH_AND_BODY("idMismatch", "Mismatch between id in path and request body"),
   USER_HAS_NO_PERMISSIONS("userHasNoPermission", "User does not have permissions - operation is restricted"),
-  USER_HAS_NO_ACQ_PERMISSIONS("userHasNoAcqUnitsPermission", "User does not have permissions to manage acquisition units assignments - operation is restricted"),
-  MISMATCH_BETWEEN_ID_IN_PATH_AND_BODY("idMismatch", "Mismatch between id in path and request body");
-
+  ACQ_UNITS_NOT_FOUND("acqUnitsNotFound", "Acquisition units not found");
 
   private final String code;
   private final String description;

@@ -5,6 +5,8 @@ import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 import static javax.ws.rs.core.MediaType.TEXT_PLAIN;
 import static javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
 import static org.apache.commons.lang3.StringUtils.EMPTY;
+import static org.folio.invoices.utils.ResourcePathResolver.ACQUISITIONS_MEMBERSHIPS;
+import static org.folio.invoices.utils.ResourcePathResolver.ACQUISITIONS_UNITS;
 import static org.folio.invoices.utils.ResourcePathResolver.FOLIO_INVOICE_NUMBER;
 import static org.folio.invoices.utils.ResourcePathResolver.FUNDS;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICES;
@@ -16,8 +18,6 @@ import static org.folio.invoices.utils.ResourcePathResolver.VOUCHERS;
 import static org.folio.invoices.utils.ResourcePathResolver.VOUCHER_LINES;
 import static org.folio.invoices.utils.ResourcePathResolver.VOUCHER_NUMBER;
 import static org.folio.invoices.utils.ResourcePathResolver.VOUCHER_NUMBER_START;
-import static org.folio.invoices.utils.ResourcePathResolver.ACQUISITIONS_UNITS;
-import static org.folio.invoices.utils.ResourcePathResolver.ACQUISITIONS_MEMBERSHIPS;
 import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
 import static org.folio.rest.RestVerticle.OKAPI_HEADER_TENANT;
 import static org.folio.rest.impl.AbstractHelper.ID;
@@ -41,15 +41,17 @@ import static org.folio.rest.impl.InvoiceLinesApiTest.INVOICE_LINES_MOCK_DATA_PA
 import static org.folio.rest.impl.InvoicesApiTest.BAD_QUERY;
 import static org.folio.rest.impl.InvoicesApiTest.EXISTING_VENDOR_INV_NO;
 import static org.folio.rest.impl.InvoicesApiTest.INVOICE_MOCK_DATA_PATH;
+import static org.folio.rest.impl.ProtectionHelper.ACQUISITIONS_UNIT_ID;
 import static org.folio.rest.impl.VoucherLinesApiTest.VOUCHER_LINES_MOCK_DATA_PATH;
 import static org.folio.rest.impl.VouchersApiTest.VOUCHERS_LIST_PATH;
 import static org.folio.rest.impl.VouchersApiTest.VOUCHER_MOCK_DATA_PATH;
-import static org.folio.rest.impl.ProtectionHelper.ACQUISITIONS_UNIT_ID;
 import static org.junit.Assert.fail;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -71,9 +73,9 @@ import org.folio.rest.acq.model.VoucherLine;
 import org.folio.rest.acq.model.VoucherLineCollection;
 import org.folio.rest.acq.model.finance.Fund;
 import org.folio.rest.acq.model.finance.FundCollection;
+import org.folio.rest.acq.model.units.AcquisitionsUnitCollection;
+import org.folio.rest.acq.model.units.AcquisitionsUnitMembershipCollection;
 import org.folio.rest.acq.model.orders.CompositePoLine;
-import org.folio.rest.acq.model.AcquisitionsUnitCollection;
-import org.folio.rest.acq.model.AcquisitionsUnitMembershipCollection;
 import org.folio.rest.jaxrs.model.Config;
 import org.folio.rest.jaxrs.model.Configs;
 import org.folio.rest.jaxrs.model.Document;
@@ -112,7 +114,6 @@ public class MockServer {
   static final String TEST_PREFIX = "testPrefix";
   private static final String INVALID_PREFIX = "12-prefix";
 
-  static Table<String, HttpMethod, List<JsonObject>> serverRqRs = HashBasedTable.create();
   private static final String INVOICE_NUMBER_ERROR_TENANT = "po_number_error_tenant";
   private static final String INVOICE_LINE_NUMBER_ERROR_TENANT = "invoice_line_number_error_tenant";
   private static final String VOUCHER_NUMBER_ERROR_TENANT = "voucher_number_error_tenant";
@@ -131,10 +132,10 @@ public class MockServer {
 
   private static final String INVOICE_LINES_COLLECTION = BASE_MOCK_DATA_PATH + "invoiceLines/invoice_lines.json";
   private static final String VOUCHER_LINES_COLLECTION = BASE_MOCK_DATA_PATH + "voucherLines/voucher_lines.json";
+  private static final String ACQUISITIONS_UNITS_MOCK_DATA_PATH = BASE_MOCK_DATA_PATH + "acquisitionUnits";
+  static final String ACQUISITIONS_UNITS_COLLECTION = ACQUISITIONS_UNITS_MOCK_DATA_PATH + "/units.json";
+  static final String ACQUISITIONS_MEMBERSHIPS_COLLECTION = ACQUISITIONS_UNITS_MOCK_DATA_PATH + "/memberships.json";
   private static final String PO_LINES_MOCK_DATA_PATH = BASE_MOCK_DATA_PATH + "poLines/";
-  private static final String ACQUISITIONS_UNITS_MOCK_DATA_PATH = BASE_MOCK_DATA_PATH + "acquisitionsUnits/units";
-  private static final String ACQUISITIONS_UNITS_COLLECTION = ACQUISITIONS_UNITS_MOCK_DATA_PATH + "/units.json";
-  private static final String ACQUISITIONS_MEMBERSHIPS_COLLECTION = ACQUISITIONS_UNITS_MOCK_DATA_PATH + "/memberships.json";
   private static final String ID_PATH_PARAM = "/:" + ID;
   private static final String VALUE_PATH_PARAM = "/:value";
   private static final String TOTAL_RECORDS = "totalRecords";
@@ -156,6 +157,9 @@ public class MockServer {
 
   private final int port;
   private final Vertx vertx;
+
+  static Table<String, HttpMethod, List<JsonObject>> serverRqRs = HashBasedTable.create();
+  static HashMap<String, List<String>> serverRqQueries = new HashMap<>();
 
   MockServer(int port) {
     this.port = port;
@@ -189,13 +193,13 @@ public class MockServer {
   }
 
   public static List<JsonObject> getAcqUnitsSearches() {
-    return serverRqRs.get(ACQUISITIONS_UNITS, HttpMethod.GET);
+    return getRqRsEntries(HttpMethod.GET, ACQUISITIONS_UNITS);
   }
-  
+
   public static List<JsonObject> getAcqMembershipsSearches() {
-    return serverRqRs.get(ACQUISITIONS_MEMBERSHIPS, HttpMethod.GET);
+    return getRqRsEntries(HttpMethod.GET, ACQUISITIONS_MEMBERSHIPS);
   }
-  
+
   public static List<JsonObject> getInvoiceSearches() {
     return getCollectionRecords(getRqRsEntries(HttpMethod.GET, INVOICES));
   }
@@ -246,8 +250,6 @@ public class MockServer {
     router.route(HttpMethod.POST, resourcesPath(VOUCHER_LINES)).handler(ctx -> handlePostEntry(ctx, VoucherLine.class, VOUCHER_LINES));
     router.route(HttpMethod.POST, "/invoice-storage/invoices/:id/documents").handler(this::handlePostInvoiceDocument);
 
-    router.route(HttpMethod.GET, resourcesPath(ACQUISITIONS_UNITS)).handler(this::handleGetAcquisitionsUnits);
-    router.route(HttpMethod.GET, resourcesPath(ACQUISITIONS_MEMBERSHIPS)).handler(this::handleGetAcquisitionsMemberships);
     router.route(HttpMethod.GET, resourcesPath(INVOICES)).handler(this::handleGetInvoices);
     router.route(HttpMethod.GET, resourcesPath(INVOICE_LINES)).handler(this::handleGetInvoiceLines);
     router.route(HttpMethod.GET, resourceByIdPath(INVOICES)).handler(this::handleGetInvoiceById);
@@ -265,6 +267,8 @@ public class MockServer {
     router.route(HttpMethod.GET,"/configurations/entries").handler(this::handleConfigurationModuleResponse);
     router.route(HttpMethod.GET, "/invoice-storage/invoices/:id/documents").handler(this::handleGetInvoiceDocuments);
     router.route(HttpMethod.GET, "/invoice-storage/invoices/:id/documents/:documentId").handler(this::handleGetInvoiceDocumentById);
+    router.route(HttpMethod.GET, resourcesPath(ACQUISITIONS_MEMBERSHIPS)).handler(this::handleGetAcquisitionsMemberships);
+    router.route(HttpMethod.GET, resourcesPath(ACQUISITIONS_UNITS)).handler(this::handleGetAcquisitionsUnits);
 
     router.route(HttpMethod.DELETE, resourceByIdPath(INVOICES)).handler(ctx -> handleDeleteRequest(ctx, INVOICES));
     router.route(HttpMethod.DELETE, resourceByIdPath(INVOICE_LINES)).handler(ctx -> handleDeleteRequest(ctx, INVOICE_LINES));
@@ -281,57 +285,52 @@ public class MockServer {
     return router;
   }
 
-  private void handleGetAcquisitionsMemberships(RoutingContext ctx) {
-    logger.info("handleGetAcquisitionsMemberships got: " + ctx.request()
-      .path());
 
-    String query = StringUtils.trimToEmpty(ctx.request()
-      .getParam("query"));
+  private void handleGetAcquisitionsMemberships(RoutingContext ctx) {
+    logger.info("handleGetAcquisitionsMemberships got: " + ctx.request().path());
+
+    String query = StringUtils.trimToEmpty(ctx.request().getParam("query"));
     if (query.contains(BAD_QUERY)) {
       serverResponse(ctx, 400, APPLICATION_JSON, Response.Status.BAD_REQUEST.getReasonPhrase());
     } else {
 
-      Matcher userIdMatcher = Pattern.compile(".*userId==(\\S+).*")
-        .matcher(query);
+      Matcher userIdMatcher = Pattern.compile(".*userId==(\\S+).*").matcher(query);
       final String userId = userIdMatcher.find() ? userIdMatcher.group(1) : EMPTY;
 
       AcquisitionsUnitMembershipCollection memberships;
       try {
-        memberships = new JsonObject(ApiTestBase.getMockData(ACQUISITIONS_MEMBERSHIPS_COLLECTION))
-          .mapTo(AcquisitionsUnitMembershipCollection.class);
+        memberships = new JsonObject(ApiTestBase.getMockData(ACQUISITIONS_MEMBERSHIPS_COLLECTION)).mapTo(AcquisitionsUnitMembershipCollection.class);
       } catch (IOException e) {
         memberships = new AcquisitionsUnitMembershipCollection();
       }
 
       if (StringUtils.isNotEmpty(userId)) {
-        memberships.getAcquisitionsUnitMemberships()
-          .removeIf(membership -> !membership.getUserId()
-            .equals(userId));
+        memberships.getAcquisitionsUnitMemberships().removeIf(membership -> !membership.getUserId().equals(userId));
         List<String> acquisitionsUnitIds = extractIdsFromQuery(ACQUISITIONS_UNIT_ID, query);
         if (!acquisitionsUnitIds.isEmpty()) {
-          memberships.getAcquisitionsUnitMemberships()
-            .removeIf(membership -> !acquisitionsUnitIds.contains(membership.getAcquisitionsUnitId()));
+          memberships.getAcquisitionsUnitMemberships().removeIf(membership -> !acquisitionsUnitIds.contains(membership.getAcquisitionsUnitId()));
         }
       }
 
-      JsonObject data = JsonObject.mapFrom(memberships.withTotalRecords(memberships.getAcquisitionsUnitMemberships()
-        .size()));
+      JsonObject data = JsonObject.mapFrom(memberships.withTotalRecords(memberships.getAcquisitionsUnitMemberships().size()));
       addServerRqRsData(HttpMethod.GET, ACQUISITIONS_MEMBERSHIPS, data);
       serverResponse(ctx, 200, APPLICATION_JSON, data.encodePrettily());
     }
   }
 
   private void handleGetAcquisitionsUnits(RoutingContext ctx) {
-    logger.info("handleGetAcquisitionsUnits got: " + ctx.request()
-      .path());
-    String tenant = ctx.request()
-      .getHeader(OKAPI_HEADER_TENANT);
-    String query = StringUtils.trimToEmpty(ctx.request()
-      .getParam("query"));
+    logger.info("handleGetAcquisitionsUnits got: " + ctx.request().path());
+
+    String query = StringUtils.trimToEmpty(ctx.request().getParam("query"));
+    if (query.contains(BAD_QUERY)) {
+      serverResponse(ctx, 400, APPLICATION_JSON, Response.Status.BAD_REQUEST.getReasonPhrase());
+      return;
+    }
 
     AcquisitionsUnitCollection units;
 
     try {
+      String tenant = ctx.request().getHeader(OKAPI_HEADER_TENANT);
       if (PROTECTED_READ_ONLY_TENANT.equals(tenant)) {
         units = new AcquisitionsUnitCollection();
       } else {
@@ -341,32 +340,16 @@ public class MockServer {
       units = new AcquisitionsUnitCollection();
     }
 
-    if (query.contains(BAD_QUERY)) {
-      serverResponse(ctx, 400, APPLICATION_JSON, Response.Status.BAD_REQUEST.getReasonPhrase());
-    } else {
-
-      if (query.contains("id==")) {
-        List<String> ids = extractIdsFromQuery(query);
-        if (!ids.isEmpty()) {
-          units.getAcquisitionsUnits()
-            .removeIf(unit -> !ids.contains(unit.getId()));
-        }
+    if (query.contains("id==")) {
+      List<String> ids = extractIdsFromQuery(query);
+      if (!ids.isEmpty()) {
+        units.getAcquisitionsUnits().removeIf(unit -> !ids.contains(unit.getId()));
       }
-
-      JsonObject data = JsonObject.mapFrom(units.withTotalRecords(units.getAcquisitionsUnits()
-        .size()));
-      addServerRqRsData(HttpMethod.GET, ACQUISITIONS_UNITS, data);
-      serverResponse(ctx, 200, APPLICATION_JSON, data.encodePrettily());
     }
-  }
 
-  private List<String> extractIdsFromQuery(String fieldName, String query) {
-    Matcher matcher = Pattern.compile(".*" + fieldName + "==\\((.+)\\).*").matcher(query);
-    if (matcher.find()) {
-      return StreamEx.split(matcher.group(1), " or ").toList();
-    } else {
-      return Collections.emptyList();
-    }
+    JsonObject data = JsonObject.mapFrom(units.withTotalRecords(units.getAcquisitionsUnits().size()));
+    addServerRqRsData(HttpMethod.GET, ACQUISITIONS_UNITS, data);
+    serverResponse(ctx, 200, APPLICATION_JSON, data.encodePrettily());
   }
 
   private void handleGetInvoiceDocuments(RoutingContext ctx) {
@@ -494,10 +477,9 @@ public class MockServer {
 
     String tenant = ctx.request().getHeader(OKAPI_HEADER_TENANT);
     String queryParam = StringUtils.trimToEmpty(ctx.request().getParam(QUERY));
+    addServerRqQuery(INVOICE_LINES, queryParam);
     String invoiceId = EMPTY;
-    if (queryParam.contains(INVOICE_ID)) {
-      invoiceId = queryParam.split(INVOICE_ID + "==")[1];
-    }
+    List<String> invoiceIds = Collections.emptyList();
     if (queryParam.contains(BAD_QUERY)) {
       serverResponse(ctx, 400, APPLICATION_JSON, Response.Status.BAD_REQUEST.getReasonPhrase());
     } else if (queryParam.contains(ID_FOR_INTERNAL_SERVER_ERROR) || GET_INVOICE_LINES_ERROR_TENANT.equals(tenant)) {
@@ -512,11 +494,24 @@ public class MockServer {
         }
       };
 
+      if (queryParam.contains(INVOICE_ID)) {
+        Matcher matcher = Pattern.compile(".*" + INVOICE_ID + "==(\\S[^)]+).*").matcher(queryParam);
+        invoiceId = matcher.find() ? matcher.group(1) : EMPTY;
+      } else if (queryParam.startsWith("id==")) {
+        invoiceIds = extractIdsFromQuery(queryParam);
+      }
+
       InvoiceLineCollection invoiceLineCollection = new InvoiceLineCollection();
       List<InvoiceLine> invoiceLines  = getMockEntries(INVOICE_LINES, InvoiceLine.class).orElseGet(getFromFile);
+      invoiceLineCollection.setInvoiceLines(invoiceLines);
 
-      Function<InvoiceLine, String> invoiceIdGetter = InvoiceLine::getInvoiceId;
-      invoiceLineCollection.setInvoiceLines(filterEntriesByStringValue(invoiceId, invoiceLines, invoiceIdGetter));
+      Iterator<InvoiceLine> iterator = invoiceLines.iterator();
+      while (iterator.hasNext()) {
+        InvoiceLine invoiceLine = iterator.next();
+        if (invoiceIds.isEmpty() ? !invoiceId.equals(invoiceLine.getInvoiceId()) : !invoiceIds.contains(invoiceLine.getId())) {
+          iterator.remove();
+        }
+      }
       invoiceLineCollection.setTotalRecords(invoiceLineCollection.getInvoiceLines().size());
 
       JsonObject invoiceLinesJson = JsonObject.mapFrom(invoiceLineCollection);
@@ -608,15 +603,17 @@ public class MockServer {
 
   private void handleGetInvoices(RoutingContext ctx) {
     String queryParam = StringUtils.trimToEmpty(ctx.request().getParam(QUERY));
+    addServerRqQuery(INVOICES, queryParam);
     if (queryParam.contains(BAD_QUERY)) {
       serverResponse(ctx, 400, APPLICATION_JSON, Response.Status.BAD_REQUEST.getReasonPhrase());
     } else if (queryParam.contains(ID_FOR_INTERNAL_SERVER_ERROR)) {
       serverResponse(ctx, 500, APPLICATION_JSON, Response.Status.INTERNAL_SERVER_ERROR.getReasonPhrase());
     } else {
       JsonObject invoice = new JsonObject();
-      final String VENDOR_INVOICE_NUMBER_QUERY = "vendorInvoiceNo==";
-      switch (queryParam) {
-        case VENDOR_INVOICE_NUMBER_QUERY + EXISTING_VENDOR_INV_NO:
+      Matcher matcher = Pattern.compile(".*vendorInvoiceNo==(\\S[^)]+).*").matcher(queryParam);
+      final String vendorNumber = matcher.find() ? matcher.group(1) : EMPTY;
+      switch (vendorNumber) {
+        case EXISTING_VENDOR_INV_NO:
           invoice.put(TOTAL_RECORDS, 1);
           break;
         case EMPTY:
@@ -949,13 +946,25 @@ public class MockServer {
     }
   }
 
+  private void addServerRqQuery(String objName, String query) {
+    serverRqQueries.computeIfAbsent(objName, key -> new ArrayList<>())
+      .add(query);
+  }
+
+  static List<String> getQueryParams(String resourceType) {
+    return serverRqQueries.getOrDefault(resourceType, Collections.emptyList());
+  }
 
   private List<String> extractIdsFromQuery(String query) {
-    return StreamEx
-      .split(query, " or ")
-      .flatMap(s -> StreamEx.split(s, "=="))
-      .map(String::trim)
-      .filter(s -> !ID.equals(s))
-      .toList();
+    return extractIdsFromQuery(ID, query);
+  }
+
+  private List<String> extractIdsFromQuery(String fieldName, String query) {
+    Matcher matcher = Pattern.compile(".*" + fieldName + "==\\((.+)\\).*").matcher(query);
+    if (matcher.find()) {
+      return StreamEx.split(matcher.group(1), " or ").toList();
+    } else {
+      return Collections.emptyList();
+    }
   }
 }

@@ -11,7 +11,9 @@
           "pathPattern": "/invoice/invoices",
           "permissionsRequired": ["invoice.invoices.collection.get"],
           "modulePermissions": [
-            "invoice-storage.invoices.collection.get"
+            "invoice-storage.invoices.collection.get",
+            "acquisitions-units.units.collection.get",
+            "acquisitions-units.memberships.collection.get"
           ]
         },
         {
@@ -35,7 +37,9 @@
           "modulePermissions": [
             "invoice-storage.invoices.item.get",
             "invoice-storage.invoices.item.put",
-            "invoice-storage.invoice-lines.collection.get"
+            "invoice-storage.invoice-lines.collection.get",
+            "acquisitions-units.units.collection.get",
+            "acquisitions-units.memberships.collection.get"
           ]
         },
         {
@@ -72,7 +76,9 @@
           "pathPattern": "/invoice/invoice-lines",
           "permissionsRequired": ["invoice.invoice-lines.collection.get"],
           "modulePermissions": [
-            "invoice-storage.invoice-lines.collection.get"
+            "invoice-storage.invoice-lines.collection.get",
+            "acquisitions-units.units.collection.get",
+            "acquisitions-units.memberships.collection.get"
           ]
         },
         {
@@ -98,7 +104,9 @@
             "invoice-storage.invoice-lines.item.put",
             "invoice-storage.invoice-lines.collection.get",
             "invoice-storage.invoices.item.get",
-            "invoice-storage.invoices.item.put"
+            "invoice-storage.invoices.item.put",
+            "acquisitions-units.units.collection.get",
+            "acquisitions-units.memberships.collection.get"
           ]
         },
         {

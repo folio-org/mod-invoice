@@ -18,9 +18,11 @@ import static org.folio.invoices.utils.ErrorCodes.PROHIBITED_FIELD_CHANGING;
 import static org.folio.invoices.utils.ErrorCodes.VOUCHER_NOT_FOUND;
 import static org.folio.invoices.utils.ErrorCodes.VOUCHER_NUMBER_PREFIX_NOT_ALPHA;
 import static org.folio.invoices.utils.ErrorCodes.VOUCHER_UPDATE_FAILURE;
+import static org.folio.invoices.utils.HelperUtils.INVOICE;
 import static org.folio.invoices.utils.HelperUtils.calculateInvoiceLineTotals;
 import static org.folio.invoices.utils.HelperUtils.calculateVoucherAmount;
 import static org.folio.invoices.utils.HelperUtils.convertToDoubleWithRounding;
+import static org.folio.invoices.utils.HelperUtils.getNoAcqUnitCQL;
 import static org.folio.invoices.utils.ResourcePathResolver.FOLIO_INVOICE_NUMBER;
 import static org.folio.invoices.utils.ResourcePathResolver.FUNDS;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICES;
@@ -29,7 +31,6 @@ import static org.folio.invoices.utils.ResourcePathResolver.ORDER_LINES;
 import static org.folio.invoices.utils.ResourcePathResolver.VOUCHERS;
 import static org.folio.invoices.utils.ResourcePathResolver.VOUCHER_LINES;
 import static org.folio.invoices.utils.ResourcePathResolver.VOUCHER_NUMBER;
-import static org.folio.rest.RestVerticle.OKAPI_HEADER_PERMISSIONS;
 import static org.folio.rest.impl.InvoiceHelper.MAX_IDS_FOR_GET_RQ;
 import static org.folio.rest.impl.InvoiceHelper.NO_INVOICE_LINES_ERROR_MSG;
 import static org.folio.rest.impl.InvoiceLinesApiTest.INVOICE_LINES_LIST_PATH;
@@ -42,19 +43,24 @@ import static org.folio.rest.impl.MockServer.INVOICE_NUMBER_ERROR_X_OKAPI_TENANT
 import static org.folio.rest.impl.MockServer.NON_EXIST_CONFIG_X_OKAPI_TENANT;
 import static org.folio.rest.impl.MockServer.TEST_PREFIX;
 import static org.folio.rest.impl.MockServer.addMockEntry;
+import static org.folio.rest.impl.MockServer.getAcqMembershipsSearches;
+import static org.folio.rest.impl.MockServer.getAcqUnitsSearches;
 import static org.folio.rest.impl.MockServer.getInvoiceCreations;
 import static org.folio.rest.impl.MockServer.getInvoiceLineSearches;
 import static org.folio.rest.impl.MockServer.getInvoiceRetrievals;
 import static org.folio.rest.impl.MockServer.getInvoiceSearches;
 import static org.folio.rest.impl.MockServer.getInvoiceUpdates;
+import static org.folio.rest.impl.MockServer.getQueryParams;
 import static org.folio.rest.impl.MockServer.getRqRsEntries;
 import static org.folio.rest.impl.MockServer.serverRqRs;
+import static org.folio.rest.impl.ProtectionHelper.ACQUISITIONS_UNIT_IDS;
 import static org.folio.rest.impl.VoucherHelper.DEFAULT_SYSTEM_CURRENCY;
 import static org.folio.rest.impl.VouchersApiTest.VOUCHERS_LIST_PATH;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.arrayContaining;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.empty;
+import static org.hamcrest.Matchers.endsWith;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.nullValue;
@@ -83,11 +89,11 @@ import javax.money.convert.MonetaryConversions;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.reflect.FieldUtils;
 import org.apache.http.HttpStatus;
-import org.folio.invoices.utils.AcqDesiredPermissions;
 import org.folio.invoices.utils.InvoiceProtectedFields;
 import org.folio.rest.acq.model.VoucherLineCollection;
 import org.folio.rest.acq.model.finance.Fund;
 import org.folio.rest.acq.model.finance.FundCollection;
+import org.folio.rest.acq.model.units.AcquisitionsUnitMembershipCollection;
 import org.folio.rest.acq.model.orders.CompositePoLine;
 import org.folio.rest.jaxrs.model.Adjustment;
 import org.folio.rest.jaxrs.model.Error;
@@ -106,11 +112,9 @@ import org.javamoney.moneta.function.MonetaryOperators;
 import org.javamoney.moneta.spi.DefaultNumberValue;
 import org.junit.Test;
 
-import io.restassured.http.Header;
 import io.restassured.http.Headers;
 import io.restassured.response.Response;
 import io.vertx.core.http.HttpMethod;
-import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
@@ -129,8 +133,8 @@ public class InvoicesApiTest extends ApiTestBase {
   static final String APPROVED_INVOICE_ID = "c0d08448-347b-418a-8c2f-5fb50248d67e";
   static final String REVIEWED_INVOICE_ID = "3773625a-dc0d-4a2d-959e-4a91ee265d67";
   public static final String OPEN_INVOICE_ID = "52fd6ec7-ddc3-4c53-bc26-2779afc27136";
-  public static final String APPROVED_INVOICE_SAMPLE_PATH = INVOICE_MOCK_DATA_PATH + APPROVED_INVOICE_ID + ".json";
-  public static final String REVIEWED_INVOICE_SAMPLE_PATH = INVOICE_MOCK_DATA_PATH + REVIEWED_INVOICE_ID + ".json";
+  private static final String APPROVED_INVOICE_SAMPLE_PATH = INVOICE_MOCK_DATA_PATH + APPROVED_INVOICE_ID + ".json";
+  private static final String REVIEWED_INVOICE_SAMPLE_PATH = INVOICE_MOCK_DATA_PATH + REVIEWED_INVOICE_ID + ".json";
   private static final String REVIEWED_INVOICE_WITH_EXISTING_VOUCHER_SAMPLE_PATH = INVOICE_MOCK_DATA_PATH + "402d0d32-7377-46a7-86ab-542b5684506e.json";
 
   public static final String OPEN_INVOICE_SAMPLE_PATH = INVOICE_MOCK_DATA_PATH + OPEN_INVOICE_ID + ".json";
@@ -145,32 +149,71 @@ public class InvoicesApiTest extends ApiTestBase {
   private static final String STATUS = "status";
   private static final String INVALID_CURRENCY = "ABC";
 
-  public static final Header ALL_DESIRED_PERMISSIONS_HEADER = new Header(OKAPI_HEADER_PERMISSIONS, new JsonArray(AcqDesiredPermissions.getValues()).encode());
-  
   @Test
   public void testGetInvoicingInvoices() {
     logger.info("=== Test Get Invoices by without query - get 200 by successful retrieval of invoices ===");
 
-    final InvoiceCollection resp = verifySuccessGet(INVOICE_PATH, InvoiceCollection.class);
+    final InvoiceCollection resp = verifySuccessGet(INVOICE_PATH, InvoiceCollection.class, X_OKAPI_PROTECTED_READ_TENANT);
 
     assertThat(resp.getTotalRecords(), is(3));
     assertThat(getInvoiceSearches(), hasSize(1));
     assertThat(getInvoiceLineSearches(), empty());
+    assertThat(getAcqUnitsSearches(), hasSize(1));
+    assertThat(getAcqMembershipsSearches(), hasSize(1));
     verifyInvoiceUpdateCalls(0);
+
+    List<String> queryParams = getQueryParams(INVOICES);
+    assertThat(queryParams, hasSize(1));
+    assertThat(queryParams.get(0), Matchers.equalTo(getNoAcqUnitCQL(INVOICES)));
   }
 
   @Test
   public void testGetInvoicingInvoicesWithQueryParam() {
     logger.info("=== Test Get Invoices with query - get 200 by successful retrieval of invoices by query ===");
 
-    String endpointQuery = String.format("%s?query=%s==%s", INVOICE_PATH,  VENDOR_INVOICE_NUMBER_FIELD, EXISTING_VENDOR_INV_NO);
+    String sortBy = " sortBy folioInvoiceNo";
+    String queryValue = VENDOR_INVOICE_NUMBER_FIELD + "==" + EXISTING_VENDOR_INV_NO;
+    String endpointQuery = String.format("%s?query=%s%s", INVOICE_PATH,  queryValue, sortBy);
 
-    final InvoiceCollection resp = verifySuccessGet(endpointQuery, InvoiceCollection.class);
+    final InvoiceCollection resp = verifySuccessGet(endpointQuery, InvoiceCollection.class, X_OKAPI_PROTECTED_READ_TENANT);
 
     assertThat(resp.getTotalRecords(), is(1));
     assertThat(getInvoiceSearches(), hasSize(1));
+    assertThat(getAcqUnitsSearches(), hasSize(1));
+    assertThat(getAcqMembershipsSearches(), hasSize(1));
     assertThat(getInvoiceLineSearches(), empty());
     verifyInvoiceUpdateCalls(0);
+
+    List<String> queryParams = getQueryParams(INVOICES);
+    assertThat(queryParams, hasSize(1));
+    String queryToStorage = queryParams.get(0);
+    assertThat(queryToStorage, containsString("(" + queryValue + ")"));
+    assertThat(queryToStorage, Matchers.not(containsString(ACQUISITIONS_UNIT_IDS + "=")));
+    assertThat(queryToStorage, containsString(getNoAcqUnitCQL(INVOICE)));
+    assertThat(queryToStorage, endsWith(sortBy));
+  }
+
+  @Test
+  public void testGetInvoicesForUserAssignedToAcqUnits() {
+    logger.info("=== Test Get Invoices by query - user assigned to acq units ===");
+
+    Headers headers = prepareHeaders(X_OKAPI_URL, NON_EXIST_CONFIG_X_OKAPI_TENANT, X_OKAPI_USER_ID_WITH_ACQ_UNITS);
+    verifyGet(INVOICE_PATH, headers, APPLICATION_JSON, 200);
+
+    assertThat(getInvoiceSearches(), hasSize(1));
+    assertThat(getAcqUnitsSearches(), hasSize(1));
+    assertThat(getAcqMembershipsSearches(), hasSize(1));
+
+    List<String> queryParams = getQueryParams(INVOICES);
+    assertThat(queryParams, hasSize(1));
+    String queryToStorage = queryParams.get(0);
+    assertThat(queryToStorage, containsString(ACQUISITIONS_UNIT_IDS + "="));
+    assertThat(queryToStorage, containsString(getNoAcqUnitCQL(INVOICES)));
+
+    getAcqMembershipsSearches().get(0)
+      .mapTo(AcquisitionsUnitMembershipCollection.class)
+      .getAcquisitionsUnitMemberships()
+      .forEach(member -> assertThat(queryToStorage, containsString(member.getAcquisitionsUnitId())));
   }
 
   @Test
@@ -363,7 +406,7 @@ public class InvoicesApiTest extends ApiTestBase {
     reqData.setStatus(Invoice.Status.APPROVED);
 
     String jsonBody = JsonObject.mapFrom(reqData).encode();
-    Headers headers = prepareHeaders(X_OKAPI_URL, X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USERID);
+    Headers headers = prepareHeaders(X_OKAPI_URL, X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID);
     verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, headers, "", 204);
 
     // Verify that expected number of external calls made
@@ -400,7 +443,7 @@ public class InvoicesApiTest extends ApiTestBase {
 
     String id = reqData.getId();
     String jsonBody = JsonObject.mapFrom(reqData).encode();
-    Headers headers = prepareHeaders(X_OKAPI_URL, NON_EXIST_CONFIG_X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USERID);
+    Headers headers = prepareHeaders(X_OKAPI_URL, NON_EXIST_CONFIG_X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID);
     verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, headers, "", 204);
 
     List<JsonObject> vouchersCreated = serverRqRs.get(VOUCHERS, HttpMethod.POST);
@@ -432,7 +475,7 @@ public class InvoicesApiTest extends ApiTestBase {
 
     String id = reqData.getId();
     String jsonBody = JsonObject.mapFrom(reqData).encode();
-    Headers headers = prepareHeaders(X_OKAPI_TENANT, X_OKAPI_USERID);
+    Headers headers = prepareHeaders(X_OKAPI_TENANT, X_OKAPI_USER_ID);
     verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, headers, "", 204);
     List<JsonObject> vouchersUpdated = serverRqRs.get(VOUCHERS, HttpMethod.PUT);
     List<JsonObject> voucherLinesDeletions = serverRqRs.get(VOUCHER_LINES, HttpMethod.DELETE);
@@ -456,7 +499,7 @@ public class InvoicesApiTest extends ApiTestBase {
   public void testTransitionToApprovedWithInvalidVoucherNumberPrefix() {
     logger.info("=== Test transition invoice to Approved with invalid voucher number prefix ===");
 
-    Headers headers = prepareHeaders(X_OKAPI_URL, INVALID_PREFIX_CONFIG_X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USERID);
+    Headers headers = prepareHeaders(X_OKAPI_URL, INVALID_PREFIX_CONFIG_X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID);
     Errors errors = transitionToApprovedWithError(REVIEWED_INVOICE_SAMPLE_PATH, headers);
 
     List<JsonObject> voucherNumberGeneration = serverRqRs.get(VOUCHER_NUMBER, HttpMethod.GET);
@@ -488,7 +531,7 @@ public class InvoicesApiTest extends ApiTestBase {
     String id = reqData.getId();
     String jsonBody = JsonObject.mapFrom(reqData).encode();
 
-    Headers headers = prepareHeaders(X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USERID);
+    Headers headers = prepareHeaders(X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID);
 
     Errors errors = verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, headers, APPLICATION_JSON, 500)
       .then()
@@ -505,7 +548,7 @@ public class InvoicesApiTest extends ApiTestBase {
     logger.info("=== Test transition invoice to Approved with mod-config error ===");
 
     Errors errors = transitionToApprovedWithError(REVIEWED_INVOICE_SAMPLE_PATH, prepareHeaders(X_OKAPI_URL, ERROR_CONFIG_X_OKAPI_TENANT, X_OKAPI_TOKEN,
-      X_OKAPI_USERID));
+      X_OKAPI_USER_ID));
 
     assertThat(errors, notNullValue());
     assertThat(errors.getErrors(), hasSize(1));
@@ -542,7 +585,7 @@ public class InvoicesApiTest extends ApiTestBase {
 
     String id = reqData.getId();
     String jsonBody = JsonObject.mapFrom(reqData).encode();
-    Headers headers = prepareHeaders(X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USERID);
+    Headers headers = prepareHeaders(X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID);
 
     Errors errors = verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, headers, APPLICATION_JSON, 500)
       .then()
@@ -570,7 +613,7 @@ public class InvoicesApiTest extends ApiTestBase {
     addMockEntry(INVOICE_LINES, JsonObject.mapFrom(invoiceLine));
 
     String jsonBody = JsonObject.mapFrom(reqData).encode();
-    Headers headers = prepareHeaders(X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USERID);
+    Headers headers = prepareHeaders(X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID);
 
     Errors errors = verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, headers, APPLICATION_JSON, 400)
       .then()
@@ -599,7 +642,7 @@ public class InvoicesApiTest extends ApiTestBase {
     addMockEntry(INVOICE_LINES, JsonObject.mapFrom(invoiceLine));
 
     String jsonBody = JsonObject.mapFrom(reqData).encode();
-    Headers headers = prepareHeaders(X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USERID);
+    Headers headers = prepareHeaders(X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID);
 
     Errors errors = verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, headers, APPLICATION_JSON, 400)
       .then()
@@ -628,7 +671,7 @@ public class InvoicesApiTest extends ApiTestBase {
     addMockEntry(INVOICE_LINES, JsonObject.mapFrom(invoiceLine));
 
     String jsonBody = JsonObject.mapFrom(reqData).encode();
-    Headers headers = prepareHeaders(X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USERID);
+    Headers headers = prepareHeaders(X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID);
 
     Errors errors = verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, headers, APPLICATION_JSON, 400)
       .then()
@@ -646,7 +689,7 @@ public class InvoicesApiTest extends ApiTestBase {
   public void testTransitionToApprovedWithInternalServerErrorFromGetInvoiceLines() {
     logger.info("=== Test transition invoice to Approved with Internal Server Error when retrieving invoiceLines ===");
 
-    Headers headers = prepareHeaders(X_OKAPI_URL, MockServer.GET_INVOICE_LINES_ERROR_X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USERID);
+    Headers headers = prepareHeaders(X_OKAPI_URL, MockServer.GET_INVOICE_LINES_ERROR_X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID);
     Errors errors = transitionToApprovedWithError(REVIEWED_INVOICE_WITH_EXISTING_VOUCHER_SAMPLE_PATH, headers);
 
     assertThat(errors, notNullValue());
@@ -671,7 +714,7 @@ public class InvoicesApiTest extends ApiTestBase {
 
     String jsonBody = JsonObject.mapFrom(reqData).encode();
 
-    Headers headers = prepareHeaders(X_OKAPI_USERID, X_OKAPI_TENANT);
+    Headers headers = prepareHeaders(X_OKAPI_USER_ID, X_OKAPI_TENANT);
     Errors errors = verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, headers, APPLICATION_JSON, 500)
       .then()
       .extract()
@@ -689,7 +732,7 @@ public class InvoicesApiTest extends ApiTestBase {
   public void testTransitionToApprovedWithInternalServerErrorFromGetFunds() {
     logger.info("=== Test transition invoice to Approved with Internal Server Error when retrieving funds ===");
 
-    Headers headers = prepareHeaders(X_OKAPI_URL, MockServer.GET_FUNDS_ERROR_X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USERID);
+    Headers headers = prepareHeaders(X_OKAPI_URL, MockServer.GET_FUNDS_ERROR_X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID);
     Errors errors = transitionToApprovedWithError(REVIEWED_INVOICE_WITH_EXISTING_VOUCHER_SAMPLE_PATH, headers);
 
     assertThat(errors, notNullValue());
@@ -953,6 +996,7 @@ public class InvoicesApiTest extends ApiTestBase {
     Invoice reqData = getMockAsJson(APPROVED_INVOICE_SAMPLE_PATH).mapTo(Invoice.class).withStatus(Invoice.Status.PAID);
     prepareMockVoucher(reqData.getId(), true);
 
+
     String url = String.format(INVOICE_ID_PATH, reqData.getId());
     Errors errors = verifyPut(url, JsonObject.mapFrom(reqData), APPLICATION_JSON, 500).as(Errors.class);
 
@@ -1169,7 +1213,7 @@ public class InvoicesApiTest extends ApiTestBase {
 
     assertThat(poId, notNullValue());
     assertThat(folioInvoiceNo, notNullValue());
-    assertThat(MockServer.serverRqRs.get(FOLIO_INVOICE_NUMBER, HttpMethod.GET), hasSize(1));
+    assertThat(getRqRsEntries(HttpMethod.GET, FOLIO_INVOICE_NUMBER), hasSize(1));
 
     // Check that invoice in the response and the one in storage are the same
     compareRecordWithSentToStorage(respData);
@@ -1262,7 +1306,7 @@ public class InvoicesApiTest extends ApiTestBase {
 
     verifyPostResponse(INVOICE_PATH, body, prepareHeaders(ERROR_X_OKAPI_TENANT), APPLICATION_JSON, 500);
 
-    assertThat(MockServer.serverRqRs.get(FOLIO_INVOICE_NUMBER, HttpMethod.GET), hasSize(1));
+    assertThat(getRqRsEntries(HttpMethod.GET, FOLIO_INVOICE_NUMBER), hasSize(1));
   }
 
   @Test
@@ -1378,7 +1422,7 @@ public class InvoicesApiTest extends ApiTestBase {
     logger.info("=== Test create opened invoice with 'approvedBy' and 'approvedDate' fields ===");
 
     Invoice invoice = getMockAsJson(OPEN_INVOICE_WITH_APPROVED_FILEDS_SAMPLE_PATH).mapTo(Invoice.class);
-    Headers headers = prepareHeaders(X_OKAPI_TENANT, X_OKAPI_USERID);
+    Headers headers = prepareHeaders(X_OKAPI_TENANT, X_OKAPI_USER_ID);
 
     verifyPostResponse(INVOICE_PATH, JsonObject.mapFrom(invoice).encode(), headers, APPLICATION_JSON, HttpStatus.SC_UNPROCESSABLE_ENTITY);
   }
@@ -1388,7 +1432,7 @@ public class InvoicesApiTest extends ApiTestBase {
     logger.info("=== Test update opened invoice with 'approvedBy' and 'approvedDate' fields ===");
 
     Invoice invoice = getMockAsJson(OPEN_INVOICE_WITH_APPROVED_FILEDS_SAMPLE_PATH).mapTo(Invoice.class);
-    Headers headers = prepareHeaders(X_OKAPI_TENANT, X_OKAPI_USERID);
+    Headers headers = prepareHeaders(X_OKAPI_TENANT, X_OKAPI_USER_ID);
 
     verifyPut(String.format(INVOICE_ID_PATH, invoice.getId()), JsonObject.mapFrom(invoice).encode(), headers, APPLICATION_JSON, HttpStatus.SC_UNPROCESSABLE_ENTITY);
   }

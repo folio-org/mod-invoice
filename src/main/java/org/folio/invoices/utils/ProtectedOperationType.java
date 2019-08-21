@@ -1,6 +1,7 @@
 package org.folio.invoices.utils;
 
-import org.folio.rest.acq.model.AcquisitionsUnit;
+
+import org.folio.rest.acq.model.units.AcquisitionsUnit;
 
 public enum ProtectedOperationType {
 
@@ -8,6 +9,24 @@ public enum ProtectedOperationType {
     @Override
     public boolean isProtected(AcquisitionsUnit unit) {
       return unit.getProtectCreate();
+    }
+  },
+  READ {
+    @Override
+    public boolean isProtected(AcquisitionsUnit unit) {
+      return unit.getProtectRead();
+    }
+  },
+  UPDATE {
+    @Override
+    public boolean isProtected(AcquisitionsUnit unit) {
+      return unit.getProtectUpdate();
+    }
+  },
+  DELETE {
+    @Override
+    public boolean isProtected(AcquisitionsUnit unit) {
+      return unit.getProtectDelete();
     }
   };
 
