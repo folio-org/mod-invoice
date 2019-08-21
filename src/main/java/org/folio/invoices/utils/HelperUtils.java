@@ -7,6 +7,7 @@ import static javax.ws.rs.core.MediaType.TEXT_PLAIN;
 import static org.apache.commons.lang3.StringUtils.EMPTY;
 import static org.apache.commons.lang3.StringUtils.isEmpty;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICES;
+import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_LINES;
 import static org.folio.invoices.utils.ResourcePathResolver.VOUCHERS;
 import static org.folio.invoices.utils.ResourcePathResolver.VOUCHER_LINES;
 import static org.folio.invoices.utils.ResourcePathResolver.resourceByIdPath;
@@ -25,20 +26,21 @@ import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.function.Predicate;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import javax.money.CurrencyUnit;
 import javax.money.Monetary;
 import javax.money.MonetaryAmount;
 import javax.money.convert.CurrencyConversion;
 
-import io.vertx.core.eventbus.Message;
-import io.vertx.core.http.HttpHeaders;
-import one.util.streamex.StreamEx;
-
 import org.apache.commons.collections4.map.CaseInsensitiveMap;
+import org.apache.commons.lang3.ArrayUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.apache.commons.lang3.reflect.FieldUtils;
 import org.folio.invoices.rest.exceptions.HttpException;
+import org.folio.rest.impl.ProtectionHelper;
 import org.folio.rest.jaxrs.model.Adjustment;
 import org.folio.rest.jaxrs.model.FundDistribution;
 import org.folio.rest.jaxrs.model.Invoice;
@@ -54,10 +56,13 @@ import org.javamoney.moneta.function.MonetaryFunctions;
 import org.javamoney.moneta.function.MonetaryOperators;
 
 import io.vertx.core.Context;
+import io.vertx.core.eventbus.Message;
+import io.vertx.core.http.HttpHeaders;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import me.escoffier.vertx.completablefuture.VertxCompletableFuture;
+import one.util.streamex.StreamEx;
 
 public class HelperUtils {
 
@@ -65,9 +70,12 @@ public class HelperUtils {
   public static final String INVOICE = "invoice";
   public static final String LANG = "lang";
   public static final String OKAPI_URL = "X-Okapi-Url";
+  public static final String ID = "id";
 
   private static final String EXCEPTION_CALLING_ENDPOINT_MSG = "Exception calling {} {}";
   private static final String CALLING_ENDPOINT_MSG = "Sending {} {}";
+  private static final Pattern CQL_SORT_BY_PATTERN = Pattern.compile("(.*)(\\ssortBy\\s.*)", Pattern.CASE_INSENSITIVE);
+
 
   private static final Predicate<Adjustment> NOT_PRORATED_ADJUSTMENTS_PREDICATE = adj -> adj.getProrate() == NOT_PRORATED;
 
@@ -105,10 +113,10 @@ public class HelperUtils {
     return handleGetRequest(endpoint, httpClient, ctx, okapiHeaders, logger);
   }
 
-  public static CompletableFuture<JsonObject> getVoucherById(String id, String lang, HttpClientInterface httpClient, Context ctx,
+  public static CompletableFuture<Voucher> getVoucherById(String id, String lang, HttpClientInterface httpClient, Context ctx,
       Map<String, String> okapiHeaders, Logger logger) {
     String endpoint = resourceByIdPath(VOUCHERS, id, lang);
-    return handleGetRequest(endpoint, httpClient, ctx, okapiHeaders, logger);
+    return handleGetRequest(endpoint, httpClient, ctx, okapiHeaders, logger).thenApplyAsync(json -> json.mapTo(Voucher.class));
   }
 
   public static JsonObject verifyAndExtractBody(Response response) {
@@ -141,6 +149,25 @@ public class HelperUtils {
     return isEmpty(query) ? EMPTY : "&query=" + encodeQuery(query, logger);
   }
 
+  public static String combineCqlExpressions(String term, String... expressions) {
+    if (ArrayUtils.isEmpty(expressions)) {
+      return EMPTY;
+    }
+
+    String sorting = EMPTY;
+
+    // Check whether last expression contains sorting query. If it does, extract it to be added in the end of the resulting query
+    Matcher matcher = CQL_SORT_BY_PATTERN.matcher(expressions[expressions.length - 1]);
+    if (matcher.find()) {
+      expressions[expressions.length - 1] = matcher.group(1);
+      sorting = matcher.group(2);
+    }
+
+    return StreamEx.of(expressions)
+      .filter(StringUtils::isNotBlank)
+      .joining(") " + term + " (", "(", ")") + sorting;
+  }
+
   public static CompletableFuture<JsonObject> handleGetRequest(String endpoint, HttpClientInterface
     httpClient, Context ctx, Map<String, String> okapiHeaders, Logger logger) {
     CompletableFuture<JsonObject> future = new VertxCompletableFuture<>(ctx);
@@ -153,7 +180,9 @@ public class HelperUtils {
           return verifyAndExtractBody(response);
         })
         .thenAccept(body -> {
-          logger.debug("The response body for GET {}: {}", endpoint, nonNull(body) ? body.encodePrettily() : null);
+          if (logger.isInfoEnabled()) {
+            logger.info("The response body for GET {}: {}", endpoint, nonNull(body) ? body.encodePrettily() : null);
+          }
           future.complete(body);
         })
         .exceptionally(t -> {
@@ -280,7 +309,19 @@ public class HelperUtils {
    * @return String representing CQL query to get records by id's
    */
   public static String convertIdsToCqlQuery(List<String> ids) {
-    return StreamEx.of(ids).map(id -> "id==" + id).joining(" or ");
+    return convertIdsToCqlQuery(ids, ID, true);
+  }
+
+  /**
+   * Transform list of values for some property to CQL query using 'or' operation
+   * @param values list of field values
+   * @param fieldName the property name to search by
+   * @param strictMatch indicates whether strict match mode (i.e. ==) should be used or not (i.e. =)
+   * @return String representing CQL query to get records by some property values
+   */
+  public static String convertIdsToCqlQuery(List<String> values, String fieldName, boolean strictMatch) {
+    String prefix = fieldName + (strictMatch ? "==(" : "=(");
+    return StreamEx.of(values).joining(" or ", prefix, ")");
   }
 
   /**
@@ -345,6 +386,18 @@ public class HelperUtils {
       .entries()
       .forEach(entry -> okapiHeaders.put(entry.getKey(), entry.getValue()));
     return okapiHeaders;
+  }
+
+  public static String getNoAcqUnitCQL(String entity) {
+    return String.format(ProtectionHelper.NO_ACQ_UNIT_ASSIGNED_CQL, getAcqUnitIdsQueryParamName(entity));
+  }
+
+  public static String getAcqUnitIdsQueryParamName(String entity) {
+    switch (entity) {
+      case INVOICE_LINES: return INVOICES + "." + ProtectionHelper.ACQUISITIONS_UNIT_IDS;
+      case VOUCHER_LINES: return VOUCHERS+ "." + ProtectionHelper.ACQUISITIONS_UNIT_IDS;
+      default: return ProtectionHelper.ACQUISITIONS_UNIT_IDS;
+    }
   }
 
   public static List<Adjustment> getNotProratedAdjustments(List<Adjustment> adjustments) {

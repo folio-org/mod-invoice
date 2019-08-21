@@ -5,13 +5,15 @@ import static java.util.concurrent.CompletableFuture.allOf;
 import static java.util.stream.Collectors.groupingBy;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toMap;
+import static me.escoffier.vertx.completablefuture.VertxCompletableFuture.completedFuture;
 import static org.apache.commons.collections4.CollectionUtils.isNotEmpty;
 import static org.apache.commons.lang3.StringUtils.EMPTY;
 import static org.apache.commons.lang3.StringUtils.isAlpha;
+import static org.apache.commons.lang3.StringUtils.isEmpty;
 import static org.folio.invoices.utils.ErrorCodes.FUNDS_NOT_FOUND;
-import static org.folio.invoices.utils.ErrorCodes.INCOMPATIBLE_INVOICE_FIELDS_ON_STATUS_TRANSITION;
 import static org.folio.invoices.utils.ErrorCodes.FUND_DISTRIBUTIONS_NOT_PRESENT;
 import static org.folio.invoices.utils.ErrorCodes.FUND_DISTRIBUTIONS_PERCENTAGE_SUMMARY_MISMATCH;
+import static org.folio.invoices.utils.ErrorCodes.INCOMPATIBLE_INVOICE_FIELDS_ON_STATUS_TRANSITION;
 import static org.folio.invoices.utils.ErrorCodes.INVOICE_TOTAL_REQUIRED;
 import static org.folio.invoices.utils.ErrorCodes.PO_LINE_NOT_FOUND;
 import static org.folio.invoices.utils.ErrorCodes.PO_LINE_UPDATE_FAILURE;
@@ -21,6 +23,7 @@ import static org.folio.invoices.utils.HelperUtils.calculateAdjustmentsTotal;
 import static org.folio.invoices.utils.HelperUtils.calculateInvoiceLineTotals;
 import static org.folio.invoices.utils.HelperUtils.calculateVoucherLineAmount;
 import static org.folio.invoices.utils.HelperUtils.collectResultsOnSuccess;
+import static org.folio.invoices.utils.HelperUtils.combineCqlExpressions;
 import static org.folio.invoices.utils.HelperUtils.convertToDoubleWithRounding;
 import static org.folio.invoices.utils.HelperUtils.encodeQuery;
 import static org.folio.invoices.utils.HelperUtils.findChangedProtectedFields;
@@ -37,7 +40,7 @@ import static org.folio.invoices.utils.ResourcePathResolver.INVOICES;
 import static org.folio.invoices.utils.ResourcePathResolver.ORDER_LINES;
 import static org.folio.invoices.utils.ResourcePathResolver.resourceByIdPath;
 import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
-import static me.escoffier.vertx.completablefuture.VertxCompletableFuture.completedFuture;
+import static org.folio.rest.impl.InvoiceLineHelper.GET_INVOICE_LINES_BY_QUERY;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -63,6 +66,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.invoices.utils.HelperUtils;
 import org.folio.invoices.utils.InvoiceProtectedFields;
+import org.folio.invoices.utils.ProtectedOperationType;
 import org.folio.rest.acq.model.finance.Fund;
 import org.folio.rest.acq.model.finance.FundCollection;
 import org.folio.rest.acq.model.orders.CompositePoLine;
@@ -97,8 +101,9 @@ public class InvoiceHelper extends AbstractHelper {
   private static final String SYSTEM_CURRENCY_PROPERTY_NAME = "currency";
   private static final String SYSTEM_CONFIG_QUERY = String.format(CONFIG_QUERY, SYSTEM_CONFIG_MODULE_NAME, LOCALE_SETTINGS);
   private static final String VOUCHER_NUMBER_PREFIX_CONFIG_QUERY = String.format(CONFIG_QUERY, INVOICE_CONFIG_MODULE_NAME, VOUCHER_NUMBER_PREFIX_CONFIG);
-  private static final String GET_INVOICES_BY_QUERY = resourcesPath(INVOICES) + "?limit=%s&offset=%s%s&lang=%s";
+  private static final String GET_INVOICES_BY_QUERY = resourcesPath(INVOICES) + SEARCH_PARAMS;
   private static final String GET_FUNDS_BY_QUERY = resourcesPath(FUNDS) + "?query=%s&limit=%s&lang=%s";
+
 
   private static final String DEFAULT_ACCOUNTING_CODE = "tmp_code";
 
@@ -108,12 +113,14 @@ public class InvoiceHelper extends AbstractHelper {
   private final InvoiceLineHelper invoiceLineHelper;
   private final VoucherHelper voucherHelper;
   private final VoucherLineHelper voucherLineHelper;
+  private final ProtectionHelper protectionHelper;
 
   public InvoiceHelper(Map<String, String> okapiHeaders, Context ctx, String lang) {
     super(getHttpClient(okapiHeaders), okapiHeaders, ctx, lang);
     invoiceLineHelper = new InvoiceLineHelper(httpClient, okapiHeaders, ctx, lang);
     voucherHelper = new VoucherHelper(httpClient, okapiHeaders, ctx, lang);
     voucherLineHelper = new VoucherLineHelper(httpClient, okapiHeaders, ctx, lang);
+    protectionHelper = new ProtectionHelper(httpClient, okapiHeaders, ctx, lang);
   }
 
   public CompletableFuture<Invoice> createInvoice(Invoice invoice) {
@@ -132,6 +139,8 @@ public class InvoiceHelper extends AbstractHelper {
   public CompletableFuture<Invoice> getInvoice(String id) {
     CompletableFuture<Invoice> future = new VertxCompletableFuture<>(ctx);
     getInvoiceRecord(id)
+      .thenCompose(invoice -> protectionHelper.isOperationRestricted(invoice.getAcqUnitIds(), ProtectedOperationType.READ)
+        .thenApply(aVoid -> invoice))
       .thenCompose(invoice -> {
         // If invoice was approved already, the totals are fixed at this point and should not be recalculated
         if (isPostApproval(invoice)) {
@@ -175,22 +184,34 @@ public class InvoiceHelper extends AbstractHelper {
   public CompletableFuture<InvoiceCollection> getInvoices(int limit, int offset, String query) {
     CompletableFuture<InvoiceCollection> future = new VertxCompletableFuture<>(ctx);
     try {
-      String queryParam = getEndpointWithQuery(query, logger);
-      String endpoint = String.format(GET_INVOICES_BY_QUERY, limit, offset, queryParam, lang);
-      handleGetRequest(endpoint, httpClient, ctx, okapiHeaders, logger)
-      .thenAccept(jsonInvoices -> {
-        logger.info("Successfully retrieved invoices: " + jsonInvoices.encodePrettily());
-        future.complete(jsonInvoices.mapTo(InvoiceCollection.class));
-      })
-      .exceptionally(t -> {
-        logger.error("Error getting invoices", t);
-        future.completeExceptionally(t);
-        return null;
-      });
+      buildGetInvoicesPath(limit, offset, query)
+        .thenCompose(endpoint -> handleGetRequest(endpoint, httpClient, ctx, okapiHeaders, logger))
+        .thenAccept(jsonInvoices -> {
+          logger.info("Successfully retrieved invoices: " + jsonInvoices.encodePrettily());
+          future.complete(jsonInvoices.mapTo(InvoiceCollection.class));
+        })
+        .exceptionally(t -> {
+          logger.error("Error getting invoices", t);
+          future.completeExceptionally(t);
+          return null;
+        });
     } catch (Exception e) {
         future.completeExceptionally(e);
     }
     return future;
+  }
+
+  private CompletableFuture<String> buildGetInvoicesPath(int limit, int offset, String query) {
+    return protectionHelper.buildAcqUnitsCqlExprToSearchRecords(INVOICES)
+      .thenApply(acqUnitsCqlExpr -> {
+        String queryParam;
+        if (isEmpty(query)) {
+          queryParam = getEndpointWithQuery(acqUnitsCqlExpr, logger);
+        } else {
+          queryParam = getEndpointWithQuery(combineCqlExpressions("and", acqUnitsCqlExpr, query), logger);
+        }
+        return String.format(GET_INVOICES_BY_QUERY, limit, offset, queryParam, lang);
+      });
   }
 
   public CompletableFuture<Void> deleteInvoice(String id) {
@@ -885,9 +906,10 @@ public class InvoiceHelper extends AbstractHelper {
       return completedFuture(storedInvoiceLines);
     }
 
-    String query = String.format(QUERY_BY_INVOICE_ID, invoiceId);
+    String query = getEndpointWithQuery(String.format(QUERY_BY_INVOICE_ID, invoiceId), logger);
     // Assuming that the invoice will never contain more than Integer.MAX_VALUE invoiceLines.
-    return invoiceLineHelper.getInvoiceLines(Integer.MAX_VALUE, 0, query)
+    String endpoint = String.format(GET_INVOICE_LINES_BY_QUERY, Integer.MAX_VALUE, 0, query, lang);
+    return invoiceLineHelper.getInvoiceLineCollection(endpoint)
       .thenApply(invoiceLineCollection -> storedInvoiceLines = invoiceLineCollection.getInvoiceLines());
   }
 
