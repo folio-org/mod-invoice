@@ -1,16 +1,19 @@
 package org.folio.rest.impl;
 
 import static io.vertx.core.json.JsonObject.mapFrom;
+import static java.util.stream.Collectors.toList;
 import static org.apache.commons.lang3.StringUtils.isEmpty;
 import static org.folio.invoices.utils.ErrorCodes.PROHIBITED_INVOICE_LINE_CREATION;
 import static org.folio.invoices.utils.HelperUtils.INVOICE;
 import static org.folio.invoices.utils.HelperUtils.INVOICE_ID;
 import static org.folio.invoices.utils.HelperUtils.calculateInvoiceLineTotals;
 import static org.folio.invoices.utils.HelperUtils.combineCqlExpressions;
+import static org.folio.invoices.utils.HelperUtils.convertToDoubleWithRounding;
 import static org.folio.invoices.utils.HelperUtils.findChangedProtectedFields;
 import static org.folio.invoices.utils.HelperUtils.getEndpointWithQuery;
 import static org.folio.invoices.utils.HelperUtils.getHttpClient;
 import static org.folio.invoices.utils.HelperUtils.getInvoiceById;
+import static org.folio.invoices.utils.HelperUtils.getProratedAdjustments;
 import static org.folio.invoices.utils.HelperUtils.handleDeleteRequest;
 import static org.folio.invoices.utils.HelperUtils.handleGetRequest;
 import static org.folio.invoices.utils.HelperUtils.handlePutRequest;
@@ -21,19 +24,29 @@ import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_LINE_NUMBER;
 import static org.folio.invoices.utils.ResourcePathResolver.resourceByIdPath;
 import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 
+import javax.money.CurrencyUnit;
+import javax.money.Monetary;
+import javax.money.MonetaryAmount;
+
 import org.folio.invoices.events.handlers.MessageAddress;
 import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.invoices.utils.InvoiceLineProtectedFields;
+import org.folio.rest.jaxrs.model.Adjustment;
 import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.jaxrs.model.InvoiceLine;
 import org.folio.rest.jaxrs.model.InvoiceLineCollection;
 import org.folio.rest.jaxrs.model.SequenceNumber;
 import org.folio.rest.tools.client.interfaces.HttpClientInterface;
+import org.javamoney.moneta.Money;
+import org.javamoney.moneta.function.MonetaryFunctions;
 
 import io.vertx.core.Context;
 import io.vertx.core.json.JsonObject;
@@ -287,5 +300,141 @@ public class InvoiceLineHelper extends AbstractHelper {
   private void updateInvoice(String invoiceId) {
     VertxCompletableFuture.runAsync(ctx,
         () -> sendEvent(MessageAddress.INVOICE_TOTALS, new JsonObject().put(INVOICE_ID, invoiceId)));
+  }
+
+  public MonetaryAmount calculateSubTotal(List<InvoiceLine> lines, CurrencyUnit currency) {
+    return lines.stream()
+      .map(line -> Money.of(line.getSubTotal(), currency))
+      .collect(MonetaryFunctions.summarizingMonetary(currency))
+      .getSum();
+  }
+
+  public void processProratedAdjustments(Invoice invoice, List<InvoiceLine> lines) {
+    List<Adjustment> proratedAdjustments = getProratedAdjustments(invoice.getAdjustments());
+
+    // Remove previously applied prorated adjustments if they are no longer available at invoice level
+    filterDeletedAdjustments(proratedAdjustments, lines);
+
+    // Apply prorated adjustments to each invoice line
+    applyProratedAdjustment(proratedAdjustments, lines, invoice);
+  }
+
+  /**
+   * Removes adjustments at invoice line level based on invoice's prorated adjustments which are no longer available
+   * @param proratedAdjustments list of prorated adjustments available at invoice level
+   * @param invoiceLines list of invoice lines associated with current invoice
+   */
+  private void filterDeletedAdjustments(List<Adjustment> proratedAdjustments, List<InvoiceLine> invoiceLines) {
+    List<String> adjIds = proratedAdjustments.stream()
+      .map(Adjustment::getId)
+      .collect(toList());
+
+    invoiceLines.forEach(line -> line.getAdjustments()
+      .removeIf(adj -> !adjIds.contains(adj.getAdjustmentId())));
+  }
+
+  private void applyProratedAdjustment(List<Adjustment> proratedAdjustments, List<InvoiceLine> lines, Invoice invoice) {
+    CurrencyUnit currencyUnit = Monetary.getCurrency(invoice.getCurrency());
+
+    for (Adjustment adjustment : proratedAdjustments) {
+      switch (adjustment.getProrate()) {
+      case BY_LINE:
+        applyProratedAdjustmentByLines(adjustment, lines, currencyUnit);
+        break;
+      case BY_AMOUNT:
+        applyProratedAdjustmentByAmount(adjustment, lines, currencyUnit);
+        break;
+      case BY_QUANTITY:
+        applyProratedAdjustmentByQuantity(adjustment, lines, currencyUnit);
+        break;
+      default:
+        logger.warn("Unexpected {} adjustment's prorate type for invoice with id={}", adjustment.getProrate(), invoice.getId());
+      }
+    }
+  }
+
+  /**
+   * Each invoiceLine gets adjustment value divided by quantity of lines
+   */
+  private void applyProratedAdjustmentByLines(Adjustment adjustment, List<InvoiceLine> lines, CurrencyUnit currencyUnit) {
+    Adjustment proratedAdjustment = prepareAdjustmentForLine(adjustment);
+
+    if (adjustment.getType() == Adjustment.Type.AMOUNT) {
+      proratedAdjustment.setValue(convertToDoubleWithRounding(Money.of(adjustment.getValue(), currencyUnit)
+        .divide(lines.size())));
+    } else {
+      proratedAdjustment.setValue(BigDecimal.valueOf(adjustment.getValue())
+        .divide(BigDecimal.valueOf(lines.size()), 2, RoundingMode.HALF_EVEN)
+        .doubleValue());
+    }
+
+    lines.forEach(line -> addAdjustmentToLine(line, proratedAdjustment));
+  }
+
+  /**
+   * Each invoiceLine gets a portion of the amount proportionate to the invoiceLine's contribution to the invoice subTotal.
+   * Prorated percentage adjustments of this type aren't split but rather each invoiceLine gets an adjustment of that percentage
+   */
+  private void applyProratedAdjustmentByAmount(Adjustment adjustment, List<InvoiceLine> lines, CurrencyUnit currencyUnit) {
+    MonetaryAmount grandSubTotal = calculateSubTotal(lines, currencyUnit);
+    if (adjustment.getType() == Adjustment.Type.AMOUNT && grandSubTotal.isZero()) {
+      // If subTotal is zero it is unclear how to apply prorated adjustment
+      return;
+    }
+
+    for (InvoiceLine line : lines) {
+      Adjustment proratedAdjustment = prepareAdjustmentForLine(adjustment);
+
+      if (adjustment.getType() == Adjustment.Type.AMOUNT) {
+        proratedAdjustment.setValue(convertToDoubleWithRounding(Money.of(adjustment.getValue(), currencyUnit)
+          .multiply(line.getSubTotal())
+          .divide(grandSubTotal.getNumber())));
+      }
+
+      addAdjustmentToLine(line, proratedAdjustment);
+    }
+  }
+
+  /**
+   * Each invoiceLine gets an portion of the amount proportionate to the invoiceLine's quantity.
+   */
+  private void applyProratedAdjustmentByQuantity(Adjustment adjustment, List<InvoiceLine> lines, CurrencyUnit currencyUnit) {
+    if (adjustment.getType() == Adjustment.Type.PERCENTAGE) {
+      /*
+       * "By quantity" prorated percentage adjustments don't make sense and the client should not use that combination. We will also
+       * need to validate this on the backend and return an error response in the case where someone makes a call directly to the
+       * API with the combo.
+       */
+      return;
+    }
+
+    for (InvoiceLine line : lines) {
+      Adjustment proratedAdjustment = prepareAdjustmentForLine(adjustment)
+        .withValue(convertToDoubleWithRounding(Money.of(adjustment.getValue(), currencyUnit)
+          .multiply(line.getQuantity())
+          .divide(getTotalQuantities(lines))));
+
+      addAdjustmentToLine(line, proratedAdjustment);
+    }
+  }
+
+  private Adjustment prepareAdjustmentForLine(Adjustment adjustment) {
+    return JsonObject.mapFrom(adjustment)
+      .mapTo(adjustment.getClass())
+      .withId(null)
+      .withAdjustmentId(adjustment.getId());
+  }
+
+  private Integer getTotalQuantities(List<InvoiceLine> lines) {
+    return lines.stream().map(InvoiceLine::getQuantity).reduce(0, Integer::sum);
+  }
+
+  private void addAdjustmentToLine(InvoiceLine line, Adjustment proratedAdjustment) {
+    List<Adjustment> lineAdjustments = line.getAdjustments();
+    if (!lineAdjustments.contains(proratedAdjustment)) {
+      // Just in case there was adjustment with this uuid but now updated, remove it
+      lineAdjustments.removeIf(adj -> proratedAdjustment.getAdjustmentId().equals(adj.getAdjustmentId()));
+      lineAdjustments.add(proratedAdjustment);
+    }
   }
 }
