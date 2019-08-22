@@ -117,7 +117,7 @@ public abstract class AbstractHelper {
       return getConfigurationsEntries(searchCriteria)
         .thenAccept(config -> this.tenantConfiguration = config);
     }
-    return VertxCompletableFuture.completedFuture(null);
+    return CompletableFuture.completedFuture(null);
   }
 
   private boolean isConfigEmpty() {

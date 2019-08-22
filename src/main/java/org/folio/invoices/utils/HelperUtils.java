@@ -327,7 +327,7 @@ public class HelperUtils {
    * @return CompletableFuture with resulting objects
    */
   public static <T> CompletableFuture<List<T>> collectResultsOnSuccess(List<CompletableFuture<T>> futures) {
-    return VertxCompletableFuture.allOf(futures.toArray(new CompletableFuture[0]))
+    return CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]))
       .thenApply(v -> futures
         .stream()
         // The CompletableFuture::join can be safely used because the `allOf` guaranties success at this step
