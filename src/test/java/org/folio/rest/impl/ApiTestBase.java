@@ -76,6 +76,7 @@ public class ApiTestBase {
   static final String VOUCHER_NUMBER_VALUE = "1";
   static final String LANG_PARAM = "lang";
   static final String INVALID_LANG = "english";
+  public static final String BAD_QUERY = "unprocessableQuery";
 
   public static final String ID_DOES_NOT_EXIST = "d25498e7-3ae6-45fe-9612-ec99e2700d2f";
   static final String ID_FOR_INTERNAL_SERVER_ERROR = "168f8a86-d26c-406e-813f-c7527f241ac3";
@@ -319,11 +320,9 @@ public class ApiTestBase {
       .withAdjustmentsTotal(0.0);
   }
 
-
   public static InvoiceLine getMinimalContentInvoiceLine() {
     return getMinimalContentInvoiceLine(MIN_INVOICE_ID);
   }
-
 
   public static InvoiceLine getMinimalContentInvoiceLine(String invoiceId) {
     return new InvoiceLine()
@@ -337,5 +336,4 @@ public class ApiTestBase {
       .withTotal(1.0)
       .withReleaseEncumbrance(true);
   }
-
 }
