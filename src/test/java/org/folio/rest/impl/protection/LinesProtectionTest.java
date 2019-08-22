@@ -53,10 +53,12 @@ public class LinesProtectionTest extends ProtectedEntityTestBase {
     "CREATE"
   })
   public void testOperationWithAllowedUnits(ProtectedOperations operation) {
-    logger.info("=== Invoice-lines protection: Test corresponding record has units allowed operation - expecting of call only to Units API ===");
+    logger.info(
+        "=== Invoice-lines protection: Test corresponding record has units allowed operation - expecting of call only to Units API ===");
 
     final Headers headers = prepareHeaders(X_OKAPI_TENANT, X_OKAPI_USER_ID);
-    operation.process(INVOICE_LINES_PATH, encodePrettily(prepareInvoiceLine(NOT_PROTECTED_UNITS)), headers, operation.getContentType(), operation.getCode());
+    operation.process(INVOICE_LINES_PATH, encodePrettily(prepareInvoiceLine(NOT_PROTECTED_UNITS)), headers,
+        operation.getContentType(), operation.getCode());
 
     validateNumberOfRequests(1, 0);
   }
@@ -67,10 +69,12 @@ public class LinesProtectionTest extends ProtectedEntityTestBase {
     "CREATE"
   })
   public void testWithRestrictedUnitsAndAllowedUser(ProtectedOperations operation) {
-    logger.info("=== Invoice-lines protection: Test corresponding record has units, units protect operation, user is member of order's units - expecting of calls to Units, Memberships APIs and allowance of operation ===");
+    logger.info(
+        "=== Invoice-lines protection: Test corresponding record has units, units protect operation, user is member of order's units - expecting of calls to Units, Memberships APIs and allowance of operation ===");
 
     operation.process(INVOICE_LINES_PATH, encodePrettily(prepareInvoiceLine(PROTECTED_UNITS)),
-      prepareHeaders(X_OKAPI_TENANT, X_OKAPI_USER_WITH_UNITS_ASSIGNED_TO_RECORD), operation.getContentType(), operation.getCode());
+        prepareHeaders(X_OKAPI_TENANT, X_OKAPI_USER_WITH_UNITS_ASSIGNED_TO_RECORD), operation.getContentType(),
+        operation.getCode());
 
     validateNumberOfRequests(1, 1);
   }
@@ -93,7 +97,10 @@ public class LinesProtectionTest extends ProtectedEntityTestBase {
   }
 
   @Test
-  @Parameters({ "READ", "CREATE" })
+  @Parameters({
+    "READ",
+    "CREATE"
+  })
   public void testOperationWithUnprocessableBadUnits(ProtectedOperations operation) {
     logger.info(
         "=== Invoice-lines protection: Test corresponding record contains unprocessable bad units - expecting of call only to Units API ===");

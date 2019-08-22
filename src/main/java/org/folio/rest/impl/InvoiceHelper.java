@@ -673,7 +673,7 @@ public class InvoiceHelper extends AbstractHelper {
   }
 
   public CompletableFuture<Boolean> validateIncomingInvoice(Invoice invoice) {
-    if(Boolean.TRUE.equals(invoice.getLockTotal()) && Objects.isNull(invoice.getTotal())) {
+    if (Boolean.TRUE.equals(invoice.getLockTotal()) && Objects.isNull(invoice.getTotal())) {
       addProcessingError(INVOICE_TOTAL_REQUIRED.toError());
     }
     if (!isPostApproval(invoice) && (invoice.getApprovalDate() != null || invoice.getApprovedBy() != null)) {
@@ -687,7 +687,8 @@ public class InvoiceHelper extends AbstractHelper {
       Set<String> fields = findChangedProtectedFields(invoice, invoiceFromStorage, InvoiceProtectedFields.getFieldNames());
 
       // "total" depends on value of "lockTotal": if value is true, total is required; if false, read-only (system calculated)
-      if (Boolean.TRUE.equals(invoiceFromStorage.getLockTotal()) && !Objects.equals(invoice.getTotal(), invoiceFromStorage.getTotal())) {
+      if (Boolean.TRUE.equals(invoiceFromStorage.getLockTotal())
+          && !Objects.equals(invoice.getTotal(), invoiceFromStorage.getTotal())) {
         fields.add(TOTAL);
       }
       verifyThatProtectedFieldsUnchanged(fields);

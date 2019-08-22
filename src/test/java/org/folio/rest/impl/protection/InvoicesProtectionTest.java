@@ -53,10 +53,12 @@ public class InvoicesProtectionTest extends ProtectedEntityTestBase {
     "CREATE"
   })
   public void testOperationWithAllowedUnits(ProtectedOperations operation) {
-    logger.info("=== Invoices protection: Test corresponding record has units allowed operation - expecting of call only to Units API ===");
+    logger.info(
+        "=== Invoices protection: Test corresponding record has units allowed operation - expecting of call only to Units API ===");
 
     final Headers headers = prepareHeaders(X_OKAPI_TENANT, X_OKAPI_USER_ID, ALL_DESIRED_PERMISSIONS_HEADER);
-    operation.process(INVOICE_PATH, encodePrettily(prepareInvoice(NOT_PROTECTED_UNITS)), headers, operation.getContentType(), operation.getCode());
+    operation.process(INVOICE_PATH, encodePrettily(prepareInvoice(NOT_PROTECTED_UNITS)), headers,
+        operation.getContentType(), operation.getCode());
 
     validateNumberOfRequests(1, 0);
   }
@@ -67,10 +69,12 @@ public class InvoicesProtectionTest extends ProtectedEntityTestBase {
     "CREATE"
   })
   public void testWithRestrictedUnitsAndAllowedUser(ProtectedOperations operation) {
-    logger.info("=== Invoices protection: Test corresponding record has units, units protect operation, user is member of order's units - expecting of calls to Units, Memberships APIs and allowance of operation ===");
+    logger.info(
+        "=== Invoices protection: Test corresponding record has units, units protect operation, user is member of order's units - expecting of calls to Units, Memberships APIs and allowance of operation ===");
 
     Headers headers = prepareHeaders(X_OKAPI_TENANT, X_OKAPI_USER_WITH_UNITS_ASSIGNED_TO_RECORD, ALL_DESIRED_PERMISSIONS_HEADER);
-    operation.process(INVOICE_PATH, encodePrettily(prepareInvoice(PROTECTED_UNITS)), headers, operation.getContentType(), operation.getCode());
+    operation.process(INVOICE_PATH, encodePrettily(prepareInvoice(PROTECTED_UNITS)), headers,
+        operation.getContentType(), operation.getCode());
 
     validateNumberOfRequests(1, 1);
   }
