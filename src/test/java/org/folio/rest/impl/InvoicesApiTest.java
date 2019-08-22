@@ -53,6 +53,7 @@ import static org.folio.rest.impl.MockServer.getInvoiceUpdates;
 import static org.folio.rest.impl.MockServer.getQueryParams;
 import static org.folio.rest.impl.MockServer.getRqRsEntries;
 import static org.folio.rest.impl.MockServer.serverRqRs;
+import static org.folio.rest.RestVerticle.OKAPI_HEADER_PERMISSIONS;
 import static org.folio.rest.impl.ProtectionHelper.ACQUISITIONS_UNIT_IDS;
 import static org.folio.rest.impl.VoucherHelper.DEFAULT_SYSTEM_CURRENCY;
 import static org.folio.rest.impl.VouchersApiTest.VOUCHERS_LIST_PATH;
@@ -89,6 +90,7 @@ import javax.money.convert.MonetaryConversions;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.reflect.FieldUtils;
 import org.apache.http.HttpStatus;
+import org.folio.invoices.utils.AcqDesiredPermissions;
 import org.folio.invoices.utils.InvoiceProtectedFields;
 import org.folio.rest.acq.model.VoucherLineCollection;
 import org.folio.rest.acq.model.finance.Fund;
@@ -112,9 +114,11 @@ import org.javamoney.moneta.function.MonetaryOperators;
 import org.javamoney.moneta.spi.DefaultNumberValue;
 import org.junit.Test;
 
+import io.restassured.http.Header;
 import io.restassured.http.Headers;
 import io.restassured.response.Response;
 import io.vertx.core.http.HttpMethod;
+import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
@@ -148,6 +152,7 @@ public class InvoicesApiTest extends ApiTestBase {
   private static final String EXISTING_VOUCHER_ID = "a9b99f8a-7100-47f2-9903-6293d44a9905";
   private static final String STATUS = "status";
   private static final String INVALID_CURRENCY = "ABC";
+  public static final Header ALL_DESIRED_PERMISSIONS_HEADER = new Header(OKAPI_HEADER_PERMISSIONS, new JsonArray(AcqDesiredPermissions.getValues()).encode());
 
   @Test
   public void testGetInvoicingInvoices() {

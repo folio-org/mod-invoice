@@ -46,7 +46,7 @@ resourceTypes:
         exampleItem: !include acq-models/mod-invoice-storage/examples/invoice.sample
 
     post:
-      description: Post invoice and number of invoice lines. Only in case an acquisition unit has to be assigned to the invoice, it is required that user should have extra permission invoice.acquisitions-units-assignments.item.post to create an Invoice.
+      description: Post invoice and number of invoice lines. Only in case an acquisition unit has to be assigned to the invoice, it is required that user should have extra permission invoices.acquisitions-units-assignments.assign to create an Invoice.
       is: [validate]
     get:
       is: [ pageable, searchable: {description: "using CQL (indexes for invoice)", example: "invoiceLineStatus==\"Open\""}, validate ]

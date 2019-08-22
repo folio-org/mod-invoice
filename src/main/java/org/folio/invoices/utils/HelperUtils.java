@@ -141,10 +141,6 @@ public class HelperUtils {
     }
   }
 
-  public static String getEndpointWithQuery(String query, Logger logger) {
-    return isEmpty(query) ? EMPTY : "&query=" + encodeQuery(query, logger);
-  }
-
   public static String combineCqlExpressions(String term, String... expressions) {
     if (ArrayUtils.isEmpty(expressions)) {
       return EMPTY;
@@ -193,9 +189,10 @@ public class HelperUtils {
     return future;
   }
 
-  public static String buildQuery(String query, Logger logger) {
+  public static String getEndpointWithQuery(String query, Logger logger) {
     return isEmpty(query) ? EMPTY : "&query=" + encodeQuery(query, logger);
   }
+
   /**
    * A common method to update an entry in the storage
    *
@@ -317,11 +314,6 @@ public class HelperUtils {
    * @param strictMatch indicates whether strict match mode (i.e. ==) should be used or not (i.e. =)
    * @return String representing CQL query to get records by some property values
    */
-  public static String convertIdsToCqlQuery(List<String> values, String fieldName, boolean strictMatch) {
-    String prefix = fieldName + (strictMatch ? "==(" : "=(");
-    return StreamEx.of(values).joining(" or ", prefix, ")");
-  }
-
   public static String convertIdsToCqlQuery(List<String> values, String fieldName, boolean strictMatch) {
     String prefix = fieldName + (strictMatch ? "==(" : "=(");
     return StreamEx.of(values).joining(" or ", prefix, ")");

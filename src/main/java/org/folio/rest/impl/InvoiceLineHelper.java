@@ -29,6 +29,7 @@ import java.util.concurrent.CompletableFuture;
 import org.folio.invoices.events.handlers.MessageAddress;
 import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.invoices.utils.InvoiceLineProtectedFields;
+import org.folio.invoices.utils.ProtectedOperationType;
 import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.jaxrs.model.InvoiceLine;
 import org.folio.rest.jaxrs.model.InvoiceLineCollection;
@@ -221,6 +222,8 @@ public class InvoiceLineHelper extends AbstractHelper {
    */
   CompletableFuture<InvoiceLine> createInvoiceLine(InvoiceLine invoiceLine) {
     return getInvoice(invoiceLine).thenApply(this::checkIfInvoiceLineCreationAllowed)
+      .thenCompose(invoice -> protectionHelper.isOperationRestricted(invoice.getAcqUnitIds(), ProtectedOperationType.CREATE)
+        .thenApply(v -> invoice))
       .thenCompose(invoice -> createInvoiceLine(invoiceLine, invoice).thenApply(line -> {
         updateInvoice(invoice);
         return line;
