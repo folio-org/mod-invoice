@@ -108,7 +108,7 @@ public class InvoiceHelper extends AbstractHelper {
 
 
   private static final String DEFAULT_ACCOUNTING_CODE = "tmp_code";
-  public static final String EMPTY_ARRAY = "[]";
+  private static final String EMPTY_ARRAY = "[]";
 
   // Using variable to "cache" lines for particular invoice base on assumption that the helper is stateful and new instance is used
   private List<InvoiceLine> invoiceLines;
@@ -171,7 +171,7 @@ public class InvoiceHelper extends AbstractHelper {
         }
 
         return recalculateTotals(invoice).thenApply(isOutOfSync -> {
-          if (isOutOfSync) {
+          if (Boolean.TRUE.equals(isOutOfSync)) {
             updateOutOfSyncInvoice(invoice);
           }
           return invoice;
@@ -647,7 +647,7 @@ public class InvoiceHelper extends AbstractHelper {
    */
   private CompletableFuture<Void> deleteVoucherLinesIfExist(String voucherId) {
     return getVoucherLineIdsByVoucherId(voucherId)
-      .thenCompose(ids -> VertxCompletableFuture.allOf(ids.stream()
+      .thenCompose(ids -> allOf(ids.stream()
         .map(voucherLineHelper::deleteVoucherLine)
         .toArray(CompletableFuture[]::new)));
   }
@@ -673,7 +673,7 @@ public class InvoiceHelper extends AbstractHelper {
   }
 
   public CompletableFuture<Boolean> validateIncomingInvoice(Invoice invoice) {
-    if(invoice.getLockTotal() && Objects.isNull(invoice.getTotal())) {
+    if(Boolean.TRUE.equals(invoice.getLockTotal()) && Objects.isNull(invoice.getTotal())) {
       addProcessingError(INVOICE_TOTAL_REQUIRED.toError());
     }
     if (!isPostApproval(invoice) && (invoice.getApprovalDate() != null || invoice.getApprovedBy() != null)) {
@@ -687,7 +687,7 @@ public class InvoiceHelper extends AbstractHelper {
       Set<String> fields = findChangedProtectedFields(invoice, invoiceFromStorage, InvoiceProtectedFields.getFieldNames());
 
       // "total" depends on value of "lockTotal": if value is true, total is required; if false, read-only (system calculated)
-      if (invoiceFromStorage.getLockTotal() && !Objects.equals(invoice.getTotal(), invoiceFromStorage.getTotal())) {
+      if (Boolean.TRUE.equals(invoiceFromStorage.getLockTotal()) && !Objects.equals(invoice.getTotal(), invoiceFromStorage.getTotal())) {
         fields.add(TOTAL);
       }
       verifyThatProtectedFieldsUnchanged(fields);
@@ -782,7 +782,7 @@ public class InvoiceHelper extends AbstractHelper {
       .map(this::getPoLineById)
       .collect(toList());
 
-    return VertxCompletableFuture.allOf(futures.toArray(new CompletableFuture[0]))
+    return allOf(futures.toArray(new CompletableFuture[0]))
       .thenApply(v -> futures.stream()
         .map(CompletableFuture::join)
         .collect(Collectors.toMap(poLine -> poLine, poLine -> getPoLinePaymentStatus(poLineIdsWithInvoiceLines.get(poLine.getId())))));
@@ -831,7 +831,7 @@ public class InvoiceHelper extends AbstractHelper {
   }
 
   private CompletionStage<Void> updateCompositePoLines(List<CompositePoLine> poLines) {
-    return VertxCompletableFuture.allOf(poLines.stream()
+    return allOf(poLines.stream()
       .map(JsonObject::mapFrom)
       .map(poLine -> handlePutRequest(resourceByIdPath(ORDER_LINES, poLine.getString(ID), lang), poLine, httpClient, ctx, okapiHeaders, logger))
       .toArray(CompletableFuture[]::new))
@@ -861,7 +861,7 @@ public class InvoiceHelper extends AbstractHelper {
       .add(calculateInvoiceLinesAdjustmentsTotal(lines, currency));
 
     // 3. Total
-    if (!invoice.getLockTotal()) {
+    if (!Boolean.TRUE.equals(invoice.getLockTotal())) {
       invoice.setTotal(convertToDoubleWithRounding(subTotal.add(adjustmentsTotal)));
     }
     invoice.setAdjustmentsTotal(convertToDoubleWithRounding(adjustmentsTotal));

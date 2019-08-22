@@ -16,6 +16,7 @@ import static org.folio.invoices.utils.HelperUtils.handleGetRequest;
 import static org.folio.invoices.utils.HelperUtils.verifyAndExtractBody;
 import static org.folio.rest.RestVerticle.OKAPI_USERID_HEADER;
 import static org.folio.rest.impl.InvoicesImpl.PROTECTED_AND_MODIFIED_FIELDS;
+import static java.util.concurrent.CompletableFuture.completedFuture;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.List;
@@ -75,10 +76,6 @@ public abstract class AbstractHelper {
     this(getHttpClient(okapiHeaders), okapiHeaders, ctx, lang);
   }
 
-  protected String getCurrentUserId() {
-    return okapiHeaders.get(OKAPI_USERID_HEADER);
-  }
-  
   /**
    * Retrieve configuration by moduleName and configName from mod-configuration.
    * @param searchCriteria name of the module for which the configuration is to be retrieved
@@ -120,7 +117,7 @@ public abstract class AbstractHelper {
       return getConfigurationsEntries(searchCriteria)
         .thenAccept(config -> this.tenantConfiguration = config);
     }
-    return VertxCompletableFuture.completedFuture(null);
+    return completedFuture(null);
   }
 
   private boolean isConfigEmpty() {
@@ -277,5 +274,9 @@ public abstract class AbstractHelper {
     ctx.owner()
       .eventBus()
       .send(messageAddress.address, data, deliveryOptions);
+  }
+
+  protected String getCurrentUserId() {
+    return okapiHeaders.get(OKAPI_USERID_HEADER);
   }
 }

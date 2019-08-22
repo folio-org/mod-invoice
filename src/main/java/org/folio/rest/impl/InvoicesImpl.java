@@ -37,7 +37,7 @@ public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
 
     helper.validateIncomingInvoice(invoice)
       .thenAccept(isValid -> {
-        if (isValid) {
+        if (Boolean.TRUE.equals(isValid)) {
           helper.createInvoice(invoice)
             .thenAccept(invoiceWithId -> asyncResultHandler.handle(succeededFuture(
                 helper.buildResponseWithLocation(String.format(INVOICE_LOCATION_PREFIX, invoiceWithId.getId()), invoiceWithId))))
@@ -89,7 +89,7 @@ public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
     // Validate incoming invoice first to avoid extra calls to other services if content is invalid
     invoiceHelper.validateIncomingInvoice(invoice)
       .thenAccept(isValid -> {
-        if (isValid) {
+        if (Boolean.TRUE.equals(isValid)) {
           invoiceHelper.updateInvoice(invoice)
             .thenAccept(ok -> asyncResultHandler.handle(succeededFuture(invoiceHelper.buildNoContentResponse())))
             .exceptionally(t -> {

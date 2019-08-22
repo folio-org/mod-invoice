@@ -33,7 +33,7 @@ public class LinesProtectionTest extends ProtectedEntityTestBase {
     "CREATE"
   })
   public void testOperationWithNonExistedUnits(ProtectedOperations operation) {
-    logger.info("=== Invoice-lines protection: Test corresponding order contains non-existent units - expecting of call only to Units API ===");
+    logger.info("=== Invoice-lines protection: Test corresponding record contains non-existent units - expecting of call only to Units API ===");
 
     final Headers headers = prepareHeaders(X_OKAPI_TENANT, X_OKAPI_USER_ID);
     Errors errors = operation.process(INVOICE_LINES_PATH, encodePrettily(prepareInvoiceLine(NON_EXISTENT_UNITS)),
@@ -53,7 +53,7 @@ public class LinesProtectionTest extends ProtectedEntityTestBase {
     "CREATE"
   })
   public void testOperationWithAllowedUnits(ProtectedOperations operation) {
-    logger.info("=== Invoice-lines protection: Test corresponding order has units allowed operation - expecting of call only to Units API ===");
+    logger.info("=== Invoice-lines protection: Test corresponding record has units allowed operation - expecting of call only to Units API ===");
 
     final Headers headers = prepareHeaders(X_OKAPI_TENANT, X_OKAPI_USER_ID);
     operation.process(INVOICE_LINES_PATH, encodePrettily(prepareInvoiceLine(NOT_PROTECTED_UNITS)), headers, operation.getContentType(), operation.getCode());
@@ -67,7 +67,7 @@ public class LinesProtectionTest extends ProtectedEntityTestBase {
     "CREATE"
   })
   public void testWithRestrictedUnitsAndAllowedUser(ProtectedOperations operation) {
-    logger.info("=== Invoice-lines protection: Test corresponding order has units, units protect operation, user is member of order's units - expecting of calls to Units, Memberships APIs and allowance of operation ===");
+    logger.info("=== Invoice-lines protection: Test corresponding record has units, units protect operation, user is member of order's units - expecting of calls to Units, Memberships APIs and allowance of operation ===");
 
     operation.process(INVOICE_LINES_PATH, encodePrettily(prepareInvoiceLine(PROTECTED_UNITS)),
       prepareHeaders(X_OKAPI_TENANT, X_OKAPI_USER_WITH_UNITS_ASSIGNED_TO_RECORD), operation.getContentType(), operation.getCode());
@@ -81,7 +81,7 @@ public class LinesProtectionTest extends ProtectedEntityTestBase {
     "CREATE"
   })
   public void testWithProtectedUnitsAndForbiddenUser(ProtectedOperations operation) {
-    logger.info("=== Invoice-lines protection: Test corresponding order has units, units protect operation, user isn't member of order's units - expecting of calls to Units, Memberships APIs and restriction of operation ===");
+    logger.info("=== Invoice-lines protection: Test corresponding record has units, units protect operation, user isn't member of order's units - expecting of calls to Units, Memberships APIs and restriction of operation ===");
 
     final Headers headers = prepareHeaders(X_OKAPI_TENANT, X_OKAPI_USER_WITH_UNITS_NOT_ASSIGNED_TO_RECORD);
     Errors errors = operation.process(INVOICE_LINES_PATH, encodePrettily(prepareInvoiceLine(PROTECTED_UNITS)),
@@ -96,7 +96,7 @@ public class LinesProtectionTest extends ProtectedEntityTestBase {
   @Parameters({ "READ", "CREATE" })
   public void testOperationWithUnprocessableBadUnits(ProtectedOperations operation) {
     logger.info(
-        "=== Invoice-lines protection: Test corresponding invoice contains unprocessable bad units - expecting of call only to Units API ===");
+        "=== Invoice-lines protection: Test corresponding record contains unprocessable bad units - expecting of call only to Units API ===");
 
     final Headers headers = prepareHeaders(X_OKAPI_TENANT, X_OKAPI_USER_ID);
 

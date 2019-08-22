@@ -12,6 +12,7 @@ import static org.folio.invoices.utils.ResourcePathResolver.VOUCHERS;
 import static org.folio.invoices.utils.ResourcePathResolver.VOUCHER_LINES;
 import static org.folio.invoices.utils.ResourcePathResolver.resourceByIdPath;
 import static org.folio.rest.RestVerticle.OKAPI_HEADER_TENANT;
+import static me.escoffier.vertx.completablefuture.VertxCompletableFuture.allOf;
 
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
@@ -141,6 +142,10 @@ public class HelperUtils {
     }
   }
 
+  public static String getEndpointWithQuery(String query, Logger logger) {
+    return isEmpty(query) ? EMPTY : "&query=" + encodeQuery(query, logger);
+  }
+
   public static String combineCqlExpressions(String term, String... expressions) {
     if (ArrayUtils.isEmpty(expressions)) {
       return EMPTY;
@@ -187,10 +192,6 @@ public class HelperUtils {
         future.completeExceptionally(e);
     }
     return future;
-  }
-
-  public static String getEndpointWithQuery(String query, Logger logger) {
-    return isEmpty(query) ? EMPTY : "&query=" + encodeQuery(query, logger);
   }
 
   /**
@@ -326,7 +327,7 @@ public class HelperUtils {
    * @return CompletableFuture with resulting objects
    */
   public static <T> CompletableFuture<List<T>> collectResultsOnSuccess(List<CompletableFuture<T>> futures) {
-    return VertxCompletableFuture.allOf(futures.toArray(new CompletableFuture[0]))
+    return allOf(futures.toArray(new CompletableFuture[0]))
       .thenApply(v -> futures
         .stream()
         // The CompletableFuture::join can be safely used because the `allOf` guaranties success at this step

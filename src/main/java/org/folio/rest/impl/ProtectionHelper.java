@@ -54,7 +54,7 @@ public class ProtectionHelper extends AbstractHelper {
       return getUnitsByIds(unitIds)
         .thenCompose(units -> {
           if (unitIds.size() == units.size()) {
-            if (applyMergingStrategy(units, operation)) {
+            if (Boolean.TRUE.equals(applyMergingStrategy(units, operation))) {
               return verifyUserIsMemberOfAcqUnits(unitIds);
             }
             return CompletableFuture.completedFuture(null);

@@ -7,7 +7,6 @@ import static org.folio.invoices.utils.ErrorCodes.USER_HAS_NO_ACQ_PERMISSIONS;
 import static org.folio.invoices.utils.ErrorCodes.USER_HAS_NO_PERMISSIONS;
 import static org.folio.rest.impl.InvoicesApiTest.INVOICE_PATH;
 import static org.folio.rest.impl.ProtectionHelper.ACQUISITIONS_UNIT_IDS;
-import static org.folio.rest.impl.InvoicesApiTest.ALL_DESIRED_PERMISSIONS_HEADER;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.collection.IsCollectionWithSize.hasSize;
 import static org.hamcrest.core.IsEqual.equalTo;
@@ -34,7 +33,7 @@ public class InvoicesProtectionTest extends ProtectedEntityTestBase {
     "CREATE"
   })
   public void testOperationWithNonExistedUnits(ProtectedOperations operation) {
-    logger.info("=== Test order contains non-existent unit ids - expecting of call only to Units API ===");
+    logger.info("=== Invoices protection: Test record contains non-existent unit ids - expecting of call only to Units API ===");
 
     final Headers headers = prepareHeaders(X_OKAPI_TENANT, X_OKAPI_USER_ID, ALL_DESIRED_PERMISSIONS_HEADER);
     Errors errors = operation.process(INVOICE_PATH, encodePrettily(prepareInvoice(NON_EXISTENT_UNITS)),
@@ -54,7 +53,7 @@ public class InvoicesProtectionTest extends ProtectedEntityTestBase {
     "CREATE"
   })
   public void testOperationWithAllowedUnits(ProtectedOperations operation) {
-    logger.info("=== Test corresponding order has units allowed operation - expecting of call only to Units API ===");
+    logger.info("=== Invoices protection: Test corresponding record has units allowed operation - expecting of call only to Units API ===");
 
     final Headers headers = prepareHeaders(X_OKAPI_TENANT, X_OKAPI_USER_ID, ALL_DESIRED_PERMISSIONS_HEADER);
     operation.process(INVOICE_PATH, encodePrettily(prepareInvoice(NOT_PROTECTED_UNITS)), headers, operation.getContentType(), operation.getCode());
@@ -68,7 +67,7 @@ public class InvoicesProtectionTest extends ProtectedEntityTestBase {
     "CREATE"
   })
   public void testWithRestrictedUnitsAndAllowedUser(ProtectedOperations operation) {
-    logger.info("=== Test corresponding order has units, units protect operation, user is member of order's units - expecting of calls to Units, Memberships APIs and allowance of operation ===");
+    logger.info("=== Invoices protection: Test corresponding record has units, units protect operation, user is member of order's units - expecting of calls to Units, Memberships APIs and allowance of operation ===");
 
     Headers headers = prepareHeaders(X_OKAPI_TENANT, X_OKAPI_USER_WITH_UNITS_ASSIGNED_TO_RECORD, ALL_DESIRED_PERMISSIONS_HEADER);
     operation.process(INVOICE_PATH, encodePrettily(prepareInvoice(PROTECTED_UNITS)), headers, operation.getContentType(), operation.getCode());
@@ -82,7 +81,7 @@ public class InvoicesProtectionTest extends ProtectedEntityTestBase {
     "CREATE"
   })
   public void testWithProtectedUnitsAndForbiddenUser(ProtectedOperations operation) {
-    logger.info("=== Test corresponding order has units, units protect operation, user isn't member of order's units - expecting of calls to Units, Memberships APIs and restriction of operation ===");
+    logger.info("=== Invoices protection: Test corresponding record has units, units protect operation, user isn't member of order's units - expecting of calls to Units, Memberships APIs and restriction of operation ===");
 
     Headers headers = prepareHeaders(X_OKAPI_TENANT, X_OKAPI_USER_WITH_UNITS_NOT_ASSIGNED_TO_RECORD, ALL_DESIRED_PERMISSIONS_HEADER);
     Errors errors = operation.process(INVOICE_PATH, encodePrettily(prepareInvoice(PROTECTED_UNITS)),
@@ -93,7 +92,7 @@ public class InvoicesProtectionTest extends ProtectedEntityTestBase {
 
     validateNumberOfRequests(1, 1);
   }
-  
+
   @Test
   @Parameters({
     "CREATE"
