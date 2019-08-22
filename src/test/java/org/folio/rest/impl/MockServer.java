@@ -892,7 +892,7 @@ public class MockServer {
         Config voucherNumberPrefixConfig = new Config()
           .withModule(INVOICE_CONFIG_MODULE_NAME)
           .withConfigName(VOUCHER_NUMBER_PREFIX_CONFIG)
-          .withValue(INVALID_PREFIX);
+          .withValue(new JsonObject().put(VOUCHER_NUMBER_PREFIX_CONFIG, INVALID_PREFIX).toString());
         configs.withConfigs(Collections.singletonList(voucherNumberPrefixConfig)).setTotalRecords(1);
         serverResponse(ctx, 200, APPLICATION_JSON, JsonObject.mapFrom(configs).encodePrettily());
         return;
@@ -906,7 +906,7 @@ public class MockServer {
         Config voucherNumberPrefixConfig = new Config()
           .withModule(INVOICE_CONFIG_MODULE_NAME)
           .withConfigName(VOUCHER_NUMBER_PREFIX_CONFIG)
-          .withValue(TEST_PREFIX);
+          .withValue(new JsonObject().put(VOUCHER_NUMBER_PREFIX_CONFIG, "testPrefix").toString());
         configs.getConfigs().add(localeConfig);
         configs.getConfigs().add(voucherNumberPrefixConfig);
         configs.withTotalRecords(configs.getConfigs().size());

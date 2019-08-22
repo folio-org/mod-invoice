@@ -406,7 +406,7 @@ public class InvoiceHelper extends AbstractHelper {
     return getLoadedTenantConfiguration()
       .getConfigs().stream()
       .filter(this::isVoucherNumberPrefixConfig)
-      .map(Config::getValue)
+      .map(config -> new JsonObject(config.getValue()).getString(VOUCHER_NUMBER_PREFIX_CONFIG))
       .findFirst()
       .orElse(EMPTY);
   }
