@@ -28,6 +28,7 @@ import java.util.concurrent.CompletionException;
 import java.util.function.Predicate;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import javax.money.CurrencyUnit;
 import javax.money.Monetary;
@@ -368,16 +369,14 @@ public class HelperUtils {
   }
 
   public static void calculateInvoiceLineTotals(InvoiceLine invoiceLine, Invoice invoice) {
-    if (!isPostApproval(invoice)) {
-      String currency = invoice.getCurrency();
-      CurrencyUnit currencyUnit = Monetary.getCurrency(currency);
-      MonetaryAmount subTotal = Money.of(invoiceLine.getSubTotal(), currencyUnit);
+    String currency = invoice.getCurrency();
+    CurrencyUnit currencyUnit = Monetary.getCurrency(currency);
+    MonetaryAmount subTotal = Money.of(invoiceLine.getSubTotal(), currencyUnit);
 
-      MonetaryAmount adjustmentTotals = calculateAdjustmentsTotal(invoiceLine.getAdjustments(), subTotal);
-      MonetaryAmount total = adjustmentTotals.add(subTotal);
-      invoiceLine.setAdjustmentsTotal(convertToDoubleWithRounding(adjustmentTotals));
-      invoiceLine.setTotal(convertToDoubleWithRounding(total));
-    }
+    MonetaryAmount adjustmentTotals = calculateAdjustmentsTotal(invoiceLine.getAdjustments(), subTotal);
+    MonetaryAmount total = adjustmentTotals.add(subTotal);
+    invoiceLine.setAdjustmentsTotal(convertToDoubleWithRounding(adjustmentTotals));
+    invoiceLine.setTotal(convertToDoubleWithRounding(total));
   }
 
   public static Map<String, String> getOkapiHeaders(Message<JsonObject> message) {
@@ -406,6 +405,12 @@ public class HelperUtils {
 
   public static List<Adjustment> getProratedAdjustments(List<Adjustment> adjustments) {
     return filterAdjustments(adjustments, NOT_PRORATED_ADJUSTMENTS_PREDICATE.negate());
+  }
+
+  public static List<Integer> calculateHashCodes(List<InvoiceLine> lines) {
+    return lines.stream()
+      .map(InvoiceLine::hashCode)
+      .collect(Collectors.toList());
   }
 
   private static List<Adjustment> filterAdjustments(List<Adjustment> adjustments, Predicate<Adjustment> predicate) {

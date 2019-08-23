@@ -166,6 +166,11 @@ public class ApiTestBase {
     return new JsonObject();
   }
 
+  public Response verifySuccessPost(String url, Object body, Header... headersArr) {
+    Headers headers = headersArr.length == 0 ? prepareHeaders(X_OKAPI_TENANT) : prepareHeaders(headersArr);
+    return verifyPostResponse(url, body, headers, APPLICATION_JSON, 201);
+  }
+
   public Response verifyPostResponse(String url, Object body, Headers headers, String expectedContentType, int expectedCode) {
     Response response = RestAssured
       .with()
@@ -189,9 +194,13 @@ public class ApiTestBase {
     return response;
   }
 
+  Response verifySuccessPut(String url, Object body) {
+    return verifyPut(url, body, "", 204);
+  }
+
   Response verifyPut(String url, Object body, String expectedContentType, int expectedCode) {
     Headers headers = prepareHeaders(X_OKAPI_TENANT, X_OKAPI_TOKEN);
-    return verifyPut(url, body, headers,expectedContentType, expectedCode);
+    return verifyPut(url, body, headers, expectedContentType, expectedCode);
   }
 
   public Response verifyPut(String url, Object body, Headers headers, String expectedContentType, int expectedCode) {

@@ -1,11 +1,11 @@
 package org.folio.rest.impl;
 
-import static io.vertx.core.json.JsonObject.mapFrom;
 import static java.util.stream.Collectors.toList;
 import static org.apache.commons.lang3.StringUtils.isEmpty;
 import static org.folio.invoices.utils.ErrorCodes.PROHIBITED_INVOICE_LINE_CREATION;
 import static org.folio.invoices.utils.HelperUtils.INVOICE;
 import static org.folio.invoices.utils.HelperUtils.INVOICE_ID;
+import static org.folio.invoices.utils.HelperUtils.calculateHashCodes;
 import static org.folio.invoices.utils.HelperUtils.calculateInvoiceLineTotals;
 import static org.folio.invoices.utils.HelperUtils.combineCqlExpressions;
 import static org.folio.invoices.utils.HelperUtils.convertToDoubleWithRounding;
@@ -26,6 +26,8 @@ import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -82,15 +84,16 @@ public class InvoiceLineHelper extends AbstractHelper {
       });
   }
 
+  public CompletableFuture<List<InvoiceLine>> getInvoiceLinesByInvoiceId(String invoiceId) {
+    String query = getEndpointWithQuery(String.format(QUERY_BY_INVOICE_ID, invoiceId), logger);
+    // Assuming that the invoice will never contain more than Integer.MAX_VALUE invoiceLines.
+    String endpoint = String.format(GET_INVOICE_LINES_BY_QUERY, Integer.MAX_VALUE, 0, query, lang);
+    return getInvoiceLineCollection(endpoint).thenApply(InvoiceLineCollection::getInvoiceLines);
+  }
+
   CompletableFuture<InvoiceLineCollection> getInvoiceLineCollection(String endpoint) {
     return handleGetRequest(endpoint, httpClient, ctx, okapiHeaders, logger)
-      .thenCompose(jsonInvoiceLines -> VertxCompletableFuture.supplyBlockingAsync(ctx, () -> {
-        if (logger.isInfoEnabled()) {
-          logger.info("Successfully retrieved invoice lines: {}", jsonInvoiceLines.encodePrettily());
-        }
-          return jsonInvoiceLines.mapTo(InvoiceLineCollection.class);
-        })
-      );
+      .thenCompose(json -> VertxCompletableFuture.supplyBlockingAsync(ctx, () -> json.mapTo(InvoiceLineCollection.class)));
   }
 
   public CompletableFuture<InvoiceLine> getInvoiceLine(String id) {
@@ -121,7 +124,7 @@ public class InvoiceLineHelper extends AbstractHelper {
       helper.updateInvoiceLineToStorage(invoiceLine)
         .handle((ok, fail) -> {
           if (fail == null) {
-            updateInvoice(invoice);
+            updateInvoiceAsync(invoice);
           }
           helper.closeHttpClient();
           return null;
@@ -137,6 +140,9 @@ public class InvoiceLineHelper extends AbstractHelper {
    * @return {code true} if any total value is different to original one
    */
   private boolean reCalculateInvoiceLineTotals(InvoiceLine invoiceLine, Invoice invoice) {
+    if (isPostApproval(invoice)) {
+      return false;
+    }
 
     // 1. Get original values
     Double existingTotal = invoiceLine.getTotal();
@@ -199,25 +205,36 @@ public class InvoiceLineHelper extends AbstractHelper {
 
   public CompletableFuture<Void> updateInvoiceLine(InvoiceLine invoiceLine) {
 
-    // 1. Get invoice line from storage
     return getInvoiceLine(invoiceLine.getId())
-      // 2. Get invoice from storage
       .thenCompose(invoiceLineFromStorage -> getInvoice(invoiceLineFromStorage).thenCompose(invoice -> {
-        // 3. Validate if invoice line update is allowed
+        // Validate if invoice line update is allowed
         validateInvoiceLine(invoice, invoiceLine, invoiceLineFromStorage);
         invoiceLine.setInvoiceLineNumber(invoiceLineFromStorage.getInvoiceLineNumber());
 
-        // 4. Recalculate totals before update which also indicates if invoice requires update
-        calculateInvoiceLineTotals(invoiceLine, invoice);
+        // Just persist updates if invoice is already finalized
+        if (isPostApproval(invoice)) {
+          return updateInvoiceLineToStorage(invoiceLine);
+        }
 
-        // 5. Update invoice line in storage
-        return updateInvoiceLineToStorage(invoiceLine).thenRun(() -> {
-          // 6. Trigger invoice update event only if this is required
-          if (!areTotalsEqual(invoiceLine, invoiceLineFromStorage)) {
-            updateInvoice(invoice);
-          }
+        // Re-apply prorated adjustments if available
+        return applyProratedAdjustments(invoiceLine, invoice).thenCompose(lines -> {
+          // Recalculate totals before update which also indicates if invoice requires update
+          calculateInvoiceLineTotals(invoiceLine, invoice);
+          // Update invoice line in storage
+          return updateInvoiceLineToStorage(invoiceLine).thenRun(() -> {
+            // Trigger invoice update event only if this is required
+            if (!lines.isEmpty() || !areTotalsEqual(invoiceLine, invoiceLineFromStorage)) {
+              updateInvoiceAndAffectedLinesAsync(invoice, lines);
+            }
+          });
         });
       }));
+  }
+
+  public CompletableFuture<Void> deleteInvoiceLine(String id) {
+    return getInvoiceLine(id)
+      .thenCompose(line -> handleDeleteRequest(resourceByIdPath(INVOICE_LINES, id, lang), httpClient, ctx, okapiHeaders, logger)
+        .thenRun(() -> updateInvoiceAndLinesAsync(line.getInvoiceId())));
   }
 
   private void validateInvoiceLine(Invoice existedInvoice, InvoiceLine invoiceLine, InvoiceLine existedInvoiceLine) {
@@ -234,10 +251,7 @@ public class InvoiceLineHelper extends AbstractHelper {
    */
   CompletableFuture<InvoiceLine> createInvoiceLine(InvoiceLine invoiceLine) {
     return getInvoice(invoiceLine).thenApply(this::checkIfInvoiceLineCreationAllowed)
-      .thenCompose(invoice -> createInvoiceLine(invoiceLine, invoice).thenApply(line -> {
-        updateInvoice(invoice);
-        return line;
-      }));
+      .thenCompose(invoice -> createInvoiceLine(invoiceLine, invoice));
   }
 
   private Invoice checkIfInvoiceLineCreationAllowed(Invoice invoice) {
@@ -263,11 +277,16 @@ public class InvoiceLineHelper extends AbstractHelper {
    * @param invoice associated {@link Invoice} object
    * @return completable future which might hold {@link InvoiceLine} on success or an exception if any issue happens
    */
-  CompletableFuture<InvoiceLine> createInvoiceLine(InvoiceLine invoiceLine, Invoice invoice) {
+  private CompletableFuture<InvoiceLine> createInvoiceLine(InvoiceLine invoiceLine, Invoice invoice) {
     return generateLineNumber(invoice).thenAccept(invoiceLine::setInvoiceLineNumber)
-      .thenAccept(ok -> calculateInvoiceLineTotals(invoiceLine, invoice))
-      .thenCompose(ok -> createRecordInStorage(mapFrom(invoiceLine), resourcesPath(INVOICE_LINES)))
-      .thenApply(invoiceLine::withId);
+      // First the prorated adjustments should be applied. In case there is any, it might require to update other lines
+      .thenCompose(ok -> applyProratedAdjustments(invoiceLine, invoice).thenCompose(affectedLines -> {
+        calculateInvoiceLineTotals(invoiceLine, invoice);
+        return createRecordInStorage(JsonObject.mapFrom(invoiceLine), resourcesPath(INVOICE_LINES)).thenApply(id -> {
+          updateInvoiceAndAffectedLinesAsync(invoice, affectedLines);
+          return invoiceLine.withId(id);
+        });
+      }));
   }
 
   private CompletableFuture<String> generateLineNumber(Invoice invoice) {
@@ -286,37 +305,22 @@ public class InvoiceLineHelper extends AbstractHelper {
     return INVOICE_LINE_NUMBER_ENDPOINT + id;
   }
 
-  public CompletableFuture<Void> deleteInvoiceLine(String id) {
-    return getInvoiceLine(id)
-      .thenCompose(line -> handleDeleteRequest(resourceByIdPath(INVOICE_LINES, id, lang), httpClient, ctx, okapiHeaders, logger)
-        .thenRun(() -> updateInvoice(line.getInvoiceId())));
-  }
-
-  private void updateInvoice(Invoice invoice) {
-    VertxCompletableFuture.runAsync(ctx,
-        () -> sendEvent(MessageAddress.INVOICE_TOTALS, new JsonObject().put(INVOICE, JsonObject.mapFrom(invoice))));
-  }
-
-  private void updateInvoice(String invoiceId) {
-    VertxCompletableFuture.runAsync(ctx,
-        () -> sendEvent(MessageAddress.INVOICE_TOTALS, new JsonObject().put(INVOICE_ID, invoiceId)));
-  }
-
-  public MonetaryAmount calculateSubTotal(List<InvoiceLine> lines, CurrencyUnit currency) {
+  public MonetaryAmount summarizeSubTotals(List<InvoiceLine> lines, CurrencyUnit currency, boolean byAbsoluteValue) {
     return lines.stream()
-      .map(line -> Money.of(line.getSubTotal(), currency))
+      .map(InvoiceLine::getSubTotal)
+      .map(subTotal -> Money.of(byAbsoluteValue ? Math.abs(subTotal) : subTotal, currency))
       .collect(MonetaryFunctions.summarizingMonetary(currency))
       .getSum();
   }
 
-  public void processProratedAdjustments(Invoice invoice, List<InvoiceLine> lines) {
+  public void processProratedAdjustments(List<InvoiceLine> lines, Invoice invoice) {
     List<Adjustment> proratedAdjustments = getProratedAdjustments(invoice.getAdjustments());
 
     // Remove previously applied prorated adjustments if they are no longer available at invoice level
     filterDeletedAdjustments(proratedAdjustments, lines);
 
     // Apply prorated adjustments to each invoice line
-    applyProratedAdjustment(proratedAdjustments, lines, invoice);
+    applyProratedAdjustments(proratedAdjustments, lines, invoice);
   }
 
   /**
@@ -333,7 +337,7 @@ public class InvoiceLineHelper extends AbstractHelper {
       .removeIf(adj -> !adjIds.contains(adj.getAdjustmentId())));
   }
 
-  private void applyProratedAdjustment(List<Adjustment> proratedAdjustments, List<InvoiceLine> lines, Invoice invoice) {
+  private void applyProratedAdjustments(List<Adjustment> proratedAdjustments, List<InvoiceLine> lines, Invoice invoice) {
     CurrencyUnit currencyUnit = Monetary.getCurrency(invoice.getCurrency());
 
     for (Adjustment adjustment : proratedAdjustments) {
@@ -376,9 +380,10 @@ public class InvoiceLineHelper extends AbstractHelper {
    * Prorated percentage adjustments of this type aren't split but rather each invoiceLine gets an adjustment of that percentage
    */
   private void applyProratedAdjustmentByAmount(Adjustment adjustment, List<InvoiceLine> lines, CurrencyUnit currencyUnit) {
-    MonetaryAmount grandSubTotal = calculateSubTotal(lines, currencyUnit);
+    MonetaryAmount grandSubTotal = summarizeSubTotals(lines, currencyUnit, true);
     if (adjustment.getType() == Adjustment.Type.AMOUNT && grandSubTotal.isZero()) {
-      // If subTotal is zero it is unclear how to apply prorated adjustment
+      // If summarized subTotal (by abs) is zero, each line has zero amount (e.g. gift) so adjustment should be prorated "By line"
+      applyProratedAdjustmentByLines(adjustment, lines, currencyUnit);
       return;
     }
 
@@ -436,5 +441,108 @@ public class InvoiceLineHelper extends AbstractHelper {
       lineAdjustments.removeIf(adj -> proratedAdjustment.getAdjustmentId().equals(adj.getAdjustmentId()));
       lineAdjustments.add(proratedAdjustment);
     }
+  }
+
+  /**
+   * Applies prorated adjustments to {@code invoiceLine}. In case there is any, other lines might be affected as well
+   *
+   * @param invoiceLine {@link InvoiceLine} to apply pro-rated adjustments to
+   * @param invoice associated {@link Invoice} record
+   * @return list of other lines which are updated after applying prorated adjustment(s)
+   */
+  private CompletableFuture<List<InvoiceLine>> applyProratedAdjustments(InvoiceLine invoiceLine, Invoice invoice) {
+    List<Adjustment> proratedAdjustments = getProratedAdjustments(invoice.getAdjustments());
+
+    if (proratedAdjustments.isEmpty()) {
+      return CompletableFuture.completedFuture(Collections.emptyList());
+    }
+
+    return getRelatedLines(invoiceLine).thenApply(lines -> {
+      // Collecting original hash codes of each invoice line record.
+      List<Integer> originalLineHashCodes = calculateHashCodes(lines);
+
+      // Create new list adding current line as well
+      List<InvoiceLine> allLines = new ArrayList<>(lines);
+      allLines.add(invoiceLine);
+
+      // Re-apply prorated adjustments
+      applyProratedAdjustments(proratedAdjustments, allLines, invoice);
+
+      // Return only those related lines which were updated after re-applying prorated adjustment(s)
+      return lines.stream()
+        .filter(line -> !originalLineHashCodes.contains(line.hashCode()))
+        .collect(toList());
+    });
+  }
+
+  /**
+   * Gets all other invoice lines associated with the same invoice. Passed {@code invoiceLine} is not added to the result.
+   *
+   * @param invoiceLine {@link InvoiceLine} record
+   * @return list of all other invoice lines associated with the same invoice
+   */
+  private CompletableFuture<List<InvoiceLine>> getRelatedLines(InvoiceLine invoiceLine) {
+    String cql = String.format(QUERY_BY_INVOICE_ID, invoiceLine.getInvoiceId());
+    if (invoiceLine.getId() != null) {
+      cql = combineCqlExpressions("and", cql, "id<>" + invoiceLine.getId());
+    }
+    String endpoint = String.format(GET_INVOICE_LINES_BY_QUERY, Integer.MAX_VALUE, 0, getEndpointWithQuery(cql, logger), lang);
+
+    return getInvoiceLineCollection(endpoint).thenApply(InvoiceLineCollection::getInvoiceLines);
+  }
+
+  private void updateInvoiceAndAffectedLinesAsync(Invoice invoice, List<InvoiceLine> lines) {
+    VertxCompletableFuture.runAsync(ctx, () -> {
+      InvoiceLineHelper helper = new InvoiceLineHelper(okapiHeaders, ctx, lang);
+      helper.persistInvoiceLines(invoice, lines).handle((ok, fail) -> {
+        if (fail == null) {
+          updateInvoiceAsync(invoice);
+        }
+        helper.closeHttpClient();
+        return null;
+      });
+    });
+  }
+
+  private CompletableFuture<Void> persistInvoiceLines(Invoice invoice, List<InvoiceLine> lines) {
+    return VertxCompletableFuture.allOf(ctx, lines.stream()
+      .map(invoiceLine -> {
+        calculateInvoiceLineTotals(invoiceLine, invoice);
+        return this.updateInvoiceLineToStorage(invoiceLine);
+      })
+      .toArray(CompletableFuture[]::new));
+  }
+
+  private void updateInvoiceAsync(Invoice invoice) {
+    VertxCompletableFuture.runAsync(ctx,
+      () -> sendEvent(MessageAddress.INVOICE_TOTALS, new JsonObject().put(INVOICE, JsonObject.mapFrom(invoice))));
+  }
+
+  private void updateInvoiceAndLinesAsync(String invoiceId) {
+    VertxCompletableFuture.runAsync(ctx, () -> {
+      InvoiceLineHelper helper = new InvoiceLineHelper(okapiHeaders, ctx, lang);
+      helper.updateInvoiceAndLines(invoiceId).handle((ok, fail) -> {
+        helper.closeHttpClient();
+        return null;
+      });
+    });
+  }
+
+  private CompletableFuture<Void> updateInvoiceAndLines(String invoiceId) {
+    return getInvoiceById(invoiceId, lang, httpClient, ctx, okapiHeaders, logger)
+      .thenCompose(invoice -> getInvoiceLinesByInvoiceId(invoiceId).thenApply(lines -> {
+        // Collecting original hash codes of each invoice line record.
+        List<Integer> originalLineHashCodes = calculateHashCodes(lines);
+
+        // Re-apply prorated adjustments
+        applyProratedAdjustments(getProratedAdjustments(invoice.getAdjustments()), lines, invoice);
+
+        // Return only those lines which were updated after re-applying prorated adjustment(s)
+        return lines.stream()
+          .filter(line -> !originalLineHashCodes.contains(line.hashCode()))
+          .collect(toList());
+      })
+        .thenCompose(lines -> persistInvoiceLines(invoice, lines))
+        .thenAccept(ok -> updateInvoiceAsync(invoice)));
   }
 }

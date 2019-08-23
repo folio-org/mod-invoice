@@ -8,6 +8,7 @@ import static org.awaitility.Awaitility.await;
 import static org.folio.invoices.utils.ErrorCodes.PROHIBITED_INVOICE_LINE_CREATION;
 import static org.folio.invoices.utils.HelperUtils.getNoAcqUnitCQL;
 import static org.folio.invoices.utils.HelperUtils.INVOICE_ID;
+import static org.folio.invoices.utils.ResourcePathResolver.INVOICES;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_LINES;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_LINE_NUMBER;
 import static org.folio.rest.impl.AbstractHelper.ID;
@@ -36,7 +37,6 @@ import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.junit.Assert.assertEquals;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
@@ -70,7 +70,7 @@ public class InvoiceLinesApiTest extends ApiTestBase {
   static final String INVOICE_LINES_MOCK_DATA_PATH = BASE_MOCK_DATA_PATH + "invoiceLines/";
   static final String INVOICE_LINES_LIST_PATH = INVOICE_LINES_MOCK_DATA_PATH + "invoice_lines.json";
   public static final String INVOICE_LINES_PATH = "/invoice/invoice-lines";
-  private static final String INVOICE_LINE_ID_PATH = INVOICE_LINES_PATH + "/%s";
+  public static final String INVOICE_LINE_ID_PATH = INVOICE_LINES_PATH + "/%s";
 
   private static final String INVOICE_LINE_ADJUSTMENTS_SAMPLE_PATH = INVOICE_LINES_MOCK_DATA_PATH + "29846620-8fb6-4433-b84e-0b6051eb76ec.json";
 
@@ -187,7 +187,8 @@ public class InvoiceLinesApiTest extends ApiTestBase {
   public void deleteInvoicingInvoiceLinesByIdTest() {
     logger.info("=== Test delete invoice line by id ===");
 
-    addMockEntry(INVOICE_LINES, JsonObject.mapFrom(new InvoiceLine().withId(VALID_UUID).withInvoiceId(VALID_UUID)));
+    addMockEntry(INVOICE_LINES, getMinimalContentInvoiceLine().withId(VALID_UUID));
+    addMockEntry(INVOICES, getMinimalContentInvoice());
     verifyDeleteResponse(String.format(INVOICE_LINE_ID_PATH, VALID_UUID), "", 204);
   }
 

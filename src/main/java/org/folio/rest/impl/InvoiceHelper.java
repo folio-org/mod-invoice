@@ -20,6 +20,7 @@ import static org.folio.invoices.utils.ErrorCodes.PO_LINE_UPDATE_FAILURE;
 import static org.folio.invoices.utils.ErrorCodes.VOUCHER_NOT_FOUND;
 import static org.folio.invoices.utils.ErrorCodes.VOUCHER_NUMBER_PREFIX_NOT_ALPHA;
 import static org.folio.invoices.utils.HelperUtils.calculateAdjustmentsTotal;
+import static org.folio.invoices.utils.HelperUtils.calculateHashCodes;
 import static org.folio.invoices.utils.HelperUtils.calculateInvoiceLineTotals;
 import static org.folio.invoices.utils.HelperUtils.calculateVoucherLineAmount;
 import static org.folio.invoices.utils.HelperUtils.collectResultsOnSuccess;
@@ -40,7 +41,6 @@ import static org.folio.invoices.utils.ResourcePathResolver.INVOICES;
 import static org.folio.invoices.utils.ResourcePathResolver.ORDER_LINES;
 import static org.folio.invoices.utils.ResourcePathResolver.resourceByIdPath;
 import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
-import static org.folio.rest.impl.InvoiceLineHelper.GET_INVOICE_LINES_BY_QUERY;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -314,21 +314,19 @@ public class InvoiceHelper extends AbstractHelper {
       }
 
       // Collecting original hash codes of each invoice line record.
-      Set<Integer> originalLineHashCodes = lines.stream()
-        .map(InvoiceLine::hashCode)
-        .collect(Collectors.toSet());
+      List<Integer> originalLineHashCodes = calculateHashCodes(lines);
 
-      invoiceLineHelper.processProratedAdjustments(updatedInvoice, lines);
+      invoiceLineHelper.processProratedAdjustments(lines, updatedInvoice);
 
       return VertxCompletableFuture.allOf(ctx, lines.stream()
         // If any update is made to invoice line adjustment(s), the new hash code will be generated for invoice line record
         .filter(line -> !originalLineHashCodes.contains(line.hashCode()))
-        .map(invoiceLine -> storeInvoiceLineUpdates(updatedInvoice, invoiceLine))
+        .map(invoiceLine -> persistInvoiceLineUpdates(updatedInvoice, invoiceLine))
         .toArray(CompletableFuture[]::new));
     });
   }
 
-  private CompletableFuture<Void> storeInvoiceLineUpdates(Invoice updatedInvoice, InvoiceLine invoiceLine) {
+  private CompletableFuture<Void> persistInvoiceLineUpdates(Invoice updatedInvoice, InvoiceLine invoiceLine) {
     calculateInvoiceLineTotals(invoiceLine, updatedInvoice);
     return invoiceLineHelper.updateInvoiceLineToStorage(invoiceLine)
       .thenAccept(ok -> {
@@ -784,11 +782,7 @@ public class InvoiceHelper extends AbstractHelper {
       return completedFuture(storedInvoiceLines);
     }
 
-    String query = getEndpointWithQuery(String.format(QUERY_BY_INVOICE_ID, invoiceId), logger);
-    // Assuming that the invoice will never contain more than Integer.MAX_VALUE invoiceLines.
-    String endpoint = String.format(GET_INVOICE_LINES_BY_QUERY, Integer.MAX_VALUE, 0, query, lang);
-    return invoiceLineHelper.getInvoiceLineCollection(endpoint)
-      .thenApply(invoiceLineCollection -> storedInvoiceLines = invoiceLineCollection.getInvoiceLines());
+    return invoiceLineHelper.getInvoiceLinesByInvoiceId(invoiceId).thenApply(invoiceLines -> storedInvoiceLines = invoiceLines);
   }
 
   private CompletableFuture<List<InvoiceLine>> getInvoiceLinesWithTotals(Invoice invoice) {
@@ -891,7 +885,7 @@ public class InvoiceHelper extends AbstractHelper {
     CurrencyUnit currency = Monetary.getCurrency(invoice.getCurrency());
 
     // 1. Sub-total
-    MonetaryAmount subTotal = invoiceLineHelper.calculateSubTotal(lines, currency);
+    MonetaryAmount subTotal = invoiceLineHelper.summarizeSubTotals(lines, currency, false);
 
     // 2. Adjustments (sum of not prorated invoice level and all invoice line level adjustments)
     MonetaryAmount adjustmentsTotal = calculateAdjustmentsTotal(getNotProratedAdjustments(invoice), subTotal)

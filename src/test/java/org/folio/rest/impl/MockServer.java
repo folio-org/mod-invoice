@@ -306,7 +306,7 @@ public class MockServer {
 
       if (StringUtils.isNotEmpty(userId)) {
         memberships.getAcquisitionsUnitMemberships().removeIf(membership -> !membership.getUserId().equals(userId));
-        List<String> acquisitionsUnitIds = extractIdsFromQuery(ACQUISITIONS_UNIT_ID, query);
+        List<String> acquisitionsUnitIds = extractIdsFromQuery(ACQUISITIONS_UNIT_ID, "==", query);
         if (!acquisitionsUnitIds.isEmpty()) {
           memberships.getAcquisitionsUnitMemberships().removeIf(membership -> !acquisitionsUnitIds.contains(membership.getAcquisitionsUnitId()));
         }
@@ -478,8 +478,7 @@ public class MockServer {
     String tenant = ctx.request().getHeader(OKAPI_HEADER_TENANT);
     String queryParam = StringUtils.trimToEmpty(ctx.request().getParam(QUERY));
     addServerRqQuery(INVOICE_LINES, queryParam);
-    String invoiceId = EMPTY;
-    List<String> invoiceIds = Collections.emptyList();
+
     if (queryParam.contains(BAD_QUERY)) {
       serverResponse(ctx, 400, APPLICATION_JSON, Response.Status.BAD_REQUEST.getReasonPhrase());
     } else if (queryParam.contains(ID_FOR_INTERNAL_SERVER_ERROR) || GET_INVOICE_LINES_ERROR_TENANT.equals(tenant)) {
@@ -494,11 +493,20 @@ public class MockServer {
         }
       };
 
+      String invoiceId = EMPTY;
+      List<String> includedLineIds = Collections.emptyList();
+      List<String> excludedLineIds = getRqRsEntries(HttpMethod.DELETE, INVOICE_LINES).stream()
+        .map(json -> json.getString(ID))
+        .collect(toList());
+
       if (queryParam.contains(INVOICE_ID)) {
         Matcher matcher = Pattern.compile(".*" + INVOICE_ID + "==(\\S[^)]+).*").matcher(queryParam);
         invoiceId = matcher.find() ? matcher.group(1) : EMPTY;
+        excludedLineIds.addAll(extractIdsFromQuery(queryParam, "<>"));
+        logger.debug("Filtering lines by invoice id={} with id not IN {}", invoiceId, excludedLineIds);
       } else if (queryParam.startsWith("id==")) {
-        invoiceIds = extractIdsFromQuery(queryParam);
+        includedLineIds = extractIdsFromQuery(queryParam);
+        logger.debug("Filtering lines by id IN {}", includedLineIds);
       }
 
       InvoiceLineCollection invoiceLineCollection = new InvoiceLineCollection();
@@ -508,7 +516,9 @@ public class MockServer {
       Iterator<InvoiceLine> iterator = invoiceLines.iterator();
       while (iterator.hasNext()) {
         InvoiceLine invoiceLine = iterator.next();
-        if (invoiceIds.isEmpty() ? !invoiceId.equals(invoiceLine.getInvoiceId()) : !invoiceIds.contains(invoiceLine.getId())) {
+        String id = invoiceLine.getId();
+        if (excludedLineIds.contains(id)
+            || (includedLineIds.isEmpty() ? !invoiceId.equals(invoiceLine.getInvoiceId()) : !includedLineIds.contains(id))) {
           iterator.remove();
         }
       }
@@ -956,11 +966,15 @@ public class MockServer {
   }
 
   private List<String> extractIdsFromQuery(String query) {
-    return extractIdsFromQuery(ID, query);
+    return extractIdsFromQuery(query, "==");
   }
 
-  private List<String> extractIdsFromQuery(String fieldName, String query) {
-    Matcher matcher = Pattern.compile(".*" + fieldName + "==\\((.+)\\).*").matcher(query);
+  private List<String> extractIdsFromQuery(String query, String relation) {
+    return extractIdsFromQuery(ID, relation, query);
+  }
+
+  private List<String> extractIdsFromQuery(String fieldName, String relation, String query) {
+    Matcher matcher = Pattern.compile(".*" + fieldName + relation + "\\(?(.+)\\).*").matcher(query);
     if (matcher.find()) {
       return StreamEx.split(matcher.group(1), " or ").toList();
     } else {

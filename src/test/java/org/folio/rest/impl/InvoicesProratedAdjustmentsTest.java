@@ -133,7 +133,7 @@ public class InvoicesProratedAdjustmentsTest extends ApiTestBase {
     "AMOUNT",
     "PERCENTAGE"
   })
-  public void testUpdateInvoiceWithTwoLinesAddingAmountAdjustmentByLines(Adjustment.Type type) {
+  public void testUpdateInvoiceWithTwoLinesAddingAdjustmentByLines(Adjustment.Type type) {
     logger.info("=== Updating invoice with two lines adding adjustment by lines ===");
 
     // Prepare data "from storage"
@@ -202,7 +202,7 @@ public class InvoicesProratedAdjustmentsTest extends ApiTestBase {
     "AMOUNT",
     "PERCENTAGE"
   })
-  public void testUpdateInvoiceWithTwoLinesAddingAmountAdjustmentByAmount(Adjustment.Type type) {
+  public void testUpdateInvoiceWithTwoLinesAddingAdjustmentByAmount(Adjustment.Type type) {
     logger.info("=== Updating invoice with two lines adding adjustment by amount ===");
 
     // Prepare data "from storage"
@@ -255,6 +255,59 @@ public class InvoicesProratedAdjustmentsTest extends ApiTestBase {
     Adjustment lineAdjustment2 = lineToStorage2.getAdjustments().get(0);
     verifyInvoiceLineAdjustmentCommon(invoiceAdjustment, lineAdjustment2);
     assertThat(lineAdjustment2.getValue(), is(expectedAdjValue2));
+  }
+
+  @Test
+  public void testUpdateInvoiceWithTwoGiftLinesAddingAdjustmentByAmount() {
+    logger.info("=== Updating invoice with two lines (zero subTotal each) adding adjustment by amount ===");
+
+    // Prepare data "from storage"
+    Invoice invoice = getMockAsJson(OPEN_INVOICE_SAMPLE_PATH).mapTo(Invoice.class).withId(randomUUID().toString());
+    invoice.getAdjustments().clear();
+    addMockEntry(INVOICES, invoice);
+
+    InvoiceLine invoiceLine1 = getMockInvoiceLine(invoice.getId()).withSubTotal(0d);
+    addMockEntry(INVOICE_LINES, invoiceLine1);
+
+    InvoiceLine invoiceLine2 = getMockInvoiceLine(invoice.getId()).withSubTotal(0d);
+    addMockEntry(INVOICE_LINES, invoiceLine2);
+
+    // Prepare request body
+    Invoice invoiceBody = copyObject(invoice);
+    invoiceBody.getAdjustments().add(createAdjustment(Adjustment.Prorate.BY_AMOUNT, Adjustment.Type.AMOUNT, 15d));
+
+    // Send update request
+    verifyPut(String.format(INVOICE_ID_PATH, invoice.getId()), invoiceBody, "", 204);
+
+    // Verification
+    assertThat(getInvoiceUpdates(), hasSize(1));
+    assertThat(getInvoiceLineUpdates(), hasSize(2));
+
+    Invoice invoiceToStorage = getInvoiceUpdates().get(0).mapTo(Invoice.class);
+    assertThat(invoiceToStorage.getAdjustments(), hasSize(1));
+    Adjustment invoiceAdjustment = invoiceToStorage.getAdjustments().get(0);
+    assertThat(invoiceAdjustment.getId(), not(isEmptyOrNullString()));
+
+    // Depending on type either original prorated amount is split across lines adjustments or percent of subtotal is calculated
+    double expectedValue = 7.5d;
+
+    assertThat(invoiceToStorage.getAdjustmentsTotal(), is(15d));
+
+    InvoiceLine lineToStorage1 = getLineToStorageById(invoiceLine1.getId());
+    assertThat(lineToStorage1.getAdjustments(), hasSize(1));
+    assertThat(lineToStorage1.getAdjustmentsTotal(), is(expectedValue));
+
+    Adjustment lineAdjustment1 = lineToStorage1.getAdjustments().get(0);
+    verifyInvoiceLineAdjustmentCommon(invoiceAdjustment, lineAdjustment1);
+    assertThat(lineAdjustment1.getValue(), is(expectedValue));
+
+    InvoiceLine lineToStorage2 = getLineToStorageById(invoiceLine2.getId());
+    assertThat(lineToStorage2.getAdjustments(), hasSize(1));
+    assertThat(lineToStorage2.getAdjustmentsTotal(), is(expectedValue));
+
+    Adjustment lineAdjustment2 = lineToStorage2.getAdjustments().get(0);
+    verifyInvoiceLineAdjustmentCommon(invoiceAdjustment, lineAdjustment2);
+    assertThat(lineAdjustment2.getValue(), is(expectedValue));
   }
 
   @Test
