@@ -11,6 +11,9 @@ This is the Invoice business logic module.
 
 ## Additional information
 
+NOTE: Only in case an acquisition unit has to be assigned to the Invoice, it is required that user should have an
+extra permission `invoices.acquisitions-units-assignments.assign` to create an invoice.
+
 ### Issue tracker
 
 See project [MODINVOICE](https://issues.folio.org/browse/MODINVOICE)

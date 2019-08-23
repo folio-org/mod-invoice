@@ -18,6 +18,7 @@ import static org.folio.invoices.utils.ErrorCodes.PO_LINE_NOT_FOUND;
 import static org.folio.invoices.utils.ErrorCodes.PO_LINE_UPDATE_FAILURE;
 import static org.folio.invoices.utils.ErrorCodes.VOUCHER_NOT_FOUND;
 import static org.folio.invoices.utils.ErrorCodes.VOUCHER_NUMBER_PREFIX_NOT_ALPHA;
+import static org.folio.invoices.utils.ErrorCodes.USER_HAS_NO_ACQ_PERMISSIONS;
 import static org.folio.invoices.utils.HelperUtils.calculateAdjustmentsTotal;
 import static org.folio.invoices.utils.HelperUtils.calculateVoucherLineAmount;
 import static org.folio.invoices.utils.HelperUtils.collectResultsOnSuccess;
@@ -29,9 +30,11 @@ import static org.folio.invoices.utils.HelperUtils.getEndpointWithQuery;
 import static org.folio.invoices.utils.HelperUtils.getHttpClient;
 import static org.folio.invoices.utils.HelperUtils.getInvoiceById;
 import static org.folio.invoices.utils.HelperUtils.handleDeleteRequest;
+import static org.folio.invoices.utils.AcqDesiredPermissions.ASSIGN;
 import static org.folio.invoices.utils.HelperUtils.handleGetRequest;
 import static org.folio.invoices.utils.HelperUtils.handlePutRequest;
 import static org.folio.invoices.utils.HelperUtils.isPostApproval;
+import static org.folio.rest.RestVerticle.OKAPI_HEADER_PERMISSIONS;
 import static org.folio.invoices.utils.ResourcePathResolver.FOLIO_INVOICE_NUMBER;
 import static org.folio.invoices.utils.ResourcePathResolver.FUNDS;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICES;
@@ -59,10 +62,12 @@ import javax.money.convert.CurrencyConversion;
 
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.folio.HttpStatus;
 import org.folio.invoices.rest.exceptions.HttpException;
+import org.folio.invoices.utils.AcqDesiredPermissions;
+import org.folio.invoices.utils.ProtectedOperationType;
 import org.folio.invoices.utils.HelperUtils;
 import org.folio.invoices.utils.InvoiceProtectedFields;
-import org.folio.invoices.utils.ProtectedOperationType;
 import org.folio.rest.acq.model.finance.Fund;
 import org.folio.rest.acq.model.finance.FundCollection;
 import org.folio.rest.acq.model.orders.CompositePoLine;
@@ -81,6 +86,7 @@ import org.javamoney.moneta.Money;
 import org.javamoney.moneta.function.MonetaryFunctions;
 
 import io.vertx.core.Context;
+import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import me.escoffier.vertx.completablefuture.VertxCompletableFuture;
 import one.util.streamex.StreamEx;
@@ -102,6 +108,7 @@ public class InvoiceHelper extends AbstractHelper {
 
 
   private static final String DEFAULT_ACCOUNTING_CODE = "tmp_code";
+  private static final String EMPTY_ARRAY = "[]";
 
   // Using variable to "cache" lines for particular invoice base on assumption that the helper is stateful and new instance is used
   private List<InvoiceLine> invoiceLines;
@@ -120,12 +127,30 @@ public class InvoiceHelper extends AbstractHelper {
   }
 
   public CompletableFuture<Invoice> createInvoice(Invoice invoice) {
-    return generateFolioInvoiceNumber()
+    verifyUserHasAssignPermission(invoice);
+    return protectionHelper.isOperationRestricted(invoice.getAcqUnitIds(), ProtectedOperationType.CREATE)
+      .thenCompose(v -> generateFolioInvoiceNumber())
       .thenApply(invoice::withFolioInvoiceNo)
       .thenApply(this::withCalculatedTotals)
       .thenApply(JsonObject::mapFrom)
       .thenCompose(jsonInvoice -> createRecordInStorage(jsonInvoice, resourcesPath(INVOICES)))
       .thenApply(invoice::withId);
+  }
+
+  private void verifyUserHasAssignPermission(Invoice invoice) {
+    if (CollectionUtils.isNotEmpty(invoice.getAcqUnitIds()) && isUserDoesNotHaveDesiredPermission(ASSIGN)){
+      throw new HttpException(HttpStatus.HTTP_FORBIDDEN.toInt(), USER_HAS_NO_ACQ_PERMISSIONS);
+    }
+  }
+
+   private boolean isUserDoesNotHaveDesiredPermission(AcqDesiredPermissions acqPerm) {
+    return !getProvidedPermissions().contains(acqPerm.getPermission());
+  }
+
+   private List<String> getProvidedPermissions() {
+    return new JsonArray(okapiHeaders.getOrDefault(OKAPI_HEADER_PERMISSIONS, EMPTY_ARRAY)).stream().
+      map(Object::toString)
+      .collect(Collectors.toList());
   }
 
   /**
@@ -622,7 +647,7 @@ public class InvoiceHelper extends AbstractHelper {
    */
   private CompletableFuture<Void> deleteVoucherLinesIfExist(String voucherId) {
     return getVoucherLineIdsByVoucherId(voucherId)
-      .thenCompose(ids -> CompletableFuture.allOf(ids.stream()
+      .thenCompose(ids -> allOf(ids.stream()
         .map(voucherLineHelper::deleteVoucherLine)
         .toArray(CompletableFuture[]::new)));
   }
@@ -647,14 +672,14 @@ public class InvoiceHelper extends AbstractHelper {
       .toArray(CompletableFuture[]::new));
   }
 
-  public boolean validateIncomingInvoice(Invoice invoice) {
-    if(Boolean.TRUE.equals(invoice.getLockTotal()) && Objects.isNull(invoice.getTotal())) {
+  public CompletableFuture<Boolean> validateIncomingInvoice(Invoice invoice) {
+    if (Boolean.TRUE.equals(invoice.getLockTotal()) && Objects.isNull(invoice.getTotal())) {
       addProcessingError(INVOICE_TOTAL_REQUIRED.toError());
     }
     if (!isPostApproval(invoice) && (invoice.getApprovalDate() != null || invoice.getApprovedBy() != null)) {
       addProcessingError(INCOMPATIBLE_INVOICE_FIELDS_ON_STATUS_TRANSITION.toError());
     }
-    return getErrors().isEmpty();
+    return completedFuture(getErrors().isEmpty());
   }
 
   private void validateInvoice(Invoice invoice, Invoice invoiceFromStorage) {
@@ -662,7 +687,8 @@ public class InvoiceHelper extends AbstractHelper {
       Set<String> fields = findChangedProtectedFields(invoice, invoiceFromStorage, InvoiceProtectedFields.getFieldNames());
 
       // "total" depends on value of "lockTotal": if value is true, total is required; if false, read-only (system calculated)
-      if (Boolean.TRUE.equals(invoiceFromStorage.getLockTotal()) && !Objects.equals(invoice.getTotal(), invoiceFromStorage.getTotal())) {
+      if (Boolean.TRUE.equals(invoiceFromStorage.getLockTotal())
+          && !Objects.equals(invoice.getTotal(), invoiceFromStorage.getTotal())) {
         fields.add(TOTAL);
       }
       verifyThatProtectedFieldsUnchanged(fields);
@@ -757,7 +783,7 @@ public class InvoiceHelper extends AbstractHelper {
       .map(this::getPoLineById)
       .collect(toList());
 
-    return CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]))
+    return allOf(futures.toArray(new CompletableFuture[0]))
       .thenApply(v -> futures.stream()
         .map(CompletableFuture::join)
         .collect(Collectors.toMap(poLine -> poLine, poLine -> getPoLinePaymentStatus(poLineIdsWithInvoiceLines.get(poLine.getId())))));
@@ -806,7 +832,7 @@ public class InvoiceHelper extends AbstractHelper {
   }
 
   private CompletionStage<Void> updateCompositePoLines(List<CompositePoLine> poLines) {
-    return CompletableFuture.allOf(poLines.stream()
+    return allOf(poLines.stream()
       .map(JsonObject::mapFrom)
       .map(poLine -> handlePutRequest(resourceByIdPath(ORDER_LINES, poLine.getString(ID), lang), poLine, httpClient, ctx, okapiHeaders, logger))
       .toArray(CompletableFuture[]::new))

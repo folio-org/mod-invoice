@@ -193,5 +193,4 @@ public class ProtectionHelper extends AbstractHelper {
       return ids;
     });
   }
-
 }

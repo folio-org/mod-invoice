@@ -16,7 +16,7 @@ import static org.folio.invoices.utils.HelperUtils.handleGetRequest;
 import static org.folio.invoices.utils.HelperUtils.verifyAndExtractBody;
 import static org.folio.rest.RestVerticle.OKAPI_USERID_HEADER;
 import static org.folio.rest.impl.InvoicesImpl.PROTECTED_AND_MODIFIED_FIELDS;
-
+import static java.util.concurrent.CompletableFuture.completedFuture;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.List;
@@ -117,7 +117,7 @@ public abstract class AbstractHelper {
       return getConfigurationsEntries(searchCriteria)
         .thenAccept(config -> this.tenantConfiguration = config);
     }
-    return CompletableFuture.completedFuture(null);
+    return completedFuture(null);
   }
 
   private boolean isConfigEmpty() {
