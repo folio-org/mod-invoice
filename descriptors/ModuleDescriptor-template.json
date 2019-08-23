@@ -20,9 +20,12 @@
           "methods": ["POST"],
           "pathPattern": "/invoice/invoices",
           "permissionsRequired": ["invoice.invoices.item.post"],
+          "permissionsDesired": ["invoices.acquisitions-units-assignments.assign"],
           "modulePermissions": [
             "invoice-storage.invoices.item.post",
-            "invoice-storage.invoice-number.get"
+            "invoice-storage.invoice-number.get",
+            "acquisitions-units-storage.units.collection.get",
+            "acquisitions-units-storage.memberships.collection.get"
           ]
         },
         {
@@ -88,7 +91,9 @@
             "invoice-storage.invoices.item.get",
             "invoice-storage.invoices.item.put",
             "invoice-storage.invoice-lines.item.post",
-            "invoice-storage.invoice-lines.collection.get"
+            "invoice-storage.invoice-lines.collection.get",
+            "acquisitions-units-storage.units.collection.get",
+            "acquisitions-units-storage.memberships.collection.get"
           ]
         },
         {

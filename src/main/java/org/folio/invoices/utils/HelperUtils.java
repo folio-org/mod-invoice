@@ -13,6 +13,7 @@ import static org.folio.invoices.utils.ResourcePathResolver.VOUCHER_LINES;
 import static org.folio.invoices.utils.ResourcePathResolver.resourceByIdPath;
 import static org.folio.rest.RestVerticle.OKAPI_HEADER_TENANT;
 import static org.folio.rest.jaxrs.model.Adjustment.Prorate.NOT_PRORATED;
+import static me.escoffier.vertx.completablefuture.VertxCompletableFuture.allOf;
 
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
@@ -198,7 +199,6 @@ public class HelperUtils {
     return future;
   }
 
-
   /**
    * A common method to update an entry in the storage
    *
@@ -332,7 +332,7 @@ public class HelperUtils {
    * @return CompletableFuture with resulting objects
    */
   public static <T> CompletableFuture<List<T>> collectResultsOnSuccess(List<CompletableFuture<T>> futures) {
-    return VertxCompletableFuture.allOf(futures.toArray(new CompletableFuture[0]))
+    return allOf(futures.toArray(new CompletableFuture[0]))
       .thenApply(v -> futures
         .stream()
         // The CompletableFuture::join can be safely used because the `allOf` guaranties success at this step
