@@ -906,7 +906,7 @@ public class MockServer {
         Config voucherNumberPrefixConfig = new Config()
           .withModule(INVOICE_CONFIG_MODULE_NAME)
           .withConfigName(VOUCHER_NUMBER_PREFIX_CONFIG)
-          .withValue(new JsonObject().put(VOUCHER_NUMBER_PREFIX_CONFIG, "testPrefix").toString());
+          .withValue(new JsonObject().put(VOUCHER_NUMBER_PREFIX_CONFIG, TEST_PREFIX).toString());
         configs.getConfigs().add(localeConfig);
         configs.getConfigs().add(voucherNumberPrefixConfig);
         configs.withTotalRecords(configs.getConfigs().size());
