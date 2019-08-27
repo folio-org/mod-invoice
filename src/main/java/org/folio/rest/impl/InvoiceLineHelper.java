@@ -340,7 +340,7 @@ public class InvoiceLineHelper extends AbstractHelper {
 
     return invoiceLines.stream()
       .filter(line -> line.getAdjustments()
-        .removeIf(adj -> !adjIds.contains(adj.getAdjustmentId())))
+        .removeIf(adj -> (adj.getProrate() != Adjustment.Prorate.NOT_PRORATED) && !adjIds.contains(adj.getAdjustmentId())))
       .collect(toList());
   }
 
