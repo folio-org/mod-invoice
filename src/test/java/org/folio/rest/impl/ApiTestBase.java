@@ -15,7 +15,7 @@ import static org.folio.rest.impl.InvoiceLinesApiTest.INVOICE_LINES_PATH;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.emptyIterable;
 import static org.hamcrest.Matchers.equalTo;
-import static org.hamcrest.Matchers.hasSize;
+import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.isEmptyOrNullString;
 import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.notNullValue;
@@ -35,6 +35,7 @@ import java.util.concurrent.TimeoutException;
 import java.util.stream.Stream;
 
 import org.apache.commons.io.IOUtils;
+import org.awaitility.core.ConditionEvaluationLogger;
 import org.folio.invoices.events.handlers.MessageAddress;
 import org.folio.invoices.utils.HelperUtils;
 import org.folio.rest.jaxrs.model.Invoice;
@@ -299,9 +300,10 @@ public class ApiTestBase {
     logger.debug("Verifying event bus messages");
 
     // Wait until event bus registers message
-    await().atLeast(50, MILLISECONDS)
+    await().conditionEvaluationListener(new ConditionEvaluationLogger())
+      .atLeast(50, MILLISECONDS)
       .atMost(1, SECONDS)
-      .until(() -> eventMessages, hasSize(msgQty));
+      .until(eventMessages::size, is(msgQty));
 
     for (int i = 0; i < msgQty; i++) {
       Message<JsonObject> message = eventMessages.get(i);

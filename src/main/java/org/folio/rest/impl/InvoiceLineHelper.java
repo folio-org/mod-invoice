@@ -5,7 +5,6 @@ import static org.apache.commons.lang3.StringUtils.isEmpty;
 import static org.folio.invoices.utils.ErrorCodes.PROHIBITED_INVOICE_LINE_CREATION;
 import static org.folio.invoices.utils.HelperUtils.INVOICE;
 import static org.folio.invoices.utils.HelperUtils.INVOICE_ID;
-import static org.folio.invoices.utils.HelperUtils.calculateHashCodes;
 import static org.folio.invoices.utils.HelperUtils.calculateInvoiceLineTotals;
 import static org.folio.invoices.utils.HelperUtils.combineCqlExpressions;
 import static org.folio.invoices.utils.HelperUtils.convertToDoubleWithRounding;
@@ -24,8 +23,6 @@ import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_LINE_NUMBER;
 import static org.folio.invoices.utils.ResourcePathResolver.resourceByIdPath;
 import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
 
-import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -316,14 +313,19 @@ public class InvoiceLineHelper extends AbstractHelper {
       .getSum();
   }
 
-  public void processProratedAdjustments(List<InvoiceLine> lines, Invoice invoice) {
+  public List<InvoiceLine> processProratedAdjustments(List<InvoiceLine> lines, Invoice invoice) {
     List<Adjustment> proratedAdjustments = getProratedAdjustments(invoice.getAdjustments());
 
     // Remove previously applied prorated adjustments if they are no longer available at invoice level
-    filterDeletedAdjustments(proratedAdjustments, lines);
+    List<InvoiceLine> updatedLines = filterDeletedAdjustments(proratedAdjustments, lines);
 
     // Apply prorated adjustments to each invoice line
-    applyProratedAdjustments(proratedAdjustments, lines, invoice);
+    updatedLines.addAll(applyProratedAdjustments(proratedAdjustments, lines, invoice));
+
+    // Return only unique invoice lines
+    return updatedLines.stream()
+      .distinct()
+      .collect(toList());
   }
 
   /**
@@ -331,65 +333,82 @@ public class InvoiceLineHelper extends AbstractHelper {
    * @param proratedAdjustments list of prorated adjustments available at invoice level
    * @param invoiceLines list of invoice lines associated with current invoice
    */
-  private void filterDeletedAdjustments(List<Adjustment> proratedAdjustments, List<InvoiceLine> invoiceLines) {
+  private List<InvoiceLine> filterDeletedAdjustments(List<Adjustment> proratedAdjustments, List<InvoiceLine> invoiceLines) {
     List<String> adjIds = proratedAdjustments.stream()
       .map(Adjustment::getId)
       .collect(toList());
 
-    invoiceLines.forEach(line -> line.getAdjustments()
-      .removeIf(adj -> !adjIds.contains(adj.getAdjustmentId())));
+    return invoiceLines.stream()
+      .filter(line -> line.getAdjustments()
+        .removeIf(adj -> !adjIds.contains(adj.getAdjustmentId())))
+      .collect(toList());
   }
 
-  private void applyProratedAdjustments(List<Adjustment> proratedAdjustments, List<InvoiceLine> lines, Invoice invoice) {
+  private List<InvoiceLine> applyProratedAdjustments(List<Adjustment> proratedAdjustments, List<InvoiceLine> lines, Invoice invoice) {
     CurrencyUnit currencyUnit = Monetary.getCurrency(invoice.getCurrency());
 
+    List<InvoiceLine> updatedLines = new ArrayList<>();
     for (Adjustment adjustment : proratedAdjustments) {
       switch (adjustment.getProrate()) {
       case BY_LINE:
-        applyProratedAdjustmentByLines(adjustment, lines, currencyUnit);
+        updatedLines.addAll(applyProratedAdjustmentByLines(adjustment, lines, currencyUnit));
         break;
       case BY_AMOUNT:
-        applyProratedAdjustmentByAmount(adjustment, lines, currencyUnit);
+        updatedLines.addAll(applyProratedAdjustmentByAmount(adjustment, lines, currencyUnit));
         break;
       case BY_QUANTITY:
-        applyProratedAdjustmentByQuantity(adjustment, lines, currencyUnit);
+        updatedLines.addAll(applyProratedAdjustmentByQuantity(adjustment, lines, currencyUnit));
         break;
       default:
         logger.warn("Unexpected {} adjustment's prorate type for invoice with id={}", adjustment.getProrate(), invoice.getId());
       }
     }
+
+    // Return only unique invoice lines
+    return updatedLines.stream()
+      .distinct()
+      .collect(toList());
   }
 
   /**
    * Each invoiceLine gets adjustment value divided by quantity of lines
    */
-  private void applyProratedAdjustmentByLines(Adjustment adjustment, List<InvoiceLine> lines, CurrencyUnit currencyUnit) {
-    Adjustment proratedAdjustment = prepareAdjustmentForLine(adjustment);
+  private List<InvoiceLine> applyProratedAdjustmentByLines(Adjustment adjustment, List<InvoiceLine> lines,
+      CurrencyUnit currencyUnit) {
 
-    if (adjustment.getType() == Adjustment.Type.AMOUNT) {
-      proratedAdjustment.setValue(convertToDoubleWithRounding(Money.of(adjustment.getValue(), currencyUnit)
-        .divide(lines.size())));
-    } else {
-      proratedAdjustment.setValue(BigDecimal.valueOf(adjustment.getValue())
-        .divide(BigDecimal.valueOf(lines.size()), 2, RoundingMode.HALF_EVEN)
-        .doubleValue());
+    List<InvoiceLine> updatedLines = new ArrayList<>();
+    for (InvoiceLine line : lines) {
+      Adjustment proratedAdjustment = prepareAdjustmentForLine(adjustment);
+
+      if (adjustment.getType() == Adjustment.Type.AMOUNT) {
+        proratedAdjustment.setValue(convertToDoubleWithRounding(Money.of(adjustment.getValue(), currencyUnit)
+          .divide(lines.size())));
+      } else {
+        proratedAdjustment.setValue(adjustment.getValue() / lines.size());
+      }
+
+      if (addAdjustmentToLine(line, proratedAdjustment)) {
+        updatedLines.add(line);
+      }
     }
 
-    lines.forEach(line -> addAdjustmentToLine(line, proratedAdjustment));
+    return updatedLines;
   }
 
   /**
    * Each invoiceLine gets a portion of the amount proportionate to the invoiceLine's contribution to the invoice subTotal.
    * Prorated percentage adjustments of this type aren't split but rather each invoiceLine gets an adjustment of that percentage
    */
-  private void applyProratedAdjustmentByAmount(Adjustment adjustment, List<InvoiceLine> lines, CurrencyUnit currencyUnit) {
+  private List<InvoiceLine> applyProratedAdjustmentByAmount(Adjustment adjustment, List<InvoiceLine> lines,
+      CurrencyUnit currencyUnit) {
+
     MonetaryAmount grandSubTotal = summarizeSubTotals(lines, currencyUnit, true);
     if (adjustment.getType() == Adjustment.Type.AMOUNT && grandSubTotal.isZero()) {
       // If summarized subTotal (by abs) is zero, each line has zero amount (e.g. gift) so adjustment should be prorated "By line"
-      applyProratedAdjustmentByLines(adjustment, lines, currencyUnit);
-      return;
+      return applyProratedAdjustmentByLines(adjustment, lines, currencyUnit);
     }
 
+    List<InvoiceLine> updatedLines = new ArrayList<>();
     for (InvoiceLine line : lines) {
       Adjustment proratedAdjustment = prepareAdjustmentForLine(adjustment);
 
@@ -399,31 +418,42 @@ public class InvoiceLineHelper extends AbstractHelper {
           .divide(grandSubTotal.getNumber())));
       }
 
-      addAdjustmentToLine(line, proratedAdjustment);
+      if (addAdjustmentToLine(line, proratedAdjustment)) {
+        updatedLines.add(line);
+      }
     }
+
+    return updatedLines;
   }
 
   /**
    * Each invoiceLine gets an portion of the amount proportionate to the invoiceLine's quantity.
    */
-  private void applyProratedAdjustmentByQuantity(Adjustment adjustment, List<InvoiceLine> lines, CurrencyUnit currencyUnit) {
+  private List<InvoiceLine> applyProratedAdjustmentByQuantity(Adjustment adjustment, List<InvoiceLine> lines,
+      CurrencyUnit currencyUnit) {
+
     if (adjustment.getType() == Adjustment.Type.PERCENTAGE) {
       /*
        * "By quantity" prorated percentage adjustments don't make sense and the client should not use that combination. We will also
        * need to validate this on the backend and return an error response in the case where someone makes a call directly to the
        * API with the combo.
        */
-      return;
+      return Collections.emptyList();
     }
 
+    List<InvoiceLine> updatedLines = new ArrayList<>();
     for (InvoiceLine line : lines) {
       Adjustment proratedAdjustment = prepareAdjustmentForLine(adjustment)
         .withValue(convertToDoubleWithRounding(Money.of(adjustment.getValue(), currencyUnit)
           .multiply(line.getQuantity())
           .divide(getTotalQuantities(lines))));
 
-      addAdjustmentToLine(line, proratedAdjustment);
+      if (addAdjustmentToLine(line, proratedAdjustment)) {
+        updatedLines.add(line);
+      }
     }
+
+    return updatedLines;
   }
 
   private Adjustment prepareAdjustmentForLine(Adjustment adjustment) {
@@ -437,13 +467,15 @@ public class InvoiceLineHelper extends AbstractHelper {
     return lines.stream().map(InvoiceLine::getQuantity).reduce(0, Integer::sum);
   }
 
-  private void addAdjustmentToLine(InvoiceLine line, Adjustment proratedAdjustment) {
+  private boolean addAdjustmentToLine(InvoiceLine line, Adjustment proratedAdjustment) {
     List<Adjustment> lineAdjustments = line.getAdjustments();
     if (!lineAdjustments.contains(proratedAdjustment)) {
       // Just in case there was adjustment with this uuid but now updated, remove it
       lineAdjustments.removeIf(adj -> proratedAdjustment.getAdjustmentId().equals(adj.getAdjustmentId()));
       lineAdjustments.add(proratedAdjustment);
+      return true;
     }
+    return false;
   }
 
   /**
@@ -461,19 +493,13 @@ public class InvoiceLineHelper extends AbstractHelper {
     }
 
     return getRelatedLines(invoiceLine).thenApply(lines -> {
-      // Collecting original hash codes of each invoice line record.
-      List<Integer> originalLineHashCodes = calculateHashCodes(lines);
-
       // Create new list adding current line as well
       List<InvoiceLine> allLines = new ArrayList<>(lines);
       allLines.add(invoiceLine);
 
-      // Re-apply prorated adjustments
-      applyProratedAdjustments(proratedAdjustments, allLines, invoice);
-
-      // Return only those related lines which were updated after re-applying prorated adjustment(s)
-      return lines.stream()
-        .filter(line -> !originalLineHashCodes.contains(line.hashCode()))
+      // Re-apply prorated adjustments and return only those related lines which were updated after re-applying prorated adjustment(s)
+      return applyProratedAdjustments(proratedAdjustments, allLines, invoice).stream()
+        .filter(line -> !line.equals(invoiceLine))
         .collect(toList());
     });
   }
@@ -532,20 +558,18 @@ public class InvoiceLineHelper extends AbstractHelper {
   }
 
   private CompletableFuture<Void> updateInvoiceAndLines(String invoiceId) {
-    return getInvoiceById(invoiceId, lang, httpClient, ctx, okapiHeaders, logger)
-      .thenCompose(invoice -> getInvoiceLinesByInvoiceId(invoiceId).thenApply(lines -> {
-        // Collecting original hash codes of each invoice line record.
-        List<Integer> originalLineHashCodes = calculateHashCodes(lines);
+    return getInvoiceById(invoiceId, lang, httpClient, ctx, okapiHeaders, logger).thenCompose(invoice -> {
+      List<Adjustment> proratedAdjustments = getProratedAdjustments(invoice.getAdjustments());
 
-        // Re-apply prorated adjustments
-        applyProratedAdjustments(getProratedAdjustments(invoice.getAdjustments()), lines, invoice);
+      // If no prorated adjustments, just update invoice details
+      if (proratedAdjustments.isEmpty()) {
+        updateInvoiceAsync(invoice);
+        return CompletableFuture.completedFuture(null);
+      }
 
-        // Return only those lines which were updated after re-applying prorated adjustment(s)
-        return lines.stream()
-          .filter(line -> !originalLineHashCodes.contains(line.hashCode()))
-          .collect(toList());
-      })
+      return getInvoiceLinesByInvoiceId(invoiceId).thenApply(lines -> applyProratedAdjustments(proratedAdjustments, lines, invoice))
         .thenCompose(lines -> persistInvoiceLines(invoice, lines))
-        .thenAccept(ok -> updateInvoiceAsync(invoice)));
+        .thenAccept(ok -> updateInvoiceAsync(invoice));
+    });
   }
 }

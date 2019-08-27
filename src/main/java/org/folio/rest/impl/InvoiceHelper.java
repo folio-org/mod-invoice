@@ -21,7 +21,6 @@ import static org.folio.invoices.utils.ErrorCodes.VOUCHER_NOT_FOUND;
 import static org.folio.invoices.utils.ErrorCodes.VOUCHER_NUMBER_PREFIX_NOT_ALPHA;
 import static org.folio.invoices.utils.ErrorCodes.USER_HAS_NO_ACQ_PERMISSIONS;
 import static org.folio.invoices.utils.HelperUtils.calculateAdjustmentsTotal;
-import static org.folio.invoices.utils.HelperUtils.calculateHashCodes;
 import static org.folio.invoices.utils.HelperUtils.calculateInvoiceLineTotals;
 import static org.folio.invoices.utils.HelperUtils.calculateVoucherLineAmount;
 import static org.folio.invoices.utils.HelperUtils.collectResultsOnSuccess;
@@ -249,7 +248,7 @@ public class InvoiceHelper extends AbstractHelper {
         validateInvoice(invoice, invoiceFromStorage);
         setSystemGeneratedData(invoiceFromStorage, invoice);
 
-        return recalculateTotals(invoice, invoiceFromStorage)
+        return recalculateDynamicData(invoice, invoiceFromStorage)
           .thenCompose(ok -> handleInvoiceStatusTransition(invoice, invoiceFromStorage));
       })
       .thenCompose(ok -> updateInvoiceRecord(invoice));
@@ -316,7 +315,7 @@ public class InvoiceHelper extends AbstractHelper {
         && Objects.equals(adjustmentsTotal, invoice.getAdjustmentsTotal()));
   }
 
-  private CompletableFuture<Boolean> recalculateTotals(Invoice updatedInvoice, Invoice invoiceFromStorage) {
+  private CompletableFuture<Boolean> recalculateDynamicData(Invoice updatedInvoice, Invoice invoiceFromStorage) {
     // If invoice was approved, the totals are already fixed and should not be recalculated
     if (isPostApproval(invoiceFromStorage)) {
       return completedFuture(false);
@@ -338,14 +337,8 @@ public class InvoiceHelper extends AbstractHelper {
         return completedFuture(null);
       }
 
-      // Collecting original hash codes of each invoice line record.
-      List<Integer> originalLineHashCodes = calculateHashCodes(lines);
-
-      invoiceLineHelper.processProratedAdjustments(lines, updatedInvoice);
-
-      return VertxCompletableFuture.allOf(ctx, lines.stream()
-        // If any update is made to invoice line adjustment(s), the new hash code will be generated for invoice line record
-        .filter(line -> !originalLineHashCodes.contains(line.hashCode()))
+      return VertxCompletableFuture.allOf(ctx, invoiceLineHelper.processProratedAdjustments(lines, updatedInvoice)
+        .stream()
         .map(invoiceLine -> persistInvoiceLineUpdates(updatedInvoice, invoiceLine))
         .toArray(CompletableFuture[]::new));
     });
