@@ -652,7 +652,7 @@ public class InvoicesProratedAdjustmentsTest extends ApiTestBase {
 
         Adjustment lineAdjustment = lineToStorage.getAdjustments().get(0);
         verifyInvoiceLineAdjustmentCommon(invoiceAdjustment, lineAdjustment);
-        assertThat(lineAdjustment.getValue(), is(1.6666666666666667d));
+        assertThat(lineAdjustment.getValue(), is(1.666666666666667d));
     });
   }
 

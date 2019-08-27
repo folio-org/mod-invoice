@@ -23,6 +23,8 @@ import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_LINE_NUMBER;
 import static org.folio.invoices.utils.ResourcePathResolver.resourceByIdPath;
 import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -384,7 +386,9 @@ public class InvoiceLineHelper extends AbstractHelper {
         proratedAdjustment.setValue(convertToDoubleWithRounding(Money.of(adjustment.getValue(), currencyUnit)
           .divide(lines.size())));
       } else {
-        proratedAdjustment.setValue(adjustment.getValue() / lines.size());
+        proratedAdjustment.setValue(BigDecimal.valueOf(adjustment.getValue())
+          .divide(BigDecimal.valueOf(lines.size()), 15, RoundingMode.HALF_EVEN)
+          .doubleValue());
       }
 
       if (addAdjustmentToLine(line, proratedAdjustment)) {
