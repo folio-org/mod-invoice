@@ -49,7 +49,7 @@ public class InvoiceSummary implements Handler<Message<JsonObject>> {
     getInvoiceRecord(helper, body)
       .thenCompose(invoice -> helper.recalculateTotals(invoice)
         .thenCompose(isOutOfSync -> {
-          if (isOutOfSync) {
+          if (Boolean.TRUE.equals(isOutOfSync)) {
             logger.debug("The invoice with id={} is out of sync in storage and requires updates", invoice.getId());
             return helper.updateInvoiceRecord(invoice);
           } else {

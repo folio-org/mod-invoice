@@ -491,7 +491,7 @@ public class InvoiceHelper extends AbstractHelper {
     return getLoadedTenantConfiguration()
       .getConfigs().stream()
       .filter(this::isVoucherNumberPrefixConfig)
-      .map(Config::getValue)
+      .map(config -> new JsonObject(config.getValue()).getString(VOUCHER_NUMBER_PREFIX_CONFIG))
       .findFirst()
       .orElse(EMPTY);
   }
@@ -918,7 +918,7 @@ public class InvoiceHelper extends AbstractHelper {
       .add(calculateInvoiceLinesAdjustmentsTotal(lines, currency));
 
     // 3. Total
-    if (!Boolean.TRUE.equals(invoice.getLockTotal())) {
+    if (Boolean.FALSE.equals(invoice.getLockTotal())) {
       invoice.setTotal(convertToDoubleWithRounding(subTotal.add(adjustmentsTotal)));
     }
     invoice.setAdjustmentsTotal(convertToDoubleWithRounding(adjustmentsTotal));

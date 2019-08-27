@@ -421,6 +421,19 @@
       ]
     },
     {
+      "permissionName": "invoices.acquisitions-units-assignments.assign",
+      "displayName": "Acquisitions unit assignment - create unit assignment",
+      "description": "Assign new invoice to acquisitions units"
+    },
+    {
+      "permissionName": "invoices.acquisitions-units-assignments.all",
+      "displayName": "All invoice acquisitions-unit-assignments permissions",
+      "description": "All permissions for the acquisitions-unit-assignments",
+      "subPermissions": [
+        "invoices.acquisitions-units-assignments.assign"
+      ]
+    },    
+    {
       "permissionName": "invoice.all",
       "displayName": "Invoice module - all permissions",
       "description": "Entire set of permissions needed to use the invoice module",
@@ -440,7 +453,8 @@
         "voucher-number.start.post",
         "voucher-number.start.get",
         "voucher.all",
-        "invoice.invoices.documents.all"
+        "invoice.invoices.documents.all",
+        "invoices.acquisitions-units-assignments.all"
       ],
       "visible": false
     }
