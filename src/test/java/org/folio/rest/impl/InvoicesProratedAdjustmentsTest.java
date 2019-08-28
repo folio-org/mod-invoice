@@ -8,8 +8,11 @@ import static org.folio.rest.impl.InvoicesApiTest.OPEN_INVOICE_SAMPLE_PATH;
 import static org.folio.rest.impl.MockServer.addMockEntry;
 import static org.folio.rest.impl.MockServer.getInvoiceLineUpdates;
 import static org.folio.rest.impl.MockServer.getInvoiceUpdates;
+import static org.folio.rest.jaxrs.model.Adjustment.Prorate.BY_AMOUNT;
+import static org.folio.rest.jaxrs.model.Adjustment.Prorate.BY_LINE;
 import static org.folio.rest.jaxrs.model.Adjustment.Prorate.NOT_PRORATED;
 import static org.folio.rest.jaxrs.model.Adjustment.Type.AMOUNT;
+import static org.folio.rest.jaxrs.model.Adjustment.Type.PERCENTAGE;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.equalTo;
@@ -21,7 +24,6 @@ import static org.hamcrest.Matchers.nullValue;
 import static org.hamcrest.collection.IsCollectionWithSize.hasSize;
 
 import java.util.Collections;
-import java.util.Optional;
 import java.util.stream.Stream;
 
 import org.folio.rest.jaxrs.model.Adjustment;
@@ -160,7 +162,7 @@ public class InvoicesProratedAdjustmentsTest extends ApiTestBase {
 
     // Prepare request body
     Invoice invoiceBody = copyObject(invoice);
-    invoiceBody.getAdjustments().add(createAdjustment(Adjustment.Prorate.BY_LINE, type, 9.30d));
+    invoiceBody.getAdjustments().add(createAdjustment(BY_LINE, type, 9.30d));
 
     // Send update request
     verifyPut(String.format(INVOICE_ID_PATH, invoice.getId()), invoiceBody, "", 204);
@@ -229,7 +231,7 @@ public class InvoicesProratedAdjustmentsTest extends ApiTestBase {
 
     // Prepare request body
     Invoice invoiceBody = copyObject(invoice);
-    invoiceBody.getAdjustments().add(createAdjustment(Adjustment.Prorate.BY_AMOUNT, type, 15d));
+    invoiceBody.getAdjustments().add(createAdjustment(BY_AMOUNT, type, 15d));
 
     // Send update request
     verifyPut(String.format(INVOICE_ID_PATH, invoice.getId()), invoiceBody, "", 204);
@@ -285,7 +287,7 @@ public class InvoicesProratedAdjustmentsTest extends ApiTestBase {
 
     // Prepare request body
     Invoice invoiceBody = copyObject(invoice);
-    invoiceBody.getAdjustments().add(createAdjustment(Adjustment.Prorate.BY_AMOUNT, AMOUNT, 15d));
+    invoiceBody.getAdjustments().add(createAdjustment(BY_AMOUNT, AMOUNT, 15d));
 
     // Send update request
     verifyPut(String.format(INVOICE_ID_PATH, invoice.getId()), invoiceBody, "", 204);
@@ -319,6 +321,71 @@ public class InvoicesProratedAdjustmentsTest extends ApiTestBase {
     Adjustment lineAdjustment2 = lineToStorage2.getAdjustments().get(0);
     verifyInvoiceLineAdjustmentCommon(invoiceAdjustment, lineAdjustment2);
     assertThat(lineAdjustment2.getValue(), is(expectedValue));
+  }
+
+  @Test
+  public void testUpdateInvoiceWithThreeLinesAddingAmountAdjustmentByAmount() {
+    logger.info("=== Updating invoice with zero subTotal and three lines (mixed subTotals) adding 5$ adjustment by amount ===");
+
+    // Prepare data "from storage"
+    Invoice invoice = getMockAsJson(OPEN_INVOICE_SAMPLE_PATH).mapTo(Invoice.class).withId(randomUUID().toString());
+    invoice.getAdjustments().clear();
+    addMockEntry(INVOICES, invoice);
+
+    InvoiceLine invoiceLine1 = getMockInvoiceLine(invoice.getId()).withSubTotal(5d)
+      .withAdjustments(Collections.singletonList(createAdjustment(NOT_PRORATED, AMOUNT, 10d)));
+    addMockEntry(INVOICE_LINES, invoiceLine1);
+
+    InvoiceLine invoiceLine2 = getMockInvoiceLine(invoice.getId()).withSubTotal(20d);
+    addMockEntry(INVOICE_LINES, invoiceLine2);
+
+    InvoiceLine invoiceLine3 = getMockInvoiceLine(invoice.getId()).withSubTotal(-25d);
+    addMockEntry(INVOICE_LINES, invoiceLine3);
+
+    // Prepare request body
+    Invoice invoiceBody = copyObject(invoice);
+    invoiceBody.getAdjustments().add(createAdjustment(BY_AMOUNT, AMOUNT, 5d));
+
+    // Send update request
+    verifyPut(String.format(INVOICE_ID_PATH, invoice.getId()), invoiceBody, "", 204);
+
+    // Verification
+    assertThat(getInvoiceUpdates(), hasSize(1));
+    assertThat(getInvoiceLineUpdates(), hasSize(3));
+
+    Invoice invoiceToStorage = getInvoiceUpdates().get(0).mapTo(Invoice.class);
+    assertThat(invoiceToStorage.getAdjustments(), hasSize(1));
+    // Prorated adj value + non prorated adj of first line
+    assertThat(invoiceToStorage.getAdjustmentsTotal(), is(15d));
+    Adjustment invoiceAdjustment = invoiceToStorage.getAdjustments().get(0);
+    assertThat(invoiceAdjustment.getId(), not(isEmptyOrNullString()));
+
+    InvoiceLine lineToStorage1 = getLineToStorageById(invoiceLine1.getId());
+    assertThat(lineToStorage1.getAdjustments(), hasSize(2));
+    assertThat(lineToStorage1.getAdjustmentsTotal(), is(10.5d));
+
+    // First adjustment is not prorated
+    assertThat(lineToStorage1.getAdjustments().get(0).getValue(), is(10d));
+    // Second adjustment is prorated
+    Adjustment line1Adjustment2 = lineToStorage1.getAdjustments().get(1);
+    verifyInvoiceLineAdjustmentCommon(invoiceAdjustment, line1Adjustment2);
+    assertThat(line1Adjustment2.getValue(), is(0.5d));
+
+    InvoiceLine lineToStorage2 = getLineToStorageById(invoiceLine2.getId());
+    assertThat(lineToStorage2.getAdjustments(), hasSize(1));
+    assertThat(lineToStorage2.getAdjustmentsTotal(), is(2d));
+
+    Adjustment line2Adjustment1 = lineToStorage2.getAdjustments().get(0);
+    verifyInvoiceLineAdjustmentCommon(invoiceAdjustment, line2Adjustment1);
+    assertThat(line2Adjustment1.getValue(), is(2d));
+
+    InvoiceLine lineToStorage3 = getLineToStorageById(invoiceLine3.getId());
+    assertThat(lineToStorage3.getAdjustments(), hasSize(1));
+    assertThat(lineToStorage3.getAdjustmentsTotal(), is(2.5d));
+
+    Adjustment line3Adjustment1 = lineToStorage3.getAdjustments().get(0);
+    verifyInvoiceLineAdjustmentCommon(invoiceAdjustment, line3Adjustment1);
+    assertThat(line3Adjustment1.getValue(), is(2.5d));
   }
 
   @Test
@@ -629,7 +696,7 @@ public class InvoicesProratedAdjustmentsTest extends ApiTestBase {
 
     // Prepare request body
     Invoice invoiceBody = copyObject(invoice);
-    invoiceBody.getAdjustments().add(createAdjustment(Adjustment.Prorate.BY_LINE, Adjustment.Type.PERCENTAGE, 5d));
+    invoiceBody.getAdjustments().add(createAdjustment(BY_LINE, PERCENTAGE, 5d));
 
     // Send update request
     verifyPut(String.format(INVOICE_ID_PATH, invoice.getId()), invoiceBody, "", 204);
