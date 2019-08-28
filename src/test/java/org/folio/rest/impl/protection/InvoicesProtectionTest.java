@@ -30,7 +30,8 @@ public class InvoicesProtectionTest extends ProtectedEntityTestBase {
   @Test
   @Parameters({
     "READ",
-    "CREATE"
+    "CREATE",
+    "DELETE"
   })
   public void testOperationWithNonExistedUnits(ProtectedOperations operation) {
     logger.info("=== Invoices protection: Test record contains non-existent unit ids - expecting of call only to Units API ===");
@@ -50,7 +51,8 @@ public class InvoicesProtectionTest extends ProtectedEntityTestBase {
   @Test
   @Parameters({
     "READ",
-    "CREATE"
+    "CREATE",
+    "DELETE"
   })
   public void testOperationWithAllowedUnits(ProtectedOperations operation) {
     logger.info(
@@ -66,7 +68,8 @@ public class InvoicesProtectionTest extends ProtectedEntityTestBase {
   @Test
   @Parameters({
     "READ",
-    "CREATE"
+    "CREATE",
+    "DELETE"
   })
   public void testWithRestrictedUnitsAndAllowedUser(ProtectedOperations operation) {
     logger.info(
@@ -82,7 +85,8 @@ public class InvoicesProtectionTest extends ProtectedEntityTestBase {
   @Test
   @Parameters({
     "READ",
-    "CREATE"
+    "CREATE",
+    "DELETE"
   })
   public void testWithProtectedUnitsAndForbiddenUser(ProtectedOperations operation) {
     logger.info("=== Invoices protection: Test corresponding record has units, units protect operation, user isn't member of order's units - expecting of calls to Units, Memberships APIs and restriction of operation ===");

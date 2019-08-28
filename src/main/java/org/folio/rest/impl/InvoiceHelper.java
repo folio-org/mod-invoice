@@ -237,8 +237,18 @@ public class InvoiceHelper extends AbstractHelper {
       });
   }
 
+  /**
+   * Delete Invoice
+   * 1. Get invoice by id
+   * 2. Verify if user has permission to delete Invoice based on acquisitions units
+   * 3. If user has permission to delete then delete invoiceLine
+   * @param id invoiceLine id to be deleted
+   */
   public CompletableFuture<Void> deleteInvoice(String id) {
-    return handleDeleteRequest(resourceByIdPath(INVOICES, id, lang), httpClient, ctx, okapiHeaders, logger);
+    return getInvoiceRecord(id)
+    .thenCompose(invoice -> protectionHelper.isOperationRestricted(invoice.getAcqUnitIds(), ProtectedOperationType.DELETE)
+        .thenApply(aVoid -> invoice))
+    .thenAccept(v -> handleDeleteRequest(resourceByIdPath(INVOICES, id, lang), httpClient, ctx, okapiHeaders, logger));
   }
 
   public CompletableFuture<Void> updateInvoice(Invoice invoice) {

@@ -18,6 +18,7 @@ import static org.folio.invoices.utils.HelperUtils.handleGetRequest;
 import static org.folio.invoices.utils.HelperUtils.handlePutRequest;
 import static org.folio.invoices.utils.HelperUtils.isPostApproval;
 import static org.folio.invoices.utils.ProtectedOperationType.READ;
+import static org.folio.invoices.utils.ProtectedOperationType.DELETE;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_LINES;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_LINE_NUMBER;
 import static org.folio.invoices.utils.ResourcePathResolver.resourceByIdPath;
@@ -231,10 +232,28 @@ public class InvoiceLineHelper extends AbstractHelper {
       }));
   }
 
+  /**
+   * Deletes Invoice Line and update Invoice if deletion is allowed
+   * 1. Get invoiceLine by id
+   * 2. Verify if user has permission to delete invoiceLine based on acquisitions units
+   * 3. If user has permission to delete then delete invoiceLine
+   * 4. Update corresponding Invoice
+   * @param id invoiceLine id to be deleted
+   */
   public CompletableFuture<Void> deleteInvoiceLine(String id) {
-    return getInvoiceLine(id)
+    return getInvoiceLine(id).thenCompose(this::verifyDeleteAllowed)
       .thenCompose(line -> handleDeleteRequest(resourceByIdPath(INVOICE_LINES, id, lang), httpClient, ctx, okapiHeaders, logger)
         .thenRun(() -> updateInvoiceAndLinesAsync(line.getInvoiceId())));
+  }
+
+  private CompletableFuture<InvoiceLine> verifyDeleteAllowed(InvoiceLine invoiceLine) {
+    return getInvoiceRecord(invoiceLine.getInvoiceId())
+      .thenCompose(invoice -> protectionHelper.isOperationRestricted(invoice.getAcqUnitIds(), DELETE))
+      .thenApply(aVoid -> invoiceLine);
+  }
+
+  public CompletableFuture<Invoice> getInvoiceRecord(String id) {
+    return getInvoiceById(id, lang, httpClient, ctx, okapiHeaders, logger);
   }
 
   private void validateInvoiceLine(Invoice existedInvoice, InvoiceLine invoiceLine, InvoiceLine existedInvoiceLine) {
