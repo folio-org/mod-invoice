@@ -2,8 +2,8 @@ package org.folio.rest.impl;
 
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 import static javax.ws.rs.core.MediaType.TEXT_PLAIN;
+import static org.folio.invoices.utils.HelperUtils.INVOICE_ID;
 import static org.folio.rest.impl.AbstractHelper.ID;
-import static org.folio.rest.impl.InvoiceLinesApiTest.INVOICE_ID;
 import static org.folio.rest.impl.InvoicesApiTest.APPROVED_INVOICE_ID;
 import static org.folio.rest.impl.MockServer.ERROR_X_OKAPI_TENANT;
 import static org.hamcrest.Matchers.isEmptyOrNullString;
@@ -41,7 +41,7 @@ public class VouchersApiTest extends ApiTestBase {
   private static final String VOUCHER_START_PATH = "/voucher/voucher-number/start" + "/%s";
   private static final String VOUCHER_NUMBER_START_PATH = "/voucher/voucher-number/start";
   private static final String BAD_QUERY = "unprocessableQuery";
-  
+
   @Test
   public void testGetVoucherVouchers() {
     logger.info("=== Test Get Vouchers by without query - get 200 by successful retrieval of vouchers ===");

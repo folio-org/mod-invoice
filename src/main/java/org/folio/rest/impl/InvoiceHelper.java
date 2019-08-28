@@ -1,5 +1,6 @@
 package org.folio.rest.impl;
 
+import static java.util.UUID.randomUUID;
 import static java.util.concurrent.CompletableFuture.allOf;
 import static java.util.stream.Collectors.groupingBy;
 import static java.util.stream.Collectors.toList;
@@ -20,6 +21,7 @@ import static org.folio.invoices.utils.ErrorCodes.VOUCHER_NOT_FOUND;
 import static org.folio.invoices.utils.ErrorCodes.VOUCHER_NUMBER_PREFIX_NOT_ALPHA;
 import static org.folio.invoices.utils.ErrorCodes.USER_HAS_NO_ACQ_PERMISSIONS;
 import static org.folio.invoices.utils.HelperUtils.calculateAdjustmentsTotal;
+import static org.folio.invoices.utils.HelperUtils.calculateInvoiceLineTotals;
 import static org.folio.invoices.utils.HelperUtils.calculateVoucherLineAmount;
 import static org.folio.invoices.utils.HelperUtils.collectResultsOnSuccess;
 import static org.folio.invoices.utils.HelperUtils.combineCqlExpressions;
@@ -41,7 +43,6 @@ import static org.folio.invoices.utils.ResourcePathResolver.INVOICES;
 import static org.folio.invoices.utils.ResourcePathResolver.ORDER_LINES;
 import static org.folio.invoices.utils.ResourcePathResolver.resourceByIdPath;
 import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
-import static org.folio.rest.impl.InvoiceLineHelper.GET_INVOICE_LINES_BY_QUERY;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -112,7 +113,7 @@ public class InvoiceHelper extends AbstractHelper {
   private static final String EMPTY_ARRAY = "[]";
 
   // Using variable to "cache" lines for particular invoice base on assumption that the helper is stateful and new instance is used
-  private List<InvoiceLine> invoiceLines;
+  private List<InvoiceLine> storedInvoiceLines;
 
   private final InvoiceLineHelper invoiceLineHelper;
   private final VoucherHelper voucherHelper;
@@ -130,10 +131,8 @@ public class InvoiceHelper extends AbstractHelper {
   public CompletableFuture<Invoice> createInvoice(Invoice invoice) {
     verifyUserHasAssignPermission(invoice);
     return protectionHelper.isOperationRestricted(invoice.getAcqUnitIds(), ProtectedOperationType.CREATE)
-      .thenCompose(v -> generateFolioInvoiceNumber())
-      .thenApply(invoice::withFolioInvoiceNo)
-      .thenApply(this::withCalculatedTotals)
-      .thenApply(JsonObject::mapFrom)
+      .thenCompose(v -> updateWithSystemGeneratedData(invoice))
+      .thenApply(ok -> JsonObject.mapFrom(invoice))
       .thenCompose(jsonInvoice -> createRecordInStorage(jsonInvoice, resourcesPath(INVOICES)))
       .thenApply(invoice::withId);
   }
@@ -250,7 +249,7 @@ public class InvoiceHelper extends AbstractHelper {
         validateInvoice(invoice, invoiceFromStorage);
         setSystemGeneratedData(invoiceFromStorage, invoice);
 
-        return recalculateTotals(invoice, invoiceFromStorage)
+        return recalculateDynamicData(invoice, invoiceFromStorage)
           .thenCompose(ok -> handleInvoiceStatusTransition(invoice, invoiceFromStorage));
       })
       .thenCompose(ok -> updateInvoiceRecord(invoice));
@@ -280,31 +279,85 @@ public class InvoiceHelper extends AbstractHelper {
    * @return {code true} if adjustments total, sub total or grand total value is different to original one
    */
   public CompletableFuture<Boolean> recalculateTotals(Invoice invoice) {
-    return getInvoiceLinesWithTotals(invoice).thenApply(lines -> {
-      // 1. Get original values
-      Double total = invoice.getTotal();
-      Double subTotal = invoice.getSubTotal();
-      Double adjustmentsTotal = invoice.getAdjustmentsTotal();
-
-      // 2. Recalculate totals
-      withCalculatedTotals(invoice, lines);
-
-      // 3. Compare if anything has changed
-      return !(Objects.equals(total, invoice.getTotal()) && Objects.equals(subTotal, invoice.getSubTotal())
-          && Objects.equals(adjustmentsTotal, invoice.getAdjustmentsTotal()));
-    });
+    return getInvoiceLinesWithTotals(invoice).thenApply(lines -> recalculateTotals(invoice, lines));
   }
 
-  private CompletableFuture<Boolean> recalculateTotals(Invoice updatedInvoice, Invoice invoiceFromStorage) {
+  private CompletableFuture<Void> updateWithSystemGeneratedData(Invoice invoice) {
+    return generateFolioInvoiceNumber()
+      .thenApply(invoice::withFolioInvoiceNo)
+      .thenAccept(this::calculateTotals)
+      .thenAccept(ok -> generateAdjustmentsIds(invoice));
+  }
+
+  private void generateAdjustmentsIds(Invoice invoice) {
+    invoice.getAdjustments()
+      .stream()
+      .filter(adj -> adj.getId() == null)
+      .forEach(adjustment -> adjustment.setId(randomUUID().toString()));
+  }
+
+  /**
+   * Updates total values of the invoice
+   * @param invoice invoice to update totals for
+   * @param lines invoice lines for the invoice
+   * @return {code true} if adjustments total, sub total or grand total value is different to original one
+   */
+  private boolean recalculateTotals(Invoice invoice, List<InvoiceLine> lines) {
+    // 1. Get original values
+    Double total = invoice.getTotal();
+    Double subTotal = invoice.getSubTotal();
+    Double adjustmentsTotal = invoice.getAdjustmentsTotal();
+
+    // 2. Recalculate totals
+    calculateTotals(invoice, lines);
+
+    // 3. Compare if anything has changed
+    return !(Objects.equals(total, invoice.getTotal()) && Objects.equals(subTotal, invoice.getSubTotal())
+        && Objects.equals(adjustmentsTotal, invoice.getAdjustmentsTotal()));
+  }
+
+  private CompletableFuture<Boolean> recalculateDynamicData(Invoice updatedInvoice, Invoice invoiceFromStorage) {
     // If invoice was approved, the totals are already fixed and should not be recalculated
     if (isPostApproval(invoiceFromStorage)) {
       return completedFuture(false);
     }
-    return recalculateTotals(updatedInvoice);
+
+    return processProratedAdjustments(updatedInvoice, invoiceFromStorage).thenCompose(ok -> recalculateTotals(updatedInvoice));
+  }
+
+  private CompletableFuture<Void> processProratedAdjustments(Invoice updatedInvoice, Invoice invoiceFromStorage) {
+    List<Adjustment> currentAdjustments = getProratedAdjustments(updatedInvoice);
+
+    // Skip if prorated adjustments are the same in incoming invoice and from storage
+    if (CollectionUtils.isEqualCollection(currentAdjustments, getProratedAdjustments(invoiceFromStorage))) {
+      return completedFuture(null);
+    }
+
+    return fetchInvoiceLinesByInvoiceId(updatedInvoice.getId()).thenCompose(lines -> {
+      if (lines.isEmpty()) {
+        return completedFuture(null);
+      }
+
+      return VertxCompletableFuture.allOf(ctx, invoiceLineHelper.processProratedAdjustments(lines, updatedInvoice)
+        .stream()
+        .map(invoiceLine -> persistInvoiceLineUpdates(updatedInvoice, invoiceLine))
+        .toArray(CompletableFuture[]::new));
+    });
+  }
+
+  private CompletableFuture<Void> persistInvoiceLineUpdates(Invoice updatedInvoice, InvoiceLine invoiceLine) {
+    calculateInvoiceLineTotals(invoiceLine, updatedInvoice);
+    return invoiceLineHelper.updateInvoiceLineToStorage(invoiceLine)
+      .thenAccept(ok -> {
+        // Replace invoice line in the local "cache" on success
+        storedInvoiceLines.removeIf(line -> line.getId().equals(invoiceLine.getId()));
+        storedInvoiceLines.add(invoiceLine);
+      });
   }
 
   private void setSystemGeneratedData(Invoice invoiceFromStorage, Invoice invoice) {
     invoice.withFolioInvoiceNo(invoiceFromStorage.getFolioInvoiceNo());
+    generateAdjustmentsIds(invoice);
   }
 
   private CompletionStage<Void> handleInvoiceStatusTransition(Invoice invoice, Invoice invoiceFromStorage) {
@@ -745,15 +798,11 @@ public class InvoiceHelper extends AbstractHelper {
   }
 
   private CompletableFuture<List<InvoiceLine>> fetchInvoiceLinesByInvoiceId(String invoiceId) {
-    if (invoiceLines != null) {
-      return completedFuture(invoiceLines);
+    if (storedInvoiceLines != null) {
+      return completedFuture(storedInvoiceLines);
     }
 
-    String query = getEndpointWithQuery(String.format(QUERY_BY_INVOICE_ID, invoiceId), logger);
-    // Assuming that the invoice will never contain more than Integer.MAX_VALUE invoiceLines.
-    String endpoint = String.format(GET_INVOICE_LINES_BY_QUERY, Integer.MAX_VALUE, 0, query, lang);
-    return invoiceLineHelper.getInvoiceLineCollection(endpoint)
-      .thenApply(invoiceLineCollection -> invoiceLines = invoiceLineCollection.getInvoiceLines());
+    return invoiceLineHelper.getInvoiceLinesByInvoiceId(invoiceId).thenApply(invoiceLines -> storedInvoiceLines = invoiceLines);
   }
 
   private CompletableFuture<List<InvoiceLine>> getInvoiceLinesWithTotals(Invoice invoice) {
@@ -848,15 +897,15 @@ public class InvoiceHelper extends AbstractHelper {
       .thenApply(seqNumber -> seqNumber.mapTo(SequenceNumber.class).getSequenceNumber());
   }
 
-  private Invoice withCalculatedTotals(Invoice invoice) {
-    return withCalculatedTotals(invoice, Collections.emptyList());
+  private void calculateTotals(Invoice invoice) {
+    calculateTotals(invoice, Collections.emptyList());
   }
 
-  private Invoice withCalculatedTotals(Invoice invoice, List<InvoiceLine> lines) {
+  private void calculateTotals(Invoice invoice, List<InvoiceLine> lines) {
     CurrencyUnit currency = Monetary.getCurrency(invoice.getCurrency());
 
     // 1. Sub-total
-    MonetaryAmount subTotal = calculateSubTotal(lines, currency);
+    MonetaryAmount subTotal = invoiceLineHelper.summarizeSubTotals(lines, currency, false);
 
     // 2. Adjustments (sum of not prorated invoice level and all invoice line level adjustments)
     MonetaryAmount adjustmentsTotal = calculateAdjustmentsTotal(getNotProratedAdjustments(invoice), subTotal)
@@ -868,22 +917,14 @@ public class InvoiceHelper extends AbstractHelper {
     }
     invoice.setAdjustmentsTotal(convertToDoubleWithRounding(adjustmentsTotal));
     invoice.setSubTotal(convertToDoubleWithRounding(subTotal));
-
-    return invoice;
   }
 
   private List<Adjustment> getNotProratedAdjustments(Invoice invoice) {
-    return invoice.getAdjustments()
-      .stream()
-      .filter(adj -> adj.getProrate() == Adjustment.Prorate.NOT_PRORATED)
-      .collect(toList());
+    return HelperUtils.getNotProratedAdjustments(invoice.getAdjustments());
   }
 
-  private MonetaryAmount calculateSubTotal(List<InvoiceLine> lines, CurrencyUnit currency) {
-    return lines.stream()
-      .map(line -> Money.of(line.getSubTotal(), currency))
-      .collect(MonetaryFunctions.summarizingMonetary(currency))
-      .getSum();
+  private List<Adjustment> getProratedAdjustments(Invoice invoice) {
+    return HelperUtils.getProratedAdjustments(invoice.getAdjustments());
   }
 
   private MonetaryAmount calculateInvoiceLinesAdjustmentsTotal(List<InvoiceLine> lines, CurrencyUnit currency) {

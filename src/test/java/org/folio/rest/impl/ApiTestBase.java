@@ -15,7 +15,7 @@ import static org.folio.rest.impl.InvoiceLinesApiTest.INVOICE_LINES_PATH;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.emptyIterable;
 import static org.hamcrest.Matchers.equalTo;
-import static org.hamcrest.Matchers.hasSize;
+import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.isEmptyOrNullString;
 import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.notNullValue;
@@ -35,6 +35,7 @@ import java.util.concurrent.TimeoutException;
 import java.util.stream.Stream;
 
 import org.apache.commons.io.IOUtils;
+import org.awaitility.core.ConditionEvaluationLogger;
 import org.folio.invoices.events.handlers.MessageAddress;
 import org.folio.invoices.utils.HelperUtils;
 import org.folio.rest.jaxrs.model.Invoice;
@@ -167,18 +168,19 @@ public class ApiTestBase {
     return new JsonObject();
   }
 
-  Response verifyPostResponse(String url, JsonObject body, Headers headers, String expectedContentType, int expectedCode) {
-    return verifyPostResponse(url, body.encode(), headers, expectedContentType, expectedCode);
+  public Response verifySuccessPost(String url, Object body, Header... headersArr) {
+    Headers headers = headersArr.length == 0 ? prepareHeaders(X_OKAPI_TENANT) : prepareHeaders(headersArr);
+    return verifyPostResponse(url, body, headers, APPLICATION_JSON, 201);
   }
 
-  public Response verifyPostResponse(String url, String body, Headers headers, String expectedContentType, int expectedCode) {
+  public Response verifyPostResponse(String url, Object body, Headers headers, String expectedContentType, int expectedCode) {
     Response response = RestAssured
       .with()
         .header(X_OKAPI_URL)
         .header(X_OKAPI_TOKEN)
         .headers(headers)
         .contentType(APPLICATION_JSON)
-        .body(body)
+        .body(convertToString(body))
       .post(url)
         .then()
           .log()
@@ -194,22 +196,21 @@ public class ApiTestBase {
     return response;
   }
 
-  Response verifyPut(String url, String body, String expectedContentType, int expectedCode) {
-    Headers headers = prepareHeaders(X_OKAPI_TENANT, X_OKAPI_TOKEN);
-    return verifyPut(url, body, headers,expectedContentType, expectedCode);
+  Response verifySuccessPut(String url, Object body) {
+    return verifyPut(url, body, "", 204);
   }
 
-  Response verifyPut(String url, JsonObject body, String expectedContentType, int expectedCode) {
+  Response verifyPut(String url, Object body, String expectedContentType, int expectedCode) {
     Headers headers = prepareHeaders(X_OKAPI_TENANT, X_OKAPI_TOKEN);
-    return verifyPut(url, body.encode(), headers,expectedContentType, expectedCode);
+    return verifyPut(url, body, headers, expectedContentType, expectedCode);
   }
 
-  public Response verifyPut(String url, String body, Headers headers, String expectedContentType, int expectedCode) {
+  public Response verifyPut(String url, Object body, Headers headers, String expectedContentType, int expectedCode) {
     return RestAssured
       .with()
         .headers(headers)
         .header(X_OKAPI_URL)
-        .body(body)
+        .body(convertToString(body))
         .contentType(APPLICATION_JSON)
       .put(url)
         .then()
@@ -279,13 +280,30 @@ public class ApiTestBase {
     return new Headers(headers);
   }
 
+  @SuppressWarnings("unchecked")
+  <T> T copyObject(T object) {
+    return JsonObject.mapFrom(object)
+      .mapTo((Class<T>) object.getClass());
+  }
+
+  String convertToString(Object body) {
+    if (body instanceof String) {
+      return body.toString();
+    } else if (body instanceof JsonObject) {
+      return ((JsonObject) body).encodePrettily();
+    } else {
+      return JsonObject.mapFrom(body).encodePrettily();
+    }
+  }
+
   void verifyInvoiceSummaryUpdateEvent(int msgQty) {
     logger.debug("Verifying event bus messages");
 
     // Wait until event bus registers message
-    await().atLeast(50, MILLISECONDS)
+    await().conditionEvaluationListener(new ConditionEvaluationLogger())
+      .atLeast(50, MILLISECONDS)
       .atMost(1, SECONDS)
-      .until(() -> eventMessages, hasSize(msgQty));
+      .until(eventMessages::size, is(msgQty));
 
     for (int i = 0; i < msgQty; i++) {
       Message<JsonObject> message = eventMessages.get(i);

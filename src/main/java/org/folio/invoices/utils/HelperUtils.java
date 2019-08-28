@@ -12,6 +12,7 @@ import static org.folio.invoices.utils.ResourcePathResolver.VOUCHERS;
 import static org.folio.invoices.utils.ResourcePathResolver.VOUCHER_LINES;
 import static org.folio.invoices.utils.ResourcePathResolver.resourceByIdPath;
 import static org.folio.rest.RestVerticle.OKAPI_HEADER_TENANT;
+import static org.folio.rest.jaxrs.model.Adjustment.Prorate.NOT_PRORATED;
 import static me.escoffier.vertx.completablefuture.VertxCompletableFuture.allOf;
 
 import java.io.UnsupportedEncodingException;
@@ -25,6 +26,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
+import java.util.function.Predicate;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -75,6 +77,8 @@ public class HelperUtils {
   private static final String CALLING_ENDPOINT_MSG = "Sending {} {}";
   private static final Pattern CQL_SORT_BY_PATTERN = Pattern.compile("(.*)(\\ssortBy\\s.*)", Pattern.CASE_INSENSITIVE);
 
+
+  private static final Predicate<Adjustment> NOT_PRORATED_ADJUSTMENTS_PREDICATE = adj -> adj.getProrate() == NOT_PRORATED;
 
   private HelperUtils() {
 
@@ -261,7 +265,8 @@ public class HelperUtils {
 
   public static MonetaryAmount calculateAdjustment(Adjustment adjustment, MonetaryAmount subTotal) {
     if (adjustment.getType().equals(Adjustment.Type.PERCENTAGE)) {
-      return subTotal.with(MonetaryOperators.percent(adjustment.getValue()));
+      // The adjustment amount is calculated by absolute value of subTotal i.e. sign of the percent value defines resulted sign
+      return subTotal.abs().with(MonetaryOperators.percent(adjustment.getValue()));
     }
     return Money.of(adjustment.getValue(), subTotal.getCurrency());
   }
@@ -364,16 +369,14 @@ public class HelperUtils {
   }
 
   public static void calculateInvoiceLineTotals(InvoiceLine invoiceLine, Invoice invoice) {
-    if (!isPostApproval(invoice)) {
-      String currency = invoice.getCurrency();
-      CurrencyUnit currencyUnit = Monetary.getCurrency(currency);
-      MonetaryAmount subTotal = Money.of(invoiceLine.getSubTotal(), currencyUnit);
+    String currency = invoice.getCurrency();
+    CurrencyUnit currencyUnit = Monetary.getCurrency(currency);
+    MonetaryAmount subTotal = Money.of(invoiceLine.getSubTotal(), currencyUnit);
 
-      MonetaryAmount adjustmentTotals = calculateAdjustmentsTotal(invoiceLine.getAdjustments(), subTotal);
-      MonetaryAmount total = adjustmentTotals.add(subTotal);
-      invoiceLine.setAdjustmentsTotal(convertToDoubleWithRounding(adjustmentTotals));
-      invoiceLine.setTotal(convertToDoubleWithRounding(total));
-    }
+    MonetaryAmount adjustmentTotals = calculateAdjustmentsTotal(invoiceLine.getAdjustments(), subTotal);
+    MonetaryAmount total = adjustmentTotals.add(subTotal);
+    invoiceLine.setAdjustmentsTotal(convertToDoubleWithRounding(adjustmentTotals));
+    invoiceLine.setTotal(convertToDoubleWithRounding(total));
   }
 
   public static Map<String, String> getOkapiHeaders(Message<JsonObject> message) {
@@ -394,5 +397,19 @@ public class HelperUtils {
       case VOUCHER_LINES: return VOUCHERS+ "." + ProtectionHelper.ACQUISITIONS_UNIT_IDS;
       default: return ProtectionHelper.ACQUISITIONS_UNIT_IDS;
     }
+  }
+
+  public static List<Adjustment> getNotProratedAdjustments(List<Adjustment> adjustments) {
+    return filterAdjustments(adjustments, NOT_PRORATED_ADJUSTMENTS_PREDICATE);
+  }
+
+  public static List<Adjustment> getProratedAdjustments(List<Adjustment> adjustments) {
+    return filterAdjustments(adjustments, NOT_PRORATED_ADJUSTMENTS_PREDICATE.negate());
+  }
+
+  private static List<Adjustment> filterAdjustments(List<Adjustment> adjustments, Predicate<Adjustment> predicate) {
+    return adjustments.stream()
+      .filter(predicate)
+      .collect(toList());
   }
 }

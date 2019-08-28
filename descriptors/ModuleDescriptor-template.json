@@ -50,6 +50,7 @@
             "configuration.entries.collection.get",
             "invoice-storage.invoices.item.put",
             "invoice-storage.invoices.item.get",
+            "invoice-storage.invoice-lines.item.put",
             "invoice-storage.invoice-lines.collection.get",
             "finance-storage.funds.collection.get",
             "orders.po-lines.item.put",
@@ -90,6 +91,7 @@
             "invoice-storage.invoices.item.get",
             "invoice-storage.invoices.item.put",
             "invoice-storage.invoice-lines.item.post",
+            "invoice-storage.invoice-lines.item.put",
             "invoice-storage.invoice-lines.collection.get",
             "acquisitions-units-storage.units.collection.get",
             "acquisitions-units-storage.memberships.collection.get"
@@ -128,6 +130,7 @@
           "modulePermissions": [
             "invoice-storage.invoice-lines.item.get",
             "invoice-storage.invoice-lines.item.delete",
+            "invoice-storage.invoice-lines.item.put",
             "invoice-storage.invoice-lines.collection.get",
             "invoice-storage.invoices.item.get",
             "invoice-storage.invoices.item.put"
