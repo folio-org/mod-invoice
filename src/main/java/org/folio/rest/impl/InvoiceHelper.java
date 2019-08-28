@@ -97,12 +97,13 @@ public class InvoiceHelper extends AbstractHelper {
   static final String NO_INVOICE_LINES_ERROR_MSG = "An invoice cannot be approved if there are no corresponding lines of invoice.";
   static final String TOTAL = "total";
   static final String SYSTEM_CONFIG_MODULE_NAME = "ORG";
-  static final String INVOICE_CONFIG_MODULE_NAME = "INVOICES";
+  static final String INVOICE_CONFIG_MODULE_NAME = "INVOICE";
   static final String LOCALE_SETTINGS = "localeSettings";
+  static final String VOUCHER_NUMBER_CONFIG_NAME = "voucherNumber";
   static final String VOUCHER_NUMBER_PREFIX_CONFIG = "voucherNumberPrefix";
   private static final String SYSTEM_CURRENCY_PROPERTY_NAME = "currency";
   private static final String SYSTEM_CONFIG_QUERY = String.format(CONFIG_QUERY, SYSTEM_CONFIG_MODULE_NAME, LOCALE_SETTINGS);
-  private static final String VOUCHER_NUMBER_PREFIX_CONFIG_QUERY = String.format(CONFIG_QUERY, INVOICE_CONFIG_MODULE_NAME, VOUCHER_NUMBER_PREFIX_CONFIG);
+  private static final String VOUCHER_NUMBER_CONFIG_QUERY = String.format(CONFIG_QUERY, INVOICE_CONFIG_MODULE_NAME, VOUCHER_NUMBER_CONFIG_NAME);
   private static final String GET_INVOICES_BY_QUERY = resourcesPath(INVOICES) + SEARCH_PARAMS;
   private static final String GET_FUNDS_BY_QUERY = resourcesPath(FUNDS) + "?query=%s&limit=%s&lang=%s";
 
@@ -331,7 +332,7 @@ public class InvoiceHelper extends AbstractHelper {
     invoice.setApprovalDate(new Date());
     invoice.setApprovedBy(invoice.getMetadata().getUpdatedByUserId());
 
-    return loadTenantConfiguration(SYSTEM_CONFIG_QUERY, VOUCHER_NUMBER_PREFIX_CONFIG_QUERY)
+    return loadTenantConfiguration(SYSTEM_CONFIG_QUERY, VOUCHER_NUMBER_CONFIG_QUERY)
       .thenCompose(ok -> getInvoiceLinesWithTotals(invoice))
       .thenApply(lines -> {
         verifyInvoiceLineNotEmpty(lines);
@@ -437,7 +438,7 @@ public class InvoiceHelper extends AbstractHelper {
   }
 
   private boolean isVoucherNumberPrefixConfig(Config config) {
-    return INVOICE_CONFIG_MODULE_NAME.equals(config.getModule()) && VOUCHER_NUMBER_PREFIX_CONFIG.equals(config.getConfigName());
+    return INVOICE_CONFIG_MODULE_NAME.equals(config.getModule()) && VOUCHER_NUMBER_CONFIG_NAME.equals(config.getConfigName());
   }
 
   private void validateVoucherNumberPrefix(String prefix) {
