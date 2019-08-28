@@ -36,6 +36,7 @@ import static org.folio.rest.impl.DocumentsApiTest.INVOICE_SAMPLE_DOCUMENTS_PATH
 import static org.folio.rest.impl.InvoiceHelper.INVOICE_CONFIG_MODULE_NAME;
 import static org.folio.rest.impl.InvoiceHelper.LOCALE_SETTINGS;
 import static org.folio.rest.impl.InvoiceHelper.SYSTEM_CONFIG_MODULE_NAME;
+import static org.folio.rest.impl.InvoiceHelper.VOUCHER_NUMBER_CONFIG_NAME;
 import static org.folio.rest.impl.InvoiceHelper.VOUCHER_NUMBER_PREFIX_CONFIG;
 import static org.folio.rest.impl.InvoiceLinesApiTest.INVOICE_LINES_MOCK_DATA_PATH;
 import static org.folio.rest.impl.InvoicesApiTest.BAD_QUERY;
@@ -901,7 +902,7 @@ public class MockServer {
       case INVALID_PREFIX_CONFIG_TENANT : {
         Config voucherNumberPrefixConfig = new Config()
           .withModule(INVOICE_CONFIG_MODULE_NAME)
-          .withConfigName(VOUCHER_NUMBER_PREFIX_CONFIG)
+          .withConfigName(VOUCHER_NUMBER_CONFIG_NAME)
           .withValue(new JsonObject().put(VOUCHER_NUMBER_PREFIX_CONFIG, INVALID_PREFIX).toString());
         configs.withConfigs(Collections.singletonList(voucherNumberPrefixConfig)).setTotalRecords(1);
         serverResponse(ctx, 200, APPLICATION_JSON, JsonObject.mapFrom(configs).encodePrettily());
@@ -915,7 +916,7 @@ public class MockServer {
           .withValue("{\"locale\":\"en-US\",\"timezone\":\"Pacific/Yap\",\"currency\":\"GBP\"}");
         Config voucherNumberPrefixConfig = new Config()
           .withModule(INVOICE_CONFIG_MODULE_NAME)
-          .withConfigName(VOUCHER_NUMBER_PREFIX_CONFIG)
+          .withConfigName(VOUCHER_NUMBER_CONFIG_NAME)
           .withValue(new JsonObject().put(VOUCHER_NUMBER_PREFIX_CONFIG, TEST_PREFIX).toString());
         configs.getConfigs().add(localeConfig);
         configs.getConfigs().add(voucherNumberPrefixConfig);
