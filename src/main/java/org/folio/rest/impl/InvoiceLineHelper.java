@@ -418,7 +418,7 @@ public class InvoiceLineHelper extends AbstractHelper {
 
       if (adjustment.getType() == Adjustment.Type.AMOUNT) {
         proratedAdjustment.setValue(convertToDoubleWithRounding(Money.of(adjustment.getValue(), currencyUnit)
-          // The adjustment amount should be calculated by absolute value
+          // The adjustment amount should be calculated by absolute value of subTotal
           .multiply(Math.abs(line.getSubTotal()))
           .divide(grandSubTotal.getNumber())));
       }

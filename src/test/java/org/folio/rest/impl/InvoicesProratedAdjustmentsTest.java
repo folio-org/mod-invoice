@@ -389,6 +389,70 @@ public class InvoicesProratedAdjustmentsTest extends ApiTestBase {
   }
 
   @Test
+  public void testUpdateInvoiceWithThreeLinesAddingNegativePercentageAdjustmentByAmount() {
+    logger.info("=== Updating invoice with zero subTotal and three lines (mixed subTotals) adding -20% adjustment by amount ===");
+
+    // Prepare data "from storage"
+    Invoice invoice = getMockAsJson(OPEN_INVOICE_SAMPLE_PATH).mapTo(Invoice.class).withId(randomUUID().toString());
+    invoice.getAdjustments().clear();
+    addMockEntry(INVOICES, invoice);
+
+    InvoiceLine invoiceLine1 = getMockInvoiceLine(invoice.getId()).withSubTotal(5d)
+      .withAdjustments(Collections.singletonList(createAdjustment(NOT_PRORATED, AMOUNT, 10d)));
+    addMockEntry(INVOICE_LINES, invoiceLine1);
+
+    InvoiceLine invoiceLine2 = getMockInvoiceLine(invoice.getId()).withSubTotal(20d);
+    addMockEntry(INVOICE_LINES, invoiceLine2);
+
+    InvoiceLine invoiceLine3 = getMockInvoiceLine(invoice.getId()).withSubTotal(-25d);
+    addMockEntry(INVOICE_LINES, invoiceLine3);
+
+    // Prepare request body
+    Invoice invoiceBody = copyObject(invoice);
+    invoiceBody.getAdjustments().add(createAdjustment(BY_AMOUNT, PERCENTAGE, -20d));
+
+    // Send update request
+    verifyPut(String.format(INVOICE_ID_PATH, invoice.getId()), invoiceBody, "", 204);
+
+    // Verification
+    assertThat(getInvoiceUpdates(), hasSize(1));
+    assertThat(getInvoiceLineUpdates(), hasSize(3));
+
+    Invoice invoiceToStorage = getInvoiceUpdates().get(0).mapTo(Invoice.class);
+    assertThat(invoiceToStorage.getAdjustments(), hasSize(1));
+    assertThat(invoiceToStorage.getAdjustmentsTotal(), is(0d));
+    Adjustment invoiceAdjustment = invoiceToStorage.getAdjustments().get(0);
+    assertThat(invoiceAdjustment.getId(), not(isEmptyOrNullString()));
+
+    InvoiceLine lineToStorage1 = getLineToStorageById(invoiceLine1.getId());
+    assertThat(lineToStorage1.getAdjustments(), hasSize(2));
+    assertThat(lineToStorage1.getAdjustmentsTotal(), is(9d));
+
+    // First adjustment is not prorated
+    assertThat(lineToStorage1.getAdjustments().get(0).getValue(), is(10d));
+    // Second adjustment is prorated
+    Adjustment line1Adjustment2 = lineToStorage1.getAdjustments().get(1);
+    verifyInvoiceLineAdjustmentCommon(invoiceAdjustment, line1Adjustment2);
+    assertThat(line1Adjustment2.getValue(), is(-20d));
+
+    InvoiceLine lineToStorage2 = getLineToStorageById(invoiceLine2.getId());
+    assertThat(lineToStorage2.getAdjustments(), hasSize(1));
+    assertThat(lineToStorage2.getAdjustmentsTotal(), is(-4d));
+
+    Adjustment line2Adjustment1 = lineToStorage2.getAdjustments().get(0);
+    verifyInvoiceLineAdjustmentCommon(invoiceAdjustment, line2Adjustment1);
+    assertThat(line2Adjustment1.getValue(), is(-20d));
+
+    InvoiceLine lineToStorage3 = getLineToStorageById(invoiceLine3.getId());
+    assertThat(lineToStorage3.getAdjustments(), hasSize(1));
+    assertThat(lineToStorage3.getAdjustmentsTotal(), is(-5d));
+
+    Adjustment line3Adjustment1 = lineToStorage3.getAdjustments().get(0);
+    verifyInvoiceLineAdjustmentCommon(invoiceAdjustment, line3Adjustment1);
+    assertThat(line3Adjustment1.getValue(), is(-20d));
+  }
+
+  @Test
   public void testUpdateInvoiceWithTwoLinesAddingAmountAdjustmentByQuantity() {
     logger.info("=== Updating invoice with two lines adding adjustment by quantity ===");
 

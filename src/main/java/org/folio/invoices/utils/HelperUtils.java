@@ -265,7 +265,8 @@ public class HelperUtils {
 
   public static MonetaryAmount calculateAdjustment(Adjustment adjustment, MonetaryAmount subTotal) {
     if (adjustment.getType().equals(Adjustment.Type.PERCENTAGE)) {
-      return subTotal.with(MonetaryOperators.percent(adjustment.getValue()));
+      // The adjustment amount is calculated by absolute value of subTotal i.e. sign of the percent value defines resulted sign
+      return subTotal.abs().with(MonetaryOperators.percent(adjustment.getValue()));
     }
     return Money.of(adjustment.getValue(), subTotal.getCurrency());
   }
