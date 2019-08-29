@@ -20,7 +20,7 @@
           "methods": ["POST"],
           "pathPattern": "/invoice/invoices",
           "permissionsRequired": ["invoice.invoices.item.post"],
-          "permissionsDesired": ["invoices.acquisitions-units-assignments.assign"],
+
           "modulePermissions": [
             "invoice-storage.invoices.item.post",
             "invoice-storage.invoice-number.get",
@@ -46,6 +46,7 @@
           "methods": ["PUT"],
           "pathPattern": "/invoice/invoices/{id}",
           "permissionsRequired": ["invoice.invoices.item.put"],
+          "permissionsDesired": ["invoices.acquisitions-units-assignments.manage"],
           "modulePermissions": [
             "configuration.entries.collection.get",
             "invoice-storage.invoices.item.put",
@@ -61,7 +62,9 @@
             "voucher-storage.voucher-lines.collection.get",
             "voucher-storage.voucher-lines.item.post",
             "voucher-storage.voucher-lines.item.delete",
-            "voucher-storage.voucher-number.get"
+            "voucher-storage.voucher-number.get",
+            "acquisitions-units-storage.units.collection.get",
+            "acquisitions-units-storage.memberships.collection.get"
           ]
         },
         {
@@ -120,7 +123,9 @@
             "invoice-storage.invoice-lines.item.get",
             "invoice-storage.invoice-lines.collection.get",
             "invoice-storage.invoices.item.get",
-            "invoice-storage.invoices.item.put"
+            "invoice-storage.invoices.item.put",
+            "acquisitions-units-storage.units.collection.get",
+            "acquisitions-units-storage.memberships.collection.get"
           ]
         },
         {
@@ -426,11 +431,17 @@
       "description": "Assign new invoice to acquisitions units"
     },
     {
+      "permissionName": "invoices.acquisitions-units-assignments.manage",
+      "displayName": "Acquisitions units assignment - manage unit assignments",
+      "description": "Manage unit assignments during invoice update"
+    },
+    {
       "permissionName": "invoices.acquisitions-units-assignments.all",
       "displayName": "All invoice acquisitions-unit-assignments permissions",
       "description": "All permissions for the acquisitions-unit-assignments",
       "subPermissions": [
-        "invoices.acquisitions-units-assignments.assign"
+        "invoices.acquisitions-units-assignments.assign",
+        "invoices.acquisitions-units-assignments.manage"
       ]
     },    
     {

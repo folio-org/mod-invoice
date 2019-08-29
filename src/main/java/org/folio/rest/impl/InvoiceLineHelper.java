@@ -18,6 +18,7 @@ import static org.folio.invoices.utils.HelperUtils.handleGetRequest;
 import static org.folio.invoices.utils.HelperUtils.handlePutRequest;
 import static org.folio.invoices.utils.HelperUtils.isPostApproval;
 import static org.folio.invoices.utils.ProtectedOperationType.READ;
+import static org.folio.invoices.utils.ProtectedOperationType.UPDATE;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_LINES;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_LINE_NUMBER;
 import static org.folio.invoices.utils.ResourcePathResolver.resourceByIdPath;
@@ -32,6 +33,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 
 import javax.money.CurrencyUnit;
 import javax.money.Monetary;
@@ -211,24 +213,30 @@ public class InvoiceLineHelper extends AbstractHelper {
         validateInvoiceLine(invoice, invoiceLine, invoiceLineFromStorage);
         invoiceLine.setInvoiceLineNumber(invoiceLineFromStorage.getInvoiceLineNumber());
 
-        // Just persist updates if invoice is already finalized
-        if (isPostApproval(invoice)) {
-          return updateInvoiceLineToStorage(invoiceLine);
-        }
+        return protectionHelper.isOperationRestricted(invoice.getAcqUnitIds(), UPDATE)
+          .thenCompose(ok -> applyAdjustmentsAndUpdateLine(invoiceLine, invoiceLineFromStorage, invoice));
 
-        // Re-apply prorated adjustments if available
-        return applyProratedAdjustments(invoiceLine, invoice).thenCompose(lines -> {
-          // Recalculate totals before update which also indicates if invoice requires update
-          calculateInvoiceLineTotals(invoiceLine, invoice);
-          // Update invoice line in storage
-          return updateInvoiceLineToStorage(invoiceLine).thenRun(() -> {
-            // Trigger invoice update event only if this is required
-            if (!lines.isEmpty() || !areTotalsEqual(invoiceLine, invoiceLineFromStorage)) {
-              updateInvoiceAndAffectedLinesAsync(invoice, lines);
-            }
-          });
-        });
       }));
+  }
+
+  private CompletableFuture<Void> applyAdjustmentsAndUpdateLine(InvoiceLine invoiceLine, InvoiceLine invoiceLineFromStorage, Invoice invoice) {
+    // Just persist updates if invoice is already finalized
+    if (isPostApproval(invoice)) {
+      return updateInvoiceLineToStorage(invoiceLine);
+    }
+
+    // Re-apply prorated adjustments if available
+    return applyProratedAdjustments(invoiceLine, invoice).thenCompose(affectedLines -> {
+      // Recalculate totals before update which also indicates if invoice requires update
+      calculateInvoiceLineTotals(invoiceLine, invoice);
+      // Update invoice line in storage
+      return updateInvoiceLineToStorage(invoiceLine).thenRun(() -> {
+        // Trigger invoice update event only if this is required
+        if (!affectedLines.isEmpty() || !areTotalsEqual(invoiceLine, invoiceLineFromStorage)) {
+          updateInvoiceAndAffectedLinesAsync(invoice, affectedLines);
+        }
+      });
+    });
   }
 
   public CompletableFuture<Void> deleteInvoiceLine(String id) {

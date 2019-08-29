@@ -13,6 +13,7 @@ import static org.hamcrest.core.IsEqual.equalTo;
 
 import org.folio.HttpStatus;
 import org.folio.rest.jaxrs.model.Errors;
+import org.folio.rest.jaxrs.model.Invoice;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -22,6 +23,8 @@ import io.vertx.core.logging.LoggerFactory;
 import junitparams.JUnitParamsRunner;
 import junitparams.Parameters;
 
+import java.util.Collections;
+
 @RunWith(JUnitParamsRunner.class)
 public class InvoicesProtectionTest extends ProtectedEntityTestBase {
 
@@ -30,7 +33,8 @@ public class InvoicesProtectionTest extends ProtectedEntityTestBase {
   @Test
   @Parameters({
     "READ",
-    "CREATE"
+    "CREATE",
+    "UPDATE"
   })
   public void testOperationWithNonExistedUnits(ProtectedOperations operation) {
     logger.info("=== Invoices protection: Test record contains non-existent unit ids - expecting of call only to Units API ===");
@@ -50,7 +54,8 @@ public class InvoicesProtectionTest extends ProtectedEntityTestBase {
   @Test
   @Parameters({
     "READ",
-    "CREATE"
+    "CREATE",
+    "UPDATE"
   })
   public void testOperationWithAllowedUnits(ProtectedOperations operation) {
     logger.info(
@@ -66,7 +71,8 @@ public class InvoicesProtectionTest extends ProtectedEntityTestBase {
   @Test
   @Parameters({
     "READ",
-    "CREATE"
+    "CREATE",
+    "UPDATE"
   })
   public void testWithRestrictedUnitsAndAllowedUser(ProtectedOperations operation) {
     logger.info(
@@ -82,7 +88,8 @@ public class InvoicesProtectionTest extends ProtectedEntityTestBase {
   @Test
   @Parameters({
     "READ",
-    "CREATE"
+    "CREATE",
+    "UPDATE"
   })
   public void testWithProtectedUnitsAndForbiddenUser(ProtectedOperations operation) {
     logger.info("=== Invoices protection: Test corresponding record has units, units protect operation, user isn't member of order's units - expecting of calls to Units, Memberships APIs and restriction of operation ===");
@@ -99,18 +106,20 @@ public class InvoicesProtectionTest extends ProtectedEntityTestBase {
 
   @Test
   @Parameters({
-    "CREATE"
+    "CREATE",
+    "UPDATE"
   })
   public void testModifyUnitsList(ProtectedOperations operation) {
     logger.info("=== Invoices protection: Test user without desired permissions modifying acqUnitsIds ===");
 
-     Headers headers = prepareHeaders(X_OKAPI_TENANT, X_OKAPI_USER_WITH_UNITS_ASSIGNED_TO_RECORD);
-     Errors errors = operation.process(INVOICE_PATH, encodePrettily(prepareInvoice(PROTECTED_UNITS)),
-         headers, APPLICATION_JSON, HttpStatus.HTTP_FORBIDDEN.toInt()).as(Errors.class);
-     
+    Headers headers = prepareHeaders(X_OKAPI_TENANT, X_OKAPI_USER_WITH_UNITS_ASSIGNED_TO_RECORD);
+    Invoice invoice = prepareInvoice(Collections.emptyList());
+    Errors errors = operation.process(INVOICE_PATH, encodePrettily(invoice.withAcqUnitIds(PROTECTED_UNITS)),
+       headers, APPLICATION_JSON, HttpStatus.HTTP_FORBIDDEN.toInt()).as(Errors.class);
+
     assertThat(errors.getErrors(), hasSize(1));
     assertThat(errors.getErrors().get(0).getCode(), equalTo(USER_HAS_NO_ACQ_PERMISSIONS.getCode()));
 
-     validateNumberOfRequests(0, 0);
+    validateNumberOfRequests(0, 0);
   }
 }

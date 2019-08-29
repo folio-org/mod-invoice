@@ -10,6 +10,7 @@ import static org.apache.commons.collections4.CollectionUtils.isNotEmpty;
 import static org.apache.commons.lang3.StringUtils.EMPTY;
 import static org.apache.commons.lang3.StringUtils.isAlpha;
 import static org.apache.commons.lang3.StringUtils.isEmpty;
+import static org.folio.invoices.utils.AcqDesiredPermissions.MANAGE;
 import static org.folio.invoices.utils.ErrorCodes.FUNDS_NOT_FOUND;
 import static org.folio.invoices.utils.ErrorCodes.FUND_DISTRIBUTIONS_NOT_PRESENT;
 import static org.folio.invoices.utils.ErrorCodes.FUND_DISTRIBUTIONS_PERCENTAGE_SUMMARY_MISMATCH;
@@ -36,6 +37,7 @@ import static org.folio.invoices.utils.AcqDesiredPermissions.ASSIGN;
 import static org.folio.invoices.utils.HelperUtils.handleGetRequest;
 import static org.folio.invoices.utils.HelperUtils.handlePutRequest;
 import static org.folio.invoices.utils.HelperUtils.isPostApproval;
+import static org.folio.invoices.utils.ProtectedOperationType.UPDATE;
 import static org.folio.rest.RestVerticle.OKAPI_HEADER_PERMISSIONS;
 import static org.folio.invoices.utils.ResourcePathResolver.FOLIO_INVOICE_NUMBER;
 import static org.folio.invoices.utils.ResourcePathResolver.FUNDS;
@@ -47,6 +49,7 @@ import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -247,12 +250,35 @@ public class InvoiceHelper extends AbstractHelper {
     return getInvoiceRecord(invoice.getId())
       .thenCompose(invoiceFromStorage -> {
         validateInvoice(invoice, invoiceFromStorage);
+        verifyUserHasManagePermission(invoice, invoiceFromStorage);
         setSystemGeneratedData(invoiceFromStorage, invoice);
 
-        return recalculateDynamicData(invoice, invoiceFromStorage)
+        return protectionHelper.isOperationRestricted(invoiceFromStorage.getAcqUnitIds(), UPDATE)
+          .thenCompose(v -> recalculateDynamicData(invoice, invoiceFromStorage))
           .thenCompose(ok -> handleInvoiceStatusTransition(invoice, invoiceFromStorage));
       })
       .thenCompose(ok -> updateInvoiceRecord(invoice));
+  }
+
+  /**
+   * The method checks if list of acquisition units to which the invoice is assigned is changed, if yes,
+   * then check that if the user has desired permission to manage acquisition units assignments
+   *
+   * @throws HttpException if user does not have manage permission
+   * @param newInvoice invoice from request
+   * @param invoiceFromStorage invoice from storage
+   */
+  private void verifyUserHasManagePermission(Invoice newInvoice, Invoice invoiceFromStorage) {
+    Set<String> newAcqUnits = new HashSet<>(CollectionUtils.emptyIfNull(newInvoice.getAcqUnitIds()));
+    Set<String> acqUnitsFromStorage = new HashSet<>(CollectionUtils.emptyIfNull(invoiceFromStorage.getAcqUnitIds()));
+
+    if (isManagePermissionRequired(newAcqUnits, acqUnitsFromStorage) && isUserDoesNotHaveDesiredPermission(MANAGE)){
+      throw new HttpException(HttpStatus.HTTP_FORBIDDEN.toInt(), USER_HAS_NO_ACQ_PERMISSIONS);
+    }
+  }
+
+  private boolean isManagePermissionRequired(Set<String> newAcqUnits, Set<String> acqUnitsFromStorage) {
+    return !CollectionUtils.isEqualCollection(newAcqUnits, acqUnitsFromStorage);
   }
 
   /**
