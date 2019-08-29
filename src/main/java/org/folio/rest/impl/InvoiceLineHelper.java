@@ -244,10 +244,8 @@ public class InvoiceLineHelper extends AbstractHelper {
   public CompletableFuture<Void> deleteInvoiceLine(String id) {
     return getInvoiceLine(id)
       .thenCompose(invoiceLine -> getInvoiceById(invoiceLine.getInvoiceId(), lang, httpClient, ctx, okapiHeaders, logger))
-      .thenCompose(invoice -> {
-        return protectionHelper.isOperationRestricted(invoice.getAcqUnitIds(), DELETE)
-          .thenApply(vvoid -> invoice);
-      })
+      .thenCompose(invoice -> protectionHelper.isOperationRestricted(invoice.getAcqUnitIds(), DELETE)
+        .thenApply(vvoid -> invoice))
       .thenCompose(invoice -> handleDeleteRequest(resourceByIdPath(INVOICE_LINES, id, lang), httpClient, ctx, okapiHeaders, logger)
         .thenRun(() -> updateInvoiceAndLinesAsync(invoice)));
   }
