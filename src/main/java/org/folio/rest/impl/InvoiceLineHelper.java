@@ -235,21 +235,21 @@ public class InvoiceLineHelper extends AbstractHelper {
   /**
    * Deletes Invoice Line and update Invoice if deletion is allowed
    * 1. Get invoiceLine by id
-   * 2. Verify if user has permission to delete invoiceLine based on acquisitions units
-   * 3. If user has permission to delete then delete invoiceLine
-   * 4. Update corresponding Invoice
+   * 2. Get invoice by id
+   * 3. Verify if user has permission to delete invoiceLine based on acquisitions units, if not then return
+   * 4. If user has permission to delete then delete invoiceLine
+   * 5. Update corresponding Invoice
    * @param id invoiceLine id to be deleted
    */
   public CompletableFuture<Void> deleteInvoiceLine(String id) {
-    return getInvoiceLine(id).thenCompose(this::verifyDeleteAllowed)
-      .thenCompose(line -> handleDeleteRequest(resourceByIdPath(INVOICE_LINES, id, lang), httpClient, ctx, okapiHeaders, logger)
-        .thenRun(() -> updateInvoiceAndLinesAsync(line.getInvoiceId())));
-  }
-
-  private CompletableFuture<InvoiceLine> verifyDeleteAllowed(InvoiceLine invoiceLine) {
-    return getInvoiceById(invoiceLine.getInvoiceId(), lang, httpClient, ctx, okapiHeaders, logger)
-      .thenCompose(invoice -> protectionHelper.isOperationRestricted(invoice.getAcqUnitIds(), DELETE))
-      .thenApply(aVoid -> invoiceLine);
+    return getInvoiceLine(id)
+      .thenCompose(invoiceLine -> getInvoiceById(invoiceLine.getInvoiceId(), lang, httpClient, ctx, okapiHeaders, logger))
+      .thenCompose(invoice -> {
+        return protectionHelper.isOperationRestricted(invoice.getAcqUnitIds(), DELETE)
+          .thenApply(vvoid -> invoice);
+      })
+      .thenCompose(invoice -> handleDeleteRequest(resourceByIdPath(INVOICE_LINES, id, lang), httpClient, ctx, okapiHeaders, logger)
+        .thenRun(() -> updateInvoiceAndLinesAsync(invoice)));
   }
 
   private void validateInvoiceLine(Invoice existedInvoice, InvoiceLine invoiceLine, InvoiceLine existedInvoiceLine) {
@@ -567,29 +567,31 @@ public class InvoiceLineHelper extends AbstractHelper {
       () -> sendEvent(MessageAddress.INVOICE_TOTALS, new JsonObject().put(INVOICE, JsonObject.mapFrom(invoice))));
   }
 
-  private void updateInvoiceAndLinesAsync(String invoiceId) {
+  private void updateInvoiceAndLinesAsync(Invoice invoice) {
     VertxCompletableFuture.runAsync(ctx, () -> {
       InvoiceLineHelper helper = new InvoiceLineHelper(okapiHeaders, ctx, lang);
-      helper.updateInvoiceAndLines(invoiceId).handle((ok, fail) -> {
-        helper.closeHttpClient();
-        return null;
-      });
+      helper.updateInvoiceAndLines(invoice)
+        .handle((ok, fail) -> {
+          helper.closeHttpClient();
+          return null;
+        });
     });
   }
 
-  private CompletableFuture<Void> updateInvoiceAndLines(String invoiceId) {
-    return getInvoiceById(invoiceId, lang, httpClient, ctx, okapiHeaders, logger).thenCompose(invoice -> {
-      List<Adjustment> proratedAdjustments = getProratedAdjustments(invoice.getAdjustments());
+  private CompletableFuture<Void> updateInvoiceAndLines(Invoice invoice) {
 
-      // If no prorated adjustments, just update invoice details
-      if (proratedAdjustments.isEmpty()) {
-        updateInvoiceAsync(invoice);
-        return CompletableFuture.completedFuture(null);
-      }
+    List<Adjustment> proratedAdjustments = getProratedAdjustments(invoice.getAdjustments());
 
-      return getInvoiceLinesByInvoiceId(invoiceId).thenApply(lines -> applyProratedAdjustments(proratedAdjustments, lines, invoice))
-        .thenCompose(lines -> persistInvoiceLines(invoice, lines))
-        .thenAccept(ok -> updateInvoiceAsync(invoice));
-    });
+    // If no prorated adjustments, just update invoice details
+    if (proratedAdjustments.isEmpty()) {
+      updateInvoiceAsync(invoice);
+      return CompletableFuture.completedFuture(null);
+    }
+
+    return getInvoiceLinesByInvoiceId(invoice.getId())
+      .thenApply(lines -> applyProratedAdjustments(proratedAdjustments, lines, invoice))
+      .thenCompose(lines -> persistInvoiceLines(invoice, lines))
+      .thenAccept(ok -> updateInvoiceAsync(invoice));
+
   }
 }
