@@ -247,13 +247,9 @@ public class InvoiceLineHelper extends AbstractHelper {
   }
 
   private CompletableFuture<InvoiceLine> verifyDeleteAllowed(InvoiceLine invoiceLine) {
-    return getInvoiceRecord(invoiceLine.getInvoiceId())
+    return getInvoiceById(invoiceLine.getInvoiceId(), lang, httpClient, ctx, okapiHeaders, logger)
       .thenCompose(invoice -> protectionHelper.isOperationRestricted(invoice.getAcqUnitIds(), DELETE))
       .thenApply(aVoid -> invoiceLine);
-  }
-
-  public CompletableFuture<Invoice> getInvoiceRecord(String id) {
-    return getInvoiceById(id, lang, httpClient, ctx, okapiHeaders, logger);
   }
 
   private void validateInvoiceLine(Invoice existedInvoice, InvoiceLine invoiceLine, InvoiceLine existedInvoiceLine) {

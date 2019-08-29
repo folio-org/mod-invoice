@@ -246,9 +246,8 @@ public class InvoiceHelper extends AbstractHelper {
    */
   public CompletableFuture<Void> deleteInvoice(String id) {
     return getInvoiceRecord(id)
-    .thenCompose(invoice -> protectionHelper.isOperationRestricted(invoice.getAcqUnitIds(), ProtectedOperationType.DELETE)
-        .thenApply(aVoid -> invoice))
-    .thenAccept(v -> handleDeleteRequest(resourceByIdPath(INVOICES, id, lang), httpClient, ctx, okapiHeaders, logger));
+    .thenCompose(invoice -> protectionHelper.isOperationRestricted(invoice.getAcqUnitIds(), ProtectedOperationType.DELETE))
+    .thenCompose(v -> handleDeleteRequest(resourceByIdPath(INVOICES, id, lang), httpClient, ctx, okapiHeaders, logger));
   }
 
   public CompletableFuture<Void> updateInvoice(Invoice invoice) {
