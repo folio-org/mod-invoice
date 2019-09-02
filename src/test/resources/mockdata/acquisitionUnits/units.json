@@ -3,6 +3,7 @@
     {
       "id": "0e9525aa-d123-4e4d-9f7e-1b302a97eb90",
       "name": "Not protected",
+      "isDeleted": false,
       "protectCreate": false,
       "protectRead": false,
       "protectUpdate": false,
@@ -11,6 +12,7 @@
     {
       "id": "f6d2cc9d-82ca-437c-a4e6-e5c30323df00",
       "name": "Create protected",
+      "isDeleted": false,
       "protectCreate": true,
       "protectRead": false,
       "protectUpdate": false,
@@ -19,6 +21,7 @@
     {
       "id": "6b982ffe-8efd-4690-8168-0c773b49cde1",
       "name": "Read only",
+      "isDeleted": false,
       "protectCreate": true,
       "protectRead": false,
       "protectUpdate": true,
@@ -27,6 +30,7 @@
     {
       "id": "aa0ec4e1-782f-45f6-a6f3-8e6b6c00599c",
       "name": "Update only",
+      "isDeleted": false,
       "protectCreate": true,
       "protectRead": true,
       "protectUpdate": false,
@@ -35,6 +39,7 @@
     {
       "id": "2e6a170f-ae20-4889-813f-641831e24b84",
       "name": "Delete protected",
+      "isDeleted": false,
       "protectCreate": false,
       "protectRead": false,
       "protectUpdate": false,
@@ -42,6 +47,7 @@
     },
     {
       "id": "e68c18fc-833f-494e-9a0e-b236eb4b310b",
+      "isDeleted": false,
       "name": "Full protected users",
       "protectCreate": true,
       "protectRead": true,
