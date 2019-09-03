@@ -205,7 +205,7 @@ public class InvoiceHelper extends AbstractHelper {
    * @param query A query expressed as a CQL string using valid searchable fields
    * @return completable future with {@link InvoiceCollection} on success or an exception if processing fails
    */
-  public CompletableFuture<InvoiceCollection> getInvoices(int limit, int offset, String query, String lang) {
+  public CompletableFuture<InvoiceCollection> getInvoices(int limit, int offset, String query) {
     CompletableFuture<InvoiceCollection> future = new VertxCompletableFuture<>(ctx);
     try {
       buildGetInvoicesPath(limit, offset, query)
