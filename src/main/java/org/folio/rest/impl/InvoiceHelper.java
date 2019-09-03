@@ -25,6 +25,7 @@ import static org.folio.invoices.utils.HelperUtils.calculateInvoiceLineTotals;
 import static org.folio.invoices.utils.HelperUtils.calculateVoucherLineAmount;
 import static org.folio.invoices.utils.HelperUtils.collectResultsOnSuccess;
 import static org.folio.invoices.utils.HelperUtils.combineCqlExpressions;
+import static org.folio.invoices.utils.HelperUtils.getInvoicesFromStorage;
 import static org.folio.invoices.utils.HelperUtils.convertToDoubleWithRounding;
 import static org.folio.invoices.utils.HelperUtils.encodeQuery;
 import static org.folio.invoices.utils.HelperUtils.findChangedProtectedFields;
@@ -208,10 +209,10 @@ public class InvoiceHelper extends AbstractHelper {
     CompletableFuture<InvoiceCollection> future = new VertxCompletableFuture<>(ctx);
     try {
       buildGetInvoicesPath(limit, offset, query)
-        .thenCompose(endpoint -> handleGetRequest(endpoint, httpClient, ctx, okapiHeaders, logger))
+        .thenCompose(endpoint -> getInvoicesFromStorage(endpoint, httpClient, ctx, okapiHeaders, logger))
         .thenAccept(jsonInvoices -> {
-          logger.info("Successfully retrieved invoices: " + jsonInvoices.encodePrettily());
-          future.complete(jsonInvoices.mapTo(InvoiceCollection.class));
+          logger.info("Successfully retrieved invoices: " + jsonInvoices);
+          future.complete(jsonInvoices);
         })
         .exceptionally(t -> {
           logger.error("Error getting invoices", t);
@@ -237,8 +238,17 @@ public class InvoiceHelper extends AbstractHelper {
       });
   }
 
+  /**
+   * Delete Invoice
+   * 1. Get invoice by id
+   * 2. Verify if user has permission to delete Invoice based on acquisitions units
+   * 3. If user has permission to delete then delete invoiceLine
+   * @param id invoiceLine id to be deleted
+   */
   public CompletableFuture<Void> deleteInvoice(String id) {
-    return handleDeleteRequest(resourceByIdPath(INVOICES, id, lang), httpClient, ctx, okapiHeaders, logger);
+    return getInvoiceRecord(id)
+    .thenCompose(invoice -> protectionHelper.isOperationRestricted(invoice.getAcqUnitIds(), ProtectedOperationType.DELETE))
+    .thenCompose(v -> handleDeleteRequest(resourceByIdPath(INVOICES, id, lang), httpClient, ctx, okapiHeaders, logger));
   }
 
   public CompletableFuture<Void> updateInvoice(Invoice invoice) {
