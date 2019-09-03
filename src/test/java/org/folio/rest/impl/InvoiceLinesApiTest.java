@@ -6,14 +6,12 @@ import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 import static javax.ws.rs.core.MediaType.TEXT_PLAIN;
 import static org.awaitility.Awaitility.await;
 import static org.folio.invoices.utils.ErrorCodes.PROHIBITED_INVOICE_LINE_CREATION;
-import static org.folio.invoices.utils.HelperUtils.getNoAcqUnitCQL;
 import static org.folio.invoices.utils.HelperUtils.INVOICE_ID;
+import static org.folio.invoices.utils.HelperUtils.getNoAcqUnitCQL;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICES;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_LINES;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_LINE_NUMBER;
 import static org.folio.rest.impl.AbstractHelper.ID;
-import static org.folio.rest.impl.InvoicesApiTest.APPROVED_INVOICE_ID;
-import static org.folio.rest.impl.InvoicesApiTest.BAD_QUERY;
 import static org.folio.rest.impl.InvoicesApiTest.OPEN_INVOICE_ID;
 import static org.folio.rest.impl.InvoicesApiTest.REVIEWED_INVOICE_ID;
 import static org.folio.rest.impl.InvoicesImpl.PROTECTED_AND_MODIFIED_FIELDS;
@@ -187,8 +185,9 @@ public class InvoiceLinesApiTest extends ApiTestBase {
   public void deleteInvoicingInvoiceLinesByIdTest() {
     logger.info("=== Test delete invoice line by id ===");
 
-    addMockEntry(INVOICE_LINES, getMinimalContentInvoiceLine().withId(VALID_UUID));
+    addMockEntry(INVOICE_LINES, getMinimalContentInvoiceLine().withId(VALID_UUID).withInvoiceId(APPROVED_INVOICE_ID));
     addMockEntry(INVOICES, getMinimalContentInvoice());
+
     verifyDeleteResponse(String.format(INVOICE_LINE_ID_PATH, VALID_UUID), "", 204);
   }
 

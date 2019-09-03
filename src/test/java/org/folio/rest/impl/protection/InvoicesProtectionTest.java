@@ -11,6 +11,8 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.collection.IsCollectionWithSize.hasSize;
 import static org.hamcrest.core.IsEqual.equalTo;
 
+import java.util.Collections;
+
 import org.folio.HttpStatus;
 import org.folio.rest.jaxrs.model.Errors;
 import org.folio.rest.jaxrs.model.Invoice;
@@ -23,8 +25,6 @@ import io.vertx.core.logging.LoggerFactory;
 import junitparams.JUnitParamsRunner;
 import junitparams.Parameters;
 
-import java.util.Collections;
-
 @RunWith(JUnitParamsRunner.class)
 public class InvoicesProtectionTest extends ProtectedEntityTestBase {
 
@@ -34,7 +34,8 @@ public class InvoicesProtectionTest extends ProtectedEntityTestBase {
   @Parameters({
     "READ",
     "CREATE",
-    "UPDATE"
+    "UPDATE",
+    "DELETE"
   })
   public void testOperationWithNonExistedUnits(ProtectedOperations operation) {
     logger.info("=== Invoices protection: Test record contains non-existent unit ids - expecting of call only to Units API ===");
@@ -55,7 +56,8 @@ public class InvoicesProtectionTest extends ProtectedEntityTestBase {
   @Parameters({
     "READ",
     "CREATE",
-    "UPDATE"
+    "UPDATE",
+    "DELETE"
   })
   public void testOperationWithAllowedUnits(ProtectedOperations operation) {
     logger.info(
@@ -72,7 +74,8 @@ public class InvoicesProtectionTest extends ProtectedEntityTestBase {
   @Parameters({
     "READ",
     "CREATE",
-    "UPDATE"
+    "UPDATE",
+    "DELETE"
   })
   public void testWithRestrictedUnitsAndAllowedUser(ProtectedOperations operation) {
     logger.info(
@@ -88,8 +91,9 @@ public class InvoicesProtectionTest extends ProtectedEntityTestBase {
   @Test
   @Parameters({
     "READ",
+    "UPDATE",
     "CREATE",
-    "UPDATE"
+    "DELETE"
   })
   public void testWithProtectedUnitsAndForbiddenUser(ProtectedOperations operation) {
     logger.info("=== Invoices protection: Test corresponding record has units, units protect operation, user isn't member of order's units - expecting of calls to Units, Memberships APIs and restriction of operation ===");

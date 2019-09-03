@@ -5,6 +5,7 @@ import static org.apache.commons.lang3.StringUtils.isEmpty;
 import static org.folio.invoices.utils.ErrorCodes.PROHIBITED_INVOICE_LINE_CREATION;
 import static org.folio.invoices.utils.HelperUtils.INVOICE;
 import static org.folio.invoices.utils.HelperUtils.INVOICE_ID;
+import static org.folio.invoices.utils.HelperUtils.QUERY_PARAM_START_WITH;
 import static org.folio.invoices.utils.HelperUtils.calculateInvoiceLineTotals;
 import static org.folio.invoices.utils.HelperUtils.combineCqlExpressions;
 import static org.folio.invoices.utils.HelperUtils.convertToDoubleWithRounding;
@@ -12,11 +13,13 @@ import static org.folio.invoices.utils.HelperUtils.findChangedProtectedFields;
 import static org.folio.invoices.utils.HelperUtils.getEndpointWithQuery;
 import static org.folio.invoices.utils.HelperUtils.getHttpClient;
 import static org.folio.invoices.utils.HelperUtils.getInvoiceById;
+import static org.folio.invoices.utils.HelperUtils.getInvoices;
 import static org.folio.invoices.utils.HelperUtils.getProratedAdjustments;
 import static org.folio.invoices.utils.HelperUtils.handleDeleteRequest;
 import static org.folio.invoices.utils.HelperUtils.handleGetRequest;
 import static org.folio.invoices.utils.HelperUtils.handlePutRequest;
 import static org.folio.invoices.utils.HelperUtils.isPostApproval;
+import static org.folio.invoices.utils.ProtectedOperationType.DELETE;
 import static org.folio.invoices.utils.ProtectedOperationType.READ;
 import static org.folio.invoices.utils.ProtectedOperationType.UPDATE;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_LINES;
@@ -33,7 +36,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
 
 import javax.money.CurrencyUnit;
 import javax.money.Monetary;
@@ -239,10 +241,24 @@ public class InvoiceLineHelper extends AbstractHelper {
     });
   }
 
+  /**
+   * Deletes Invoice Line and update Invoice if deletion is allowed
+   * 1. Get invoice via searching for invoices by invoiceLine.id field
+   * 2. Verify if user has permission to delete invoiceLine based on acquisitions units, if not then return
+   * 3. If user has permission to delete then delete invoiceLine
+   * 4. Update corresponding Invoice
+   * @param id invoiceLine id to be deleted
+   */
   public CompletableFuture<Void> deleteInvoiceLine(String id) {
-    return getInvoiceLine(id)
-      .thenCompose(line -> handleDeleteRequest(resourceByIdPath(INVOICE_LINES, id, lang), httpClient, ctx, okapiHeaders, logger)
-        .thenRun(() -> updateInvoiceAndLinesAsync(line.getInvoiceId())));
+    String query = QUERY_PARAM_START_WITH + id;
+
+    return getInvoices(query, httpClient, ctx, okapiHeaders, logger, lang)
+      .thenApply(invoiceCollection -> invoiceCollection.getInvoices()
+        .get(0))
+      .thenCompose(invoice -> protectionHelper.isOperationRestricted(invoice.getAcqUnitIds(), DELETE)
+        .thenApply(vvoid -> invoice))
+      .thenCompose(invoice -> handleDeleteRequest(resourceByIdPath(INVOICE_LINES, id, lang), httpClient, ctx, okapiHeaders, logger)
+        .thenRun(() -> updateInvoiceAndLinesAsync(invoice)));
   }
 
   private void validateInvoiceLine(Invoice existedInvoice, InvoiceLine invoiceLine, InvoiceLine existedInvoiceLine) {
@@ -560,29 +576,32 @@ public class InvoiceLineHelper extends AbstractHelper {
       () -> sendEvent(MessageAddress.INVOICE_TOTALS, new JsonObject().put(INVOICE, JsonObject.mapFrom(invoice))));
   }
 
-  private void updateInvoiceAndLinesAsync(String invoiceId) {
+  private void updateInvoiceAndLinesAsync(Invoice invoice) {
     VertxCompletableFuture.runAsync(ctx, () -> {
       InvoiceLineHelper helper = new InvoiceLineHelper(okapiHeaders, ctx, lang);
-      helper.updateInvoiceAndLines(invoiceId).handle((ok, fail) -> {
-        helper.closeHttpClient();
-        return null;
-      });
+      helper.updateInvoiceAndLines(invoice)
+        .handle((ok, fail) -> {
+          helper.closeHttpClient();
+          return null;
+        });
     });
   }
 
-  private CompletableFuture<Void> updateInvoiceAndLines(String invoiceId) {
-    return getInvoiceById(invoiceId, lang, httpClient, ctx, okapiHeaders, logger).thenCompose(invoice -> {
-      List<Adjustment> proratedAdjustments = getProratedAdjustments(invoice.getAdjustments());
+  private CompletableFuture<Void> updateInvoiceAndLines(Invoice invoice) {
 
-      // If no prorated adjustments, just update invoice details
-      if (proratedAdjustments.isEmpty()) {
-        updateInvoiceAsync(invoice);
-        return CompletableFuture.completedFuture(null);
-      }
+    List<Adjustment> proratedAdjustments = getProratedAdjustments(invoice.getAdjustments());
 
-      return getInvoiceLinesByInvoiceId(invoiceId).thenApply(lines -> applyProratedAdjustments(proratedAdjustments, lines, invoice))
-        .thenCompose(lines -> persistInvoiceLines(invoice, lines))
-        .thenAccept(ok -> updateInvoiceAsync(invoice));
-    });
+    // If no prorated adjustments, just update invoice details
+    if (proratedAdjustments.isEmpty()) {
+      updateInvoiceAsync(invoice);
+      return CompletableFuture.completedFuture(null);
+    }
+
+    return getInvoiceLinesByInvoiceId(invoice.getId())
+      .thenApply(lines -> applyProratedAdjustments(proratedAdjustments, lines, invoice))
+      .thenCompose(lines -> persistInvoiceLines(invoice, lines))
+      .thenAccept(ok -> updateInvoiceAsync(invoice));
+
   }
+
 }

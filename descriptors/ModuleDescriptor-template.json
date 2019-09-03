@@ -72,7 +72,10 @@
           "pathPattern": "/invoice/invoices/{id}",
           "permissionsRequired": ["invoice.invoices.item.delete"],
           "modulePermissions": [
-            "invoice-storage.invoices.item.delete"
+            "invoice-storage.invoices.item.get",
+            "invoice-storage.invoices.item.delete",
+            "acquisitions-units.units.collection.get",
+            "acquisitions-units.memberships.collection.get"
           ]
         },
         {
@@ -138,7 +141,9 @@
             "invoice-storage.invoice-lines.item.put",
             "invoice-storage.invoice-lines.collection.get",
             "invoice-storage.invoices.item.get",
-            "invoice-storage.invoices.item.put"
+            "invoice-storage.invoices.item.put",
+            "acquisitions-units.units.collection.get",
+            "acquisitions-units.memberships.collection.get"
           ]
         },
         {

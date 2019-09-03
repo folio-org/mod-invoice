@@ -31,7 +31,8 @@ public class LinesProtectionTest extends ProtectedEntityTestBase {
   @Parameters({
     "READ",
     "CREATE",
-    "UPDATE"
+    "UPDATE",
+    "DELETE"
   })
   public void testOperationWithNonExistedUnits(ProtectedOperations operation) {
     logger.info("=== Invoice-lines protection: Test corresponding record contains non-existent units - expecting of call only to Units API ===");
@@ -52,7 +53,8 @@ public class LinesProtectionTest extends ProtectedEntityTestBase {
   @Parameters({
     "READ",
     "CREATE",
-    "UPDATE"
+    "UPDATE",
+    "DELETE"
   })
   public void testOperationWithAllowedUnits(ProtectedOperations operation) {
     logger.info(
@@ -69,7 +71,8 @@ public class LinesProtectionTest extends ProtectedEntityTestBase {
   @Parameters({
     "READ",
     "CREATE",
-    "UPDATE"
+    "UPDATE",
+    "DELETE"
   })
   public void testWithRestrictedUnitsAndAllowedUser(ProtectedOperations operation) {
     logger.info(
@@ -86,7 +89,8 @@ public class LinesProtectionTest extends ProtectedEntityTestBase {
   @Parameters({
     "READ",
     "CREATE",
-    "UPDATE"
+    "UPDATE",
+    "DELETE"
   })
   public void testWithProtectedUnitsAndForbiddenUser(ProtectedOperations operation) {
     logger.info("=== Invoice-lines protection: Test corresponding record has units, units protect operation, user isn't member of order's units - expecting of calls to Units, Memberships APIs and restriction of operation ===");
@@ -104,7 +108,8 @@ public class LinesProtectionTest extends ProtectedEntityTestBase {
   @Parameters({
     "READ",
     "CREATE",
-    "UPDATE"
+    "UPDATE",
+    "DELETE"
   })
   public void testOperationWithUnprocessableBadUnits(ProtectedOperations operation) {
     logger.info(
