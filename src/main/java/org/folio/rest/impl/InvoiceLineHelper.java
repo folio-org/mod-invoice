@@ -239,7 +239,7 @@ public class InvoiceLineHelper extends AbstractHelper {
    * 1. Get invoice via searching for invoices by invoiceLine.id field
    * 2. Verify if user has permission to delete invoiceLine based on acquisitions units, if not then return
    * 3. If user has permission to delete then delete invoiceLine
-   * 4. Update corresponding Invoice and Lines
+   * 4. Update corresponding Invoice
    * @param id invoiceLine id to be deleted
    */
   public CompletableFuture<Void> deleteInvoiceLine(String id) {

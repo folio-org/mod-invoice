@@ -75,6 +75,7 @@ public class HelperUtils {
   public static final String OKAPI_URL = "X-Okapi-Url";
   public static final String ID = "id";
   public static final String QUERY_PARAM_START_WITH = "invoice_lines.id==";
+  public static final String SEARCH_PARAMS = "?limit=%s&offset=%s%s&lang=%s";
 
   private static final String EXCEPTION_CALLING_ENDPOINT_MSG = "Exception calling {} {}";
   private static final String CALLING_ENDPOINT_MSG = "Sending {} {}";
@@ -102,13 +103,29 @@ public class HelperUtils {
   public static CompletableFuture<InvoiceCollection> getInvoices(int limit, int offset, String query,
       HttpClientInterface httpClient, Context ctx, Map<String, String> okapiHeaders, Logger logger, String lang) {
     CompletableFuture<InvoiceCollection> future = new VertxCompletableFuture<>(ctx);
-    final String SEARCH_PARAMS = "?limit=%s&offset=%s%s&lang=%s";
-    String GET_INVOICE_BY_QUERY = resourcesPath(INVOICES) + SEARCH_PARAMS;
+    
+    String getInvoiceByQuery = resourcesPath(INVOICES) + SEARCH_PARAMS;
+
+    String queryParam = getEndpointWithQuery(query, logger);
+    String endpoint = String.format(getInvoiceByQuery, limit, offset, queryParam, lang);
+    getInvoicesFromStorage(endpoint, limit, offset, httpClient, ctx, okapiHeaders, logger)
+        .thenAccept(invoiceCollection -> {
+          logger.info("Successfully retrieved invoices: " + invoiceCollection);
+          future.complete(invoiceCollection);
+        })
+        .exceptionally(t -> {
+          logger.error("Error getting invoices from storage ", t);
+          future.completeExceptionally(t);
+          return null;
+        });
+    return future;
+  }
+
+  public static CompletableFuture<InvoiceCollection> getInvoicesFromStorage(String endpoint, int limit, int offset,
+      HttpClientInterface httpClient, Context ctx, Map<String, String> okapiHeaders, Logger logger) {
+    CompletableFuture<InvoiceCollection> future = new VertxCompletableFuture<>(ctx);
 
     try {
-      String queryParam = getEndpointWithQuery(query, logger);
-      String endpoint = String.format(GET_INVOICE_BY_QUERY, limit, offset, queryParam, lang);
-
       handleGetRequest(endpoint, httpClient, ctx, okapiHeaders, logger).thenAccept(jsonInvoices -> {
         logger.info("Successfully retrieved invoices: " + jsonInvoices.encodePrettily());
         future.complete(jsonInvoices.mapTo(InvoiceCollection.class));

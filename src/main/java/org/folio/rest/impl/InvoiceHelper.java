@@ -25,6 +25,7 @@ import static org.folio.invoices.utils.HelperUtils.calculateInvoiceLineTotals;
 import static org.folio.invoices.utils.HelperUtils.calculateVoucherLineAmount;
 import static org.folio.invoices.utils.HelperUtils.collectResultsOnSuccess;
 import static org.folio.invoices.utils.HelperUtils.combineCqlExpressions;
+import static org.folio.invoices.utils.HelperUtils.getInvoicesFromStorage;
 import static org.folio.invoices.utils.HelperUtils.convertToDoubleWithRounding;
 import static org.folio.invoices.utils.HelperUtils.encodeQuery;
 import static org.folio.invoices.utils.HelperUtils.findChangedProtectedFields;
@@ -204,14 +205,14 @@ public class InvoiceHelper extends AbstractHelper {
    * @param query A query expressed as a CQL string using valid searchable fields
    * @return completable future with {@link InvoiceCollection} on success or an exception if processing fails
    */
-  public CompletableFuture<InvoiceCollection> getInvoices(int limit, int offset, String query) {
+  public CompletableFuture<InvoiceCollection> getInvoices(int limit, int offset, String query, String lang) {
     CompletableFuture<InvoiceCollection> future = new VertxCompletableFuture<>(ctx);
     try {
       buildGetInvoicesPath(limit, offset, query)
-        .thenCompose(endpoint -> handleGetRequest(endpoint, httpClient, ctx, okapiHeaders, logger))
+        .thenCompose(endpoint -> getInvoicesFromStorage(endpoint, limit, offset, httpClient, ctx, okapiHeaders, logger))
         .thenAccept(jsonInvoices -> {
-          logger.info("Successfully retrieved invoices: " + jsonInvoices.encodePrettily());
-          future.complete(jsonInvoices.mapTo(InvoiceCollection.class));
+          logger.info("Successfully retrieved invoices: " + jsonInvoices);
+          future.complete(jsonInvoices);
         })
         .exceptionally(t -> {
           logger.error("Error getting invoices", t);
