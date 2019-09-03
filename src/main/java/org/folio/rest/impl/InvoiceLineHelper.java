@@ -5,6 +5,7 @@ import static org.apache.commons.lang3.StringUtils.isEmpty;
 import static org.folio.invoices.utils.ErrorCodes.PROHIBITED_INVOICE_LINE_CREATION;
 import static org.folio.invoices.utils.HelperUtils.INVOICE;
 import static org.folio.invoices.utils.HelperUtils.INVOICE_ID;
+import static org.folio.invoices.utils.HelperUtils.QUERY_PARAM_START_WITH;
 import static org.folio.invoices.utils.HelperUtils.calculateInvoiceLineTotals;
 import static org.folio.invoices.utils.HelperUtils.combineCqlExpressions;
 import static org.folio.invoices.utils.HelperUtils.convertToDoubleWithRounding;
@@ -16,6 +17,7 @@ import static org.folio.invoices.utils.HelperUtils.getProratedAdjustments;
 import static org.folio.invoices.utils.HelperUtils.handleDeleteRequest;
 import static org.folio.invoices.utils.HelperUtils.handleGetRequest;
 import static org.folio.invoices.utils.HelperUtils.handlePutRequest;
+import static org.folio.invoices.utils.HelperUtils.getInvoices;
 import static org.folio.invoices.utils.HelperUtils.isPostApproval;
 import static org.folio.invoices.utils.ProtectedOperationType.READ;
 import static org.folio.invoices.utils.ProtectedOperationType.DELETE;
@@ -234,16 +236,18 @@ public class InvoiceLineHelper extends AbstractHelper {
 
   /**
    * Deletes Invoice Line and update Invoice if deletion is allowed
-   * 1. Get invoiceLine by id
-   * 2. Get invoice by id
-   * 3. Verify if user has permission to delete invoiceLine based on acquisitions units, if not then return
-   * 4. If user has permission to delete then delete invoiceLine
-   * 5. Update corresponding Invoice
+   * 1. Get invoice via searching for invoices by invoiceLine.id field
+   * 2. Verify if user has permission to delete invoiceLine based on acquisitions units, if not then return
+   * 3. If user has permission to delete then delete invoiceLine
+   * 4. Update corresponding Invoice and Lines
    * @param id invoiceLine id to be deleted
    */
   public CompletableFuture<Void> deleteInvoiceLine(String id) {
-    return getInvoiceLine(id)
-      .thenCompose(invoiceLine -> getInvoiceById(invoiceLine.getInvoiceId(), lang, httpClient, ctx, okapiHeaders, logger))
+    String query = QUERY_PARAM_START_WITH + id;
+
+    return getInvoices(Integer.MAX_VALUE, 0, query, httpClient, ctx, okapiHeaders, logger, lang)
+      .thenApply(invoiceCollection -> invoiceCollection.getInvoices()
+        .get(0))
       .thenCompose(invoice -> protectionHelper.isOperationRestricted(invoice.getAcqUnitIds(), DELETE)
         .thenApply(vvoid -> invoice))
       .thenCompose(invoice -> handleDeleteRequest(resourceByIdPath(INVOICE_LINES, id, lang), httpClient, ctx, okapiHeaders, logger)

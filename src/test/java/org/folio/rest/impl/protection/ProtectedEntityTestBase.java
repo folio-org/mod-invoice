@@ -61,8 +61,8 @@ public abstract class ProtectedEntityTestBase extends ApiTestBase {
 
   public InvoiceLine prepareInvoiceLine(List<String> acqUnitsIds) {
     Invoice invoice = prepareInvoice(acqUnitsIds);
-    InvoiceLine poLine = getMinimalContentInvoiceLine(invoice.getId());
-    addMockEntry(INVOICE_LINES, JsonObject.mapFrom(poLine));
-    return poLine;
+    InvoiceLine invoiceLine = getMinimalContentInvoiceLine(invoice.getId());
+    addMockEntry(INVOICE_LINES, JsonObject.mapFrom(invoiceLine));
+    return invoiceLine;
   }
 }

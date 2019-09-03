@@ -6,6 +6,7 @@ import static javax.ws.rs.core.MediaType.TEXT_PLAIN;
 import static javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
 import static org.apache.commons.lang3.StringUtils.EMPTY;
 import static org.folio.invoices.utils.HelperUtils.INVOICE_ID;
+import static org.folio.invoices.utils.HelperUtils.QUERY_PARAM_START_WITH;
 import static org.folio.invoices.utils.ResourcePathResolver.ACQUISITIONS_MEMBERSHIPS;
 import static org.folio.invoices.utils.ResourcePathResolver.ACQUISITIONS_UNITS;
 import static org.folio.invoices.utils.ResourcePathResolver.FOLIO_INVOICE_NUMBER;
@@ -82,6 +83,7 @@ import org.folio.rest.jaxrs.model.Configs;
 import org.folio.rest.jaxrs.model.Document;
 import org.folio.rest.jaxrs.model.DocumentCollection;
 import org.folio.rest.jaxrs.model.Invoice;
+import org.folio.rest.jaxrs.model.InvoiceCollection;
 import org.folio.rest.jaxrs.model.InvoiceDocument;
 import org.folio.rest.jaxrs.model.InvoiceLine;
 import org.folio.rest.jaxrs.model.InvoiceLineCollection;
@@ -112,6 +114,7 @@ public class MockServer {
   private static final String FUNDS_MOCK_DATA_PATH = BASE_MOCK_DATA_PATH + "fundRecords/";
   private static final String VOUCHER_ID = "voucherId";
   private static final String QUERY = "query";
+  private static final String MOCK_DATA_INVOICES = "mockdata/invoices/invoices.json";
   static final String TEST_PREFIX = "testPrefix";
   private static final String INVALID_PREFIX = "12-prefix";
 
@@ -613,25 +616,49 @@ public class MockServer {
   }
 
   private void handleGetInvoices(RoutingContext ctx) {
-    String queryParam = StringUtils.trimToEmpty(ctx.request().getParam(QUERY));
+    String queryParam = StringUtils.trimToEmpty(ctx.request()
+      .getParam(QUERY));
     addServerRqQuery(INVOICES, queryParam);
     if (queryParam.contains(BAD_QUERY)) {
       serverResponse(ctx, 400, APPLICATION_JSON, Response.Status.BAD_REQUEST.getReasonPhrase());
+    } else if (queryParam.contains(ID_DOES_NOT_EXIST)) {
+      serverResponse(ctx, 404, APPLICATION_JSON, Response.Status.NOT_FOUND.getReasonPhrase());
     } else if (queryParam.contains(ID_FOR_INTERNAL_SERVER_ERROR)) {
       serverResponse(ctx, 500, APPLICATION_JSON, Response.Status.INTERNAL_SERVER_ERROR.getReasonPhrase());
+    } else if (queryParam.startsWith(QUERY_PARAM_START_WITH)) {
+      List<Invoice> invoices;
+      try {
+      invoices = new JsonObject(ApiTestBase.getMockData(MOCK_DATA_INVOICES)).mapTo(InvoiceCollection.class)
+        .getInvoices();
+      } catch (IOException e) {
+        invoices = new ArrayList<Invoice>();
+      }
+      Optional<List<Invoice>> invoiceOptional = getMockEntries(INVOICES, Invoice.class);
+      Invoice invoice0 = invoiceOptional.get()
+        .get(0);
+      invoices.set(0, invoice0);
+      InvoiceCollection invoiceCollection = new InvoiceCollection();
+      invoiceCollection.setInvoices(invoices);
+      invoiceCollection.setTotalRecords(invoiceCollection.getInvoices()
+        .size());
+      JsonObject invoicesJson = JsonObject.mapFrom(invoiceCollection);
+
+      addServerRqRsData(HttpMethod.GET, INVOICES, JsonObject.mapFrom(invoiceCollection));
+      serverResponse(ctx, 200, APPLICATION_JSON, invoicesJson.encode());
     } else {
       JsonObject invoice = new JsonObject();
-      Matcher matcher = Pattern.compile(".*vendorInvoiceNo==(\\S[^)]+).*").matcher(queryParam);
+      Matcher matcher = Pattern.compile(".*vendorInvoiceNo==(\\S[^)]+).*")
+        .matcher(queryParam);
       final String vendorNumber = matcher.find() ? matcher.group(1) : EMPTY;
       switch (vendorNumber) {
-        case EXISTING_VENDOR_INV_NO:
-          invoice.put(TOTAL_RECORDS, 1);
-          break;
-        case EMPTY:
-          invoice.put(TOTAL_RECORDS, 3);
-          break;
-        default:
-          invoice.put(TOTAL_RECORDS, 0);
+      case EXISTING_VENDOR_INV_NO:
+        invoice.put(TOTAL_RECORDS, 1);
+        break;
+      case EMPTY:
+        invoice.put(TOTAL_RECORDS, 3);
+        break;
+      default:
+        invoice.put(TOTAL_RECORDS, 0);
       }
       addServerRqRsData(HttpMethod.GET, INVOICES, invoice);
       serverResponse(ctx, 200, APPLICATION_JSON, invoice.encodePrettily());
