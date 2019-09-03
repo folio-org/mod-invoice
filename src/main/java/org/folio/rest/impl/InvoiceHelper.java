@@ -10,6 +10,8 @@ import static org.apache.commons.collections4.CollectionUtils.isNotEmpty;
 import static org.apache.commons.lang3.StringUtils.EMPTY;
 import static org.apache.commons.lang3.StringUtils.isAlpha;
 import static org.apache.commons.lang3.StringUtils.isEmpty;
+import static org.folio.invoices.utils.AcqDesiredPermissions.ASSIGN;
+import static org.folio.invoices.utils.ErrorCodes.EXTERNAL_ACCOUNT_NUMBER_IS_MISSING;
 import static org.folio.invoices.utils.ErrorCodes.FUNDS_NOT_FOUND;
 import static org.folio.invoices.utils.ErrorCodes.FUND_DISTRIBUTIONS_NOT_PRESENT;
 import static org.folio.invoices.utils.ErrorCodes.FUND_DISTRIBUTIONS_PERCENTAGE_SUMMARY_MISMATCH;
@@ -17,9 +19,9 @@ import static org.folio.invoices.utils.ErrorCodes.INCOMPATIBLE_INVOICE_FIELDS_ON
 import static org.folio.invoices.utils.ErrorCodes.INVOICE_TOTAL_REQUIRED;
 import static org.folio.invoices.utils.ErrorCodes.PO_LINE_NOT_FOUND;
 import static org.folio.invoices.utils.ErrorCodes.PO_LINE_UPDATE_FAILURE;
+import static org.folio.invoices.utils.ErrorCodes.USER_HAS_NO_ACQ_PERMISSIONS;
 import static org.folio.invoices.utils.ErrorCodes.VOUCHER_NOT_FOUND;
 import static org.folio.invoices.utils.ErrorCodes.VOUCHER_NUMBER_PREFIX_NOT_ALPHA;
-import static org.folio.invoices.utils.ErrorCodes.USER_HAS_NO_ACQ_PERMISSIONS;
 import static org.folio.invoices.utils.HelperUtils.calculateAdjustmentsTotal;
 import static org.folio.invoices.utils.HelperUtils.calculateInvoiceLineTotals;
 import static org.folio.invoices.utils.HelperUtils.calculateVoucherLineAmount;
@@ -32,17 +34,16 @@ import static org.folio.invoices.utils.HelperUtils.getEndpointWithQuery;
 import static org.folio.invoices.utils.HelperUtils.getHttpClient;
 import static org.folio.invoices.utils.HelperUtils.getInvoiceById;
 import static org.folio.invoices.utils.HelperUtils.handleDeleteRequest;
-import static org.folio.invoices.utils.AcqDesiredPermissions.ASSIGN;
 import static org.folio.invoices.utils.HelperUtils.handleGetRequest;
 import static org.folio.invoices.utils.HelperUtils.handlePutRequest;
 import static org.folio.invoices.utils.HelperUtils.isPostApproval;
-import static org.folio.rest.RestVerticle.OKAPI_HEADER_PERMISSIONS;
 import static org.folio.invoices.utils.ResourcePathResolver.FOLIO_INVOICE_NUMBER;
 import static org.folio.invoices.utils.ResourcePathResolver.FUNDS;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICES;
 import static org.folio.invoices.utils.ResourcePathResolver.ORDER_LINES;
 import static org.folio.invoices.utils.ResourcePathResolver.resourceByIdPath;
 import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
+import static org.folio.rest.RestVerticle.OKAPI_HEADER_PERMISSIONS;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -66,9 +67,10 @@ import org.apache.commons.lang3.StringUtils;
 import org.folio.HttpStatus;
 import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.invoices.utils.AcqDesiredPermissions;
-import org.folio.invoices.utils.ProtectedOperationType;
+import org.folio.invoices.utils.ErrorCodes;
 import org.folio.invoices.utils.HelperUtils;
 import org.folio.invoices.utils.InvoiceProtectedFields;
+import org.folio.invoices.utils.ProtectedOperationType;
 import org.folio.rest.acq.model.finance.Fund;
 import org.folio.rest.acq.model.finance.FundCollection;
 import org.folio.rest.acq.model.orders.CompositePoLine;
@@ -606,13 +608,21 @@ public class InvoiceHelper extends AbstractHelper {
   }
 
   private List<Fund> verifyThatAllFundsFound(List<Fund> existingFunds, List<String> fundIds) {
+    List<String> fundIdsWithoutExternalAccNo = getFundIdsWithoutExternalAccNo(existingFunds);
+    if (isNotEmpty(fundIdsWithoutExternalAccNo)) {
+      throw new HttpException(500, buildFundError(fundIdsWithoutExternalAccNo, EXTERNAL_ACCOUNT_NUMBER_IS_MISSING));
+    }
     if (fundIds.size() != existingFunds.size()) {
       List<String> idsNotFound = collectFundIdsThatWasNotFound(existingFunds, fundIds);
       if (isNotEmpty(idsNotFound)) {
-        throw new HttpException(500, buildFundNotFoundError(idsNotFound));
+        throw new HttpException(500, buildFundError(idsNotFound, FUNDS_NOT_FOUND));
       }
     }
     return existingFunds;
+  }
+
+  private List<String> getFundIdsWithoutExternalAccNo(List<Fund> existingFunds) {
+    return existingFunds.stream().filter(fund -> Objects.isNull(fund.getExternalAccountNo())).map(Fund::getId).collect(toList());
   }
 
   private List<String> collectFundIdsThatWasNotFound(List<Fund> existingFunds, List<String> fundIds) {
@@ -623,12 +633,9 @@ public class InvoiceHelper extends AbstractHelper {
       .collect(toList());
   }
 
-  private Error buildFundNotFoundError(List<String> idsNotFound) {
-    Parameter parameter = new Parameter().withKey("fundIds").withValue(idsNotFound.toString());
-    return new Error()
-      .withCode(FUNDS_NOT_FOUND.getCode())
-      .withMessage(FUNDS_NOT_FOUND.getDescription())
-      .withParameters(Collections.singletonList(parameter));
+  private Error buildFundError(List<String> fundIds, ErrorCodes errorCode) {
+    Parameter parameter = new Parameter().withKey("fundIds").withValue(fundIds.toString());
+    return errorCode.toError().withParameters(Collections.singletonList(parameter));
   }
 
   private CompletableFuture<List<Fund>> getFundsByIds(List<String> ids) {

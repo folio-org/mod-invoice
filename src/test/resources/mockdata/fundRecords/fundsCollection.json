@@ -2,11 +2,11 @@
   "funds": [
     {
       "id": "1d1574f1-9196-4a57-8d1f-3b2e4309eb81",
-      "allocationFrom": [
+      "allocatedFromIds": [
         "b1f857ba-0e39-4c5b-851a-1b837a56b201",
         "1097980d-97c9-4130-b6f0-a11b7804887d"
       ],
-      "allocationTo": [
+      "allocatedToIds": [
         "24fa4a94-8aa2-4f69-abeb-f12b67f711e3"
       ],
       "code": "HIST",
@@ -14,10 +14,7 @@
       "externalAccountNo": "52186156468152",
       "fundStatus": "Active",
       "ledgerId": "a3ec5552-c4a4-4a15-a57c-0046db536369",
-      "name": "History",
-      "tags": [
-        "b708271c-b7f0-4c21-930b-2002d8d09f78"
-      ]
+      "name": "History"
     },
     {
       "id": "7fbd5d84-62d1-44c6-9c45-6cb173998bbd",
@@ -27,10 +24,10 @@
       "fundStatus": "Active",
       "description": "use only for sub-Saharan Africa & the black diaspora; use MIDEASTHIS for North Africa",
       "ledgerId": "133a7916-f05e-4df4-8f7f-09eb2a7076d1",
-      "allocationFrom": [
+      "allocatedFromIds": [
         "fb7b70f1-b898-4924-a991-0e4b6312bb5f"
       ],
-      "allocationTo": [
+      "allocatedToIds": [
         "cf23adf0-61ba-4887-bf82-956c4aae2260"
       ]
     },
@@ -42,10 +39,10 @@
       "fundStatus": "Active",
       "description": "use for all Oceanic countries",
       "ledgerId": "133a7916-f05e-4df4-8f7f-09eb2a7076d1",
-      "allocationFrom": [
+      "allocatedFromIds": [
         "fb7b70f1-b898-4924-a991-0e4b6312bb5f"
       ],
-      "allocationTo": [
+      "allocatedToIds": [
         "cf23adf0-61ba-4887-bf82-956c4aae2260"
       ]
     },
@@ -57,10 +54,10 @@
       "fundStatus": "Active",
       "description": "use for East, Central, and South Asia",
       "ledgerId": "133a7916-f05e-4df4-8f7f-09eb2a7076d1",
-      "allocationTo": [
+      "allocatedToIds": [
         "fb7b70f1-b898-4924-a991-0e4b6312bb5f"
       ],
-      "allocationFrom": [
+      "allocatedFromIds": [
         "cf23adf0-61ba-4887-bf82-956c4aae2260"
       ]
     },
@@ -72,7 +69,15 @@
       "fundStatus": "Active",
       "description": "use for East, Central, and South Asia",
       "ledgerId": "133a7916-f05e-4df4-8f7f-09eb2a7076d1"
+    },
+    {
+      "id": "29db8f8e-0d7c-4406-a373-389f00884f99",
+      "name": "Belarusian History",
+      "code": "BELHIST",
+      "fundStatus": "Active",
+      "description": "use for Belarus",
+      "ledgerId": "133a7916-f05e-4df4-8f7f-09eb2a7076d1"
     }
   ],
-  "totalRecords": 5
+  "totalRecords": 6
 }

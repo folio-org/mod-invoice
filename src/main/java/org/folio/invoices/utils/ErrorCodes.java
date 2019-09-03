@@ -16,6 +16,7 @@ public enum ErrorCodes {
   MOD_CONFIG_ERROR("configNotAvailable", "The mod-configuration is not available"),
   PROHIBITED_FIELD_CHANGING("protectedFieldChanging", "Field can't be modified"),
   FUNDS_NOT_FOUND("fundsNotFound", "Fund records are not found"),
+  EXTERNAL_ACCOUNT_NUMBER_IS_MISSING("externalAccountNoIsMissing", "Fund record does not contain an externalAccountNo."),
   VOUCHER_NUMBER_PREFIX_NOT_ALPHA("voucherNumberPrefixNotAlpha", "Voucher number prefix must contains only Unicode letters"),
   PROHIBITED_INVOICE_LINE_CREATION("prohibitedInvoiceLineCreation","It is not allowed to add invoice line to the invoice that has been approved"),
   MISMATCH_BETWEEN_ID_IN_PATH_AND_BODY("idMismatch", "Mismatch between id in path and request body"),
