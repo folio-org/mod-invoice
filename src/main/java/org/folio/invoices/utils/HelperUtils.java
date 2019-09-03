@@ -102,27 +102,19 @@ public class HelperUtils {
 
   public static CompletableFuture<InvoiceCollection> getInvoices(int limit, int offset, String query,
       HttpClientInterface httpClient, Context ctx, Map<String, String> okapiHeaders, Logger logger, String lang) {
-    CompletableFuture<InvoiceCollection> future = new VertxCompletableFuture<>(ctx);
-    
+
     String getInvoiceByQuery = resourcesPath(INVOICES) + SEARCH_PARAMS;
 
     String queryParam = getEndpointWithQuery(query, logger);
     String endpoint = String.format(getInvoiceByQuery, limit, offset, queryParam, lang);
-    getInvoicesFromStorage(endpoint, limit, offset, httpClient, ctx, okapiHeaders, logger)
-        .thenAccept(invoiceCollection -> {
-          logger.info("Successfully retrieved invoices: " + invoiceCollection);
-          future.complete(invoiceCollection);
-        })
-        .exceptionally(t -> {
-          logger.error("Error getting invoices from storage ", t);
-          future.completeExceptionally(t);
-          return null;
-        });
-    return future;
+    return getInvoicesFromStorage(endpoint, httpClient, ctx, okapiHeaders, logger).thenCompose(invoiceCollection -> {
+      logger.info("Successfully retrieved invoices: " + invoiceCollection);
+      return CompletableFuture.completedFuture(invoiceCollection);
+    });
   }
 
-  public static CompletableFuture<InvoiceCollection> getInvoicesFromStorage(String endpoint, int limit, int offset,
-      HttpClientInterface httpClient, Context ctx, Map<String, String> okapiHeaders, Logger logger) {
+  public static CompletableFuture<InvoiceCollection> getInvoicesFromStorage(String endpoint, HttpClientInterface httpClient,
+      Context ctx, Map<String, String> okapiHeaders, Logger logger) {
     CompletableFuture<InvoiceCollection> future = new VertxCompletableFuture<>(ctx);
 
     try {

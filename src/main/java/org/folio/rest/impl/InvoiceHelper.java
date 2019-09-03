@@ -209,7 +209,7 @@ public class InvoiceHelper extends AbstractHelper {
     CompletableFuture<InvoiceCollection> future = new VertxCompletableFuture<>(ctx);
     try {
       buildGetInvoicesPath(limit, offset, query)
-        .thenCompose(endpoint -> getInvoicesFromStorage(endpoint, limit, offset, httpClient, ctx, okapiHeaders, logger))
+        .thenCompose(endpoint -> getInvoicesFromStorage(endpoint, httpClient, ctx, okapiHeaders, logger))
         .thenAccept(jsonInvoices -> {
           logger.info("Successfully retrieved invoices: " + jsonInvoices);
           future.complete(jsonInvoices);

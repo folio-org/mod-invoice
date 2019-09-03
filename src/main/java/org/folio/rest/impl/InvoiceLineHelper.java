@@ -596,4 +596,5 @@ public class InvoiceLineHelper extends AbstractHelper {
       .thenAccept(ok -> updateInvoiceAsync(invoice));
 
   }
+
 }
