@@ -100,13 +100,13 @@ public class HelperUtils {
     return httpClient;
   }
 
-  public static CompletableFuture<InvoiceCollection> getInvoices(int limit, int offset, String query,
-      HttpClientInterface httpClient, Context ctx, Map<String, String> okapiHeaders, Logger logger, String lang) {
+  public static CompletableFuture<InvoiceCollection> getInvoices(String query, HttpClientInterface httpClient, Context ctx,
+      Map<String, String> okapiHeaders, Logger logger, String lang) {
 
     String getInvoiceByQuery = resourcesPath(INVOICES) + SEARCH_PARAMS;
 
     String queryParam = getEndpointWithQuery(query, logger);
-    String endpoint = String.format(getInvoiceByQuery, limit, offset, queryParam, lang);
+    String endpoint = String.format(getInvoiceByQuery, Integer.MAX_VALUE, 0, queryParam, lang);
     return getInvoicesFromStorage(endpoint, httpClient, ctx, okapiHeaders, logger).thenCompose(invoiceCollection -> {
       logger.info("Successfully retrieved invoices: " + invoiceCollection);
       return CompletableFuture.completedFuture(invoiceCollection);

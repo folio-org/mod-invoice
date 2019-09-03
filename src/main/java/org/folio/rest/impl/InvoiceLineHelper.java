@@ -245,7 +245,7 @@ public class InvoiceLineHelper extends AbstractHelper {
   public CompletableFuture<Void> deleteInvoiceLine(String id) {
     String query = QUERY_PARAM_START_WITH + id;
 
-    return getInvoices(Integer.MAX_VALUE, 0, query, httpClient, ctx, okapiHeaders, logger, lang)
+    return getInvoices(query, httpClient, ctx, okapiHeaders, logger, lang)
       .thenApply(invoiceCollection -> invoiceCollection.getInvoices()
         .get(0))
       .thenCompose(invoice -> protectionHelper.isOperationRestricted(invoice.getAcqUnitIds(), DELETE)
