@@ -6,6 +6,7 @@ import static java.util.stream.Collectors.groupingBy;
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 import static javax.ws.rs.core.MediaType.TEXT_PLAIN;
 import static org.awaitility.Awaitility.await;
+import static org.folio.invoices.utils.ErrorCodes.EXTERNAL_ACCOUNT_NUMBER_IS_MISSING;
 import static org.folio.invoices.utils.ErrorCodes.FUNDS_NOT_FOUND;
 import static org.folio.invoices.utils.ErrorCodes.FUND_DISTRIBUTIONS_NOT_PRESENT;
 import static org.folio.invoices.utils.ErrorCodes.FUND_DISTRIBUTIONS_PERCENTAGE_SUMMARY_MISMATCH;
@@ -145,6 +146,7 @@ public class InvoicesApiTest extends ApiTestBase {
   private static final String BAD_INVOICE_ID = "5a34ae0e-5a11-4337-be95-1a20cfdc3161";
   private static final String EXISTENT_PO_LINE_ID = "c2755a78-2f8d-47d0-a218-059a9b7391b4";
   private static final String EXISTING_VOUCHER_ID = "a9b99f8a-7100-47f2-9903-6293d44a9905";
+  private static final String FUND_ID_WITHOUT_EXTERNAL_ACCOUNT_NUMBER = "29db8f8e-0d7c-4406-a373-389f00884f99";
   private static final String STATUS = "status";
   private static final String INVALID_CURRENCY = "ABC";
 
@@ -420,6 +422,36 @@ public class InvoicesApiTest extends ApiTestBase {
     assertThat(voucherCreated.getSystemCurrency(), equalTo("GBP"));
     verifyTransitionToApproved(voucherCreated, invoiceLines);
     checkVoucherAcqUnitIdsList(voucherCreated, reqData);
+  }
+
+  @Test
+  public void testTransitionFromOpenToApprovedWithMissingExternalAccountNumber() {
+    logger.info("=== Test transition invoice to Approved with missing external account number ===");
+
+    InvoiceLine invoiceLine = getMockAsJson(INVOICE_LINE_WITH_APPROVED_INVOICE_SAMPLE_PATH).mapTo(InvoiceLine.class);
+    Invoice reqData = getMockAsJson(REVIEWED_INVOICE_WITH_EXISTING_VOUCHER_SAMPLE_PATH).mapTo(Invoice.class);
+    reqData.setStatus(Invoice.Status.APPROVED);
+    String id = reqData.getId();
+    invoiceLine.setId(UUID.randomUUID().toString());
+    invoiceLine.setInvoiceId(id);
+    invoiceLine.getFundDistributions().get(0).setFundId(FUND_ID_WITHOUT_EXTERNAL_ACCOUNT_NUMBER);
+
+    addMockEntry(INVOICE_LINES, JsonObject.mapFrom(invoiceLine));
+
+    String jsonBody = JsonObject.mapFrom(reqData).encode();
+
+    Headers headers = prepareHeaders(X_OKAPI_USER_ID, X_OKAPI_TENANT);
+    Errors errors = verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, headers, APPLICATION_JSON, 500)
+      .then()
+      .extract()
+      .body().as(Errors.class);
+
+    assertThat(errors, notNullValue());
+    assertThat(errors.getErrors(), hasSize(1));
+    Error error = errors.getErrors().get(0);
+    assertThat(error.getMessage(), equalTo(EXTERNAL_ACCOUNT_NUMBER_IS_MISSING.getDescription()));
+    assertThat(error.getCode(), equalTo(EXTERNAL_ACCOUNT_NUMBER_IS_MISSING.getCode()));
+    assertThat(error.getParameters().get(0).getValue(), containsString(FUND_ID_WITHOUT_EXTERNAL_ACCOUNT_NUMBER));
   }
 
   @Test

@@ -12,6 +12,7 @@ import static org.apache.commons.lang3.StringUtils.isAlpha;
 import static org.apache.commons.lang3.StringUtils.isEmpty;
 import static org.folio.invoices.utils.AcqDesiredPermissions.ASSIGN;
 import static org.folio.invoices.utils.AcqDesiredPermissions.MANAGE;
+import static org.folio.invoices.utils.ErrorCodes.EXTERNAL_ACCOUNT_NUMBER_IS_MISSING;
 import static org.folio.invoices.utils.ErrorCodes.FUNDS_NOT_FOUND;
 import static org.folio.invoices.utils.ErrorCodes.FUND_DISTRIBUTIONS_NOT_PRESENT;
 import static org.folio.invoices.utils.ErrorCodes.FUND_DISTRIBUTIONS_PERCENTAGE_SUMMARY_MISMATCH;
@@ -70,6 +71,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.folio.HttpStatus;
 import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.invoices.utils.AcqDesiredPermissions;
+import org.folio.invoices.utils.ErrorCodes;
 import org.folio.invoices.utils.HelperUtils;
 import org.folio.invoices.utils.InvoiceProtectedFields;
 import org.folio.invoices.utils.ProtectedOperationType;
@@ -642,13 +644,21 @@ public class InvoiceHelper extends AbstractHelper {
   }
 
   private List<Fund> verifyThatAllFundsFound(List<Fund> existingFunds, List<String> fundIds) {
+    List<String> fundIdsWithoutExternalAccNo = getFundIdsWithoutExternalAccNo(existingFunds);
+    if (isNotEmpty(fundIdsWithoutExternalAccNo)) {
+      throw new HttpException(500, buildFundError(fundIdsWithoutExternalAccNo, EXTERNAL_ACCOUNT_NUMBER_IS_MISSING));
+    }
     if (fundIds.size() != existingFunds.size()) {
       List<String> idsNotFound = collectFundIdsThatWasNotFound(existingFunds, fundIds);
       if (isNotEmpty(idsNotFound)) {
-        throw new HttpException(500, buildFundNotFoundError(idsNotFound));
+        throw new HttpException(500, buildFundError(idsNotFound, FUNDS_NOT_FOUND));
       }
     }
     return existingFunds;
+  }
+
+  private List<String> getFundIdsWithoutExternalAccNo(List<Fund> existingFunds) {
+    return existingFunds.stream().filter(fund -> Objects.isNull(fund.getExternalAccountNo())).map(Fund::getId).collect(toList());
   }
 
   private List<String> collectFundIdsThatWasNotFound(List<Fund> existingFunds, List<String> fundIds) {
@@ -659,12 +669,9 @@ public class InvoiceHelper extends AbstractHelper {
       .collect(toList());
   }
 
-  private Error buildFundNotFoundError(List<String> idsNotFound) {
-    Parameter parameter = new Parameter().withKey("fundIds").withValue(idsNotFound.toString());
-    return new Error()
-      .withCode(FUNDS_NOT_FOUND.getCode())
-      .withMessage(FUNDS_NOT_FOUND.getDescription())
-      .withParameters(Collections.singletonList(parameter));
+  private Error buildFundError(List<String> fundIds, ErrorCodes errorCode) {
+    Parameter parameter = new Parameter().withKey("fundIds").withValue(fundIds.toString());
+    return errorCode.toError().withParameters(Collections.singletonList(parameter));
   }
 
   private CompletableFuture<List<Fund>> getFundsByIds(List<String> ids) {
