@@ -31,6 +31,7 @@ public class LinesProtectionTest extends ProtectedEntityTestBase {
   @Parameters({
     "READ",
     "CREATE",
+    "UPDATE",
     "DELETE"
   })
   public void testOperationWithNonExistedUnits(ProtectedOperations operation) {
@@ -52,6 +53,7 @@ public class LinesProtectionTest extends ProtectedEntityTestBase {
   @Parameters({
     "READ",
     "CREATE",
+    "UPDATE",
     "DELETE"
   })
   public void testOperationWithAllowedUnits(ProtectedOperations operation) {
@@ -69,6 +71,7 @@ public class LinesProtectionTest extends ProtectedEntityTestBase {
   @Parameters({
     "READ",
     "CREATE",
+    "UPDATE",
     "DELETE"
   })
   public void testWithRestrictedUnitsAndAllowedUser(ProtectedOperations operation) {
@@ -86,6 +89,7 @@ public class LinesProtectionTest extends ProtectedEntityTestBase {
   @Parameters({
     "READ",
     "CREATE",
+    "UPDATE",
     "DELETE"
   })
   public void testWithProtectedUnitsAndForbiddenUser(ProtectedOperations operation) {
@@ -104,6 +108,7 @@ public class LinesProtectionTest extends ProtectedEntityTestBase {
   @Parameters({
     "READ",
     "CREATE",
+    "UPDATE",
     "DELETE"
   })
   public void testOperationWithUnprocessableBadUnits(ProtectedOperations operation) {
