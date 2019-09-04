@@ -131,7 +131,6 @@ public class InvoicesApiTest extends ApiTestBase {
   private static final String INVOICE_NUMBER_PATH = "/invoice/invoice-number";
   static final String INVOICE_MOCK_DATA_PATH = BASE_MOCK_DATA_PATH + "invoices/";
   private static final String PO_LINE_MOCK_DATA_PATH = BASE_MOCK_DATA_PATH + "poLines/";
-  static final String APPROVED_INVOICE_ID = "c0d08448-347b-418a-8c2f-5fb50248d67e";
   static final String REVIEWED_INVOICE_ID = "3773625a-dc0d-4a2d-959e-4a91ee265d67";
   public static final String OPEN_INVOICE_ID = "52fd6ec7-ddc3-4c53-bc26-2779afc27136";
   private static final String APPROVED_INVOICE_SAMPLE_PATH = INVOICE_MOCK_DATA_PATH + APPROVED_INVOICE_ID + ".json";
@@ -1381,7 +1380,7 @@ public class InvoicesApiTest extends ApiTestBase {
 
   @Test
   public void testDeleteInvoiceByValidId() {
-    verifyDeleteResponse(String.format(INVOICE_ID_PATH, VALID_UUID), "", 204);
+    verifyDeleteResponse(String.format(INVOICE_ID_PATH, APPROVED_INVOICE_ID), "", 204);
   }
 
   @Test

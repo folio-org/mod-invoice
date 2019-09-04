@@ -11,6 +11,7 @@ import static org.apache.commons.lang3.StringUtils.EMPTY;
 import static org.apache.commons.lang3.StringUtils.isAlpha;
 import static org.apache.commons.lang3.StringUtils.isEmpty;
 import static org.folio.invoices.utils.AcqDesiredPermissions.ASSIGN;
+import static org.folio.invoices.utils.AcqDesiredPermissions.MANAGE;
 import static org.folio.invoices.utils.ErrorCodes.EXTERNAL_ACCOUNT_NUMBER_IS_MISSING;
 import static org.folio.invoices.utils.ErrorCodes.FUNDS_NOT_FOUND;
 import static org.folio.invoices.utils.ErrorCodes.FUND_DISTRIBUTIONS_NOT_PRESENT;
@@ -33,10 +34,12 @@ import static org.folio.invoices.utils.HelperUtils.findChangedProtectedFields;
 import static org.folio.invoices.utils.HelperUtils.getEndpointWithQuery;
 import static org.folio.invoices.utils.HelperUtils.getHttpClient;
 import static org.folio.invoices.utils.HelperUtils.getInvoiceById;
+import static org.folio.invoices.utils.HelperUtils.getInvoicesFromStorage;
 import static org.folio.invoices.utils.HelperUtils.handleDeleteRequest;
 import static org.folio.invoices.utils.HelperUtils.handleGetRequest;
 import static org.folio.invoices.utils.HelperUtils.handlePutRequest;
 import static org.folio.invoices.utils.HelperUtils.isPostApproval;
+import static org.folio.invoices.utils.ProtectedOperationType.UPDATE;
 import static org.folio.invoices.utils.ResourcePathResolver.FOLIO_INVOICE_NUMBER;
 import static org.folio.invoices.utils.ResourcePathResolver.FUNDS;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICES;
@@ -48,6 +51,7 @@ import static org.folio.rest.RestVerticle.OKAPI_HEADER_PERMISSIONS;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -210,10 +214,10 @@ public class InvoiceHelper extends AbstractHelper {
     CompletableFuture<InvoiceCollection> future = new VertxCompletableFuture<>(ctx);
     try {
       buildGetInvoicesPath(limit, offset, query)
-        .thenCompose(endpoint -> handleGetRequest(endpoint, httpClient, ctx, okapiHeaders, logger))
+        .thenCompose(endpoint -> getInvoicesFromStorage(endpoint, httpClient, ctx, okapiHeaders, logger))
         .thenAccept(jsonInvoices -> {
-          logger.info("Successfully retrieved invoices: " + jsonInvoices.encodePrettily());
-          future.complete(jsonInvoices.mapTo(InvoiceCollection.class));
+          logger.info("Successfully retrieved invoices: " + jsonInvoices);
+          future.complete(jsonInvoices);
         })
         .exceptionally(t -> {
           logger.error("Error getting invoices", t);
@@ -239,8 +243,17 @@ public class InvoiceHelper extends AbstractHelper {
       });
   }
 
+  /**
+   * Delete Invoice
+   * 1. Get invoice by id
+   * 2. Verify if user has permission to delete Invoice based on acquisitions units
+   * 3. If user has permission to delete then delete invoiceLine
+   * @param id invoiceLine id to be deleted
+   */
   public CompletableFuture<Void> deleteInvoice(String id) {
-    return handleDeleteRequest(resourceByIdPath(INVOICES, id, lang), httpClient, ctx, okapiHeaders, logger);
+    return getInvoiceRecord(id)
+    .thenCompose(invoice -> protectionHelper.isOperationRestricted(invoice.getAcqUnitIds(), ProtectedOperationType.DELETE))
+    .thenCompose(v -> handleDeleteRequest(resourceByIdPath(INVOICES, id, lang), httpClient, ctx, okapiHeaders, logger));
   }
 
   public CompletableFuture<Void> updateInvoice(Invoice invoice) {
@@ -249,12 +262,35 @@ public class InvoiceHelper extends AbstractHelper {
     return getInvoiceRecord(invoice.getId())
       .thenCompose(invoiceFromStorage -> {
         validateInvoice(invoice, invoiceFromStorage);
+        verifyUserHasManagePermission(invoice, invoiceFromStorage);
         setSystemGeneratedData(invoiceFromStorage, invoice);
 
-        return recalculateDynamicData(invoice, invoiceFromStorage)
+        return protectionHelper.isOperationRestricted(invoiceFromStorage.getAcqUnitIds(), UPDATE)
+          .thenCompose(v -> recalculateDynamicData(invoice, invoiceFromStorage))
           .thenCompose(ok -> handleInvoiceStatusTransition(invoice, invoiceFromStorage));
       })
       .thenCompose(ok -> updateInvoiceRecord(invoice));
+  }
+
+  /**
+   * The method checks if list of acquisition units to which the invoice is assigned is changed, if yes,
+   * then check that if the user has desired permission to manage acquisition units assignments
+   *
+   * @throws HttpException if user does not have manage permission
+   * @param newInvoice invoice from request
+   * @param invoiceFromStorage invoice from storage
+   */
+  private void verifyUserHasManagePermission(Invoice newInvoice, Invoice invoiceFromStorage) {
+    Set<String> newAcqUnits = new HashSet<>(CollectionUtils.emptyIfNull(newInvoice.getAcqUnitIds()));
+    Set<String> acqUnitsFromStorage = new HashSet<>(CollectionUtils.emptyIfNull(invoiceFromStorage.getAcqUnitIds()));
+
+    if (isManagePermissionRequired(newAcqUnits, acqUnitsFromStorage) && isUserDoesNotHaveDesiredPermission(MANAGE)){
+      throw new HttpException(HttpStatus.HTTP_FORBIDDEN.toInt(), USER_HAS_NO_ACQ_PERMISSIONS);
+    }
+  }
+
+  private boolean isManagePermissionRequired(Set<String> newAcqUnits, Set<String> acqUnitsFromStorage) {
+    return !CollectionUtils.isEqualCollection(newAcqUnits, acqUnitsFromStorage);
   }
 
   /**

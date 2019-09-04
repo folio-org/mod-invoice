@@ -4,6 +4,7 @@ import static java.util.Objects.nonNull;
 import static java.util.stream.Collectors.toList;
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 import static javax.ws.rs.core.MediaType.TEXT_PLAIN;
+import static me.escoffier.vertx.completablefuture.VertxCompletableFuture.allOf;
 import static org.apache.commons.lang3.StringUtils.EMPTY;
 import static org.apache.commons.lang3.StringUtils.isEmpty;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICES;
@@ -11,9 +12,9 @@ import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_LINES;
 import static org.folio.invoices.utils.ResourcePathResolver.VOUCHERS;
 import static org.folio.invoices.utils.ResourcePathResolver.VOUCHER_LINES;
 import static org.folio.invoices.utils.ResourcePathResolver.resourceByIdPath;
+import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
 import static org.folio.rest.RestVerticle.OKAPI_HEADER_TENANT;
 import static org.folio.rest.jaxrs.model.Adjustment.Prorate.NOT_PRORATED;
-import static me.escoffier.vertx.completablefuture.VertxCompletableFuture.allOf;
 
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
@@ -45,6 +46,7 @@ import org.folio.rest.impl.ProtectionHelper;
 import org.folio.rest.jaxrs.model.Adjustment;
 import org.folio.rest.jaxrs.model.FundDistribution;
 import org.folio.rest.jaxrs.model.Invoice;
+import org.folio.rest.jaxrs.model.InvoiceCollection;
 import org.folio.rest.jaxrs.model.InvoiceLine;
 import org.folio.rest.jaxrs.model.Voucher;
 import org.folio.rest.jaxrs.model.VoucherLine;
@@ -72,6 +74,8 @@ public class HelperUtils {
   public static final String LANG = "lang";
   public static final String OKAPI_URL = "X-Okapi-Url";
   public static final String ID = "id";
+  public static final String QUERY_PARAM_START_WITH = "invoice_lines.id==";
+  public static final String SEARCH_PARAMS = "?limit=%s&offset=%s%s&lang=%s";
 
   private static final String EXCEPTION_CALLING_ENDPOINT_MSG = "Exception calling {} {}";
   private static final String CALLING_ENDPOINT_MSG = "Sending {} {}";
@@ -94,6 +98,39 @@ public class HelperUtils {
     customHeader.put(HttpHeaders.ACCEPT.toString(), APPLICATION_JSON + ", " + TEXT_PLAIN);
     httpClient.setDefaultHeaders(customHeader);
     return httpClient;
+  }
+
+  public static CompletableFuture<InvoiceCollection> getInvoices(String query, HttpClientInterface httpClient, Context ctx,
+      Map<String, String> okapiHeaders, Logger logger, String lang) {
+
+    String getInvoiceByQuery = resourcesPath(INVOICES) + SEARCH_PARAMS;
+
+    String queryParam = getEndpointWithQuery(query, logger);
+    String endpoint = String.format(getInvoiceByQuery, Integer.MAX_VALUE, 0, queryParam, lang);
+    return getInvoicesFromStorage(endpoint, httpClient, ctx, okapiHeaders, logger).thenCompose(invoiceCollection -> {
+      logger.info("Successfully retrieved invoices: " + invoiceCollection);
+      return CompletableFuture.completedFuture(invoiceCollection);
+    });
+  }
+
+  public static CompletableFuture<InvoiceCollection> getInvoicesFromStorage(String endpoint, HttpClientInterface httpClient,
+      Context ctx, Map<String, String> okapiHeaders, Logger logger) {
+    CompletableFuture<InvoiceCollection> future = new VertxCompletableFuture<>(ctx);
+
+    try {
+      handleGetRequest(endpoint, httpClient, ctx, okapiHeaders, logger).thenAccept(jsonInvoices -> {
+        logger.info("Successfully retrieved invoices: " + jsonInvoices.encodePrettily());
+        future.complete(jsonInvoices.mapTo(InvoiceCollection.class));
+      })
+        .exceptionally(t -> {
+          logger.error("Error getting invoices", t);
+          future.completeExceptionally(t);
+          return null;
+        });
+    } catch (Exception e) {
+      future.completeExceptionally(e);
+    }
+    return future;
   }
 
   public static CompletableFuture<Invoice> getInvoiceById(String id, String lang, HttpClientInterface httpClient, Context ctx,
