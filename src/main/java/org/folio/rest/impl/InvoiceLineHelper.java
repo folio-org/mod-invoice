@@ -36,17 +36,21 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 
 import javax.money.CurrencyUnit;
 import javax.money.Monetary;
 import javax.money.MonetaryAmount;
+import javax.ws.rs.core.Response;
 
 import org.folio.invoices.events.handlers.MessageAddress;
 import org.folio.invoices.rest.exceptions.HttpException;
+import org.folio.invoices.utils.ErrorCodes;
 import org.folio.invoices.utils.InvoiceLineProtectedFields;
 import org.folio.invoices.utils.ProtectedOperationType;
 import org.folio.rest.jaxrs.model.Adjustment;
 import org.folio.rest.jaxrs.model.Invoice;
+import org.folio.rest.jaxrs.model.InvoiceCollection;
 import org.folio.rest.jaxrs.model.InvoiceLine;
 import org.folio.rest.jaxrs.model.InvoiceLineCollection;
 import org.folio.rest.jaxrs.model.SequenceNumber;
@@ -250,17 +254,26 @@ public class InvoiceLineHelper extends AbstractHelper {
    * @param id invoiceLine id to be deleted
    */
   public CompletableFuture<Void> deleteInvoiceLine(String id) {
-    String query = QUERY_PARAM_START_WITH + id;
-
-    return getInvoices(query, httpClient, ctx, okapiHeaders, logger, lang)
-      .thenApply(invoiceCollection -> invoiceCollection.getInvoices()
-        .get(0))
+    return getInvoicesIfExists(id).thenApply(invoiceCollection -> invoiceCollection.getInvoices()
+      .get(0))
       .thenCompose(invoice -> protectionHelper.isOperationRestricted(invoice.getAcqUnitIds(), DELETE)
         .thenApply(vvoid -> invoice))
       .thenCompose(invoice -> handleDeleteRequest(resourceByIdPath(INVOICE_LINES, id, lang), httpClient, ctx, okapiHeaders, logger)
         .thenRun(() -> updateInvoiceAndLinesAsync(invoice)));
   }
 
+  private CompletableFuture<InvoiceCollection> getInvoicesIfExists(String id) {
+    String query = QUERY_PARAM_START_WITH + id;
+    return getInvoices(query, httpClient, ctx, okapiHeaders, logger, lang).exceptionally(t -> {
+      Throwable cause = t.getCause();
+      // When specified invoice line does not exist
+      if (cause instanceof HttpException && ((HttpException) cause).getCode() == Response.Status.NOT_FOUND.getStatusCode()) {
+        throw new HttpException(404, ErrorCodes.INVOICE_LINE_NOT_FOUND);
+      }
+      throw t instanceof CompletionException ? (CompletionException) t : new CompletionException(cause);
+    });
+  }
+  
   private void validateInvoiceLine(Invoice existedInvoice, InvoiceLine invoiceLine, InvoiceLine existedInvoiceLine) {
     if(isPostApproval(existedInvoice)) {
       Set<String> fields = findChangedProtectedFields(invoiceLine, existedInvoiceLine, InvoiceLineProtectedFields.getFieldNames());
