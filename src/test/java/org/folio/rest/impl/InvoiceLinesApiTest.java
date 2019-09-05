@@ -6,7 +6,7 @@ import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 import static javax.ws.rs.core.MediaType.TEXT_PLAIN;
 import static org.awaitility.Awaitility.await;
 import static org.folio.invoices.utils.ErrorCodes.PROHIBITED_INVOICE_LINE_CREATION;
-import static org.folio.invoices.utils.ErrorCodes.INVOICE_NOT_FOUND;
+import static org.folio.invoices.utils.ErrorCodes.CANNOT_DELETE_INVOICE_LINE;
 import static org.folio.invoices.utils.HelperUtils.INVOICE_ID;
 import static org.folio.invoices.utils.HelperUtils.getNoAcqUnitCQL;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICES;
@@ -208,14 +208,14 @@ public class InvoiceLinesApiTest extends ApiTestBase {
   public void deleteNotExistentInvoiceLinesNoInvoicesFoundTest() {
     logger.info(
         "=== Test to verify that on searching invoices by invoice-line id field, invoice-line does not exists or an empty invoices collection is returned, as a result throw an http exception with 404 status code ===");
-    Errors errors = verifyDeleteResponse(String.format(INVOICE_LINE_ID_PATH, SEARCH_INVOICE_BY_LINE_ID_NOT_FOUND), APPLICATION_JSON, 404)
+    Errors errors = verifyDeleteResponse(String.format(INVOICE_LINE_ID_PATH, SEARCH_INVOICE_BY_LINE_ID_NOT_FOUND), APPLICATION_JSON, 400)
       .then()
       .extract()
       .body()
       .as(Errors.class);
     assertThat(MockServer.serverRqRs.get(INVOICE_LINES, HttpMethod.DELETE), nullValue());
     assertThat(errors.getErrors(), hasSize(1));
-    assertThat(errors.getErrors().get(0).getCode(), equalTo(INVOICE_NOT_FOUND.getCode()));
+    assertThat(errors.getErrors().get(0).getCode(), equalTo(CANNOT_DELETE_INVOICE_LINE.getCode()));
     assertThat(errors.getErrors().get(0).getParameters().get(0).getValue(), equalTo(SEARCH_INVOICE_BY_LINE_ID_NOT_FOUND));
   }
 

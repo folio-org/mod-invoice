@@ -642,7 +642,7 @@ public class MockServer {
         JsonObject invoicesJson = JsonObject.mapFrom(invoiceCollection);
 
         addServerRqRsData(HttpMethod.GET, INVOICES, JsonObject.mapFrom(invoiceCollection));
-        serverResponse(ctx, 404, APPLICATION_JSON, invoicesJson.encode());
+        serverResponse(ctx, 200, APPLICATION_JSON, invoicesJson.encode());
       } else {
 
         try {
