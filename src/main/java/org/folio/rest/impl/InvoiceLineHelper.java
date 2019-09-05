@@ -272,8 +272,7 @@ public class InvoiceLineHelper extends AbstractHelper {
         .withValue(lineId));
       Error error = CANNOT_DELETE_INVOICE_LINE.toError()
         .withParameters(parameters);
-      ;
-      throw new HttpException(400, error);
+      throw new HttpException(404, error);
     });
   }
 

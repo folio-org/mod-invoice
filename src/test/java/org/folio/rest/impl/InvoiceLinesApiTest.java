@@ -208,7 +208,7 @@ public class InvoiceLinesApiTest extends ApiTestBase {
   public void deleteNotExistentInvoiceLinesNoInvoicesFoundTest() {
     logger.info(
         "=== Test to verify that on searching invoices by invoice-line id field, invoice-line does not exists or an empty invoices collection is returned, as a result throw an http exception with 404 status code ===");
-    Errors errors = verifyDeleteResponse(String.format(INVOICE_LINE_ID_PATH, SEARCH_INVOICE_BY_LINE_ID_NOT_FOUND), APPLICATION_JSON, 400)
+    Errors errors = verifyDeleteResponse(String.format(INVOICE_LINE_ID_PATH, SEARCH_INVOICE_BY_LINE_ID_NOT_FOUND), APPLICATION_JSON, 404)
       .then()
       .extract()
       .body()
