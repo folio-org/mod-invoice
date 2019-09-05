@@ -2,6 +2,7 @@ package org.folio.rest.impl;
 
 import static java.util.stream.Collectors.toList;
 import static org.apache.commons.lang3.StringUtils.isEmpty;
+import static org.folio.invoices.utils.ErrorCodes.CANNOT_DELETE_INVOICE_LINE;
 import static org.folio.invoices.utils.ErrorCodes.PROHIBITED_INVOICE_LINE_CREATION;
 import static org.folio.invoices.utils.HelperUtils.INVOICE;
 import static org.folio.invoices.utils.HelperUtils.INVOICE_ID;
@@ -46,9 +47,11 @@ import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.invoices.utils.InvoiceLineProtectedFields;
 import org.folio.invoices.utils.ProtectedOperationType;
 import org.folio.rest.jaxrs.model.Adjustment;
+import org.folio.rest.jaxrs.model.Error;
 import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.jaxrs.model.InvoiceLine;
 import org.folio.rest.jaxrs.model.InvoiceLineCollection;
+import org.folio.rest.jaxrs.model.Parameter;
 import org.folio.rest.jaxrs.model.SequenceNumber;
 import org.folio.rest.tools.client.interfaces.HttpClientInterface;
 import org.javamoney.moneta.Money;
@@ -249,16 +252,27 @@ public class InvoiceLineHelper extends AbstractHelper {
    * 4. Update corresponding Invoice
    * @param id invoiceLine id to be deleted
    */
-  public CompletableFuture<Void> deleteInvoiceLine(String id) {
-    String query = QUERY_PARAM_START_WITH + id;
-
-    return getInvoices(query, httpClient, ctx, okapiHeaders, logger, lang)
-      .thenApply(invoiceCollection -> invoiceCollection.getInvoices()
-        .get(0))
+  public CompletableFuture<Void> deleteInvoiceLine(String lineId) {
+    return getInvoicesIfExists(lineId)
       .thenCompose(invoice -> protectionHelper.isOperationRestricted(invoice.getAcqUnitIds(), DELETE)
         .thenApply(vvoid -> invoice))
-      .thenCompose(invoice -> handleDeleteRequest(resourceByIdPath(INVOICE_LINES, id, lang), httpClient, ctx, okapiHeaders, logger)
+      .thenCompose(invoice -> handleDeleteRequest(resourceByIdPath(INVOICE_LINES, lineId, lang), httpClient, ctx, okapiHeaders, logger)
         .thenRun(() -> updateInvoiceAndLinesAsync(invoice)));
+  }
+
+  private CompletableFuture<Invoice> getInvoicesIfExists(String lineId) {
+    String query = QUERY_PARAM_START_WITH + lineId;
+    return getInvoices(query, httpClient, ctx, okapiHeaders, logger, lang).thenCompose(invoiceCollection -> {
+      if (!invoiceCollection.getInvoices().isEmpty()) {
+        return CompletableFuture.completedFuture(invoiceCollection.getInvoices()
+          .get(0));
+      }
+      List<Parameter> parameters = Collections.singletonList(new Parameter().withKey("invoiceLineId")
+        .withValue(lineId));
+      Error error = CANNOT_DELETE_INVOICE_LINE.toError()
+        .withParameters(parameters);
+      throw new HttpException(404, error);
+    });
   }
 
   private void validateInvoiceLine(Invoice existedInvoice, InvoiceLine invoiceLine, InvoiceLine existedInvoiceLine) {

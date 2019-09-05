@@ -6,6 +6,7 @@ import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 import static javax.ws.rs.core.MediaType.TEXT_PLAIN;
 import static org.awaitility.Awaitility.await;
 import static org.folio.invoices.utils.ErrorCodes.PROHIBITED_INVOICE_LINE_CREATION;
+import static org.folio.invoices.utils.ErrorCodes.CANNOT_DELETE_INVOICE_LINE;
 import static org.folio.invoices.utils.HelperUtils.INVOICE_ID;
 import static org.folio.invoices.utils.HelperUtils.getNoAcqUnitCQL;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICES;
@@ -16,6 +17,7 @@ import static org.folio.rest.impl.InvoicesApiTest.OPEN_INVOICE_ID;
 import static org.folio.rest.impl.InvoicesApiTest.REVIEWED_INVOICE_ID;
 import static org.folio.rest.impl.InvoicesImpl.PROTECTED_AND_MODIFIED_FIELDS;
 import static org.folio.rest.impl.MockServer.INVOICE_LINE_NUMBER_ERROR_X_OKAPI_TENANT;
+import static org.folio.rest.impl.MockServer.SEARCH_INVOICE_BY_LINE_ID_NOT_FOUND;
 import static org.folio.rest.impl.MockServer.addMockEntry;
 import static org.folio.rest.impl.MockServer.getAcqMembershipsSearches;
 import static org.folio.rest.impl.MockServer.getAcqUnitsSearches;
@@ -33,6 +35,7 @@ import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.notNullValue;
+import static org.hamcrest.Matchers.nullValue;
 import static org.junit.Assert.assertEquals;
 
 import java.util.ArrayList;
@@ -199,6 +202,21 @@ public class InvoiceLinesApiTest extends ApiTestBase {
   @Test
   public void deleteNotExistentInvoiceLinesTest() {
     verifyDeleteResponse(String.format(INVOICE_LINE_ID_PATH, ID_DOES_NOT_EXIST), APPLICATION_JSON, 404);
+  }
+
+  @Test
+  public void deleteNotExistentInvoiceLinesNoInvoicesFoundTest() {
+    logger.info(
+        "=== Test to verify that on searching invoices by invoice-line id field, invoice-line does not exists or an empty invoices collection is returned, as a result throw an http exception with 404 status code ===");
+    Errors errors = verifyDeleteResponse(String.format(INVOICE_LINE_ID_PATH, SEARCH_INVOICE_BY_LINE_ID_NOT_FOUND), APPLICATION_JSON, 404)
+      .then()
+      .extract()
+      .body()
+      .as(Errors.class);
+    assertThat(MockServer.serverRqRs.get(INVOICE_LINES, HttpMethod.DELETE), nullValue());
+    assertThat(errors.getErrors(), hasSize(1));
+    assertThat(errors.getErrors().get(0).getCode(), equalTo(CANNOT_DELETE_INVOICE_LINE.getCode()));
+    assertThat(errors.getErrors().get(0).getParameters().get(0).getValue(), equalTo(SEARCH_INVOICE_BY_LINE_ID_NOT_FOUND));
   }
 
   @Test

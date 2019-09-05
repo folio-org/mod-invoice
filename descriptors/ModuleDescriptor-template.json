@@ -142,6 +142,7 @@
             "invoice-storage.invoice-lines.collection.get",
             "invoice-storage.invoices.item.get",
             "invoice-storage.invoices.item.put",
+            "invoice-storage.invoices.collection.get",
             "acquisitions-units.units.collection.get",
             "acquisitions-units.memberships.collection.get"
           ]
