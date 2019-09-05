@@ -263,8 +263,7 @@ public class InvoiceLineHelper extends AbstractHelper {
   private CompletableFuture<Invoice> getInvoicesIfExists(String lineId) {
     String query = QUERY_PARAM_START_WITH + lineId;
     return getInvoices(query, httpClient, ctx, okapiHeaders, logger, lang).thenCompose(invoiceCollection -> {
-      if (invoiceCollection.getInvoices()
-        .size() > 0) {
+      if (!invoiceCollection.getInvoices().isEmpty()) {
         return CompletableFuture.completedFuture(invoiceCollection.getInvoices()
           .get(0));
       }
