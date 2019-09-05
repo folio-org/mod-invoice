@@ -143,6 +143,7 @@ public class MockServer {
   private static final String ID_PATH_PARAM = "/:" + ID;
   private static final String VALUE_PATH_PARAM = "/:value";
   private static final String TOTAL_RECORDS = "totalRecords";
+  public static final String SEARCH_INVOICE_BY_LINE_ID_NOT_FOUND = "b37cd8e7-d291-40f0-b687-57728ee3fc26";
 
   static final Header INVOICE_NUMBER_ERROR_X_OKAPI_TENANT = new Header(OKAPI_HEADER_TENANT, INVOICE_NUMBER_ERROR_TENANT);
   static final Header ERROR_X_OKAPI_TENANT = new Header(OKAPI_HEADER_TENANT, ERROR_TENANT);
@@ -626,25 +627,43 @@ public class MockServer {
     } else if (queryParam.contains(ID_FOR_INTERNAL_SERVER_ERROR)) {
       serverResponse(ctx, 500, APPLICATION_JSON, Response.Status.INTERNAL_SERVER_ERROR.getReasonPhrase());
     } else if (queryParam.startsWith(QUERY_PARAM_START_WITH)) {
+      Matcher lineIdMatcher = Pattern.compile(".*invoice_lines.id==(\\S+).*")
+        .matcher(queryParam);
+      final String lineId = lineIdMatcher.find() ? lineIdMatcher.group(1) : EMPTY;
+      
       List<Invoice> invoices;
-      try {
-      invoices = new JsonObject(ApiTestBase.getMockData(MOCK_DATA_INVOICES)).mapTo(InvoiceCollection.class)
-        .getInvoices();
-      } catch (IOException e) {
-        invoices = new ArrayList<Invoice>();
-      }
-      Optional<List<Invoice>> invoiceOptional = getMockEntries(INVOICES, Invoice.class);
-      Invoice invoice0 = invoiceOptional.get()
-        .get(0);
-      invoices.set(0, invoice0);
       InvoiceCollection invoiceCollection = new InvoiceCollection();
-      invoiceCollection.setInvoices(invoices);
-      invoiceCollection.setTotalRecords(invoiceCollection.getInvoices()
-        .size());
-      JsonObject invoicesJson = JsonObject.mapFrom(invoiceCollection);
+      
+      if (lineId.equals(SEARCH_INVOICE_BY_LINE_ID_NOT_FOUND)) {
 
-      addServerRqRsData(HttpMethod.GET, INVOICES, JsonObject.mapFrom(invoiceCollection));
-      serverResponse(ctx, 200, APPLICATION_JSON, invoicesJson.encode());
+        invoiceCollection.setInvoices(new ArrayList<Invoice>());
+        invoiceCollection.setTotalRecords(invoiceCollection.getInvoices()
+          .size());
+        JsonObject invoicesJson = JsonObject.mapFrom(invoiceCollection);
+
+        addServerRqRsData(HttpMethod.GET, INVOICES, JsonObject.mapFrom(invoiceCollection));
+        serverResponse(ctx, 404, APPLICATION_JSON, invoicesJson.encode());
+      } else {
+
+        try {
+          invoices = new JsonObject(ApiTestBase.getMockData(MOCK_DATA_INVOICES)).mapTo(InvoiceCollection.class)
+            .getInvoices();
+        } catch (IOException e) {
+          invoices = new ArrayList<Invoice>();
+        }
+
+        Optional<List<Invoice>> invoiceOptional = getMockEntries(INVOICES, Invoice.class);
+        Invoice invoice0 = invoiceOptional.get()
+          .get(0);
+        invoices.set(0, invoice0);
+        invoiceCollection.setInvoices(invoices);
+        invoiceCollection.setTotalRecords(invoiceCollection.getInvoices()
+          .size());
+        JsonObject invoicesJson = JsonObject.mapFrom(invoiceCollection);
+
+        addServerRqRsData(HttpMethod.GET, INVOICES, JsonObject.mapFrom(invoiceCollection));
+        serverResponse(ctx, 200, APPLICATION_JSON, invoicesJson.encode());
+      }
     } else {
       JsonObject invoice = new JsonObject();
       Matcher matcher = Pattern.compile(".*vendorInvoiceNo==(\\S[^)]+).*")
