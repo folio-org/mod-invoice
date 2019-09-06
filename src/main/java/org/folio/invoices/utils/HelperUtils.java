@@ -14,6 +14,7 @@ import static org.folio.invoices.utils.ResourcePathResolver.VOUCHER_LINES;
 import static org.folio.invoices.utils.ResourcePathResolver.resourceByIdPath;
 import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
 import static org.folio.rest.RestVerticle.OKAPI_HEADER_TENANT;
+import static org.folio.rest.impl.AbstractHelper.ID;
 import static org.folio.rest.jaxrs.model.Adjustment.Prorate.NOT_PRORATED;
 
 import java.io.UnsupportedEncodingException;
@@ -73,7 +74,6 @@ public class HelperUtils {
   public static final String INVOICE = "invoice";
   public static final String LANG = "lang";
   public static final String OKAPI_URL = "X-Okapi-Url";
-  public static final String ID = "id";
   public static final String QUERY_PARAM_START_WITH = "invoice_lines.id==";
   public static final String SEARCH_PARAMS = "?limit=%s&offset=%s%s&lang=%s";
 
@@ -448,5 +448,9 @@ public class HelperUtils {
     return adjustments.stream()
       .filter(predicate)
       .collect(toList());
+  }
+
+  public static String getId(JsonObject jsonObject) {
+    return jsonObject.getString(ID);
   }
 }
