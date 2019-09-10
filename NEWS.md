@@ -21,9 +21,6 @@ The primary focus of this release was to implement Teams-based operations restri
  * [MODINVOICE-69](https://issues.folio.org/browse/MODINVOICE-69) - Restrict creation of invoice, invoiceLine records based upon acquisitions unit
  * [MODINVOICE-54](https://issues.folio.org/browse/MODINVOICE-54) - Prorated adjustments part 1 - basics
 
-### Bug Fixes
- * [MODINVOICE-83](https://issues.folio.org/browse/MODINVOICE-83) - Invoice/Invoice Line Totals are not calculated in GET collection endpoints
-
 ## 1.0.0 - Released
 
 The primary focus of this release was to implement backend logic to manage invoices, invoice lines, vouchers, voucher lines and provide backend logic for the transitioning invoice to Approved and Paid status.
