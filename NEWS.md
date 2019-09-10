@@ -1,4 +1,25 @@
-## 1.1.0 - Unreleased
+## 2.1.0 - Unreleased
+
+## 2.0.0 - Released
+
+The primary focus of this release was to implement Teams-based operations restriction logic and provide the APIs for managing invoice attachments.
+
+[Full Changelog](https://github.com/folio-org/mod-invoice/compare/v1.0.0...v2.0.0)
+
+### Stories
+ * [MODINVOICE-96](https://issues.folio.org/browse/MODINVOICE-96) - Add support for latest and v3.0.0 mod-finance-storage versions
+ * [MODINVOICE-91](https://issues.folio.org/browse/MODINVOICE-91) - Change usage of invoice settings
+ * [MODINVOICE-90](https://issues.folio.org/browse/MODINVOICE-90) - Implement basic GET /voucher/voucher-lines
+ * [MODINVOICE-87](https://issues.folio.org/browse/MODINVOICE-87) - Calculate and persist totals upon invoice creation/update/get
+ * [MODINVOICE-86](https://issues.folio.org/browse/MODINVOICE-86) - Calculate and persist totals upon invoiceLine creation/update
+ * [MODINVOICE-81](https://issues.folio.org/browse/MODINVOICE-81) - Implement API for invoice attachments (links/documents)
+ * [MODINVOICE-77](https://issues.folio.org/browse/MODINVOICE-77) - Invoice and invoiceLine schema updates
+ * [MODINVOICE-74](https://issues.folio.org/browse/MODINVOICE-74) - Transpose invoice acquisitions-units to voucher upon voucher creation
+ * [MODINVOICE-72](https://issues.folio.org/browse/MODINVOICE-72) - Restrict search/view of invoice, invoiceLine records based upon acquisitions unit
+ * [MODINVOICE-71](https://issues.folio.org/browse/MODINVOICE-71) - Restrict deletion of invoice, invoiceLine records based upon acquisitions unit
+ * [MODINVOICE-70](https://issues.folio.org/browse/MODINVOICE-70) - Restrict updates of invoice, invoiceLine records based upon acquisitions unit
+ * [MODINVOICE-69](https://issues.folio.org/browse/MODINVOICE-69) - Restrict creation of invoice, invoiceLine records based upon acquisitions unit
+ * [MODINVOICE-54](https://issues.folio.org/browse/MODINVOICE-54) - Prorated adjustments part 1 - basics
 
 ## 1.0.0 - Released
 
