@@ -67,6 +67,7 @@ import javax.money.MonetaryAmount;
 import javax.money.convert.CurrencyConversion;
 
 import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.collections4.ListUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.folio.HttpStatus;
 import org.folio.invoices.rest.exceptions.HttpException;
@@ -135,16 +136,30 @@ public class InvoiceHelper extends AbstractHelper {
   }
 
   public CompletableFuture<Invoice> createInvoice(Invoice invoice) {
-    verifyUserHasAssignPermission(invoice);
-    return protectionHelper.isOperationRestricted(invoice.getAcqUnitIds(), ProtectedOperationType.CREATE)
+    return validateAcqUnitsOnCreate(invoice.getAcqUnitIds())
       .thenCompose(v -> updateWithSystemGeneratedData(invoice))
       .thenApply(ok -> JsonObject.mapFrom(invoice))
       .thenCompose(jsonInvoice -> createRecordInStorage(jsonInvoice, resourcesPath(INVOICES)))
       .thenApply(invoice::withId);
   }
 
-  private void verifyUserHasAssignPermission(Invoice invoice) {
-    if (CollectionUtils.isNotEmpty(invoice.getAcqUnitIds()) && isUserDoesNotHaveDesiredPermission(ASSIGN)){
+  /**
+   * @param acqUnitIds acquisitions units assigned to invoice from request
+   * @return completable future completed successfully if all checks pass or exceptionally in case of error/restriction caused by
+   *         acquisitions units
+   */
+  private CompletableFuture<Void> validateAcqUnitsOnCreate(List<String> acqUnitIds) {
+    if (acqUnitIds.isEmpty()) {
+      return completedFuture(null);
+    }
+
+    return VertxCompletableFuture.runAsync(ctx, () -> verifyUserHasAssignPermission(acqUnitIds))
+      .thenCompose(ok -> protectionHelper.verifyIfUnitsAreActive(acqUnitIds))
+      .thenCompose(ok -> protectionHelper.isOperationRestricted(acqUnitIds, ProtectedOperationType.CREATE));
+  }
+
+  private void verifyUserHasAssignPermission(List<String> acqUnitIds) {
+    if (CollectionUtils.isNotEmpty(acqUnitIds) && isUserDoesNotHaveDesiredPermission(ASSIGN)){
       throw new HttpException(HttpStatus.HTTP_FORBIDDEN.toInt(), USER_HAS_NO_ACQ_PERMISSIONS);
     }
   }
@@ -256,35 +271,63 @@ public class InvoiceHelper extends AbstractHelper {
     .thenCompose(v -> handleDeleteRequest(resourceByIdPath(INVOICES, id, lang), httpClient, ctx, okapiHeaders, logger));
   }
 
+  /**
+   * Handles update of the invoice. First retrieve the invoice from storage, validate, handle invoice status transition and update
+   * to storage.
+   * 
+   * @param invoice updated {@link Invoice} invoice
+   * @return completable future holding response indicating success (204 No Content) or error if failed
+   */
   public CompletableFuture<Void> updateInvoice(Invoice invoice) {
     logger.debug("Updating invoice...");
 
     return getInvoiceRecord(invoice.getId())
-      .thenCompose(invoiceFromStorage -> {
-        validateInvoice(invoice, invoiceFromStorage);
-        verifyUserHasManagePermission(invoice, invoiceFromStorage);
-        setSystemGeneratedData(invoiceFromStorage, invoice);
-
-        return protectionHelper.isOperationRestricted(invoiceFromStorage.getAcqUnitIds(), UPDATE)
-          .thenCompose(v -> recalculateDynamicData(invoice, invoiceFromStorage))
-          .thenCompose(ok -> handleInvoiceStatusTransition(invoice, invoiceFromStorage));
-      })
+      .thenCompose(invoiceFromStorage -> validateAndHandleInvoiceStatusTransition(invoice, invoiceFromStorage))
       .thenCompose(ok -> updateInvoiceRecord(invoice));
   }
 
+  private CompletableFuture<Void> validateAndHandleInvoiceStatusTransition(Invoice invoice, Invoice invoiceFromStorage) {
+    return validateAcqUnitsOnUpdate(invoice, invoiceFromStorage)
+    .thenCompose(ok -> {
+      validateInvoice(invoice, invoiceFromStorage);
+      verifyUserHasManagePermission(invoice.getAcqUnitIds(), invoiceFromStorage.getAcqUnitIds());
+      setSystemGeneratedData(invoiceFromStorage, invoice);
+
+      return recalculateDynamicData(invoice, invoiceFromStorage)
+        .thenCompose(okRecalculated -> handleInvoiceStatusTransition(invoice, invoiceFromStorage));
+    });
+  }
+
   /**
-   * The method checks if list of acquisition units to which the invoice is assigned is changed, if yes,
-   * then check that if the user has desired permission to manage acquisition units assignments
+   * @param updatedInvoice   invoice from request
+   * @param persistedInvoice invoice from storage
+   * @return completable future completed successfully if all checks pass or exceptionally in case of error/restriction caused by
+   *         acquisitions units
+   */
+  private CompletableFuture<Void> validateAcqUnitsOnUpdate(Invoice updatedInvoice, Invoice persistedInvoice) {
+    List<String> updatedAcqUnitIds = updatedInvoice.getAcqUnitIds();
+    List<String> currentAcqUnitIds = persistedInvoice.getAcqUnitIds();
+
+    return VertxCompletableFuture.runAsync(ctx, () -> verifyUserHasManagePermission(updatedAcqUnitIds, currentAcqUnitIds))
+      // Check that all newly assigned units are active/exist
+      .thenCompose(ok -> protectionHelper.verifyIfUnitsAreActive(ListUtils.subtract(updatedAcqUnitIds, currentAcqUnitIds)))
+      // The check should be done against currently assigned (persisted in storage) units
+      .thenCompose(protectedOperationTypes -> protectionHelper.isOperationRestricted(currentAcqUnitIds, UPDATE));
+  }
+
+  /**
+   * The method checks if list of acquisition units to which the invoice is assigned is changed, if yes, then check that if the user
+   * has desired permission to manage acquisition units assignments
    *
    * @throws HttpException if user does not have manage permission
-   * @param newInvoice invoice from request
-   * @param invoiceFromStorage invoice from storage
+   * @param newAcqUnitIds     list of acquisition units coming from request
+   * @param currentAcqUnitIds list of acquisition units from storage
    */
-  private void verifyUserHasManagePermission(Invoice newInvoice, Invoice invoiceFromStorage) {
-    Set<String> newAcqUnits = new HashSet<>(CollectionUtils.emptyIfNull(newInvoice.getAcqUnitIds()));
-    Set<String> acqUnitsFromStorage = new HashSet<>(CollectionUtils.emptyIfNull(invoiceFromStorage.getAcqUnitIds()));
+  private void verifyUserHasManagePermission(List<String> newAcqUnitIds, List<String> currentAcqUnitIds) {
+    Set<String> newAcqUnits = new HashSet<>(CollectionUtils.emptyIfNull(newAcqUnitIds));
+    Set<String> acqUnitsFromStorage = new HashSet<>(CollectionUtils.emptyIfNull(currentAcqUnitIds));
 
-    if (isManagePermissionRequired(newAcqUnits, acqUnitsFromStorage) && isUserDoesNotHaveDesiredPermission(MANAGE)){
+    if (isManagePermissionRequired(newAcqUnits, acqUnitsFromStorage) && isUserDoesNotHaveDesiredPermission(MANAGE)) {
       throw new HttpException(HttpStatus.HTTP_FORBIDDEN.toInt(), USER_HAS_NO_ACQ_PERMISSIONS);
     }
   }

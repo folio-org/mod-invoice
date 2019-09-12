@@ -39,12 +39,11 @@ public class LinesProtectionTest extends ProtectedEntityTestBase {
 
     final Headers headers = prepareHeaders(X_OKAPI_TENANT, X_OKAPI_USER_ID);
     Errors errors = operation.process(INVOICE_LINES_PATH, encodePrettily(prepareInvoiceLine(NON_EXISTENT_UNITS)),
-      headers, APPLICATION_JSON, HttpStatus.HTTP_VALIDATION_ERROR.toInt()).as(Errors.class);
+      headers, APPLICATION_JSON, HttpStatus.HTTP_UNPROCESSABLE_ENTITY.toInt()).as(Errors.class);
 
     assertThat(errors.getErrors(), hasSize(1));
     assertThat(errors.getErrors().get(0).getCode(), equalTo(ACQ_UNITS_NOT_FOUND.getCode()));
-    assertThat(errors.getErrors().get(0).getParameters(), hasSize(1));
-    assertThat(errors.getErrors().get(0).getParameters().get(0).getKey(), equalTo(ACQUISITIONS_UNIT_IDS));
+    
     // Verify number of sub-requests
     validateNumberOfRequests(1, 0);
   }

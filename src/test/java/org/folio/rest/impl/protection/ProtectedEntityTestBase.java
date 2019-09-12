@@ -9,11 +9,14 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.hasSize;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.UUID;
 
 import org.folio.invoices.utils.AcqDesiredPermissions;
+import org.folio.rest.acq.model.units.AcquisitionsUnit;
 import org.folio.rest.impl.ApiTestBase;
 import org.folio.rest.impl.MockServer;
 import org.folio.rest.jaxrs.model.Invoice;
@@ -54,7 +57,7 @@ public abstract class ProtectedEntityTestBase extends ApiTestBase {
 
   public Invoice prepareInvoice(List<String> acqUnitsIds) {
     Invoice invoice = getMinimalContentInvoice();
-    invoice.setAcqUnitIds(acqUnitsIds);
+    invoice.setAcqUnitIds(new ArrayList<>(acqUnitsIds));
     addMockEntry(INVOICES, JsonObject.mapFrom(invoice));
     return invoice;
   }
@@ -64,5 +67,10 @@ public abstract class ProtectedEntityTestBase extends ApiTestBase {
     InvoiceLine invoiceLine = getMinimalContentInvoiceLine(invoice.getId());
     addMockEntry(INVOICE_LINES, JsonObject.mapFrom(invoiceLine));
     return invoiceLine;
+  }
+  
+  public AcquisitionsUnit prepareTestUnit(boolean isDeleted) {
+    String id = UUID.randomUUID().toString();
+    return new AcquisitionsUnit().withId(id).withName(id).withIsDeleted(isDeleted);
   }
 }
