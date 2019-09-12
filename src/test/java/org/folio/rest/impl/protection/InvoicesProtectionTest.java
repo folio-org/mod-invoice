@@ -137,7 +137,7 @@ public class InvoicesProtectionTest extends ProtectedEntityTestBase {
 
     validateNumberOfRequests(0, 0);
   }
-  
+
   @Test
   @Parameters({
     "CREATE",
@@ -182,56 +182,6 @@ public class InvoicesProtectionTest extends ProtectedEntityTestBase {
     }
   }
 
-//  @Test
-//  @Parameters({
-////    "CREATE",
-//    "UPDATE"
-//  })
-//  public void testAssigningSoftDeletedUnit(ProtectedOperations operation) {
-//    logger.info("=== Test invoice contains \"soft deleted\" unit id - expecting of call only to Units API ===");
-//    
-//    final Headers headers = prepareHeaders(X_OKAPI_TENANT, ALL_DESIRED_PERMISSIONS_HEADER, X_OKAPI_USER_ID);
-//
-//    // Acq to order in storage for update case and
-//    AcquisitionsUnit unit1 = prepareTestUnit(false);
-//    AcquisitionsUnit unit2 = prepareTestUnit(false);
-//    AcquisitionsUnit unit3 = prepareTestUnit(false);
-//    // Add all acq units as mock data
-//    addMockEntry(ACQUISITIONS_UNITS, unit1);
-//    addMockEntry(ACQUISITIONS_UNITS, unit2);
-//    addMockEntry(ACQUISITIONS_UNITS, unit3);
-//
-//    // Prepare invoice with 2 acq units (one is "soft deleted") and add it as mock data for update case
-//    Invoice invoice = prepareInvoice(Arrays.asList(unit1.getId(), unit2.getId()));
-//    Invoice invoice2 = prepareInvoice(Arrays.asList(unit2.getId(), unit3.getId()));
-//    
-//    InvoiceLine invoiceLine1 = getMinimalContentInvoiceLine(invoice.getId());
-//    addMockEntry(INVOICE_LINES, JsonObject.mapFrom(invoiceLine1));
-//    InvoiceLine invoiceLine2 = getMinimalContentInvoiceLine(invoice.getId());
-//    InvoiceLine invoiceLine3 = getMinimalContentInvoiceLine(invoice.getId());
-//    addMockEntry(INVOICE_LINES, JsonObject.mapFrom(invoiceLine2));
-//    
-//    // Add the third unit to request
-//    invoice.getAcqUnitIds().add(unit3.getId());
-//    
-//    Errors errors = operation.process(INVOICE_PATH, encodePrettily(invoice),
-//        headers, APPLICATION_JSON, HttpStatus.HTTP_UNPROCESSABLE_ENTITY.toInt()).as(Errors.class);
-//    
-//    assertThat(errors.getErrors(), hasSize(1));
-//    Error error = errors.getErrors().get(0);
-//    assertThat(error.getCode(), equalTo(ACQ_UNITS_NOT_FOUND.getCode()));
-//    assertThat(error.getAdditionalProperties().get(ACQUISITIONS_UNIT_IDS), instanceOf(List.class));
-//    
-//    // Verify number of sub-requests
-//    validateNumberOfRequests(1, 0);
-//
-//    List<String> ids = (List<String>) error.getAdditionalProperties().get(ACQUISITIONS_UNIT_IDS);
-//    if (operation == UPDATE) {
-//      assertThat(ids, contains(unit3.getId()));
-//    } else {
-//      assertThat(ids, containsInAnyOrder(unit2.getId(), unit3.getId()));
-//    }
-//  }
   @Test
   public void testGetInvoiceWithAssignedSoftDeletedUnit() {
     logger.info("=== Test invoice contains only \"soft deleted\" unit id - expecting of call only to Units API ===");
