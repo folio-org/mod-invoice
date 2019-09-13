@@ -7,6 +7,8 @@ import static javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
 import static org.apache.commons.lang3.StringUtils.EMPTY;
 import static org.folio.invoices.utils.HelperUtils.INVOICE_ID;
 import static org.folio.invoices.utils.HelperUtils.QUERY_PARAM_START_WITH;
+import static org.folio.invoices.utils.HelperUtils.ALL_UNITS_CQL;
+import static org.folio.invoices.utils.HelperUtils.IS_DELETED_PROP;
 import static org.folio.invoices.utils.ResourcePathResolver.ACQUISITIONS_MEMBERSHIPS;
 import static org.folio.invoices.utils.ResourcePathResolver.ACQUISITIONS_UNITS;
 import static org.folio.invoices.utils.ResourcePathResolver.FOLIO_INVOICE_NUMBER;
@@ -118,8 +120,6 @@ public class MockServer {
   private static final String MOCK_DATA_INVOICES = "mockdata/invoices/invoices.json";
   static final String TEST_PREFIX = "testPrefix";
   private static final String INVALID_PREFIX = "12-prefix";
-  private static final String IS_DELETED_PROP = "isDeleted";
-  private static final String ALL_UNITS_CQL = IS_DELETED_PROP + "=*";
 
   private static final String INVOICE_NUMBER_ERROR_TENANT = "po_number_error_tenant";
   private static final String INVOICE_LINE_NUMBER_ERROR_TENANT = "invoice_line_number_error_tenant";
@@ -344,24 +344,28 @@ public class MockServer {
     logger.info("handleGetAcquisitionsUnits got: " + ctx.request().path());
 
     AcquisitionsUnitCollection units = new AcquisitionsUnitCollection();
+
+    String tenant = ctx.request().getHeader(OKAPI_HEADER_TENANT);
+    if (!PROTECTED_READ_ONLY_TENANT.equals(tenant)) {
+      units.setAcquisitionsUnits(getMockEntries(ACQUISITIONS_UNITS, AcquisitionsUnit.class).orElseGet(getAcqUnitsFromFile));
+    }
+
     String query = StringUtils.trimToEmpty(ctx.request().getParam("query"));
     if (query.contains(BAD_QUERY)) {
       serverResponse(ctx, 400, APPLICATION_JSON, Response.Status.BAD_REQUEST.getReasonPhrase());
       return;
     } else {
       if (!query.contains(ALL_UNITS_CQL)) {
-        List<Boolean> isDeleted = extractIdsFromQuery(IS_DELETED_PROP, query).stream()
-          .map(Boolean::valueOf)
-          .collect(toList());
+        List<Boolean> isDeleted;
+        if (!query.contains(ALL_UNITS_CQL)) {
+          isDeleted = Collections.singletonList(false);
+        } else {
+          isDeleted = extractIdsFromQuery(IS_DELETED_PROP, query).stream().map(Boolean::valueOf).collect(toList());
+        }
         if (!isDeleted.isEmpty()) {
           units.getAcquisitionsUnits().removeIf(unit -> !isDeleted.contains(unit.getIsDeleted()));
         }
       }
-    }
-
-    String tenant = ctx.request().getHeader(OKAPI_HEADER_TENANT);
-    if (!PROTECTED_READ_ONLY_TENANT.equals(tenant)) {
-      units.setAcquisitionsUnits(getMockEntries(ACQUISITIONS_UNITS, AcquisitionsUnit.class).orElseGet(getAcqUnitsFromFile));
     }
 
     if (query.contains("id==")) {

@@ -5,6 +5,7 @@ import static org.folio.invoices.utils.ErrorCodes.USER_HAS_NO_PERMISSIONS;
 import static org.folio.invoices.utils.HelperUtils.convertIdsToCqlQuery;
 import static org.folio.invoices.utils.HelperUtils.getEndpointWithQuery;
 import static org.folio.invoices.utils.HelperUtils.handleGetRequest;
+import static org.folio.invoices.utils.HelperUtils.ALL_UNITS_CQL;
 import static org.folio.invoices.utils.ResourcePathResolver.ACQUISITIONS_MEMBERSHIPS;
 import static org.folio.invoices.utils.ResourcePathResolver.ACQUISITIONS_UNITS;
 import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
@@ -144,7 +145,7 @@ public class ProtectionHelper extends AbstractHelper {
       return CompletableFuture.completedFuture(units);
     }
 
-    String query = convertIdsToCqlQuery(unitIds);
+    String query = ALL_UNITS_CQL + " and " + convertIdsToCqlQuery(unitIds);
     return getAcquisitionsUnits(query, 0, Integer.MAX_VALUE).thenApply(acquisitionsUnitCollection -> {
       List<AcquisitionsUnit> acquisitionsUnits = acquisitionsUnitCollection.getAcquisitionsUnits();
       fetchedUnits.addAll(acquisitionsUnits);
