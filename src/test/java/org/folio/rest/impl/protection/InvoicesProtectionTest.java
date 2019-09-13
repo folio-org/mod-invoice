@@ -148,7 +148,7 @@ public class InvoicesProtectionTest extends ProtectedEntityTestBase {
     
     final Headers headers = prepareHeaders(X_OKAPI_TENANT, ALL_DESIRED_PERMISSIONS_HEADER, X_OKAPI_USER_ID);
 
-    // Acq to order in storage for update case and
+    // Prepare acq unit in storage for update case and
     AcquisitionsUnit unit1 = prepareTestUnit(false);
     AcquisitionsUnit unit2 = prepareTestUnit(true);
     AcquisitionsUnit unit3 = prepareTestUnit(true);
@@ -187,12 +187,12 @@ public class InvoicesProtectionTest extends ProtectedEntityTestBase {
     logger.info("=== Test invoice contains only \"soft deleted\" unit id - expecting of call only to Units API ===");
 
     final Headers headers = prepareHeaders(X_OKAPI_TENANT, ALL_DESIRED_PERMISSIONS_HEADER, X_OKAPI_USER_ID); 
-    // Acq to order in storage for update case and
+    // Prepare acq unit in storage for update case
     AcquisitionsUnit unit1 = prepareTestUnit(true);
     // Add all acq units as mock data
     addMockEntry(ACQUISITIONS_UNITS, unit1);
 
-    // Prepare order with one acq unit ("soft deleted")
+    // Prepare invoice with one acq unit ("soft deleted")
     Invoice invoice = prepareInvoice(Collections.singletonList(unit1.getId()));
     
     ProtectedOperations.READ.process(INVOICE_PATH, encodePrettily(invoice), headers, APPLICATION_JSON,
