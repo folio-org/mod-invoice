@@ -188,7 +188,7 @@ public class InvoicesProtectionTest extends ProtectedEntityTestBase {
 
     final Headers headers = prepareHeaders(X_OKAPI_TENANT, ALL_DESIRED_PERMISSIONS_HEADER, X_OKAPI_USER_ID); 
     // Prepare acq unit in storage for update case
-    AcquisitionsUnit unit1 = prepareTestUnit(true);
+    AcquisitionsUnit unit1 = prepareTestUnit(true).withProtectRead(true);
     // Add all acq units as mock data
     addMockEntry(ACQUISITIONS_UNITS, unit1);
 
