@@ -5,10 +5,12 @@ import static org.folio.invoices.utils.ErrorCodes.USER_HAS_NO_PERMISSIONS;
 import static org.folio.invoices.utils.HelperUtils.convertIdsToCqlQuery;
 import static org.folio.invoices.utils.HelperUtils.getEndpointWithQuery;
 import static org.folio.invoices.utils.HelperUtils.handleGetRequest;
+import static org.folio.invoices.utils.HelperUtils.ALL_UNITS_CQL;
 import static org.folio.invoices.utils.ResourcePathResolver.ACQUISITIONS_MEMBERSHIPS;
 import static org.folio.invoices.utils.ResourcePathResolver.ACQUISITIONS_UNITS;
 import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -17,6 +19,7 @@ import java.util.stream.Collectors;
 import me.escoffier.vertx.completablefuture.VertxCompletableFuture;
 import one.util.streamex.StreamEx;
 import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.collections4.ListUtils;
 import org.folio.HttpStatus;
 import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.invoices.utils.HelperUtils;
@@ -26,7 +29,6 @@ import org.folio.rest.acq.model.units.AcquisitionsUnitCollection;
 import org.folio.rest.acq.model.units.AcquisitionsUnitMembership;
 import org.folio.rest.acq.model.units.AcquisitionsUnitMembershipCollection;
 import org.folio.rest.jaxrs.model.Error;
-import org.folio.rest.jaxrs.model.Parameter;
 import org.folio.rest.tools.client.interfaces.HttpClientInterface;
 
 import io.vertx.core.Context;
@@ -39,39 +41,78 @@ public class ProtectionHelper extends AbstractHelper {
   static final String GET_UNITS_BY_QUERY = resourcesPath(ACQUISITIONS_UNITS) + SEARCH_PARAMS;
   static final String GET_UNITS_MEMBERSHIPS_BY_QUERY = resourcesPath(ACQUISITIONS_MEMBERSHIPS) + SEARCH_PARAMS;
 
+  private List<AcquisitionsUnit> fetchedUnits = new ArrayList<>();
+
   public ProtectionHelper(HttpClientInterface httpClient, Map<String, String> okapiHeaders, Context ctx, String lang) {
     super(httpClient, okapiHeaders, ctx, lang);
 }
 
   /**
-   * This method determines status of operation restriction based on unit IDs.
-   * @param unitIds list of unit IDs.
+   * This method determines status of operation restriction based on unit IDs from {@link Invoice}.
    *
-   * @throws HttpException if user hasn't permissions or units not found
+   * @param unitIds   list of unit IDs.
+   * @param operation type of operation
+   * @return completable future completed exceptionally if user does not have rights to perform operation or any unit does not
+   *         exist; successfully otherwise
    */
   public CompletableFuture<Void> isOperationRestricted(List<String> unitIds, ProtectedOperationType operation) {
     if (CollectionUtils.isNotEmpty(unitIds)) {
-      return getUnitsByIds(unitIds)
-        .thenCompose(units -> {
-          if (unitIds.size() == units.size()) {
-            if (Boolean.TRUE.equals(applyMergingStrategy(units, operation))) {
-              return verifyUserIsMemberOfAcqUnits(unitIds);
-            }
-            return CompletableFuture.completedFuture(null);
-          } else {
-            Error error = ACQ_UNITS_NOT_FOUND.toError();
-            unitIds.removeAll(units.stream().map(AcquisitionsUnit::getId).collect(Collectors.toSet()));
-            error.getParameters().add(new Parameter().withKey(ACQUISITIONS_UNIT_IDS).withValue(unitIds.toString()));
-            throw new HttpException(HttpStatus.HTTP_VALIDATION_ERROR.toInt(), error);
+      return getUnitsByIds(unitIds).thenCompose(units -> {
+        if (unitIds.size() == units.size()) {
+          // In case any unit is "soft deleted", just skip it (refer to MODINVOICE-89)
+          List<AcquisitionsUnit> activeUnits = units.stream()
+            .filter(unit -> !unit.getIsDeleted())
+            .collect(Collectors.toList());
+
+          if (!activeUnits.isEmpty() && Boolean.TRUE.equals(applyMergingStrategy(activeUnits, operation))) {
+            return verifyUserIsMemberOfAcqUnits(extractUnitIds(activeUnits));
           }
-        });
+          return CompletableFuture.completedFuture(null);
+        } else {
+          // In case any unit "hard deleted" or never existed by specified uuid
+          throw new HttpException(HttpStatus.HTTP_UNPROCESSABLE_ENTITY.toInt(),
+              buildUnitsNotFoundError(unitIds, extractUnitIds(units)));
+        }
+      });
     } else {
       return CompletableFuture.completedFuture(null);
     }
   }
 
+  private List<String> extractUnitIds(List<AcquisitionsUnit> activeUnits) {
+    return activeUnits.stream().map(AcquisitionsUnit::getId).collect(Collectors.toList());
+  }
+
   /**
-   * Check whether the user is a member of at least one group from which the related order belongs.
+   * Verifies if all acquisition units exist and active based on passed ids
+   *
+   * @param acqUnitIds list of unit IDs.
+   * @return completable future completed successfully if all units exist and active or exceptionally otherwise
+   */
+  public CompletableFuture<Void> verifyIfUnitsAreActive(List<String> acqUnitIds) {
+    if (acqUnitIds.isEmpty()) {
+      return CompletableFuture.completedFuture(null);
+    }
+
+    return getUnitsByIds(acqUnitIds).thenAccept(units -> {
+      List<String> activeUnitIds = units.stream()
+        .filter(unit -> !unit.getIsDeleted())
+        .map(AcquisitionsUnit::getId)
+        .collect(Collectors.toList());
+
+      if (acqUnitIds.size() != activeUnitIds.size()) {
+        throw new HttpException(HttpStatus.HTTP_UNPROCESSABLE_ENTITY.toInt(), buildUnitsNotFoundError(acqUnitIds, activeUnitIds));
+      }
+    });
+  }
+
+  private Error buildUnitsNotFoundError(List<String> expectedUnitIds, List<String> availableUnitIds) {
+    List<String> missingUnitIds = ListUtils.subtract(expectedUnitIds, availableUnitIds);
+    return ACQ_UNITS_NOT_FOUND.toError().withAdditionalProperty(ACQUISITIONS_UNIT_IDS, missingUnitIds);
+  }
+  
+  /**
+   * Check whether the user is a member of at least one group from which the related invoice belongs.
    *
    * @return list of unit ids associated with user.
    */
@@ -88,14 +129,28 @@ public class ProtectionHelper extends AbstractHelper {
 
   /**
    * This method returns list of {@link AcquisitionsUnit} based on list of unit ids
+   * 
    * @param unitIds list of unit ids
    *
    * @return list of {@link AcquisitionsUnit}
    */
   private CompletableFuture<List<AcquisitionsUnit>> getUnitsByIds(List<String> unitIds) {
-    String query = convertIdsToCqlQuery(unitIds);
-    return getAcquisitionsUnits(query, 0, Integer.MAX_VALUE)
-      .thenApply(AcquisitionsUnitCollection::getAcquisitionsUnits);
+    // Check if all required units are already available
+    List<AcquisitionsUnit> units = fetchedUnits.stream()
+      .filter(unit -> unitIds.contains(unit.getId()))
+      .distinct()
+      .collect(Collectors.toList());
+
+    if (units.size() == unitIds.size()) {
+      return CompletableFuture.completedFuture(units);
+    }
+
+    String query = ALL_UNITS_CQL + " and " + convertIdsToCqlQuery(unitIds);
+    return getAcquisitionsUnits(query, 0, Integer.MAX_VALUE).thenApply(acquisitionsUnitCollection -> {
+      List<AcquisitionsUnit> acquisitionsUnits = acquisitionsUnitCollection.getAcquisitionsUnits();
+      fetchedUnits.addAll(acquisitionsUnits);
+      return acquisitionsUnits;
+    });
   }
 
   /**

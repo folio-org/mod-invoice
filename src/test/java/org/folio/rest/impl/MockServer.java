@@ -7,6 +7,8 @@ import static javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
 import static org.apache.commons.lang3.StringUtils.EMPTY;
 import static org.folio.invoices.utils.HelperUtils.INVOICE_ID;
 import static org.folio.invoices.utils.HelperUtils.QUERY_PARAM_START_WITH;
+import static org.folio.invoices.utils.HelperUtils.ALL_UNITS_CQL;
+import static org.folio.invoices.utils.HelperUtils.IS_DELETED_PROP;
 import static org.folio.invoices.utils.ResourcePathResolver.ACQUISITIONS_MEMBERSHIPS;
 import static org.folio.invoices.utils.ResourcePathResolver.ACQUISITIONS_UNITS;
 import static org.folio.invoices.utils.ResourcePathResolver.FOLIO_INVOICE_NUMBER;
@@ -76,6 +78,7 @@ import org.folio.rest.acq.model.VoucherLineCollection;
 import org.folio.rest.acq.model.finance.Fund;
 import org.folio.rest.acq.model.finance.FundCollection;
 import org.folio.rest.acq.model.orders.CompositePoLine;
+import org.folio.rest.acq.model.units.AcquisitionsUnit;
 import org.folio.rest.acq.model.units.AcquisitionsUnitCollection;
 import org.folio.rest.acq.model.units.AcquisitionsUnitMembershipCollection;
 import org.folio.rest.jaxrs.model.Config;
@@ -245,6 +248,11 @@ public class MockServer {
     return entries.stream().filter(json -> json.containsKey(ID)).collect(toList());
   }
 
+  public static void release() {
+    serverRqRs.clear();
+    serverRqQueries.clear();
+  }
+  
   private Router defineRoutes() {
     Router router = Router.router(vertx);
     router.route().handler(BodyHandler.create());
@@ -323,26 +331,41 @@ public class MockServer {
     }
   }
 
+  Supplier<List<AcquisitionsUnit>> getAcqUnitsFromFile = () -> {
+    try {
+      return new JsonObject(ApiTestBase.getMockData(ACQUISITIONS_UNITS_COLLECTION)).mapTo(AcquisitionsUnitCollection.class)
+        .getAcquisitionsUnits();
+    } catch (IOException e) {
+      return Collections.emptyList();
+    }
+  };
+
   private void handleGetAcquisitionsUnits(RoutingContext ctx) {
     logger.info("handleGetAcquisitionsUnits got: " + ctx.request().path());
+
+    AcquisitionsUnitCollection units = new AcquisitionsUnitCollection();
+
+    String tenant = ctx.request().getHeader(OKAPI_HEADER_TENANT);
+    if (!PROTECTED_READ_ONLY_TENANT.equals(tenant)) {
+      units.setAcquisitionsUnits(getMockEntries(ACQUISITIONS_UNITS, AcquisitionsUnit.class).orElseGet(getAcqUnitsFromFile));
+    }
 
     String query = StringUtils.trimToEmpty(ctx.request().getParam("query"));
     if (query.contains(BAD_QUERY)) {
       serverResponse(ctx, 400, APPLICATION_JSON, Response.Status.BAD_REQUEST.getReasonPhrase());
       return;
-    }
-
-    AcquisitionsUnitCollection units;
-
-    try {
-      String tenant = ctx.request().getHeader(OKAPI_HEADER_TENANT);
-      if (PROTECTED_READ_ONLY_TENANT.equals(tenant)) {
-        units = new AcquisitionsUnitCollection();
-      } else {
-        units = new JsonObject(ApiTestBase.getMockData(ACQUISITIONS_UNITS_COLLECTION)).mapTo(AcquisitionsUnitCollection.class);
+    } else {
+      if (!query.contains(ALL_UNITS_CQL)) {
+        List<Boolean> isDeleted;
+        if (!query.contains(ALL_UNITS_CQL)) {
+          isDeleted = Collections.singletonList(false);
+        } else {
+          isDeleted = extractIdsFromQuery(IS_DELETED_PROP, query).stream().map(Boolean::valueOf).collect(toList());
+        }
+        if (!isDeleted.isEmpty()) {
+          units.getAcquisitionsUnits().removeIf(unit -> !isDeleted.contains(unit.getIsDeleted()));
+        }
       }
-    } catch (IOException e) {
-      units = new AcquisitionsUnitCollection();
     }
 
     if (query.contains("id==")) {

@@ -132,8 +132,7 @@ public class ApiTestBase {
 
   protected void clearServiceInteractions() {
     eventMessages.clear();
-    MockServer.serverRqRs.clear();
-    MockServer.serverRqQueries.clear();
+    MockServer.release();
   }
 
   @AfterClass
