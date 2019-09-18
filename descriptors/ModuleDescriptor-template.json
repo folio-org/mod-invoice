@@ -453,7 +453,7 @@
         "invoices.acquisitions-units-assignments.assign",
         "invoices.acquisitions-units-assignments.manage"
       ]
-    },    
+    },
     {
       "permissionName": "invoice.all",
       "displayName": "Invoice module - all permissions",
