@@ -453,7 +453,7 @@
         "invoices.acquisitions-units-assignments.assign",
         "invoices.acquisitions-units-assignments.manage"
       ]
-    },    
+    },
     {
       "permissionName": "invoice.all",
       "displayName": "Invoice module - all permissions",
@@ -482,9 +482,17 @@
   ],
   "launchDescriptor": {
     "dockerImage": "${artifactId}:${version}",
+    "dockerPull": false,
     "dockerArgs": {
-      "HostConfig": { "PortBindings": { "8081/tcp":  [{ "HostPort": "%p" }] } }
+      "HostConfig": {
+        "Memory": 357913941,
+        "PortBindings": { "8081/tcp": [ { "HostPort": "%p" } ] }
+      }
     },
-    "dockerPull" : false
+    "env": [
+      { "name": "JAVA_OPTIONS",
+        "value": "-XX:+UnlockExperimentalVMOptions -XX:+UseCGroupMemoryLimitForHeap"
+      }
+    ]
   }
 }
