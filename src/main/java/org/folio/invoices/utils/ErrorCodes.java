@@ -8,6 +8,7 @@ public enum ErrorCodes {
   INCOMPATIBLE_INVOICE_FIELDS_ON_STATUS_TRANSITION("incompatibleInvoiceFields", "Incompatible invoice fields on status transition"),
   PO_LINE_NOT_FOUND("poLineNotFound", "The purchase order line record is not found"),
   CANNOT_DELETE_INVOICE_LINE("cannotDeleteInvoiceLine", "Cannot delete invoice-line because invoice record associated with invoice-line not found"),
+  CANNOT_APPROVE_INVOICE_ON_PAID_STATUS("cannotApproveInvoiceOnPaidStatus", "Cannot Approve invoice when it is in Paid status"),
   PO_LINE_UPDATE_FAILURE("poLineUpdateFailure", "One or more purchase order line record(s) cannot be updated"),
   VOUCHER_NOT_FOUND("voucherNotFound", "The voucher record is not found"),
   FUND_DISTRIBUTIONS_NOT_PRESENT("FundDistributionsNotPresent", "At least one fund distribution should present for every associated invoice line"),

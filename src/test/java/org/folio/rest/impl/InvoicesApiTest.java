@@ -6,6 +6,7 @@ import static java.util.stream.Collectors.groupingBy;
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 import static javax.ws.rs.core.MediaType.TEXT_PLAIN;
 import static org.awaitility.Awaitility.await;
+import static org.folio.invoices.utils.ErrorCodes.CANNOT_APPROVE_INVOICE_ON_PAID_STATUS;
 import static org.folio.invoices.utils.ErrorCodes.EXTERNAL_ACCOUNT_NUMBER_IS_MISSING;
 import static org.folio.invoices.utils.ErrorCodes.FUNDS_NOT_FOUND;
 import static org.folio.invoices.utils.ErrorCodes.FUND_DISTRIBUTIONS_NOT_PRESENT;
@@ -133,11 +134,13 @@ public class InvoicesApiTest extends ApiTestBase {
   private static final String PO_LINE_MOCK_DATA_PATH = BASE_MOCK_DATA_PATH + "poLines/";
   static final String REVIEWED_INVOICE_ID = "3773625a-dc0d-4a2d-959e-4a91ee265d67";
   public static final String OPEN_INVOICE_ID = "52fd6ec7-ddc3-4c53-bc26-2779afc27136";
+  private static final String PAID_INVOICE_ID = "f847a34e-0df2-40b9-bc84-cfa880ef3c8b";
   private static final String APPROVED_INVOICE_SAMPLE_PATH = INVOICE_MOCK_DATA_PATH + APPROVED_INVOICE_ID + ".json";
   private static final String REVIEWED_INVOICE_SAMPLE_PATH = INVOICE_MOCK_DATA_PATH + REVIEWED_INVOICE_ID + ".json";
   private static final String REVIEWED_INVOICE_WITH_EXISTING_VOUCHER_SAMPLE_PATH = INVOICE_MOCK_DATA_PATH + "402d0d32-7377-46a7-86ab-542b5684506e.json";
 
   public static final String OPEN_INVOICE_SAMPLE_PATH = INVOICE_MOCK_DATA_PATH + OPEN_INVOICE_ID + ".json";
+  private static final String PAID_INVOICE_SAMPLE_PATH = INVOICE_MOCK_DATA_PATH + PAID_INVOICE_ID + ".json";
   private static final String OPEN_INVOICE_WITH_APPROVED_FILEDS_SAMPLE_PATH = INVOICE_MOCK_DATA_PATH + "d3e13ed1-59da-4f70-bba3-a140e11d30f3.json";
 
   static final String BAD_QUERY = "unprocessableQuery";
@@ -422,6 +425,45 @@ public class InvoicesApiTest extends ApiTestBase {
     assertThat(voucherCreated.getSystemCurrency(), equalTo("GBP"));
     verifyTransitionToApproved(voucherCreated, invoiceLines);
     checkVoucherAcqUnitIdsList(voucherCreated, reqData);
+  }
+
+  @Test
+  public void testFailureTransitionFromPaidToApproved() {
+    logger.info("=== Test invoice cannot be transitioned to Approved status if it is in Paid status ===");
+
+    List<InvoiceLine> invoiceLines = getMockAsJson(INVOICE_LINES_LIST_PATH).mapTo(InvoiceLineCollection.class)
+      .getInvoiceLines();
+    Invoice reqData = getMockAsJson(PAID_INVOICE_SAMPLE_PATH).mapTo(Invoice.class);
+    String id = reqData.getId();
+    invoiceLines.forEach(invoiceLine -> {
+      invoiceLine.setId(UUID.randomUUID()
+        .toString());
+      invoiceLine.setInvoiceId(id);
+      addMockEntry(INVOICE_LINES, JsonObject.mapFrom(invoiceLine));
+    });
+
+    reqData.setStatus(Invoice.Status.APPROVED);
+
+    String jsonBody = JsonObject.mapFrom(reqData)
+      .encode();
+    Headers headers = prepareHeaders(X_OKAPI_URL, X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID);
+    final Errors errors = verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, headers, "", 422).then()
+      .extract()
+      .body()
+      .as(Errors.class);
+
+    assertThat(errors, notNullValue());
+    assertThat(errors.getErrors(), hasSize(1));
+    final Error error = errors.getErrors()
+      .get(0);
+    assertThat(error.getMessage(), equalTo(CANNOT_APPROVE_INVOICE_ON_PAID_STATUS.getDescription()));
+    assertThat(error.getCode(), equalTo(CANNOT_APPROVE_INVOICE_ON_PAID_STATUS.getCode()));
+    assertThat(error.getParameters()
+      .get(0)
+      .getValue(), containsString(id));
+
+    // Verify invoice not updated
+    assertThat(getInvoiceUpdates(), hasSize(0));
   }
 
   @Test
