@@ -134,13 +134,11 @@ public class InvoicesApiTest extends ApiTestBase {
   private static final String PO_LINE_MOCK_DATA_PATH = BASE_MOCK_DATA_PATH + "poLines/";
   static final String REVIEWED_INVOICE_ID = "3773625a-dc0d-4a2d-959e-4a91ee265d67";
   public static final String OPEN_INVOICE_ID = "52fd6ec7-ddc3-4c53-bc26-2779afc27136";
-  private static final String PAID_INVOICE_ID = "f847a34e-0df2-40b9-bc84-cfa880ef3c8b";
   private static final String APPROVED_INVOICE_SAMPLE_PATH = INVOICE_MOCK_DATA_PATH + APPROVED_INVOICE_ID + ".json";
   private static final String REVIEWED_INVOICE_SAMPLE_PATH = INVOICE_MOCK_DATA_PATH + REVIEWED_INVOICE_ID + ".json";
   private static final String REVIEWED_INVOICE_WITH_EXISTING_VOUCHER_SAMPLE_PATH = INVOICE_MOCK_DATA_PATH + "402d0d32-7377-46a7-86ab-542b5684506e.json";
 
   public static final String OPEN_INVOICE_SAMPLE_PATH = INVOICE_MOCK_DATA_PATH + OPEN_INVOICE_ID + ".json";
-  private static final String PAID_INVOICE_SAMPLE_PATH = INVOICE_MOCK_DATA_PATH + PAID_INVOICE_ID + ".json";
   private static final String OPEN_INVOICE_WITH_APPROVED_FILEDS_SAMPLE_PATH = INVOICE_MOCK_DATA_PATH + "d3e13ed1-59da-4f70-bba3-a140e11d30f3.json";
 
   static final String BAD_QUERY = "unprocessableQuery";
@@ -431,10 +429,16 @@ public class InvoicesApiTest extends ApiTestBase {
   public void testFailureTransitionFromPaidToApproved() {
     logger.info("=== Test invoice cannot be transitioned to Approved status if it is in Paid status ===");
 
+    // Add mock entry in storage with status Paid
+    Invoice invoice = getMinimalContentInvoice();
+    String id = invoice.getId();
+    invoice.setStatus(Invoice.Status.PAID);
+    MockServer.addMockEntry(INVOICES, invoice);
+
+    Invoice reqData = getRqRsEntries(HttpMethod.OTHER, INVOICES).get(0).mapTo(Invoice.class);
+
     List<InvoiceLine> invoiceLines = getMockAsJson(INVOICE_LINES_LIST_PATH).mapTo(InvoiceLineCollection.class)
       .getInvoiceLines();
-    Invoice reqData = getMockAsJson(PAID_INVOICE_SAMPLE_PATH).mapTo(Invoice.class);
-    String id = reqData.getId();
     invoiceLines.forEach(invoiceLine -> {
       invoiceLine.setId(UUID.randomUUID()
         .toString());
@@ -442,6 +446,7 @@ public class InvoicesApiTest extends ApiTestBase {
       addMockEntry(INVOICE_LINES, JsonObject.mapFrom(invoiceLine));
     });
 
+    // Try to update storage entry
     reqData.setStatus(Invoice.Status.APPROVED);
 
     String jsonBody = JsonObject.mapFrom(reqData)
