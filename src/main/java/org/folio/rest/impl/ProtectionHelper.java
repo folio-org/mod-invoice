@@ -2,10 +2,10 @@ package org.folio.rest.impl;
 
 import static org.folio.invoices.utils.ErrorCodes.ACQ_UNITS_NOT_FOUND;
 import static org.folio.invoices.utils.ErrorCodes.USER_HAS_NO_PERMISSIONS;
+import static org.folio.invoices.utils.HelperUtils.ALL_UNITS_CQL;
 import static org.folio.invoices.utils.HelperUtils.convertIdsToCqlQuery;
 import static org.folio.invoices.utils.HelperUtils.getEndpointWithQuery;
 import static org.folio.invoices.utils.HelperUtils.handleGetRequest;
-import static org.folio.invoices.utils.HelperUtils.ALL_UNITS_CQL;
 import static org.folio.invoices.utils.ResourcePathResolver.ACQUISITIONS_MEMBERSHIPS;
 import static org.folio.invoices.utils.ResourcePathResolver.ACQUISITIONS_UNITS;
 import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
@@ -16,8 +16,6 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
-import me.escoffier.vertx.completablefuture.VertxCompletableFuture;
-import one.util.streamex.StreamEx;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.collections4.ListUtils;
 import org.folio.HttpStatus;
@@ -32,6 +30,8 @@ import org.folio.rest.jaxrs.model.Error;
 import org.folio.rest.tools.client.interfaces.HttpClientInterface;
 
 import io.vertx.core.Context;
+import me.escoffier.vertx.completablefuture.VertxCompletableFuture;
+import one.util.streamex.StreamEx;
 
 public class ProtectionHelper extends AbstractHelper {
 

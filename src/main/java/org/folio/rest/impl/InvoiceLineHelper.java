@@ -9,7 +9,6 @@ import static org.folio.invoices.utils.HelperUtils.INVOICE_ID;
 import static org.folio.invoices.utils.HelperUtils.QUERY_PARAM_START_WITH;
 import static org.folio.invoices.utils.HelperUtils.calculateInvoiceLineTotals;
 import static org.folio.invoices.utils.HelperUtils.combineCqlExpressions;
-import static org.folio.invoices.utils.HelperUtils.convertToDoubleWithRounding;
 import static org.folio.invoices.utils.HelperUtils.findChangedProtectedFields;
 import static org.folio.invoices.utils.HelperUtils.getEndpointWithQuery;
 import static org.folio.invoices.utils.HelperUtils.getHttpClient;
@@ -32,15 +31,20 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.ListIterator;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.BiFunction;
 
 import javax.money.CurrencyUnit;
 import javax.money.Monetary;
 import javax.money.MonetaryAmount;
+import javax.money.MonetaryRounding;
+import javax.money.RoundingQueryBuilder;
 
 import org.folio.invoices.events.handlers.MessageAddress;
 import org.folio.invoices.rest.exceptions.HttpException;
@@ -414,27 +418,90 @@ public class InvoiceLineHelper extends AbstractHelper {
    * Each invoiceLine gets adjustment value divided by quantity of lines
    */
   private List<InvoiceLine> applyProratedAdjustmentByLines(Adjustment adjustment, List<InvoiceLine> lines,
-      CurrencyUnit currencyUnit) {
+                                                           CurrencyUnit currencyUnit) {
+    if (Adjustment.Type.PERCENTAGE == adjustment.getType()) {
+      return applyPercentageAdjustmentsByLines(adjustment, lines);
+    } else {
+      return applyAmountTypeProratedAdjustments(adjustment, lines, currencyUnit, prorateByLines(lines));
+    }
+  }
 
+  private List<InvoiceLine> applyPercentageAdjustmentsByLines(Adjustment adjustment, List<InvoiceLine> lines) {
     List<InvoiceLine> updatedLines = new ArrayList<>();
     for (InvoiceLine line : lines) {
       Adjustment proratedAdjustment = prepareAdjustmentForLine(adjustment);
+      proratedAdjustment.setValue(BigDecimal.valueOf(adjustment.getValue())
+        .divide(BigDecimal.valueOf(lines.size()), 15, RoundingMode.HALF_EVEN)
+        .doubleValue());
 
-      if (adjustment.getType() == Adjustment.Type.AMOUNT) {
-        proratedAdjustment.setValue(convertToDoubleWithRounding(Money.of(adjustment.getValue(), currencyUnit)
-          .divide(lines.size())));
-      } else {
-        proratedAdjustment.setValue(BigDecimal.valueOf(adjustment.getValue())
-          .divide(BigDecimal.valueOf(lines.size()), 15, RoundingMode.HALF_EVEN)
-          .doubleValue());
+      if (addAdjustmentToLine(line, proratedAdjustment)) {
+        updatedLines.add(line);
+      }
+    }
+    return updatedLines;
+  }
+
+  private BiFunction<MonetaryAmount, InvoiceLine, MonetaryAmount> prorateByLines(List<InvoiceLine> lines) {
+    return (amount, line) -> amount.divide(lines.size()).with(getRndDown(amount.getCurrency()));
+  }
+
+  private MonetaryRounding getRndDown(CurrencyUnit currencyUnit) {
+    return Monetary.getRounding(RoundingQueryBuilder.of()
+      .set(RoundingMode.DOWN)
+      .setCurrency(currencyUnit)
+      .build());
+  }
+
+  private List<InvoiceLine> applyAmountTypeProratedAdjustments(Adjustment adjustment, List<InvoiceLine> lines, CurrencyUnit currencyUnit,
+                                                               BiFunction<MonetaryAmount, InvoiceLine, MonetaryAmount> prorateFunction) {
+    List<InvoiceLine> updatedLines = new ArrayList<>();
+
+    MonetaryAmount expectedAdjustmentTotal = Money.of(adjustment.getValue(), currencyUnit);
+    Map<String, MonetaryAmount> lineIdAdjustmentValueMap = calculateAdjValueForEachLine(lines, prorateFunction, expectedAdjustmentTotal);
+
+    MonetaryAmount smallestUnit = getSmallestUnit(expectedAdjustmentTotal);
+    MonetaryAmount remainder = expectedAdjustmentTotal.subtract(getActualAdjustmentTotal(lineIdAdjustmentValueMap, currencyUnit));
+
+    for (ListIterator<InvoiceLine> iterator = lines.listIterator(lines.size()); iterator.hasPrevious();) {
+
+      final InvoiceLine line = iterator.previous();
+      MonetaryAmount amount = lineIdAdjustmentValueMap.get(line.getId());
+
+      if (!remainder.isZero()) {
+        amount = amount.add(smallestUnit);
+        remainder = remainder.subtract(smallestUnit);
       }
 
+      Adjustment proratedAdjustment = prepareAdjustmentForLine(adjustment);
+      proratedAdjustment.setValue(amount.getNumber().doubleValue());
       if (addAdjustmentToLine(line, proratedAdjustment)) {
         updatedLines.add(line);
       }
     }
 
     return updatedLines;
+  }
+
+  private MonetaryAmount getActualAdjustmentTotal(Map<String, MonetaryAmount> lineIdAdjustmentValueMap, CurrencyUnit currencyUnit) {
+    return lineIdAdjustmentValueMap.values().stream().reduce(MonetaryAmount::add).orElse(Money.zero(currencyUnit));
+  }
+
+  private Map<String, MonetaryAmount> calculateAdjValueForEachLine(List<InvoiceLine> lines, BiFunction<MonetaryAmount, InvoiceLine, MonetaryAmount> prorateFunction, MonetaryAmount expectedAdjustmentTotal) {
+    Map<String, MonetaryAmount> lineIdAdjustmentValueMap = new HashMap<>();
+
+    for (InvoiceLine line : lines) {
+      MonetaryAmount value = prorateFunction.apply(expectedAdjustmentTotal, line);
+      lineIdAdjustmentValueMap.put(line.getId(), value);
+    }
+    return lineIdAdjustmentValueMap;
+  }
+
+  private MonetaryAmount getSmallestUnit(MonetaryAmount expectedAdjustmentValue) {
+    CurrencyUnit currencyUnit = expectedAdjustmentValue.getCurrency();
+    int decimalPlaces = currencyUnit.getDefaultFractionDigits();
+    MonetaryAmount smallestUnit = Money.of(1 / Math.pow(10, decimalPlaces), currencyUnit);
+    smallestUnit = expectedAdjustmentValue.isPositive() ? smallestUnit : smallestUnit.negate();
+    return smallestUnit;
   }
 
   /**
@@ -449,24 +516,29 @@ public class InvoiceLineHelper extends AbstractHelper {
       // If summarized subTotal (by abs) is zero, each line has zero amount (e.g. gift) so adjustment should be prorated "By line"
       return applyProratedAdjustmentByLines(adjustment, lines, currencyUnit);
     }
+    if (adjustment.getType() == Adjustment.Type.PERCENTAGE) {
+      return applyPercentageAdjustmentsByAmount(adjustment, lines);
+    }
 
+    return applyAmountTypeProratedAdjustments(adjustment, lines, currencyUnit, prorateByAmountFunction(grandSubTotal));
+  }
+
+  private List<InvoiceLine> applyPercentageAdjustmentsByAmount(Adjustment adjustment, List<InvoiceLine> lines) {
     List<InvoiceLine> updatedLines = new ArrayList<>();
     for (InvoiceLine line : lines) {
       Adjustment proratedAdjustment = prepareAdjustmentForLine(adjustment);
-
-      if (adjustment.getType() == Adjustment.Type.AMOUNT) {
-        proratedAdjustment.setValue(convertToDoubleWithRounding(Money.of(adjustment.getValue(), currencyUnit)
-          // The adjustment amount should be calculated by absolute value of subTotal
-          .multiply(Math.abs(line.getSubTotal()))
-          .divide(grandSubTotal.getNumber())));
-      }
-
       if (addAdjustmentToLine(line, proratedAdjustment)) {
         updatedLines.add(line);
       }
     }
-
     return updatedLines;
+  }
+
+  private BiFunction<MonetaryAmount, InvoiceLine, MonetaryAmount> prorateByAmountFunction(MonetaryAmount grandSubTotal) {
+    return (amount, line) -> amount
+      // The adjustment amount should be calculated by absolute value of subTotal
+      .multiply(Math.abs(line.getSubTotal()))
+      .divide(grandSubTotal.getNumber()).with(getRndDown(amount.getCurrency()));
   }
 
   /**
@@ -483,20 +555,12 @@ public class InvoiceLineHelper extends AbstractHelper {
        */
       return Collections.emptyList();
     }
+    return applyAmountTypeProratedAdjustments(adjustment, lines, currencyUnit, prorateByAmountFunction(lines));
+  }
 
-    List<InvoiceLine> updatedLines = new ArrayList<>();
-    for (InvoiceLine line : lines) {
-      Adjustment proratedAdjustment = prepareAdjustmentForLine(adjustment)
-        .withValue(convertToDoubleWithRounding(Money.of(adjustment.getValue(), currencyUnit)
-          .multiply(line.getQuantity())
-          .divide(getTotalQuantities(lines))));
-
-      if (addAdjustmentToLine(line, proratedAdjustment)) {
-        updatedLines.add(line);
-      }
-    }
-
-    return updatedLines;
+  private BiFunction<MonetaryAmount, InvoiceLine, MonetaryAmount> prorateByAmountFunction(List<InvoiceLine> invoiceLines) {
+    // The adjustment amount should be calculated by absolute value of subTotal
+    return (amount, line) -> amount.multiply(line.getQuantity()).divide(getTotalQuantities(invoiceLines)).with(getRndDown(amount.getCurrency()));
   }
 
   private Adjustment prepareAdjustmentForLine(Adjustment adjustment) {

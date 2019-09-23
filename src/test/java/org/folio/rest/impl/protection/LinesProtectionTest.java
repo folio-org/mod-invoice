@@ -6,7 +6,6 @@ import static org.folio.invoices.utils.ErrorCodes.ACQ_UNITS_NOT_FOUND;
 import static org.folio.invoices.utils.ErrorCodes.GENERIC_ERROR_CODE;
 import static org.folio.invoices.utils.ErrorCodes.USER_HAS_NO_PERMISSIONS;
 import static org.folio.rest.impl.InvoiceLinesApiTest.INVOICE_LINES_PATH;
-import static org.folio.rest.impl.ProtectionHelper.ACQUISITIONS_UNIT_IDS;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.collection.IsCollectionWithSize.hasSize;
 import static org.hamcrest.core.IsEqual.equalTo;
