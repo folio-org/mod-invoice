@@ -6,6 +6,7 @@ import static java.util.stream.Collectors.groupingBy;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toMap;
 import static me.escoffier.vertx.completablefuture.VertxCompletableFuture.completedFuture;
+import static me.escoffier.vertx.completablefuture.VertxCompletableFuture.supplyAsync;
 import static org.apache.commons.collections4.CollectionUtils.isNotEmpty;
 import static org.apache.commons.lang3.StringUtils.EMPTY;
 import static org.apache.commons.lang3.StringUtils.isAlpha;
@@ -419,10 +420,10 @@ public class InvoiceHelper extends AbstractHelper {
         return completedFuture(null);
       }
 
-      return VertxCompletableFuture.allOf(ctx, invoiceLineHelper.processProratedAdjustments(lines, updatedInvoice)
-        .stream()
-        .map(invoiceLine -> persistInvoiceLineUpdates(updatedInvoice, invoiceLine))
-        .toArray(CompletableFuture[]::new));
+      return supplyAsync(ctx, () -> invoiceLineHelper.processProratedAdjustments(lines, updatedInvoice))
+        .thenCompose(invoiceLines -> VertxCompletableFuture.allOf(ctx, invoiceLines.stream()
+          .map(invoiceLine -> persistInvoiceLineUpdates(updatedInvoice, invoiceLine))
+          .toArray(CompletableFuture[]::new)));
     });
   }
 
