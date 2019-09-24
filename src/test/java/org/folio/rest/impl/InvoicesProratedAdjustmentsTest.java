@@ -26,12 +26,14 @@ import static org.hamcrest.collection.IsCollectionWithSize.hasSize;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Date;
 import java.util.List;
 import java.util.stream.Stream;
 
 import org.folio.rest.jaxrs.model.Adjustment;
 import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.jaxrs.model.InvoiceLine;
+import org.folio.rest.jaxrs.model.Metadata;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -157,10 +159,10 @@ public class InvoicesProratedAdjustmentsTest extends ApiTestBase {
     invoice.getAdjustments().clear();
     addMockEntry(INVOICES, invoice);
 
-    InvoiceLine invoiceLine1 = getMockInvoiceLine(invoice.getId()).withSubTotal(5d);
+    InvoiceLine invoiceLine1 = getMockInvoiceLine(invoice.getId()).withSubTotal(5d).withInvoiceLineNumber("n-1");
     addMockEntry(INVOICE_LINES, invoiceLine1);
 
-    InvoiceLine invoiceLine2 = getMockInvoiceLine(invoice.getId()).withSubTotal(15d);
+    InvoiceLine invoiceLine2 = getMockInvoiceLine(invoice.getId()).withSubTotal(15d).withInvoiceLineNumber("n-2");
     addMockEntry(INVOICE_LINES, invoiceLine2);
 
     // Prepare request body
@@ -226,10 +228,10 @@ public class InvoicesProratedAdjustmentsTest extends ApiTestBase {
     invoice.getAdjustments().clear();
     addMockEntry(INVOICES, invoice);
 
-    InvoiceLine invoiceLine1 = getMockInvoiceLine(invoice.getId()).withSubTotal(10d);
+    InvoiceLine invoiceLine1 = getMockInvoiceLine(invoice.getId()).withSubTotal(10d).withInvoiceLineNumber("n-1");
     addMockEntry(INVOICE_LINES, invoiceLine1);
 
-    InvoiceLine invoiceLine2 = getMockInvoiceLine(invoice.getId()).withSubTotal(20d);
+    InvoiceLine invoiceLine2 = getMockInvoiceLine(invoice.getId()).withSubTotal(20d).withInvoiceLineNumber("n-2");
     addMockEntry(INVOICE_LINES, invoiceLine2);
 
     // Prepare request body
@@ -282,10 +284,10 @@ public class InvoicesProratedAdjustmentsTest extends ApiTestBase {
     invoice.getAdjustments().clear();
     addMockEntry(INVOICES, invoice);
 
-    InvoiceLine invoiceLine1 = getMockInvoiceLine(invoice.getId()).withSubTotal(0d);
+    InvoiceLine invoiceLine1 = getMockInvoiceLine(invoice.getId()).withSubTotal(0d).withInvoiceLineNumber("n-1");
     addMockEntry(INVOICE_LINES, invoiceLine1);
 
-    InvoiceLine invoiceLine2 = getMockInvoiceLine(invoice.getId()).withSubTotal(0d);
+    InvoiceLine invoiceLine2 = getMockInvoiceLine(invoice.getId()).withSubTotal(0d).withInvoiceLineNumber("n-2");
     addMockEntry(INVOICE_LINES, invoiceLine2);
 
     // Prepare request body
@@ -335,14 +337,14 @@ public class InvoicesProratedAdjustmentsTest extends ApiTestBase {
     invoice.getAdjustments().clear();
     addMockEntry(INVOICES, invoice);
 
-    InvoiceLine invoiceLine1 = getMockInvoiceLine(invoice.getId()).withSubTotal(5d)
+    InvoiceLine invoiceLine1 = getMockInvoiceLine(invoice.getId()).withSubTotal(5d).withInvoiceLineNumber("n-1")
       .withAdjustments(Collections.singletonList(createAdjustment(NOT_PRORATED, AMOUNT, 10d)));
     addMockEntry(INVOICE_LINES, invoiceLine1);
 
-    InvoiceLine invoiceLine2 = getMockInvoiceLine(invoice.getId()).withSubTotal(20d);
+    InvoiceLine invoiceLine2 = getMockInvoiceLine(invoice.getId()).withSubTotal(20d).withInvoiceLineNumber("n-2");
     addMockEntry(INVOICE_LINES, invoiceLine2);
 
-    InvoiceLine invoiceLine3 = getMockInvoiceLine(invoice.getId()).withSubTotal(-25d);
+    InvoiceLine invoiceLine3 = getMockInvoiceLine(invoice.getId()).withSubTotal(-25d).withInvoiceLineNumber("n-3");
     addMockEntry(INVOICE_LINES, invoiceLine3);
 
     // Prepare request body
@@ -400,13 +402,13 @@ public class InvoicesProratedAdjustmentsTest extends ApiTestBase {
     invoice.getAdjustments().clear();
     addMockEntry(INVOICES, invoice);
 
-    InvoiceLine invoiceLine1 = getMockInvoiceLine(invoice.getId()).withSubTotal(50d);
+    InvoiceLine invoiceLine1 = getMockInvoiceLine(invoice.getId()).withSubTotal(50d).withInvoiceLineNumber("n-1");
     addMockEntry(INVOICE_LINES, invoiceLine1);
 
-    InvoiceLine invoiceLine2 = getMockInvoiceLine(invoice.getId()).withSubTotal(15d);
+    InvoiceLine invoiceLine2 = getMockInvoiceLine(invoice.getId()).withSubTotal(15d).withInvoiceLineNumber("n-2");
     addMockEntry(INVOICE_LINES, invoiceLine2);
 
-    InvoiceLine invoiceLine3 = getMockInvoiceLine(invoice.getId()).withSubTotal(-5d);
+    InvoiceLine invoiceLine3 = getMockInvoiceLine(invoice.getId()).withSubTotal(-5d).withInvoiceLineNumber("n-3");
     addMockEntry(INVOICE_LINES, invoiceLine3);
 
     // Prepare request body
@@ -447,13 +449,13 @@ public class InvoicesProratedAdjustmentsTest extends ApiTestBase {
     invoice.setCurrency("JOD");
     addMockEntry(INVOICES, invoice);
 
-    InvoiceLine invoiceLine1 = getMockInvoiceLine(invoice.getId()).withSubTotal(25d);
+    InvoiceLine invoiceLine1 = getMockInvoiceLine(invoice.getId()).withSubTotal(25d).withInvoiceLineNumber("n-1");
     addMockEntry(INVOICE_LINES, invoiceLine1);
 
-    InvoiceLine invoiceLine2 = getMockInvoiceLine(invoice.getId()).withSubTotal(25d);
+    InvoiceLine invoiceLine2 = getMockInvoiceLine(invoice.getId()).withSubTotal(25d).withInvoiceLineNumber("n-2");
     addMockEntry(INVOICE_LINES, invoiceLine2);
 
-    InvoiceLine invoiceLine3 = getMockInvoiceLine(invoice.getId()).withSubTotal(0d);
+    InvoiceLine invoiceLine3 = getMockInvoiceLine(invoice.getId()).withSubTotal(0d).withInvoiceLineNumber("n-3");
     addMockEntry(INVOICE_LINES, invoiceLine3);
 
     // Prepare request body
@@ -491,15 +493,15 @@ public class InvoicesProratedAdjustmentsTest extends ApiTestBase {
     invoice.getAdjustments().clear();
     addMockEntry(INVOICES, invoice);
 
-    InvoiceLine invoiceLine1 = getMockInvoiceLine(invoice.getId()).withSubTotal(25d);
-    addMockEntry(INVOICE_LINES, invoiceLine1);
+    InvoiceLine invoiceLine1 = getMockInvoiceLine(invoice.getId()).withSubTotal(25d).withInvoiceLineNumber("n-3");
 
-    InvoiceLine invoiceLine2 = getMockInvoiceLine(invoice.getId()).withSubTotal(25d);
+
+    InvoiceLine invoiceLine2 = getMockInvoiceLine(invoice.getId()).withSubTotal(25d).withInvoiceLineNumber("n-4");
     addMockEntry(INVOICE_LINES, invoiceLine2);
 
-    InvoiceLine invoiceLine3 = getMockInvoiceLine(invoice.getId()).withSubTotal(25d);
+    InvoiceLine invoiceLine3 = getMockInvoiceLine(invoice.getId()).withSubTotal(25d).withInvoiceLineNumber("n-13");
     addMockEntry(INVOICE_LINES, invoiceLine3);
-
+    addMockEntry(INVOICE_LINES, invoiceLine1);
     // Prepare request body
     Invoice invoiceBody = copyObject(invoice);
     invoiceBody.getAdjustments().add(createAdjustment(BY_AMOUNT, AMOUNT, -0.02d));
@@ -529,7 +531,7 @@ public class InvoicesProratedAdjustmentsTest extends ApiTestBase {
 
   @Test
   public void testUpdateInvoiceWithSevenLinesAddingAmountAdjustmentByLineWith6MissedPennies() {
-    logger.info("=== Updating invoice with zero subTotal and seven lines (mixed subTotals) adding adjustment by line, missing six \"pennoes\" ===");
+    logger.info("=== Updating invoice with zero subTotal and seven lines (mixed subTotals) adding adjustment by line, missing six \"pennies\" ===");
 
     // Prepare data "from storage"
     Invoice invoice = getMockAsJson(OPEN_INVOICE_SAMPLE_PATH).mapTo(Invoice.class).withId(randomUUID().toString());
@@ -538,7 +540,7 @@ public class InvoicesProratedAdjustmentsTest extends ApiTestBase {
     addMockEntry(INVOICES, invoice);
     List<InvoiceLine> lines = new ArrayList<>();
     for (int i = 0; i < 7; i++) {
-      InvoiceLine line = getMockInvoiceLine(invoice.getId());
+      InvoiceLine line = getMockInvoiceLine(invoice.getId()).withInvoiceLineNumber("n-" + (i + 1));
       lines.add(line);
       addMockEntry(INVOICE_LINES, line);
     }
@@ -586,13 +588,13 @@ public class InvoicesProratedAdjustmentsTest extends ApiTestBase {
     invoice.setCurrency("JPY"); // zero decimal places
     addMockEntry(INVOICES, invoice);
 
-    InvoiceLine invoiceLine1 = getMockInvoiceLine(invoice.getId()).withQuantity(4);
+    InvoiceLine invoiceLine1 = getMockInvoiceLine(invoice.getId()).withQuantity(4).withInvoiceLineNumber("n-1");
     addMockEntry(INVOICE_LINES, invoiceLine1);
 
-    InvoiceLine invoiceLine2 = getMockInvoiceLine(invoice.getId()).withQuantity(6);
+    InvoiceLine invoiceLine2 = getMockInvoiceLine(invoice.getId()).withQuantity(6).withInvoiceLineNumber("n-2");
     addMockEntry(INVOICE_LINES, invoiceLine2);
 
-    InvoiceLine invoiceLine3 = getMockInvoiceLine(invoice.getId()).withQuantity(1);
+    InvoiceLine invoiceLine3 = getMockInvoiceLine(invoice.getId()).withQuantity(1).withInvoiceLineNumber("n-3");
     addMockEntry(INVOICE_LINES, invoiceLine3);
 
     // Prepare request body
@@ -613,11 +615,11 @@ public class InvoicesProratedAdjustmentsTest extends ApiTestBase {
     Adjustment invoiceAdjustment = invoiceToStorage.getAdjustments().get(0);
     assertThat(invoiceAdjustment.getId(), not(isEmptyOrNullString()));
 
-    verifyAdjustmentValue(invoiceLine1.getId(), 1d); // 5 * 4 / 11 = 1(.818181818181818)
+    verifyAdjustmentValue(invoiceLine1.getId(), 2d); // 5 * 4 / 11 = 1(.818181818181818)
 
     verifyAdjustmentValue(invoiceLine2.getId(), 3d); // 5 * 6 / 1 = 2(.727272727272727) + 1
 
-    verifyAdjustmentValue(invoiceLine3.getId(), 1d); //5 * 1 / 11 = 0(.4545454545454545) + 1
+    verifyAdjustmentValue(invoiceLine3.getId(), 0d); //5 * 1 / 11 = 0(.4545454545454545) + 1
 
   }
 
@@ -630,14 +632,14 @@ public class InvoicesProratedAdjustmentsTest extends ApiTestBase {
     invoice.getAdjustments().clear();
     addMockEntry(INVOICES, invoice);
 
-    InvoiceLine invoiceLine1 = getMockInvoiceLine(invoice.getId()).withSubTotal(5d)
+    InvoiceLine invoiceLine1 = getMockInvoiceLine(invoice.getId()).withSubTotal(5d).withInvoiceLineNumber("n-1")
       .withAdjustments(Collections.singletonList(createAdjustment(NOT_PRORATED, AMOUNT, 10d)));
     addMockEntry(INVOICE_LINES, invoiceLine1);
 
-    InvoiceLine invoiceLine2 = getMockInvoiceLine(invoice.getId()).withSubTotal(20d);
+    InvoiceLine invoiceLine2 = getMockInvoiceLine(invoice.getId()).withSubTotal(20d).withInvoiceLineNumber("n-2");
     addMockEntry(INVOICE_LINES, invoiceLine2);
 
-    InvoiceLine invoiceLine3 = getMockInvoiceLine(invoice.getId()).withSubTotal(-25d);
+    InvoiceLine invoiceLine3 = getMockInvoiceLine(invoice.getId()).withSubTotal(-25d).withInvoiceLineNumber("n-3");
     addMockEntry(INVOICE_LINES, invoiceLine3);
 
     // Prepare request body
@@ -694,10 +696,10 @@ public class InvoicesProratedAdjustmentsTest extends ApiTestBase {
     invoice.getAdjustments().clear();
     addMockEntry(INVOICES, invoice);
 
-    InvoiceLine invoiceLine1 = getMockInvoiceLine(invoice.getId()).withQuantity(275);
+    InvoiceLine invoiceLine1 = getMockInvoiceLine(invoice.getId()).withQuantity(275).withInvoiceLineNumber("n-1");
     addMockEntry(INVOICE_LINES, invoiceLine1);
 
-    InvoiceLine invoiceLine2 = getMockInvoiceLine(invoice.getId()).withQuantity(725);
+    InvoiceLine invoiceLine2 = getMockInvoiceLine(invoice.getId()).withQuantity(725).withInvoiceLineNumber("n-2");
     addMockEntry(INVOICE_LINES, invoiceLine2);
 
     // Prepare request body
@@ -982,13 +984,13 @@ public class InvoicesProratedAdjustmentsTest extends ApiTestBase {
     invoice.getAdjustments().clear();
     addMockEntry(INVOICES, invoice);
 
-    InvoiceLine invoiceLine1 = getMockInvoiceLine(invoice.getId()).withSubTotal(10d);
+    InvoiceLine invoiceLine1 = getMockInvoiceLine(invoice.getId()).withSubTotal(10d).withInvoiceLineNumber("n-1");
     addMockEntry(INVOICE_LINES, invoiceLine1);
 
-    InvoiceLine invoiceLine2 = getMockInvoiceLine(invoice.getId()).withSubTotal(10d);
+    InvoiceLine invoiceLine2 = getMockInvoiceLine(invoice.getId()).withSubTotal(10d).withInvoiceLineNumber("n-2");
     addMockEntry(INVOICE_LINES, invoiceLine2);
 
-    InvoiceLine invoiceLine3 = getMockInvoiceLine(invoice.getId()).withSubTotal(10d);
+    InvoiceLine invoiceLine3 = getMockInvoiceLine(invoice.getId()).withSubTotal(10d).withInvoiceLineNumber("n-3");
     addMockEntry(INVOICE_LINES, invoiceLine3);
 
     // Prepare request body
@@ -1031,7 +1033,7 @@ public class InvoicesProratedAdjustmentsTest extends ApiTestBase {
   private InvoiceLine getMockInvoiceLine(String invoiceId) {
     InvoiceLine invoiceLine = getMinimalContentInvoiceLine(invoiceId).withId(randomUUID().toString());
     invoiceLine.getAdjustments().clear();
-
+    invoiceLine.setMetadata(new Metadata().withCreatedDate(new Date()));
     return invoiceLine;
   }
 
