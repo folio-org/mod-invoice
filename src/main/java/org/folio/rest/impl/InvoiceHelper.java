@@ -453,9 +453,7 @@ public class InvoiceHelper extends AbstractHelper {
 
   private void verifyApprovalAllowed(Invoice invoiceFromStorage, Invoice invoice) {
     // Once an invoice is Paid, it should no longer transition to other statuses.
-    if (invoiceFromStorage.getStatus() == Invoice.Status.PAID
-        && (invoice.getStatus() == Invoice.Status.APPROVED || invoice.getStatus() == Invoice.Status.OPEN
-            || invoice.getStatus() == Invoice.Status.REVIEWED || invoice.getStatus() == Invoice.Status.CANCELLED)) {
+    if (invoiceFromStorage.getStatus() == Invoice.Status.PAID && invoice.getStatus() != invoiceFromStorage.getStatus()) {
       List<Parameter> parameters = Collections.singletonList(new Parameter().withKey("invoiceId")
         .withValue(invoice.getId()));
       Error error = INVALID_INVOICE_TRANSITION_ON_PAID_STATUS.toError()
