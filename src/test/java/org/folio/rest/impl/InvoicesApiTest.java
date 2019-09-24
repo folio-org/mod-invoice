@@ -6,6 +6,7 @@ import static java.util.stream.Collectors.groupingBy;
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 import static javax.ws.rs.core.MediaType.TEXT_PLAIN;
 import static org.awaitility.Awaitility.await;
+import static org.folio.invoices.utils.ErrorCodes.INVALID_INVOICE_TRANSITION_ON_PAID_STATUS;
 import static org.folio.invoices.utils.ErrorCodes.EXTERNAL_ACCOUNT_NUMBER_IS_MISSING;
 import static org.folio.invoices.utils.ErrorCodes.FUNDS_NOT_FOUND;
 import static org.folio.invoices.utils.ErrorCodes.FUND_DISTRIBUTIONS_NOT_PRESENT;
@@ -101,6 +102,7 @@ import org.folio.rest.jaxrs.model.Error;
 import org.folio.rest.jaxrs.model.Errors;
 import org.folio.rest.jaxrs.model.FundDistribution;
 import org.folio.rest.jaxrs.model.Invoice;
+import org.folio.rest.jaxrs.model.Invoice.Status;
 import org.folio.rest.jaxrs.model.InvoiceCollection;
 import org.folio.rest.jaxrs.model.InvoiceLine;
 import org.folio.rest.jaxrs.model.InvoiceLineCollection;
@@ -422,6 +424,67 @@ public class InvoicesApiTest extends ApiTestBase {
     assertThat(voucherCreated.getSystemCurrency(), equalTo("GBP"));
     verifyTransitionToApproved(voucherCreated, invoiceLines);
     checkVoucherAcqUnitIdsList(voucherCreated, reqData);
+  }
+
+  private Invoice createMockEntryInStorage() {
+    // Add mock entry in storage with status Paid
+    Invoice invoice = getMinimalContentInvoice();
+    String id = invoice.getId();
+    invoice.setStatus(Invoice.Status.PAID);
+    MockServer.addMockEntry(INVOICES, invoice);
+
+    Invoice reqData = getRqRsEntries(HttpMethod.OTHER, INVOICES).get(0)
+      .mapTo(Invoice.class);
+
+    List<InvoiceLine> invoiceLines = getMockAsJson(INVOICE_LINES_LIST_PATH).mapTo(InvoiceLineCollection.class)
+      .getInvoiceLines();
+    invoiceLines.forEach(invoiceLine -> {
+      invoiceLine.setId(UUID.randomUUID()
+        .toString());
+      invoiceLine.setInvoiceId(id);
+      addMockEntry(INVOICE_LINES, JsonObject.mapFrom(invoiceLine));
+    });
+    return reqData;
+  }
+
+  private void verifyInvoiceTransitionFailure(Invoice reqData) {
+    String jsonBody = JsonObject.mapFrom(reqData)
+      .encode();
+    Headers headers = prepareHeaders(X_OKAPI_URL, X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID);
+    final Errors errors = verifyPut(String.format(INVOICE_ID_PATH, reqData.getId()), jsonBody, headers, "", 422).then()
+      .extract()
+      .body()
+      .as(Errors.class);
+
+    assertThat(errors, notNullValue());
+    assertThat(errors.getErrors(), hasSize(1));
+    final Error error = errors.getErrors()
+      .get(0);
+    assertThat(error.getMessage(), equalTo(INVALID_INVOICE_TRANSITION_ON_PAID_STATUS.getDescription()));
+    assertThat(error.getCode(), equalTo(INVALID_INVOICE_TRANSITION_ON_PAID_STATUS.getCode()));
+    assertThat(error.getParameters()
+      .get(0)
+      .getValue(), containsString(reqData.getId()));
+
+    // Verify invoice not updated
+    assertThat(getInvoiceUpdates(), hasSize(0));
+  }
+
+  @Test
+  public void testInvoiceTransitionFailureOnPaidStatus() {
+    logger.info(
+        "=== Test invoice cannot be transitioned to \"Open\", \"Reviewed\", \"Cancelled\" or \"Approved\" status if it is in \"Paid\" status ===");
+
+    for (Status status : Invoice.Status.values()) {
+      if (status != Invoice.Status.PAID) {
+        Invoice reqData = createMockEntryInStorage();
+
+        // Try to update storage entry
+        reqData.setStatus(status);
+
+        verifyInvoiceTransitionFailure(reqData);
+      }
+    }
   }
 
   @Test
