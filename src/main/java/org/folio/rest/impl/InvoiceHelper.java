@@ -451,7 +451,7 @@ public class InvoiceHelper extends AbstractHelper {
     return completedFuture(null);
   }
 
-  private void verifyApprovalAllowed(Invoice invoiceFromStorage, Invoice invoice) {
+  private void verifyTransitionOnPaidStatus(Invoice invoiceFromStorage, Invoice invoice) {
     // Once an invoice is Paid, it should no longer transition to other statuses.
     if (invoiceFromStorage.getStatus() == Invoice.Status.PAID && invoice.getStatus() != invoiceFromStorage.getStatus()) {
       List<Parameter> parameters = Collections.singletonList(new Parameter().withKey("invoiceId")
@@ -463,7 +463,7 @@ public class InvoiceHelper extends AbstractHelper {
   }
 
   private boolean isTransitionToApproved(Invoice invoiceFromStorage, Invoice invoice) {
-    verifyApprovalAllowed(invoiceFromStorage, invoice);
+    verifyTransitionOnPaidStatus(invoiceFromStorage, invoice);
     return invoice.getStatus() == Invoice.Status.APPROVED && !isPostApproval(invoiceFromStorage);
   }
 
