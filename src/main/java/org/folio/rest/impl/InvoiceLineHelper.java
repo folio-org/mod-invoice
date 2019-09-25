@@ -1,6 +1,7 @@
 package org.folio.rest.impl;
 
 import static java.util.stream.Collectors.toList;
+import static java.util.stream.Collectors.toMap;
 import static org.apache.commons.lang3.StringUtils.isEmpty;
 import static org.folio.invoices.utils.ErrorCodes.CANNOT_DELETE_INVOICE_LINE;
 import static org.folio.invoices.utils.ErrorCodes.PROHIBITED_INVOICE_LINE_CREATION;
@@ -32,7 +33,6 @@ import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
@@ -68,7 +68,7 @@ public class InvoiceLineHelper extends AbstractHelper {
 
   private static final String INVOICE_LINE_NUMBER_ENDPOINT = resourcesPath(INVOICE_LINE_NUMBER) + "?" + INVOICE_ID + "=";
   public static final String GET_INVOICE_LINES_BY_QUERY = resourcesPath(INVOICE_LINES) + SEARCH_PARAMS;
-  private static final String DASH_SEPARATOR = "-";
+  private static final String HYPHEN_SEPARATOR = "-";
 
   private final ProtectionHelper protectionHelper;
 
@@ -341,8 +341,17 @@ public class InvoiceLineHelper extends AbstractHelper {
       });
   }
 
+  /**
+   * Builds {@link InvoiceLine#invoiceLineNumber} based on the invoice number and sequence number added separated by a hyphen.
+   * {@link InvoiceLineHelper#sortByInvoiceLineNumber(List)} relies on the format of the built
+   * {@link InvoiceLine#invoiceLineNumber}.
+   *
+   * @param folioInvoiceNumber string representation of {@link Invoice#folioInvoiceNo}
+   * @param sequence           number of liner for associated invoice
+   * @return string representing the {@link InvoiceLine#invoiceLineNumber}
+   */
   private String buildInvoiceLineNumber(String folioInvoiceNumber, String sequence) {
-    return folioInvoiceNumber + DASH_SEPARATOR + sequence;
+    return folioInvoiceNumber + HYPHEN_SEPARATOR + sequence;
   }
 
   private String getInvoiceLineNumberEndpoint(String id) {
@@ -414,8 +423,15 @@ public class InvoiceLineHelper extends AbstractHelper {
       .collect(toList());
   }
 
+  /**
+   * Splits {@link InvoiceLine#invoiceLineNumber} into invoice number and integer suffix by hyphen and sort lines by suffix casted
+   * to integer. {@link InvoiceLineHelper#buildInvoiceLineNumber} must ensure that{@link InvoiceLine#invoiceLineNumber} will have the
+   * correct format when creating the line.
+   *
+   * @param lines to be sorted
+   */
   private void sortByInvoiceLineNumber(List<InvoiceLine> lines) {
-    lines.sort(Comparator.comparing(invoiceLine -> Integer.parseInt(invoiceLine.getInvoiceLineNumber().split(DASH_SEPARATOR)[1])));
+    lines.sort(Comparator.comparing(invoiceLine -> Integer.parseInt(invoiceLine.getInvoiceLineNumber().split(HYPHEN_SEPARATOR)[1])));
   }
 
   /**
@@ -501,13 +517,8 @@ public class InvoiceLineHelper extends AbstractHelper {
 
   private Map<String, MonetaryAmount> calculateAdjValueForEachLine(List<InvoiceLine> lines,
       BiFunction<MonetaryAmount, InvoiceLine, MonetaryAmount> prorateFunction, MonetaryAmount expectedAdjustmentTotal) {
-    Map<String, MonetaryAmount> lineIdAdjustmentValueMap = new HashMap<>();
-
-    for (InvoiceLine line : lines) {
-      MonetaryAmount value = prorateFunction.apply(expectedAdjustmentTotal, line);
-      lineIdAdjustmentValueMap.put(line.getId(), value);
-    }
-    return lineIdAdjustmentValueMap;
+    return lines.stream()
+      .collect(toMap(InvoiceLine::getId, line -> prorateFunction.apply(expectedAdjustmentTotal, line)));
   }
 
   private MonetaryAmount getSmallestUnit(MonetaryAmount expectedAdjustmentValue, int remainderSignum) {
