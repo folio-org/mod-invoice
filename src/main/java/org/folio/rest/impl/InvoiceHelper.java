@@ -13,6 +13,7 @@ import static org.apache.commons.lang3.StringUtils.isAlpha;
 import static org.apache.commons.lang3.StringUtils.isEmpty;
 import static org.folio.invoices.utils.AcqDesiredPermissions.ASSIGN;
 import static org.folio.invoices.utils.AcqDesiredPermissions.MANAGE;
+import static org.folio.invoices.utils.ErrorCodes.INVALID_INVOICE_TRANSITION_ON_PAID_STATUS;
 import static org.folio.invoices.utils.ErrorCodes.EXTERNAL_ACCOUNT_NUMBER_IS_MISSING;
 import static org.folio.invoices.utils.ErrorCodes.FUNDS_NOT_FOUND;
 import static org.folio.invoices.utils.ErrorCodes.FUND_DISTRIBUTIONS_NOT_PRESENT;
@@ -451,7 +452,19 @@ public class InvoiceHelper extends AbstractHelper {
     return completedFuture(null);
   }
 
+  private void verifyTransitionOnPaidStatus(Invoice invoiceFromStorage, Invoice invoice) {
+    // Once an invoice is Paid, it should no longer transition to other statuses.
+    if (invoiceFromStorage.getStatus() == Invoice.Status.PAID && invoice.getStatus() != invoiceFromStorage.getStatus()) {
+      List<Parameter> parameters = Collections.singletonList(new Parameter().withKey("invoiceId")
+        .withValue(invoice.getId()));
+      Error error = INVALID_INVOICE_TRANSITION_ON_PAID_STATUS.toError()
+        .withParameters(parameters);
+      throw new HttpException(422, error);
+    }
+  }
+
   private boolean isTransitionToApproved(Invoice invoiceFromStorage, Invoice invoice) {
+    verifyTransitionOnPaidStatus(invoiceFromStorage, invoice);
     return invoice.getStatus() == Invoice.Status.APPROVED && !isPostApproval(invoiceFromStorage);
   }
 
@@ -532,7 +545,7 @@ public class InvoiceHelper extends AbstractHelper {
     voucher.setInvoiceCurrency(invoice.getCurrency());
     voucher.setExportToAccounting(invoice.getExportToAccounting());
 
-    //TODO Start using real information to create a voucher when it becomes known where to get these values from.
+    // TODO Start using real information to create a voucher when it becomes known where to get these values from.
     voucher.setAccountingCode(DEFAULT_ACCOUNTING_CODE);
     voucher.setType(Voucher.Type.VOUCHER);
     voucher.setStatus(Voucher.Status.AWAITING_PAYMENT);

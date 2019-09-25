@@ -449,15 +449,17 @@ public class InvoiceLineHelper extends AbstractHelper {
     return (amount, line) -> amount.divide(lines.size()).with(Monetary.getDefaultRounding());
   }
 
-  private List<InvoiceLine> applyAmountTypeProratedAdjustments(Adjustment adjustment, List<InvoiceLine> lines, CurrencyUnit currencyUnit,
-                                                               BiFunction<MonetaryAmount, InvoiceLine, MonetaryAmount> prorateFunction) {
+  private List<InvoiceLine> applyAmountTypeProratedAdjustments(Adjustment adjustment, List<InvoiceLine> lines,
+      CurrencyUnit currencyUnit, BiFunction<MonetaryAmount, InvoiceLine, MonetaryAmount> prorateFunction) {
     List<InvoiceLine> updatedLines = new ArrayList<>();
 
     MonetaryAmount expectedAdjustmentTotal = Money.of(adjustment.getValue(), currencyUnit);
-    Map<String, MonetaryAmount> lineIdAdjustmentValueMap = calculateAdjValueForEachLine(lines, prorateFunction, expectedAdjustmentTotal);
+    Map<String, MonetaryAmount> lineIdAdjustmentValueMap = calculateAdjValueForEachLine(lines, prorateFunction,
+        expectedAdjustmentTotal);
 
-    MonetaryAmount remainder = expectedAdjustmentTotal.abs().subtract(getActualAdjustmentTotal(lineIdAdjustmentValueMap, currencyUnit).abs());
-    final int remainderSignum = remainder.signum();
+    MonetaryAmount remainder = expectedAdjustmentTotal.abs()
+      .subtract(getActualAdjustmentTotal(lineIdAdjustmentValueMap, currencyUnit).abs());
+    int remainderSignum = remainder.signum();
     MonetaryAmount smallestUnit = getSmallestUnit(expectedAdjustmentTotal, remainderSignum);
 
     for (ListIterator<InvoiceLine> iterator = getIterator(lines, remainderSignum); isIteratorHasNext(iterator, remainderSignum);) {
@@ -471,7 +473,8 @@ public class InvoiceLineHelper extends AbstractHelper {
       }
 
       Adjustment proratedAdjustment = prepareAdjustmentForLine(adjustment);
-      proratedAdjustment.setValue(amount.getNumber().doubleValue());
+      proratedAdjustment.setValue(amount.getNumber()
+        .doubleValue());
       if (addAdjustmentToLine(line, proratedAdjustment)) {
         updatedLines.add(line);
       }
@@ -483,7 +486,6 @@ public class InvoiceLineHelper extends AbstractHelper {
   private ListIterator<InvoiceLine> getIterator(List<InvoiceLine> lines, int remainder) {
     return remainder > 0 ? lines.listIterator(lines.size()) : lines.listIterator();
   }
-
 
   private boolean isIteratorHasNext(ListIterator<InvoiceLine> iterator, int remainder) {
     return remainder > 0 ? iterator.hasPrevious() : iterator.hasNext();
@@ -497,7 +499,8 @@ public class InvoiceLineHelper extends AbstractHelper {
     return lineIdAdjustmentValueMap.values().stream().reduce(MonetaryAmount::add).orElse(Money.zero(currencyUnit));
   }
 
-  private Map<String, MonetaryAmount> calculateAdjValueForEachLine(List<InvoiceLine> lines, BiFunction<MonetaryAmount, InvoiceLine, MonetaryAmount> prorateFunction, MonetaryAmount expectedAdjustmentTotal) {
+  private Map<String, MonetaryAmount> calculateAdjValueForEachLine(List<InvoiceLine> lines,
+      BiFunction<MonetaryAmount, InvoiceLine, MonetaryAmount> prorateFunction, MonetaryAmount expectedAdjustmentTotal) {
     Map<String, MonetaryAmount> lineIdAdjustmentValueMap = new HashMap<>();
 
     for (InvoiceLine line : lines) {
