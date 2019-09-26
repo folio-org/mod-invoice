@@ -20,7 +20,7 @@ import static org.folio.rest.jaxrs.model.Adjustment.Prorate.NOT_PRORATED;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
-import java.util.HashMap;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -61,7 +61,6 @@ import org.javamoney.moneta.function.MonetaryOperators;
 
 import io.vertx.core.Context;
 import io.vertx.core.eventbus.Message;
-import io.vertx.core.http.HttpHeaders;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
@@ -78,7 +77,7 @@ public class HelperUtils {
   public static final String SEARCH_PARAMS = "?limit=%s&offset=%s%s&lang=%s";
   public static final String IS_DELETED_PROP = "isDeleted";
   public static final String ALL_UNITS_CQL = IS_DELETED_PROP + "=*";
-  
+
   private static final String EXCEPTION_CALLING_ENDPOINT_MSG = "Exception calling {} {}";
   private static final String CALLING_ENDPOINT_MSG = "Sending {} {}";
   private static final Pattern CQL_SORT_BY_PATTERN = Pattern.compile("(.*)(\\ssortBy\\s.*)", Pattern.CASE_INSENSITIVE);
@@ -96,9 +95,8 @@ public class HelperUtils {
 
     HttpClientInterface httpClient = HttpClientFactory.getHttpClient(okapiURL, tenantId);
 
-    Map<String, String> customHeader = new HashMap<>();
-    customHeader.put(HttpHeaders.ACCEPT.toString(), APPLICATION_JSON + ", " + TEXT_PLAIN);
-    httpClient.setDefaultHeaders(customHeader);
+    // The RMB's HttpModuleClient2.ACCEPT is in sentence case. Using the same format to avoid duplicates (issues migrating to RMB 27.1.1)
+    httpClient.setDefaultHeaders(Collections.singletonMap("Accept", APPLICATION_JSON + ", " + TEXT_PLAIN));
     return httpClient;
   }
 
