@@ -12,7 +12,8 @@
           "code": "USHIST",
           "encumbrance": "1c8fc9f4-d2cc-4bd1-aa9a-cb02291cbe65",
           "fundId": "f951ec3a-19a0-42ea-85d1-ae987caf5e4d",
-          "percentage": 50
+          "distributionType": "percentage",
+          "value": 50
         }
       ],
       "subTransactionId": "d384a4c2-9f85-4072-a305-800b3f6f5143",
@@ -30,7 +31,8 @@
           "code": "USHIST",
           "encumbrance": "1c8fc9f4-d2cc-4bd1-aa9a-cb02291cbe65",
           "fundId": "172364c7-aaaa-10c2-a12c-e35ceccbfaf2",
-          "percentage": 50
+          "distributionType": "percentage",
+          "value": 50
         }
       ],
       "subTransactionId": "7b1f7179-b83f-4eab-a4db-3c600eebe271",
@@ -48,7 +50,8 @@
           "code": "USHIST",
           "encumbrance": "1c8fc9f4-d2cc-4bd1-aa9a-cb02291cbe65",
           "fundId": "d694fb77-589f-48b1-9cf4-d5e35a3847b3",
-          "percentage": 50
+          "distributionType": "percentage",
+          "value": 50
         }
       ],
       "subTransactionId": "60007286-990b-4d92-a13a-375541146806",

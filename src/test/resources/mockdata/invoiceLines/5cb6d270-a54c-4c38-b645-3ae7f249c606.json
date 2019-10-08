@@ -20,13 +20,16 @@
       "code": "EUHIST",
       "encumbrance": "5f9bfc74-f6ff-4877-be1f-793f8ce90ade",
       "fundId": "63157e96-0693-426d-b0df-948bacdfdb08",
-      "percentage": 50
+      "distributionType": "percentage",
+      "value": 50
     }
   ],
   "adjustments": [
     {
       "description": "Test adjustment",
       "type": "Percentage",
+      "relationToTotal": "In addition to",
+      "prorate": "Not prorated",
       "value": 10.1
     }
   ],

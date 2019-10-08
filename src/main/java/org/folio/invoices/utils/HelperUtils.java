@@ -16,6 +16,7 @@ import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
 import static org.folio.rest.RestVerticle.OKAPI_HEADER_TENANT;
 import static org.folio.rest.impl.AbstractHelper.ID;
 import static org.folio.rest.jaxrs.model.Adjustment.Prorate.NOT_PRORATED;
+import static org.folio.rest.jaxrs.model.FundDistribution.DistributionType.PERCENTAGE;
 
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
@@ -397,7 +398,11 @@ public class HelperUtils {
 
     for (FundDistribution fundDistribution : fundDistributions) {
       MonetaryAmount invoiceLineTotal = invoiceLineIdMonetaryAmountMap.get(fundDistribution.getInvoiceLineId());
-      voucherLineAmount = voucherLineAmount.add(invoiceLineTotal.with(MonetaryOperators.percent(fundDistribution.getPercentage())));
+      if (PERCENTAGE == fundDistribution.getDistributionType()) {
+        voucherLineAmount = voucherLineAmount.add(invoiceLineTotal.with(MonetaryOperators.percent(fundDistribution.getValue())));
+      } else {
+        voucherLineAmount = voucherLineAmount.add(Money.of(fundDistribution.getValue(), invoiceCurrency));
+      }
     }
 
     MonetaryAmount convertedAmount = voucherLineAmount.with(conversion);

@@ -17,7 +17,7 @@ import static org.folio.invoices.utils.ErrorCodes.INVALID_INVOICE_TRANSITION_ON_
 import static org.folio.invoices.utils.ErrorCodes.EXTERNAL_ACCOUNT_NUMBER_IS_MISSING;
 import static org.folio.invoices.utils.ErrorCodes.FUNDS_NOT_FOUND;
 import static org.folio.invoices.utils.ErrorCodes.FUND_DISTRIBUTIONS_NOT_PRESENT;
-import static org.folio.invoices.utils.ErrorCodes.FUND_DISTRIBUTIONS_PERCENTAGE_SUMMARY_MISMATCH;
+import static org.folio.invoices.utils.ErrorCodes.FUND_DISTRIBUTIONS_SUMMARY_MISMATCH;
 import static org.folio.invoices.utils.ErrorCodes.INCOMPATIBLE_INVOICE_FIELDS_ON_STATUS_TRANSITION;
 import static org.folio.invoices.utils.ErrorCodes.INVOICE_TOTAL_REQUIRED;
 import static org.folio.invoices.utils.ErrorCodes.PO_LINE_NOT_FOUND;
@@ -49,6 +49,8 @@ import static org.folio.invoices.utils.ResourcePathResolver.ORDER_LINES;
 import static org.folio.invoices.utils.ResourcePathResolver.resourceByIdPath;
 import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
 import static org.folio.rest.RestVerticle.OKAPI_HEADER_PERMISSIONS;
+import static org.folio.rest.jaxrs.model.FundDistribution.DistributionType.AMOUNT;
+import static org.folio.rest.jaxrs.model.FundDistribution.DistributionType.PERCENTAGE;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -500,16 +502,22 @@ public class InvoiceHelper extends AbstractHelper {
 
   private void validateInvoiceLineFundDistributions(List<InvoiceLine> invoiceLines) {
     for (InvoiceLine line : invoiceLines){
-      if (line.getFundDistributions() == null || line.getFundDistributions().isEmpty()) {
+      if (CollectionUtils.isEmpty(line.getFundDistributions())) {
         throw new HttpException(400, FUND_DISTRIBUTIONS_NOT_PRESENT);
       }
-      Double totalPercentage = line.getFundDistributions().stream()
-        .mapToDouble(FundDistribution::getPercentage)
-        .sum();
-      if (!totalPercentage.equals(100d)){
-        throw new HttpException(400, FUND_DISTRIBUTIONS_PERCENTAGE_SUMMARY_MISMATCH);
+
+      if (isFundDistributionSummaryNotValid(line)) {
+        throw new HttpException(400, FUND_DISTRIBUTIONS_SUMMARY_MISMATCH);
       }
     }
+  }
+
+  private boolean isFundDistributionSummaryNotValid(InvoiceLine line) {
+    Double total = line.getFundDistributions().stream()
+      .mapToDouble(FundDistribution::getValue)
+      .sum();
+    FundDistribution.DistributionType lineDistributionType = line.getFundDistributions().get(0).getDistributionType();
+    return (PERCENTAGE == lineDistributionType && !total.equals(100d)) || (AMOUNT == lineDistributionType && !total.equals(line.getTotal()));
   }
 
   /**

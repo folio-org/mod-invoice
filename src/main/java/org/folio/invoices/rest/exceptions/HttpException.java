@@ -17,11 +17,13 @@ public class HttpException extends RuntimeException {
   }
 
   public HttpException(int code, ErrorCodes errorCode) {
+    super(errorCode.getDescription());
     this.code = code;
     this.error = errorCode.toError();
   }
 
   public HttpException(int code, Error error) {
+    super(error.getMessage());
     this.code = code;
     this.error = error;
   }
