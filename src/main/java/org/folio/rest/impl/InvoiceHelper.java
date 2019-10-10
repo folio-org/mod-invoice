@@ -72,6 +72,7 @@ import javax.money.convert.CurrencyConversion;
 
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.collections4.ListUtils;
+import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.folio.HttpStatus;
 import org.folio.invoices.rest.exceptions.HttpException;
@@ -101,6 +102,7 @@ import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import me.escoffier.vertx.completablefuture.VertxCompletableFuture;
 import one.util.streamex.StreamEx;
+import org.javamoney.moneta.function.MonetaryOperators;
 
 public class InvoiceHelper extends AbstractHelper {
 
@@ -486,7 +488,7 @@ public class InvoiceHelper extends AbstractHelper {
       .thenCompose(ok -> getInvoiceLinesWithTotals(invoice))
       .thenApply(lines -> {
         verifyInvoiceLineNotEmpty(lines);
-        validateInvoiceLineFundDistributions(lines);
+        validateInvoiceLineFundDistributions(lines, Monetary.getCurrency(invoice.getCurrency()));
         return lines;
       })
       .thenCompose(lines -> prepareVoucher(invoice)
@@ -500,24 +502,30 @@ public class InvoiceHelper extends AbstractHelper {
     }
   }
 
-  private void validateInvoiceLineFundDistributions(List<InvoiceLine> invoiceLines) {
+  private void validateInvoiceLineFundDistributions(List<InvoiceLine> invoiceLines, CurrencyUnit currencyUnit) {
     for (InvoiceLine line : invoiceLines){
       if (CollectionUtils.isEmpty(line.getFundDistributions())) {
         throw new HttpException(400, FUND_DISTRIBUTIONS_NOT_PRESENT);
       }
 
-      if (isFundDistributionSummaryNotValid(line)) {
+      if (isFundDistributionSummaryNotValid(line, currencyUnit)) {
         throw new HttpException(400, FUND_DISTRIBUTIONS_SUMMARY_MISMATCH);
       }
     }
   }
 
-  private boolean isFundDistributionSummaryNotValid(InvoiceLine line) {
-    Double total = line.getFundDistributions().stream()
-      .mapToDouble(FundDistribution::getValue)
-      .sum();
-    FundDistribution.DistributionType lineDistributionType = line.getFundDistributions().get(0).getDistributionType();
-    return (PERCENTAGE == lineDistributionType && !total.equals(100d)) || (AMOUNT == lineDistributionType && !total.equals(line.getTotal()));
+  private boolean isFundDistributionSummaryNotValid(InvoiceLine line, CurrencyUnit currencyUnit) {
+    return ObjectUtils.notEqual(sumMixedDistributions(line, currencyUnit), line.getTotal());
+  }
+
+  private Double sumMixedDistributions(InvoiceLine line, CurrencyUnit currencyUnit) {
+    return line.getFundDistributions().stream()
+      .map(fundDistribution -> fundDistribution.getDistributionType() == PERCENTAGE ?
+        Money.of(line.getTotal(), currencyUnit).with(MonetaryOperators.percent(fundDistribution.getValue())) :
+        Money.of(fundDistribution.getValue(), currencyUnit))
+      .reduce(Money::add)
+      .orElse(Money.zero(currencyUnit))
+      .getNumber().doubleValue();
   }
 
   /**
