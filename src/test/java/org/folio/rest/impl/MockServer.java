@@ -650,7 +650,7 @@ public class MockServer {
     } else if (queryParam.contains(ID_FOR_INTERNAL_SERVER_ERROR)) {
       serverResponse(ctx, 500, APPLICATION_JSON, Response.Status.INTERNAL_SERVER_ERROR.getReasonPhrase());
     } else if (queryParam.startsWith(QUERY_PARAM_START_WITH)) {
-      Matcher lineIdMatcher = Pattern.compile(".*invoice_lines.id==(\\S+).*")
+      Matcher lineIdMatcher = Pattern.compile(".*invoiceLines.id==(\\S+).*")
         .matcher(queryParam);
       final String lineId = lineIdMatcher.find() ? lineIdMatcher.group(1) : EMPTY;
       
