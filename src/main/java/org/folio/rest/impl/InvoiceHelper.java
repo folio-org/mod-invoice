@@ -17,7 +17,7 @@ import static org.folio.invoices.utils.ErrorCodes.INVALID_INVOICE_TRANSITION_ON_
 import static org.folio.invoices.utils.ErrorCodes.EXTERNAL_ACCOUNT_NUMBER_IS_MISSING;
 import static org.folio.invoices.utils.ErrorCodes.FUNDS_NOT_FOUND;
 import static org.folio.invoices.utils.ErrorCodes.FUND_DISTRIBUTIONS_NOT_PRESENT;
-import static org.folio.invoices.utils.ErrorCodes.FUND_DISTRIBUTIONS_PERCENTAGE_SUMMARY_MISMATCH;
+import static org.folio.invoices.utils.ErrorCodes.FUND_DISTRIBUTIONS_SUMMARY_MISMATCH;
 import static org.folio.invoices.utils.ErrorCodes.INCOMPATIBLE_INVOICE_FIELDS_ON_STATUS_TRANSITION;
 import static org.folio.invoices.utils.ErrorCodes.INVOICE_TOTAL_REQUIRED;
 import static org.folio.invoices.utils.ErrorCodes.PO_LINE_NOT_FOUND;
@@ -49,6 +49,8 @@ import static org.folio.invoices.utils.ResourcePathResolver.ORDER_LINES;
 import static org.folio.invoices.utils.ResourcePathResolver.resourceByIdPath;
 import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
 import static org.folio.rest.RestVerticle.OKAPI_HEADER_PERMISSIONS;
+import static org.folio.rest.jaxrs.model.FundDistribution.DistributionType.AMOUNT;
+import static org.folio.rest.jaxrs.model.FundDistribution.DistributionType.PERCENTAGE;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -70,6 +72,7 @@ import javax.money.convert.CurrencyConversion;
 
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.collections4.ListUtils;
+import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.folio.HttpStatus;
 import org.folio.invoices.rest.exceptions.HttpException;
@@ -99,6 +102,7 @@ import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import me.escoffier.vertx.completablefuture.VertxCompletableFuture;
 import one.util.streamex.StreamEx;
+import org.javamoney.moneta.function.MonetaryOperators;
 
 public class InvoiceHelper extends AbstractHelper {
 
@@ -484,7 +488,7 @@ public class InvoiceHelper extends AbstractHelper {
       .thenCompose(ok -> getInvoiceLinesWithTotals(invoice))
       .thenApply(lines -> {
         verifyInvoiceLineNotEmpty(lines);
-        validateInvoiceLineFundDistributions(lines);
+        validateInvoiceLineFundDistributions(lines, Monetary.getCurrency(invoice.getCurrency()));
         return lines;
       })
       .thenCompose(lines -> prepareVoucher(invoice)
@@ -498,18 +502,30 @@ public class InvoiceHelper extends AbstractHelper {
     }
   }
 
-  private void validateInvoiceLineFundDistributions(List<InvoiceLine> invoiceLines) {
+  private void validateInvoiceLineFundDistributions(List<InvoiceLine> invoiceLines, CurrencyUnit currencyUnit) {
     for (InvoiceLine line : invoiceLines){
-      if (line.getFundDistributions() == null || line.getFundDistributions().isEmpty()) {
+      if (CollectionUtils.isEmpty(line.getFundDistributions())) {
         throw new HttpException(400, FUND_DISTRIBUTIONS_NOT_PRESENT);
       }
-      Double totalPercentage = line.getFundDistributions().stream()
-        .mapToDouble(FundDistribution::getPercentage)
-        .sum();
-      if (!totalPercentage.equals(100d)){
-        throw new HttpException(400, FUND_DISTRIBUTIONS_PERCENTAGE_SUMMARY_MISMATCH);
+
+      if (isFundDistributionSummaryNotValid(line, currencyUnit)) {
+        throw new HttpException(400, FUND_DISTRIBUTIONS_SUMMARY_MISMATCH);
       }
     }
+  }
+
+  private boolean isFundDistributionSummaryNotValid(InvoiceLine line, CurrencyUnit currencyUnit) {
+    return ObjectUtils.notEqual(sumMixedDistributions(line, currencyUnit), line.getTotal());
+  }
+
+  private Double sumMixedDistributions(InvoiceLine line, CurrencyUnit currencyUnit) {
+    return line.getFundDistributions().stream()
+      .map(fundDistribution -> fundDistribution.getDistributionType() == PERCENTAGE ?
+        Money.of(line.getTotal(), currencyUnit).with(MonetaryOperators.percent(fundDistribution.getValue())) :
+        Money.of(fundDistribution.getValue(), currencyUnit))
+      .reduce(Money::add)
+      .orElse(Money.zero(currencyUnit))
+      .getNumber().doubleValue();
   }
 
   /**

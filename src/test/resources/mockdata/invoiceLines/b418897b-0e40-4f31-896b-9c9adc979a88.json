@@ -19,7 +19,8 @@
       "code": "EUHIST",
       "encumbrance": "5f9bfc74-f6ff-4877-be1f-793f8ce90ade",
       "fundId": "69640328-788e-43fc-9c3c-af39e243f3b7",
-      "percentage": 100
+      "distributionType": "percentage",
+      "value": 100
     }
   ],
   "adjustments": [

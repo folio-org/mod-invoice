@@ -9,7 +9,8 @@
       "code": "USHIST",
       "encumbrance": "1c8fc9f4-d2cc-4bd1-aa9a-cb02291cbe65",
       "fundId": "f951ec3a-19a0-42ea-85d1-ae987caf5e4d",
-      "percentage": 50
+      "distributionType": "percentage",
+      "value": 50
     }
   ],
   "subTransactionId": "d384a4c2-9f85-4072-a305-800b3f6f5143",

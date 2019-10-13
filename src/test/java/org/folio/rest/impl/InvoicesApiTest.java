@@ -10,7 +10,7 @@ import static org.folio.invoices.utils.ErrorCodes.INVALID_INVOICE_TRANSITION_ON_
 import static org.folio.invoices.utils.ErrorCodes.EXTERNAL_ACCOUNT_NUMBER_IS_MISSING;
 import static org.folio.invoices.utils.ErrorCodes.FUNDS_NOT_FOUND;
 import static org.folio.invoices.utils.ErrorCodes.FUND_DISTRIBUTIONS_NOT_PRESENT;
-import static org.folio.invoices.utils.ErrorCodes.FUND_DISTRIBUTIONS_PERCENTAGE_SUMMARY_MISMATCH;
+import static org.folio.invoices.utils.ErrorCodes.FUND_DISTRIBUTIONS_SUMMARY_MISMATCH;
 import static org.folio.invoices.utils.ErrorCodes.GENERIC_ERROR_CODE;
 import static org.folio.invoices.utils.ErrorCodes.INVOICE_TOTAL_REQUIRED;
 import static org.folio.invoices.utils.ErrorCodes.MOD_CONFIG_ERROR;
@@ -73,7 +73,10 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import java.io.IOException;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
@@ -151,6 +154,7 @@ public class InvoicesApiTest extends ApiTestBase {
   private static final String FUND_ID_WITHOUT_EXTERNAL_ACCOUNT_NUMBER = "29db8f8e-0d7c-4406-a373-389f00884f99";
   private static final String STATUS = "status";
   private static final String INVALID_CURRENCY = "ABC";
+  public static final String EXISTING_FUND_ID = "1d1574f1-9196-4a57-8d1f-3b2e4309eb81";
 
   @Test
   public void testGetInvoicingInvoices() {
@@ -424,6 +428,130 @@ public class InvoicesApiTest extends ApiTestBase {
     assertThat(voucherCreated.getSystemCurrency(), equalTo("GBP"));
     verifyTransitionToApproved(voucherCreated, invoiceLines);
     checkVoucherAcqUnitIdsList(voucherCreated, reqData);
+  }
+
+  @Test
+  public void testTransitionFromOpenToApprovedWithAmountTypeFundDistributions() {
+    logger.info("=== Test transition invoice to Approved ===");
+
+    List<InvoiceLine> invoiceLines = getMockAsJson(INVOICE_LINES_LIST_PATH).mapTo(InvoiceLineCollection.class).getInvoiceLines();
+    Invoice reqData = getMockAsJson(OPEN_INVOICE_SAMPLE_PATH).mapTo(Invoice.class);
+    String id = reqData.getId();
+    invoiceLines
+      .forEach(invoiceLine -> {
+        invoiceLine.setId(UUID.randomUUID().toString());
+        invoiceLine.setInvoiceId(id);
+        double fundDistrValue = BigDecimal.valueOf(invoiceLine.getSubTotal())
+          .add(BigDecimal.valueOf(invoiceLine.getAdjustmentsTotal()))
+          .divide(BigDecimal.valueOf(invoiceLine.getFundDistributions().size()), 2, RoundingMode.HALF_EVEN).doubleValue();
+        invoiceLine.getFundDistributions()
+          .forEach(fundDistribution -> fundDistribution.withDistributionType(FundDistribution.DistributionType.AMOUNT)
+            .setValue(fundDistrValue));
+        addMockEntry(INVOICE_LINES, JsonObject.mapFrom(invoiceLine));
+      });
+
+    reqData.setStatus(Invoice.Status.APPROVED);
+
+    String jsonBody = JsonObject.mapFrom(reqData).encode();
+    Headers headers = prepareHeaders(X_OKAPI_URL, X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID);
+    verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, headers, "", 204);
+
+    // Verify that expected number of external calls made
+    assertThat(getInvoiceRetrievals(), hasSize(1));
+    assertThat(getInvoiceLineSearches(), hasSize(1));
+
+    List<JsonObject> vouchersCreated = serverRqRs.get(VOUCHERS, HttpMethod.POST);
+    assertThat(vouchersCreated, notNullValue());
+    assertThat(vouchersCreated, hasSize(1));
+    Voucher voucherCreated = vouchersCreated.get(0).mapTo(Voucher.class);
+    assertThat(voucherCreated.getVoucherNumber(), equalTo(TEST_PREFIX + VOUCHER_NUMBER_VALUE));
+    assertThat(voucherCreated.getSystemCurrency(), equalTo("GBP"));
+    verifyTransitionToApproved(voucherCreated, invoiceLines);
+    checkVoucherAcqUnitIdsList(voucherCreated, reqData);
+  }
+
+  @Test
+  public void testTransitionFromOpenToApprovedWithMixedTypesFundDistributions() {
+    logger.info("=== Test transition invoice to Approved ===");
+
+    Invoice reqData = getMockAsJson(OPEN_INVOICE_SAMPLE_PATH).mapTo(Invoice.class);
+    String id = reqData.getId();
+    InvoiceLine invoiceLine = getMinimalContentInvoiceLine(id);
+    invoiceLine.setSubTotal(100d);
+    invoiceLine.setId(UUID.randomUUID().toString());
+    FundDistribution percentageDistribution = new FundDistribution()
+      .withFundId(EXISTING_FUND_ID)
+      .withDistributionType(FundDistribution.DistributionType.PERCENTAGE)
+      .withValue(50d);
+    FundDistribution amountDistribution = new FundDistribution()
+      .withFundId(EXISTING_FUND_ID)
+      .withDistributionType(FundDistribution.DistributionType.AMOUNT)
+      .withValue(50d);
+
+    invoiceLine.getFundDistributions().addAll(Arrays.asList(percentageDistribution, amountDistribution));
+
+    addMockEntry(INVOICE_LINES, JsonObject.mapFrom(invoiceLine));
+
+    reqData.setStatus(Invoice.Status.APPROVED);
+
+    String jsonBody = JsonObject.mapFrom(reqData).encode();
+    Headers headers = prepareHeaders(X_OKAPI_URL, X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID);
+    verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, headers, "", 204);
+
+    // Verify that expected number of external calls made
+    assertThat(getInvoiceRetrievals(), hasSize(1));
+    assertThat(getInvoiceLineSearches(), hasSize(1));
+
+    List<JsonObject> vouchersCreated = serverRqRs.get(VOUCHERS, HttpMethod.POST);
+    assertThat(vouchersCreated, notNullValue());
+    assertThat(vouchersCreated, hasSize(1));
+    Voucher voucherCreated = vouchersCreated.get(0).mapTo(Voucher.class);
+    assertThat(voucherCreated.getVoucherNumber(), equalTo(TEST_PREFIX + VOUCHER_NUMBER_VALUE));
+    assertThat(voucherCreated.getSystemCurrency(), equalTo("GBP"));
+    verifyTransitionToApproved(voucherCreated, Collections.singletonList(invoiceLine));
+    checkVoucherAcqUnitIdsList(voucherCreated, reqData);
+  }
+
+  @Test
+  public void testTransitionFromOpenToApprovedWithMixedTypesFundDistributionsInvalidSummary() {
+    logger.info("=== Test transition invoice to Approved ===");
+
+    Invoice reqData = getMockAsJson(OPEN_INVOICE_SAMPLE_PATH).mapTo(Invoice.class);
+    String id = reqData.getId();
+    InvoiceLine invoiceLine = getMinimalContentInvoiceLine(id);
+    invoiceLine.setSubTotal(100d);
+    invoiceLine.setId(UUID.randomUUID().toString());
+    FundDistribution percentageDistribution = new FundDistribution()
+      .withFundId(EXISTING_FUND_ID)
+      .withDistributionType(FundDistribution.DistributionType.PERCENTAGE)
+      .withValue(33.33333333d);
+    FundDistribution amountDistribution = new FundDistribution()
+      .withFundId(EXISTING_FUND_ID)
+      .withDistributionType(FundDistribution.DistributionType.AMOUNT)
+      .withValue(66.66d);
+
+    invoiceLine.getFundDistributions().addAll(Arrays.asList(percentageDistribution, amountDistribution));
+
+    addMockEntry(INVOICE_LINES, JsonObject.mapFrom(invoiceLine));
+
+    reqData.setStatus(Invoice.Status.APPROVED);
+
+    String jsonBody = JsonObject.mapFrom(reqData).encode();
+    Headers headers = prepareHeaders(X_OKAPI_URL, X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID);
+    Errors errors = verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, headers, "", 400)
+      .as(Errors.class);
+
+    // Verify that expected number of external calls made
+    assertThat(getInvoiceRetrievals(), hasSize(1));
+    assertThat(getInvoiceLineSearches(), hasSize(1));
+
+    List<JsonObject> vouchersCreated = serverRqRs.get(VOUCHERS, HttpMethod.POST);
+    assertThat(vouchersCreated, nullValue());
+    assertThat(errors, notNullValue());
+    assertThat(errors.getErrors(), hasSize(1));
+    Error error = errors.getErrors().get(0);
+    assertThat(error.getMessage(), equalTo(FUND_DISTRIBUTIONS_SUMMARY_MISMATCH.getDescription()));
+    assertThat(error.getCode(), equalTo(FUND_DISTRIBUTIONS_SUMMARY_MISMATCH.getCode()));
   }
 
   private Invoice createMockEntryInStorage() {
@@ -760,7 +888,8 @@ public class InvoicesApiTest extends ApiTestBase {
     String id = reqData.getId();
     invoiceLine.setId(UUID.randomUUID().toString());
     invoiceLine.setInvoiceId(id);
-    invoiceLine.getFundDistributions().get(0).setPercentage(1d);
+    invoiceLine.getFundDistributions().get(0).setDistributionType(FundDistribution.DistributionType.PERCENTAGE);
+    invoiceLine.getFundDistributions().get(0).setValue(1d);
 
     addMockEntry(INVOICE_LINES, JsonObject.mapFrom(invoiceLine));
 
@@ -775,8 +904,39 @@ public class InvoicesApiTest extends ApiTestBase {
     assertThat(errors, notNullValue());
     assertThat(errors.getErrors(), hasSize(1));
     Error error = errors.getErrors().get(0);
-    assertThat(error.getMessage(), equalTo(FUND_DISTRIBUTIONS_PERCENTAGE_SUMMARY_MISMATCH.getDescription()));
-    assertThat(error.getCode(), equalTo(FUND_DISTRIBUTIONS_PERCENTAGE_SUMMARY_MISMATCH.getCode()));
+    assertThat(error.getMessage(), equalTo(FUND_DISTRIBUTIONS_SUMMARY_MISMATCH.getDescription()));
+    assertThat(error.getCode(), equalTo(FUND_DISTRIBUTIONS_SUMMARY_MISMATCH.getCode()));
+  }
+
+  @Test
+  public void testTransitionToApprovedWithFundDistributionsTotalAmountNotEqualToLineTotal() {
+    logger.info("=== Test transition invoice to Approved with Fund Distributions empty will fail ===");
+
+    InvoiceLine invoiceLine = getMockAsJson(INVOICE_LINE_WITH_APPROVED_INVOICE_SAMPLE_PATH).mapTo(InvoiceLine.class);
+    Invoice reqData = getMockAsJson(REVIEWED_INVOICE_WITH_EXISTING_VOUCHER_SAMPLE_PATH).mapTo(Invoice.class);
+    reqData.setStatus(Invoice.Status.APPROVED);
+    String id = reqData.getId();
+    invoiceLine.setId(UUID.randomUUID().toString());
+    invoiceLine.setInvoiceId(id);
+    invoiceLine.getFundDistributions().get(0).setDistributionType(FundDistribution.DistributionType.AMOUNT);
+    invoiceLine.getFundDistributions().get(0).setValue(100d);
+    invoiceLine.setSubTotal(300d);
+
+    addMockEntry(INVOICE_LINES, JsonObject.mapFrom(invoiceLine));
+
+    String jsonBody = JsonObject.mapFrom(reqData).encode();
+    Headers headers = prepareHeaders(X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID);
+
+    Errors errors = verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, headers, APPLICATION_JSON, 400)
+      .then()
+      .extract()
+      .body().as(Errors.class);
+
+    assertThat(errors, notNullValue());
+    assertThat(errors.getErrors(), hasSize(1));
+    Error error = errors.getErrors().get(0);
+    assertThat(error.getMessage(), equalTo(FUND_DISTRIBUTIONS_SUMMARY_MISMATCH.getDescription()));
+    assertThat(error.getCode(), equalTo(FUND_DISTRIBUTIONS_SUMMARY_MISMATCH.getCode()));
   }
 
   @Test
@@ -943,7 +1103,9 @@ public class InvoicesApiTest extends ApiTestBase {
     voucherLines.forEach(voucherLine -> {
       assertThat(voucherCreated.getId(), equalTo(voucherLine.getVoucherId()));
       assertThat(calculateVoucherLineAmount(voucherLine.getFundDistributions(), invoiceLines, voucherCreated), equalTo(voucherLine.getAmount()));
-      assertThat(voucherLine.getFundDistributions(), hasSize(voucherLine.getSourceIds().size()));
+      assertThat(voucherLine.getFundDistributions().stream()
+        .map(FundDistribution::getInvoiceLineId)
+        .distinct().collect(Collectors.toList()), hasSize(voucherLine.getSourceIds().size()));
     });
   }
 
@@ -954,9 +1116,10 @@ public class InvoicesApiTest extends ApiTestBase {
 
     for (FundDistribution fundDistribution : fundDistributions) {
       InvoiceLine invoiceLine = findLineById(invoiceLines, fundDistribution.getInvoiceLineId());
-      MonetaryAmount subTotal = Money.of(invoiceLine.getTotal(), invoiceCurrency);
-
-      voucherLineAmount = voucherLineAmount.add(subTotal.with(MonetaryOperators.percent(fundDistribution.getPercentage())));
+      MonetaryAmount fundDistributionValue = fundDistribution.getDistributionType() == FundDistribution.DistributionType.PERCENTAGE
+        ? Money.of(invoiceLine.getTotal(), invoiceCurrency).with(MonetaryOperators.percent(fundDistribution.getValue()))
+        : Money.of(fundDistribution.getValue(), invoiceCurrency);
+      voucherLineAmount = voucherLineAmount.add(fundDistributionValue);
     }
 
     MonetaryAmount convertedAmount = voucherLineAmount

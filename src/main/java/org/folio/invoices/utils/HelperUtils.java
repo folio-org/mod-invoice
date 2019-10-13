@@ -16,6 +16,7 @@ import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
 import static org.folio.rest.RestVerticle.OKAPI_HEADER_TENANT;
 import static org.folio.rest.impl.AbstractHelper.ID;
 import static org.folio.rest.jaxrs.model.Adjustment.Prorate.NOT_PRORATED;
+import static org.folio.rest.jaxrs.model.FundDistribution.DistributionType.PERCENTAGE;
 
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
@@ -73,7 +74,7 @@ public class HelperUtils {
   public static final String INVOICE = "invoice";
   public static final String LANG = "lang";
   public static final String OKAPI_URL = "X-Okapi-Url";
-  public static final String QUERY_PARAM_START_WITH = "invoice_lines.id==";
+  public static final String QUERY_PARAM_START_WITH = "invoiceLines.id==";
   public static final String SEARCH_PARAMS = "?limit=%s&offset=%s%s&lang=%s";
   public static final String IS_DELETED_PROP = "isDeleted";
   public static final String ALL_UNITS_CQL = IS_DELETED_PROP + "=*";
@@ -397,7 +398,11 @@ public class HelperUtils {
 
     for (FundDistribution fundDistribution : fundDistributions) {
       MonetaryAmount invoiceLineTotal = invoiceLineIdMonetaryAmountMap.get(fundDistribution.getInvoiceLineId());
-      voucherLineAmount = voucherLineAmount.add(invoiceLineTotal.with(MonetaryOperators.percent(fundDistribution.getPercentage())));
+      if (PERCENTAGE == fundDistribution.getDistributionType()) {
+        voucherLineAmount = voucherLineAmount.add(invoiceLineTotal.with(MonetaryOperators.percent(fundDistribution.getValue())));
+      } else {
+        voucherLineAmount = voucherLineAmount.add(Money.of(fundDistribution.getValue(), invoiceCurrency));
+      }
     }
 
     MonetaryAmount convertedAmount = voucherLineAmount.with(conversion);
