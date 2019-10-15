@@ -1,5 +1,6 @@
 package org.folio.rest.impl;
 
+import static java.util.UUID.randomUUID;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static java.util.stream.Collectors.groupingBy;
@@ -101,6 +102,8 @@ import org.folio.rest.acq.model.finance.FundCollection;
 import org.folio.rest.acq.model.orders.CompositePoLine;
 import org.folio.rest.acq.model.units.AcquisitionsUnitMembershipCollection;
 import org.folio.rest.jaxrs.model.Adjustment;
+import org.folio.rest.jaxrs.model.Adjustment.Prorate;
+import org.folio.rest.jaxrs.model.Adjustment.Type;
 import org.folio.rest.jaxrs.model.Error;
 import org.folio.rest.jaxrs.model.Errors;
 import org.folio.rest.jaxrs.model.FundDistribution;
@@ -278,9 +281,9 @@ public class InvoicesApiTest extends ApiTestBase {
     final Invoice resp = verifySuccessGet(String.format(INVOICE_ID_PATH, invoice.getId()), Invoice.class);
 
     /* The invoice has 2 not prorated adjustments, 3 related invoice lines and each one has adjustment */
-    assertThat(resp.getAdjustmentsTotal(), equalTo(7.17d));
+    assertThat(resp.getAdjustmentsTotal(), equalTo(8.91d));
     assertThat(resp.getSubTotal(), equalTo(10.6d));
-    assertThat(resp.getTotal(), equalTo(17.77d));
+    assertThat(resp.getTotal(), equalTo(19.51d));
 
     // Verify that expected number of external calls made
     assertThat(getInvoiceRetrievals(), hasSize(1));
@@ -1502,6 +1505,34 @@ public class InvoicesApiTest extends ApiTestBase {
   }
 
   @Test
+  public void testCreateInvoiceWithTwoProratedAdjustmentsNoLines() throws IOException {
+    logger.info(
+        "=== Test create invoice with 1 prorated and 1 not prorated adjustments with no lines - adjustmentTotal should always be calculated irrespective if there are any invoiceLines or not===");
+    
+    // === Preparing invoice for test ===
+    Invoice invoice = new JsonObject(getMockData(REVIEWED_INVOICE_SAMPLE_PATH)).mapTo(Invoice.class);
+
+    Adjustment adjustment1 = createAdjustment(Prorate.NOT_PRORATED, Type.AMOUNT, 10d).withId(randomUUID().toString());
+    Adjustment adjustment2 = createAdjustment(Prorate.BY_LINE, Type.AMOUNT, 10d).withId(randomUUID().toString());
+    invoice.setAdjustments((Arrays.asList(adjustment1, adjustment2)));
+
+    // === Run test ===
+    final Invoice resp = verifyPostResponse(INVOICE_PATH, JsonObject.mapFrom(invoice), prepareHeaders(X_OKAPI_TENANT),
+        APPLICATION_JSON, 201).as(Invoice.class);
+
+    /* The invoice has 2 adjustments with no lines, one not prorated and one prorated by line adjustments */
+    assertThat(resp.getAdjustmentsTotal(), equalTo(20.d));
+    assertThat(resp.getSubTotal(), equalTo(0d));
+    assertThat(resp.getTotal(), equalTo(20d));
+
+    // Verify that expected number of external calls made
+    assertThat(serverRqRs.cellSet(), hasSize(2));
+    assertThat(getRqRsEntries(HttpMethod.GET, FOLIO_INVOICE_NUMBER), hasSize(1));
+
+    compareRecordWithSentToStorage(resp);
+  }
+  
+  @Test
   public void testCreateInvoiceWithLockedTotalAndTwoProratedAdjustments() throws IOException {
     logger.info("=== Test create invoice with locked total and 2 prorated adjustments ===");
 
@@ -1516,7 +1547,7 @@ public class InvoicesApiTest extends ApiTestBase {
       APPLICATION_JSON, 201).as(Invoice.class);
 
     /* The invoice has 2 not prorated adjustments one with fixed amount and another with percentage type */
-    assertThat(resp.getAdjustmentsTotal(), equalTo(0d));
+    assertThat(resp.getAdjustmentsTotal(), equalTo(5.06d));
     assertThat(resp.getSubTotal(), equalTo(0d));
     assertThat(resp.getTotal(), equalTo(15d));
 

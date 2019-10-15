@@ -1018,15 +1018,22 @@ public class InvoiceHelper extends AbstractHelper {
 
   private void calculateTotals(Invoice invoice, List<InvoiceLine> lines) {
     CurrencyUnit currency = Monetary.getCurrency(invoice.getCurrency());
-
+    MonetaryAmount proratedAdjustmentsTotal = null;
+    
     // 1. Sub-total
     MonetaryAmount subTotal = invoiceLineHelper.summarizeSubTotals(lines, currency, false);
 
     // 2. Adjustments (sum of not prorated invoice level and all invoice line level adjustments)
-    MonetaryAmount adjustmentsTotal = calculateAdjustmentsTotal(getNotProratedAdjustments(invoice), subTotal)
+    MonetaryAmount notProratedAdjustmentsTotal = calculateAdjustmentsTotal(getNotProratedAdjustments(invoice), subTotal)
+      .add(calculateInvoiceLinesAdjustmentsTotal(lines, currency));
+    
+    // 3. Adjustments (sum of prorated invoice level and all invoice line level adjustments)
+    proratedAdjustmentsTotal = calculateAdjustmentsTotal(getProratedAdjustments(invoice), subTotal)
       .add(calculateInvoiceLinesAdjustmentsTotal(lines, currency));
 
-    // 3. Total
+    MonetaryAmount adjustmentsTotal = notProratedAdjustmentsTotal.add(proratedAdjustmentsTotal);
+
+    // 4. Total
     if (Boolean.FALSE.equals(invoice.getLockTotal())) {
       invoice.setTotal(convertToDoubleWithRounding(subTotal.add(adjustmentsTotal)));
     }

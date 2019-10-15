@@ -206,13 +206,6 @@ public class InvoiceLinesProratedAdjustmentsTest extends ApiTestBase {
     return invoiceLine;
   }
 
-  private Adjustment createAdjustment(Adjustment.Prorate prorate, Adjustment.Type type, double value) {
-    return new Adjustment().withDescription("Test")
-      .withProrate(prorate)
-      .withType(type)
-      .withValue(value);
-  }
-
   private void verifyInvoiceLineAdjustmentCommon(Adjustment invoiceAdjustment, Adjustment lineAdjustment) {
     assertThat(lineAdjustment.getId(), nullValue());
     assertThat(lineAdjustment.getAdjustmentId(), equalTo(invoiceAdjustment.getId()));
