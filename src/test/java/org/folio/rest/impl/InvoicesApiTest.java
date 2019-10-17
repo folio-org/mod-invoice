@@ -281,9 +281,9 @@ public class InvoicesApiTest extends ApiTestBase {
     final Invoice resp = verifySuccessGet(String.format(INVOICE_ID_PATH, invoice.getId()), Invoice.class);
 
     /* The invoice has 2 not prorated adjustments, 3 related invoice lines and each one has adjustment */
-    assertThat(resp.getAdjustmentsTotal(), equalTo(8.91d));
+    assertThat(resp.getAdjustmentsTotal(), equalTo(7.17d));
     assertThat(resp.getSubTotal(), equalTo(10.6d));
-    assertThat(resp.getTotal(), equalTo(19.51d));
+    assertThat(resp.getTotal(), equalTo(17.77d));
 
     // Verify that expected number of external calls made
     assertThat(getInvoiceRetrievals(), hasSize(1));

@@ -49,7 +49,6 @@ import static org.folio.invoices.utils.ResourcePathResolver.ORDER_LINES;
 import static org.folio.invoices.utils.ResourcePathResolver.resourceByIdPath;
 import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
 import static org.folio.rest.RestVerticle.OKAPI_HEADER_PERMISSIONS;
-import static org.folio.rest.jaxrs.model.FundDistribution.DistributionType.AMOUNT;
 import static org.folio.rest.jaxrs.model.FundDistribution.DistributionType.PERCENTAGE;
 
 import java.util.ArrayList;
@@ -1018,22 +1017,22 @@ public class InvoiceHelper extends AbstractHelper {
 
   private void calculateTotals(Invoice invoice, List<InvoiceLine> lines) {
     CurrencyUnit currency = Monetary.getCurrency(invoice.getCurrency());
-    MonetaryAmount proratedAdjustmentsTotal = null;
-    
+
     // 1. Sub-total
     MonetaryAmount subTotal = invoiceLineHelper.summarizeSubTotals(lines, currency, false);
 
-    // 2. Adjustments (sum of not prorated invoice level and all invoice line level adjustments)
-    MonetaryAmount notProratedAdjustmentsTotal = calculateAdjustmentsTotal(getNotProratedAdjustments(invoice), subTotal)
-      .add(calculateInvoiceLinesAdjustmentsTotal(lines, currency));
-    
-    // 3. Adjustments (sum of prorated invoice level and all invoice line level adjustments)
-    proratedAdjustmentsTotal = calculateAdjustmentsTotal(getProratedAdjustments(invoice), subTotal)
-      .add(calculateInvoiceLinesAdjustmentsTotal(lines, currency));
+    MonetaryAmount adjustmentsTotal = null;
+    if (lines.isEmpty()) {
+      List<Adjustment> newList = new ArrayList<>(getProratedAdjustments(invoice));
+      newList.addAll(getNotProratedAdjustments(invoice));
+      adjustmentsTotal = calculateAdjustmentsTotal(newList, subTotal);
+    } else {
+      // 2. Adjustments (sum of not prorated invoice level and all invoice line level adjustments)
+      adjustmentsTotal = calculateAdjustmentsTotal(getNotProratedAdjustments(invoice), subTotal)
+        .add(calculateInvoiceLinesAdjustmentsTotal(lines, currency));
+    }
 
-    MonetaryAmount adjustmentsTotal = notProratedAdjustmentsTotal.add(proratedAdjustmentsTotal);
-
-    // 4. Total
+    // 3. Total
     if (Boolean.FALSE.equals(invoice.getLockTotal())) {
       invoice.setTotal(convertToDoubleWithRounding(subTotal.add(adjustmentsTotal)));
     }
