@@ -77,7 +77,7 @@ public class InvoicesProratedAdjustmentsTest extends ApiTestBase {
     // Prorated adjustment is not applied if no lines available
     Invoice invoiceToStorage = getInvoiceUpdates().get(0).mapTo(Invoice.class);
     assertThat(invoiceToStorage.getAdjustments(), hasSize(1));
-    assertThat(invoiceToStorage.getAdjustmentsTotal(), is(0d));
+    assertThat(invoiceToStorage.getAdjustmentsTotal(), not(0));
 
     Adjustment adjustment = invoiceToStorage.getAdjustments().get(0);
     assertThat(adjustment.getId(), not(isEmptyOrNullString()));
@@ -1035,13 +1035,6 @@ public class InvoicesProratedAdjustmentsTest extends ApiTestBase {
     invoiceLine.getAdjustments().clear();
     invoiceLine.setMetadata(new Metadata().withCreatedDate(new Date()));
     return invoiceLine;
-  }
-
-  private Adjustment createAdjustment(Adjustment.Prorate prorate, Adjustment.Type type, double value) {
-    return new Adjustment().withDescription("Test")
-      .withProrate(prorate)
-      .withType(type)
-      .withValue(value);
   }
 
   private void verifyInvoiceLineAdjustmentCommon(Adjustment invoiceAdjustment, Adjustment lineAdjustment) {

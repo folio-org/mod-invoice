@@ -38,6 +38,7 @@ import org.apache.commons.io.IOUtils;
 import org.awaitility.core.ConditionEvaluationLogger;
 import org.folio.invoices.events.handlers.MessageAddress;
 import org.folio.invoices.utils.HelperUtils;
+import org.folio.rest.jaxrs.model.Adjustment;
 import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.jaxrs.model.InvoiceLine;
 import org.junit.AfterClass;
@@ -353,5 +354,12 @@ public class ApiTestBase {
       .withAdjustmentsTotal(0.0)
       .withTotal(1.0)
       .withReleaseEncumbrance(true);
+  }
+
+  protected static Adjustment createAdjustment(Adjustment.Prorate prorate, Adjustment.Type type, double value) {
+    return new Adjustment().withDescription("Test")
+      .withProrate(prorate)
+      .withType(type)
+      .withValue(value);
   }
 }

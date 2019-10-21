@@ -49,7 +49,6 @@ import static org.folio.invoices.utils.ResourcePathResolver.ORDER_LINES;
 import static org.folio.invoices.utils.ResourcePathResolver.resourceByIdPath;
 import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
 import static org.folio.rest.RestVerticle.OKAPI_HEADER_PERMISSIONS;
-import static org.folio.rest.jaxrs.model.FundDistribution.DistributionType.AMOUNT;
 import static org.folio.rest.jaxrs.model.FundDistribution.DistributionType.PERCENTAGE;
 
 import java.util.ArrayList;
@@ -1022,9 +1021,18 @@ public class InvoiceHelper extends AbstractHelper {
     // 1. Sub-total
     MonetaryAmount subTotal = invoiceLineHelper.summarizeSubTotals(lines, currency, false);
 
-    // 2. Adjustments (sum of not prorated invoice level and all invoice line level adjustments)
-    MonetaryAmount adjustmentsTotal = calculateAdjustmentsTotal(getNotProratedAdjustments(invoice), subTotal)
-      .add(calculateInvoiceLinesAdjustmentsTotal(lines, currency));
+    // 2. Calculate Adjustments Total
+    // If there are no invoice lines then adjustmentsTotal = sum of all invoice adjustments
+    // If lines are present then adjustmentsTotal = notProratedInvoiceAdjustments + sum of invoiceLines adjustmentsTotal
+    MonetaryAmount adjustmentsTotal = null;
+    if (lines.isEmpty()) {
+      List<Adjustment> proratedAdjustments = new ArrayList<>(getProratedAdjustments(invoice));
+      proratedAdjustments.addAll(getNotProratedAdjustments(invoice));
+      adjustmentsTotal = calculateAdjustmentsTotal(proratedAdjustments, subTotal);
+    } else {
+      adjustmentsTotal = calculateAdjustmentsTotal(getNotProratedAdjustments(invoice), subTotal)
+        .add(calculateInvoiceLinesAdjustmentsTotal(lines, currency));
+    }
 
     // 3. Total
     if (Boolean.FALSE.equals(invoice.getLockTotal())) {
