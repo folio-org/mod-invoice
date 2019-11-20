@@ -1210,6 +1210,41 @@ public class InvoicesApiTest extends ApiTestBase {
   }
 
   @Test
+  public void testUpdateInvoiceTransitionToPaidPoLineIdNotSpecified() {
+    logger.info("=== Test transition invoice to paid, invoice line doesn't have poLineId ===");
+
+    Invoice reqData = getMockAsJson(APPROVED_INVOICE_SAMPLE_PATH).mapTo(Invoice.class).withStatus(Invoice.Status.PAID);
+    String id = reqData.getId();
+
+    prepareMockVoucher(id);
+    InvoiceLine invoiceLine1 = getMinimalContentInvoiceLine(id).withPoLineId(null);
+    addMockEntry(INVOICE_LINES, JsonObject.mapFrom(invoiceLine1));
+
+    InvoiceLine invoiceLine2 = getMinimalContentInvoiceLine(id).withPoLineId(null);
+    addMockEntry(INVOICE_LINES, JsonObject.mapFrom(invoiceLine2));
+
+    CompositePoLine poLine = getMockAsJson(String.format("%s%s.json", PO_LINE_MOCK_DATA_PATH, EXISTENT_PO_LINE_ID))
+      .mapTo(CompositePoLine.class)
+      .withPaymentStatus(CompositePoLine.PaymentStatus.AWAITING_PAYMENT);
+    addMockEntry(ORDER_LINES, JsonObject.mapFrom(poLine));
+
+    InvoiceLine invoiceLine3 = getMinimalContentInvoiceLine(id).withPoLineId(poLine.getId());
+    addMockEntry(INVOICE_LINES, JsonObject.mapFrom(invoiceLine3));
+
+    String jsonBody = JsonObject.mapFrom(reqData).encode();
+
+    verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, "", 204);
+    assertThat(serverRqRs.get(INVOICES, HttpMethod.PUT).get(0).getString(STATUS), is(Invoice.Status.PAID.value()));
+
+    final List<CompositePoLine> updatedPoLines = getRqRsEntries(HttpMethod.PUT, ORDER_LINES).stream()
+      .map(line -> line.mapTo(CompositePoLine.class))
+      .collect(Collectors.toList());
+
+    assertThat(updatedPoLines, hasSize(1));
+    assertThatVoucherPaid();
+  }
+
+  @Test
   public void testUpdateInvoiceTransitionToPaidNoVoucherUpdate() {
     logger.info("=== Test transition invoice to paid - voucher already paid ===");
 

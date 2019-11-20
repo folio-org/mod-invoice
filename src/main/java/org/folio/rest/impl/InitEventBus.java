@@ -10,6 +10,7 @@ import io.vertx.core.AsyncResult;
 import io.vertx.core.Context;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
+import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.eventbus.Message;
@@ -38,13 +39,13 @@ public class InitEventBus implements PostDeployVerticle {
       EventBus eb = vertx.eventBus();
 
       // Create consumers and assign handlers
-      Future<Void> invoiceSummaryRegistrationHandler = Future.future();
+      Promise<Void> invoiceSummaryRegistrationHandler = Promise.promise();
 
       MessageConsumer<JsonObject> invoiceSummaryConsumer = eb.localConsumer(MessageAddress.INVOICE_TOTALS.address);
       invoiceSummaryConsumer.handler(orderStatusHandler)
         .completionHandler(invoiceSummaryRegistrationHandler);
 
-      invoiceSummaryRegistrationHandler.setHandler(result -> {
+      invoiceSummaryRegistrationHandler.future().setHandler(result -> {
         if (result.succeeded()) {
           blockingCodeFuture.complete();
         } else {
