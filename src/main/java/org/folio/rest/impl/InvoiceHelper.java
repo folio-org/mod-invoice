@@ -123,7 +123,6 @@ public class InvoiceHelper extends AbstractHelper {
 
   private static final String DEFAULT_ACCOUNTING_CODE = "tmp_code";
   private static final String EMPTY_ARRAY = "[]";
-  private static final String EXTERNAL_ACCOUNT_NO = "externalAccountNo";
 
   // Using variable to "cache" lines for particular invoice base on assumption that the helper is stateful and new instance is used
   private List<InvoiceLine> storedInvoiceLines;
@@ -675,7 +674,7 @@ public class InvoiceHelper extends AbstractHelper {
   }
 
   private Map<String, List<Fund>> groupFundsByExternalAcctNo(List<Fund> funds) {
-    return funds.stream().collect(groupingBy(fund -> fund.getExternalAccountNo()));
+    return funds.stream().collect(groupingBy(Fund::getExternalAccountNo));
   }
 
   private Map<String, List<FundDistribution>> mapExternalAcctNoToFundDistros(
