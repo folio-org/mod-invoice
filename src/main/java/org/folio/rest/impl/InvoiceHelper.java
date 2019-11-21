@@ -81,6 +81,7 @@ import org.folio.invoices.utils.HelperUtils;
 import org.folio.invoices.utils.InvoiceProtectedFields;
 import org.folio.invoices.utils.ProtectedOperationType;
 import org.folio.rest.acq.model.finance.Fund;
+import org.folio.rest.acq.model.finance.FundCollection;
 import org.folio.rest.acq.model.orders.CompositePoLine;
 import org.folio.rest.jaxrs.model.Adjustment;
 import org.folio.rest.jaxrs.model.Config;
@@ -279,7 +280,7 @@ public class InvoiceHelper extends AbstractHelper {
   /**
    * Handles update of the invoice. First retrieve the invoice from storage, validate, handle invoice status transition and update
    * to storage.
-   * 
+   *
    * @param invoice updated {@link Invoice} invoice
    * @return completable future holding response indicating success (204 No Content) or error if failed
    */
@@ -746,15 +747,15 @@ public class InvoiceHelper extends AbstractHelper {
     return errorCode.toError().withParameters(Collections.singletonList(parameter));
   }
 
-  private CompletableFuture<List<JsonObject>> getFundsByIds(List<String> ids) {
+  private CompletableFuture<FundCollection> getFundsByIds(List<String> ids) {
     String query = encodeQuery(HelperUtils.convertIdsToCqlQuery(ids), logger);
     String endpoint = String.format(GET_FUNDS_BY_QUERY, query, ids.size(), lang);
     return handleGetRequest(endpoint, httpClient, ctx, okapiHeaders, logger)
-      .thenApply(this::extractFunds);
+      .thenApply(fundCollection -> fundCollection.mapTo(FundCollection.class));
   }
 
   private List<JsonObject> extractFunds(JsonObject entries) {
-    return entries.getJsonArray(FUNDS).stream().map(o -> (JsonObject) o).collect(toList());
+    return entries.getJsonArray(FUNDS).stream().map(o -> (Fund) o).collect(toList());
   }
 
   private List<VoucherLine> buildVoucherLineRecords(Map<String, List<FundDistribution>> fundDistroGroupedByExternalAcctNo, List<InvoiceLine> invoiceLines, Voucher voucher) {

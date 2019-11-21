@@ -53,7 +53,7 @@
             "invoice-storage.invoices.item.get",
             "invoice-storage.invoice-lines.item.put",
             "invoice-storage.invoice-lines.collection.get",
-            "finance-storage.funds.collection.get",
+            "finance.funds.collection.get",
             "orders.po-lines.item.put",
             "orders.po-lines.item.get",
             "voucher-storage.vouchers.collection.get",
@@ -264,7 +264,7 @@
       "version": "2.0"
     },
     {
-      "id": "finance-storage.funds",
+      "id": "finance.funds",
       "version": "2.0"
     },
     {
