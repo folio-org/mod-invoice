@@ -81,6 +81,7 @@ import org.folio.invoices.utils.HelperUtils;
 import org.folio.invoices.utils.InvoiceProtectedFields;
 import org.folio.invoices.utils.ProtectedOperationType;
 import org.folio.rest.acq.model.finance.Fund;
+import org.folio.rest.acq.model.finance.FundCollection;
 import org.folio.rest.acq.model.orders.CompositePoLine;
 import org.folio.rest.jaxrs.model.Adjustment;
 import org.folio.rest.jaxrs.model.Config;
@@ -122,7 +123,6 @@ public class InvoiceHelper extends AbstractHelper {
 
   private static final String DEFAULT_ACCOUNTING_CODE = "tmp_code";
   private static final String EMPTY_ARRAY = "[]";
-  private static final String EXTERNAL_ACCOUNT_NO = "externalAccountNo";
 
   // Using variable to "cache" lines for particular invoice base on assumption that the helper is stateful and new instance is used
   private List<InvoiceLine> storedInvoiceLines;
@@ -279,7 +279,7 @@ public class InvoiceHelper extends AbstractHelper {
   /**
    * Handles update of the invoice. First retrieve the invoice from storage, validate, handle invoice status transition and update
    * to storage.
-   * 
+   *
    * @param invoice updated {@link Invoice} invoice
    * @return completable future holding response indicating success (204 No Content) or error if failed
    */
@@ -673,20 +673,20 @@ public class InvoiceHelper extends AbstractHelper {
       );
   }
 
-  private Map<String, List<JsonObject>> groupFundsByExternalAcctNo(List<JsonObject> funds) {
-    return funds.stream().collect(groupingBy(fund -> fund.getString(EXTERNAL_ACCOUNT_NO)));
+  private Map<String, List<Fund>> groupFundsByExternalAcctNo(List<Fund> funds) {
+    return funds.stream().collect(groupingBy(Fund::getExternalAccountNo));
   }
 
   private Map<String, List<FundDistribution>> mapExternalAcctNoToFundDistros(
     Map<String, List<FundDistribution>> fundDistrosGroupedByFundId,
-    Map<String, List<JsonObject>> fundsGroupedByExternalAccountNo) {
+    Map<String, List<Fund>> fundsGroupedByExternalAccountNo) {
 
     return fundsGroupedByExternalAccountNo.keySet()
       .stream()
       .collect(toMap(externalAccountNo -> externalAccountNo,
         externalAccountNo -> fundsGroupedByExternalAccountNo.get(externalAccountNo)
           .stream()
-          .map(HelperUtils::getId)
+          .map(Fund::getId)
           .flatMap(fundId -> fundDistrosGroupedByFundId.get(fundId)
             .stream())
           .collect(toList())));
@@ -699,8 +699,8 @@ public class InvoiceHelper extends AbstractHelper {
       .collect(groupingBy(FundDistribution::getFundId));
   }
 
-  private CompletableFuture<List<JsonObject>> fetchFundsByIds(List<String> fundIds) {
-    List<CompletableFuture<List<JsonObject>>> futures = StreamEx
+  private CompletableFuture<List<Fund>> fetchFundsByIds(List<String> fundIds) {
+    List<CompletableFuture<List<Fund>>> futures = StreamEx
       .ofSubLists(fundIds, MAX_IDS_FOR_GET_RQ)
       // Send get request for each CQL query
       .map(this::getFundsByIds)
@@ -715,7 +715,7 @@ public class InvoiceHelper extends AbstractHelper {
       .thenApply(existingFunds -> verifyThatAllFundsFound(existingFunds, fundIds));
   }
 
-  private List<JsonObject> verifyThatAllFundsFound(List<JsonObject> existingFunds, List<String> fundIds) {
+  private List<Fund> verifyThatAllFundsFound(List<Fund> existingFunds, List<String> fundIds) {
     List<String> fundIdsWithoutExternalAccNo = getFundIdsWithoutExternalAccNo(existingFunds);
     if (isNotEmpty(fundIdsWithoutExternalAccNo)) {
       throw new HttpException(500, buildFundError(fundIdsWithoutExternalAccNo, EXTERNAL_ACCOUNT_NUMBER_IS_MISSING));
@@ -729,14 +729,17 @@ public class InvoiceHelper extends AbstractHelper {
     return existingFunds;
   }
 
-  private List<String> getFundIdsWithoutExternalAccNo(List<JsonObject> existingFunds) {
-    return existingFunds.stream().filter(fund -> Objects.isNull(fund.getString(EXTERNAL_ACCOUNT_NO))).map(HelperUtils::getId).collect(toList());
+  private List<String> getFundIdsWithoutExternalAccNo(List<Fund> existingFunds) {
+    return existingFunds.stream()
+      .filter(fund -> Objects.isNull(fund.getExternalAccountNo()))
+      .map(Fund::getId)
+      .collect(toList());
   }
 
-  private List<String> collectFundIdsThatWasNotFound(List<JsonObject> existingFunds, List<String> fundIds) {
+  private List<String> collectFundIdsThatWasNotFound(List<Fund> existingFunds, List<String> fundIds) {
     return fundIds.stream()
-      .filter(id -> existingFunds.stream().
-        map(HelperUtils::getId)
+      .filter(id -> existingFunds.stream()
+        .map(Fund::getId)
         .noneMatch(fundIds::contains))
       .collect(toList());
   }
@@ -746,15 +749,11 @@ public class InvoiceHelper extends AbstractHelper {
     return errorCode.toError().withParameters(Collections.singletonList(parameter));
   }
 
-  private CompletableFuture<List<JsonObject>> getFundsByIds(List<String> ids) {
+  private CompletableFuture<List<Fund>> getFundsByIds(List<String> ids) {
     String query = encodeQuery(HelperUtils.convertIdsToCqlQuery(ids), logger);
     String endpoint = String.format(GET_FUNDS_BY_QUERY, query, ids.size(), lang);
     return handleGetRequest(endpoint, httpClient, ctx, okapiHeaders, logger)
-      .thenApply(this::extractFunds);
-  }
-
-  private List<JsonObject> extractFunds(JsonObject entries) {
-    return entries.getJsonArray(FUNDS).stream().map(o -> (JsonObject) o).collect(toList());
+      .thenCompose(fc -> VertxCompletableFuture.supplyBlockingAsync(ctx, () -> fc.mapTo(FundCollection.class).getFunds()));
   }
 
   private List<VoucherLine> buildVoucherLineRecords(Map<String, List<FundDistribution>> fundDistroGroupedByExternalAcctNo, List<InvoiceLine> invoiceLines, Voucher voucher) {

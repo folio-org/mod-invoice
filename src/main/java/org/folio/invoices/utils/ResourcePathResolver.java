@@ -40,7 +40,7 @@ public class ResourcePathResolver {
     apis.put(VOUCHER_LINES, "/voucher-storage/voucher-lines");
     apis.put(VOUCHER_NUMBER_START, "/voucher-storage/voucher-number/start");
     apis.put(VOUCHER_NUMBER, "/voucher-storage/voucher-number");
-    apis.put(FUNDS, "/finance-storage/funds");
+    apis.put(FUNDS, "/finance/funds");
     apis.put(INVOICE_DOCUMENTS, "/invoice-storage/invoices/%s/documents");
 
     SUB_OBJECT_COLLECTION_APIS = Collections.unmodifiableMap(apis);
