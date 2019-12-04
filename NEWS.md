@@ -1,4 +1,23 @@
-## 2.1.0 - Unreleased
+## 3.1.0 - Unreleased
+
+## 3.0.0 - Released
+
+The main focus of this release was to re-integrate with finance module, fix bugs, calculations improvements
+
+[Full Changelog](https://github.com/folio-org/mod-invoice/compare/v2.0.0...v3.0.0)
+
+### Stories
+* [MODINVOICE-116](https://issues.folio.org/browse/MODINVOICE-116) - Update purchase order number pattern
+* [MODINVOICE-115](https://issues.folio.org/browse/MODINVOICE-115) - Use JVM features to manage container memory
+* [MODINVOICE-99](https://issues.folio.org/browse/MODINVOICE-99) - Fund Distribution schema changes
+* [MODINVOICE-89](https://issues.folio.org/browse/MODINVOICE-89) - Disallow "deleted" acq units from being assigned to invoices
+* [MODINVOICE-84](https://issues.folio.org/browse/MODINVOICE-84) - use finance business logic module
+* [MODINVOICE-61](https://issues.folio.org/browse/MODINVOICE-61) - Prorated adjustments part 3 - fractional amounts
+
+### Bug Fixes
+* [MODINVOICE-103](https://issues.folio.org/browse/MODINVOICE-103) - Adjustment Total Calculation is wrong
+* [MODINVOICE-97](https://issues.folio.org/browse/MODINVOICE-97) - Can not pay the invoice
+* [MODINVOICE-95](https://issues.folio.org/browse/MODINVOICE-95) - Once an invoice is Paid it should no longer transition to other statuses
 
 ## 2.0.0 - Released
 
