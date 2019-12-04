@@ -4,7 +4,7 @@
   "provides": [
     {
       "id": "invoice",
-      "version": "3.0",
+      "version": "3.1",
       "handlers": [
         {
           "methods": ["GET"],
@@ -269,7 +269,7 @@
     },
     {
       "id": "invoice-storage.invoices",
-      "version": "3.0"
+      "version": "3.1"
     },
     {
       "id": "invoice-storage.invoice-lines",
