@@ -1094,7 +1094,7 @@ public class InvoicesApiTest extends ApiTestBase {
     assertThat(invoiceUpdate.getId(), equalTo(voucherCreated.getInvoiceId()));
     assertThat(invoiceUpdate.getCurrency(), equalTo(voucherCreated.getInvoiceCurrency()));
     assertThat(MonetaryConversions.getExchangeRateProvider().getExchangeRate(voucherCreated.getInvoiceCurrency(), voucherCreated.getSystemCurrency()).getFactor().doubleValue(), equalTo(voucherCreated.getExchangeRate()));
-    assertThat(voucherCreated.getAccountingCode(), notNullValue());
+    assertThat(voucherCreated.getAccountingCode(), equalTo(invoiceUpdate.getAccountingCode()));
     assertThat(voucherCreated.getExportToAccounting(), is(false));
     assertThat(Voucher.Status.AWAITING_PAYMENT, equalTo(voucherCreated.getStatus()));
     assertThat(Voucher.Type.VOUCHER, equalTo(voucherCreated.getType()));
@@ -1543,7 +1543,7 @@ public class InvoicesApiTest extends ApiTestBase {
   public void testCreateInvoiceWithTwoProratedAdjustmentsNoLines() throws IOException {
     logger.info(
         "=== Test create invoice with 1 prorated and 1 not prorated adjustments with no lines - adjustmentTotal should always be calculated irrespective if there are any invoiceLines or not===");
-    
+
     // === Preparing invoice for test ===
     Invoice invoice = new JsonObject(getMockData(REVIEWED_INVOICE_SAMPLE_PATH)).mapTo(Invoice.class);
 
@@ -1566,7 +1566,7 @@ public class InvoicesApiTest extends ApiTestBase {
 
     compareRecordWithSentToStorage(resp);
   }
-  
+
   @Test
   public void testCreateInvoiceWithLockedTotalAndTwoProratedAdjustments() throws IOException {
     logger.info("=== Test create invoice with locked total and 2 prorated adjustments ===");
