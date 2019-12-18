@@ -247,6 +247,7 @@ public abstract class AbstractHelper {
   public ExchangeRateProvider getExchangeRateProvider() {
     if (Objects.isNull(exchangeRateProvider)) {
       exchangeRateProvider = MonetaryConversions.getExchangeRateProvider();
+      logger.debug("Created ExchangeRateProvider name: {}", exchangeRateProvider.getContext().getProviderName());
     }
     return exchangeRateProvider;
   }
