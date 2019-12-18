@@ -1,5 +1,15 @@
 ## 3.1.0 - Unreleased
 
+## 3.0.1 - Released
+
+The main focus of this bugfix release was to fix issue with voucher "accounting code"
+
+[Full Changelog](https://github.com/folio-org/mod-invoice/compare/v3.0.0...v3.0.1)
+
+### Bug Fixes
+* [MODINVOICE-122](https://issues.folio.org/browse/MODINVOICE-122) - Investigate OOM issues on mod-invoice
+* [MODINVOICE-120](https://issues.folio.org/browse/MODINVOICE-120) - Voucher "accounting code" not set
+
 ## 3.0.0 - Released
 
 The main focus of this release was to re-integrate with finance module, fix bugs, calculations improvements
