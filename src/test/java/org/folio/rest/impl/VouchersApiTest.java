@@ -4,7 +4,6 @@ import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 import static javax.ws.rs.core.MediaType.TEXT_PLAIN;
 import static org.folio.invoices.utils.HelperUtils.INVOICE_ID;
 import static org.folio.rest.impl.AbstractHelper.ID;
-import static org.folio.rest.impl.InvoicesApiTest.APPROVED_INVOICE_ID;
 import static org.folio.rest.impl.MockServer.ERROR_X_OKAPI_TENANT;
 import static org.hamcrest.Matchers.isEmptyOrNullString;
 import static org.hamcrest.Matchers.not;

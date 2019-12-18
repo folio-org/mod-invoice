@@ -122,9 +122,6 @@ public class InvoiceHelper extends AbstractHelper {
   private static final String VOUCHER_NUMBER_CONFIG_QUERY = String.format(CONFIG_QUERY, INVOICE_CONFIG_MODULE_NAME, VOUCHER_NUMBER_CONFIG_NAME);
   private static final String GET_INVOICES_BY_QUERY = resourcesPath(INVOICES) + SEARCH_PARAMS;
   private static final String GET_FUNDS_BY_QUERY = resourcesPath(FUNDS) + "?query=%s&limit=%s&lang=%s";
-
-
-  private static final String DEFAULT_ACCOUNTING_CODE = "tmp_code";
   private static final String EMPTY_ARRAY = "[]";
 
   // Using variable to "cache" lines for particular invoice base on assumption that the helper is stateful and new instance is used
@@ -601,6 +598,7 @@ public class InvoiceHelper extends AbstractHelper {
     voucher.setInvoiceCurrency(invoice.getCurrency());
     voucher.setExportToAccounting(invoice.getExportToAccounting());
     voucher.setAccountingCode(invoice.getAccountingCode());
+
     // TODO Start using real information to create a voucher when it becomes known where to get these values from.
     voucher.setType(Voucher.Type.VOUCHER);
     voucher.setStatus(Voucher.Status.AWAITING_PAYMENT);

@@ -1217,7 +1217,7 @@ public class InvoicesApiTest extends ApiTestBase {
     assertThat(invoiceUpdate.getId(), equalTo(voucherCreated.getInvoiceId()));
     assertThat(invoiceUpdate.getCurrency(), equalTo(voucherCreated.getInvoiceCurrency()));
     assertThat(MonetaryConversions.getExchangeRateProvider().getExchangeRate(voucherCreated.getInvoiceCurrency(), voucherCreated.getSystemCurrency()).getFactor().doubleValue(), equalTo(voucherCreated.getExchangeRate()));
-    assertThat(voucherCreated.getAccountingCode(), notNullValue());
+    assertThat(voucherCreated.getAccountingCode(), equalTo(invoiceUpdate.getAccountingCode()));
     assertThat(voucherCreated.getExportToAccounting(), is(false));
     assertThat(Voucher.Status.AWAITING_PAYMENT, equalTo(voucherCreated.getStatus()));
     assertThat(Voucher.Type.VOUCHER, equalTo(voucherCreated.getType()));
