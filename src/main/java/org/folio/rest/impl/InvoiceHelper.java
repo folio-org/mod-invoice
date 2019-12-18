@@ -76,6 +76,8 @@ import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.collections4.ListUtils;
 import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.tuple.MutablePair;
+import org.apache.commons.lang3.tuple.Pair;
 import org.folio.HttpStatus;
 import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.invoices.utils.AcqDesiredPermissions;
@@ -103,7 +105,6 @@ import org.javamoney.moneta.function.MonetaryFunctions;
 import io.vertx.core.Context;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
-import javafx.util.Pair;
 import me.escoffier.vertx.completablefuture.VertxCompletableFuture;
 import one.util.streamex.StreamEx;
 
@@ -501,14 +502,14 @@ public class InvoiceHelper extends AbstractHelper {
     List<Pair<FundDistribution, ? extends MonetaryAmount>> fundDistributions = invoiceLines.stream()
       .flatMap(invoiceLine -> invoiceLine.getFundDistributions()
         .stream()
-        .map(fundDistribution -> new Pair<>(fundDistribution.withInvoiceLineId(invoiceLine.getId()),
+        .map(fundDistribution -> new MutablePair<>(fundDistribution.withInvoiceLineId(invoiceLine.getId()),
             getFundDistributionAmount(fundDistribution, invoiceLine.getTotal(), invoice.getCurrency()))))
       .collect(toList());
 
     fundDistributions.addAll(getNotProratedAdjustments(invoice).stream()
       .flatMap(adjustment -> adjustment.getFundDistributions()
         .stream()
-        .map(fundDistribution -> new Pair<>(fundDistribution,
+        .map(fundDistribution -> new MutablePair<>(fundDistribution,
             getAdjustmentFundDistributionAmount(fundDistribution, adjustment, invoice))))
       .collect(toList()));
 
