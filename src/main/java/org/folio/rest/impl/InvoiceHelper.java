@@ -816,6 +816,7 @@ public class InvoiceHelper extends AbstractHelper {
   private List<String> collectInvoiceLineIds(List<FundDistribution> fundDistributions) {
     return fundDistributions
       .stream()
+      .filter(fundDistribution -> StringUtils.isNotEmpty(fundDistribution.getInvoiceLineId()))
       .map(FundDistribution::getInvoiceLineId)
       .distinct()
       .collect(toList());
