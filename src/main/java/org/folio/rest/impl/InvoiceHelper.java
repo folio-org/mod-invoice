@@ -13,13 +13,15 @@ import static org.apache.commons.lang3.StringUtils.isAlpha;
 import static org.apache.commons.lang3.StringUtils.isEmpty;
 import static org.folio.invoices.utils.AcqDesiredPermissions.ASSIGN;
 import static org.folio.invoices.utils.AcqDesiredPermissions.MANAGE;
+import static org.folio.invoices.utils.ErrorCodes.ADJUSTMENT_FUND_DISTRIBUTIONS_NOT_PRESENT;
+import static org.folio.invoices.utils.ErrorCodes.ADJUSTMENT_FUND_DISTRIBUTIONS_SUMMARY_MISMATCH;
 import static org.folio.invoices.utils.ErrorCodes.EXTERNAL_ACCOUNT_NUMBER_IS_MISSING;
 import static org.folio.invoices.utils.ErrorCodes.FUNDS_NOT_FOUND;
 import static org.folio.invoices.utils.ErrorCodes.FUND_DISTRIBUTIONS_NOT_PRESENT;
-import static org.folio.invoices.utils.ErrorCodes.FUND_DISTRIBUTIONS_SUMMARY_MISMATCH;
 import static org.folio.invoices.utils.ErrorCodes.INCOMPATIBLE_INVOICE_FIELDS_ON_STATUS_TRANSITION;
 import static org.folio.invoices.utils.ErrorCodes.INVALID_INVOICE_TRANSITION_ON_PAID_STATUS;
 import static org.folio.invoices.utils.ErrorCodes.INVOICE_TOTAL_REQUIRED;
+import static org.folio.invoices.utils.ErrorCodes.LINE_FUND_DISTRIBUTIONS_SUMMARY_MISMATCH;
 import static org.folio.invoices.utils.ErrorCodes.PO_LINE_NOT_FOUND;
 import static org.folio.invoices.utils.ErrorCodes.PO_LINE_UPDATE_FAILURE;
 import static org.folio.invoices.utils.ErrorCodes.USER_HAS_NO_ACQ_PERMISSIONS;
@@ -33,7 +35,9 @@ import static org.folio.invoices.utils.HelperUtils.combineCqlExpressions;
 import static org.folio.invoices.utils.HelperUtils.convertToDoubleWithRounding;
 import static org.folio.invoices.utils.HelperUtils.encodeQuery;
 import static org.folio.invoices.utils.HelperUtils.findChangedProtectedFields;
+import static org.folio.invoices.utils.HelperUtils.getAdjustmentFundDistributionAmount;
 import static org.folio.invoices.utils.HelperUtils.getEndpointWithQuery;
+import static org.folio.invoices.utils.HelperUtils.getFundDistributionAmount;
 import static org.folio.invoices.utils.HelperUtils.getHttpClient;
 import static org.folio.invoices.utils.HelperUtils.getInvoiceById;
 import static org.folio.invoices.utils.HelperUtils.getInvoicesFromStorage;
@@ -49,7 +53,6 @@ import static org.folio.invoices.utils.ResourcePathResolver.ORDER_LINES;
 import static org.folio.invoices.utils.ResourcePathResolver.resourceByIdPath;
 import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
 import static org.folio.rest.RestVerticle.OKAPI_HEADER_PERMISSIONS;
-import static org.folio.rest.jaxrs.model.FundDistribution.DistributionType.PERCENTAGE;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -73,6 +76,8 @@ import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.collections4.ListUtils;
 import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.tuple.MutablePair;
+import org.apache.commons.lang3.tuple.Pair;
 import org.folio.HttpStatus;
 import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.invoices.utils.AcqDesiredPermissions;
@@ -96,7 +101,6 @@ import org.folio.rest.jaxrs.model.Voucher;
 import org.folio.rest.jaxrs.model.VoucherLine;
 import org.javamoney.moneta.Money;
 import org.javamoney.moneta.function.MonetaryFunctions;
-import org.javamoney.moneta.function.MonetaryOperators;
 
 import io.vertx.core.Context;
 import io.vertx.core.json.JsonArray;
@@ -135,6 +139,7 @@ public class InvoiceHelper extends AbstractHelper {
     voucherHelper = new VoucherHelper(httpClient, okapiHeaders, ctx, lang);
     voucherLineHelper = new VoucherLineHelper(httpClient, okapiHeaders, ctx, lang);
     protectionHelper = new ProtectionHelper(httpClient, okapiHeaders, ctx, lang);
+
   }
 
   public CompletableFuture<Invoice> createInvoice(Invoice invoice) {
@@ -485,11 +490,30 @@ public class InvoiceHelper extends AbstractHelper {
       .thenApply(lines -> {
         verifyInvoiceLineNotEmpty(lines);
         validateInvoiceLineFundDistributions(lines, Monetary.getCurrency(invoice.getCurrency()));
+        validateInvoiceAdjustmentsDistributions(getNotProratedAdjustments(invoice) , Monetary.getCurrency(invoice.getCurrency()));
         return lines;
       })
       .thenCompose(lines -> prepareVoucher(invoice)
-          .thenCompose(voucher -> handleVoucherWithLines(lines, voucher))
+          .thenCompose(voucher -> handleVoucherWithLines(getFundDistrAmountPairs(lines, invoice), voucher))
       );
+  }
+
+  private List<Pair<FundDistribution, ? extends MonetaryAmount>> getFundDistrAmountPairs(List<InvoiceLine> invoiceLines, Invoice invoice) {
+    List<Pair<FundDistribution, ? extends MonetaryAmount>> fundDistributions = invoiceLines.stream()
+      .flatMap(invoiceLine -> invoiceLine.getFundDistributions()
+        .stream()
+        .map(fundDistribution -> new MutablePair<>(fundDistribution.withInvoiceLineId(invoiceLine.getId()),
+            getFundDistributionAmount(fundDistribution, invoiceLine.getTotal(), invoice.getCurrency()))))
+      .collect(toList());
+
+    fundDistributions.addAll(getNotProratedAdjustments(invoice).stream()
+      .flatMap(adjustment -> adjustment.getFundDistributions()
+        .stream()
+        .map(fundDistribution -> new MutablePair<>(fundDistribution,
+            getAdjustmentFundDistributionAmount(fundDistribution, adjustment, invoice))))
+      .collect(toList()));
+
+    return fundDistributions;
   }
 
   private void verifyInvoiceLineNotEmpty(List<InvoiceLine> invoiceLines) {
@@ -505,7 +529,19 @@ public class InvoiceHelper extends AbstractHelper {
       }
 
       if (isFundDistributionSummaryNotValid(line, currencyUnit)) {
-        throw new HttpException(400, FUND_DISTRIBUTIONS_SUMMARY_MISMATCH);
+        throw new HttpException(400, LINE_FUND_DISTRIBUTIONS_SUMMARY_MISMATCH);
+      }
+    }
+  }
+
+  private void validateInvoiceAdjustmentsDistributions(List<Adjustment> adjustments, CurrencyUnit currencyUnit) {
+    for (Adjustment adjustment : adjustments){
+      if (CollectionUtils.isEmpty(adjustment.getFundDistributions())) {
+        throw new HttpException(400, ADJUSTMENT_FUND_DISTRIBUTIONS_NOT_PRESENT);
+      }
+
+      if (isFundDistributionSummaryNotValid(adjustment, currencyUnit)) {
+        throw new HttpException(400, ADJUSTMENT_FUND_DISTRIBUTIONS_SUMMARY_MISMATCH);
       }
     }
   }
@@ -514,11 +550,17 @@ public class InvoiceHelper extends AbstractHelper {
     return ObjectUtils.notEqual(sumMixedDistributions(line, currencyUnit), line.getTotal());
   }
 
+  private boolean isFundDistributionSummaryNotValid(Adjustment adjustment, CurrencyUnit currencyUnit) {
+    return ObjectUtils.notEqual(sumMixedDistributions(adjustment.getFundDistributions(), adjustment.getValue(), currencyUnit), adjustment.getValue());
+  }
+
   private Double sumMixedDistributions(InvoiceLine line, CurrencyUnit currencyUnit) {
-    return line.getFundDistributions().stream()
-      .map(fundDistribution -> fundDistribution.getDistributionType() == PERCENTAGE ?
-        Money.of(line.getTotal(), currencyUnit).with(MonetaryOperators.percent(fundDistribution.getValue())) :
-        Money.of(fundDistribution.getValue(), currencyUnit))
+    return sumMixedDistributions(line.getFundDistributions(), line.getTotal(), currencyUnit);
+  }
+
+  private Double sumMixedDistributions(List<FundDistribution> fundDistributions, double total, CurrencyUnit currencyUnit) {
+    return fundDistributions.stream()
+      .map(fundDistribution -> getFundDistributionAmount(fundDistribution, total, currencyUnit))
       .reduce(Money::add)
       .orElse(Money.zero(currencyUnit))
       .getNumber().doubleValue();
@@ -614,10 +656,10 @@ public class InvoiceHelper extends AbstractHelper {
    * @param voucher associated with processed invoice
    * @return CompletableFuture that indicates when handling is completed
    */
-  private CompletableFuture<Void> handleVoucherWithLines(List<InvoiceLine> invoiceLines, Voucher voucher) {
+  private CompletableFuture<Void> handleVoucherWithLines(List<Pair<FundDistribution, ? extends MonetaryAmount>> invoiceLines, Voucher voucher) {
     return setExchangeRateFactor(voucher.withSystemCurrency(getSystemCurrency()))
       .thenCompose(v -> groupFundDistrosByExternalAcctNo(invoiceLines))
-      .thenApply(fundDistrosGroupedByExternalAcctNo -> buildVoucherLineRecords(fundDistrosGroupedByExternalAcctNo, invoiceLines, voucher))
+      .thenApply(fundDistrosGroupedByExternalAcctNo -> buildVoucherLineRecords(fundDistrosGroupedByExternalAcctNo, voucher))
       .thenCompose(voucherLines -> {
         Double calculatedAmount = HelperUtils.calculateVoucherAmount(voucher, voucherLines);
         voucher.setAmount(calculatedAmount);
@@ -655,13 +697,13 @@ public class InvoiceHelper extends AbstractHelper {
   /**
    * Prepares the data necessary for the generation of voucher lines based on the invoice lines found
    *
-   * @param invoiceLines {@link List<InvoiceLine>} associated with processed {@link Invoice}
+   * @param fundDistributionAmountPairs {@link List<InvoiceLine>} associated with processed {@link Invoice}
    * @return {@link InvoiceLine#fundDistributions} grouped by {@link Fund#externalAccountNo}
    */
-  private CompletableFuture<Map<String, List<FundDistribution>>> groupFundDistrosByExternalAcctNo(
-      List<InvoiceLine> invoiceLines) {
+  private CompletableFuture<Map<String,  List<Pair<FundDistribution, ? extends MonetaryAmount>>>> groupFundDistrosByExternalAcctNo(
+    List<Pair<FundDistribution, ? extends MonetaryAmount>> fundDistributionAmountPairs) {
 
-    Map<String, List<FundDistribution>> fundDistrosGroupedByFundId = groupFundDistrosByFundId(invoiceLines);
+    Map<String, List<Pair<FundDistribution, ? extends MonetaryAmount>>> fundDistrosGroupedByFundId = groupFundDistrosByFundId(fundDistributionAmountPairs);
 
     return fetchFundsByIds(new ArrayList<>(fundDistrosGroupedByFundId.keySet()))
       .thenApply(this::groupFundsByExternalAcctNo)
@@ -674,8 +716,8 @@ public class InvoiceHelper extends AbstractHelper {
     return funds.stream().collect(groupingBy(Fund::getExternalAccountNo));
   }
 
-  private Map<String, List<FundDistribution>> mapExternalAcctNoToFundDistros(
-    Map<String, List<FundDistribution>> fundDistrosGroupedByFundId,
+  private Map<String,  List<Pair<FundDistribution, ? extends MonetaryAmount>>> mapExternalAcctNoToFundDistros(
+    Map<String, List<Pair<FundDistribution, ? extends MonetaryAmount>>> fundDistrosGroupedByFundId,
     Map<String, List<Fund>> fundsGroupedByExternalAccountNo) {
 
     return fundsGroupedByExternalAccountNo.keySet()
@@ -689,11 +731,9 @@ public class InvoiceHelper extends AbstractHelper {
           .collect(toList())));
   }
 
-  private Map<String, List<FundDistribution>> groupFundDistrosByFundId(List<InvoiceLine> invoiceLines) {
-    return invoiceLines.stream()
-      .flatMap(invoiceLine -> invoiceLine.getFundDistributions().stream()
-        .map(fundDistribution -> fundDistribution.withInvoiceLineId(invoiceLine.getId())))
-      .collect(groupingBy(FundDistribution::getFundId));
+  private Map<String,  List<Pair<FundDistribution, ? extends MonetaryAmount>>> groupFundDistrosByFundId(List<Pair<FundDistribution, ? extends MonetaryAmount>> fundDistributions) {
+    return fundDistributions.stream()
+      .collect(groupingBy(pair -> pair.getKey().getFundId()));
   }
 
   private CompletableFuture<List<Fund>> fetchFundsByIds(List<String> fundIds) {
@@ -753,32 +793,30 @@ public class InvoiceHelper extends AbstractHelper {
       .thenCompose(fc -> VertxCompletableFuture.supplyBlockingAsync(ctx, () -> fc.mapTo(FundCollection.class).getFunds()));
   }
 
-  private List<VoucherLine> buildVoucherLineRecords(Map<String, List<FundDistribution>> fundDistroGroupedByExternalAcctNo, List<InvoiceLine> invoiceLines, Voucher voucher) {
+  private List<VoucherLine> buildVoucherLineRecords(Map<String, List<Pair<FundDistribution, ? extends MonetaryAmount>>> fundDistroGroupedByExternalAcctNo, Voucher voucher) {
 
-    CurrencyUnit invoiceCurrency = Monetary.getCurrency(voucher.getInvoiceCurrency());
     CurrencyConversion conversion = getExchangeRateProvider().getCurrencyConversion(voucher.getSystemCurrency());
-    Map<String, MonetaryAmount> invoiceLineIdMonetaryAmountMap = invoiceLines.stream()
-      .collect(toMap(InvoiceLine::getId, invoiceLine -> Money.of(invoiceLine.getTotal(), invoiceCurrency)));
 
     return fundDistroGroupedByExternalAcctNo.entrySet().stream()
-      .map(entry -> buildVoucherLineRecord(entry, invoiceLineIdMonetaryAmountMap, conversion))
+      .map(entry -> buildVoucherLineRecord(entry, conversion))
       .collect(Collectors.toList());
   }
 
-  private VoucherLine buildVoucherLineRecord(Map.Entry<String, List<FundDistribution>> fundDistroAssociatedWithAcctNo, Map<String, MonetaryAmount> invoiceLineIdMonetaryAmountMap, CurrencyConversion conversion) {
+  private VoucherLine buildVoucherLineRecord(Map.Entry<String, List<Pair<FundDistribution, ? extends MonetaryAmount>>> fundDistroAssociatedWithAcctNo, CurrencyConversion conversion) {
     String externalAccountNumber = fundDistroAssociatedWithAcctNo.getKey();
-    List<FundDistribution> fundDistributions = fundDistroAssociatedWithAcctNo.getValue();
+    List<FundDistribution> fundDistributions = fundDistroAssociatedWithAcctNo.getValue().stream().map(Pair::getKey).collect(toList());
 
     return new VoucherLine()
       .withExternalAccountNumber(externalAccountNumber)
       .withFundDistributions(fundDistributions)
       .withSourceIds(collectInvoiceLineIds(fundDistributions))
-      .withAmount(calculateVoucherLineAmount(fundDistributions, invoiceLineIdMonetaryAmountMap, conversion));
+      .withAmount(calculateVoucherLineAmount(fundDistroAssociatedWithAcctNo.getValue().stream().map(Pair::getValue).collect(toList()), conversion));
   }
 
   private List<String> collectInvoiceLineIds(List<FundDistribution> fundDistributions) {
     return fundDistributions
       .stream()
+      .filter(fundDistribution -> StringUtils.isNotEmpty(fundDistribution.getInvoiceLineId()))
       .map(FundDistribution::getInvoiceLineId)
       .distinct()
       .collect(toList());
