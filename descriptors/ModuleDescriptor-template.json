@@ -280,8 +280,8 @@
       "version": "1.0"
     },
     {
-      "id": "orders",
-      "version": "8.0"
+      "id": "order-lines",
+      "version": "1.0"
     },
     {
       "id": "voucher-storage.vouchers",
