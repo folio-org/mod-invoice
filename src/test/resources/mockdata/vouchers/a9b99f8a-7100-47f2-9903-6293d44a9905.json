@@ -8,7 +8,6 @@
   "amount": 23.45,
   "voucherDate": "2019-05-06T00:00:00.000+0000",
   "voucherNumber": "1000",
-  "batchNumber": "101",
   "invoiceId": "c0d08448-347b-418a-8c2f-5fb50248d67e",
   "accountingCode": "0206",
   "disbursementNumber": "EFT546789",
