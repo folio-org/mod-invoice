@@ -5,18 +5,20 @@ import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 import static javax.ws.rs.core.MediaType.TEXT_PLAIN;
 import static javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
 import static org.apache.commons.lang3.StringUtils.EMPTY;
-import static org.folio.invoices.utils.HelperUtils.INVOICE_ID;
-import static org.folio.invoices.utils.HelperUtils.QUERY_PARAM_START_WITH;
 import static org.folio.invoices.utils.HelperUtils.ALL_UNITS_CQL;
+import static org.folio.invoices.utils.HelperUtils.INVOICE_ID;
 import static org.folio.invoices.utils.HelperUtils.IS_DELETED_PROP;
+import static org.folio.invoices.utils.HelperUtils.QUERY_PARAM_START_WITH;
 import static org.folio.invoices.utils.ResourcePathResolver.ACQUISITIONS_MEMBERSHIPS;
 import static org.folio.invoices.utils.ResourcePathResolver.ACQUISITIONS_UNITS;
+import static org.folio.invoices.utils.ResourcePathResolver.AWAITING_PAYMENTS;
 import static org.folio.invoices.utils.ResourcePathResolver.FOLIO_INVOICE_NUMBER;
 import static org.folio.invoices.utils.ResourcePathResolver.FUNDS;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICES;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_DOCUMENTS;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_LINES;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_LINE_NUMBER;
+import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_TRANSACTION_SUMMARIES;
 import static org.folio.invoices.utils.ResourcePathResolver.ORDER_LINES;
 import static org.folio.invoices.utils.ResourcePathResolver.VOUCHERS;
 import static org.folio.invoices.utils.ResourcePathResolver.VOUCHER_LINES;
@@ -134,6 +136,8 @@ public class MockServer {
   private static final String UPDATE_VOUCHER_ERROR_TENANT = "update_voucher_error_tenant";
   private static final String GET_VOUCHERS_ERROR_TENANT = "get_vouchers_error_tenant";
   private static final String GET_INVOICE_LINES_ERROR_TENANT = "get_invoice_lines_error_tenant";
+  private static final String CREATE_INVOICE_TRANSACTION_SUMMARY_ERROR_TENANT = "create_invoice_transaction_summary_error_tenant";
+  private static final String POST_AWAITING_PAYMENT_ERROR_TENANT = "post_awaiting_payment_error_tenant";
   private static final String NON_EXIST_CONFIG_TENANT = "invoicetest";
   private static final String INVALID_PREFIX_CONFIG_TENANT = "invalid_prefix_config_tenant";
 
@@ -162,6 +166,8 @@ public class MockServer {
   static final Header GET_VOUCHER_LINE_ERROR_X_OKAPI_TENANT = new Header(OKAPI_HEADER_TENANT, GET_VOUCHER_LINES_ERROR_TENANT);
   static final Header DELETE_VOUCHER_LINE_ERROR_X_OKAPI_TENANT = new Header(OKAPI_HEADER_TENANT, DELETE_VOUCHER_LINES_ERROR_TENANT);
   static final Header NON_EXIST_CONFIG_X_OKAPI_TENANT = new Header(OKAPI_HEADER_TENANT, NON_EXIST_CONFIG_TENANT);
+  static final Header CREATE_INVOICE_TRANSACTION_SUMMARY_ERROR_X_OKAPI_TENANT =  new Header(OKAPI_HEADER_TENANT, CREATE_INVOICE_TRANSACTION_SUMMARY_ERROR_TENANT);
+  static final Header POST_AWAITING_PAYMENT_ERROR_X_OKAPI_TENANT = new Header(OKAPI_HEADER_TENANT, POST_AWAITING_PAYMENT_ERROR_TENANT);
 
   private final int port;
   private final Vertx vertx;
@@ -178,7 +184,7 @@ public class MockServer {
     // Setup Mock Server...
     HttpServer server = vertx.createHttpServer();
     CompletableFuture<HttpServer> deploymentComplete = new CompletableFuture<>();
-    server.requestHandler(defineRoutes()::accept).listen(port, result -> {
+    server.requestHandler(defineRoutes()::handle).listen(port, result -> {
       if(result.succeeded()) {
         deploymentComplete.complete(result.result());
       }
@@ -252,7 +258,7 @@ public class MockServer {
     serverRqRs.clear();
     serverRqQueries.clear();
   }
-  
+
   private Router defineRoutes() {
     Router router = Router.router(vertx);
     router.route().handler(BodyHandler.create());
@@ -262,6 +268,8 @@ public class MockServer {
     router.route(HttpMethod.POST, resourcesPath(VOUCHERS)).handler(ctx -> handlePostEntry(ctx, Voucher.class, VOUCHERS));
     router.route(HttpMethod.POST, resourcesPath(VOUCHER_LINES)).handler(ctx -> handlePostEntry(ctx, VoucherLine.class, VOUCHER_LINES));
     router.route(HttpMethod.POST, "/invoice-storage/invoices/:id/documents").handler(this::handlePostInvoiceDocument);
+    router.route(HttpMethod.POST, resourcesPath(INVOICE_TRANSACTION_SUMMARIES)).handler(this::handlePostInvoiceSummary);
+    router.route(HttpMethod.POST, resourcesPath(AWAITING_PAYMENTS)).handler(this::handlePostAwaitingPayment);
 
     router.route(HttpMethod.GET, resourcesPath(INVOICES)).handler(this::handleGetInvoices);
     router.route(HttpMethod.GET, resourcesPath(INVOICE_LINES)).handler(this::handleGetInvoiceLines);
@@ -296,6 +304,30 @@ public class MockServer {
 
 
     return router;
+  }
+
+  private void handlePostAwaitingPayment(RoutingContext ctx) {
+    logger.info("handlePostAwaitingPayment got: " + ctx.request().path());
+    String tenant = ctx.request().getHeader(OKAPI_HEADER_TENANT);
+    if (POST_AWAITING_PAYMENT_ERROR_TENANT.equals(tenant)) {
+      serverResponse(ctx, 500, TEXT_PLAIN, INTERNAL_SERVER_ERROR.getReasonPhrase());
+    } else {
+      JsonObject body = ctx.getBodyAsJson();
+      addServerRqRsData(HttpMethod.POST, AWAITING_PAYMENTS, body);
+      serverResponse(ctx, 201, APPLICATION_JSON, EMPTY);
+    }
+  }
+
+  private void handlePostInvoiceSummary(RoutingContext ctx) {
+    logger.info("handlePostInvoiceSummary got: " + ctx.request().path());
+    String tenant = ctx.request().getHeader(OKAPI_HEADER_TENANT);
+    if (CREATE_INVOICE_TRANSACTION_SUMMARY_ERROR_TENANT.equals(tenant)) {
+      serverResponse(ctx, 500, TEXT_PLAIN, INTERNAL_SERVER_ERROR.getReasonPhrase());
+    } else {
+      JsonObject body = ctx.getBodyAsJson();
+      addServerRqRsData(HttpMethod.POST, INVOICE_TRANSACTION_SUMMARIES, body);
+      serverResponse(ctx, 201, APPLICATION_JSON, JsonObject.mapFrom(body).encodePrettily());
+    }
   }
 
 
@@ -653,10 +685,10 @@ public class MockServer {
       Matcher lineIdMatcher = Pattern.compile(".*invoiceLines.id==(\\S+).*")
         .matcher(queryParam);
       final String lineId = lineIdMatcher.find() ? lineIdMatcher.group(1) : EMPTY;
-      
+
       List<Invoice> invoices;
       InvoiceCollection invoiceCollection = new InvoiceCollection();
-      
+
       if (lineId.equals(SEARCH_INVOICE_BY_LINE_ID_NOT_FOUND)) {
 
         invoiceCollection.setInvoices(new ArrayList<Invoice>());
