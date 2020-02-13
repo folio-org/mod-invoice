@@ -1,0 +1,8 @@
+{
+  "id": "2a2cb998-1437-41d1-88ad-01930aaeadd5",
+  "startTime": "00:00",
+  "weekdays": [ "Monday", "Wednesday" ],
+  "enableScheduledExport": true,
+  "format": "Application/xml",
+  "uploadURI": "ftp://ftp.amherst-lib.edu/invoices/"
+}

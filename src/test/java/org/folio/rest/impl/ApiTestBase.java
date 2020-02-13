@@ -65,7 +65,7 @@ public class ApiTestBase {
   static final String ID_BAD_FORMAT = "123-45-678-90-abc";
   static final String FOLIO_INVOICE_NUMBER_VALUE = "228D126";
   public static final Header X_OKAPI_URL = new Header(OKAPI_URL, "http://localhost:" + mockPort);
-  static final Header X_OKAPI_TOKEN = new Header(OKAPI_HEADER_TOKEN, "eyJhbGciOiJIUzI1NiJ9");
+  static final Header X_OKAPI_TOKEN = new Header(OKAPI_HEADER_TOKEN, "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJkaWt1X2FkbWluIiwidXNlcl9pZCI6ImQxZDBhMTBiLWM1NjMtNGM0Yi1hZTIyLWU1YTBjMTE2MjNlYiIsImlhdCI6MTU4MTYyNTMyOCwidGVuYW50IjoiaW52b2ljZWltcGx0ZXN0In0.C6EtPm2rkjdzUzXev4Yj3w4C6zTF1U5Yn5u7HU_pp1k");
   public static final Header X_OKAPI_TENANT = new Header(OKAPI_HEADER_TENANT, "invoiceimpltest");
   public static final Header X_OKAPI_USER_ID = new Header(OKAPI_USERID_HEADER, "d1d0a10b-c563-4c4b-ae22-e5a0c11623eb");
   public static final String PROTECTED_READ_ONLY_TENANT = "protected_read";
