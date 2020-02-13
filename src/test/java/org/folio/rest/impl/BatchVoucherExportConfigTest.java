@@ -73,7 +73,7 @@ public class BatchVoucherExportConfigTest extends ApiTestBase {
     ExportConfig exportConfig = getMockAsJson(BATCH_VOUCHER_EXPORT_CONFIG_SAMPLE_PATH_WITH_ID).mapTo(ExportConfig.class);
     exportConfig.setFormat(Format.APPLICATION_JSON);
 
-    verifyPut(exportConfig.getId(), JsonObject.mapFrom(exportConfig), "", 204);
+    verifyPut(BATCH_VOUCHER_EXPORT_CONFIG_ENDPOINT_WITH_ID, JsonObject.mapFrom(exportConfig), "", 204);
 
     assertThat(MockServer.serverRqRs.get(BATCH_VOUCHER_EXPORT_CONFIGS, HttpMethod.PUT), hasSize(1));
   }

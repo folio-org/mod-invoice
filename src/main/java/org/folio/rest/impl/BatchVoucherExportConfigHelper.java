@@ -34,7 +34,7 @@ public class BatchVoucherExportConfigHelper extends AbstractHelper {
   public CompletableFuture<ExportConfig> createExportConfig(ExportConfig exportConfig) {
     return CompletableFuture.supplyAsync(() -> JsonObject.mapFrom(exportConfig))
       .thenCompose(jsonExportConfig -> createRecordInStorage(jsonExportConfig,
-          resourceByIdPath(BATCH_VOUCHER_EXPORT_CONFIGS, exportConfig.getId(), lang)).thenApply(exportConfig::withId));
+          resourcesPath(BATCH_VOUCHER_EXPORT_CONFIGS)).thenApply(exportConfig::withId));
   }
 
   public CompletableFuture<ExportConfig> getExportConfig(String id) {

@@ -33,7 +33,8 @@ import java.util.concurrent.TimeoutException;
   InvoicesProtectionTest.class,
   LinesProtectionTest.class,
   InvoicesProratedAdjustmentsTest.class,
-  InvoiceLinesProratedAdjustmentsTest.class
+  InvoiceLinesProratedAdjustmentsTest.class,
+  BatchVoucherExportConfigTest.class
 })
 public class ApiTestSuite {
   private static final Logger logger = LoggerFactory.getLogger(ApiTestSuite.class);
