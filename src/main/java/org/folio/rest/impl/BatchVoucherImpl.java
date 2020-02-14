@@ -66,15 +66,13 @@ public class BatchVoucherImpl implements BatchVoucher {
 
   @Validate
   @Override
-  public void putBatchVoucherExportConfigurationsById(String id, String lang, ExportConfig entity, Map<String, String> okapiHeaders,
+  public void putBatchVoucherExportConfigurationsById(String id, String lang, ExportConfig exportConfig, Map<String, String> okapiHeaders,
       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     BatchVoucherExportConfigHelper helper = new BatchVoucherExportConfigHelper(okapiHeaders, vertxContext, lang);
 
-    if (StringUtils.isEmpty(entity.getId())) {
-      entity.setId(id);
-    }
+    exportConfig.setId(id);
 
-    helper.putExportConfig(entity)
+    helper.putExportConfig(exportConfig)
       .thenAccept(v -> asyncResultHandler.handle(succeededFuture(helper.buildNoContentResponse())))
       .exceptionally(t -> handleErrorResponse(asyncResultHandler, helper, t));
   }
