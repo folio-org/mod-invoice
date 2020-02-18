@@ -24,7 +24,7 @@ public class BatchVoucherExportConfigTest extends ApiTestBase {
   private static final Logger logger = LoggerFactory.getLogger(BatchVoucherExportConfigTest.class);
   private static final String BATCH_VOUCHER_EXPORT_CONFIGS_ENDPOINT = "/batch-voucher/export-configurations";
 
-  static final String EXPORT_CONFIG_ID = "2a2cb998-1437-41d1-88ad-01930aaeadd5";
+  static final String EXPORT_CONFIG_ID = "089b333c-503f-4627-895d-26eaab1e392e";
   static final String BATCH_VOUCHER_EXPORT_CONFIG_SAMPLE_PATH = BASE_MOCK_DATA_PATH + "batchVoucherExportConfigs/";
   static final String BATCH_VOUCHER_EXPORT_CONFIG_SAMPLE_PATH_WITH_ID = BATCH_VOUCHER_EXPORT_CONFIG_SAMPLE_PATH
       + EXPORT_CONFIG_ID + ".json";
