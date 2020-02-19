@@ -23,11 +23,9 @@ import java.util.concurrent.CompletableFuture;
 public class BatchGroupHelper extends AbstractHelper {
 
   private static final String GET_BATCH_GROUPS_BY_QUERY = resourcesPath(BATCH_GROUPS) + SEARCH_PARAMS;
-  private final ProtectionHelper protectionHelper;
 
   public BatchGroupHelper(Map<String, String> okapiHeaders, Context ctx, String lang) {
     super(getHttpClient(okapiHeaders), okapiHeaders, ctx, lang);
-    protectionHelper = new ProtectionHelper(httpClient, okapiHeaders, ctx, lang);
   }
 
   /**

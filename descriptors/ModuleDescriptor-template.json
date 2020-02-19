@@ -282,8 +282,7 @@
           "permissionsRequired": ["batch-groups.item.delete"],
           "modulePermissions": [
             "batch-group-storage.batch-groups.item.get",
-            "batch-group-storage.batch-groups.item.delete",
-            "invoice-storage.invoices.collection.get"
+            "batch-group-storage.batch-groups.item.delete"
           ]
         }
       ]
@@ -560,8 +559,7 @@
         "batch-groups.item.get",
         "batch-groups.item.post",
         "batch-groups.item.put",
-        "batch-groups.item.delete",
-        "invoice.invoices.collection.get"
+        "batch-groups.item.delete"
       ],
       "visible": false
     }
