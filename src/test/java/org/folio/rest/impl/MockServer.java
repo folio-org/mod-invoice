@@ -10,7 +10,21 @@ import static org.folio.invoices.utils.HelperUtils.QUERY_PARAM_FOR_BATCH_GROUP_I
 import static org.folio.invoices.utils.HelperUtils.QUERY_PARAM_START_WITH;
 import static org.folio.invoices.utils.HelperUtils.ALL_UNITS_CQL;
 import static org.folio.invoices.utils.HelperUtils.IS_DELETED_PROP;
-import static org.folio.invoices.utils.ResourcePathResolver.*;
+import static org.folio.invoices.utils.ResourcePathResolver.ACQUISITIONS_MEMBERSHIPS;
+import static org.folio.invoices.utils.ResourcePathResolver.ACQUISITIONS_UNITS;
+import static org.folio.invoices.utils.ResourcePathResolver.BATCH_GROUPS;
+import static org.folio.invoices.utils.ResourcePathResolver.FOLIO_INVOICE_NUMBER;
+import static org.folio.invoices.utils.ResourcePathResolver.FUNDS;
+import static org.folio.invoices.utils.ResourcePathResolver.INVOICES;
+import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_DOCUMENTS;
+import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_LINES;
+import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_LINE_NUMBER;
+import static org.folio.invoices.utils.ResourcePathResolver.ORDER_LINES;
+import static org.folio.invoices.utils.ResourcePathResolver.VOUCHERS;
+import static org.folio.invoices.utils.ResourcePathResolver.VOUCHER_LINES;
+import static org.folio.invoices.utils.ResourcePathResolver.VOUCHER_NUMBER;
+import static org.folio.invoices.utils.ResourcePathResolver.VOUCHER_NUMBER_START;
+import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
 import static org.folio.rest.RestVerticle.OKAPI_HEADER_TENANT;
 import static org.folio.rest.impl.AbstractHelper.ID;
 import static org.folio.rest.impl.ApiTestBase.BASE_MOCK_DATA_PATH;
@@ -71,7 +85,6 @@ import org.folio.rest.acq.model.orders.CompositePoLine;
 import org.folio.rest.acq.model.units.AcquisitionsUnit;
 import org.folio.rest.acq.model.units.AcquisitionsUnitCollection;
 import org.folio.rest.acq.model.units.AcquisitionsUnitMembershipCollection;
-import org.folio.rest.jaxrs.model.*;
 
 import com.google.common.collect.HashBasedTable;
 import com.google.common.collect.Table;
@@ -88,7 +101,19 @@ import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
 import io.vertx.ext.web.handler.BodyHandler;
 import one.util.streamex.StreamEx;
-
+import org.folio.rest.jaxrs.model.BatchGroup;
+import org.folio.rest.jaxrs.model.BatchGroupCollection;
+import org.folio.rest.jaxrs.model.Config;
+import org.folio.rest.jaxrs.model.Configs;
+import org.folio.rest.jaxrs.model.Document;
+import org.folio.rest.jaxrs.model.DocumentCollection;
+import org.folio.rest.jaxrs.model.Invoice;
+import org.folio.rest.jaxrs.model.InvoiceCollection;
+import org.folio.rest.jaxrs.model.InvoiceDocument;
+import org.folio.rest.jaxrs.model.InvoiceLine;
+import org.folio.rest.jaxrs.model.InvoiceLineCollection;
+import org.folio.rest.jaxrs.model.Voucher;
+import org.folio.rest.jaxrs.model.VoucherCollection;
 
 public class MockServer {
 

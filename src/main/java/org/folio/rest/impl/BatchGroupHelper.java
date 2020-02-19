@@ -11,8 +11,14 @@ import org.folio.rest.tools.client.interfaces.HttpClientInterface;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
-import static org.folio.invoices.utils.HelperUtils.*;
-import static org.folio.invoices.utils.ResourcePathResolver.*;
+import static org.folio.invoices.utils.HelperUtils.getEndpointWithQuery;
+import static org.folio.invoices.utils.HelperUtils.getHttpClient;
+import static org.folio.invoices.utils.HelperUtils.handleDeleteRequest;
+import static org.folio.invoices.utils.HelperUtils.handleGetRequest;
+import static org.folio.invoices.utils.HelperUtils.handlePutRequest;
+import static org.folio.invoices.utils.ResourcePathResolver.BATCH_GROUPS;
+import static org.folio.invoices.utils.ResourcePathResolver.resourceByIdPath;
+import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
 
 public class BatchGroupHelper extends AbstractHelper {
 
