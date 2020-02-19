@@ -6,7 +6,6 @@ import static javax.ws.rs.core.MediaType.TEXT_PLAIN;
 import static javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
 import static org.apache.commons.lang3.StringUtils.EMPTY;
 import static org.folio.invoices.utils.HelperUtils.INVOICE_ID;
-import static org.folio.invoices.utils.HelperUtils.QUERY_PARAM_FOR_BATCH_GROUP_ID;
 import static org.folio.invoices.utils.HelperUtils.QUERY_PARAM_START_WITH;
 import static org.folio.invoices.utils.HelperUtils.ALL_UNITS_CQL;
 import static org.folio.invoices.utils.HelperUtils.IS_DELETED_PROP;
@@ -152,7 +151,6 @@ public class MockServer {
   private static final String VALUE_PATH_PARAM = "/:value";
   private static final String TOTAL_RECORDS = "totalRecords";
   public static final String SEARCH_INVOICE_BY_LINE_ID_NOT_FOUND = "b37cd8e7-d291-40f0-b687-57728ee3fc26";
-  public static final String SEARCH_INVOICE_BY_BATCH_GROUP_ID_NOT_FOUND = "e91d44e4-ae4f-401a-b355-3ea44f57a628";
 
   static final Header INVOICE_NUMBER_ERROR_X_OKAPI_TENANT = new Header(OKAPI_HEADER_TENANT, INVOICE_NUMBER_ERROR_TENANT);
   static final Header ERROR_X_OKAPI_TENANT = new Header(OKAPI_HEADER_TENANT, ERROR_TENANT);
@@ -705,14 +703,6 @@ public class MockServer {
         addServerRqRsData(HttpMethod.GET, INVOICES, JsonObject.mapFrom(invoiceCollection));
         serverResponse(ctx, 200, APPLICATION_JSON, invoicesJson.encode());
       }
-    } else if (queryParam.contains(QUERY_PARAM_FOR_BATCH_GROUP_ID)) {
-      Matcher batchGroupIdMatcher = Pattern.compile(".*batchGroupId==(\\S[^)]+).*")
-        .matcher(queryParam);
-      final String batchGroupId = batchGroupIdMatcher.find() ? batchGroupIdMatcher.group(1) : EMPTY;
-
-      if (batchGroupId.equals(SEARCH_INVOICE_BY_BATCH_GROUP_ID_NOT_FOUND)) addEmptyInvoiceCollection(ctx);
-      else addMockInvoiceCollection(ctx);
-
     } else {
       JsonObject invoice = new JsonObject();
       Matcher matcher = Pattern.compile(".*vendorInvoiceNo==(\\S[^)]+).*")
@@ -731,38 +721,6 @@ public class MockServer {
       addServerRqRsData(HttpMethod.GET, INVOICES, invoice);
       serverResponse(ctx, 200, APPLICATION_JSON, invoice.encodePrettily());
     }
-  }
-
-  private void addEmptyInvoiceCollection(RoutingContext ctx) {
-    InvoiceCollection invoiceCollection = new InvoiceCollection();
-
-    invoiceCollection.setInvoices(new ArrayList<Invoice>());
-    invoiceCollection.setTotalRecords(invoiceCollection.getInvoices()
-      .size());
-    JsonObject invoicesJson = JsonObject.mapFrom(invoiceCollection);
-
-    addServerRqRsData(HttpMethod.GET, INVOICES, JsonObject.mapFrom(invoiceCollection));
-    serverResponse(ctx, 200, APPLICATION_JSON, invoicesJson.encode());
-  }
-
-  private void addMockInvoiceCollection(RoutingContext ctx) {
-    List<Invoice> invoices;
-    InvoiceCollection invoiceCollection = new InvoiceCollection();
-
-    try {
-      invoices = new JsonObject(ApiTestBase.getMockData(MOCK_DATA_INVOICES)).mapTo(InvoiceCollection.class)
-        .getInvoices();
-    } catch (IOException e) {
-      invoices = new ArrayList<Invoice>();
-    }
-
-    invoiceCollection.setInvoices(invoices);
-    invoiceCollection.setTotalRecords(invoiceCollection.getInvoices()
-      .size());
-    JsonObject invoicesJson = JsonObject.mapFrom(invoiceCollection);
-
-    addServerRqRsData(HttpMethod.GET, INVOICES, JsonObject.mapFrom(invoiceCollection));
-    serverResponse(ctx, 200, APPLICATION_JSON, invoicesJson.encode());
   }
 
   private void handleGetFolioInvoiceNumber(RoutingContext ctx) {
