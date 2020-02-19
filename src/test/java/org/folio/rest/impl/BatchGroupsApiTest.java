@@ -27,7 +27,7 @@ public class BatchGroupsApiTest extends ApiTestBase {
 
   public static final String BATCH_GROUPS_PATH = "/batch-groups";
   public static final String BATCH_GROUPS_ID_PATH = BATCH_GROUPS_PATH + "/%s";
-  private static final String BAD_BATCH_GROUP_ID = "5a34ae0e-5a11-4337-be95-1a20cfdc3161";
+  private static final String BAD_BATCH_GROUP_ID = "d25498e7-3ae6-45fe-9612-ec99e2700d2f";
   private static final String VALID_BATCH_GROUP_ID ="e91d44e4-ae4f-401a-b355-3ea44f57a628";
   private static final String INVALID_BATCH_GROUP_ID = "invalidBatchGroupId";
   static final String BATCH_GROUP_MOCK_DATA_PATH = BASE_MOCK_DATA_PATH + "batchGroups/";
