@@ -6,23 +6,11 @@ import static javax.ws.rs.core.MediaType.TEXT_PLAIN;
 import static javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
 import static org.apache.commons.lang3.StringUtils.EMPTY;
 import static org.folio.invoices.utils.HelperUtils.INVOICE_ID;
+import static org.folio.invoices.utils.HelperUtils.QUERY_PARAM_FOR_BATCH_GROUP_ID;
 import static org.folio.invoices.utils.HelperUtils.QUERY_PARAM_START_WITH;
 import static org.folio.invoices.utils.HelperUtils.ALL_UNITS_CQL;
 import static org.folio.invoices.utils.HelperUtils.IS_DELETED_PROP;
-import static org.folio.invoices.utils.ResourcePathResolver.ACQUISITIONS_MEMBERSHIPS;
-import static org.folio.invoices.utils.ResourcePathResolver.ACQUISITIONS_UNITS;
-import static org.folio.invoices.utils.ResourcePathResolver.FOLIO_INVOICE_NUMBER;
-import static org.folio.invoices.utils.ResourcePathResolver.FUNDS;
-import static org.folio.invoices.utils.ResourcePathResolver.INVOICES;
-import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_DOCUMENTS;
-import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_LINES;
-import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_LINE_NUMBER;
-import static org.folio.invoices.utils.ResourcePathResolver.ORDER_LINES;
-import static org.folio.invoices.utils.ResourcePathResolver.VOUCHERS;
-import static org.folio.invoices.utils.ResourcePathResolver.VOUCHER_LINES;
-import static org.folio.invoices.utils.ResourcePathResolver.VOUCHER_NUMBER;
-import static org.folio.invoices.utils.ResourcePathResolver.VOUCHER_NUMBER_START;
-import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
+import static org.folio.invoices.utils.ResourcePathResolver.*;
 import static org.folio.rest.RestVerticle.OKAPI_HEADER_TENANT;
 import static org.folio.rest.impl.AbstractHelper.ID;
 import static org.folio.rest.impl.ApiTestBase.BASE_MOCK_DATA_PATH;
@@ -34,6 +22,8 @@ import static org.folio.rest.impl.ApiTestBase.INVOICE_LINE_NUMBER_VALUE;
 import static org.folio.rest.impl.ApiTestBase.PROTECTED_READ_ONLY_TENANT;
 import static org.folio.rest.impl.ApiTestBase.VOUCHER_NUMBER_VALUE;
 import static org.folio.rest.impl.ApiTestBase.getMockData;
+import static org.folio.rest.impl.BatchGroupsApiTest.BATCH_GROUPS_LIST_PATH;
+import static org.folio.rest.impl.BatchGroupsApiTest.BATCH_GROUP_MOCK_DATA_PATH;
 import static org.folio.rest.impl.DocumentsApiTest.INVOICE_DOCUMENTS_SAMPLE_PATH;
 import static org.folio.rest.impl.DocumentsApiTest.INVOICE_SAMPLE_DOCUMENTS_PATH;
 import static org.folio.rest.impl.InvoiceHelper.INVOICE_CONFIG_MODULE_NAME;
@@ -81,17 +71,7 @@ import org.folio.rest.acq.model.orders.CompositePoLine;
 import org.folio.rest.acq.model.units.AcquisitionsUnit;
 import org.folio.rest.acq.model.units.AcquisitionsUnitCollection;
 import org.folio.rest.acq.model.units.AcquisitionsUnitMembershipCollection;
-import org.folio.rest.jaxrs.model.Config;
-import org.folio.rest.jaxrs.model.Configs;
-import org.folio.rest.jaxrs.model.Document;
-import org.folio.rest.jaxrs.model.DocumentCollection;
-import org.folio.rest.jaxrs.model.Invoice;
-import org.folio.rest.jaxrs.model.InvoiceCollection;
-import org.folio.rest.jaxrs.model.InvoiceDocument;
-import org.folio.rest.jaxrs.model.InvoiceLine;
-import org.folio.rest.jaxrs.model.InvoiceLineCollection;
-import org.folio.rest.jaxrs.model.Voucher;
-import org.folio.rest.jaxrs.model.VoucherCollection;
+import org.folio.rest.jaxrs.model.*;
 
 import com.google.common.collect.HashBasedTable;
 import com.google.common.collect.Table;
@@ -147,6 +127,7 @@ public class MockServer {
   private static final String VALUE_PATH_PARAM = "/:value";
   private static final String TOTAL_RECORDS = "totalRecords";
   public static final String SEARCH_INVOICE_BY_LINE_ID_NOT_FOUND = "b37cd8e7-d291-40f0-b687-57728ee3fc26";
+  public static final String SEARCH_INVOICE_BY_BATCH_GROUP_ID_NOT_FOUND = "e91d44e4-ae4f-401a-b355-3ea44f57a628";
 
   static final Header INVOICE_NUMBER_ERROR_X_OKAPI_TENANT = new Header(OKAPI_HEADER_TENANT, INVOICE_NUMBER_ERROR_TENANT);
   static final Header ERROR_X_OKAPI_TENANT = new Header(OKAPI_HEADER_TENANT, ERROR_TENANT);
@@ -248,11 +229,15 @@ public class MockServer {
     return entries.stream().filter(json -> json.containsKey(ID)).collect(toList());
   }
 
+  public static List<JsonObject> getBatchGroupUpdates() {
+    return getRqRsEntries(HttpMethod.PUT, BATCH_GROUPS);
+  }
+
   public static void release() {
     serverRqRs.clear();
     serverRqQueries.clear();
   }
-  
+
   private Router defineRoutes() {
     Router router = Router.router(vertx);
     router.route().handler(BodyHandler.create());
@@ -262,6 +247,7 @@ public class MockServer {
     router.route(HttpMethod.POST, resourcesPath(VOUCHERS)).handler(ctx -> handlePostEntry(ctx, Voucher.class, VOUCHERS));
     router.route(HttpMethod.POST, resourcesPath(VOUCHER_LINES)).handler(ctx -> handlePostEntry(ctx, VoucherLine.class, VOUCHER_LINES));
     router.route(HttpMethod.POST, "/invoice-storage/invoices/:id/documents").handler(this::handlePostInvoiceDocument);
+    router.route(HttpMethod.POST, resourcesPath(BATCH_GROUPS)).handler(ctx -> handlePost(ctx, BatchGroup.class, BATCH_GROUPS, false));
 
     router.route(HttpMethod.GET, resourcesPath(INVOICES)).handler(this::handleGetInvoices);
     router.route(HttpMethod.GET, resourcesPath(INVOICE_LINES)).handler(this::handleGetInvoiceLines);
@@ -282,17 +268,21 @@ public class MockServer {
     router.route(HttpMethod.GET, "/invoice-storage/invoices/:id/documents/:documentId").handler(this::handleGetInvoiceDocumentById);
     router.route(HttpMethod.GET, resourcesPath(ACQUISITIONS_MEMBERSHIPS)).handler(this::handleGetAcquisitionsMemberships);
     router.route(HttpMethod.GET, resourcesPath(ACQUISITIONS_UNITS)).handler(this::handleGetAcquisitionsUnits);
+    router.route(HttpMethod.GET, resourcesPath(BATCH_GROUPS)).handler(this::handleGetBatchGroups);
+    router.route(HttpMethod.GET, resourceByIdPath(BATCH_GROUPS)).handler(this::handleGetBatchGroupById);
 
     router.route(HttpMethod.DELETE, resourceByIdPath(INVOICES)).handler(ctx -> handleDeleteRequest(ctx, INVOICES));
     router.route(HttpMethod.DELETE, resourceByIdPath(INVOICE_LINES)).handler(ctx -> handleDeleteRequest(ctx, INVOICE_LINES));
     router.route(HttpMethod.DELETE, resourceByIdPath(VOUCHER_LINES)).handler(ctx -> handleDeleteRequest(ctx, VOUCHER_LINES));
     router.route(HttpMethod.DELETE, "/invoice-storage/invoices/:id/documents/:documentId").handler(ctx -> handleDeleteRequest(ctx, INVOICE_DOCUMENTS));
+    router.route(HttpMethod.DELETE, resourceByIdPath(BATCH_GROUPS)).handler(ctx -> handleDeleteRequest(ctx, BATCH_GROUPS));
 
     router.route(HttpMethod.PUT, resourceByIdPath(INVOICES)).handler(ctx -> handlePutGenericSubObj(ctx, INVOICES));
     router.route(HttpMethod.PUT, resourceByIdPath(INVOICE_LINES)).handler(ctx -> handlePutGenericSubObj(ctx, INVOICE_LINES));
     router.route(HttpMethod.PUT, resourceByIdPath(VOUCHERS)).handler(ctx -> handlePutGenericSubObj(ctx, VOUCHERS));
     router.route(HttpMethod.PUT, resourceByIdPath(VOUCHER_LINES)).handler(ctx -> handlePutGenericSubObj(ctx, VOUCHER_LINES));
     router.route(HttpMethod.PUT, resourceByIdPath(ORDER_LINES)).handler(ctx -> handlePutGenericSubObj(ctx, ResourcePathResolver.ORDER_LINES));
+    router.route(HttpMethod.PUT, resourceByIdPath(BATCH_GROUPS)).handler(ctx -> handlePutGenericSubObj(ctx, BATCH_GROUPS));
 
 
     return router;
@@ -561,14 +551,20 @@ public class MockServer {
   }
 
   private <T> void handlePostEntry(RoutingContext ctx, Class<T> tClass, String entryName) {
+    handlePost(ctx, tClass, entryName, true);
+  }
+
+  private <T> void handlePost(RoutingContext ctx, Class<T> tClass, String entryName, boolean generateId) {
     logger.info("got: " + ctx.getBodyAsString());
     String tenant = ctx.request().getHeader(OKAPI_HEADER_TENANT);
     if (ERROR_TENANT.equals(tenant) || CREATE_VOUCHER_ERROR_TENANT.equals(tenant) || CREATE_VOUCHER_LINES_ERROR_TENANT.equals(tenant)) {
       serverResponse(ctx, 500, TEXT_PLAIN, INTERNAL_SERVER_ERROR.getReasonPhrase());
     } else {
-      String id = UUID.randomUUID().toString();
       JsonObject body = ctx.getBodyAsJson();
-      body.put(ID, id);
+      if (generateId) {
+        String id = UUID.randomUUID().toString();
+        body.put(ID, id);
+      }
       T entry = body.mapTo(tClass);
       addServerRqRsData(HttpMethod.POST, entryName, body);
 
@@ -653,12 +649,11 @@ public class MockServer {
       Matcher lineIdMatcher = Pattern.compile(".*invoiceLines.id==(\\S+).*")
         .matcher(queryParam);
       final String lineId = lineIdMatcher.find() ? lineIdMatcher.group(1) : EMPTY;
-      
+
       List<Invoice> invoices;
       InvoiceCollection invoiceCollection = new InvoiceCollection();
-      
-      if (lineId.equals(SEARCH_INVOICE_BY_LINE_ID_NOT_FOUND)) {
 
+      if (lineId.equals(SEARCH_INVOICE_BY_LINE_ID_NOT_FOUND)){
         invoiceCollection.setInvoices(new ArrayList<Invoice>());
         invoiceCollection.setTotalRecords(invoiceCollection.getInvoices()
           .size());
@@ -667,7 +662,6 @@ public class MockServer {
         addServerRqRsData(HttpMethod.GET, INVOICES, JsonObject.mapFrom(invoiceCollection));
         serverResponse(ctx, 200, APPLICATION_JSON, invoicesJson.encode());
       } else {
-
         try {
           invoices = new JsonObject(ApiTestBase.getMockData(MOCK_DATA_INVOICES)).mapTo(InvoiceCollection.class)
             .getInvoices();
@@ -676,8 +670,7 @@ public class MockServer {
         }
 
         Optional<List<Invoice>> invoiceOptional = getMockEntries(INVOICES, Invoice.class);
-        Invoice invoice0 = invoiceOptional.get()
-          .get(0);
+        Invoice invoice0 = invoiceOptional.get().get(0);
         invoices.set(0, invoice0);
         invoiceCollection.setInvoices(invoices);
         invoiceCollection.setTotalRecords(invoiceCollection.getInvoices()
@@ -687,6 +680,14 @@ public class MockServer {
         addServerRqRsData(HttpMethod.GET, INVOICES, JsonObject.mapFrom(invoiceCollection));
         serverResponse(ctx, 200, APPLICATION_JSON, invoicesJson.encode());
       }
+    } else if (queryParam.contains(QUERY_PARAM_FOR_BATCH_GROUP_ID)) {
+      Matcher batchGroupIdMatcher = Pattern.compile(".*batchGroupId==(\\S[^)]+).*")
+        .matcher(queryParam);
+      final String batchGroupId = batchGroupIdMatcher.find() ? batchGroupIdMatcher.group(1) : EMPTY;
+
+      if (batchGroupId.equals(SEARCH_INVOICE_BY_BATCH_GROUP_ID_NOT_FOUND)) addEmptyInvoiceCollection(ctx);
+      else addMockInvoiceCollection(ctx);
+
     } else {
       JsonObject invoice = new JsonObject();
       Matcher matcher = Pattern.compile(".*vendorInvoiceNo==(\\S[^)]+).*")
@@ -705,6 +706,38 @@ public class MockServer {
       addServerRqRsData(HttpMethod.GET, INVOICES, invoice);
       serverResponse(ctx, 200, APPLICATION_JSON, invoice.encodePrettily());
     }
+  }
+
+  private void addEmptyInvoiceCollection(RoutingContext ctx) {
+    InvoiceCollection invoiceCollection = new InvoiceCollection();
+
+    invoiceCollection.setInvoices(new ArrayList<Invoice>());
+    invoiceCollection.setTotalRecords(invoiceCollection.getInvoices()
+      .size());
+    JsonObject invoicesJson = JsonObject.mapFrom(invoiceCollection);
+
+    addServerRqRsData(HttpMethod.GET, INVOICES, JsonObject.mapFrom(invoiceCollection));
+    serverResponse(ctx, 200, APPLICATION_JSON, invoicesJson.encode());
+  }
+
+  private void addMockInvoiceCollection(RoutingContext ctx) {
+    List<Invoice> invoices;
+    InvoiceCollection invoiceCollection = new InvoiceCollection();
+
+    try {
+      invoices = new JsonObject(ApiTestBase.getMockData(MOCK_DATA_INVOICES)).mapTo(InvoiceCollection.class)
+        .getInvoices();
+    } catch (IOException e) {
+      invoices = new ArrayList<Invoice>();
+    }
+
+    invoiceCollection.setInvoices(invoices);
+    invoiceCollection.setTotalRecords(invoiceCollection.getInvoices()
+      .size());
+    JsonObject invoicesJson = JsonObject.mapFrom(invoiceCollection);
+
+    addServerRqRsData(HttpMethod.GET, INVOICES, JsonObject.mapFrom(invoiceCollection));
+    serverResponse(ctx, 200, APPLICATION_JSON, invoicesJson.encode());
   }
 
   private void handleGetFolioInvoiceNumber(RoutingContext ctx) {
@@ -896,6 +929,27 @@ public class MockServer {
     }
   }
 
+  private void handleGetBatchGroupById(RoutingContext ctx) {
+    logger.info("handleGetBatchGroupById got: GET " + ctx.request().path());
+    String id = ctx.request().getParam(ID);
+    logger.info("id: " + id);
+    if (ID_FOR_INTERNAL_SERVER_ERROR.equals(id)) {
+      serverResponse(ctx, 500, APPLICATION_JSON, Response.Status.INTERNAL_SERVER_ERROR.getReasonPhrase());
+    } else {
+      JsonObject batchGroup = getMockEntry(BATCH_GROUPS, id).orElseGet(getJsonObjectFromFile(BATCH_GROUP_MOCK_DATA_PATH, id));
+      if (batchGroup != null) {
+        // validate content against schema
+        BatchGroup batchGroupSchema = batchGroup.mapTo(BatchGroup.class);
+        batchGroupSchema.setId(id);
+        batchGroup = JsonObject.mapFrom(batchGroupSchema);
+        addServerRqRsData(HttpMethod.GET, BATCH_GROUPS, batchGroup);
+        serverResponse(ctx, Response.Status.OK.getStatusCode(), APPLICATION_JSON, batchGroup.encodePrettily());
+      } else {
+        serverResponse(ctx, Response.Status.NOT_FOUND.getStatusCode(), TEXT_PLAIN, id);
+      }
+    }
+  }
+
   private Supplier<JsonObject> getJsonObjectFromFile(String mockDataPath, String id) {
     return () -> {
       String filePath = String.format(MOCK_DATA_PATH_PATTERN, mockDataPath, id);
@@ -943,6 +997,40 @@ public class MockServer {
 
       addServerRqRsData(HttpMethod.GET, VOUCHERS, vouchersJson);
       serverResponse(ctx, 200, APPLICATION_JSON, vouchersJson.encode());
+    }
+  }
+
+  private void handleGetBatchGroups(RoutingContext ctx) {
+
+    logger.info("handleGetBatchGroup got: {}?{}", ctx.request().path(), ctx.request().query());
+
+    String queryParam = StringUtils.trimToEmpty(ctx.request().getParam(QUERY));
+    String tenant = ctx.request().getHeader(OKAPI_HEADER_TENANT);
+    if (queryParam.contains(BAD_QUERY)) {
+      serverResponse(ctx, 400, APPLICATION_JSON, Response.Status.BAD_REQUEST.getReasonPhrase());
+    } else if (queryParam.contains(ID_FOR_INTERNAL_SERVER_ERROR) || GET_VOUCHERS_ERROR_TENANT.equals(tenant)) {
+      serverResponse(ctx, 500, APPLICATION_JSON, Response.Status.INTERNAL_SERVER_ERROR.getReasonPhrase());
+    } else {
+      Supplier<List<BatchGroup>> getFromFile = () -> {
+        try {
+          return new JsonObject(getMockData(BATCH_GROUPS_LIST_PATH))
+            .mapTo(BatchGroupCollection.class).getBatchGroups();
+        } catch (IOException e) {
+          return Collections.emptyList();
+        }
+      };
+
+      BatchGroupCollection batchGroupCollection = new BatchGroupCollection();
+      List<BatchGroup> batchGroups  = getMockEntries(BATCH_GROUPS, BatchGroup.class).orElseGet(getFromFile);
+
+      batchGroupCollection.setBatchGroups(batchGroups);
+      batchGroupCollection.setTotalRecords(batchGroupCollection.getBatchGroups().size());
+
+      JsonObject batchGroupsJson = JsonObject.mapFrom(batchGroupCollection);
+      logger.info(batchGroupsJson.encodePrettily());
+
+      addServerRqRsData(HttpMethod.GET, BATCH_GROUPS, batchGroupsJson);
+      serverResponse(ctx, 200, APPLICATION_JSON, batchGroupsJson.encode());
     }
   }
 

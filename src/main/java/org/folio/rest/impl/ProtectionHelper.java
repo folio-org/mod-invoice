@@ -1,13 +1,16 @@
 package org.folio.rest.impl;
 
 import static org.folio.invoices.utils.ErrorCodes.ACQ_UNITS_NOT_FOUND;
+import static org.folio.invoices.utils.ErrorCodes.BATCH_GROUP_IS_IN_USE;
 import static org.folio.invoices.utils.ErrorCodes.USER_HAS_NO_PERMISSIONS;
 import static org.folio.invoices.utils.HelperUtils.ALL_UNITS_CQL;
 import static org.folio.invoices.utils.HelperUtils.convertIdsToCqlQuery;
 import static org.folio.invoices.utils.HelperUtils.getEndpointWithQuery;
+import static org.folio.invoices.utils.HelperUtils.getInvoicesFromStorage;
 import static org.folio.invoices.utils.HelperUtils.handleGetRequest;
 import static org.folio.invoices.utils.ResourcePathResolver.ACQUISITIONS_MEMBERSHIPS;
 import static org.folio.invoices.utils.ResourcePathResolver.ACQUISITIONS_UNITS;
+import static org.folio.invoices.utils.ResourcePathResolver.INVOICES;
 import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
 
 import java.util.ArrayList;
@@ -40,6 +43,7 @@ public class ProtectionHelper extends AbstractHelper {
   public static final String NO_ACQ_UNIT_ASSIGNED_CQL = "cql.allRecords=1 not %s <> []";
   static final String GET_UNITS_BY_QUERY = resourcesPath(ACQUISITIONS_UNITS) + SEARCH_PARAMS;
   static final String GET_UNITS_MEMBERSHIPS_BY_QUERY = resourcesPath(ACQUISITIONS_MEMBERSHIPS) + SEARCH_PARAMS;
+  private static final String GET_INVOICES_BY_QUERY = resourcesPath(INVOICES) + "?query=batchGroupId==%s&limit=%s&lang=%s";
 
   private List<AcquisitionsUnit> fetchedUnits = new ArrayList<>();
 
@@ -48,7 +52,7 @@ public class ProtectionHelper extends AbstractHelper {
 }
 
   /**
-   * This method determines status of operation restriction based on unit IDs from {@link Invoice}.
+   * This method determines status of operation restriction based on unit IDs from {@link org.folio.rest.jaxrs.model.Invoice}.
    *
    * @param unitIds   list of unit IDs.
    * @param operation type of operation
@@ -77,6 +81,16 @@ public class ProtectionHelper extends AbstractHelper {
     } else {
       return CompletableFuture.completedFuture(null);
     }
+  }
+
+  public CompletableFuture<Void> isBatchGroupDeleteAllowed(String id) {
+    String endpointWithQuery = String.format(GET_INVOICES_BY_QUERY, id, 5, lang);
+    return getInvoicesFromStorage(endpointWithQuery, httpClient, ctx, okapiHeaders, logger)
+      .thenCompose(invoiceCollection -> {
+        if (invoiceCollection.getTotalRecords() != 0)
+          throw new HttpException(HttpStatus.HTTP_FORBIDDEN.toInt(), BATCH_GROUP_IS_IN_USE.toError());
+        return CompletableFuture.completedFuture(null);
+      });
   }
 
   private List<String> extractUnitIds(List<AcquisitionsUnit> activeUnits) {
@@ -110,7 +124,7 @@ public class ProtectionHelper extends AbstractHelper {
     List<String> missingUnitIds = ListUtils.subtract(expectedUnitIds, availableUnitIds);
     return ACQ_UNITS_NOT_FOUND.toError().withAdditionalProperty(ACQUISITIONS_UNIT_IDS, missingUnitIds);
   }
-  
+
   /**
    * Check whether the user is a member of at least one group from which the related invoice belongs.
    *
@@ -129,7 +143,7 @@ public class ProtectionHelper extends AbstractHelper {
 
   /**
    * This method returns list of {@link AcquisitionsUnit} based on list of unit ids
-   * 
+   *
    * @param unitIds list of unit ids
    *
    * @return list of {@link AcquisitionsUnit}
