@@ -48,7 +48,7 @@ public class ProtectionHelper extends AbstractHelper {
 }
 
   /**
-   * This method determines status of operation restriction based on unit IDs from {@link Invoice}.
+   * This method determines status of operation restriction based on unit IDs from {@link org.folio.rest.jaxrs.model.Invoice}.
    *
    * @param unitIds   list of unit IDs.
    * @param operation type of operation
@@ -110,7 +110,7 @@ public class ProtectionHelper extends AbstractHelper {
     List<String> missingUnitIds = ListUtils.subtract(expectedUnitIds, availableUnitIds);
     return ACQ_UNITS_NOT_FOUND.toError().withAdditionalProperty(ACQUISITIONS_UNIT_IDS, missingUnitIds);
   }
-  
+
   /**
    * Check whether the user is a member of at least one group from which the related invoice belongs.
    *
@@ -129,7 +129,7 @@ public class ProtectionHelper extends AbstractHelper {
 
   /**
    * This method returns list of {@link AcquisitionsUnit} based on list of unit ids
-   * 
+   *
    * @param unitIds list of unit ids
    *
    * @return list of {@link AcquisitionsUnit}

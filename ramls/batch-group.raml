@@ -1,0 +1,64 @@
+#%RAML 1.0
+
+title: Batch group
+version: v1.0
+protocols: [ HTTP, HTTPS ]
+baseUri: https://github.com/folio-org/mod-invoice
+
+documentation:
+  - title: Batch group API
+    content: This documents the API calls that can be made to manage batch groups
+
+types:
+  batchGroup: !include acq-models/mod-invoice-storage/schemas/batch_group.json
+  batchGroupCollection: !include acq-models/mod-invoice-storage/schemas/batch_group_collection.json
+  errors: !include raml-util/schemas/errors.schema
+  UUID:
+    type: string
+    pattern: ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$
+
+traits:
+  validate: !include raml-util/traits/validation.raml
+  language: !include raml-util/traits/language.raml
+  pageable:  !include raml-util/traits/pageable.raml
+  searchable: !include raml-util/traits/searchable.raml
+
+resourceTypes:
+  collection: !include raml-util/rtypes/collection.raml
+  collection-item: !include raml-util/rtypes/item-collection.raml
+  get-delete: !include raml-util/rtypes/get-delete.raml
+  get-only: !include raml-util/rtypes/get-only.raml
+
+/batch-groups:
+    displayName: Batch-group
+    description: Manage Batch-groups
+    type:
+      collection:
+        schemaCollection: batchGroupCollection
+        schemaItem: batchGroup
+        exampleCollection: !include acq-models/mod-invoice-storage/examples/batch_group_collection.sample
+        exampleItem: !include acq-models/mod-invoice-storage/examples/batch_group.sample
+
+    post:
+      description: Post a batch group.
+      is: [validate]
+    get:
+      is: [ pageable, searchable: {description: "using CQL (indexes for batch group)", example: "name==\"FOLIO\""}, validate ]
+    /{id}:
+      uriParameters:
+        id:
+          description: The UUID of a batch-group
+          type: UUID
+      displayName: Batch-group
+      description: Get, Delete or Update a specific batch-group
+      type:
+        collection-item:
+          schema: batchGroup
+          exampleItem: !include acq-models/mod-invoice-storage/examples/batch_group.sample
+      get:
+        description: Return a batch-group with given {id}
+      put:
+        description: Update batch-group.
+        is: [validate]
+      delete:
+        description: Delete a batch-group with given {id}
