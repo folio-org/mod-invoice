@@ -64,7 +64,9 @@
             "voucher-storage.voucher-lines.item.delete",
             "voucher-storage.voucher-number.get",
             "acquisitions-units.units.collection.get",
-            "acquisitions-units.memberships.collection.get"
+            "acquisitions-units.memberships.collection.get",
+            "finance.awaiting-payment.item.post",
+            "finance.invoice-transaction-summaries.item.post"
           ]
         },
         {
@@ -336,6 +338,10 @@
     {
       "id": "acquisitions-units",
       "version": "1.1"
+    },
+    {
+      "id": "finance.transactions",
+      "version": "1.0"
     },
     {
       "id": "batch-group-storage.batch-groups",

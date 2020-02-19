@@ -1,5 +1,6 @@
 package org.folio.rest.impl;
 
+import static java.util.concurrent.CompletableFuture.completedFuture;
 import static javax.ws.rs.core.HttpHeaders.CONTENT_TYPE;
 import static javax.ws.rs.core.HttpHeaders.LOCATION;
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
@@ -16,7 +17,7 @@ import static org.folio.invoices.utils.HelperUtils.handleGetRequest;
 import static org.folio.invoices.utils.HelperUtils.verifyAndExtractBody;
 import static org.folio.rest.RestVerticle.OKAPI_USERID_HEADER;
 import static org.folio.rest.impl.InvoicesImpl.PROTECTED_AND_MODIFIED_FIELDS;
-import static java.util.concurrent.CompletableFuture.completedFuture;
+
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.List;
@@ -32,6 +33,7 @@ import javax.ws.rs.core.Response;
 import org.apache.commons.collections4.CollectionUtils;
 import org.folio.invoices.events.handlers.MessageAddress;
 import org.folio.invoices.rest.exceptions.HttpException;
+import org.folio.invoices.utils.HelperUtils;
 import org.folio.rest.jaxrs.model.Configs;
 import org.folio.rest.jaxrs.model.Error;
 import org.folio.rest.jaxrs.model.Errors;
@@ -54,6 +56,8 @@ public abstract class AbstractHelper {
   public static final String CONFIG_QUERY = "module==%s and configName==%s";
   public static final String QUERY_BY_INVOICE_ID = "invoiceId==%s";
   static final String SEARCH_PARAMS = "?limit=%s&offset=%s%s&lang=%s";
+
+  private static final String EXCEPTION_CALLING_ENDPOINT_MSG = "Exception calling {} {}";
 
   private final Errors processingErrors = new Errors();
   private ExchangeRateProvider exchangeRateProvider;
@@ -147,6 +151,24 @@ public abstract class AbstractHelper {
           return null;
         });
     } catch (Exception e) {
+      future.completeExceptionally(e);
+    }
+    return future;
+  }
+
+  public CompletableFuture<Void> postRecorderWithoutResponseBody(JsonObject recordData, String endpoint) {
+    CompletableFuture<Void> future = new VertxCompletableFuture<>(ctx);
+    try {
+      httpClient.request(HttpMethod.POST, recordData.toBuffer(), endpoint, okapiHeaders)
+        .thenAccept(HelperUtils::verifyResponse)
+        .thenApply(future::complete)
+        .exceptionally(t -> {
+          logger.error(EXCEPTION_CALLING_ENDPOINT_MSG, t, HttpMethod.POST, endpoint);
+          future.completeExceptionally(t);
+          return null;
+        });
+    } catch (Exception e) {
+      logger.error(EXCEPTION_CALLING_ENDPOINT_MSG, e, HttpMethod.POST, endpoint);
       future.completeExceptionally(e);
     }
     return future;
