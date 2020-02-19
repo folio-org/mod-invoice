@@ -280,10 +280,7 @@
           "methods": ["DELETE"],
           "pathPattern": "/batch-groups/{id}",
           "permissionsRequired": ["batch-groups.item.delete"],
-          "modulePermissions": [
-            "batch-group-storage.batch-groups.item.get",
-            "batch-group-storage.batch-groups.item.delete"
-          ]
+          "modulePermissions": ["batch-group-storage.batch-groups.item.delete"]
         }
       ]
     },

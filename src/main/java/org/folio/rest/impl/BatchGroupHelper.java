@@ -110,7 +110,6 @@ public class BatchGroupHelper extends AbstractHelper {
    * @param id batch group id to be deleted
    */
   public CompletableFuture<Void> deleteBatchGroup(String id) {
-    return getBatchGroup(id)
-      .thenCompose(v -> handleDeleteRequest(resourceByIdPath(BATCH_GROUPS, id, lang), httpClient, ctx, okapiHeaders, logger));
+    return handleDeleteRequest(resourceByIdPath(BATCH_GROUPS, id, lang), httpClient, ctx, okapiHeaders, logger);
   }
 }
