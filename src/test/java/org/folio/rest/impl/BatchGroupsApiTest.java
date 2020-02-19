@@ -1,5 +1,15 @@
 package org.folio.rest.impl;
 
+import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
+import static javax.ws.rs.core.MediaType.TEXT_PLAIN;
+import static org.folio.rest.impl.AbstractHelper.ID;
+import static org.folio.rest.impl.MockServer.getBatchGroupUpdates;
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
+
 import io.restassured.response.Response;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
@@ -11,16 +21,6 @@ import org.junit.Test;
 
 import java.io.IOException;
 
-import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
-import static javax.ws.rs.core.MediaType.TEXT_PLAIN;
-import static org.folio.rest.impl.AbstractHelper.ID;
-import static org.folio.rest.impl.MockServer.getBatchGroupUpdates;
-import static org.hamcrest.CoreMatchers.is;
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
-
 public class BatchGroupsApiTest extends ApiTestBase {
 
   private static final Logger logger = LoggerFactory.getLogger(BatchGroupsApiTest.class);
@@ -29,7 +29,6 @@ public class BatchGroupsApiTest extends ApiTestBase {
   public static final String BATCH_GROUPS_ID_PATH = BATCH_GROUPS_PATH + "/%s";
   private static final String BAD_BATCH_GROUP_ID = "5a34ae0e-5a11-4337-be95-1a20cfdc3161";
   private static final String VALID_BATCH_GROUP_ID ="e91d44e4-ae4f-401a-b355-3ea44f57a628";
-  private static final String SYSTEM_BATCH_GROUP_ID ="2a2cb998-1437-41d1-88ad-01930aaeadd5";
   private static final String INVALID_BATCH_GROUP_ID = "invalidBatchGroupId";
   static final String BATCH_GROUP_MOCK_DATA_PATH = BASE_MOCK_DATA_PATH + "batchGroups/";
   static final String BATCH_GROUPS_LIST_PATH = BATCH_GROUP_MOCK_DATA_PATH + "batch_group_collection.json";
@@ -115,16 +114,9 @@ public class BatchGroupsApiTest extends ApiTestBase {
 
   @Test
   public void testDeleteExistingBatchGroup() {
-    logger.info("=== Test Delete Batch group (no invoices with batchGroupId) ===");
+    logger.info("=== Test Delete Batch group ===");
     String id = VALID_BATCH_GROUP_ID;
     verifyDeleteResponse(String.format(BATCH_GROUPS_ID_PATH, id),"",204);
-  }
-
-  @Test
-  public void testDeleteBatchGroupInUse() {
-    logger.info("=== Test Delete Batch group (invoices with batchGroupId) ===");
-    String id = SYSTEM_BATCH_GROUP_ID;
-    verifyDeleteResponse(String.format(BATCH_GROUPS_ID_PATH, id),"",403);
   }
 
   @Test

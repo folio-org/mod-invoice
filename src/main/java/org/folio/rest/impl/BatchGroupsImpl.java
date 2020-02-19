@@ -1,5 +1,7 @@
 package org.folio.rest.impl;
 
+import static io.vertx.core.Future.succeededFuture;
+
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Context;
 import io.vertx.core.Handler;
@@ -12,8 +14,6 @@ import org.folio.rest.jaxrs.resource.BatchGroups;
 
 import javax.ws.rs.core.Response;
 import java.util.Map;
-
-import static io.vertx.core.Future.succeededFuture;
 
 public class BatchGroupsImpl implements BatchGroups {
 

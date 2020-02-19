@@ -1,5 +1,14 @@
 package org.folio.rest.impl;
 
+import static org.folio.invoices.utils.HelperUtils.getEndpointWithQuery;
+import static org.folio.invoices.utils.HelperUtils.getHttpClient;
+import static org.folio.invoices.utils.HelperUtils.handleDeleteRequest;
+import static org.folio.invoices.utils.HelperUtils.handleGetRequest;
+import static org.folio.invoices.utils.HelperUtils.handlePutRequest;
+import static org.folio.invoices.utils.ResourcePathResolver.BATCH_GROUPS;
+import static org.folio.invoices.utils.ResourcePathResolver.resourceByIdPath;
+import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
+
 import io.vertx.core.Context;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
@@ -11,19 +20,9 @@ import org.folio.rest.tools.client.interfaces.HttpClientInterface;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
-import static org.folio.invoices.utils.HelperUtils.getEndpointWithQuery;
-import static org.folio.invoices.utils.HelperUtils.getHttpClient;
-import static org.folio.invoices.utils.HelperUtils.handleDeleteRequest;
-import static org.folio.invoices.utils.HelperUtils.handleGetRequest;
-import static org.folio.invoices.utils.HelperUtils.handlePutRequest;
-import static org.folio.invoices.utils.ResourcePathResolver.BATCH_GROUPS;
-import static org.folio.invoices.utils.ResourcePathResolver.resourceByIdPath;
-import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
-
 public class BatchGroupHelper extends AbstractHelper {
 
   private static final String GET_BATCH_GROUPS_BY_QUERY = resourcesPath(BATCH_GROUPS) + SEARCH_PARAMS;
-
   private final ProtectionHelper protectionHelper;
 
   public BatchGroupHelper(Map<String, String> okapiHeaders, Context ctx, String lang) {
@@ -109,14 +108,11 @@ public class BatchGroupHelper extends AbstractHelper {
 
   /**
    * Delete Batch group
-   * 1. Get batch group by id
-   * 2. Check if this batch group is not in use by any invoice
-   * 3. If no then delete batch group
+   *
    * @param id batch group id to be deleted
    */
   public CompletableFuture<Void> deleteBatchGroup(String id) {
     return getBatchGroup(id)
-      .thenCompose(batchGroup -> protectionHelper.isBatchGroupDeleteAllowed(batchGroup.getId()))
       .thenCompose(v -> handleDeleteRequest(resourceByIdPath(BATCH_GROUPS, id, lang), httpClient, ctx, okapiHeaders, logger));
   }
 }
