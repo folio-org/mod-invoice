@@ -1,0 +1,14 @@
+{
+  "batchGroups": [
+    {
+      "id": "e91d44e4-ae4f-401a-b355-3ea44f57a628",
+      "name": "Amherst (AC)",
+      "description": "Amherst College",
+      "metadata": {
+        "createdDate": "2020-01-28T00:12:04.000+0000",
+        "createdByUserId": "28d1057c-d137-11e8-a8d5-f2801f1b9fd1"
+      }
+    }
+  ],
+  "totalRecords": 1
+}
