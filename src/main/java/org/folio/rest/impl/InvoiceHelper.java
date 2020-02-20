@@ -15,6 +15,7 @@ import static org.folio.invoices.utils.AcqDesiredPermissions.ASSIGN;
 import static org.folio.invoices.utils.AcqDesiredPermissions.MANAGE;
 import static org.folio.invoices.utils.ErrorCodes.ADJUSTMENT_FUND_DISTRIBUTIONS_NOT_PRESENT;
 import static org.folio.invoices.utils.ErrorCodes.ADJUSTMENT_FUND_DISTRIBUTIONS_SUMMARY_MISMATCH;
+import static org.folio.invoices.utils.ErrorCodes.AWAITING_PAYMENT_ERROR;
 import static org.folio.invoices.utils.ErrorCodes.EXTERNAL_ACCOUNT_NUMBER_IS_MISSING;
 import static org.folio.invoices.utils.ErrorCodes.FUNDS_NOT_FOUND;
 import static org.folio.invoices.utils.ErrorCodes.FUND_DISTRIBUTIONS_NOT_PRESENT;
@@ -46,9 +47,11 @@ import static org.folio.invoices.utils.HelperUtils.handleGetRequest;
 import static org.folio.invoices.utils.HelperUtils.handlePutRequest;
 import static org.folio.invoices.utils.HelperUtils.isPostApproval;
 import static org.folio.invoices.utils.ProtectedOperationType.UPDATE;
+import static org.folio.invoices.utils.ResourcePathResolver.AWAITING_PAYMENTS;
 import static org.folio.invoices.utils.ResourcePathResolver.FOLIO_INVOICE_NUMBER;
 import static org.folio.invoices.utils.ResourcePathResolver.FUNDS;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICES;
+import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_TRANSACTION_SUMMARIES;
 import static org.folio.invoices.utils.ResourcePathResolver.ORDER_LINES;
 import static org.folio.invoices.utils.ResourcePathResolver.resourceByIdPath;
 import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
@@ -85,8 +88,10 @@ import org.folio.invoices.utils.ErrorCodes;
 import org.folio.invoices.utils.HelperUtils;
 import org.folio.invoices.utils.InvoiceProtectedFields;
 import org.folio.invoices.utils.ProtectedOperationType;
+import org.folio.rest.acq.model.finance.AwaitingPayment;
 import org.folio.rest.acq.model.finance.Fund;
 import org.folio.rest.acq.model.finance.FundCollection;
+import org.folio.rest.acq.model.finance.InvoiceTransactionSummary;
 import org.folio.rest.acq.model.orders.CompositePoLine;
 import org.folio.rest.jaxrs.model.Adjustment;
 import org.folio.rest.jaxrs.model.Config;
@@ -487,33 +492,18 @@ public class InvoiceHelper extends AbstractHelper {
 
     return loadTenantConfiguration(SYSTEM_CONFIG_QUERY, VOUCHER_NUMBER_CONFIG_QUERY)
       .thenCompose(ok -> getInvoiceLinesWithTotals(invoice))
-      .thenApply(lines -> {
-        verifyInvoiceLineNotEmpty(lines);
-        validateInvoiceLineFundDistributions(lines, Monetary.getCurrency(invoice.getCurrency()));
-        validateInvoiceAdjustmentsDistributions(getNotProratedAdjustments(invoice) , Monetary.getCurrency(invoice.getCurrency()));
-        return lines;
-      })
+      .thenApply(lines -> validateBeforeApproval(invoice, lines))
+      .thenCompose(invoiceLines -> updateEncumbrances(invoiceLines, invoice.getCurrency()))
       .thenCompose(lines -> prepareVoucher(invoice)
           .thenCompose(voucher -> handleVoucherWithLines(getFundDistrAmountPairs(lines, invoice), voucher))
       );
   }
 
-  private List<Pair<FundDistribution, ? extends MonetaryAmount>> getFundDistrAmountPairs(List<InvoiceLine> invoiceLines, Invoice invoice) {
-    List<Pair<FundDistribution, ? extends MonetaryAmount>> fundDistributions = invoiceLines.stream()
-      .flatMap(invoiceLine -> invoiceLine.getFundDistributions()
-        .stream()
-        .map(fundDistribution -> new MutablePair<>(fundDistribution.withInvoiceLineId(invoiceLine.getId()),
-            getFundDistributionAmount(fundDistribution, invoiceLine.getTotal(), invoice.getCurrency()))))
-      .collect(toList());
-
-    fundDistributions.addAll(getNotProratedAdjustments(invoice).stream()
-      .flatMap(adjustment -> adjustment.getFundDistributions()
-        .stream()
-        .map(fundDistribution -> new MutablePair<>(fundDistribution,
-            getAdjustmentFundDistributionAmount(fundDistribution, adjustment, invoice))))
-      .collect(toList()));
-
-    return fundDistributions;
+  private List<InvoiceLine> validateBeforeApproval(Invoice invoice, List<InvoiceLine> lines) {
+    verifyInvoiceLineNotEmpty(lines);
+    validateInvoiceLineFundDistributions(lines, Monetary.getCurrency(invoice.getCurrency()));
+    validateInvoiceAdjustmentsDistributions(getNotProratedAdjustments(invoice) , Monetary.getCurrency(invoice.getCurrency()));
+    return lines;
   }
 
   private void verifyInvoiceLineNotEmpty(List<InvoiceLine> invoiceLines) {
@@ -534,6 +524,14 @@ public class InvoiceHelper extends AbstractHelper {
     }
   }
 
+  private boolean isFundDistributionSummaryNotValid(InvoiceLine line, CurrencyUnit currencyUnit) {
+    return ObjectUtils.notEqual(sumMixedDistributions(line, currencyUnit), line.getTotal());
+  }
+
+  private Double sumMixedDistributions(InvoiceLine line, CurrencyUnit currencyUnit) {
+    return sumMixedDistributions(line.getFundDistributions(), line.getTotal(), currencyUnit);
+  }
+
   private void validateInvoiceAdjustmentsDistributions(List<Adjustment> adjustments, CurrencyUnit currencyUnit) {
     for (Adjustment adjustment : adjustments){
       if (CollectionUtils.isEmpty(adjustment.getFundDistributions())) {
@@ -546,16 +544,8 @@ public class InvoiceHelper extends AbstractHelper {
     }
   }
 
-  private boolean isFundDistributionSummaryNotValid(InvoiceLine line, CurrencyUnit currencyUnit) {
-    return ObjectUtils.notEqual(sumMixedDistributions(line, currencyUnit), line.getTotal());
-  }
-
   private boolean isFundDistributionSummaryNotValid(Adjustment adjustment, CurrencyUnit currencyUnit) {
     return ObjectUtils.notEqual(sumMixedDistributions(adjustment.getFundDistributions(), adjustment.getValue(), currencyUnit), adjustment.getValue());
-  }
-
-  private Double sumMixedDistributions(InvoiceLine line, CurrencyUnit currencyUnit) {
-    return sumMixedDistributions(line.getFundDistributions(), line.getTotal(), currencyUnit);
   }
 
   private Double sumMixedDistributions(List<FundDistribution> fundDistributions, double total, CurrencyUnit currencyUnit) {
@@ -564,6 +554,24 @@ public class InvoiceHelper extends AbstractHelper {
       .reduce(Money::add)
       .orElse(Money.zero(currencyUnit))
       .getNumber().doubleValue();
+  }
+
+  private List<Pair<FundDistribution, ? extends MonetaryAmount>> getFundDistrAmountPairs(List<InvoiceLine> invoiceLines, Invoice invoice) {
+    List<Pair<FundDistribution, ? extends MonetaryAmount>> fundDistributions = invoiceLines.stream()
+      .flatMap(invoiceLine -> invoiceLine.getFundDistributions()
+        .stream()
+        .map(fundDistribution -> new MutablePair<>(fundDistribution.withInvoiceLineId(invoiceLine.getId()),
+            getFundDistributionAmount(fundDistribution, invoiceLine.getTotal(), invoice.getCurrency()))))
+      .collect(toList());
+
+    fundDistributions.addAll(getNotProratedAdjustments(invoice).stream()
+      .flatMap(adjustment -> adjustment.getFundDistributions()
+        .stream()
+        .map(fundDistribution -> new MutablePair<>(fundDistribution,
+            getAdjustmentFundDistributionAmount(fundDistribution, adjustment, invoice))))
+      .collect(toList()));
+
+    return fundDistributions;
   }
 
   /**
@@ -667,6 +675,62 @@ public class InvoiceHelper extends AbstractHelper {
           .thenAccept(voucherWithId -> populateVoucherId(voucherLines, voucher))
           .thenCompose(v -> createVoucherLinesRecords(voucherLines));
       });
+  }
+
+  private CompletableFuture<List<InvoiceLine>> updateEncumbrances(List<InvoiceLine> invoiceLines, String currency) {
+
+    return VertxCompletableFuture.supplyBlockingAsync(ctx, () -> buildAwaitingPayments(invoiceLines, currency))
+      .thenCompose(awaitingPayments -> {
+        InvoiceTransactionSummary summary = buildInvoiceTransactionsSummary(invoiceLines, awaitingPayments.size());
+        return createInvoiceTransactionSummary(summary)
+          .thenCompose(s -> postAwaitingPayments(awaitingPayments));
+      }).thenApply(aVoid -> invoiceLines);
+  }
+
+  private InvoiceTransactionSummary buildInvoiceTransactionsSummary(List<InvoiceLine> invoiceLines, int numEncumbrances) {
+    return new InvoiceTransactionSummary()
+      .withId(invoiceLines.get(0).getInvoiceId())
+      .withNumEncumbrances(numEncumbrances)
+      .withNumPaymentsCredits(calculatePaymentsNumber(invoiceLines));
+  }
+
+  private int calculatePaymentsNumber(List<InvoiceLine> invoiceLines) {
+    return invoiceLines.stream()
+      .filter(invoiceLine -> invoiceLine.getTotal() != 0)
+      .mapToInt(invoiceLine -> invoiceLine.getFundDistributions().size())
+      .sum();
+  }
+
+  private CompletableFuture<String> createInvoiceTransactionSummary(InvoiceTransactionSummary summary) {
+    return createRecordInStorage(JsonObject.mapFrom(summary), resourcesPath(INVOICE_TRANSACTION_SUMMARIES));
+  }
+
+  private CompletableFuture<Void> postAwaitingPayments(List<AwaitingPayment> awaitingPayments) {
+    return VertxCompletableFuture.allOf(ctx,awaitingPayments.stream()
+      .map(awaitingPayment -> postRecorderWithoutResponseBody(JsonObject.mapFrom(awaitingPayment), resourcesPath(AWAITING_PAYMENTS))
+        .exceptionally(t -> {
+          logger.error("Failed to update encumbrance with id {}", t, awaitingPayment.getEncumbranceId());
+          Parameter parameter = new Parameter().withKey("encumbranceId").withValue(awaitingPayment.getEncumbranceId());
+          throw new HttpException(400, AWAITING_PAYMENT_ERROR.toError().withParameters(Collections.singletonList(parameter)));
+        }))
+      .toArray(CompletableFuture[]::new));
+  }
+
+  private List<AwaitingPayment> buildAwaitingPayments(List<InvoiceLine> invoiceLines, String currency) {
+    CurrencyConversion conversion = getExchangeRateProvider().getCurrencyConversion(getSystemCurrency());
+    return invoiceLines.stream()
+      .flatMap(line -> line.getFundDistributions().stream()
+        .filter(fundDistribution -> Objects.nonNull(fundDistribution.getEncumbrance()))
+        .map(fundDistribution -> buildAwaitingPayment(fundDistribution, line, currency, conversion)))
+      .collect(toList());
+  }
+
+  private AwaitingPayment buildAwaitingPayment(FundDistribution fundDistribution, InvoiceLine invoiceLine, String currency, CurrencyConversion conversion) {
+    MonetaryAmount amount = getFundDistributionAmount(fundDistribution, invoiceLine.getTotal(), currency).with(conversion);
+    return new AwaitingPayment()
+      .withAmountAwaitingPayment(convertToDoubleWithRounding(amount))
+      .withEncumbranceId(fundDistribution.getEncumbrance())
+      .withReleaseEncumbrance(invoiceLine.getReleaseEncumbrance());
   }
 
   /**
