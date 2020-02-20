@@ -1,11 +1,7 @@
 package org.folio.schemas.xsd;
 
-import org.folio.rest.jaxrs.model.BatchVoucherType;
 import org.junit.Test;
 import javax.xml.XMLConstants;
-import javax.xml.bind.JAXBContext;
-import javax.xml.bind.JAXBElement;
-import javax.xml.bind.Unmarshaller;
 import javax.xml.transform.stream.StreamSource;
 import javax.xml.validation.Schema;
 import javax.xml.validation.SchemaFactory;
