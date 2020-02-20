@@ -35,7 +35,6 @@ import java.util.concurrent.TimeoutException;
   LinesProtectionTest.class,
   InvoicesProratedAdjustmentsTest.class,
   InvoiceLinesProratedAdjustmentsTest.class,
-  InvoiceLinesProratedAdjustmentsTest.class,
   BatchGroupsApiTest.class,
   BatchVoucherSchemaXSDTest.class
 })
