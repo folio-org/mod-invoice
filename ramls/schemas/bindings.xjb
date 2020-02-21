@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<jaxb:bindings xmlns:jaxb="http://java.sun.com/xml/ns/jaxb"
+               xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+               xsi:schemaLocation="http://java.sun.com/xml/ns/jaxb http://java.sun.com/xml/ns/jaxb/bindingschema_2_0.xsd"
+               xmlns:xjc="http://java.sun.com/xml/ns/jaxb/xjc"
+               xmlns:xs="http://www.w3.org/2001/XMLSchema"
+               xmlns:annox="http://annox.dev.java.net"
+               xmlns:oai="http://www.openarchives.org/OAI/2.0/"
+               jaxb:version="2.1">
+
+	<jaxws:bindings xmlns:jaxws="http://java.sun.com/xml/ns/jaxws">
+		<!--jaxws:enableWrapperStyle>true</jaxws:enableWrapperStyle-->
+		<!--jaxws:enableAsyncMapping>false</jaxws:enableAsyncMapping-->
+	</jaxws:bindings>
+
+	<jaxb:bindings schemaLocation="batch_voucher.xsd" node="/xs:schema/xs:complexType[@name='BatchVoucherType']">
+		<jaxb:bindings >
+			<annox:annotate target="field">
+				<annox:annotate annox:class="javax.xml.bind.annotation.XmlRootElement" name = "batchVoucher" required = "true"/>
+			</annox:annotate>
+		</jaxb:bindings>
+	</jaxb:bindings>
+</jaxb:bindings>

@@ -4,18 +4,20 @@ import static java.util.UUID.randomUUID;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static java.util.stream.Collectors.groupingBy;
+import static java.util.stream.Collectors.toMap;
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 import static javax.ws.rs.core.MediaType.TEXT_PLAIN;
 import static org.awaitility.Awaitility.await;
 import static org.folio.invoices.utils.ErrorCodes.ADJUSTMENT_FUND_DISTRIBUTIONS_NOT_PRESENT;
 import static org.folio.invoices.utils.ErrorCodes.ADJUSTMENT_FUND_DISTRIBUTIONS_SUMMARY_MISMATCH;
-import static org.folio.invoices.utils.ErrorCodes.INVALID_INVOICE_TRANSITION_ON_PAID_STATUS;
+import static org.folio.invoices.utils.ErrorCodes.AWAITING_PAYMENT_ERROR;
 import static org.folio.invoices.utils.ErrorCodes.EXTERNAL_ACCOUNT_NUMBER_IS_MISSING;
 import static org.folio.invoices.utils.ErrorCodes.FUNDS_NOT_FOUND;
 import static org.folio.invoices.utils.ErrorCodes.FUND_DISTRIBUTIONS_NOT_PRESENT;
-import static org.folio.invoices.utils.ErrorCodes.LINE_FUND_DISTRIBUTIONS_SUMMARY_MISMATCH;
 import static org.folio.invoices.utils.ErrorCodes.GENERIC_ERROR_CODE;
+import static org.folio.invoices.utils.ErrorCodes.INVALID_INVOICE_TRANSITION_ON_PAID_STATUS;
 import static org.folio.invoices.utils.ErrorCodes.INVOICE_TOTAL_REQUIRED;
+import static org.folio.invoices.utils.ErrorCodes.LINE_FUND_DISTRIBUTIONS_SUMMARY_MISMATCH;
 import static org.folio.invoices.utils.ErrorCodes.MOD_CONFIG_ERROR;
 import static org.folio.invoices.utils.ErrorCodes.PO_LINE_NOT_FOUND;
 import static org.folio.invoices.utils.ErrorCodes.PO_LINE_UPDATE_FAILURE;
@@ -28,12 +30,15 @@ import static org.folio.invoices.utils.HelperUtils.calculateAdjustment;
 import static org.folio.invoices.utils.HelperUtils.calculateInvoiceLineTotals;
 import static org.folio.invoices.utils.HelperUtils.calculateVoucherAmount;
 import static org.folio.invoices.utils.HelperUtils.convertToDoubleWithRounding;
+import static org.folio.invoices.utils.HelperUtils.getFundDistributionAmount;
 import static org.folio.invoices.utils.HelperUtils.getNoAcqUnitCQL;
 import static org.folio.invoices.utils.HelperUtils.getNotProratedAdjustments;
+import static org.folio.invoices.utils.ResourcePathResolver.AWAITING_PAYMENTS;
 import static org.folio.invoices.utils.ResourcePathResolver.FOLIO_INVOICE_NUMBER;
 import static org.folio.invoices.utils.ResourcePathResolver.FUNDS;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICES;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_LINES;
+import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_TRANSACTION_SUMMARIES;
 import static org.folio.invoices.utils.ResourcePathResolver.ORDER_LINES;
 import static org.folio.invoices.utils.ResourcePathResolver.VOUCHERS;
 import static org.folio.invoices.utils.ResourcePathResolver.VOUCHER_LINES;
@@ -69,6 +74,7 @@ import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.endsWith;
 import static org.hamcrest.Matchers.hasSize;
+import static org.hamcrest.Matchers.isEmptyOrNullString;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.nullValue;
 import static org.hamcrest.core.Is.is;
@@ -90,11 +96,13 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import javax.money.CurrencyUnit;
 import javax.money.Monetary;
 import javax.money.MonetaryAmount;
+import javax.money.convert.CurrencyConversion;
 import javax.money.convert.MonetaryConversions;
 
 import org.apache.commons.collections4.CollectionUtils;
@@ -102,8 +110,10 @@ import org.apache.commons.lang3.reflect.FieldUtils;
 import org.apache.http.HttpStatus;
 import org.folio.invoices.utils.InvoiceProtectedFields;
 import org.folio.rest.acq.model.VoucherLineCollection;
+import org.folio.rest.acq.model.finance.AwaitingPayment;
 import org.folio.rest.acq.model.finance.Fund;
 import org.folio.rest.acq.model.finance.FundCollection;
+import org.folio.rest.acq.model.finance.InvoiceTransactionSummary;
 import org.folio.rest.acq.model.orders.CompositePoLine;
 import org.folio.rest.acq.model.units.AcquisitionsUnitMembershipCollection;
 import org.folio.rest.jaxrs.model.Adjustment;
@@ -817,6 +827,10 @@ public class InvoicesApiTest extends ApiTestBase {
   }
 
   private Errors transitionToApprovedWithError(String invoiceSamplePath, Headers headers) {
+    return transitionToApprovedWithError(invoiceSamplePath, headers, 500);
+  }
+
+  private Errors transitionToApprovedWithError(String invoiceSamplePath, Headers headers, int expectedCode) {
     InvoiceLine invoiceLine = getMockAsJson(INVOICE_LINE_WITH_APPROVED_INVOICE_SAMPLE_PATH).mapTo(InvoiceLine.class);
 
     Invoice reqData = getMockAsJson(invoiceSamplePath).mapTo(Invoice.class);
@@ -829,7 +843,7 @@ public class InvoicesApiTest extends ApiTestBase {
 
     String id = reqData.getId();
     String jsonBody = JsonObject.mapFrom(reqData).encode();
-    return verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, headers, APPLICATION_JSON, 500)
+    return verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, headers, APPLICATION_JSON, expectedCode)
       .then()
       .extract()
       .body().as(Errors.class);
@@ -1066,6 +1080,102 @@ public class InvoicesApiTest extends ApiTestBase {
   }
 
   @Test
+  public void testTransitionToApprovedWithoutFundDistrEncumbranceId() {
+    logger.info("=== Test transition invoice to Approved without links to encumbrances ===");
+
+    InvoiceLine invoiceLine = getMockAsJson(INVOICE_LINE_WITH_APPROVED_INVOICE_SAMPLE_PATH).mapTo(InvoiceLine.class);
+    Invoice reqData = getMockAsJson(REVIEWED_INVOICE_WITH_EXISTING_VOUCHER_SAMPLE_PATH).mapTo(Invoice.class);
+    reqData.setStatus(Invoice.Status.APPROVED);
+
+    String id = reqData.getId();
+
+    invoiceLine.setId(UUID.randomUUID().toString());
+    invoiceLine.setInvoiceId(id);
+    invoiceLine.getFundDistributions().forEach(fundDistribution -> fundDistribution.setEncumbrance(null));
+    addMockEntry(INVOICE_LINES, JsonObject.mapFrom(invoiceLine));
+
+    String jsonBody = JsonObject.mapFrom(reqData).encode();
+    Headers headers = prepareHeaders(X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID);
+
+    verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, headers, "", 204);
+
+    List<JsonObject> invoiceSummariesCreated = serverRqRs.get(INVOICE_TRANSACTION_SUMMARIES, HttpMethod.POST);
+    List<JsonObject> awaitingPaymentsCreated = serverRqRs.get(AWAITING_PAYMENTS, HttpMethod.POST);
+
+    assertThat(invoiceSummariesCreated, hasSize(1));
+    assertThat(awaitingPaymentsCreated, nullValue());
+
+    InvoiceTransactionSummary transactionSummary = invoiceSummariesCreated.get(0).mapTo(InvoiceTransactionSummary.class);
+
+    assertThat(transactionSummary.getNumEncumbrances(), is(0));
+    assertThat(transactionSummary.getNumPaymentsCredits(), is(invoiceLine.getFundDistributions().size()));
+  }
+
+  @Test
+  public void testTransitionToApprovedWithFundDistrEncumbranceId() {
+    logger.info("=== Test transition invoice to Approved with links to encumbrances ===");
+
+    InvoiceLine invoiceLine = getMockAsJson(INVOICE_LINE_WITH_APPROVED_INVOICE_SAMPLE_PATH).mapTo(InvoiceLine.class);
+    Invoice reqData = getMockAsJson(REVIEWED_INVOICE_WITH_EXISTING_VOUCHER_SAMPLE_PATH).mapTo(Invoice.class);
+    reqData.setStatus(Invoice.Status.APPROVED);
+    reqData.setCurrency("USD");
+
+    String id = reqData.getId();
+
+    invoiceLine.setId(UUID.randomUUID().toString());
+    invoiceLine.setInvoiceId(id);
+    invoiceLine.setAdjustmentsTotal(0d);
+    invoiceLine.setAdjustments(Collections.emptyList());
+
+    invoiceLine.setSubTotal(10d);
+    FundDistribution fd1 = new FundDistribution()
+      .withDistributionType(FundDistribution.DistributionType.PERCENTAGE)
+      .withFundId(EXISTING_FUND_ID)
+      .withValue(50d)
+      .withEncumbrance(UUID.randomUUID().toString());
+    FundDistribution fd2 = new FundDistribution()
+      .withDistributionType(FundDistribution.DistributionType.AMOUNT)
+      .withFundId(EXISTING_FUND_ID)
+      .withValue(3d)
+      .withEncumbrance(UUID.randomUUID().toString());
+    FundDistribution fd3 = new FundDistribution()
+      .withDistributionType(FundDistribution.DistributionType.AMOUNT)
+      .withFundId(EXISTING_FUND_ID)
+      .withValue(2d)
+      .withEncumbrance(UUID.randomUUID().toString());
+
+    List<FundDistribution> fundDistributions = Arrays.asList(fd1, fd2, fd3);
+    invoiceLine.setFundDistributions(fundDistributions);
+
+    addMockEntry(INVOICE_LINES, JsonObject.mapFrom(invoiceLine));
+
+    String jsonBody = JsonObject.mapFrom(reqData).encode();
+    Headers headers = prepareHeaders(X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID);
+
+    verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, headers, "", 204);
+
+    List<JsonObject> invoiceSummariesCreated = serverRqRs.get(INVOICE_TRANSACTION_SUMMARIES, HttpMethod.POST);
+    List<JsonObject> awaitingPaymentsCreated = serverRqRs.get(AWAITING_PAYMENTS, HttpMethod.POST);
+
+    assertThat(invoiceSummariesCreated, hasSize(1));
+
+
+    InvoiceTransactionSummary transactionSummary = invoiceSummariesCreated.get(0).mapTo(InvoiceTransactionSummary.class);
+
+    assertThat(transactionSummary.getNumEncumbrances(), is(invoiceLine.getFundDistributions().size()));
+    assertThat(transactionSummary.getNumPaymentsCredits(), is(invoiceLine.getFundDistributions().size()));
+    assertThat(awaitingPaymentsCreated, hasSize(invoiceLine.getFundDistributions().size()));
+    Map<String, AwaitingPayment> awaitingPaymentMap = awaitingPaymentsCreated.stream()
+      .map(entries -> entries.mapTo(AwaitingPayment.class))
+      .collect(toMap(AwaitingPayment::getEncumbranceId, Function.identity()));
+    CurrencyConversion conversion = MonetaryConversions.getExchangeRateProvider().getCurrencyConversion("GBP"); //currency from MockServer
+    fundDistributions.forEach(fundDistribution -> {
+      MonetaryAmount amount = getFundDistributionAmount(fundDistribution, 10d, reqData.getCurrency()).with(conversion);
+      assertThat(convertToDoubleWithRounding(amount), is(awaitingPaymentMap.get(fundDistribution.getEncumbrance()).getAmountAwaitingPayment()));
+    });
+  }
+
+  @Test
   public void testTransitionToApprovedWithInternalServerErrorFromGetInvoiceLines() {
     logger.info("=== Test transition invoice to Approved with Internal Server Error when retrieving invoiceLines ===");
 
@@ -1170,18 +1280,6 @@ public class InvoicesApiTest extends ApiTestBase {
   }
 
   @Test
-  public void testTransitionToApprovedWithErrorFromDeleteVoucherLines() {
-    logger.info("=== Test transition invoice to Approved with error when deleting voucherLines  ===");
-
-    Headers headers = prepareHeaders(X_OKAPI_URL, MockServer.DELETE_VOUCHER_LINE_ERROR_X_OKAPI_TENANT, X_OKAPI_TOKEN);
-    Errors errors = transitionToApprovedWithError(REVIEWED_INVOICE_WITH_EXISTING_VOUCHER_SAMPLE_PATH, headers);
-
-    assertThat(errors, notNullValue());
-    assertThat(errors.getErrors(), hasSize(1));
-    assertThat(errors.getErrors().get(0).getCode(), equalTo(GENERIC_ERROR_CODE.getCode()));
-  }
-
-  @Test
   public void testTransitionToApprovedWithErrorFromCreateVoucherLines() {
     logger.info("=== Test transition invoice to Approved with error when creating voucherLines  ===");
 
@@ -1193,21 +1291,52 @@ public class InvoicesApiTest extends ApiTestBase {
     assertThat(errors.getErrors().get(0).getCode(), equalTo(GENERIC_ERROR_CODE.getCode()));
   }
 
+  @Test
+  public void testTransitionToApprovedWithErrorFromCreateInvoiceTransactionSummary() {
+    logger.info("=== Test transition invoice to Approved with error when creating InvoiceTransactionSummary  ===");
+
+    Headers headers = prepareHeaders(X_OKAPI_URL, MockServer.CREATE_INVOICE_TRANSACTION_SUMMARY_ERROR_X_OKAPI_TENANT, X_OKAPI_TOKEN);
+    Errors errors = transitionToApprovedWithError(REVIEWED_INVOICE_SAMPLE_PATH, headers);
+
+    assertThat(errors, notNullValue());
+    assertThat(errors.getErrors(), hasSize(1));
+    assertThat(errors.getErrors().get(0).getCode(), equalTo(GENERIC_ERROR_CODE.getCode()));
+  }
+
+  @Test
+  public void testTransitionToApprovedWithErrorFromCreateAwaitingPayment() {
+    logger.info("=== Test transition invoice to Approved with error when creating AwaitingPayment  ===");
+
+    Headers headers = prepareHeaders(X_OKAPI_URL, MockServer.POST_AWAITING_PAYMENT_ERROR_X_OKAPI_TENANT, X_OKAPI_TOKEN);
+    Errors errors = transitionToApprovedWithError(REVIEWED_INVOICE_SAMPLE_PATH, headers, 400);
+
+    assertThat(errors, notNullValue());
+    assertThat(errors.getErrors(), hasSize(1));
+    Error error = errors.getErrors().get(0);
+    assertThat(error.getCode(), equalTo(AWAITING_PAYMENT_ERROR.getCode()));
+    assertThat(error.getParameters(), hasSize(1));
+    assertThat(error.getParameters().get(0).getValue(), not(isEmptyOrNullString()));
+  }
+
   private void verifyTransitionToApproved(Voucher voucherCreated, List<InvoiceLine> invoiceLines, Invoice invoice) {
     List<JsonObject> invoiceLinesSearches = serverRqRs.get(INVOICE_LINES, HttpMethod.GET);
     List<JsonObject> voucherLinesCreated = serverRqRs.get(VOUCHER_LINES, HttpMethod.POST);
     List<JsonObject> fundsSearches = serverRqRs.get(FUNDS, HttpMethod.GET);
     List<JsonObject> invoiceUpdates = serverRqRs.get(INVOICES, HttpMethod.PUT);
+    List<JsonObject> transactionSummariesCreated = serverRqRs.get(INVOICE_TRANSACTION_SUMMARIES, HttpMethod.POST);
+    List<JsonObject> awaitingPaymentsCreated = Optional.ofNullable(serverRqRs.get(AWAITING_PAYMENTS, HttpMethod.POST)).orElse(Collections.emptyList());
 
     assertThat(invoiceLinesSearches, notNullValue());
     assertThat(fundsSearches, notNullValue());
     assertThat(voucherLinesCreated, notNullValue());
     assertThat(invoiceUpdates, notNullValue());
+    assertThat(transactionSummariesCreated, notNullValue());
 
     assertThat(invoiceLinesSearches, hasSize(invoiceLines.size()/MAX_IDS_FOR_GET_RQ + 1));
     List<Fund> funds = fundsSearches.get(0).mapTo(FundCollection.class).getFunds();
     assertThat(voucherLinesCreated, hasSize(getExpectedVoucherLinesQuantity(funds)));
 
+    InvoiceTransactionSummary transactionSummary = transactionSummariesCreated.get(0).mapTo(InvoiceTransactionSummary.class);
     Invoice invoiceUpdate = invoiceUpdates.get(0).mapTo(Invoice.class);
 
     List<VoucherLine> voucherLines = voucherLinesCreated.stream().map(json -> json.mapTo(VoucherLine.class)).collect(Collectors.toList());
@@ -1221,6 +1350,20 @@ public class InvoicesApiTest extends ApiTestBase {
     assertThat(voucherCreated.getExportToAccounting(), is(false));
     assertThat(Voucher.Status.AWAITING_PAYMENT, equalTo(voucherCreated.getStatus()));
     assertThat(Voucher.Type.VOUCHER, equalTo(voucherCreated.getType()));
+
+    int awaitingPaymentsNumber = (int) invoiceLines.stream()
+      .mapToLong(invoiceLine -> invoiceLine.getFundDistributions().stream()
+        .filter(fundDistribution -> Objects.nonNull(fundDistribution.getEncumbrance())).count())
+      .sum();
+
+    int paymentCreditNumber = invoiceLines.stream()
+      .filter(invoiceLine -> invoiceLine.getTotal() != 0)
+      .mapToInt(line -> line.getFundDistributions().size())
+      .sum();
+
+    assertThat(awaitingPaymentsCreated, hasSize(awaitingPaymentsNumber));
+    assertThat(transactionSummary.getNumEncumbrances(), is(awaitingPaymentsNumber));
+    assertThat(transactionSummary.getNumPaymentsCredits(), is(paymentCreditNumber));
 
     assertThat(calculateVoucherAmount(voucherCreated, voucherLines), equalTo(voucherCreated.getAmount()));
     assertThat(getExpectedVoucherLinesQuantity(funds), equalTo(voucherLinesCreated.size()));
