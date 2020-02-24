@@ -150,7 +150,7 @@
       <xs:documentation>A list of fund codes</xs:documentation>
     </xs:annotation>
     <xs:sequence>
-      <xs:element name="fundCode" type="xs:string" minOccurs="0" maxOccurs="unbounded"/>
+      <xs:element name="fundCode" type="xs:string" maxOccurs="unbounded"/>
     </xs:sequence>
   </xs:complexType>
 
