@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
   <groupId>org.folio</groupId>
   <artifactId>mod-invoice</artifactId>
@@ -24,6 +25,7 @@
     <ramlfiles_path>${basedir}/ramls</ramlfiles_path>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <mod-configuration-client.version>5.1.0</mod-configuration-client.version>
+    <spring.version>5.1.1.RELEASE</spring.version>
   </properties>
 
   <dependencies>
@@ -99,6 +101,17 @@
       <version>1.3</version>
       <type>pom</type>
     </dependency>
+    <dependency>
+      <groupId>org.springframework</groupId>
+      <artifactId>spring-test</artifactId>
+      <version>${spring.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.jvnet.jaxb2_commons</groupId>
+      <artifactId>jaxb2-basics-runtime</artifactId>
+      <version>1.11.1</version>
+    </dependency>
   </dependencies>
 
   <build>
@@ -130,7 +143,8 @@
             <include>org/folio/rest/impl/ApiTestSuite.class</include>
           </includes>
           <systemPropertyVariables>
-            <vertx.logger-delegate-factory-class-name>io.vertx.core.logging.Log4j2LogDelegateFactory</vertx.logger-delegate-factory-class-name>
+            <vertx.logger-delegate-factory-class-name>io.vertx.core.logging.Log4j2LogDelegateFactory
+            </vertx.logger-delegate-factory-class-name>
           </systemPropertyVariables>
           <!-- TODO: update to version 3.0.0 and remove useSystemClassLoader
                https://issues.folio.org/browse/FOLIO-1609
@@ -145,7 +159,9 @@
         <artifactId>jsonschema2pojo-maven-plugin</artifactId>
         <version>0.4.37</version>
         <configuration>
-          <includes>*.json</includes>
+          <includes>
+            <include>*.json</include>
+          </includes>
           <outputDirectory>${jsonschema2pojo_output_dir}</outputDirectory>
         </configuration>
         <executions>
@@ -408,7 +424,7 @@
             <configuration>
               <target>
                 <replaceregexp match="baseUri:.+$" replace="baseUri: http://localhost:{http.port}" byline="true">
-                  <fileset dir="${basedir}/target/classes/apidocs/raml" includes="**/*.raml" />
+                  <fileset dir="${basedir}/target/classes/apidocs/raml" includes="**/*.raml"/>
                 </replaceregexp>
               </target>
             </configuration>
@@ -434,7 +450,7 @@
                     <Main-Verticle>org.folio.rest.RestVerticle</Main-Verticle>
                   </manifestEntries>
                 </transformer>
-                <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer" />
+                <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
                 <transformer implementation="org.apache.maven.plugins.shade.resource.AppendingTransformer">
                   <resource>javamoney.properties</resource>
                 </transformer>
@@ -453,7 +469,7 @@
                   </excludes>
                 </filter>
               </filters>
-              <artifactSet />
+              <artifactSet/>
               <outputFile>${project.build.directory}/${project.artifactId}-fat.jar</outputFile>
             </configuration>
           </execution>
@@ -472,6 +488,56 @@
         </configuration>
       </plugin>
 
+      <plugin>
+        <groupId>org.jvnet.jaxb2.maven2</groupId>
+        <artifactId>maven-jaxb2-plugin</artifactId>
+        <version>0.13.2</version>
+        <configuration>
+          <schemaIncludes>
+            <include>batch_voucher.xsd</include>
+          </schemaIncludes>
+          <bindingIncludes>
+            <include>bindings.xjb</include>
+          </bindingIncludes>
+          <generatePackage>org.folio.rest.jaxrs.model</generatePackage>
+          <generateDirectory>${project.build.directory}/generated-sources/jaxb</generateDirectory>
+          <schemaDirectory>ramls/schemas</schemaDirectory>
+          <bindingDirectory>ramls/schemas</bindingDirectory>
+          <strict>false</strict>
+          <extension>true</extension>
+          <plugins>
+            <plugin>
+              <groupId>org.jvnet.jaxb2_commons</groupId>
+              <artifactId>jaxb2-fluent-api</artifactId>
+              <version>3.0</version>
+            </plugin>
+            <plugin>
+              <groupId>org.jvnet.jaxb2_commons</groupId>
+              <artifactId>jaxb2-basics</artifactId>
+              <version>1.11.1</version>
+            </plugin>
+            <plugin>
+              <groupId>org.jvnet.jaxb2_commons</groupId>
+              <artifactId>jaxb2-basics-annotate</artifactId>
+              <version>1.0.2</version>
+            </plugin>
+          </plugins>
+          <args>
+            <arg>-Xfluent-api</arg>
+            <arg>-Xannotate</arg>
+            <arg>-Xequals</arg>
+            <arg>-XhashCode</arg>
+          </args>
+        </configuration>
+        <executions>
+          <execution>
+            <id>generate</id>
+            <goals>
+              <goal>generate</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
     </plugins>
   </build>
   <dependencyManagement>
