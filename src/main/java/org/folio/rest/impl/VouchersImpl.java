@@ -8,6 +8,7 @@ import javax.ws.rs.core.Response;
 
 import org.apache.commons.lang3.StringUtils;
 import org.folio.rest.annotations.Validate;
+import org.folio.rest.jaxrs.model.Voucher;
 import org.folio.rest.jaxrs.model.VoucherLine;
 
 import io.vertx.core.AsyncResult;
@@ -34,6 +35,17 @@ public class VouchersImpl implements org.folio.rest.jaxrs.resource.Voucher {
     VoucherHelper helper = new VoucherHelper(okapiHeaders, vertxContext, lang);
     helper.getVoucher(id)
       .thenAccept(voucher -> asyncResultHandler.handle(succeededFuture(helper.buildOkResponse(voucher))))
+      .exceptionally(t -> handleErrorResponse(asyncResultHandler, helper, t));
+  }
+
+  @Override
+  @Validate
+  public void putVoucherVouchersById(String id, String lang, Voucher entity, Map<String, String> okapiHeaders,
+    Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+    VoucherHelper helper = new VoucherHelper(okapiHeaders, vertxContext, lang);
+
+    helper.partialVoucherUpdate(id, entity)
+      .thenAccept(voucher -> asyncResultHandler.handle(succeededFuture(helper.buildOkResponse(entity))))
       .exceptionally(t -> handleErrorResponse(asyncResultHandler, helper, t));
   }
 

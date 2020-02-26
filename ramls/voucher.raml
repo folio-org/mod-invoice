@@ -29,15 +29,18 @@ traits:
 resourceTypes:
   get-only: !include raml-util/rtypes/get-only.raml
   collection-get: !include raml-util/rtypes/collection-get.raml
+  collection-item: !include raml-util/rtypes/item-collection-get.raml
 
 /voucher:
   /vouchers:
     displayName: Vouchers
-    description: Get list of voucher
+    description: Get list of vouchers
     type:
       get-only:
         schema: voucherCollection
+        schemaItem: voucher
         exampleCollection: !include acq-models/mod-invoice-storage/examples/voucher_collection.sample
+        exampleItem: !include acq-models/mod-invoice-storage/examples/voucher.sample
     get:
         description: Retrieve a list of voucher items.
         is: [ pageable, searchable: {description: "using CQL (indexes for voucher)", example: "voucherNumber==\"1000\""}, validate ]
@@ -49,11 +52,40 @@ resourceTypes:
       displayName: voucher
       description: Get specific voucher
       type:
-        get-only:
+        collection-item:
           schema: voucher
-          exampleCollection: !include acq-models/mod-invoice-storage/examples/voucher.sample
+          exampleItem: !include acq-models/mod-invoice-storage/examples/voucher.sample
       get:
-        description: Return an voucher with given {id}
+        description: Return a voucher with given {id}
+      put:
+        is: [language]
+        description: Update a voucher with given {Id}
+        body:
+          application/json:
+            type: voucher
+            example:
+              strict: false
+              value: !include acq-models/mod-invoice-storage/examples/voucher.sample
+        responses:
+          204:
+            description: "Voucher successfully updated"
+          404:
+            description: "Voucher with a given ID not found"
+            body:
+              text/plain:
+                example: |
+                  "Voucher not found"
+          400:
+            description: "Bad request, e.g. malformed request body or query parameter. Details of the error (e.g. name of the parameter or line/character number with malformed data) provided in the response."
+            body:
+              text/plain:
+                example: |
+                  "unable to update Voucher -- malformed JSON at 13:4"
+          500:
+            description: "Internal server error, e.g. due to misconfiguration"
+            body:
+              text/plain:
+                example: "internal server error, contact administrator"
   /voucher-lines:
     displayName: Voucher Lines
     description: Manage Voucher lines

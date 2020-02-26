@@ -1,5 +1,7 @@
 package org.folio.rest.impl;
 
+import static java.util.concurrent.CompletableFuture.completedFuture;
+import static org.folio.invoices.utils.ErrorCodes.PROHIBITED_FIELD_CHANGING;
 import static org.folio.invoices.utils.ErrorCodes.VOUCHER_UPDATE_FAILURE;
 import static org.folio.invoices.utils.HelperUtils.getEndpointWithQuery;
 import static org.folio.invoices.utils.HelperUtils.getVoucherById;
@@ -10,12 +12,21 @@ import static org.folio.invoices.utils.ResourcePathResolver.VOUCHER_NUMBER;
 import static org.folio.invoices.utils.ResourcePathResolver.VOUCHER_NUMBER_START;
 import static org.folio.invoices.utils.ResourcePathResolver.resourceByIdPath;
 import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
+import static org.folio.rest.impl.InvoicesImpl.PROTECTED_AND_MODIFIED_FIELDS;
 
+import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 
+import org.apache.commons.collections4.CollectionUtils;
 import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.invoices.utils.HelperUtils;
+import org.folio.invoices.utils.VoucherProtectedFields;
+import org.folio.rest.jaxrs.model.BatchGroup;
+import org.folio.rest.jaxrs.model.Error;
 import org.folio.rest.jaxrs.model.SequenceNumber;
 import org.folio.rest.jaxrs.model.Voucher;
 import org.folio.rest.jaxrs.model.VoucherCollection;
@@ -26,6 +37,7 @@ import io.vertx.core.http.HttpMethod;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import me.escoffier.vertx.completablefuture.VertxCompletableFuture;
+import org.folio.rest.tools.parser.JsonPathParser;
 
 public class VoucherHelper extends AbstractHelper {
 
@@ -153,13 +165,55 @@ public class VoucherHelper extends AbstractHelper {
   public CompletableFuture<Void> updateVoucherStatusToPaid(Voucher voucher) {
     if (voucher.getStatus() == Voucher.Status.PAID) {
       // Voucher already marked as paid
-      return CompletableFuture.completedFuture(null);
+      return completedFuture(null);
     } else {
       return updateVoucher(voucher.withStatus(Voucher.Status.PAID))
         .exceptionally(fail -> {
           throw new HttpException(500, VOUCHER_UPDATE_FAILURE.toError());
         });
     }
+  }
+
+  /**
+   * Handles update of the voucher. Allows update of editable fields:
+   * <ul>
+   *   <li>voucher.dispersementNumber</li>
+   *   <li>voucher.dispersementDate</li>
+   *   <li>voucher.dispersementAmount</li>
+   *   <li>voucher.voucherNumber</li>
+   * </ul>
+   * Attempting to edit any other fields will result in an {@link HttpException}.
+   *
+   * @param id updated {@link Voucher} voucher id
+   * @param voucher updated {@link Voucher} voucher
+   * @return completable future holding response indicating success or error if failed
+   */
+  public CompletableFuture<Void> partialVoucherUpdate(String id, Voucher voucher) {
+    return getVoucher(id)
+      .thenCompose(voucherFromStorage -> validateIfProtectedFieldsChanged(voucherFromStorage, voucher))
+      .thenAccept(validatedVoucher -> updateVoucher(validatedVoucher));
+  }
+
+  private CompletableFuture<Voucher> validateIfProtectedFieldsChanged(Voucher voucherFromStorage, Voucher updatedVoucher){
+    List<String> protectedFields = VoucherProtectedFields.getProtectedFields();
+    Set<String> fields = new HashSet<>();
+
+    JsonPathParser oldObject = new JsonPathParser(JsonObject.mapFrom(voucherFromStorage));
+    JsonPathParser newObject = new JsonPathParser(JsonObject.mapFrom(updatedVoucher));
+
+    for(String field: protectedFields) {
+      if(!Objects.equals(oldObject.getValueAt(field), newObject.getValueAt(field))) {
+        fields.add(field);
+      }
+    }
+
+    if (CollectionUtils.isNotEmpty(fields)) {
+      Error error = PROHIBITED_FIELD_CHANGING.toError()
+        .withAdditionalProperty(PROTECTED_AND_MODIFIED_FIELDS, fields);
+      throw new HttpException(400, error);
+    }
+
+    return completedFuture(updatedVoucher);
   }
 
   public CompletableFuture<Void> updateVoucher(Voucher voucher) {
