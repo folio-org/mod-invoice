@@ -730,7 +730,9 @@ public class InvoiceHelper extends AbstractHelper {
     return new AwaitingPayment()
       .withAmountAwaitingPayment(convertToDoubleWithRounding(amount))
       .withEncumbranceId(fundDistribution.getEncumbrance())
-      .withReleaseEncumbrance(invoiceLine.getReleaseEncumbrance());
+      .withReleaseEncumbrance(invoiceLine.getReleaseEncumbrance())
+      .withInvoiceId(invoiceLine.getInvoiceId())
+      .withInvoiceLineId(invoiceLine.getId());
   }
 
   /**
