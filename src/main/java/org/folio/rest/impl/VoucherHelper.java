@@ -25,7 +25,6 @@ import org.apache.commons.collections4.CollectionUtils;
 import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.invoices.utils.HelperUtils;
 import org.folio.invoices.utils.VoucherProtectedFields;
-import org.folio.rest.jaxrs.model.BatchGroup;
 import org.folio.rest.jaxrs.model.Error;
 import org.folio.rest.jaxrs.model.SequenceNumber;
 import org.folio.rest.jaxrs.model.Voucher;
