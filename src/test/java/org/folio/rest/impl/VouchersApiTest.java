@@ -170,7 +170,7 @@ public class VouchersApiTest extends ApiTestBase {
 
   @Test
   public void testUpdateVoucherEditableFields() throws IOException {
-    logger.info("=== Test Put Voucher with changes in editable fields - Success ===");
+    logger.info("=== Test Put Voucher with changes in editable fields - 204 No content ===");
 
     JsonObject vouchersList = new JsonObject(getMockData(VOUCHERS_LIST_PATH));
     JsonObject voucher = vouchersList.getJsonArray("vouchers").getJsonObject(0);
@@ -181,7 +181,7 @@ public class VouchersApiTest extends ApiTestBase {
     voucher.put("disbursementAmount", 10);
     voucher.put("disbursementDate", "2020-02-26T00:00:00.000+0000");
 
-    final Response resp = verifyPut(String.format(VOUCHER_ID_PATH, id), voucher, "", 200);
+    final Response resp = verifyPut(String.format(VOUCHER_ID_PATH, id), voucher, "", 204);
     logger.info(resp.getBody().prettyPrint());
   }
 

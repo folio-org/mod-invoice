@@ -45,7 +45,7 @@ public class VouchersImpl implements org.folio.rest.jaxrs.resource.Voucher {
     VoucherHelper helper = new VoucherHelper(okapiHeaders, vertxContext, lang);
 
     helper.partialVoucherUpdate(id, entity)
-      .thenAccept(voucher -> asyncResultHandler.handle(succeededFuture(helper.buildOkResponse(entity))))
+      .thenAccept(voucher -> asyncResultHandler.handle(succeededFuture(helper.buildNoContentResponse())))
       .exceptionally(t -> handleErrorResponse(asyncResultHandler, helper, t));
   }
 
