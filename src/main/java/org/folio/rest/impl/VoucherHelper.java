@@ -182,14 +182,14 @@ public class VoucherHelper extends AbstractHelper {
    */
   public CompletableFuture<Void> partialVoucherUpdate(String id, Voucher voucher) {
     return getVoucher(id)
-      .thenCompose(voucherFromStorage -> validateIfProtectedFieldsChanged(voucherFromStorage, voucher))
+      .thenApply(voucherFromStorage -> validateIfProtectedFieldsChanged(voucherFromStorage, voucher))
       .thenAccept(this::updateVoucher);
   }
 
-  private CompletableFuture<Voucher> validateIfProtectedFieldsChanged(Voucher voucherFromStorage, Voucher updatedVoucher){
+  private Voucher validateIfProtectedFieldsChanged(Voucher voucherFromStorage, Voucher updatedVoucher){
     Set<String> fields = findChangedProtectedFields(updatedVoucher, voucherFromStorage, VoucherProtectedFields.getProtectedFields());
     verifyThatProtectedFieldsUnchanged(fields);
-    return completedFuture(updatedVoucher);
+    return updatedVoucher;
   }
 
   public CompletableFuture<Void> updateVoucher(Voucher voucher) {
