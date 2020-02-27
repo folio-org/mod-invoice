@@ -1,0 +1,30 @@
+{
+  "exportConfigs": [
+    {
+      "id": "09fc299d-e1d4-42a1-8ba3-89a13c26f712",
+      "batchGroupId": "e91d44e4-ae4f-401a-b355-3ea44f57a628",
+      "startTime": "12:00",
+      "enableScheduledExport": true,
+      "format": "Application/xml",
+      "uploadURI": "ftp://ftp.amherst-lib.edu/invoices/",
+      "metadata": {
+        "createdDate": "2020-01-28T00:12:04.000+0000",
+        "createdByUserId": "28d1057c-d137-11e8-a8d5-f2801f1b9fd1"
+      }
+    },
+    {
+      "id": "089b333c-503f-4627-895d-26eaab1e392e",
+      "batchGroupId": "2a2cb998-1437-41d1-88ad-01930aaeadd5",
+      "startTime": "00:00",
+      "weekdays": [ "Monday", "Wednesday" ],
+      "enableScheduledExport": true,
+      "format": "Application/xml",
+      "uploadURI": "ftp://ftp.amherst-lib.edu/invoices/",
+      "metadata": {
+        "createdDate": "2020-02-13T00:08:44.000+0000",
+        "createdByUserId": "28d1057c-d137-11e8-a8d5-f2801f1b9fd1"
+      }
+    }
+  ],
+  "totalRecords": 2
+}

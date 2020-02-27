@@ -1,0 +1,52 @@
+#%RAML 1.0
+
+title: Batch voucher export configurations
+version: v1.0
+protocols: [ HTTP, HTTPS ]
+baseUri: http://github.com/folio-org/mod-invoice
+
+documentation:
+  - title: Batch voucher export configurations CRUD API
+    content: This documents the API calls that can be made to manage batch voucher export configurations
+
+types:
+  exportConfig: !include acq-models/mod-invoice-storage/schemas/export_configuration.json
+  exportConfigCollection: !include acq-models/mod-invoice-storage/schemas/export_configuration_collection.json
+  errors: !include raml-util/schemas/errors.schema
+  UUID:
+    type: string
+    pattern: ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$
+
+traits:
+  validate: !include raml-util/traits/validation.raml
+  language: !include raml-util/traits/language.raml
+  pageable:  !include raml-util/traits/pageable.raml
+  searchable: !include raml-util/traits/searchable.raml
+
+resourceTypes:
+  collection: !include raml-util/rtypes/collection.raml
+  collection-item: !include raml-util/rtypes/item-collection.raml
+
+/batch-voucher:
+  /export-configurations:
+    type:
+      collection:
+        schemaCollection: exportConfigCollection
+        schemaItem: exportConfig
+        exampleCollection: !include acq-models/mod-invoice-storage/examples/export_configuration_collection.sample
+        exampleItem: !include acq-models/mod-invoice-storage/examples/export_configuration.sample
+    get:
+      description: Get list of batch voucher export configurations
+      is: [
+        pageable,
+        searchable: {description: "with valid searchable fields: for example format", example: "format==\"Application/xml\""}
+      ]
+    /{id}:
+      uriParameters:
+        id:
+          description: The UUID of a batch voucher export configuration
+          type: UUID
+      type:
+        collection-item:
+          schema: exportConfig
+          exampleItem: !include acq-models/mod-invoice-storage/examples/export_configuration.sample
