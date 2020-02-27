@@ -35,6 +35,7 @@ import java.util.concurrent.TimeoutException;
   LinesProtectionTest.class,
   InvoicesProratedAdjustmentsTest.class,
   InvoiceLinesProratedAdjustmentsTest.class,
+  BatchVoucherExportConfigTest.class,
   BatchGroupsApiTest.class,
   BatchVoucherSchemaXSDTest.class
 })
@@ -58,6 +59,8 @@ public class ApiTestSuite {
     mockServer = new MockServer(mockPort);
     mockServer.start();
 
+    logger.info("Using port: " + mockPort + " for MockServer");
+    
     RestAssured.baseURI = "http://localhost:" + okapiPort;
     RestAssured.port = okapiPort;
     RestAssured.enableLoggingOfRequestAndResponseIfValidationFails();

@@ -249,6 +249,42 @@
       ]
     },
     {
+      "id": "batch-voucher.export-configurations",
+      "version": "1.0",
+      "handlers": [
+        {
+          "methods": ["GET"],
+          "pathPattern": "/batch-voucher/export-configurations",
+          "permissionsRequired": ["batch-voucher.export-configurations.collection.get"],
+          "modulePermissions": ["batch-voucher-storage.export-configurations.collection.get"]
+        },
+        {
+          "methods": ["POST"],
+          "pathPattern": "/batch-voucher/export-configurations",
+          "permissionsRequired": ["batch-voucher.export-configurations.item.post"],
+          "modulePermissions": ["batch-voucher-storage.export-configurations.item.post"]
+        },
+        {
+          "methods": ["GET"],
+          "pathPattern": "/batch-voucher/export-configurations/{id}",
+          "permissionsRequired": ["batch-voucher.export-configurations.item.get"],
+          "modulePermissions": ["batch-voucher-storage.export-configurations.item.get"]
+        },
+        {
+          "methods": ["PUT"],
+          "pathPattern": "/batch-voucher/export-configurations/{id}",
+          "permissionsRequired": ["batch-voucher.export-configurations.item.put"],
+          "modulePermissions": ["batch-voucher-storage.export-configurations.item.put"]
+        },
+        {
+          "methods": ["DELETE"],
+          "pathPattern": "/batch-voucher/export-configurations/{id}",
+          "permissionsRequired": ["batch-voucher.export-configurations.item.delete"],
+          "modulePermissions": ["batch-voucher-storage.export-configurations.item.delete"]
+        }
+      ]
+    },
+    {
       "id": "batch-group",
       "version": "1.0",
       "handlers": [
@@ -338,6 +374,10 @@
     {
       "id": "acquisitions-units",
       "version": "1.1"
+    },
+    {
+      "id": "batch-voucher-storage.export-configurations",
+      "version": "1.0"
     },
     {
       "id": "finance.transactions",
@@ -484,6 +524,43 @@
       ]
     },
     {
+      "permissionName": "batch-voucher.export-configurations.collection.get",
+      "displayName": "Batch voucher - get batch voucher export configuration collection",
+      "description": "Get batch voucher export configuration collection"
+    },
+    {
+      "permissionName": "batch-voucher.export-configurations.item.get",
+      "displayName": "Batch voucher - get individual batch voucher export configuration",
+      "description": "Get individual batch voucher"
+    },
+    {
+      "permissionName": "batch-voucher.export-configurations.item.post",
+      "displayName": "Batch voucher - create batch voucher export configuration",
+      "description": "Create batch voucher export configuration"
+    },
+    {
+      "permissionName": "batch-voucher.export-configurations.item.put",
+      "displayName": "Batch voucher - modify batch voucher export configuration",
+      "description": "Modify batch voucher export configuration"
+    },
+    {
+      "permissionName": "batch-voucher.export-configurations.item.delete",
+      "displayName": "Batch voucher - delete batch voucher export configuration",
+      "description": "Delete batch voucher export configuration"
+    },
+    {
+      "permissionName": "batch-voucher.export-configurations.all",
+      "displayName": "All batch voucher export configurations perms",
+      "description": "All permissions for the batch voucher export configuration",
+      "subPermissions": [
+        "batch-voucher.export-configurations.collection.get",
+        "batch-voucher.export-configurations.item.get",
+        "batch-voucher.export-configurations.item.post",
+        "batch-voucher.export-configurations.item.put",
+        "batch-voucher.export-configurations.item.delete"
+      ]
+    },
+    {
       "permissionName": "invoices.acquisitions-units-assignments.assign",
       "displayName": "Acquisitions unit assignment - create unit assignment",
       "description": "Assign new invoice to acquisitions units"
@@ -501,32 +578,6 @@
         "invoices.acquisitions-units-assignments.assign",
         "invoices.acquisitions-units-assignments.manage"
       ]
-    },
-    {
-      "permissionName": "invoice.all",
-      "displayName": "Invoice module - all permissions",
-      "description": "Entire set of permissions needed to use the invoice module",
-      "subPermissions": [
-        "invoice.invoices.collection.get",
-        "invoice.invoices.item.get",
-        "invoice.invoices.item.post",
-        "invoice.invoices.item.put",
-        "invoice.invoices.item.delete",
-        "invoice.invoice-lines.collection.get",
-        "invoice.invoice-lines.item.get",
-        "invoice.invoice-lines.item.post",
-        "invoice.invoice-lines.item.put",
-        "invoice.invoice-lines.item.delete",
-        "invoice.invoice-number.item.get",
-        "invoice.invoice-number.item.post",
-        "voucher-number.start.post",
-        "voucher-number.start.get",
-        "voucher.all",
-        "invoice.invoices.documents.all",
-        "invoices.acquisitions-units-assignments.all",
-        "batch-groups.all"
-      ],
-      "visible": false
     },
     {
       "permissionName": "batch-groups.collection.get",
@@ -563,6 +614,33 @@
         "batch-groups.item.post",
         "batch-groups.item.put",
         "batch-groups.item.delete"
+      ],
+      "visible": false
+    },
+    {
+      "permissionName": "invoice.all",
+      "displayName": "Invoice module - all permissions",
+      "description": "Entire set of permissions needed to use the invoice module",
+      "subPermissions": [
+        "invoice.invoices.collection.get",
+        "invoice.invoices.item.get",
+        "invoice.invoices.item.post",
+        "invoice.invoices.item.put",
+        "invoice.invoices.item.delete",
+        "invoice.invoice-lines.collection.get",
+        "invoice.invoice-lines.item.get",
+        "invoice.invoice-lines.item.post",
+        "invoice.invoice-lines.item.put",
+        "invoice.invoice-lines.item.delete",
+        "invoice.invoice-number.item.get",
+        "invoice.invoice-number.item.post",
+        "voucher-number.start.post",
+        "voucher-number.start.get",
+        "voucher.all",
+        "invoice.invoices.documents.all",
+        "invoices.acquisitions-units-assignments.all",
+        "batch-voucher.export-configurations.all",
+        "batch-groups.all"
       ],
       "visible": false
     }
