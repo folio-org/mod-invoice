@@ -281,6 +281,29 @@
           "pathPattern": "/batch-voucher/export-configurations/{id}",
           "permissionsRequired": ["batch-voucher.export-configurations.item.delete"],
           "modulePermissions": ["batch-voucher-storage.export-configurations.item.delete"]
+        },
+        {
+          "methods": ["POST"],
+          "pathPattern": "/batch-voucher/export-configurations/{id}/credentials",
+          "permissionsRequired": ["batch-voucher.export-configurations.credentials.item.post"],
+          "modulePermissions": ["batch-voucher-storage.export-configurations.credentials.item.post"]
+        },
+        {
+          "methods": ["GET"],
+          "pathPattern": "/batch-voucher/export-configurations/{id}/credentials",
+          "permissionsRequired": ["batch-voucher.export-configurations.credentials.item.get"],
+          "modulePermissions": ["batch-voucher-storage.export-configurations.credentials.item.get"]
+        },
+        {
+          "methods": ["PUT"],
+          "pathPattern": "/batch-voucher/export-configurations/{id}/credentials",
+          "permissionsRequired": ["batch-voucher.export-configurations.credentials.item.put"],
+          "modulePermissions": ["batch-voucher-storage.export-configurations.credentials.item.put"]
+        },
+        {
+          "methods": ["POST"],
+          "pathPattern": "/batch-voucher/export-configurations/{id}/credentials/test",
+          "permissionsRequired": ["batch-voucher.export-configurations.credentials.test"]
         }
       ]
     },
@@ -549,6 +572,26 @@
       "description": "Delete batch voucher export configuration"
     },
     {
+      "permissionName": "batch-voucher.export-configurations.credentials.item.get",
+      "displayName": "Batch voucher - get individual batch voucher export configuration credentials",
+      "description": "Get individual batch voucher credentials"
+    },
+    {
+      "permissionName": "batch-voucher.export-configurations.credentials.item.post",
+      "displayName": "Batch voucher - create batch voucher export configuration credentials",
+      "description": "Create batch voucher export configuration credentials"
+    },
+    {
+      "permissionName": "batch-voucher.export-configurations.credentials.item.put",
+      "displayName": "Batch voucher - modify batch voucher export configuration credentials",
+      "description": "Modify batch voucher export configuration credentials"
+    },
+    {
+      "permissionName": "batch-voucher.export-configurations.credentials.test",
+      "displayName": "Batch voucher - test batch voucher export configuration credentials",
+      "description": "Test batch voucher export configuration credentials"
+    },
+    {
       "permissionName": "batch-voucher.export-configurations.all",
       "displayName": "All batch voucher export configurations perms",
       "description": "All permissions for the batch voucher export configuration",
@@ -557,7 +600,11 @@
         "batch-voucher.export-configurations.item.get",
         "batch-voucher.export-configurations.item.post",
         "batch-voucher.export-configurations.item.put",
-        "batch-voucher.export-configurations.item.delete"
+        "batch-voucher.export-configurations.item.delete",
+        "batch-voucher.export-configurations.credentials.item.get",
+        "batch-voucher.export-configurations.credentials.item.post",
+        "batch-voucher.export-configurations.credentials.item.put",
+        "batch-voucher.export-configurations.credentials.test"
       ]
     },
     {
