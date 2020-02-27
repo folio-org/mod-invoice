@@ -237,6 +237,7 @@
             <configuration>
               <sources>
                 <source>${project.build.directory}/generated-sources/raml-jaxrs</source>
+                <source>${project.build.directory}/generated-sources/jaxb</source>
               </sources>
             </configuration>
           </execution>
@@ -499,7 +500,7 @@
           <bindingIncludes>
             <include>bindings.xjb</include>
           </bindingIncludes>
-          <generatePackage>org.folio.rest.jaxrs.model</generatePackage>
+          <generatePackage>org.folio.rest.jaxrs.model.jaxb</generatePackage>
           <generateDirectory>${project.build.directory}/generated-sources/jaxb</generateDirectory>
           <schemaDirectory>ramls/schemas</schemaDirectory>
           <bindingDirectory>ramls/schemas</bindingDirectory>
