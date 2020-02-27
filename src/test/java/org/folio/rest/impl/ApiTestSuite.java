@@ -7,12 +7,14 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 
+import org.folio.config.ApplicationConfig;
 import org.folio.invoices.events.handlers.InvoiceSummaryTest;
 import org.folio.rest.RestVerticle;
 import org.folio.rest.impl.protection.InvoicesProtectionTest;
 import org.folio.rest.impl.protection.LinesProtectionTest;
 import org.folio.rest.tools.utils.NetworkUtils;
 import org.folio.schemas.xsd.BatchVoucherSchemaXSDTest;
+import org.folio.spring.SpringContextUtil;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.runner.RunWith;
@@ -36,7 +38,8 @@ import java.util.concurrent.TimeoutException;
   InvoicesProratedAdjustmentsTest.class,
   InvoiceLinesProratedAdjustmentsTest.class,
   BatchGroupsApiTest.class,
-  BatchVoucherSchemaXSDTest.class
+  BatchVoucherSchemaXSDTest.class,
+  BatchVoucherImplTest.class
 })
 public class ApiTestSuite {
   private static final Logger logger = LoggerFactory.getLogger(ApiTestSuite.class);

@@ -37,8 +37,8 @@ resourceTypes:
       get:
         is: [validate]
         headers:
-          Content-type:
-            displayName: Content-type
+          Accept:
+            displayName: Accept
             description: either application/xml or application/json
             type: string
             required: true
@@ -50,3 +50,7 @@ resourceTypes:
                 example:
                   strict: false
                   value: !include examples/batch_voucher_xml.sample
+          400:
+            description: "Bad request"
+            body:
+              text/plain:

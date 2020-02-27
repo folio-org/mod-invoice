@@ -1,39 +1,25 @@
-package org.folio.helpers.jaxb;
+package org.folio.jaxb;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.StringReader;
 import java.io.StringWriter;
 
-import javax.xml.bind.JAXBContext;
 import javax.xml.bind.JAXBException;
 import javax.xml.bind.Marshaller;
 import javax.xml.bind.Unmarshaller;
-import javax.xml.validation.Schema;
 
 import org.apache.commons.lang3.time.StopWatch;
 
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 
-import com.sun.xml.bind.marshaller.NamespacePrefixMapper;
+public class XMLConverter {
+  private static final Logger LOG = LoggerFactory.getLogger(XMLConverter.class);
+  private final JAXBContextWrapper jaxbContextWrapper;
 
-import static javax.xml.bind.Marshaller.JAXB_FORMATTED_OUTPUT;
-
-public class JAXBHelper {
-  private static final Logger LOG = LoggerFactory.getLogger(JAXBHelper.class);
-  public static final String XML_DECLARATION = "com.sun.xml.bind.xmlDeclaration";
-  private final NamespacePrefixMapper namespacePrefixMapper;
-  private final JAXBContext jaxbContext;
-  private final Schema schema;
-
-  /**
-   * The main purpose is to initialize JAXB Marshaller and Unmarshaller to use the instances for business logic operations
-   */
-  public JAXBHelper(JAXBContext jaxbContext, Schema schema, NamespacePrefixMapper namespacePrefixMapper) {
-    this.jaxbContext = jaxbContext;
-    this.schema = schema;
-    this.namespacePrefixMapper = namespacePrefixMapper;
+  public XMLConverter(JAXBContextWrapper jaxbContextWrapper) {
+    this.jaxbContextWrapper = jaxbContextWrapper;
   }
 
   /**
@@ -46,7 +32,7 @@ public class JAXBHelper {
   public <T> String marshal(T xmlObject, boolean isValidationNeeded) {
     StopWatch timer = LOG.isDebugEnabled() ? StopWatch.createStarted() : null;
     try (StringWriter writer = new StringWriter()) {
-      Marshaller jaxbMarshaller = getMarshaller(isValidationNeeded);
+      Marshaller jaxbMarshaller = jaxbContextWrapper.createMarshaller(isValidationNeeded);
       jaxbMarshaller.marshal(xmlObject, writer);
       return writer.toString();
     } catch (JAXBException | IOException e) {
@@ -70,7 +56,7 @@ public class JAXBHelper {
     StopWatch timer = LOG.isDebugEnabled() ? StopWatch.createStarted() : null;
     try (StringReader reader = new StringReader(xmlStr)) {
       // Unmarshaller is not thread-safe, so we should create every time a new one
-      Unmarshaller jaxbUnmarshaller = getUnmarshaller(isValidationNeeded);
+      Unmarshaller jaxbUnmarshaller = jaxbContextWrapper.createUnmarshaller(isValidationNeeded);
       Object response = jaxbUnmarshaller.unmarshal(reader);
       return clazz.cast(response);
     } catch (JAXBException e) {
@@ -92,7 +78,7 @@ public class JAXBHelper {
   public <T> T unmarshal(Class<T> clazz, byte[] byteSource, boolean isValidationNeeded) {
     StopWatch timer = LOG.isDebugEnabled() ? StopWatch.createStarted() : null;
     try (ByteArrayInputStream inputStream = new ByteArrayInputStream(byteSource)) {
-      Unmarshaller jaxbUnmarshaller = getUnmarshaller(isValidationNeeded);
+      Unmarshaller jaxbUnmarshaller = jaxbContextWrapper.createUnmarshaller(isValidationNeeded);
       Object response = jaxbUnmarshaller.unmarshal(inputStream);
       return clazz.cast(response);
     } catch (JAXBException | IOException e) {
@@ -101,28 +87,6 @@ public class JAXBHelper {
     } finally {
       logExecutionTime("Array of bytes converted to Object", timer);
     }
-  }
-
-  private Marshaller getMarshaller(boolean isValidationNeeded) throws JAXBException {
-    // Marshaller is not thread-safe, so we should create every time a new one
-    Marshaller jaxbMarshaller = jaxbContext.createMarshaller();
-    if (isValidationNeeded) {
-      jaxbMarshaller.setSchema(schema);
-    }
-    jaxbMarshaller.setProperty(XML_DECLARATION, Boolean.parseBoolean(System.getProperty(XML_DECLARATION)));
-    jaxbMarshaller.setProperty(JAXB_FORMATTED_OUTPUT, Boolean.parseBoolean(System.getProperty(JAXB_FORMATTED_OUTPUT)));
-    // needed to replace the namespace prefixes with a more readable format.
-    jaxbMarshaller.setProperty("com.sun.xml.bind.namespacePrefixMapper", namespacePrefixMapper);
-    return jaxbMarshaller;
-  }
-
-  private Unmarshaller getUnmarshaller(boolean isValidationNeeded) throws JAXBException {
-    // Unmarshaller is not thread-safe, so we should create every time a new one
-    Unmarshaller jaxbUnmarshaller = jaxbContext.createUnmarshaller();
-    if (isValidationNeeded) {
-      jaxbUnmarshaller.setSchema(schema);
-    }
-    return jaxbUnmarshaller;
   }
 
   private void logExecutionTime(final String msg, StopWatch timer) {

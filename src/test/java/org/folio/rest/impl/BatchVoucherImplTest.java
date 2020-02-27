@@ -1,5 +1,6 @@
 package org.folio.rest.impl;
 
+import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 import static javax.ws.rs.core.MediaType.APPLICATION_XML;
 import static javax.ws.rs.core.MediaType.TEXT_PLAIN;
 import static org.hamcrest.CoreMatchers.is;
@@ -8,8 +9,14 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
+import org.folio.config.ApplicationConfig;
+import org.folio.rest.jaxrs.model.BatchVoucher;
 import org.folio.rest.jaxrs.model.Errors;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.test.context.ContextConfiguration;
+import org.springframework.test.context.junit4.SpringRunner;
 
 import io.restassured.response.Response;
 import io.vertx.core.logging.Logger;
@@ -22,26 +29,27 @@ public class BatchVoucherImplTest extends ApiTestBase {
   public static final String BATCH_VOUCHER_PATH = "/batch-vouchers";
   public static final String BATCH_VOUCHER_ID_PATH = BATCH_VOUCHER_PATH + "/%s";
   private static final String BAD_BATCH_VOUCHER_ID = "d25498e7-3ae6-45fe-9612-ec99e2700d2f";
-  private static final String VALID_BATCH_VOUCHER_ID ="test_batch_voucher";
+  private static final String VALID_BATCH_VOUCHER_ID ="35657479-83b9-4760-9c39-b58dcd02ee14";
   private static final String INVALID_BATCH_VOUCHER_ID = "invalidBatchGroupId";
   static final String BATCH_VOUCHER_MOCK_DATA_PATH = BASE_MOCK_DATA_PATH + "batchVouchers/";
   public static final String BATCH_GROUP_SAMPLE_PATH = BATCH_VOUCHER_MOCK_DATA_PATH + VALID_BATCH_VOUCHER_ID + ".json";
 
-
   @Test
   public void testGetBatchGroupsByIdFound() {
     logger.info("=== Test Get Batch-group by Id - 404 Not found ===");
+    try {
+      final Response resp1 = verifyGet(String.format("/batch-voucher/batch-vouchers/35657479-83b9-4760-9c39-b58dcd02ee14", VALID_BATCH_VOUCHER_ID), APPLICATION_JSON, 200);
+      String actual = resp1.getBody()
+        .as(BatchVoucher.class)
+        .getId();
+      logger.info("Id not found: " + actual);
 
-    final Response resp = verifyGet(String.format(BATCH_VOUCHER_ID_PATH, VALID_BATCH_VOUCHER_ID), APPLICATION_XML, 200);
+      assertEquals(VALID_BATCH_VOUCHER_ID, actual);
+    }catch (Exception e)
+    {
+      logger.error("dddddddddddddddddddd");
+    }
 
-    String actual = resp.getBody()
-      .as(Errors.class)
-      .getErrors()
-      .get(0)
-      .getMessage();
-    logger.info("Id not found: " + actual);
-
-    assertEquals(BAD_BATCH_VOUCHER_ID, actual);
   }
 
   @Test

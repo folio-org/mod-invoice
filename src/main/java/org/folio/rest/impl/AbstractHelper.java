@@ -4,6 +4,8 @@ import static java.util.concurrent.CompletableFuture.completedFuture;
 import static javax.ws.rs.core.HttpHeaders.CONTENT_TYPE;
 import static javax.ws.rs.core.HttpHeaders.LOCATION;
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
+import static javax.ws.rs.core.MediaType.APPLICATION_XML;
+import static javax.ws.rs.core.MediaType.APPLICATION_XML_TYPE;
 import static javax.ws.rs.core.Response.Status.CREATED;
 import static javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
 import static org.folio.invoices.utils.ErrorCodes.GENERIC_ERROR_CODE;
@@ -69,14 +71,14 @@ public abstract class AbstractHelper {
   private Configs tenantConfiguration = new Configs().withTotalRecords(0);
 
 
-  AbstractHelper(HttpClientInterface httpClient, Map<String, String> okapiHeaders, Context ctx, String lang) {
+  public AbstractHelper(HttpClientInterface httpClient, Map<String, String> okapiHeaders, Context ctx, String lang) {
     this.httpClient = httpClient;
     this.okapiHeaders = okapiHeaders;
     this.ctx = ctx;
     this.lang = lang;
   }
 
-  AbstractHelper(Map<String, String> okapiHeaders, Context ctx, String lang) {
+  public AbstractHelper(Map<String, String> okapiHeaders, Context ctx, String lang) {
     this(getHttpClient(okapiHeaders), okapiHeaders, ctx, lang);
   }
 
@@ -251,6 +253,10 @@ public abstract class AbstractHelper {
   public Response buildOkResponse(Object body) {
     closeHttpClient();
     return Response.ok(body, APPLICATION_JSON).build();
+  }
+
+  public <T> Response buildSuccessResponse(T body, String contentType) {
+    return Response.ok(body, contentType).build();
   }
 
   public Response buildNoContentResponse() {

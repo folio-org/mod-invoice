@@ -212,20 +212,24 @@ public class HelperUtils {
     httpClient, Context ctx, Map<String, String> okapiHeaders, Logger logger) {
     CompletableFuture<JsonObject> future = new VertxCompletableFuture<>(ctx);
     try {
+      logger.debug("Start Thread to invoke : " + Thread.currentThread().getName());
       logger.debug(CALLING_ENDPOINT_MSG, HttpMethod.GET, endpoint);
       httpClient
         .request(HttpMethod.GET, endpoint, okapiHeaders)
         .thenApply(response -> {
+          logger.debug("Thread to invoke HelperUtils: " + Thread.currentThread().getName());
           logger.debug("Validating response for GET {}", endpoint);
           return verifyAndExtractBody(response);
         })
         .thenAccept(body -> {
+          logger.debug("Thread to invoke HelperUtils: " + Thread.currentThread().getName());
           if (logger.isInfoEnabled()) {
             logger.info("The response body for GET {}: {}", endpoint, nonNull(body) ? body.encodePrettily() : null);
           }
           future.complete(body);
         })
         .exceptionally(t -> {
+          logger.debug("Thread to invoke HelperUtils: " + Thread.currentThread().getName());
           logger.error(EXCEPTION_CALLING_ENDPOINT_MSG, t, HttpMethod.GET, endpoint);
           future.completeExceptionally(t);
           return null;
