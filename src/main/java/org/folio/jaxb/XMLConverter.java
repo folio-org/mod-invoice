@@ -40,8 +40,7 @@ public class XMLConverter {
       throw new IllegalStateException("The " + xmlObject.getClass()
         .getName() + " response cannot be converted to string representation.", e);
     } finally {
-      logExecutionTime(xmlObject.getClass()
-        .getName() + " converted to string", timer);
+      logExecutionTime(xmlObject.getClass().getName() + " converted to string", timer);
     }
   }
 

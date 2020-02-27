@@ -48,7 +48,7 @@ public class BatchVoucherHelper extends AbstractHelper {
     String endpoint = resourceByIdPath(BATCH_VOUCHER_STORAGE, id, lang);
     handleGetRequest(endpoint, httpClient, ctx, okapiHeaders, logger)
       .thenApplyAsync(jsonObject -> buildSuccessResponse(jsonObject, acceptHeader))
-      .thenAccept(response -> future.complete(response))
+      .thenAccept(future::complete)
       .exceptionally(t -> {
         future.completeExceptionally(t);
         return null;
@@ -56,22 +56,18 @@ public class BatchVoucherHelper extends AbstractHelper {
     return future;
   }
 
-  public Response buildSuccessResponse(JsonObject jsonBatchVoucher, String acceptHeader) {
- //   CompletableFuture<Response> future = new VertxCompletableFuture<>(vertxContext);
-    BatchVoucher batchVoucher = jsonBatchVoucher.mapTo(BatchVoucher.class);
+  public Response buildSuccessResponse(JsonObject jsonObjectBatchVoucher, String acceptHeader) {
+    BatchVoucher jsonBatchVoucher = jsonObjectBatchVoucher.mapTo(BatchVoucher.class);
     switch (acceptHeader){
       case APPLICATION_XML:
-        BatchVoucherType xmlBatchVoucher = conversionService.convert(batchVoucher, BatchVoucherType.class);
+        BatchVoucherType xmlBatchVoucher = conversionService.convert(jsonBatchVoucher, BatchVoucherType.class);
         String xmlBatchVoucherResponse = xmlConverter.marshal(xmlBatchVoucher, true);
-        return BatchVoucherBatchVouchers.GetBatchVoucherBatchVouchersByIdResponse
-          .respond200WithApplicationXml(xmlBatchVoucherResponse);
+        return buildSuccessResponse(xmlBatchVoucherResponse, APPLICATION_XML);
 
       case APPLICATION_JSON :
-        return BatchVoucherBatchVouchers.GetBatchVoucherBatchVouchersByIdResponse
-          .respond200WithApplicationJson(batchVoucher);
+        return buildSuccessResponse(jsonBatchVoucher, APPLICATION_JSON);
 
-      default: return BatchVoucherBatchVouchers.GetBatchVoucherBatchVouchersByIdResponse
-        .respond400WithTextPlain("Bad request. Please check accept header");
+      default: return buildErrorResponse(400);
     }
   }
 
