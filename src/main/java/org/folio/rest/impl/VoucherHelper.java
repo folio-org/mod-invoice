@@ -1,6 +1,8 @@
 package org.folio.rest.impl;
 
+import static java.util.concurrent.CompletableFuture.completedFuture;
 import static org.folio.invoices.utils.ErrorCodes.VOUCHER_UPDATE_FAILURE;
+import static org.folio.invoices.utils.HelperUtils.findChangedProtectedFields;
 import static org.folio.invoices.utils.HelperUtils.getEndpointWithQuery;
 import static org.folio.invoices.utils.HelperUtils.getVoucherById;
 import static org.folio.invoices.utils.HelperUtils.handleGetRequest;
@@ -12,10 +14,12 @@ import static org.folio.invoices.utils.ResourcePathResolver.resourceByIdPath;
 import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
 
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 
 import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.invoices.utils.HelperUtils;
+import org.folio.invoices.utils.VoucherProtectedFields;
 import org.folio.rest.jaxrs.model.SequenceNumber;
 import org.folio.rest.jaxrs.model.Voucher;
 import org.folio.rest.jaxrs.model.VoucherCollection;
@@ -153,13 +157,39 @@ public class VoucherHelper extends AbstractHelper {
   public CompletableFuture<Void> updateVoucherStatusToPaid(Voucher voucher) {
     if (voucher.getStatus() == Voucher.Status.PAID) {
       // Voucher already marked as paid
-      return CompletableFuture.completedFuture(null);
+      return completedFuture(null);
     } else {
       return updateVoucher(voucher.withStatus(Voucher.Status.PAID))
         .exceptionally(fail -> {
           throw new HttpException(500, VOUCHER_UPDATE_FAILURE.toError());
         });
     }
+  }
+
+  /**
+   * Handles update of the voucher. Allows update of editable fields:
+   * <ul>
+   *   <li>voucher.dispersementNumber</li>
+   *   <li>voucher.dispersementDate</li>
+   *   <li>voucher.dispersementAmount</li>
+   *   <li>voucher.voucherNumber</li>
+   * </ul>
+   * Attempting to edit any other fields will result in an {@link HttpException}.
+   *
+   * @param id updated {@link Voucher} voucher id
+   * @param voucher updated {@link Voucher} voucher
+   * @return completable future holding response indicating success or error if failed
+   */
+  public CompletableFuture<Void> partialVoucherUpdate(String id, Voucher voucher) {
+    return getVoucher(id)
+      .thenApply(voucherFromStorage -> validateIfProtectedFieldsChanged(voucherFromStorage, voucher))
+      .thenAccept(this::updateVoucher);
+  }
+
+  private Voucher validateIfProtectedFieldsChanged(Voucher voucherFromStorage, Voucher updatedVoucher){
+    Set<String> fields = findChangedProtectedFields(updatedVoucher, voucherFromStorage, VoucherProtectedFields.getProtectedFields());
+    verifyThatProtectedFieldsUnchanged(fields);
+    return updatedVoucher;
   }
 
   public CompletableFuture<Void> updateVoucher(Voucher voucher) {
