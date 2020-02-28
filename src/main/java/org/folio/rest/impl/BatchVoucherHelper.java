@@ -70,11 +70,4 @@ public class BatchVoucherHelper extends AbstractHelper {
       default: return buildErrorResponse(400);
     }
   }
-
-
-  private static CompletableFuture<BatchGroup> getBatchGroupById(String id, String lang, HttpClientInterface httpClient, Context ctx,
-                                                                 Map<String, String> okapiHeaders, Logger logger) {
-    String endpoint = resourceByIdPath(BATCH_GROUPS, id, lang);
-    return handleGetRequest(endpoint, httpClient, ctx, okapiHeaders, logger).thenApplyAsync(json -> json.mapTo(BatchGroup.class));
-  }
 }

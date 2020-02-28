@@ -26,7 +26,7 @@ public class XMLConverter {
    * Marshals object and returns string representation
    *
    * @param xmlObject          object to marshal
-   * @param isValidationNeeded
+   *  @param isValidationNeeded if set to true, then validate by XSD schema
    * @return marshaled object as string representation
    */
   public <T> String marshal(T xmlObject, boolean isValidationNeeded) {
@@ -49,6 +49,7 @@ public class XMLConverter {
    *
    * @param xmlStr the string representation of XML
    * @param clazz  returned type
+   * @param isValidationNeeded if set to true, then validate by XSD schema
    * @return the {@link T} object based on passed string
    */
   public <T> T unmarshal(Class<T> clazz, String xmlStr, boolean isValidationNeeded) {
@@ -60,7 +61,7 @@ public class XMLConverter {
       return clazz.cast(response);
     } catch (JAXBException e) {
       // In case there is an issue to unmarshal response, there is no way to handle it
-      throw new IllegalStateException("The string cannot be converted to OAI-PMH response.", e);
+      throw new IllegalStateException("The string cannot be converted to " + clazz.getName() + " response.", e);
     } finally {
       logExecutionTime("String converted to " + clazz.getName(), timer);
     }
@@ -71,7 +72,7 @@ public class XMLConverter {
    *
    * @param byteSource         the byte[] representation of XML
    * @param clazz              returned type
-   * @param isValidationNeeded
+   * @param isValidationNeeded if set to true, then validate by XSD schema
    * @return the {@link T} object based on passed string
    */
   public <T> T unmarshal(Class<T> clazz, byte[] byteSource, boolean isValidationNeeded) {

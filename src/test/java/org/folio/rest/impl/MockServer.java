@@ -14,7 +14,7 @@ import static org.folio.invoices.utils.ResourcePathResolver.ACQUISITIONS_MEMBERS
 import static org.folio.invoices.utils.ResourcePathResolver.ACQUISITIONS_UNITS;
 import static org.folio.invoices.utils.ResourcePathResolver.AWAITING_PAYMENTS;
 import static org.folio.invoices.utils.ResourcePathResolver.BATCH_GROUPS;
-import static org.folio.invoices.utils.ResourcePathResolver.BATCH_VOUCHERS;
+import static org.folio.invoices.utils.ResourcePathResolver.BATCH_VOUCHER_STORAGE;
 import static org.folio.invoices.utils.ResourcePathResolver.FOLIO_INVOICE_NUMBER;
 import static org.folio.invoices.utils.ResourcePathResolver.FUNDS;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICES;
@@ -305,7 +305,7 @@ public class MockServer {
     router.route(HttpMethod.GET, resourcesPath(ACQUISITIONS_UNITS)).handler(this::handleGetAcquisitionsUnits);
     router.route(HttpMethod.GET, resourcesPath(BATCH_GROUPS)).handler(this::handleGetBatchGroups);
     router.route(HttpMethod.GET, resourceByIdPath(BATCH_GROUPS)).handler(this::handleGetBatchGroupById);
-    router.route(HttpMethod.GET, resourceByIdPath(BATCH_VOUCHERS)).handler(this::handleGetBatchVoucherById);
+    router.route(HttpMethod.GET, resourceByIdPath(BATCH_VOUCHER_STORAGE)).handler(this::handleGetBatchVoucherById);
 
     router.route(HttpMethod.DELETE, resourceByIdPath(INVOICES)).handler(ctx -> handleDeleteRequest(ctx, INVOICES));
     router.route(HttpMethod.DELETE, resourceByIdPath(INVOICE_LINES)).handler(ctx -> handleDeleteRequest(ctx, INVOICE_LINES));
@@ -979,13 +979,13 @@ public class MockServer {
     if (ID_FOR_INTERNAL_SERVER_ERROR.equals(id)) {
       serverResponse(ctx, 500, APPLICATION_XML, Response.Status.INTERNAL_SERVER_ERROR.getReasonPhrase());
     } else {
-      JsonObject batchVoucher = getMockEntry(BATCH_VOUCHERS, id).orElseGet(getJsonObjectFromFile(BATCH_VOUCHER_MOCK_DATA_PATH, id));
+      JsonObject batchVoucher = getMockEntry(BATCH_VOUCHER_STORAGE, id).orElseGet(getJsonObjectFromFile(BATCH_VOUCHER_MOCK_DATA_PATH, id));
       if (batchVoucher != null) {
         // validate content against schema
         BatchVoucher batchVoucherSchema = batchVoucher.mapTo(BatchVoucher.class);
         batchVoucherSchema.setId(id);
         batchVoucher = JsonObject.mapFrom(batchVoucherSchema);
-        addServerRqRsData(HttpMethod.GET, BATCH_VOUCHERS, batchVoucher);
+        addServerRqRsData(HttpMethod.GET, BATCH_VOUCHER_STORAGE, batchVoucher);
         serverResponse(ctx, Response.Status.OK.getStatusCode(), APPLICATION_JSON, batchVoucher.encodePrettily());
       } else {
         serverResponse(ctx, Response.Status.NOT_FOUND.getStatusCode(), TEXT_PLAIN, id);

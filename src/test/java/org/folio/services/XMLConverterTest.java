@@ -17,7 +17,7 @@ import java.nio.file.Paths;
 @RunWith(SpringRunner.class)
 @ContextConfiguration(classes = ApplicationConfig.class)
 public class XMLConverterTest {
-  private static Path XML_BATCH_VOUCHER_EXAMPLES_PATH = Paths.get("ramls/examples", "batch_voucher_xml.sample")
+  private static Path XML_BATCH_VOUCHER_EXAMPLES_PATH = Paths.get("ramls/examples", "cb7592ae-621c-4f35-bc1d-47909e55f9f5.xml")
     .toAbsolutePath();
 
   @Autowired

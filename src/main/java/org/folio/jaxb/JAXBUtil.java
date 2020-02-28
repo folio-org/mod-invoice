@@ -1,5 +1,8 @@
 package org.folio.jaxb;
 
+import org.folio.exceptions.ConversationFailedException;
+import org.springframework.core.convert.ConversionException;
+import org.springframework.core.convert.ConversionFailedException;
 import javax.xml.datatype.DatatypeConfigurationException;
 import javax.xml.datatype.DatatypeFactory;
 import javax.xml.datatype.XMLGregorianCalendar;
@@ -67,7 +70,7 @@ public class JAXBUtil {
     try {
       result = DatatypeFactory.newInstance().newXMLGregorianCalendar(instant.toString());
     } catch (DatatypeConfigurationException e) {
-      throw new IllegalArgumentException(e);
+      throw new ConversationFailedException(Instant.class, XMLGregorianCalendar.class, e);
     }
     return result;
   }
