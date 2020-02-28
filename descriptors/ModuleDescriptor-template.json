@@ -182,7 +182,7 @@
     },
     {
       "id": "voucher",
-      "version": "2.0",
+      "version": "2.1",
       "handlers": [
         {
           "methods": ["GET"],
@@ -198,6 +198,15 @@
           "permissionsRequired": ["voucher.vouchers.item.get"],
           "modulePermissions": [
             "voucher-storage.vouchers.item.get"
+          ]
+        },
+        {
+          "methods": ["PUT"],
+          "pathPattern": "/voucher/vouchers/{id}",
+          "permissionsRequired": ["voucher.vouchers.item.put"],
+          "modulePermissions": [
+            "voucher-storage.vouchers.item.get",
+            "voucher-storage.vouchers.item.put"
           ]
         },
         {
@@ -478,6 +487,11 @@
       "description": "Get an existing Voucher"
     },
     {
+      "permissionName": "voucher.vouchers.item.put",
+      "displayName": "Voucher - modify an existing Voucher",
+      "description": "Modify an existing Voucher"
+    },
+    {
       "permissionName": "voucher.voucher-lines.collection.get",
       "displayName": "Voucher - get collection of lines",
       "description": "Get collection of Voucher lines"
@@ -509,6 +523,7 @@
       "subPermissions": [
         "voucher.vouchers.collection.get",
         "voucher.vouchers.item.get",
+        "voucher.vouchers.item.put",
         "voucher.voucher-lines.collection.get",
         "voucher.voucher-lines.item.get",
         "voucher.voucher-lines.item.put"
