@@ -1,5 +1,6 @@
 package org.folio.rest.impl;
 
+import static org.folio.invoices.utils.HelperUtils.getEndpointWithQuery;
 import static org.folio.invoices.utils.HelperUtils.getHttpClient;
 import static org.folio.invoices.utils.HelperUtils.handleDeleteRequest;
 import static org.folio.invoices.utils.HelperUtils.handleGetRequest;
@@ -70,7 +71,8 @@ public class BatchVoucherExportConfigHelper extends AbstractHelper {
   }
 
   public CompletableFuture<ExportConfigCollection> getExportConfigs(int limit, int offset, String query) {
-    String endpoint = String.format(GET_EXPORT_CONFIGS_BY_QUERY, limit, offset, query, lang);
+    String queryParam = getEndpointWithQuery(query, logger);
+    String endpoint = String.format(GET_EXPORT_CONFIGS_BY_QUERY, limit, offset, queryParam, lang);
     return handleGetRequest(endpoint, httpClient, ctx, okapiHeaders, logger)
       .thenCompose(json -> VertxCompletableFuture.supplyBlockingAsync(ctx, () -> json.mapTo(ExportConfigCollection.class)));
   }
