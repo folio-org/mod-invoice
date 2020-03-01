@@ -2,19 +2,14 @@ package org.folio.rest.impl;
 
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 import static javax.ws.rs.core.MediaType.APPLICATION_XML;
-import static javax.ws.rs.core.MediaType.TEXT_PLAIN;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
 
-import org.folio.rest.jaxrs.model.BatchGroup;
 import org.folio.rest.jaxrs.model.BatchVoucher;
 import org.folio.rest.jaxrs.model.jaxb.BatchVoucherType;
 import org.junit.Test;
 
 import io.restassured.http.Headers;
 import io.restassured.response.Response;
-import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 
@@ -31,7 +26,7 @@ public class BatchVoucherImplTest extends ApiTestBase {
 
   @Test
   public void testGetJSONShouldReturnBatchVoucherInById() {
-    logger.info("=== Test Get Batch-group by Id - 404 Not found ===");
+    logger.info("=== Test Get Batch voucher by Id - 404 Not found ===");
       final Response resp = verifyGet(String.format(BATCH_VOUCHER_ID_PATH, VALID_BATCH_VOUCHER_ID)
         , Headers.headers(ACCEPT_JSON_HEADER, X_OKAPI_TENANT), APPLICATION_JSON, 200);
       String actual = resp.getBody()
@@ -45,7 +40,7 @@ public class BatchVoucherImplTest extends ApiTestBase {
 
   @Test
   public void testGetXMLShouldReturnBatchVoucherInById() {
-    logger.info("=== Test Get Batch-group by Id - 404 Not found ===");
+    logger.info("=== Test Get Batch voucher by Id - 404 Not found ===");
     final Response resp = verifyGet(String.format(BATCH_VOUCHER_ID_PATH, VALID_BATCH_VOUCHER_ID)
       , Headers.headers(ACCEPT_XML_HEADER, X_OKAPI_TENANT), APPLICATION_XML, 200);
     String actual = resp.getBody()
@@ -54,14 +49,20 @@ public class BatchVoucherImplTest extends ApiTestBase {
     logger.info("Id found: " + actual);
 
     assertEquals(VALID_BATCH_VOUCHER_ID, actual);
-    assertAllFieldsExistAndEqual(getMockAsJson(BATCH_VOUCHER_SAMPLE_PATH), resp);
   }
 
   @Test
   public void testGetShouldReturn400IfAcceptHeaderIsAbsent() {
-    logger.info("=== Test Get Batch group by Id - 400 Bad request ===");
+    logger.info("=== Test Get Batch voucher by Id - 400 Bad request ===");
     verifyGet(String.format(BATCH_VOUCHER_ID_PATH, VALID_BATCH_VOUCHER_ID)
       , Headers.headers(X_OKAPI_TENANT), APPLICATION_JSON, 400);
+  }
+
+  @Test
+  public void testGetShouldReturn404IfBatchVoucherISAbsent() {
+    logger.info("=== Test Get Batch voucher by Id - 404 Bad request ===");
+    verifyGet(String.format(BATCH_VOUCHER_ID_PATH, "12345678-83b9-4760-9c39-b58dcd02ee16")
+      , Headers.headers(ACCEPT_JSON_HEADER, X_OKAPI_TENANT), APPLICATION_JSON, 404);
   }
 
 }

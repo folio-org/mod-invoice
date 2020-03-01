@@ -1,8 +1,5 @@
 package org.folio.jaxb;
 
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
-
 import com.sun.xml.bind.marshaller.NamespacePrefixMapper;
 import javax.xml.bind.JAXBContext;
 import javax.xml.bind.JAXBException;
@@ -13,7 +10,6 @@ import javax.xml.validation.Schema;
 import static javax.xml.bind.Marshaller.JAXB_FORMATTED_OUTPUT;
 
 public class JAXBContextWrapper {
-  private static final Logger LOG = LoggerFactory.getLogger(JAXBContextWrapper.class);
   public static final String XML_DECLARATION = "com.sun.xml.bind.xmlDeclaration";
 
   private final NamespacePrefixMapper namespacePrefixMapper;

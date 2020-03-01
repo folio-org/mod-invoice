@@ -38,6 +38,7 @@ public class BatchedVoucherModelConverter implements Converter<BatchedVoucher, B
     batchedVoucherType.setVoucherDate(JAXBUtil.convertOldJavaDate(batchedVoucher.getVoucherDate()));
     batchedVoucherType.setInvoiceNote(batchedVoucher.getInvoiceNote());
     batchedVoucherType.setStatus(batchedVoucher.getStatus().toString());
+
     BatchedVoucherType.BatchedVoucherLines batchedVoucherLines = convertBatchedVoucherLines(batchedVoucher);
     batchedVoucherType.withBatchedVoucherLines(batchedVoucherLines);
     return batchedVoucherType;

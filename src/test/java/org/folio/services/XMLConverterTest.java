@@ -21,31 +21,31 @@ public class XMLConverterTest {
     .toAbsolutePath();
 
   @Autowired
-  XMLConverter XMLConverterTest;
+  XMLConverter xmlConverter;
 
   @Test
   public void testShouldMarshalAndUnmarshalWithoutValidation() throws IOException {
     String content = new String(Files.readAllBytes(XML_BATCH_VOUCHER_EXAMPLES_PATH));
-    BatchVoucherType unmarshaledBatchVoucherExp = XMLConverterTest.unmarshal(BatchVoucherType.class, content, false);
-    String marshaledBatchVoucher = XMLConverterTest.marshal(unmarshaledBatchVoucherExp, false);
-    BatchVoucherType unmarshaledBatchVoucherAct = XMLConverterTest.unmarshal(BatchVoucherType.class, marshaledBatchVoucher, false);
+    BatchVoucherType unmarshaledBatchVoucherExp = xmlConverter.unmarshal(BatchVoucherType.class, content, false);
+    String marshaledBatchVoucher = xmlConverter.marshal(unmarshaledBatchVoucherExp, false);
+    BatchVoucherType unmarshaledBatchVoucherAct = xmlConverter.unmarshal(BatchVoucherType.class, marshaledBatchVoucher, false);
     Assert.assertEquals(unmarshaledBatchVoucherExp, unmarshaledBatchVoucherAct);
   }
 
   @Test(expected = IllegalStateException.class)
   public void shouldThrowExceptiondIfMarshalWithValidation() throws IOException {
     String content = new String(Files.readAllBytes(XML_BATCH_VOUCHER_EXAMPLES_PATH));
-    BatchVoucherType unmarshaledBatchVoucherExp = XMLConverterTest.unmarshal(BatchVoucherType.class, content, false);
+    BatchVoucherType unmarshaledBatchVoucherExp = xmlConverter.unmarshal(BatchVoucherType.class, content, false);
     unmarshaledBatchVoucherExp.setBatchedVouchers(null);
-    XMLConverterTest.marshal(unmarshaledBatchVoucherExp, true);
+    xmlConverter.marshal(unmarshaledBatchVoucherExp, true);
   }
 
   @Test(expected = IllegalStateException.class)
   public void shouldThrowExceptiondIfUnmarshalWithValidation() throws IOException {
     String content = new String(Files.readAllBytes(XML_BATCH_VOUCHER_EXAMPLES_PATH));
-    BatchVoucherType unmarshaledBatchVoucherExp = XMLConverterTest.unmarshal(BatchVoucherType.class, content, false);
+    BatchVoucherType unmarshaledBatchVoucherExp = xmlConverter.unmarshal(BatchVoucherType.class, content, false);
     unmarshaledBatchVoucherExp.setBatchedVouchers(null);
-    String marshaledBatchVoucher = XMLConverterTest.marshal(unmarshaledBatchVoucherExp, false);
-    BatchVoucherType unmarshaledBatchVoucherAct = XMLConverterTest.unmarshal(BatchVoucherType.class, marshaledBatchVoucher, true);
+    String marshaledBatchVoucher = xmlConverter.marshal(unmarshaledBatchVoucherExp, false);
+    BatchVoucherType unmarshaledBatchVoucherAct = xmlConverter.unmarshal(BatchVoucherType.class, marshaledBatchVoucher, true);
   }
 }

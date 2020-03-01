@@ -1,8 +1,6 @@
 package org.folio.jaxb;
 
 import org.folio.exceptions.ConversationFailedException;
-import org.springframework.core.convert.ConversionException;
-import org.springframework.core.convert.ConversionFailedException;
 import javax.xml.datatype.DatatypeConfigurationException;
 import javax.xml.datatype.DatatypeFactory;
 import javax.xml.datatype.XMLGregorianCalendar;
@@ -17,8 +15,11 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-public class JAXBUtil {
+public final class JAXBUtil {
   private static final DateTimeFormatter fromFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSZ");
+
+  private JAXBUtil() {
+  }
 
   public static List<StreamSource> xsdSchemasAsStreamResources(final String schemasDirectory, final String[] fileNames){
     if (Objects.nonNull(schemasDirectory) && Objects.nonNull(fileNames)){
