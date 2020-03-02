@@ -1,14 +1,11 @@
 package org.folio.rest.impl;
 
-import io.vertx.core.AsyncResult;
 import io.vertx.core.Context;
-import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
 import me.escoffier.vertx.completablefuture.VertxCompletableFuture;
 
 import org.folio.HttpStatus;
-import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.jaxb.XMLConverter;
 import org.folio.rest.jaxrs.model.BatchVoucher;
 import org.folio.rest.jaxrs.model.Error;
@@ -19,12 +16,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.convert.ConversionService;
 import javax.ws.rs.core.HttpHeaders;
 import javax.ws.rs.core.Response;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
-import static io.vertx.core.Future.succeededFuture;
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 import static javax.ws.rs.core.MediaType.APPLICATION_XML;
 import static org.folio.invoices.utils.HelperUtils.handleGetRequest;
@@ -32,7 +27,7 @@ import static org.folio.invoices.utils.ResourcePathResolver.BATCH_VOUCHER_STORAG
 import static org.folio.invoices.utils.ResourcePathResolver.resourceByIdPath;
 
 public class BatchVoucherHelper extends AbstractHelper {
-  private final static String HEADER_ERROR_MSG = "Accept header must be [\"application/xml\",\"application/json\"]";
+  private static final String HEADER_ERROR_MSG = "Accept header must be [\"application/xml\",\"application/json\"]";
 
   @Autowired
   private XMLConverter xmlConverter;

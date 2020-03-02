@@ -212,7 +212,6 @@ public class HelperUtils {
     httpClient, Context ctx, Map<String, String> okapiHeaders, Logger logger) {
     CompletableFuture<JsonObject> future = new VertxCompletableFuture<>(ctx);
     try {
-      logger.debug("Start Thread to invoke : " + Thread.currentThread().getName());
       logger.debug(CALLING_ENDPOINT_MSG, HttpMethod.GET, endpoint);
       httpClient
         .request(HttpMethod.GET, endpoint, okapiHeaders)
