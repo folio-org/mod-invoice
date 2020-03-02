@@ -131,6 +131,9 @@ public class MockServer {
   private static final String FUNDS_MOCK_DATA_PATH = BASE_MOCK_DATA_PATH + "fundRecords/";
   private static final String VOUCHER_ID = "voucherId";
   private static final String QUERY = "query";
+  private static final String LIMIT = "limit";
+  private static final String OFFSET = "offset";
+  
   private static final String MOCK_DATA_INVOICES = "mockdata/invoices/invoices.json";
   static final String TEST_PREFIX = "testPrefix";
   private static final String INVALID_PREFIX = "12-prefix";
@@ -402,9 +405,24 @@ public class MockServer {
     }
   };
 
+  private void verifyIntegerParams(RoutingContext ctx, String[] params) {
+    for(String param : params) {
+      String value = StringUtils.trimToEmpty(ctx.request().getParam(param));
+      if(!StringUtils.isEmpty(value)) {
+        try {
+          Integer.parseInt(value);        
+        } catch (Exception e) {
+          serverResponse(ctx, 400, TEXT_PLAIN, String.format("For input String: %s", value));
+        }
+      }
+    }
+  }
+  
   private void handleGetBatchVoucherExportConfigs(RoutingContext ctx) {
     logger.info("handleGetBatchVoucherExportConfigs got: {}?{}", ctx.request().path(), ctx.request().query());
 
+    verifyIntegerParams(ctx, new String[] {LIMIT, OFFSET});  
+    
     String queryParam = StringUtils.trimToEmpty(ctx.request().getParam(QUERY));
     String tenant = ctx.request().getHeader(OKAPI_HEADER_TENANT);
     if (queryParam.contains(BAD_QUERY)) {
