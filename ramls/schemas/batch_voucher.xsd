@@ -11,7 +11,7 @@
 
   <xs:complexType name="BatchedVouchersType">
     <xs:sequence>
-      <xs:element name="batchedVouchers" type="BatchedVoucherType" maxOccurs="unbounded"/>
+      <xs:element name="batchedVoucher" type="BatchedVoucherType" maxOccurs="unbounded"/>
     </xs:sequence>
   </xs:complexType>
 

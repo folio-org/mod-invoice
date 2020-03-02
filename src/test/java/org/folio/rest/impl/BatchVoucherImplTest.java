@@ -23,6 +23,7 @@ public class BatchVoucherImplTest extends ApiTestBase {
   private static final String VALID_BATCH_VOUCHER_ID ="35657479-83b9-4760-9c39-b58dcd02ee14";
   public static final String BATCH_VOUCHER_MOCK_DATA_PATH = BASE_MOCK_DATA_PATH + "batchVouchers/";
   private static final String BATCH_VOUCHER_SAMPLE_PATH = BATCH_VOUCHER_MOCK_DATA_PATH + VALID_BATCH_VOUCHER_ID + ".json";
+  public static final String NON_EXISTING_BATCH_VOUCHER_ID = "12345678-83b9-4760-9c39-b58dcd02ee16";
 
   @Test
   public void testGetJSONShouldReturnBatchVoucherInById() {
@@ -61,8 +62,7 @@ public class BatchVoucherImplTest extends ApiTestBase {
   @Test
   public void testGetShouldReturn404IfBatchVoucherISAbsent() {
     logger.info("=== Test Get Batch voucher by Id - 404 Bad request ===");
-    verifyGet(String.format(BATCH_VOUCHER_ID_PATH, "12345678-83b9-4760-9c39-b58dcd02ee16")
+    verifyGet(String.format(BATCH_VOUCHER_ID_PATH, NON_EXISTING_BATCH_VOUCHER_ID)
       , Headers.headers(ACCEPT_JSON_HEADER, X_OKAPI_TENANT), APPLICATION_JSON, 404);
   }
-
 }

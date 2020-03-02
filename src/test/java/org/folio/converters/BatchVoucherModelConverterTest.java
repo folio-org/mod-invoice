@@ -40,7 +40,7 @@ public class BatchVoucherModelConverterTest {
     BatchVoucher json = new JsonObject(contents).mapTo(BatchVoucher.class);
     BatchVoucherType xml = converter.convert(json);
     assertCommonFields(json, xml);
-    assertBatchedVoucher(json.getBatchedVouchers(), xml.getBatchedVouchers().getBatchedVouchers());
+    assertBatchedVoucher(json.getBatchedVouchers(), xml.getBatchedVouchers().getBatchedVoucher());
   }
 
   private void assertCommonFields(BatchVoucher json, BatchVoucherType xml) {
