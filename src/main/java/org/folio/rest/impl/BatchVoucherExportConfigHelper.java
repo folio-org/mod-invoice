@@ -5,12 +5,14 @@ import static org.folio.invoices.utils.HelperUtils.handleDeleteRequest;
 import static org.folio.invoices.utils.HelperUtils.handleGetRequest;
 import static org.folio.invoices.utils.HelperUtils.handlePutRequest;
 import static org.folio.invoices.utils.ResourcePathResolver.BATCH_VOUCHER_EXPORT_CONFIGS;
+import static org.folio.invoices.utils.ResourcePathResolver.BATCH_VOUCHER_EXPORT_CONFIGS_CREDENTIALS;
 import static org.folio.invoices.utils.ResourcePathResolver.resourceByIdPath;
 import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
 
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
+import org.folio.rest.jaxrs.model.Credentials;
 import org.folio.rest.jaxrs.model.ExportConfig;
 import org.folio.rest.jaxrs.model.ExportConfigCollection;
 import org.folio.rest.tools.client.interfaces.HttpClientInterface;
@@ -58,10 +60,43 @@ public class BatchVoucherExportConfigHelper extends AbstractHelper {
     return future;
   }
 
+  public CompletableFuture<Credentials> getExportConfigCredentials(String id) {
+    CompletableFuture<Credentials> future = new VertxCompletableFuture<>(ctx);
+
+    try {
+      handleGetRequest(String.format(resourcesPath(BATCH_VOUCHER_EXPORT_CONFIGS_CREDENTIALS), id), httpClient, ctx, okapiHeaders, logger)
+        .thenAccept(jsonCredentials -> {
+          logger.info("Successfully retrieved batch voucher export configuration credentials: " + jsonCredentials.encodePrettily());
+          future.complete(jsonCredentials.mapTo(Credentials.class));
+        })
+        .exceptionally(t -> {
+          logger.error("Error getting batch voucher export configuration credentials by id ", id);
+          future.completeExceptionally(t);
+          return null;
+        });
+    } catch (Exception e) {
+      future.completeExceptionally(e);
+    }
+
+    return future;
+  }
+
+  public CompletableFuture<Credentials> createCredentials(String id, Credentials credentials){
+    return CompletableFuture.supplyAsync(() -> JsonObject.mapFrom(credentials))
+      .thenCompose(jsonObject -> createRecordInStorage(jsonObject,
+        String.format(resourcesPath(BATCH_VOUCHER_EXPORT_CONFIGS_CREDENTIALS), id))).thenApply(credentials::withId);
+  }
+
   public CompletableFuture<Void> putExportConfig(ExportConfig exportConfig) {
     JsonObject jsonExportConfig = JsonObject.mapFrom(exportConfig);
     String path = resourceByIdPath(BATCH_VOUCHER_EXPORT_CONFIGS, exportConfig.getId(), lang);
     return handlePutRequest(path, jsonExportConfig, httpClient, ctx, okapiHeaders, logger);
+  }
+
+  public CompletableFuture<Void> putExportConfigCredentials(String id, Credentials credentials) {
+    JsonObject jsonCredentials = JsonObject.mapFrom(credentials);
+    String path = String.format(resourcesPath(BATCH_VOUCHER_EXPORT_CONFIGS_CREDENTIALS), id);
+    return handlePutRequest(path, jsonCredentials, httpClient, ctx, okapiHeaders, logger);
   }
 
   public CompletableFuture<Void> deleteExportConfig(String id) {
