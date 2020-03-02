@@ -694,7 +694,7 @@
       "visible": false
     },
     {
-      "permissionName": "batch-voucher-storage.batch-vouchers.item.get",
+      "permissionName": "batch-voucher.batch-vouchers.item.get",
       "displayName": "Batch-voucher - get an existing Batch-voucher",
       "description": "Get an existing Batch-voucher"
     },
@@ -703,7 +703,7 @@
       "displayName": "Batch-voucher module - all permissions",
       "description": "Entire set of permissions needed to use the batch-voucher module",
       "subPermissions": [
-        "batch-voucher-storage.batch-vouchers.item.get"
+        "batch-voucher.batch-vouchers.item.get"
       ],
       "visible": false
     },
