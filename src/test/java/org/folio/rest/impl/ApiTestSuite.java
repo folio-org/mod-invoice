@@ -8,6 +8,9 @@ import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 
 import org.folio.config.ApplicationConfig;
+import org.folio.converters.BatchVoucherModelConverterTest;
+import org.folio.converters.BatchedVoucherLinesModelConverterTest;
+import org.folio.converters.BatchedVoucherModelConverterTest;
 import org.folio.invoices.events.handlers.InvoiceSummaryTest;
 import org.folio.rest.RestVerticle;
 import org.folio.rest.impl.protection.InvoicesProtectionTest;
@@ -39,7 +42,10 @@ import java.util.concurrent.TimeoutException;
   InvoiceLinesProratedAdjustmentsTest.class,
   BatchGroupsApiTest.class,
   BatchVoucherSchemaXSDTest.class,
-  BatchVoucherImplTest.class
+  BatchVoucherImplTest.class,
+  BatchedVoucherLinesModelConverterTest.class,
+  BatchedVoucherModelConverterTest.class,
+  BatchVoucherModelConverterTest.class
 })
 public class ApiTestSuite {
   private static final Logger logger = LoggerFactory.getLogger(ApiTestSuite.class);

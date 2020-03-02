@@ -15,7 +15,7 @@ import java.nio.file.Paths;
 
 public class BatchVoucherSchemaXSDTest {
   private static Path XSD_BATCH_VOUCHER_SCHEMA_PATH = Paths.get("", "ramls/schemas/batch_voucher.xsd").toAbsolutePath();
-  private static Path XML_BATCH_VOUCHER_EXAMPLES_PATH = Paths.get("ramls/examples","cb7592ae-621c-4f35-bc1d-47909e55f9f5.xml").toAbsolutePath();
+  private static Path XML_BATCH_VOUCHER_EXAMPLES_PATH = Paths.get("ramls/examples","batch_voucher_xml.sample").toAbsolutePath();
 
   @Test
   public void testValidateSampleDataBySchema() throws Exception {
