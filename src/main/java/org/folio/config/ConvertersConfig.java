@@ -1,5 +1,8 @@
 package org.folio.config;
 
+import java.util.HashSet;
+import java.util.Set;
+
 import org.folio.converters.BatchVoucherModelConverter;
 import org.folio.converters.BatchedVoucherLineModelConverter;
 import org.folio.converters.BatchedVoucherModelConverter;
@@ -9,24 +12,17 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.support.ConversionServiceFactoryBean;
 import org.springframework.core.convert.ConversionService;
 import org.springframework.core.convert.converter.Converter;
-import java.util.HashSet;
-import java.util.Set;
+import org.springframework.core.convert.support.DefaultConversionService;
 
 @Configuration
 public class ConvertersConfig {
 
   @Bean
   @Autowired
-  public ConversionService conversionService(ConversionServiceFactoryBean factory) {
-    return factory.getObject();
-  }
-
-  @Bean
-  @Autowired
-  ConversionServiceFactoryBean factory(Set<Converter> converters) {
-    ConversionServiceFactoryBean bean = new ConversionServiceFactoryBean();
-    bean.setConverters(converters);
-    return bean;
+  public ConversionService conversionService(Set<Converter> converters) {
+    DefaultConversionService service = new DefaultConversionService();
+    converters.forEach(converter -> service.addConverter(converter));
+    return service;
   }
 
   @Bean
@@ -46,7 +42,7 @@ public class ConvertersConfig {
   @Bean
   @Autowired
   public BatchedVoucherModelConverter batchedVoucherModelConverter(
-    BatchedVoucherLineModelConverter batchedVoucherLineModelConverter) {
+      BatchedVoucherLineModelConverter batchedVoucherLineModelConverter) {
     return new BatchedVoucherModelConverter(batchedVoucherLineModelConverter);
   }
 

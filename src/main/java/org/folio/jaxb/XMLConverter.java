@@ -26,7 +26,7 @@ public class XMLConverter {
    * Marshals object and returns string representation
    *
    * @param xmlObject          object to marshal
-   *  @param isValidationNeeded if set to true, then validate by XSD schema
+   * @param isValidationNeeded if set to true, then validate by XSD schema
    * @return marshaled object as string representation
    */
   public <T> String marshal(T xmlObject, boolean isValidationNeeded) {
@@ -40,15 +40,16 @@ public class XMLConverter {
       throw new IllegalStateException("The " + xmlObject.getClass()
         .getName() + " response cannot be converted to string representation.", e);
     } finally {
-      logExecutionTime(xmlObject.getClass().getName() + " converted to string", timer);
+      logExecutionTime(xmlObject.getClass()
+        .getName() + " converted to string", timer);
     }
   }
 
   /**
    * Unmarshals object based on passed string
    *
-   * @param xmlStr the string representation of XML
-   * @param clazz  returned type
+   * @param xmlStr             the string representation of XML
+   * @param clazz              returned type
    * @param isValidationNeeded if set to true, then validate by XSD schema
    * @return the {@link T} object based on passed string
    */

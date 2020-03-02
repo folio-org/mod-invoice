@@ -1,5 +1,10 @@
 package org.folio.services;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+
 import org.folio.config.ApplicationConfig;
 import org.folio.jaxb.XMLConverter;
 import org.folio.rest.jaxrs.model.jaxb.BatchVoucherType;
@@ -9,10 +14,6 @@ import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringRunner;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 
 @RunWith(SpringRunner.class)
 @ContextConfiguration(classes = ApplicationConfig.class)
@@ -46,6 +47,6 @@ public class XMLConverterTest {
     BatchVoucherType unmarshaledBatchVoucherExp = xmlConverter.unmarshal(BatchVoucherType.class, content, false);
     unmarshaledBatchVoucherExp.setBatchedVouchers(null);
     String marshaledBatchVoucher = xmlConverter.marshal(unmarshaledBatchVoucherExp, false);
-    BatchVoucherType unmarshaledBatchVoucherAct = xmlConverter.unmarshal(BatchVoucherType.class, marshaledBatchVoucher, true);
+    xmlConverter.unmarshal(BatchVoucherType.class, marshaledBatchVoucher, true);
   }
 }

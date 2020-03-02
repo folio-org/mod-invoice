@@ -1,7 +1,14 @@
 package org.folio.converters;
 
+import static java.math.BigInteger.valueOf;
+import static org.folio.jaxb.JAXBUtil.convertDateTime;
+import static org.junit.Assert.assertEquals;
 
-import io.vertx.core.json.JsonObject;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.List;
 
 import org.folio.rest.jaxrs.model.BatchVoucher;
 import org.folio.rest.jaxrs.model.BatchedVoucher;
@@ -12,15 +19,8 @@ import org.junit.runner.RunWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.List;
 
-import static java.math.BigInteger.valueOf;
-import static org.folio.jaxb.JAXBUtil.convertDateTime;
-import static org.junit.Assert.assertEquals;
+import io.vertx.core.json.JsonObject;
 
 @RunWith(MockitoJUnitRunner.class)
 public class BatchVoucherModelConverterTest {

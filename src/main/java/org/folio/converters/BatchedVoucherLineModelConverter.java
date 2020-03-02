@@ -1,9 +1,10 @@
 package org.folio.converters;
 
+import java.math.BigDecimal;
+
 import org.folio.rest.jaxrs.model.BatchedVoucherLine;
 import org.folio.rest.jaxrs.model.jaxb.BatchedVoucherLineType;
 import org.springframework.core.convert.converter.Converter;
-import java.math.BigDecimal;
 
 public class BatchedVoucherLineModelConverter implements Converter<BatchedVoucherLine, BatchedVoucherLineType> {
   @Override

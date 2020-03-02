@@ -1,9 +1,17 @@
 package org.folio.rest.impl;
 
-import io.vertx.core.Context;
-import io.vertx.core.Vertx;
-import io.vertx.core.json.JsonObject;
-import me.escoffier.vertx.completablefuture.VertxCompletableFuture;
+import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
+import static javax.ws.rs.core.MediaType.APPLICATION_XML;
+import static org.folio.invoices.utils.HelperUtils.handleGetRequest;
+import static org.folio.invoices.utils.ResourcePathResolver.BATCH_VOUCHER_STORAGE;
+import static org.folio.invoices.utils.ResourcePathResolver.resourceByIdPath;
+
+import java.util.Collections;
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+
+import javax.ws.rs.core.HttpHeaders;
+import javax.ws.rs.core.Response;
 
 import org.folio.HttpStatus;
 import org.folio.jaxb.XMLConverter;
@@ -14,17 +22,11 @@ import org.folio.rest.jaxrs.model.jaxb.BatchVoucherType;
 import org.folio.spring.SpringContextUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.convert.ConversionService;
-import javax.ws.rs.core.HttpHeaders;
-import javax.ws.rs.core.Response;
-import java.util.Collections;
-import java.util.Map;
-import java.util.concurrent.CompletableFuture;
 
-import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
-import static javax.ws.rs.core.MediaType.APPLICATION_XML;
-import static org.folio.invoices.utils.HelperUtils.handleGetRequest;
-import static org.folio.invoices.utils.ResourcePathResolver.BATCH_VOUCHER_STORAGE;
-import static org.folio.invoices.utils.ResourcePathResolver.resourceByIdPath;
+import io.vertx.core.Context;
+import io.vertx.core.Vertx;
+import io.vertx.core.json.JsonObject;
+import me.escoffier.vertx.completablefuture.VertxCompletableFuture;
 
 public class BatchVoucherHelper extends AbstractHelper {
   private static final String HEADER_ERROR_MSG = "Accept header must be [\"application/xml\",\"application/json\"]";
@@ -60,16 +62,17 @@ public class BatchVoucherHelper extends AbstractHelper {
 
   private Response buildSuccessResponse(JsonObject jsonObjectBatchVoucher, String acceptHeader) {
     BatchVoucher jsonBatchVoucher = jsonObjectBatchVoucher.mapTo(BatchVoucher.class);
-    switch (acceptHeader){
-      case APPLICATION_XML:
-        BatchVoucherType xmlBatchVoucher = conversionService.convert(jsonBatchVoucher, BatchVoucherType.class);
-        String xmlBatchVoucherResponse = xmlConverter.marshal(xmlBatchVoucher, true);
-        return buildSuccessResponse(xmlBatchVoucherResponse, APPLICATION_XML);
+    switch (acceptHeader) {
+    case APPLICATION_XML:
+      BatchVoucherType xmlBatchVoucher = conversionService.convert(jsonBatchVoucher, BatchVoucherType.class);
+      String xmlBatchVoucherResponse = xmlConverter.marshal(xmlBatchVoucher, true);
+      return buildSuccessResponse(xmlBatchVoucherResponse, APPLICATION_XML);
 
-      case APPLICATION_JSON :
-        return buildSuccessResponse(jsonBatchVoucher, APPLICATION_JSON);
+    case APPLICATION_JSON:
+      return buildSuccessResponse(jsonBatchVoucher, APPLICATION_JSON);
 
-      default: return handleAcceptHeaderError();
+    default:
+      return handleAcceptHeaderError();
     }
   }
 
@@ -81,11 +84,11 @@ public class BatchVoucherHelper extends AbstractHelper {
     Errors errors = new Errors();
     errors.withErrors(Collections.singletonList(error));
     errors.setTotalRecords(1);
-
+    closeHttpClient();
     return Response.status(400)
-                .header(HttpHeaders.CONTENT_TYPE, APPLICATION_JSON)
-                .entity(errors)
-                .build();
+                   .header(HttpHeaders.CONTENT_TYPE, APPLICATION_JSON)
+                   .entity(errors)
+                   .build();
   }
 
 }

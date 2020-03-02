@@ -25,10 +25,9 @@ public class JAXBContextWrapper {
     this.jaxbContext = jaxbContext;
     this.schema = schema;
     this.namespacePrefixMapper = namespacePrefixMapper;
-    this.isOutputFormatted =  Boolean.parseBoolean(System.getProperty(JAXB_FORMATTED_OUTPUT, Boolean.TRUE.toString()));
+    this.isOutputFormatted = Boolean.parseBoolean(System.getProperty(JAXB_FORMATTED_OUTPUT, Boolean.TRUE.toString()));
     this.hasXmlDeclaration = Boolean.parseBoolean(System.getProperty(XML_DECLARATION, Boolean.FALSE.toString()));
   }
-
 
   public Marshaller createMarshaller(boolean isValidationNeeded) throws JAXBException {
     // Marshaller is not thread-safe, so we should create every time a new one

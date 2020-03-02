@@ -9,7 +9,7 @@ import org.springframework.core.io.ClassPathResource;
 
 @Configuration
 @ComponentScan({ "org.folio.rest.impl", "org.folio.invoices" })
-@Import({JAXBConfig.class, ConvertersConfig.class})
+@Import({ JAXBConfig.class, ConvertersConfig.class })
 public class ApplicationConfig {
   @Bean
   PropertySourcesPlaceholderConfigurer placeholderConfigurer() {

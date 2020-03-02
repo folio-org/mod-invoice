@@ -1,7 +1,19 @@
 package org.folio.config;
 
-import com.sun.xml.bind.marshaller.NamespacePrefixMapper;
+import static javax.xml.XMLConstants.W3C_XML_SCHEMA_NS_URI;
+
+import java.io.File;
+import java.util.List;
+import java.util.Map;
+
+import javax.xml.bind.JAXBContext;
+import javax.xml.bind.JAXBException;
+import javax.xml.transform.stream.StreamSource;
+import javax.xml.validation.Schema;
+import javax.xml.validation.SchemaFactory;
+
 import org.folio.jaxb.JAXBContextWrapper;
+import org.folio.jaxb.JAXBDefaultNamespacePrefixMapper;
 import org.folio.jaxb.JAXBUtil;
 import org.folio.jaxb.XMLConverter;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -9,17 +21,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.xml.sax.SAXException;
-import javax.xml.bind.JAXBContext;
-import javax.xml.bind.JAXBException;
-import javax.xml.transform.stream.StreamSource;
-import javax.xml.validation.Schema;
-import javax.xml.validation.SchemaFactory;
-import java.io.File;
-import java.util.List;
-import java.util.Map;
 
-
-import static javax.xml.XMLConstants.W3C_XML_SCHEMA_NS_URI;
+import com.sun.xml.bind.marshaller.NamespacePrefixMapper;
 
 @Configuration
 public class JAXBConfig {
@@ -55,12 +58,7 @@ public class JAXBConfig {
 
   @Bean
   @Value("#{${jaxb.nameSpacePrefixes}}")
-  NamespacePrefixMapper prefixMapper(Map<String, String> nameSpacePrefixes) {
-    return new NamespacePrefixMapper() {
-      @Override
-      public String getPreferredPrefix(String namespaceUri, String suggestion, boolean requirePrefix) {
-        return nameSpacePrefixes.getOrDefault(namespaceUri, suggestion);
-      }
-    };
+  JAXBDefaultNamespacePrefixMapper prefixMapper(Map<String, String> nameSpacePrefixes) {
+    return new JAXBDefaultNamespacePrefixMapper(nameSpacePrefixes);
   }
 }

@@ -38,8 +38,8 @@ public class BatchVoucherModelConverter implements Converter<BatchVoucher, Batch
     BatchVoucherType.BatchedVouchers batchedVouchers =  new BatchVoucherType.BatchedVouchers();
     List<BatchedVoucherType> batchedVouchersList =
           batchVoucher.getBatchedVouchers().stream()
-                  .map(batchedVoucherModelConverter::convert)
-                  .collect(Collectors.toList());
+                                           .map(batchedVoucherModelConverter::convert)
+                                           .collect(Collectors.toList());
     batchedVouchers.withBatchedVoucher(batchedVouchersList);
     return batchedVouchers;
   }

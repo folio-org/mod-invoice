@@ -1,8 +1,8 @@
 package org.folio.converters;
 
-import static org.junit.Assert.assertEquals;
-import static org.hamcrest.CoreMatchers.*;
+import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.Assert.assertEquals;
 
 import java.io.IOException;
 import java.math.BigDecimal;
@@ -34,7 +34,8 @@ public class BatchedVoucherLinesModelConverterTest {
   public void testShouldConvertJSONModelToXMLModel() throws IOException {
     String contents = new String(Files.readAllBytes(JSON_BATCH_VOUCHER_PATH));
     BatchVoucher json = new JsonObject(contents).mapTo(BatchVoucher.class);
-    BatchedVoucherLine batchedVoucherLine = json.getBatchedVouchers().get(0).getBatchedVoucherLines().get(0);
+    BatchedVoucherLine batchedVoucherLine =
+      json.getBatchedVouchers().get(0).getBatchedVoucherLines().get(0);
     BatchedVoucherLineType batchedVoucherLineType = converter.convert(batchedVoucherLine);
 
     assertEquals(BigDecimal.valueOf(batchedVoucherLine.getAmount()), batchedVoucherLineType.getAmount());

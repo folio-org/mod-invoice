@@ -254,6 +254,7 @@ public abstract class AbstractHelper {
   }
 
   public <T> Response buildSuccessResponse(T body, String contentType) {
+    closeHttpClient();
     return Response.ok(body, contentType).build();
   }
 

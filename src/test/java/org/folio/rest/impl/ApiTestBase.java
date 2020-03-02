@@ -37,6 +37,8 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.Stream;
 
+import javax.ws.rs.core.HttpHeaders;
+
 import org.apache.commons.io.IOUtils;
 import org.awaitility.core.ConditionEvaluationLogger;
 import org.folio.invoices.events.handlers.MessageAddress;
@@ -61,8 +63,6 @@ import io.vertx.core.eventbus.Message;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
-
-import javax.ws.rs.core.HttpHeaders;
 
 public class ApiTestBase {
 

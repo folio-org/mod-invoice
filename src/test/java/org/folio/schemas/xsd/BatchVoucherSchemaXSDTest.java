@@ -1,22 +1,5 @@
 package org.folio.schemas.xsd;
 
-import org.apache.commons.lang3.StringUtils;
-import org.folio.rest.jaxrs.model.BatchVoucher;
-import org.folio.rest.jaxrs.model.BatchedVoucher;
-import org.folio.rest.jaxrs.model.BatchedVoucherLine;
-import org.folio.rest.jaxrs.model.jaxb.BatchVoucherType;
-import org.folio.rest.jaxrs.model.jaxb.BatchedVoucherLineType;
-import org.folio.rest.jaxrs.model.jaxb.BatchedVoucherType;
-import org.junit.Assert;
-import org.junit.BeforeClass;
-import org.junit.Test;
-import javax.validation.constraints.NotNull;
-import javax.xml.XMLConstants;
-import javax.xml.bind.annotation.XmlElement;
-import javax.xml.transform.stream.StreamSource;
-import javax.xml.validation.Schema;
-import javax.xml.validation.SchemaFactory;
-import javax.xml.validation.Validator;
 import java.io.FileInputStream;
 import java.io.FileReader;
 import java.io.InputStream;
@@ -27,6 +10,25 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.Map;
+
+import javax.validation.constraints.NotNull;
+import javax.xml.XMLConstants;
+import javax.xml.bind.annotation.XmlElement;
+import javax.xml.transform.stream.StreamSource;
+import javax.xml.validation.Schema;
+import javax.xml.validation.SchemaFactory;
+import javax.xml.validation.Validator;
+
+import org.apache.commons.lang3.StringUtils;
+import org.folio.rest.jaxrs.model.BatchVoucher;
+import org.folio.rest.jaxrs.model.BatchedVoucher;
+import org.folio.rest.jaxrs.model.BatchedVoucherLine;
+import org.folio.rest.jaxrs.model.jaxb.BatchVoucherType;
+import org.folio.rest.jaxrs.model.jaxb.BatchedVoucherLineType;
+import org.folio.rest.jaxrs.model.jaxb.BatchedVoucherType;
+import org.junit.Assert;
+import org.junit.BeforeClass;
+import org.junit.Test;
 
 public class BatchVoucherSchemaXSDTest {
   private static Path XSD_BATCH_VOUCHER_SCHEMA_PATH ;
