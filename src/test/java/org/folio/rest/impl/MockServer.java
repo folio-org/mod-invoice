@@ -14,6 +14,7 @@ import static org.folio.invoices.utils.ResourcePathResolver.ACQUISITIONS_UNITS;
 import static org.folio.invoices.utils.ResourcePathResolver.AWAITING_PAYMENTS;
 import static org.folio.invoices.utils.ResourcePathResolver.BATCH_GROUPS;
 import static org.folio.invoices.utils.ResourcePathResolver.BATCH_VOUCHER_EXPORT_CONFIGS;
+import static org.folio.invoices.utils.ResourcePathResolver.BATCH_VOUCHER_EXPORT_CONFIGS_CREDENTIALS;
 import static org.folio.invoices.utils.ResourcePathResolver.FOLIO_INVOICE_NUMBER;
 import static org.folio.invoices.utils.ResourcePathResolver.FUNDS;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICES;
@@ -40,6 +41,7 @@ import static org.folio.rest.impl.ApiTestBase.VOUCHER_NUMBER_VALUE;
 import static org.folio.rest.impl.ApiTestBase.getMockData;
 import static org.folio.rest.impl.BatchGroupsApiTest.BATCH_GROUPS_LIST_PATH;
 import static org.folio.rest.impl.BatchGroupsApiTest.BATCH_GROUP_MOCK_DATA_PATH;
+import static org.folio.rest.impl.BatchVoucherExportConfigCredentialsTest.BATCH_VOUCHER_EXPORT_CONFIG_CREDENTIALS_SAMPLE_PATH_WITH_ID;
 import static org.folio.rest.impl.BatchVoucherExportConfigTest.BATCH_VOUCHER_EXPORT_CONFIGS_SAMPLE_PATH;
 import static org.folio.rest.impl.BatchVoucherExportConfigTest.BATCH_VOUCHER_EXPORT_CONFIG_SAMPLE_PATH;
 import static org.folio.rest.impl.DocumentsApiTest.INVOICE_DOCUMENTS_SAMPLE_PATH;
@@ -93,6 +95,7 @@ import org.folio.rest.acq.model.units.AcquisitionsUnitCollection;
 import org.folio.rest.acq.model.units.AcquisitionsUnitMembershipCollection;
 import org.folio.rest.jaxrs.model.Config;
 import org.folio.rest.jaxrs.model.Configs;
+import org.folio.rest.jaxrs.model.Credentials;
 import org.folio.rest.jaxrs.model.Document;
 import org.folio.rest.jaxrs.model.DocumentCollection;
 import org.folio.rest.jaxrs.model.ExportConfig;
@@ -178,8 +181,10 @@ public class MockServer {
   static final Header GET_VOUCHER_LINE_ERROR_X_OKAPI_TENANT = new Header(OKAPI_HEADER_TENANT, GET_VOUCHER_LINES_ERROR_TENANT);
   static final Header DELETE_VOUCHER_LINE_ERROR_X_OKAPI_TENANT = new Header(OKAPI_HEADER_TENANT, DELETE_VOUCHER_LINES_ERROR_TENANT);
   static final Header NON_EXIST_CONFIG_X_OKAPI_TENANT = new Header(OKAPI_HEADER_TENANT, NON_EXIST_CONFIG_TENANT);
-  static final Header CREATE_INVOICE_TRANSACTION_SUMMARY_ERROR_X_OKAPI_TENANT =  new Header(OKAPI_HEADER_TENANT, CREATE_INVOICE_TRANSACTION_SUMMARY_ERROR_TENANT);
-  static final Header POST_AWAITING_PAYMENT_ERROR_X_OKAPI_TENANT = new Header(OKAPI_HEADER_TENANT, POST_AWAITING_PAYMENT_ERROR_TENANT);
+  static final Header CREATE_INVOICE_TRANSACTION_SUMMARY_ERROR_X_OKAPI_TENANT = new Header(OKAPI_HEADER_TENANT,
+    CREATE_INVOICE_TRANSACTION_SUMMARY_ERROR_TENANT);
+  static final Header POST_AWAITING_PAYMENT_ERROR_X_OKAPI_TENANT = new Header(OKAPI_HEADER_TENANT,
+    POST_AWAITING_PAYMENT_ERROR_TENANT);
 
   private final int port;
   private final Vertx vertx;
@@ -197,10 +202,9 @@ public class MockServer {
     HttpServer server = vertx.createHttpServer();
     CompletableFuture<HttpServer> deploymentComplete = new CompletableFuture<>();
     server.requestHandler(defineRoutes()::handle).listen(port, result -> {
-      if(result.succeeded()) {
+      if (result.succeeded()) {
         deploymentComplete.complete(result.result());
-      }
-      else {
+      } else {
         deploymentComplete.completeExceptionally(result.cause());
       }
     });
@@ -285,7 +289,8 @@ public class MockServer {
     router.route(HttpMethod.POST, resourcesPath(VOUCHER_LINES)).handler(ctx -> handlePostEntry(ctx, VoucherLine.class, VOUCHER_LINES));
     router.route(HttpMethod.POST, "/invoice-storage/invoices/:id/documents").handler(this::handlePostInvoiceDocument);
     router.route(HttpMethod.POST, resourcesPath(BATCH_VOUCHER_EXPORT_CONFIGS)).handler(ctx -> handlePostEntry(ctx, ExportConfig.class, BATCH_VOUCHER_EXPORT_CONFIGS));
-    
+    router.route(HttpMethod.POST, "/batch-voucher-storage/export-configurations/:id/credentials").handler(this::handlePostCredentials);
+    router.route(HttpMethod.POST, "/batch-voucher-storage/export-configurations/:id/credentials/test").handler(this::handlePostCredentialsTest);
     router.route(HttpMethod.POST, resourcesPath(INVOICE_TRANSACTION_SUMMARIES)).handler(this::handlePostInvoiceSummary);
     router.route(HttpMethod.POST, resourcesPath(AWAITING_PAYMENTS)).handler(this::handlePostAwaitingPayment);
     router.route(HttpMethod.POST, resourcesPath(BATCH_GROUPS)).handler(ctx -> handlePost(ctx, BatchGroup.class, BATCH_GROUPS, false));
@@ -310,6 +315,7 @@ public class MockServer {
     router.route(HttpMethod.GET, resourcesPath(ACQUISITIONS_MEMBERSHIPS)).handler(this::handleGetAcquisitionsMemberships);
     router.route(HttpMethod.GET, resourcesPath(ACQUISITIONS_UNITS)).handler(this::handleGetAcquisitionsUnits);
     router.route(HttpMethod.GET, resourcesPath(BATCH_VOUCHER_EXPORT_CONFIGS)).handler(this::handleGetBatchVoucherExportConfigs);
+    router.route(HttpMethod.GET, "/batch-voucher-storage/export-configurations/:id/credentials").handler(this::handleGetBatchVoucherExportConfigCredentials);
     router.route(HttpMethod.GET, resourceByIdPath(BATCH_VOUCHER_EXPORT_CONFIGS)).handler(this::handleGetBatchVoucherExportConfigById);
     router.route(HttpMethod.GET, resourcesPath(BATCH_GROUPS)).handler(this::handleGetBatchGroups);
     router.route(HttpMethod.GET, resourceByIdPath(BATCH_GROUPS)).handler(this::handleGetBatchGroupById);
@@ -327,6 +333,7 @@ public class MockServer {
     router.route(HttpMethod.PUT, resourceByIdPath(VOUCHER_LINES)).handler(ctx -> handlePutGenericSubObj(ctx, VOUCHER_LINES));
     router.route(HttpMethod.PUT, resourceByIdPath(ORDER_LINES)).handler(ctx -> handlePutGenericSubObj(ctx, ResourcePathResolver.ORDER_LINES));
     router.route(HttpMethod.PUT, resourceByIdPath(BATCH_VOUCHER_EXPORT_CONFIGS)).handler(ctx -> handlePutGenericSubObj(ctx, ResourcePathResolver.BATCH_VOUCHER_EXPORT_CONFIGS));
+    router.route(HttpMethod.PUT, "/batch-voucher-storage/export-configurations/:id/credentials").handler(ctx -> handlePutGenericSubObj(ctx, BATCH_VOUCHER_EXPORT_CONFIGS_CREDENTIALS));
     router.route(HttpMethod.PUT, resourceByIdPath(BATCH_GROUPS)).handler(ctx -> handlePutGenericSubObj(ctx, BATCH_GROUPS));
 
     return router;
@@ -356,7 +363,6 @@ public class MockServer {
     }
   }
 
-
   private void handleGetAcquisitionsMemberships(RoutingContext ctx) {
     logger.info("handleGetAcquisitionsMemberships got: " + ctx.request().path());
 
@@ -370,7 +376,8 @@ public class MockServer {
 
       AcquisitionsUnitMembershipCollection memberships;
       try {
-        memberships = new JsonObject(ApiTestBase.getMockData(ACQUISITIONS_MEMBERSHIPS_COLLECTION)).mapTo(AcquisitionsUnitMembershipCollection.class);
+        memberships = new JsonObject(ApiTestBase.getMockData(ACQUISITIONS_MEMBERSHIPS_COLLECTION)).mapTo(
+          AcquisitionsUnitMembershipCollection.class);
       } catch (IOException e) {
         memberships = new AcquisitionsUnitMembershipCollection();
       }
@@ -432,7 +439,7 @@ public class MockServer {
       };
 
       ExportConfigCollection exportConfigCollection = new ExportConfigCollection();
-      List<ExportConfig> exportConfigs  = getMockEntries(BATCH_VOUCHER_EXPORT_CONFIGS, ExportConfig.class).orElseGet(getFromFile);
+      List<ExportConfig> exportConfigs = getMockEntries(BATCH_VOUCHER_EXPORT_CONFIGS, ExportConfig.class).orElseGet(getFromFile);
 
       exportConfigCollection.setExportConfigs(exportConfigs);
       exportConfigCollection.setTotalRecords(exportConfigCollection.getExportConfigs().size());
@@ -444,7 +451,25 @@ public class MockServer {
       serverResponse(ctx, 200, APPLICATION_JSON, exportConfigsJson.encode());
     }
   }
-  
+
+  private void handleGetBatchVoucherExportConfigCredentials(RoutingContext ctx) {
+    logger.info("handleGetBatchVoucherExportConfigCredentials got: GET " + ctx.request().path());
+    String id = ctx.request().getParam(ID);
+    logger.info("id: " + id);
+    if (ID_FOR_INTERNAL_SERVER_ERROR.equals(id)) {
+      serverResponse(ctx, 500, APPLICATION_JSON, Response.Status.INTERNAL_SERVER_ERROR.getReasonPhrase());
+    } else {
+      JsonObject credentials = getMockCredentials();
+      if (credentials == null) {
+        ctx.response().setStatusCode(404).end(id);
+      } else {
+        // validate content against schema
+        addServerRqRsData(HttpMethod.GET, BATCH_VOUCHER_EXPORT_CONFIGS_CREDENTIALS, credentials);
+        serverResponse(ctx, 200, APPLICATION_JSON, credentials.encodePrettily());
+      }
+    }
+  }
+
   private void handleGetBatchVoucherExportConfigById(RoutingContext ctx) {
     logger.info("handleGetBatchVoucherExportConfigById got: GET " + ctx.request().path());
     String id = ctx.request().getParam(ID);
@@ -465,7 +490,7 @@ public class MockServer {
       }
     }
   }
-  
+
   private void handleGetAcquisitionsUnits(RoutingContext ctx) {
     logger.info("handleGetAcquisitionsUnits got: " + ctx.request().path());
 
@@ -525,7 +550,7 @@ public class MockServer {
       };
 
       DocumentCollection documentCollection = new DocumentCollection();
-      List<Document> documents  = getMockEntries(INVOICE_DOCUMENTS, Document.class).orElseGet(getFromFile);
+      List<Document> documents = getMockEntries(INVOICE_DOCUMENTS, Document.class).orElseGet(getFromFile);
 
       documentCollection.setDocuments(documents);
       documentCollection.setTotalRecords(documentCollection.getDocuments().size());
@@ -571,6 +596,21 @@ public class MockServer {
     serverResponse(ctx, 201, APPLICATION_JSON, jsonDocument.encodePrettily());
   }
 
+  private void handlePostCredentials(RoutingContext ctx) {
+    Credentials credentials = ctx.getBodyAsJson().mapTo(Credentials.class);
+    String id = credentials.getId();
+    JsonObject jsonObject = JsonObject.mapFrom(credentials);
+    addServerRqRsData(HttpMethod.POST, BATCH_VOUCHER_EXPORT_CONFIGS_CREDENTIALS, jsonObject);
+
+    ctx.response().putHeader(HttpHeaders.LOCATION, ctx.request().path() + "/" + id);
+
+    serverResponse(ctx, 201, APPLICATION_JSON, jsonObject.encodePrettily());
+  }
+
+  private void handlePostCredentialsTest(RoutingContext ctx) {
+    serverResponse(ctx, 200, APPLICATION_JSON, "");
+  }
+
   private void handleGetVoucherLines(RoutingContext ctx) {
     logger.info("handleGetVoucherLines got: {}?{}", ctx.request().path(), ctx.request().query());
 
@@ -587,15 +627,14 @@ public class MockServer {
     } else {
       Supplier<List<VoucherLine>> getFromFile = () -> {
         try {
-          return new JsonObject(getMockData(VOUCHER_LINES_COLLECTION))
-            .mapTo(VoucherLineCollection.class).getVoucherLines();
+          return new JsonObject(getMockData(VOUCHER_LINES_COLLECTION)).mapTo(VoucherLineCollection.class).getVoucherLines();
         } catch (IOException e) {
           return Collections.emptyList();
         }
       };
 
       VoucherLineCollection voucherLineCollection = new VoucherLineCollection();
-      List<VoucherLine> voucherLines  = getMockEntries(VOUCHER_LINES, VoucherLine.class).orElseGet(getFromFile);
+      List<VoucherLine> voucherLines = getMockEntries(VOUCHER_LINES, VoucherLine.class).orElseGet(getFromFile);
 
       Function<VoucherLine, String> voucherIdGetter = VoucherLine::getVoucherId;
       voucherLineCollection.setVoucherLines(filterEntriesByStringValue(voucherId, voucherLines, voucherIdGetter));
@@ -611,9 +650,7 @@ public class MockServer {
 
   private <T> List<T> filterEntriesByStringValue(String id, List<T> entries, Function<T, String> invoiceIdGetter) {
     if (StringUtils.isNotEmpty(id)) {
-      return entries.stream()
-        .filter(line -> id.equals(invoiceIdGetter.apply(line)))
-        .collect(toList());
+      return entries.stream().filter(line -> id.equals(invoiceIdGetter.apply(line))).collect(toList());
     }
     return entries;
   }
@@ -640,8 +677,7 @@ public class MockServer {
     } else {
       Supplier<List<InvoiceLine>> getFromFile = () -> {
         try {
-          return new JsonObject(getMockData(INVOICE_LINES_COLLECTION))
-            .mapTo(InvoiceLineCollection.class).getInvoiceLines();
+          return new JsonObject(getMockData(INVOICE_LINES_COLLECTION)).mapTo(InvoiceLineCollection.class).getInvoiceLines();
         } catch (IOException e) {
           return Collections.emptyList();
         }
@@ -664,15 +700,14 @@ public class MockServer {
       }
 
       InvoiceLineCollection invoiceLineCollection = new InvoiceLineCollection();
-      List<InvoiceLine> invoiceLines  = getMockEntries(INVOICE_LINES, InvoiceLine.class).orElseGet(getFromFile);
+      List<InvoiceLine> invoiceLines = getMockEntries(INVOICE_LINES, InvoiceLine.class).orElseGet(getFromFile);
       invoiceLineCollection.setInvoiceLines(invoiceLines);
 
       Iterator<InvoiceLine> iterator = invoiceLines.iterator();
       while (iterator.hasNext()) {
         InvoiceLine invoiceLine = iterator.next();
         String id = invoiceLine.getId();
-        if (excludedLineIds.contains(id)
-            || (includedLineIds.isEmpty() ? !invoiceId.equals(invoiceLine.getInvoiceId()) : !includedLineIds.contains(id))) {
+        if (excludedLineIds.contains(id) || (includedLineIds.isEmpty() ? !invoiceId.equals(invoiceLine.getInvoiceId()) : !includedLineIds.contains(id))) {
           iterator.remove();
         }
       }
@@ -772,8 +807,7 @@ public class MockServer {
   }
 
   private void handleGetInvoices(RoutingContext ctx) {
-    String queryParam = StringUtils.trimToEmpty(ctx.request()
-      .getParam(QUERY));
+    String queryParam = StringUtils.trimToEmpty(ctx.request().getParam(QUERY));
     addServerRqQuery(INVOICES, queryParam);
     if (queryParam.contains(BAD_QUERY)) {
       serverResponse(ctx, 400, APPLICATION_JSON, Response.Status.BAD_REQUEST.getReasonPhrase());
@@ -782,25 +816,22 @@ public class MockServer {
     } else if (queryParam.contains(ID_FOR_INTERNAL_SERVER_ERROR)) {
       serverResponse(ctx, 500, APPLICATION_JSON, Response.Status.INTERNAL_SERVER_ERROR.getReasonPhrase());
     } else if (queryParam.startsWith(QUERY_PARAM_START_WITH)) {
-      Matcher lineIdMatcher = Pattern.compile(".*invoiceLines.id==(\\S+).*")
-        .matcher(queryParam);
+      Matcher lineIdMatcher = Pattern.compile(".*invoiceLines.id==(\\S+).*").matcher(queryParam);
       final String lineId = lineIdMatcher.find() ? lineIdMatcher.group(1) : EMPTY;
 
       List<Invoice> invoices;
       InvoiceCollection invoiceCollection = new InvoiceCollection();
 
-      if (lineId.equals(SEARCH_INVOICE_BY_LINE_ID_NOT_FOUND)){
+      if (lineId.equals(SEARCH_INVOICE_BY_LINE_ID_NOT_FOUND)) {
         invoiceCollection.setInvoices(new ArrayList<Invoice>());
-        invoiceCollection.setTotalRecords(invoiceCollection.getInvoices()
-          .size());
+        invoiceCollection.setTotalRecords(invoiceCollection.getInvoices().size());
         JsonObject invoicesJson = JsonObject.mapFrom(invoiceCollection);
 
         addServerRqRsData(HttpMethod.GET, INVOICES, JsonObject.mapFrom(invoiceCollection));
         serverResponse(ctx, 200, APPLICATION_JSON, invoicesJson.encode());
       } else {
         try {
-          invoices = new JsonObject(ApiTestBase.getMockData(MOCK_DATA_INVOICES)).mapTo(InvoiceCollection.class)
-            .getInvoices();
+          invoices = new JsonObject(ApiTestBase.getMockData(MOCK_DATA_INVOICES)).mapTo(InvoiceCollection.class).getInvoices();
         } catch (IOException e) {
           invoices = new ArrayList<Invoice>();
         }
@@ -809,8 +840,7 @@ public class MockServer {
         Invoice invoice0 = invoiceOptional.get().get(0);
         invoices.set(0, invoice0);
         invoiceCollection.setInvoices(invoices);
-        invoiceCollection.setTotalRecords(invoiceCollection.getInvoices()
-          .size());
+        invoiceCollection.setTotalRecords(invoiceCollection.getInvoices().size());
         JsonObject invoicesJson = JsonObject.mapFrom(invoiceCollection);
 
         addServerRqRsData(HttpMethod.GET, INVOICES, JsonObject.mapFrom(invoiceCollection));
@@ -818,8 +848,7 @@ public class MockServer {
       }
     } else {
       JsonObject invoice = new JsonObject();
-      Matcher matcher = Pattern.compile(".*vendorInvoiceNo==(\\S[^)]+).*")
-        .matcher(queryParam);
+      Matcher matcher = Pattern.compile(".*vendorInvoiceNo==(\\S[^)]+).*").matcher(queryParam);
       final String vendorNumber = matcher.find() ? matcher.group(1) : EMPTY;
       switch (vendorNumber) {
       case EXISTING_VENDOR_INV_NO:
@@ -837,7 +866,7 @@ public class MockServer {
   }
 
   private void handleGetFolioInvoiceNumber(RoutingContext ctx) {
-    if(INVOICE_NUMBER_ERROR_TENANT.equals(ctx.request().getHeader(OKAPI_HEADER_TENANT))) {
+    if (INVOICE_NUMBER_ERROR_TENANT.equals(ctx.request().getHeader(OKAPI_HEADER_TENANT))) {
       serverResponse(ctx, 500, TEXT_PLAIN, INTERNAL_SERVER_ERROR.getReasonPhrase());
     } else {
       SequenceNumber seqNumber = new SequenceNumber();
@@ -851,10 +880,8 @@ public class MockServer {
 
   private void handlePostVoucherStartValue(RoutingContext ctx) {
     logger.info("got: " + ctx.getBodyAsString());
-    String startValue = ctx.request()
-      .getParam("value");
-     if (ERROR_TENANT.equals(ctx.request()
-      .getHeader(OKAPI_HEADER_TENANT))) {
+    String startValue = ctx.request().getParam("value");
+    if (ERROR_TENANT.equals(ctx.request().getHeader(OKAPI_HEADER_TENANT))) {
       serverResponse(ctx, 500, TEXT_PLAIN, INTERNAL_SERVER_ERROR.getReasonPhrase());
     } else if (startValue.contains(BAD_QUERY) || Integer.parseInt(startValue) < 0) {
       serverResponse(ctx, 400, TEXT_PLAIN, startValue);
@@ -874,9 +901,7 @@ public class MockServer {
     } else if (ID_FOR_INTERNAL_SERVER_ERROR.equals(id) || DELETE_VOUCHER_LINES_ERROR_TENANT.equals(tenant)) {
       serverResponse(ctx, 500, APPLICATION_JSON, Response.Status.INTERNAL_SERVER_ERROR.getReasonPhrase());
     } else {
-      ctx.response()
-        .setStatusCode(204)
-        .end();
+      ctx.response().setStatusCode(204).end();
     }
   }
 
@@ -919,10 +944,7 @@ public class MockServer {
   }
 
   private void serverResponse(RoutingContext ctx, int statusCode, String contentType, String body) {
-    ctx.response()
-      .setStatusCode(statusCode)
-      .putHeader(HttpHeaders.CONTENT_TYPE, contentType)
-      .end(body);
+    ctx.response().setStatusCode(statusCode).putHeader(HttpHeaders.CONTENT_TYPE, contentType).end(body);
   }
 
   public static void addMockEntry(String objName, Object data) {
@@ -930,16 +952,12 @@ public class MockServer {
   }
 
   private Optional<JsonObject> getMockEntry(String objName, String id) {
-    return getRqRsEntries(HttpMethod.OTHER, objName).stream()
-      .filter(obj -> id.equals(obj.getString(ID)))
-      .findAny();
+    return getRqRsEntries(HttpMethod.OTHER, objName).stream().filter(obj -> id.equals(obj.getString(ID))).findAny();
   }
 
   private <T> Optional<List<T>> getMockEntries(String objName, Class<T> tClass) {
-    List<T> entryList =  getRqRsEntries(HttpMethod.OTHER, objName).stream()
-      .map(entries -> entries.mapTo(tClass))
-      .collect(toList());
-    return Optional.ofNullable(entryList.isEmpty()? null: entryList);
+    List<T> entryList = getRqRsEntries(HttpMethod.OTHER, objName).stream().map(entries -> entries.mapTo(tClass)).collect(toList());
+    return Optional.ofNullable(entryList.isEmpty() ? null : entryList);
   }
 
   private static void addServerRqRsData(HttpMethod method, String objName, JsonObject data) {
@@ -964,22 +982,17 @@ public class MockServer {
 
     if (ID_DOES_NOT_EXIST.equals(id)) {
       serverResponse(ctx, 404, APPLICATION_JSON, id);
-    } else if (ID_FOR_INTERNAL_SERVER_ERROR.equals(id) || ID_FOR_INTERNAL_SERVER_ERROR_PUT.equals(id) || UPDATE_VOUCHER_ERROR_TENANT.equals(tenant)) {
+    } else if (ID_FOR_INTERNAL_SERVER_ERROR.equals(id) || ID_FOR_INTERNAL_SERVER_ERROR_PUT.equals(id) || UPDATE_VOUCHER_ERROR_TENANT
+      .equals(tenant)) {
       serverResponse(ctx, 500, APPLICATION_JSON, Response.Status.INTERNAL_SERVER_ERROR.getReasonPhrase());
     } else {
-      ctx.response()
-        .setStatusCode(204)
-        .end();
+      ctx.response().setStatusCode(204).end();
     }
   }
 
-
   private void handleGetInvoiceLineNumber(RoutingContext ctx) {
-    if(INVOICE_LINE_NUMBER_ERROR_TENANT.equals(ctx.request().getHeader(OKAPI_HEADER_TENANT))) {
-      ctx.response()
-        .setStatusCode(500)
-        .putHeader(HttpHeaders.CONTENT_TYPE, APPLICATION_JSON)
-        .end();
+    if (INVOICE_LINE_NUMBER_ERROR_TENANT.equals(ctx.request().getHeader(OKAPI_HEADER_TENANT))) {
+      ctx.response().setStatusCode(500).putHeader(HttpHeaders.CONTENT_TYPE, APPLICATION_JSON).end();
     } else {
       SequenceNumber seqNumber = new SequenceNumber();
       seqNumber.setSequenceNumber(INVOICE_LINE_NUMBER_VALUE);
@@ -987,14 +1000,11 @@ public class MockServer {
       addServerRqRsData(HttpMethod.GET, INVOICE_LINE_NUMBER, jsonSequence);
       serverResponse(ctx, 200, APPLICATION_JSON, jsonSequence.encodePrettily());
     }
-   }
+  }
 
   private void handleGetVoucherNumber(RoutingContext ctx) {
-    if(VOUCHER_NUMBER_ERROR_TENANT.equals(ctx.request().getHeader(OKAPI_HEADER_TENANT))) {
-      ctx.response()
-        .setStatusCode(500)
-        .putHeader(HttpHeaders.CONTENT_TYPE, APPLICATION_JSON)
-        .end();
+    if (VOUCHER_NUMBER_ERROR_TENANT.equals(ctx.request().getHeader(OKAPI_HEADER_TENANT))) {
+      ctx.response().setStatusCode(500).putHeader(HttpHeaders.CONTENT_TYPE, APPLICATION_JSON).end();
     } else {
       SequenceNumber seqNumber = new SequenceNumber();
       seqNumber.setSequenceNumber(VOUCHER_NUMBER_VALUE);
@@ -1056,6 +1066,17 @@ public class MockServer {
       }
     };
   }
+
+  private JsonObject getMockCredentials() {
+    try {
+      return new JsonObject(getMockData(BATCH_VOUCHER_EXPORT_CONFIG_CREDENTIALS_SAMPLE_PATH_WITH_ID));
+    } catch (IOException e) {
+      return null;
+    }
+  }
+
+
+
 
   private void handleGetVouchers(RoutingContext ctx) {
 

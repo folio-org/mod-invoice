@@ -12,6 +12,7 @@ documentation:
 types:
   exportConfig: !include acq-models/mod-invoice-storage/schemas/export_configuration.json
   exportConfigCollection: !include acq-models/mod-invoice-storage/schemas/export_configuration_collection.json
+  credentials: !include acq-models/mod-invoice-storage/schemas/credentials.json
   errors: !include raml-util/schemas/errors.schema
   UUID:
     type: string
@@ -50,3 +51,94 @@ resourceTypes:
         collection-item:
           schema: exportConfig
           exampleItem: !include acq-models/mod-invoice-storage/examples/export_configuration.sample
+      /credentials:
+        is: [language]
+        post:
+          description: Create a credentials record
+          body:
+            application/json:
+              type: credentials
+              example:
+                strict: false
+                value: !include acq-models/mod-invoice-storage/examples/credentials.sample
+          responses:
+            201:
+              description: "Returns the newly created credentials, with server-controlled fields like 'id' populated"
+              headers:
+                Location:
+                  description: URI to the created credentials
+              body:
+                application/json:
+                  example: !include acq-models/mod-invoice-storage/examples/credentials.sample
+            400:
+              description: "Bad request, e.g. malformed request body or query parameter. Details of the error (e.g. name of the parameter or line/character number with malformed data) provided in the response."
+              body:
+                text/plain:
+                  example: "unable to add credentials -- malformed JSON at 13:3"
+            401:
+              description: "Not authorized to perform requested action"
+              body:
+                text/plain:
+                  example: "unable to create credentials -- unauthorized"
+            500:
+              description: "Internal server error, e.g. due to misconfiguration"
+              body:
+                text/plain:
+                  example: "Internal server error, contact administrator"
+        get:
+          description: "Get the credentials for the specified export_configuration"
+          responses:
+            200:
+              description: "Returns item with a given ID"
+              body:
+                application/json:
+                  type: credentials
+                  example:
+                    strict: false
+                    value: !include acq-models/mod-invoice-storage/examples/credentials.sample
+            404:
+              description: "Item with a given ID not found"
+              body:
+                text/plain:
+                  example: "Credentials not found"
+            500:
+              description: "Internal server error, e.g. due to misconfiguration"
+              body:
+                text/plain:
+                  example: "internal server error, contact administrator"
+        put:
+          description: Edit a credentials record
+          body:
+            application/json:
+              type: credentials
+              example:
+                strict: false
+                value: !include acq-models/mod-invoice-storage/examples/credentials.sample
+          responses:
+            204:
+              description: "Credentials successfully updated"
+            404:
+              description: "Credentials with a given ID not found"
+              body:
+                text/plain:
+                  example: |
+                    "Voucher not found"
+            400:
+              description: "Bad request, e.g. malformed request body or query parameter. Details of the error (e.g. name of the parameter or line/character number with malformed data) provided in the response."
+              body:
+                text/plain:
+                  example: |
+                    "unable to update Credentials -- malformed JSON at 13:4"
+            500:
+              description: "Internal server error, e.g. due to misconfiguration"
+              body:
+                text/plain:
+                  example: "internal server error, contact administrator"
+        /test:
+          is: [language]
+          post:
+            description: "Test that you can connect to and log into the uploadURI with the configured credentials"
+            responses:
+              200:
+                description: "Returns item with a given ID"
+
