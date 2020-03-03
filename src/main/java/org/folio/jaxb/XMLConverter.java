@@ -4,10 +4,17 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.StringReader;
 import java.io.StringWriter;
+import java.util.Map;
+import java.util.Objects;
 
+
+import javax.xml.bind.JAXBElement;
 import javax.xml.bind.JAXBException;
 import javax.xml.bind.Marshaller;
 import javax.xml.bind.Unmarshaller;
+import javax.xml.stream.XMLOutputFactory;
+import javax.xml.stream.XMLStreamException;
+import javax.xml.stream.XMLStreamWriter;
 
 import org.apache.commons.lang3.time.StopWatch;
 
@@ -17,9 +24,11 @@ import io.vertx.core.logging.LoggerFactory;
 public class XMLConverter {
   private static final Logger LOG = LoggerFactory.getLogger(XMLConverter.class);
   private final JAXBContextWrapper jaxbContextWrapper;
+  private final JAXBRootElementNameResolver rootElementNameResolver;
 
-  public XMLConverter(JAXBContextWrapper jaxbContextWrapper) {
+  public XMLConverter(JAXBContextWrapper jaxbContextWrapper, JAXBRootElementNameResolver rootElementNameResolver) {
     this.jaxbContextWrapper = jaxbContextWrapper;
+    this.rootElementNameResolver = rootElementNameResolver;
   }
 
   /**
@@ -29,19 +38,37 @@ public class XMLConverter {
    * @param isValidationNeeded if set to true, then validate by XSD schema
    * @return marshaled object as string representation
    */
-  public <T> String marshal(T xmlObject, boolean isValidationNeeded) {
+  public <T> String marshal(Class<T> clazz, T xmlObject, Map<String, String> nameSpaces, boolean isValidationNeeded) throws XMLStreamException {
     StopWatch timer = LOG.isDebugEnabled() ? StopWatch.createStarted() : null;
+    XMLStreamWriter xmlOut = null;
     try (StringWriter writer = new StringWriter()) {
+      xmlOut = XMLOutputFactory.newFactory().createXMLStreamWriter(writer);
+      JAXBElement<T> element = new JAXBElement<>(rootElementNameResolver.getName(clazz), clazz, xmlObject);
+      xmlOut.writeStartDocument();
+
+      fillNameSpaces(nameSpaces, xmlOut);
+
       Marshaller jaxbMarshaller = jaxbContextWrapper.createMarshaller(isValidationNeeded);
-      jaxbMarshaller.marshal(xmlObject, writer);
+      jaxbMarshaller.marshal(element, xmlOut);
+      xmlOut.writeEndDocument();
+      close(xmlOut);
       return writer.toString();
     } catch (JAXBException | IOException e) {
       // In case there is an issue to marshal response, there is no way to handle it
       throw new IllegalStateException("The " + xmlObject.getClass()
         .getName() + " response cannot be converted to string representation.", e);
     } finally {
+      close(xmlOut);
       logExecutionTime(xmlObject.getClass()
         .getName() + " converted to string", timer);
+    }
+  }
+
+  private void fillNameSpaces(Map<String, String> nameSpaces, XMLStreamWriter xmlOut) throws XMLStreamException {
+    if (Objects.nonNull(nameSpaces)) {
+      for (Map.Entry<String, String> pair : nameSpaces.entrySet()) {
+        xmlOut.writeNamespace(pair.getKey(), pair.getValue());
+      }
     }
   }
 
@@ -94,6 +121,12 @@ public class XMLConverter {
     if (timer != null) {
       timer.stop();
       LOG.debug("{} after {} ms", msg, timer.getTime());
+    }
+  }
+
+  private void close(XMLStreamWriter streamWriter) throws XMLStreamException {
+    if (Objects.nonNull(streamWriter)) {
+      streamWriter.close();
     }
   }
 }

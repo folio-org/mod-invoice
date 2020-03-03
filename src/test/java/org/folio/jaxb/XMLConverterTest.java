@@ -1,4 +1,4 @@
-package org.folio.services;
+package org.folio.jaxb;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -6,7 +6,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 
 import org.folio.config.ApplicationConfig;
-import org.folio.jaxb.XMLConverter;
 import org.folio.rest.jaxrs.model.jaxb.BatchVoucherType;
 import org.junit.Assert;
 import org.junit.Test;
@@ -14,39 +13,40 @@ import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringRunner;
+import javax.xml.stream.XMLStreamException;
 
 @RunWith(SpringRunner.class)
 @ContextConfiguration(classes = ApplicationConfig.class)
 public class XMLConverterTest {
-  private static Path XML_BATCH_VOUCHER_EXAMPLES_PATH = Paths.get("ramls/examples", "cb7592ae-621c-4f35-bc1d-47909e55f9f5.xml")
+  private static Path XML_BATCH_VOUCHER_EXAMPLES_PATH = Paths.get("ramls/examples", "batch_voucher_xml.sample")
     .toAbsolutePath();
 
   @Autowired
   XMLConverter xmlConverter;
 
   @Test
-  public void testShouldMarshalAndUnmarshalWithoutValidation() throws IOException {
+  public void testShouldMarshalAndUnmarshalWithoutValidation() throws IOException, XMLStreamException {
     String content = new String(Files.readAllBytes(XML_BATCH_VOUCHER_EXAMPLES_PATH));
     BatchVoucherType unmarshaledBatchVoucherExp = xmlConverter.unmarshal(BatchVoucherType.class, content, false);
-    String marshaledBatchVoucher = xmlConverter.marshal(unmarshaledBatchVoucherExp, false);
+    String marshaledBatchVoucher = xmlConverter.marshal(BatchVoucherType.class, unmarshaledBatchVoucherExp, null,false);
     BatchVoucherType unmarshaledBatchVoucherAct = xmlConverter.unmarshal(BatchVoucherType.class, marshaledBatchVoucher, false);
     Assert.assertEquals(unmarshaledBatchVoucherExp, unmarshaledBatchVoucherAct);
   }
 
   @Test(expected = IllegalStateException.class)
-  public void shouldThrowExceptiondIfMarshalWithValidation() throws IOException {
+  public void shouldThrowExceptiondIfMarshalWithValidation() throws IOException, XMLStreamException {
     String content = new String(Files.readAllBytes(XML_BATCH_VOUCHER_EXAMPLES_PATH));
     BatchVoucherType unmarshaledBatchVoucherExp = xmlConverter.unmarshal(BatchVoucherType.class, content, false);
     unmarshaledBatchVoucherExp.setBatchedVouchers(null);
-    xmlConverter.marshal(unmarshaledBatchVoucherExp, true);
+    xmlConverter.marshal(BatchVoucherType.class, unmarshaledBatchVoucherExp, null,true);
   }
 
   @Test(expected = IllegalStateException.class)
-  public void shouldThrowExceptiondIfUnmarshalWithValidation() throws IOException {
+  public void shouldThrowExceptiondIfUnmarshalWithValidation() throws IOException, XMLStreamException {
     String content = new String(Files.readAllBytes(XML_BATCH_VOUCHER_EXAMPLES_PATH));
     BatchVoucherType unmarshaledBatchVoucherExp = xmlConverter.unmarshal(BatchVoucherType.class, content, false);
     unmarshaledBatchVoucherExp.setBatchedVouchers(null);
-    String marshaledBatchVoucher = xmlConverter.marshal(unmarshaledBatchVoucherExp, false);
+    String marshaledBatchVoucher = xmlConverter.marshal(BatchVoucherType.class, unmarshaledBatchVoucherExp, null,false);
     xmlConverter.unmarshal(BatchVoucherType.class, marshaledBatchVoucher, true);
   }
 }
