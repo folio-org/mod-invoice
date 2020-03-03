@@ -1,6 +1,5 @@
 package org.folio.jaxb;
 
-import com.sun.xml.bind.marshaller.NamespacePrefixMapper;
 import javax.xml.bind.JAXBContext;
 import javax.xml.bind.JAXBException;
 import javax.xml.bind.Marshaller;
@@ -12,7 +11,6 @@ import static javax.xml.bind.Marshaller.JAXB_FORMATTED_OUTPUT;
 public class JAXBContextWrapper {
   public static final String XML_DECLARATION = "com.sun.xml.bind.xmlDeclaration";
 
-  private final NamespacePrefixMapper namespacePrefixMapper;
   private final JAXBContext jaxbContext;
   private final Schema schema;
   private final boolean isOutputFormatted;
@@ -21,10 +19,9 @@ public class JAXBContextWrapper {
   /**
    * The main purpose is to initialize JAXB Marshaller and Unmarshaller to use the instances for business logic operations
    */
-  public JAXBContextWrapper(JAXBContext jaxbContext, Schema schema, NamespacePrefixMapper namespacePrefixMapper) {
+  public JAXBContextWrapper(JAXBContext jaxbContext, Schema schema) {
     this.jaxbContext = jaxbContext;
     this.schema = schema;
-    this.namespacePrefixMapper = namespacePrefixMapper;
     this.isOutputFormatted = Boolean.parseBoolean(System.getProperty(JAXB_FORMATTED_OUTPUT, Boolean.TRUE.toString()));
     this.hasXmlDeclaration = Boolean.parseBoolean(System.getProperty(XML_DECLARATION, Boolean.FALSE.toString()));
   }
@@ -37,8 +34,6 @@ public class JAXBContextWrapper {
     }
     jaxbMarshaller.setProperty(XML_DECLARATION, hasXmlDeclaration);
     jaxbMarshaller.setProperty(JAXB_FORMATTED_OUTPUT, isOutputFormatted);
-    // needed to replace the namespace prefixes with a more readable format.
-    jaxbMarshaller.setProperty("com.sun.xml.bind.namespacePrefixMapper", namespacePrefixMapper);
     return jaxbMarshaller;
   }
 

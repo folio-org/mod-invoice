@@ -12,6 +12,7 @@ import java.util.concurrent.CompletableFuture;
 
 import javax.ws.rs.core.HttpHeaders;
 import javax.ws.rs.core.Response;
+import javax.xml.stream.XMLStreamException;
 
 import org.folio.HttpStatus;
 import org.folio.jaxb.XMLConverter;
@@ -65,7 +66,12 @@ public class BatchVoucherHelper extends AbstractHelper {
     switch (acceptHeader) {
     case APPLICATION_XML:
       BatchVoucherType xmlBatchVoucher = conversionService.convert(jsonBatchVoucher, BatchVoucherType.class);
-      String xmlBatchVoucherResponse = xmlConverter.marshal(xmlBatchVoucher, true);
+      String xmlBatchVoucherResponse = null;
+      try {
+        xmlBatchVoucherResponse = xmlConverter.marshal(BatchVoucherType.class, xmlBatchVoucher, null,true);
+      } catch (XMLStreamException e) {
+        e.printStackTrace();
+      }
       return buildSuccessResponse(xmlBatchVoucherResponse, APPLICATION_XML);
 
     case APPLICATION_JSON:
