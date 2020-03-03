@@ -1,6 +1,11 @@
 package org.folio.jaxb;
 
-import org.xml.sax.SAXException;
+import static javax.xml.XMLConstants.W3C_XML_SCHEMA_NS_URI;
+import static javax.xml.bind.Marshaller.JAXB_FORMATTED_OUTPUT;
+
+import java.io.File;
+import java.util.List;
+
 import javax.xml.bind.JAXBContext;
 import javax.xml.bind.JAXBException;
 import javax.xml.bind.Marshaller;
@@ -9,10 +14,7 @@ import javax.xml.transform.stream.StreamSource;
 import javax.xml.validation.Schema;
 import javax.xml.validation.SchemaFactory;
 
-import java.io.File;
-import java.util.List;
-import static javax.xml.XMLConstants.W3C_XML_SCHEMA_NS_URI;
-import static javax.xml.bind.Marshaller.JAXB_FORMATTED_OUTPUT;
+import org.xml.sax.SAXException;
 
 public final class JAXBContextWrapper {
   public static final String XML_DECLARATION = "com.sun.xml.bind.xmlDeclaration";

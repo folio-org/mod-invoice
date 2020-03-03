@@ -1,14 +1,12 @@
 package org.folio.jaxb;
 
 import org.folio.exceptions.ConversionFailedException;
-import org.folio.exceptions.UncheckedClassNoFoundException;
 import javax.xml.datatype.DatatypeConfigurationException;
 import javax.xml.datatype.DatatypeFactory;
 import javax.xml.datatype.XMLGregorianCalendar;
 import javax.xml.transform.stream.StreamSource;
 import java.time.Instant;
 import java.time.format.DateTimeFormatter;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
@@ -65,13 +63,5 @@ public final class JAXBUtil {
       throw new ConversionFailedException(Instant.class, XMLGregorianCalendar.class, e);
     }
     return result;
-  }
-
-  private static Class<?> loadClass(String className) {
-    try {
-      return Class.forName(className);
-    } catch (ClassNotFoundException e) {
-      throw new UncheckedClassNoFoundException(e.getMessage(), e);
-    }
   }
 }

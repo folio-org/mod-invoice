@@ -23,10 +23,8 @@ public class DefaultJAXBRootElementNameResolverTest {
 
   @Test
   public void testShouldReturnRootName(){
-    Map<Class<?>, QName> resolverMap = new HashMap<>();
     QName exp = new QName("root");
-    resolverMap.put(BatchVoucherType.class, new QName("batchVoucher"));
-    DefaultJAXBRootElementNameResolver elementNameResolver = new DefaultJAXBRootElementNameResolver(resolverMap);
+    DefaultJAXBRootElementNameResolver elementNameResolver = new DefaultJAXBRootElementNameResolver();
     QName act = elementNameResolver.getName(BatchVoucher.class);
     Assert.assertEquals(exp, act);
   }

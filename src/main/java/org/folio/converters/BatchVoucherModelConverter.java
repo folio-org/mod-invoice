@@ -1,14 +1,15 @@
 package org.folio.converters;
 
+import java.math.BigInteger;
+import java.util.List;
+import java.util.stream.Collectors;
+
 import org.folio.jaxb.JAXBUtil;
 import org.folio.rest.jaxrs.model.BatchVoucher;
 import org.folio.rest.jaxrs.model.jaxb.BatchVoucherType;
 import org.folio.rest.jaxrs.model.jaxb.BatchedVoucherType;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.core.convert.converter.Converter;
-import java.math.BigInteger;
-import java.util.List;
-import java.util.stream.Collectors;
 
 public class BatchVoucherModelConverter implements Converter<BatchVoucher, BatchVoucherType> {
 
@@ -25,7 +26,6 @@ public class BatchVoucherModelConverter implements Converter<BatchVoucher, Batch
   public static BatchVoucherModelConverter getInstance() {
     return BatchVoucherModelConverter.SingletonHolder.HOLDER_INSTANCE;
   }
-
 
   @Override
   public BatchVoucherType convert(BatchVoucher batchVoucher) {
@@ -44,11 +44,11 @@ public class BatchVoucherModelConverter implements Converter<BatchVoucher, Batch
 
   @NotNull
   private BatchVoucherType.BatchedVouchers convertBatchedVouchers(BatchVoucher batchVoucher) {
-    BatchVoucherType.BatchedVouchers batchedVouchers =  new BatchVoucherType.BatchedVouchers();
-    List<BatchedVoucherType> batchedVouchersList =
-          batchVoucher.getBatchedVouchers().stream()
-                                           .map(batchedVoucherModelConverter::convert)
-                                           .collect(Collectors.toList());
+    BatchVoucherType.BatchedVouchers batchedVouchers = new BatchVoucherType.BatchedVouchers();
+    List<BatchedVoucherType> batchedVouchersList = batchVoucher.getBatchedVouchers()
+      .stream()
+      .map(batchedVoucherModelConverter::convert)
+      .collect(Collectors.toList());
     batchedVouchers.withBatchedVoucher(batchedVouchersList);
     return batchedVouchers;
   }
