@@ -152,4 +152,68 @@ public class VouchersApiTest extends ApiTestBase {
 
     verifyGet(VOUCHER_NUMBER_START_PATH, prepareHeaders(X_OKAPI_URL, ERROR_X_OKAPI_TENANT), APPLICATION_JSON, 500);
   }
+
+  @Test
+  public void testVoucherUpdateProtectedFields() throws IOException {
+    logger.info("=== Test Put Voucher with edited protected fields - 400 Bad request ===");
+
+    JsonObject vouchersList = new JsonObject(getMockData(VOUCHERS_LIST_PATH));
+    JsonObject voucher = vouchersList.getJsonArray("vouchers").getJsonObject(0);
+    String id = voucher.getString(ID);
+    logger.info(String.format("using mock datafile: %s%s.json", VOUCHERS_LIST_PATH, id));
+
+    voucher.put("systemCurrency", "EUR");
+    voucher.put("amount", 25.5);
+
+    verifyPut(String.format(VOUCHER_ID_PATH, id), voucher, "", 400);
+  }
+
+  @Test
+  public void testUpdateVoucherEditableFields() throws IOException {
+    logger.info("=== Test Put Voucher with changes in editable fields - 204 No content ===");
+
+    JsonObject vouchersList = new JsonObject(getMockData(VOUCHERS_LIST_PATH));
+    JsonObject voucher = vouchersList.getJsonArray("vouchers").getJsonObject(0);
+    String id = voucher.getString(ID);
+    logger.info(String.format("using mock datafile: %s%s.json", VOUCHERS_LIST_PATH, id));
+
+    voucher.put("voucherNumber", "999");
+    voucher.put("disbursementAmount", 10);
+    voucher.put("disbursementDate", "2020-02-26T00:00:00.000+0000");
+
+    final Response resp = verifyPut(String.format(VOUCHER_ID_PATH, id), voucher, "", 204);
+    logger.info(resp.getBody().prettyPrint());
+  }
+
+  @Test
+  public void testUpdateVoucherEditableFieldsWithWrongValues() throws IOException {
+    logger.info("=== Test Put Voucher with wrong values in editable fields - 400 Bad request ===");
+
+    JsonObject vouchersList = new JsonObject(getMockData(VOUCHERS_LIST_PATH));
+    JsonObject voucher = vouchersList.getJsonArray("vouchers").getJsonObject(0);
+    String id = voucher.getString(ID);
+    logger.info(String.format("using mock datafile: %s%s.json", VOUCHERS_LIST_PATH, id));
+
+    voucher.put("voucherNumber", 999);
+    voucher.put("disbursementAmount", "10");
+    voucher.put("disbursementDate", "wrong date");
+
+    final Response resp = verifyPut(String.format(VOUCHER_ID_PATH, id), voucher, "", 400);
+  }
+
+  @Test
+  public void testPutVouchersVoucherByIdInvalidFormat() throws IOException {
+    logger.info("=== Test Put Voucher by Id - 400 Bad request ===");
+
+    JsonObject vouchersList = new JsonObject(getMockData(VOUCHERS_LIST_PATH));
+    JsonObject voucher = vouchersList.getJsonArray("vouchers").getJsonObject(0);
+
+    final Response resp = verifyPut(String.format(VOUCHER_ID_PATH, INVALID_VOUCHER_ID), voucher, TEXT_PLAIN, 400);
+
+    String actual = resp.getBody().asString();
+    logger.info(actual);
+
+    assertNotNull(actual);
+    assertTrue(actual.contains(INVALID_VOUCHER_ID));
+  }
 }
