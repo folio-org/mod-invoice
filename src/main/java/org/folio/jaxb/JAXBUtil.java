@@ -34,17 +34,6 @@ public final class JAXBUtil {
     return Collections.emptyList();
   }
 
-  public static List<Class<?>> classNamesAsClasses(final String[] rootTypeNames) {
-    if (Objects.nonNull(rootTypeNames)) {
-      return Arrays.stream(rootTypeNames)
-        .filter(Objects::nonNull)
-        .map(JAXBUtil::loadClass)
-        .filter(Objects::nonNull)
-        .collect(Collectors.toList());
-    }
-    return Collections.emptyList();
-  }
-
   /**
    *
    * @param dateTime "2019-12-06T00:00:00.000+0000"

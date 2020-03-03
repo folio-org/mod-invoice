@@ -1,14 +1,20 @@
 package org.folio.jaxb;
 
+import org.xml.sax.SAXException;
 import javax.xml.bind.JAXBContext;
 import javax.xml.bind.JAXBException;
 import javax.xml.bind.Marshaller;
 import javax.xml.bind.Unmarshaller;
+import javax.xml.transform.stream.StreamSource;
 import javax.xml.validation.Schema;
+import javax.xml.validation.SchemaFactory;
 
+import java.io.File;
+import java.util.List;
+import static javax.xml.XMLConstants.W3C_XML_SCHEMA_NS_URI;
 import static javax.xml.bind.Marshaller.JAXB_FORMATTED_OUTPUT;
 
-public class JAXBContextWrapper {
+public final class JAXBContextWrapper {
   public static final String XML_DECLARATION = "com.sun.xml.bind.xmlDeclaration";
 
   private final JAXBContext jaxbContext;
@@ -19,9 +25,9 @@ public class JAXBContextWrapper {
   /**
    * The main purpose is to initialize JAXB Marshaller and Unmarshaller to use the instances for business logic operations
    */
-  public JAXBContextWrapper(JAXBContext jaxbContext, Schema schema) {
-    this.jaxbContext = jaxbContext;
-    this.schema = schema;
+  public JAXBContextWrapper(Class<?>[] rootClassNames, String[] schemas) throws JAXBException, SAXException {
+    this.jaxbContext = initJaxbContext(rootClassNames);
+    this.schema = initSchema(schemas);
     this.isOutputFormatted = Boolean.parseBoolean(System.getProperty(JAXB_FORMATTED_OUTPUT, Boolean.TRUE.toString()));
     this.hasXmlDeclaration = Boolean.parseBoolean(System.getProperty(XML_DECLARATION, Boolean.FALSE.toString()));
   }
@@ -44,5 +50,17 @@ public class JAXBContextWrapper {
       jaxbUnmarshaller.setSchema(schema);
     }
     return jaxbUnmarshaller;
+  }
+
+  private JAXBContext initJaxbContext(final Class<?>[] rootClassNames) throws JAXBException {
+    return JAXBContext.newInstance(rootClassNames);
+  }
+
+  private Schema initSchema(final String[] schemas) throws SAXException {
+    final String SCHEMA_PATH = "ramls" + File.separator + "schemas" + File.separator;
+    List<StreamSource> streamSourceList = JAXBUtil.xsdSchemasAsStreamResources(SCHEMA_PATH, schemas);
+    StreamSource[] streamSources = new StreamSource[streamSourceList.size()];
+    return SchemaFactory.newInstance(W3C_XML_SCHEMA_NS_URI)
+      .newSchema(streamSourceList.toArray(streamSources));
   }
 }

@@ -4,31 +4,49 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.StringReader;
 import java.io.StringWriter;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
-
 
 import javax.xml.bind.JAXBElement;
 import javax.xml.bind.JAXBException;
 import javax.xml.bind.Marshaller;
 import javax.xml.bind.Unmarshaller;
+import javax.xml.namespace.QName;
 import javax.xml.stream.XMLOutputFactory;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamWriter;
 
 import org.apache.commons.lang3.time.StopWatch;
+import org.folio.exceptions.ClassInitializationException;
+import org.folio.rest.jaxrs.model.jaxb.BatchVoucherType;
+import org.xml.sax.SAXException;
 
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 
-public class XMLConverter {
+public final class XMLConverter {
   private static final Logger LOG = LoggerFactory.getLogger(XMLConverter.class);
-  private final JAXBContextWrapper jaxbContextWrapper;
+  private JAXBContextWrapper jaxbContextWrapper;
   private final JAXBRootElementNameResolver rootElementNameResolver;
+  private final Class<?>[] rootClassNames = new Class<?>[]{BatchVoucherType.class};
+  private final String[] schemas = new String[]{"batch_voucher.xsd"};
 
-  public XMLConverter(JAXBContextWrapper jaxbContextWrapper, JAXBRootElementNameResolver rootElementNameResolver) {
-    this.jaxbContextWrapper = jaxbContextWrapper;
-    this.rootElementNameResolver = rootElementNameResolver;
+  private XMLConverter() {
+    try {
+      this.jaxbContextWrapper = new JAXBContextWrapper(rootClassNames, schemas);
+    } catch (JAXBException  | SAXException e) {
+      throw new ClassInitializationException(e.getMessage(), e);
+    }
+    this.rootElementNameResolver = initJAXBRootElementNameResolver();
+  }
+
+  public static class SingletonHolder {
+    public static final XMLConverter HOLDER_INSTANCE = new XMLConverter();
+  }
+
+  public static XMLConverter getInstance() {
+    return SingletonHolder.HOLDER_INSTANCE;
   }
 
   /**
@@ -38,11 +56,13 @@ public class XMLConverter {
    * @param isValidationNeeded if set to true, then validate by XSD schema
    * @return marshaled object as string representation
    */
-  public <T> String marshal(Class<T> clazz, T xmlObject, Map<String, String> nameSpaces, boolean isValidationNeeded) throws XMLStreamException {
+  public <T> String marshal(Class<T> clazz, T xmlObject, Map<String, String> nameSpaces, boolean isValidationNeeded)
+      throws XMLStreamException {
     StopWatch timer = LOG.isDebugEnabled() ? StopWatch.createStarted() : null;
     XMLStreamWriter xmlOut = null;
     try (StringWriter writer = new StringWriter()) {
-      xmlOut = XMLOutputFactory.newFactory().createXMLStreamWriter(writer);
+      xmlOut = XMLOutputFactory.newFactory()
+        .createXMLStreamWriter(writer);
       JAXBElement<T> element = new JAXBElement<>(rootElementNameResolver.getName(clazz), clazz, xmlObject);
       xmlOut.writeStartDocument();
 
@@ -128,5 +148,11 @@ public class XMLConverter {
     if (Objects.nonNull(streamWriter)) {
       streamWriter.close();
     }
+  }
+
+  private JAXBRootElementNameResolver initJAXBRootElementNameResolver() {
+    Map<Class<?>, QName> elementNames = new HashMap<>();
+    elementNames.put(BatchVoucherType.class, new QName("batchVoucher"));
+    return new DefaultJAXBRootElementNameResolver(elementNames);
   }
 }

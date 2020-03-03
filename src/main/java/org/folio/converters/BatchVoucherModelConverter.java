@@ -14,9 +14,18 @@ public class BatchVoucherModelConverter implements Converter<BatchVoucher, Batch
 
   private final BatchedVoucherModelConverter batchedVoucherModelConverter;
 
-  public BatchVoucherModelConverter(BatchedVoucherModelConverter batchedVoucherModelConverter) {
-    this.batchedVoucherModelConverter = batchedVoucherModelConverter;
+  private BatchVoucherModelConverter() {
+    this.batchedVoucherModelConverter = new BatchedVoucherModelConverter(new BatchedVoucherLineModelConverter());
   }
+
+  public static class SingletonHolder {
+    public static final BatchVoucherModelConverter HOLDER_INSTANCE = new BatchVoucherModelConverter();
+  }
+
+  public static BatchVoucherModelConverter getInstance() {
+    return BatchVoucherModelConverter.SingletonHolder.HOLDER_INSTANCE;
+  }
+
 
   @Override
   public BatchVoucherType convert(BatchVoucher batchVoucher) {

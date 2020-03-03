@@ -15,17 +15,15 @@ import javax.ws.rs.core.Response;
 import javax.xml.stream.XMLStreamException;
 
 import org.folio.HttpStatus;
+import org.folio.converters.BatchVoucherModelConverter;
 import org.folio.jaxb.XMLConverter;
 import org.folio.rest.jaxrs.model.BatchVoucher;
 import org.folio.rest.jaxrs.model.Error;
 import org.folio.rest.jaxrs.model.Errors;
 import org.folio.rest.jaxrs.model.jaxb.BatchVoucherType;
-import org.folio.spring.SpringContextUtil;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.core.convert.ConversionService;
+
 
 import io.vertx.core.Context;
-import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
 import me.escoffier.vertx.completablefuture.VertxCompletableFuture;
 
@@ -33,14 +31,11 @@ public class BatchVoucherHelper extends AbstractHelper {
   private static final String HEADER_ERROR_MSG = "Accept header must be [\"application/xml\",\"application/json\"]";
   private static final String MARSHAL_ERROR_MSG = "Internal server error. Can't marshal response to XML";
 
-  @Autowired
-  private XMLConverter xmlConverter;
-  @Autowired
-  private ConversionService conversionService;
+  private final XMLConverter xmlConverter = XMLConverter.getInstance();
+  private final BatchVoucherModelConverter batchVoucherModelConverter = BatchVoucherModelConverter.getInstance();
 
   public BatchVoucherHelper(Map<String, String> okapiHeaders, Context ctx, String lang) {
     super(okapiHeaders, ctx, lang);
-    SpringContextUtil.autowireDependencies(this, Vertx.currentContext());
   }
 
   /**
@@ -66,7 +61,7 @@ public class BatchVoucherHelper extends AbstractHelper {
     BatchVoucher jsonBatchVoucher = jsonObjectBatchVoucher.mapTo(BatchVoucher.class);
     switch (acceptHeader) {
     case APPLICATION_XML:
-      BatchVoucherType xmlBatchVoucher = conversionService.convert(jsonBatchVoucher, BatchVoucherType.class);
+      BatchVoucherType xmlBatchVoucher = batchVoucherModelConverter.convert(jsonBatchVoucher);
       String xmlBatchVoucherResponse = null;
       try {
         xmlBatchVoucherResponse = xmlConverter.marshal(BatchVoucherType.class, xmlBatchVoucher, null,true);
