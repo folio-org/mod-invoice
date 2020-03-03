@@ -41,7 +41,7 @@ public final class XMLConverter {
     this.rootElementNameResolver = initJAXBRootElementNameResolver();
   }
 
-  public static class SingletonHolder {
+  private static class SingletonHolder {
     public static final XMLConverter HOLDER_INSTANCE = new XMLConverter();
   }
 
