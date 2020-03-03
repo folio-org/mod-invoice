@@ -4,6 +4,7 @@ import static java.util.UUID.randomUUID;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static java.util.stream.Collectors.groupingBy;
+import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toMap;
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 import static javax.ws.rs.core.MediaType.TEXT_PLAIN;
@@ -73,6 +74,8 @@ import static org.hamcrest.Matchers.arrayContaining;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.endsWith;
+import static org.hamcrest.Matchers.hasEntry;
+import static org.hamcrest.Matchers.hasProperty;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.isEmptyOrNullString;
 import static org.hamcrest.Matchers.notNullValue;
@@ -131,6 +134,7 @@ import org.folio.rest.jaxrs.model.Voucher;
 import org.folio.rest.jaxrs.model.VoucherCollection;
 import org.folio.rest.jaxrs.model.VoucherLine;
 import org.hamcrest.Matchers;
+import org.hamcrest.core.Every;
 import org.javamoney.moneta.Money;
 import org.javamoney.moneta.function.MonetaryOperators;
 import org.javamoney.moneta.spi.DefaultNumberValue;
@@ -1362,6 +1366,8 @@ public class InvoicesApiTest extends ApiTestBase {
       .sum();
 
     assertThat(awaitingPaymentsCreated, hasSize(awaitingPaymentsNumber));
+    List<AwaitingPayment> awaitingPayments = awaitingPaymentsCreated.stream().map(entries -> entries.mapTo(AwaitingPayment.class)).collect(toList());
+    assertThat(awaitingPayments, Every.everyItem(hasProperty("invoiceId", is(invoice.getId()))));
     assertThat(transactionSummary.getNumEncumbrances(), is(awaitingPaymentsNumber));
     assertThat(transactionSummary.getNumPaymentsCredits(), is(paymentCreditNumber));
 

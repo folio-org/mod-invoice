@@ -13,7 +13,7 @@ import io.vertx.core.Context;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
-import io.vertx.core.json.Json;
+import io.vertx.core.json.jackson.DatabindCodec;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 
@@ -30,10 +30,10 @@ public class InitAPIs implements InitAPI {
         SerializationConfig serializationConfig = ObjectMapperTool.getMapper().getSerializationConfig();
         DeserializationConfig deserializationConfig = ObjectMapperTool.getMapper().getDeserializationConfig();
 
-        Json.mapper.setConfig(serializationConfig);
-        Json.prettyMapper.setConfig(serializationConfig);
-        Json.mapper.setConfig(deserializationConfig);
-        Json.prettyMapper.setConfig(deserializationConfig);
+        DatabindCodec.mapper().setConfig(serializationConfig);
+        DatabindCodec.prettyMapper().setConfig(serializationConfig);
+        DatabindCodec.mapper().setConfig(deserializationConfig);
+        DatabindCodec.prettyMapper().setConfig(deserializationConfig);
 
         SpringContextUtil.init(vertx, context, ApplicationConfig.class);
         handler.complete();
