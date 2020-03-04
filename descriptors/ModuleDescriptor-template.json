@@ -427,7 +427,7 @@
     },
     {
       "id": "finance.transactions",
-      "version": "1.0"
+      "version": "2.0"
     },
     {
       "id": "batch-group-storage.batch-groups",
