@@ -1,13 +1,17 @@
 package org.folio.rest.impl;
 
-import io.restassured.RestAssured;
-import io.vertx.core.DeploymentOptions;
-import io.vertx.core.Vertx;
-import io.vertx.core.json.JsonObject;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
+import org.folio.converters.BatchVoucherModelConverterTest;
+import org.folio.converters.BatchedVoucherLinesModelConverterTest;
+import org.folio.converters.BatchedVoucherModelConverterTest;
 import org.folio.invoices.events.handlers.InvoiceSummaryTest;
+import org.folio.jaxb.DefaultJAXBRootElementNameResolverTest;
+import org.folio.jaxb.JAXBUtilTest;
+import org.folio.jaxb.XMLConverterTest;
 import org.folio.rest.RestVerticle;
 import org.folio.rest.impl.protection.InvoicesProtectionTest;
 import org.folio.rest.impl.protection.LinesProtectionTest;
@@ -18,10 +22,12 @@ import org.junit.BeforeClass;
 import org.junit.runner.RunWith;
 import org.junit.runners.Suite;
 
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
+import io.restassured.RestAssured;
+import io.vertx.core.DeploymentOptions;
+import io.vertx.core.Vertx;
+import io.vertx.core.json.JsonObject;
+import io.vertx.core.logging.Logger;
+import io.vertx.core.logging.LoggerFactory;
 
 @RunWith(Suite.class)
 @Suite.SuiteClasses({
@@ -38,7 +44,14 @@ import java.util.concurrent.TimeoutException;
   BatchVoucherExportConfigTest.class,
   BatchVoucherExportConfigCredentialsTest.class,
   BatchGroupsApiTest.class,
-  BatchVoucherSchemaXSDTest.class
+  BatchVoucherSchemaXSDTest.class,
+  BatchVoucherImplTest.class,
+  BatchedVoucherLinesModelConverterTest.class,
+  BatchedVoucherModelConverterTest.class,
+  BatchVoucherModelConverterTest.class,
+  DefaultJAXBRootElementNameResolverTest.class,
+  JAXBUtilTest.class,
+  XMLConverterTest.class
 })
 public class ApiTestSuite {
   private static final Logger logger = LoggerFactory.getLogger(ApiTestSuite.class);

@@ -9,17 +9,26 @@ import javax.ws.rs.core.Response;
 import org.folio.rest.annotations.Validate;
 import org.folio.rest.jaxrs.model.Credentials;
 import org.folio.rest.jaxrs.model.ExportConfig;
-import org.folio.rest.jaxrs.resource.BatchVoucher;
+import org.folio.rest.jaxrs.resource.BatchVoucherBatchVouchers;
+import org.folio.rest.jaxrs.resource.BatchVoucherExportConfigurations;
 
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Context;
 import io.vertx.core.Handler;
 
-public class BatchVoucherImpl implements BatchVoucher {
-
+public class BatchVoucherImpl implements BatchVoucherExportConfigurations, BatchVoucherBatchVouchers {
   private static final String BATCH_VOUCHER_EXPORT_CONFIGS_LOCATION_PREFIX = "/batch-voucher/export-configurations/%s";
-  private static final String BATCH_VOUCHER_EXPORT_CONFIGS_CREDENTIALS_LOCATION_PREFIX =
-    "/batch-voucher/export-configurations/%s/credentials";
+  private static final String BATCH_VOUCHER_EXPORT_CONFIGS_CREDENTIALS_LOCATION_PREFIX = "/batch-voucher/export-configurations/%s/credentials";
+
+  @Validate
+  @Override
+  public void getBatchVoucherBatchVouchersById(String id, String lang, String contentType, Map<String, String> okapiHeaders,
+      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+    BatchVoucherHelper helper = new BatchVoucherHelper(okapiHeaders, vertxContext, lang);
+    helper.getBatchVoucherById(id, contentType)
+      .thenAccept(response -> asyncResultHandler.handle(succeededFuture(response)))
+      .exceptionally(t -> handleErrorResponse(asyncResultHandler, helper, t));
+  }
 
   @Validate
   @Override
@@ -68,8 +77,8 @@ public class BatchVoucherImpl implements BatchVoucher {
 
   @Validate
   @Override
-  public void putBatchVoucherExportConfigurationsById(String id, String lang, ExportConfig exportConfig, Map<String, String> okapiHeaders,
-      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+  public void putBatchVoucherExportConfigurationsById(String id, String lang, ExportConfig exportConfig,
+      Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     BatchVoucherExportConfigHelper helper = new BatchVoucherExportConfigHelper(okapiHeaders, vertxContext, lang);
 
     exportConfig.setId(id);
@@ -82,19 +91,19 @@ public class BatchVoucherImpl implements BatchVoucher {
   @Validate
   @Override
   public void postBatchVoucherExportConfigurationsCredentialsById(String id, String lang, Credentials entity,
-    Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+      Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     BatchVoucherExportConfigHelper helper = new BatchVoucherExportConfigHelper(okapiHeaders, vertxContext, lang);
 
     helper.createCredentials(id, entity)
-      .thenAccept(credentials -> asyncResultHandler.handle(succeededFuture(helper.buildResponseWithLocation(
-        String.format(BATCH_VOUCHER_EXPORT_CONFIGS_CREDENTIALS_LOCATION_PREFIX, id), credentials))))
+      .thenAccept(credentials -> asyncResultHandler.handle(succeededFuture(helper
+        .buildResponseWithLocation(String.format(BATCH_VOUCHER_EXPORT_CONFIGS_CREDENTIALS_LOCATION_PREFIX, id), credentials))))
       .exceptionally(t -> handleErrorResponse(asyncResultHandler, helper, t));
   }
 
   @Validate
   @Override
   public void getBatchVoucherExportConfigurationsCredentialsById(String id, String lang, Map<String, String> okapiHeaders,
-    Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     BatchVoucherExportConfigHelper helper = new BatchVoucherExportConfigHelper(okapiHeaders, vertxContext, lang);
 
     helper.getExportConfigCredentials(id)
@@ -105,7 +114,7 @@ public class BatchVoucherImpl implements BatchVoucher {
   @Validate
   @Override
   public void putBatchVoucherExportConfigurationsCredentialsById(String id, String lang, Credentials entity,
-    Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+      Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     BatchVoucherExportConfigHelper helper = new BatchVoucherExportConfigHelper(okapiHeaders, vertxContext, lang);
 
     helper.putExportConfigCredentials(id, entity)
@@ -115,8 +124,8 @@ public class BatchVoucherImpl implements BatchVoucher {
 
   @Validate
   @Override
-  public void postBatchVoucherExportConfigurationsCredentialsTestById(String id, String lang,
-    Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+  public void postBatchVoucherExportConfigurationsCredentialsTestById(String id, String lang, Map<String, String> okapiHeaders,
+      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     BatchVoucherExportConfigHelper helper = new BatchVoucherExportConfigHelper(okapiHeaders, vertxContext, lang);
 
     asyncResultHandler.handle(succeededFuture(helper.buildOkResponse(null)));

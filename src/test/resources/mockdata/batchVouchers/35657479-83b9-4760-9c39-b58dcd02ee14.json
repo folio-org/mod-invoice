@@ -1,0 +1,34 @@
+{
+  "id": "35657479-83b9-4760-9c39-b58dcd02ee14",
+  "batchGroup": "Amherst College (AC)",
+  "start": "2019-12-06T00:00:00.000+0000",
+  "end": "2019-12-07T00:00:00.000+0000",
+  "created": "2019-12-07T00:01:04.000+0000",
+  "batchedVouchers": [
+    {
+      "accountingCode": "0206",
+      "amount": 23.45,
+      "disbursementNumber": "EFT546789",
+      "disbursementDate": "2019-12-06T00:01:04.000+0000",
+      "disbursementAmount": 23.45,
+      "exchangeRate": 1,
+      "invoiceCurrency": "USD",
+      "invoiceNote": "Process immediately",
+      "status": "Paid",
+      "systemCurrency": "USD",
+      "type": "Voucher",
+      "voucherDate": "2019-12-06T00:00:00.000+0000",
+      "voucherNumber": "1023",
+      "vendorName": "GOBI",
+      "vendorInvoiceNo": "YK75851",
+      "batchedVoucherLines": [
+        {
+          "amount": 23.45,
+          "externalAccountNumber": "54321098",
+          "fundCodes": [ "HIST", "LATHIST", "CANHIST" ]
+        }
+      ]
+    }
+  ],
+  "totalRecords": 1
+}

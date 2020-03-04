@@ -2,6 +2,7 @@ package org.folio.rest.impl;
 
 import static java.util.stream.Collectors.toList;
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
+import static javax.ws.rs.core.MediaType.APPLICATION_XML;
 import static javax.ws.rs.core.MediaType.TEXT_PLAIN;
 import static javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
 import static org.apache.commons.lang3.StringUtils.EMPTY;
@@ -15,6 +16,7 @@ import static org.folio.invoices.utils.ResourcePathResolver.AWAITING_PAYMENTS;
 import static org.folio.invoices.utils.ResourcePathResolver.BATCH_GROUPS;
 import static org.folio.invoices.utils.ResourcePathResolver.BATCH_VOUCHER_EXPORT_CONFIGS;
 import static org.folio.invoices.utils.ResourcePathResolver.BATCH_VOUCHER_EXPORT_CONFIGS_CREDENTIALS;
+import static org.folio.invoices.utils.ResourcePathResolver.BATCH_VOUCHER_STORAGE;
 import static org.folio.invoices.utils.ResourcePathResolver.FOLIO_INVOICE_NUMBER;
 import static org.folio.invoices.utils.ResourcePathResolver.FUNDS;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICES;
@@ -44,6 +46,7 @@ import static org.folio.rest.impl.BatchGroupsApiTest.BATCH_GROUP_MOCK_DATA_PATH;
 import static org.folio.rest.impl.BatchVoucherExportConfigCredentialsTest.BATCH_VOUCHER_EXPORT_CONFIG_CREDENTIALS_SAMPLE_PATH_WITH_ID;
 import static org.folio.rest.impl.BatchVoucherExportConfigTest.BATCH_VOUCHER_EXPORT_CONFIGS_SAMPLE_PATH;
 import static org.folio.rest.impl.BatchVoucherExportConfigTest.BATCH_VOUCHER_EXPORT_CONFIG_SAMPLE_PATH;
+import static org.folio.rest.impl.BatchVoucherImplTest.BATCH_VOUCHER_MOCK_DATA_PATH;
 import static org.folio.rest.impl.DocumentsApiTest.INVOICE_DOCUMENTS_SAMPLE_PATH;
 import static org.folio.rest.impl.DocumentsApiTest.INVOICE_SAMPLE_DOCUMENTS_PATH;
 import static org.folio.rest.impl.InvoiceHelper.INVOICE_CONFIG_MODULE_NAME;
@@ -123,6 +126,7 @@ import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
 import io.vertx.ext.web.handler.BodyHandler;
 import one.util.streamex.StreamEx;
+import org.folio.rest.jaxrs.model.BatchVoucher;
 
 public class MockServer {
 
@@ -319,6 +323,7 @@ public class MockServer {
     router.route(HttpMethod.GET, resourceByIdPath(BATCH_VOUCHER_EXPORT_CONFIGS)).handler(this::handleGetBatchVoucherExportConfigById);
     router.route(HttpMethod.GET, resourcesPath(BATCH_GROUPS)).handler(this::handleGetBatchGroups);
     router.route(HttpMethod.GET, resourceByIdPath(BATCH_GROUPS)).handler(this::handleGetBatchGroupById);
+    router.route(HttpMethod.GET, resourceByIdPath(BATCH_VOUCHER_STORAGE)).handler(this::handleGetBatchVoucherById);
 
     router.route(HttpMethod.DELETE, resourceByIdPath(INVOICES)).handler(ctx -> handleDeleteRequest(ctx, INVOICES));
     router.route(HttpMethod.DELETE, resourceByIdPath(INVOICE_LINES)).handler(ctx -> handleDeleteRequest(ctx, INVOICE_LINES));
@@ -866,7 +871,7 @@ public class MockServer {
   }
 
   private void handleGetFolioInvoiceNumber(RoutingContext ctx) {
-    if (INVOICE_NUMBER_ERROR_TENANT.equals(ctx.request().getHeader(OKAPI_HEADER_TENANT))) {
+    if(INVOICE_NUMBER_ERROR_TENANT.equals(ctx.request().getHeader(OKAPI_HEADER_TENANT))) {
       serverResponse(ctx, 500, TEXT_PLAIN, INTERNAL_SERVER_ERROR.getReasonPhrase());
     } else {
       SequenceNumber seqNumber = new SequenceNumber();
@@ -1056,6 +1061,28 @@ public class MockServer {
     }
   }
 
+
+  private void handleGetBatchVoucherById(RoutingContext ctx) {
+    logger.info("handleGetBatchVoucherById got: GET " + ctx.request().path());
+    String id = ctx.request().getParam(ID);
+    logger.info("id: " + id);
+    if (ID_FOR_INTERNAL_SERVER_ERROR.equals(id)) {
+      serverResponse(ctx, 500, APPLICATION_XML, Response.Status.INTERNAL_SERVER_ERROR.getReasonPhrase());
+    } else {
+      JsonObject batchVoucher = getMockEntry(BATCH_VOUCHER_STORAGE, id).orElseGet(getJsonObjectFromFile(BATCH_VOUCHER_MOCK_DATA_PATH, id));
+      if (batchVoucher != null) {
+        // validate content against schema
+        BatchVoucher batchVoucherSchema = batchVoucher.mapTo(BatchVoucher.class);
+        batchVoucherSchema.setId(id);
+        batchVoucher = JsonObject.mapFrom(batchVoucherSchema);
+        addServerRqRsData(HttpMethod.GET, BATCH_VOUCHER_STORAGE, batchVoucher);
+        serverResponse(ctx, Response.Status.OK.getStatusCode(), APPLICATION_JSON, batchVoucher.encodePrettily());
+      } else {
+        serverResponse(ctx, Response.Status.NOT_FOUND.getStatusCode(), TEXT_PLAIN, id);
+      }
+    }
+  }
+
   private Supplier<JsonObject> getJsonObjectFromFile(String mockDataPath, String id) {
     return () -> {
       String filePath = String.format(MOCK_DATA_PATH_PATTERN, mockDataPath, id);
@@ -1074,9 +1101,6 @@ public class MockServer {
       return null;
     }
   }
-
-
-
 
   private void handleGetVouchers(RoutingContext ctx) {
 

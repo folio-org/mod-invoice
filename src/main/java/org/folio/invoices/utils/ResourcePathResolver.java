@@ -28,6 +28,7 @@ public class ResourcePathResolver {
   public static final String INVOICE_TRANSACTION_SUMMARIES = "invoiceSummary";
   public static final String AWAITING_PAYMENTS = "awaitingPayments";
   public static final String BATCH_GROUPS = "batch-groups";
+  public static final String BATCH_VOUCHER_STORAGE = "batch-voucher/batch-vouchers";
 
   private static final Map<String, String> SUB_OBJECT_COLLECTION_APIS;
   private static final Map<String, String> SUB_OBJECT_ITEM_APIS;
@@ -52,6 +53,7 @@ public class ResourcePathResolver {
     apis.put(INVOICE_TRANSACTION_SUMMARIES, "/finance/invoice-transaction-summaries");
     apis.put(AWAITING_PAYMENTS, "/finance/awaiting-payment");
     apis.put(BATCH_GROUPS, "/batch-group-storage/batch-groups");
+    apis.put(BATCH_VOUCHER_STORAGE, "/batch-voucher-storage/batch-vouchers");
 
     SUB_OBJECT_COLLECTION_APIS = Collections.unmodifiableMap(apis);
     SUB_OBJECT_ITEM_APIS = Collections.unmodifiableMap(

@@ -69,14 +69,14 @@ public abstract class AbstractHelper {
   private Configs tenantConfiguration = new Configs().withTotalRecords(0);
 
 
-  AbstractHelper(HttpClientInterface httpClient, Map<String, String> okapiHeaders, Context ctx, String lang) {
+  public AbstractHelper(HttpClientInterface httpClient, Map<String, String> okapiHeaders, Context ctx, String lang) {
     this.httpClient = httpClient;
     this.okapiHeaders = okapiHeaders;
     this.ctx = ctx;
     this.lang = lang;
   }
 
-  AbstractHelper(Map<String, String> okapiHeaders, Context ctx, String lang) {
+  public AbstractHelper(Map<String, String> okapiHeaders, Context ctx, String lang) {
     this(getHttpClient(okapiHeaders), okapiHeaders, ctx, lang);
   }
 
@@ -251,6 +251,11 @@ public abstract class AbstractHelper {
   public Response buildOkResponse(Object body) {
     closeHttpClient();
     return Response.ok(body, APPLICATION_JSON).build();
+  }
+
+  public <T> Response buildSuccessResponse(T body, String contentType) {
+    closeHttpClient();
+    return Response.ok(body, contentType).build();
   }
 
   public Response buildNoContentResponse() {

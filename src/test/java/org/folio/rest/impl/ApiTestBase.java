@@ -3,6 +3,7 @@ package org.folio.rest.impl;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
+import static javax.ws.rs.core.MediaType.APPLICATION_XML;
 import static org.awaitility.Awaitility.await;
 import static org.folio.invoices.utils.HelperUtils.INVOICE;
 import static org.folio.invoices.utils.HelperUtils.INVOICE_ID;
@@ -19,6 +20,7 @@ import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.isEmptyOrNullString;
 import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.notNullValue;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
 import java.io.IOException;
@@ -28,17 +30,21 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Date;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.Stream;
 
+import javax.ws.rs.core.HttpHeaders;
+
 import org.apache.commons.io.IOUtils;
 import org.awaitility.core.ConditionEvaluationLogger;
 import org.folio.invoices.events.handlers.MessageAddress;
 import org.folio.invoices.utils.HelperUtils;
 import org.folio.rest.jaxrs.model.Adjustment;
+import org.folio.rest.jaxrs.model.BatchVoucher;
 import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.jaxrs.model.InvoiceLine;
 import org.junit.AfterClass;
@@ -62,26 +68,27 @@ public class ApiTestBase {
 
   public static final String VALID_UUID = "8d3881f6-dd93-46f0-b29d-1c36bdb5c9f9";
   public static final String APPROVED_INVOICE_ID = "c0d08448-347b-418a-8c2f-5fb50248d67e";
-  static final String ID_BAD_FORMAT = "123-45-678-90-abc";
-  static final String FOLIO_INVOICE_NUMBER_VALUE = "228D126";
+  public static final String ID_BAD_FORMAT = "123-45-678-90-abc";
+  public static final String FOLIO_INVOICE_NUMBER_VALUE = "228D126";
   public static final Header X_OKAPI_URL = new Header(OKAPI_URL, "http://localhost:" + mockPort);
-  static final Header X_OKAPI_TOKEN = new Header(OKAPI_HEADER_TOKEN, "eyJhbGciOiJIUzI1NiJ9");
+  public static final Header X_OKAPI_TOKEN = new Header(OKAPI_HEADER_TOKEN, "eyJhbGciOiJIUzI1NiJ9");
   public static final Header X_OKAPI_TENANT = new Header(OKAPI_HEADER_TENANT, "invoiceimpltest");
   public static final Header X_OKAPI_USER_ID = new Header(OKAPI_USERID_HEADER, "d1d0a10b-c563-4c4b-ae22-e5a0c11623eb");
   public static final String PROTECTED_READ_ONLY_TENANT = "protected_read";
   public static final Header X_OKAPI_PROTECTED_READ_TENANT = new Header(OKAPI_HEADER_TENANT, PROTECTED_READ_ONLY_TENANT);
   public static final String USER_ID_ASSIGNED_TO_ACQ_UNITS = "480dba68-ee84-4b9c-a374-7e824fc49227";
-  static final Header X_OKAPI_USER_ID_WITH_ACQ_UNITS = new Header(OKAPI_USERID_HEADER, USER_ID_ASSIGNED_TO_ACQ_UNITS);
+  public static final Header X_OKAPI_USER_ID_WITH_ACQ_UNITS = new Header(OKAPI_USERID_HEADER, USER_ID_ASSIGNED_TO_ACQ_UNITS);
+  public static final Header ACCEPT_JSON_HEADER = new Header(HttpHeaders.ACCEPT, APPLICATION_JSON);
+  public static final Header ACCEPT_XML_HEADER = new Header(HttpHeaders.ACCEPT, APPLICATION_XML);
+  public static final String BAD_QUERY = "unprocessableQuery";
+
+  public static final String ID_DOES_NOT_EXIST = "d25498e7-3ae6-45fe-9612-ec99e2700d2f";
 
   static final String BASE_MOCK_DATA_PATH = "mockdata/";
-
   static final String INVOICE_LINE_NUMBER_VALUE = "1";
   static final String VOUCHER_NUMBER_VALUE = "1";
   static final String LANG_PARAM = "lang";
   static final String INVALID_LANG = "english";
-  public static final String BAD_QUERY = "unprocessableQuery";
-
-  public static final String ID_DOES_NOT_EXIST = "d25498e7-3ae6-45fe-9612-ec99e2700d2f";
   static final String ID_FOR_INTERNAL_SERVER_ERROR = "168f8a86-d26c-406e-813f-c7527f241ac3";
   static final String ID_FOR_INTERNAL_SERVER_ERROR_PUT = "bad500bb-bbbb-500b-bbbb-bbbbbbbbbbbb";
 
@@ -361,5 +368,25 @@ public class ApiTestBase {
       .withProrate(prorate)
       .withType(type)
       .withValue(value);
+  }
+
+
+  public void assertAllFieldsExistAndEqual(JsonObject sample, Response response) {
+    JsonObject sampleJson = JsonObject.mapFrom(sample.mapTo(BatchVoucher.class));
+    JsonObject responseJson = JsonObject.mapFrom(response.then().extract().as(BatchVoucher.class));
+    testAllFieldsExists(responseJson, sampleJson);
+  }
+
+  public void testAllFieldsExists(JsonObject extracted, JsonObject sampleObject) {
+    sampleObject.remove("id");
+    Set<String> fieldsNames = sampleObject.fieldNames();
+    for (String fieldName : fieldsNames) {
+      Object sampleField = sampleObject.getValue(fieldName);
+      if (sampleField instanceof JsonObject) {
+        testAllFieldsExists((JsonObject) sampleField, (JsonObject) extracted.getValue(fieldName));
+      } else {
+        assertEquals(sampleObject.getValue(fieldName).toString(), extracted.getValue(fieldName).toString());
+      }
+    }
   }
 }

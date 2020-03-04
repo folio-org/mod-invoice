@@ -355,6 +355,20 @@
       ]
     },
     {
+      "id": "batch-voucher.batch-vouchers",
+      "version": "1.0",
+      "handlers": [
+        {
+          "methods": ["GET"],
+          "pathPattern": "/batch-voucher/batch-vouchers/{id}",
+          "permissionsRequired": ["batch-voucher.batch-vouchers.item.get"],
+          "modulePermissions": [
+            "batch-voucher-storage.batch-vouchers.item.get"
+          ]
+        }
+      ]
+    },
+    {
       "id": "_jsonSchemas",
       "version": "1.0",
       "interfaceType" : "multiple",
@@ -680,6 +694,20 @@
       "visible": false
     },
     {
+      "permissionName": "batch-voucher.batch-vouchers.item.get",
+      "displayName": "Batch-voucher - get an existing Batch-voucher",
+      "description": "Get an existing Batch-voucher"
+    },
+    {
+      "permissionName": "batch-voucher.all",
+      "displayName": "Batch-voucher module - all permissions",
+      "description": "Entire set of permissions needed to use the batch-voucher module",
+      "subPermissions": [
+        "batch-voucher.batch-vouchers.item.get"
+      ],
+      "visible": false
+    },
+    {
       "permissionName": "invoice.all",
       "displayName": "Invoice module - all permissions",
       "description": "Entire set of permissions needed to use the invoice module",
@@ -702,7 +730,8 @@
         "invoice.invoices.documents.all",
         "invoices.acquisitions-units-assignments.all",
         "batch-voucher.export-configurations.all",
-        "batch-groups.all"
+        "batch-groups.all",
+        "batch-voucher.all"
       ],
       "visible": false
     }
