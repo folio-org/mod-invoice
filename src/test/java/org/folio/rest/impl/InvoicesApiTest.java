@@ -54,6 +54,7 @@ import static org.folio.rest.impl.MockServer.ERROR_X_OKAPI_TENANT;
 import static org.folio.rest.impl.MockServer.INVALID_PREFIX_CONFIG_X_OKAPI_TENANT;
 import static org.folio.rest.impl.MockServer.INVOICE_NUMBER_ERROR_X_OKAPI_TENANT;
 import static org.folio.rest.impl.MockServer.NON_EXIST_CONFIG_X_OKAPI_TENANT;
+import static org.folio.rest.impl.MockServer.PREFIX_CONFIG_WITHOUT_VALUE_X_OKAPI_TENANT;
 import static org.folio.rest.impl.MockServer.TEST_PREFIX;
 import static org.folio.rest.impl.MockServer.addMockEntry;
 import static org.folio.rest.impl.MockServer.getAcqMembershipsSearches;
@@ -74,7 +75,6 @@ import static org.hamcrest.Matchers.arrayContaining;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.endsWith;
-import static org.hamcrest.Matchers.hasEntry;
 import static org.hamcrest.Matchers.hasProperty;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.isEmptyOrNullString;
@@ -699,24 +699,38 @@ public class InvoicesApiTest extends ApiTestBase {
   @Test
   public void testTransitionToApprovedWithEmptyConfig() {
     logger.info("=== Test transition invoice to Approved with empty config ===");
+
+    Invoice reqData = getMockAsJson(REVIEWED_INVOICE_SAMPLE_PATH).mapTo(Invoice.class);
+    reqData.setStatus(Invoice.Status.APPROVED);
+
+    String id = reqData.getId();
+    String jsonBody = JsonObject.mapFrom(reqData).encode();
+
+    Headers nonExistConfigHeaders = prepareHeaders(X_OKAPI_URL, NON_EXIST_CONFIG_X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID);
+    verifySuccessfulPut(prepareInvoiceLines(reqData), reqData, id, jsonBody, nonExistConfigHeaders);
+
+    MockServer.release();
+
+    Headers nonExistValueConfigHeaders = prepareHeaders(X_OKAPI_URL, PREFIX_CONFIG_WITHOUT_VALUE_X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID);
+    verifySuccessfulPut(prepareInvoiceLines(reqData), reqData, id, jsonBody, nonExistValueConfigHeaders);
+  }
+
+  private List<InvoiceLine> prepareInvoiceLines(Invoice reqData) {
     List<InvoiceLine> invoiceLines = new ArrayList<>();
     for (int i = 0; i < 3; i++) {
       invoiceLines.add(getMockAsJson(INVOICE_LINE_WITH_APPROVED_INVOICE_SAMPLE_PATH).mapTo(InvoiceLine.class));
     }
 
-    Invoice reqData = getMockAsJson(REVIEWED_INVOICE_SAMPLE_PATH).mapTo(Invoice.class);
     invoiceLines
       .forEach(invoiceLine -> {
         invoiceLine.setId(UUID.randomUUID().toString());
         invoiceLine.setInvoiceId(reqData.getId());
         addMockEntry(INVOICE_LINES, JsonObject.mapFrom(invoiceLine));
       });
+    return invoiceLines;
+  }
 
-    reqData.setStatus(Invoice.Status.APPROVED);
-
-    String id = reqData.getId();
-    String jsonBody = JsonObject.mapFrom(reqData).encode();
-    Headers headers = prepareHeaders(X_OKAPI_URL, NON_EXIST_CONFIG_X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID);
+  private void verifySuccessfulPut(List<InvoiceLine> invoiceLines, Invoice reqData, String id, String jsonBody, Headers headers) {
     verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, headers, "", 204);
     Invoice updatedInvoice = serverRqRs.get(INVOICES, HttpMethod.PUT).get(0).mapTo(Invoice.class);
     List<JsonObject> vouchersCreated = serverRqRs.get(VOUCHERS, HttpMethod.POST);

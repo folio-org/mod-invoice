@@ -137,7 +137,7 @@ public class MockServer {
   private static final String QUERY = "query";
   private static final String LIMIT = "limit";
   private static final String OFFSET = "offset";
-  
+
   private static final String MOCK_DATA_INVOICES = "mockdata/invoices/invoices.json";
   static final String TEST_PREFIX = "testPrefix";
   private static final String INVALID_PREFIX = "12-prefix";
@@ -159,6 +159,7 @@ public class MockServer {
   private static final String POST_AWAITING_PAYMENT_ERROR_TENANT = "post_awaiting_payment_error_tenant";
   private static final String NON_EXIST_CONFIG_TENANT = "invoicetest";
   private static final String INVALID_PREFIX_CONFIG_TENANT = "invalid_prefix_config_tenant";
+  public static final String PREFIX_CONFIG_WITHOUT_VALUE_TENANT = "prefix_without_value_config_tenant";
 
   private static final String INVOICE_LINES_COLLECTION = BASE_MOCK_DATA_PATH + "invoiceLines/invoice_lines.json";
   private static final String VOUCHER_LINES_COLLECTION = BASE_MOCK_DATA_PATH + "voucherLines/voucher_lines.json";
@@ -185,6 +186,8 @@ public class MockServer {
   static final Header GET_VOUCHER_LINE_ERROR_X_OKAPI_TENANT = new Header(OKAPI_HEADER_TENANT, GET_VOUCHER_LINES_ERROR_TENANT);
   static final Header DELETE_VOUCHER_LINE_ERROR_X_OKAPI_TENANT = new Header(OKAPI_HEADER_TENANT, DELETE_VOUCHER_LINES_ERROR_TENANT);
   static final Header NON_EXIST_CONFIG_X_OKAPI_TENANT = new Header(OKAPI_HEADER_TENANT, NON_EXIST_CONFIG_TENANT);
+  static final Header PREFIX_CONFIG_WITHOUT_VALUE_X_OKAPI_TENANT = new Header(OKAPI_HEADER_TENANT, PREFIX_CONFIG_WITHOUT_VALUE_TENANT);
+
   static final Header CREATE_INVOICE_TRANSACTION_SUMMARY_ERROR_X_OKAPI_TENANT = new Header(OKAPI_HEADER_TENANT,
     CREATE_INVOICE_TRANSACTION_SUMMARY_ERROR_TENANT);
   static final Header POST_AWAITING_PAYMENT_ERROR_X_OKAPI_TENANT = new Header(OKAPI_HEADER_TENANT,
@@ -415,19 +418,19 @@ public class MockServer {
       String value = StringUtils.trimToEmpty(ctx.request().getParam(param));
       if(!StringUtils.isEmpty(value)) {
         try {
-          Integer.parseInt(value);        
+          Integer.parseInt(value);
         } catch (Exception e) {
           serverResponse(ctx, 400, TEXT_PLAIN, String.format("For input String: %s", value));
         }
       }
     }
   }
-  
+
   private void handleGetBatchVoucherExportConfigs(RoutingContext ctx) {
     logger.info("handleGetBatchVoucherExportConfigs got: {}?{}", ctx.request().path(), ctx.request().query());
 
-    verifyIntegerParams(ctx, new String[] {LIMIT, OFFSET});  
-    
+    verifyIntegerParams(ctx, new String[] {LIMIT, OFFSET});
+
     String queryParam = StringUtils.trimToEmpty(ctx.request().getParam(QUERY));
     String tenant = ctx.request().getHeader(OKAPI_HEADER_TENANT);
     if (queryParam.contains(BAD_QUERY)) {
@@ -1202,6 +1205,14 @@ public class MockServer {
           .withModule(INVOICE_CONFIG_MODULE_NAME)
           .withConfigName(VOUCHER_NUMBER_CONFIG_NAME)
           .withValue(new JsonObject().put(VOUCHER_NUMBER_PREFIX_CONFIG, INVALID_PREFIX).toString());
+        configs.withConfigs(Collections.singletonList(voucherNumberPrefixConfig)).setTotalRecords(1);
+        serverResponse(ctx, 200, APPLICATION_JSON, JsonObject.mapFrom(configs).encodePrettily());
+        return;
+      }
+      case PREFIX_CONFIG_WITHOUT_VALUE_TENANT : {
+        Config voucherNumberPrefixConfig = new Config()
+          .withModule(INVOICE_CONFIG_MODULE_NAME)
+          .withConfigName(VOUCHER_NUMBER_CONFIG_NAME);
         configs.withConfigs(Collections.singletonList(voucherNumberPrefixConfig)).setTotalRecords(1);
         serverResponse(ctx, 200, APPLICATION_JSON, JsonObject.mapFrom(configs).encodePrettily());
         return;

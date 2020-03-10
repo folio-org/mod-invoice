@@ -642,7 +642,13 @@ public class InvoiceHelper extends AbstractHelper {
     return getLoadedTenantConfiguration()
       .getConfigs().stream()
       .filter(this::isVoucherNumberPrefixConfig)
-      .map(config -> new JsonObject(config.getValue()).getString(VOUCHER_NUMBER_PREFIX_CONFIG))
+      .map(config -> {
+        if(config.getValue() != null) {
+          return new JsonObject(config.getValue()).getString(VOUCHER_NUMBER_PREFIX_CONFIG);
+        } else {
+          return EMPTY;
+        }
+      })
       .findFirst()
       .orElse(EMPTY);
   }
