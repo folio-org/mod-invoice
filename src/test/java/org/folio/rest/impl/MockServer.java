@@ -13,7 +13,7 @@ import static org.folio.invoices.utils.HelperUtils.QUERY_PARAM_START_WITH;
 import static org.folio.invoices.utils.ResourcePathResolver.ACQUISITIONS_MEMBERSHIPS;
 import static org.folio.invoices.utils.ResourcePathResolver.ACQUISITIONS_UNITS;
 import static org.folio.invoices.utils.ResourcePathResolver.AWAITING_PAYMENTS;
-import static org.folio.invoices.utils.ResourcePathResolver.BATCH_GROUPS; // BATCH_VOUCHER_EXPORTS_MOCK_DATA_PATH
+import static org.folio.invoices.utils.ResourcePathResolver.BATCH_GROUPS;
 import static org.folio.invoices.utils.ResourcePathResolver.BATCH_VOUCHER_EXPORT_CONFIGS;
 import static org.folio.invoices.utils.ResourcePathResolver.BATCH_VOUCHER_EXPORT_CONFIGS_CREDENTIALS;
 import static org.folio.invoices.utils.ResourcePathResolver.BATCH_VOUCHER_STORAGE;

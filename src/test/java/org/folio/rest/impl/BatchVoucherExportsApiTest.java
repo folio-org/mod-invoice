@@ -1,19 +1,20 @@
 package org.folio.rest.impl;
 
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
+import static javax.ws.rs.core.Response.Status.CREATED;
 import static org.folio.rest.impl.AbstractHelper.ID;
 import static org.folio.rest.impl.MockServer.getBatchVoucherExportUpdates;
 import static org.junit.Assert.assertEquals;
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.MatcherAssert.assertThat;
 
 import io.restassured.http.Headers;
 import io.restassured.response.Response;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
-import static org.hamcrest.CoreMatchers.is;
-import static org.hamcrest.MatcherAssert.assertThat;
 import io.vertx.core.logging.LoggerFactory;
-import org.folio.rest.jaxrs.model.BatchVoucherExport;
 
+import org.folio.rest.jaxrs.model.BatchVoucherExport;
 import org.folio.rest.jaxrs.model.BatchVoucherExportCollection;
 import org.folio.rest.jaxrs.model.Errors;
 import org.junit.Test;
@@ -34,14 +35,15 @@ public class BatchVoucherExportsApiTest extends ApiTestBase {
 
   @Test
   public void testPostBatchVoucherExports() {
-    logger.info("=== Test POST Batch Voucher Exports ===");
+    logger.info(" === Test POST Batch Voucher Exports === ");
     String jsonBody = getMockAsJson(BATCH_VOUCHER_EXPORT_SAMPLE_PATH).toString();
-    verifySuccessPost(BATCH_VOUCHER_EXPORTS_PATH, jsonBody);
+    Response resp = verifySuccessPost(BATCH_VOUCHER_EXPORTS_PATH, jsonBody);
+    assertEquals(resp.getStatusCode(), CREATED.getStatusCode());
   }
 
   @Test
   public void testPostBatchVoucherExports422() {
-    logger.info("=== Test POST Batch Voucher Exports 422 - voucher \"end\" is required and cannot be null ===");
+    logger.info(" === Test POST Batch Voucher Exports 422 - voucher \"end\" is required and cannot be null === ");
     BatchVoucherExport batchVoucherExport = getMockAsJson(BATCH_VOUCHER_EXPORT_SAMPLE_PATH).mapTo(BatchVoucherExport.class);
     batchVoucherExport.setEnd(null);
     String jsonBody = JsonObject.mapFrom(batchVoucherExport).encode();
@@ -51,7 +53,7 @@ public class BatchVoucherExportsApiTest extends ApiTestBase {
 
   @Test
   public void testGetBatchVoucherExports() {
-    logger.info("=== Test Get Batch-voucher-exports without query - get 200 by successful retrieval of batch-voucher-exports ===");
+    logger.info(" === Test Get Batch-voucher-exports without query - get 200 by successful retrieval of batch-voucher-exports === ");
 
     final BatchVoucherExportCollection resp = verifySuccessGet(BATCH_VOUCHER_EXPORTS_PATH, BatchVoucherExportCollection.class);
     assertEquals(1, resp.getTotalRecords()
@@ -60,7 +62,7 @@ public class BatchVoucherExportsApiTest extends ApiTestBase {
 
   @Test
   public void testGetBatchVoucherExportBadQuery() {
-    logger.info("=== Test Get Batch voucher export by query - unprocessable query to emulate 400 from storage ===");
+    logger.info(" === Test Get Batch voucher export by query - unprocessable query to emulate 400 from storage === ");
 
     String endpointQuery = String.format("%s?query=%s", BATCH_VOUCHER_EXPORTS_PATH, BAD_QUERY);
     verifyGet(endpointQuery, APPLICATION_JSON, 400);
@@ -68,7 +70,7 @@ public class BatchVoucherExportsApiTest extends ApiTestBase {
 
   @Test
   public void testGetBatchVoucherExportsByIdInternalServerError() {
-    logger.info("=== Test Get Batch-voucher-exports by query - emulating 500 from storage ===");
+    logger.info(" === Test Get Batch-voucher-exports by query - emulating 500 from storage === ");
 
     String endpointQuery = String.format("%s?query=%s", BATCH_VOUCHER_EXPORTS_PATH,  ID_FOR_INTERNAL_SERVER_ERROR);
 
@@ -77,7 +79,7 @@ public class BatchVoucherExportsApiTest extends ApiTestBase {
 
   @Test
   public void testGetBatchVoucherExportsById() throws IOException {
-    logger.info("=== Test Get Batch-voucher-exports By Id ===");
+    logger.info(" === Test Get Batch-voucher-exports By Id === ");
 
     JsonObject batchVoucherExportsList = new JsonObject(getMockData(BATCH_VOUCHER_EXPORTS_LIST_PATH));
     String id = batchVoucherExportsList.getJsonArray("batchVoucherExports")
@@ -94,7 +96,7 @@ public class BatchVoucherExportsApiTest extends ApiTestBase {
 
   @Test
   public void testGetBatchVoucherExportsByIdNotFound() {
-    logger.info("=== Test Get Batch-voucher-exports by Id - 404 Not found ===");
+    logger.info(" === Test Get Batch-voucher-exports by Id - 404 Not found === ");
 
     final Response resp = verifyGet(String.format(BATCH_VOUCHER_EXPORTS_ID_PATH, BAD_BATCH_VOUCHER_EXPORTS_ID), APPLICATION_JSON, 404);
 
@@ -103,14 +105,13 @@ public class BatchVoucherExportsApiTest extends ApiTestBase {
       .getErrors()
       .get(0)
       .getMessage();
-    logger.info("Id not found: " + actual);
 
     assertEquals(BAD_BATCH_VOUCHER_EXPORTS_ID, actual);
   }
 
   @Test
   public void testUpdateBatchVoucherExport() {
-    logger.info("=== Test Put Batch voucher export ===");
+    logger.info(" === Test Put Batch voucher export === ");
 
     String newMessage = "Updated message";
 
@@ -126,14 +127,14 @@ public class BatchVoucherExportsApiTest extends ApiTestBase {
 
   @Test
   public void testDeleteExistingBatchVoucherExport() {
-    logger.info("=== Test Delete existing Batch voucher export ===");
+    logger.info(" === Test Delete existing Batch voucher export === ");
     String id = VALID_BATCH_VOUCHER_EXPORTS_ID;
     verifyDeleteResponse(String.format(BATCH_VOUCHER_EXPORTS_ID_PATH, id),"",204);
   }
 
   @Test
   public void testDeleteNonExistingBatchVoucherExport() {
-    logger.info("=== Test Delete Non-existing Batch voucher export ===");
+    logger.info(" === Test Delete Non-existing Batch voucher export === ");
     String id = BAD_BATCH_VOUCHER_EXPORTS_ID;
     verifyDeleteResponse(String.format(BATCH_VOUCHER_EXPORTS_ID_PATH, id), "", 404);
   }
