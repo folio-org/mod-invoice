@@ -13,10 +13,11 @@ import static org.folio.invoices.utils.HelperUtils.QUERY_PARAM_START_WITH;
 import static org.folio.invoices.utils.ResourcePathResolver.ACQUISITIONS_MEMBERSHIPS;
 import static org.folio.invoices.utils.ResourcePathResolver.ACQUISITIONS_UNITS;
 import static org.folio.invoices.utils.ResourcePathResolver.AWAITING_PAYMENTS;
-import static org.folio.invoices.utils.ResourcePathResolver.BATCH_GROUPS;
+import static org.folio.invoices.utils.ResourcePathResolver.BATCH_GROUPS; // BATCH_VOUCHER_EXPORTS_MOCK_DATA_PATH
 import static org.folio.invoices.utils.ResourcePathResolver.BATCH_VOUCHER_EXPORT_CONFIGS;
 import static org.folio.invoices.utils.ResourcePathResolver.BATCH_VOUCHER_EXPORT_CONFIGS_CREDENTIALS;
 import static org.folio.invoices.utils.ResourcePathResolver.BATCH_VOUCHER_STORAGE;
+import static org.folio.invoices.utils.ResourcePathResolver.BATCH_VOUCHER_EXPORTS_STORAGE;
 import static org.folio.invoices.utils.ResourcePathResolver.FOLIO_INVOICE_NUMBER;
 import static org.folio.invoices.utils.ResourcePathResolver.FUNDS;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICES;
@@ -43,9 +44,11 @@ import static org.folio.rest.impl.ApiTestBase.VOUCHER_NUMBER_VALUE;
 import static org.folio.rest.impl.ApiTestBase.getMockData;
 import static org.folio.rest.impl.BatchGroupsApiTest.BATCH_GROUPS_LIST_PATH;
 import static org.folio.rest.impl.BatchGroupsApiTest.BATCH_GROUP_MOCK_DATA_PATH;
+import static org.folio.rest.impl.BatchVoucherExportsApiTest.BATCH_VOUCHER_EXPORTS_MOCK_DATA_PATH;
 import static org.folio.rest.impl.BatchVoucherExportConfigCredentialsTest.BATCH_VOUCHER_EXPORT_CONFIG_CREDENTIALS_SAMPLE_PATH_WITH_ID;
 import static org.folio.rest.impl.BatchVoucherExportConfigTest.BATCH_VOUCHER_EXPORT_CONFIGS_SAMPLE_PATH;
 import static org.folio.rest.impl.BatchVoucherExportConfigTest.BATCH_VOUCHER_EXPORT_CONFIG_SAMPLE_PATH;
+import static org.folio.rest.impl.BatchVoucherExportsApiTest.BATCH_VOUCHER_EXPORTS_LIST_PATH;
 import static org.folio.rest.impl.BatchVoucherImplTest.BATCH_VOUCHER_MOCK_DATA_PATH;
 import static org.folio.rest.impl.DocumentsApiTest.INVOICE_DOCUMENTS_SAMPLE_PATH;
 import static org.folio.rest.impl.DocumentsApiTest.INVOICE_SAMPLE_DOCUMENTS_PATH;
@@ -127,6 +130,8 @@ import io.vertx.ext.web.RoutingContext;
 import io.vertx.ext.web.handler.BodyHandler;
 import one.util.streamex.StreamEx;
 import org.folio.rest.jaxrs.model.BatchVoucher;
+import org.folio.rest.jaxrs.model.BatchVoucherExport;
+import org.folio.rest.jaxrs.model.BatchVoucherExportCollection;
 
 public class MockServer {
 
@@ -281,6 +286,10 @@ public class MockServer {
     return getRqRsEntries(HttpMethod.PUT, BATCH_GROUPS);
   }
 
+  public static List<JsonObject> getBatchVoucherExportUpdates() {
+    return getRqRsEntries(HttpMethod.PUT, BATCH_VOUCHER_EXPORTS_STORAGE);
+  }
+
   public static void release() {
     serverRqRs.clear();
     serverRqQueries.clear();
@@ -301,6 +310,7 @@ public class MockServer {
     router.route(HttpMethod.POST, resourcesPath(INVOICE_TRANSACTION_SUMMARIES)).handler(this::handlePostInvoiceSummary);
     router.route(HttpMethod.POST, resourcesPath(AWAITING_PAYMENTS)).handler(this::handlePostAwaitingPayment);
     router.route(HttpMethod.POST, resourcesPath(BATCH_GROUPS)).handler(ctx -> handlePost(ctx, BatchGroup.class, BATCH_GROUPS, false));
+    router.route(HttpMethod.POST, resourcesPath(BATCH_VOUCHER_EXPORTS_STORAGE)).handler(ctx -> handlePost(ctx, BatchVoucherExport.class, BATCH_VOUCHER_EXPORTS_STORAGE, false));
 
     router.route(HttpMethod.GET, resourcesPath(INVOICES)).handler(this::handleGetInvoices);
     router.route(HttpMethod.GET, resourcesPath(INVOICE_LINES)).handler(this::handleGetInvoiceLines);
@@ -327,6 +337,8 @@ public class MockServer {
     router.route(HttpMethod.GET, resourcesPath(BATCH_GROUPS)).handler(this::handleGetBatchGroups);
     router.route(HttpMethod.GET, resourceByIdPath(BATCH_GROUPS)).handler(this::handleGetBatchGroupById);
     router.route(HttpMethod.GET, resourceByIdPath(BATCH_VOUCHER_STORAGE)).handler(this::handleGetBatchVoucherById);
+    router.route(HttpMethod.GET, resourcesPath(BATCH_VOUCHER_EXPORTS_STORAGE)).handler(this::handleGetBatchVoucherExports);
+    router.route(HttpMethod.GET, resourceByIdPath(BATCH_VOUCHER_EXPORTS_STORAGE)).handler(this::handleGetBatchVoucherExportsById);
 
     router.route(HttpMethod.DELETE, resourceByIdPath(INVOICES)).handler(ctx -> handleDeleteRequest(ctx, INVOICES));
     router.route(HttpMethod.DELETE, resourceByIdPath(INVOICE_LINES)).handler(ctx -> handleDeleteRequest(ctx, INVOICE_LINES));
@@ -334,6 +346,7 @@ public class MockServer {
     router.route(HttpMethod.DELETE, "/invoice-storage/invoices/:id/documents/:documentId").handler(ctx -> handleDeleteRequest(ctx, INVOICE_DOCUMENTS));
     router.route(HttpMethod.DELETE, resourceByIdPath(BATCH_VOUCHER_EXPORT_CONFIGS)).handler(ctx -> handleDeleteRequest(ctx, BATCH_VOUCHER_EXPORT_CONFIGS));
     router.route(HttpMethod.DELETE, resourceByIdPath(BATCH_GROUPS)).handler(ctx -> handleDeleteRequest(ctx, BATCH_GROUPS));
+    router.route(HttpMethod.DELETE, resourceByIdPath(BATCH_VOUCHER_EXPORTS_STORAGE)).handler(ctx -> handleDeleteRequest(ctx, BATCH_VOUCHER_EXPORTS_STORAGE));
 
     router.route(HttpMethod.PUT, resourceByIdPath(INVOICES)).handler(ctx -> handlePutGenericSubObj(ctx, INVOICES));
     router.route(HttpMethod.PUT, resourceByIdPath(INVOICE_LINES)).handler(ctx -> handlePutGenericSubObj(ctx, INVOICE_LINES));
@@ -343,6 +356,7 @@ public class MockServer {
     router.route(HttpMethod.PUT, resourceByIdPath(BATCH_VOUCHER_EXPORT_CONFIGS)).handler(ctx -> handlePutGenericSubObj(ctx, ResourcePathResolver.BATCH_VOUCHER_EXPORT_CONFIGS));
     router.route(HttpMethod.PUT, "/batch-voucher-storage/export-configurations/:id/credentials").handler(ctx -> handlePutGenericSubObj(ctx, BATCH_VOUCHER_EXPORT_CONFIGS_CREDENTIALS));
     router.route(HttpMethod.PUT, resourceByIdPath(BATCH_GROUPS)).handler(ctx -> handlePutGenericSubObj(ctx, BATCH_GROUPS));
+    router.route(HttpMethod.PUT, resourceByIdPath(BATCH_VOUCHER_EXPORTS_STORAGE)).handler(ctx -> handlePutGenericSubObj(ctx, BATCH_VOUCHER_EXPORTS_STORAGE));
 
     return router;
   }
@@ -1064,7 +1078,27 @@ public class MockServer {
     }
   }
 
-
+  private void handleGetBatchVoucherExportsById(RoutingContext ctx) {
+    logger.info("handleGetBatchVoucherExportsById got: GET " + ctx.request().path());
+    String id = ctx.request().getParam(ID);
+    logger.info("id: " + id);
+    if (ID_FOR_INTERNAL_SERVER_ERROR.equals(id)) {
+      serverResponse(ctx, 500, APPLICATION_JSON, Response.Status.INTERNAL_SERVER_ERROR.getReasonPhrase());
+    } else {
+      JsonObject batchVoucherExport = getMockEntry(BATCH_VOUCHER_EXPORTS_STORAGE, id).orElseGet(getJsonObjectFromFile(BATCH_VOUCHER_EXPORTS_MOCK_DATA_PATH, id));
+      if (batchVoucherExport != null) {
+        // validate content against schema
+        BatchVoucherExport batchVoucherExportSchema = batchVoucherExport.mapTo(BatchVoucherExport.class);
+        batchVoucherExportSchema.setId(id);
+        batchVoucherExport = JsonObject.mapFrom(batchVoucherExportSchema);
+        addServerRqRsData(HttpMethod.GET, BATCH_VOUCHER_EXPORTS_STORAGE, batchVoucherExport);
+        serverResponse(ctx, Response.Status.OK.getStatusCode(), APPLICATION_JSON, batchVoucherExport.encodePrettily());
+      } else {
+        serverResponse(ctx, Response.Status.NOT_FOUND.getStatusCode(), TEXT_PLAIN, id);
+      }
+    }
+  }
+  
   private void handleGetBatchVoucherById(RoutingContext ctx) {
     logger.info("handleGetBatchVoucherById got: GET " + ctx.request().path());
     String id = ctx.request().getParam(ID);
@@ -1178,6 +1212,40 @@ public class MockServer {
     }
   }
 
+  private void handleGetBatchVoucherExports(RoutingContext ctx) {
+
+    logger.info("handleGetBatchVoucherExports got: {}?{}", ctx.request().path(), ctx.request().query());
+
+    String queryParam = StringUtils.trimToEmpty(ctx.request().getParam(QUERY));
+    String tenant = ctx.request().getHeader(OKAPI_HEADER_TENANT);
+    if (queryParam.contains(BAD_QUERY)) {
+      serverResponse(ctx, 400, APPLICATION_JSON, Response.Status.BAD_REQUEST.getReasonPhrase());
+    } else if (queryParam.contains(ID_FOR_INTERNAL_SERVER_ERROR) || GET_VOUCHERS_ERROR_TENANT.equals(tenant)) {
+      serverResponse(ctx, 500, APPLICATION_JSON, Response.Status.INTERNAL_SERVER_ERROR.getReasonPhrase());
+    } else {
+      Supplier<List<BatchVoucherExport>> getFromFile = () -> {
+        try {
+          return new JsonObject(getMockData(BATCH_VOUCHER_EXPORTS_LIST_PATH))
+            .mapTo(BatchVoucherExportCollection.class).getBatchVoucherExports();
+        } catch (IOException e) {
+          return Collections.emptyList();
+        }
+      };
+
+      BatchVoucherExportCollection batchVoucherExportCollection = new BatchVoucherExportCollection();
+      List<BatchVoucherExport> batchVoucherExports  = getMockEntries(BATCH_VOUCHER_EXPORTS_STORAGE, BatchVoucherExport.class).orElseGet(getFromFile);
+
+      batchVoucherExportCollection.setBatchVoucherExports(batchVoucherExports);
+      batchVoucherExportCollection.setTotalRecords(batchVoucherExportCollection.getBatchVoucherExports().size());
+
+      JsonObject batchVoucherExportsJson = JsonObject.mapFrom(batchVoucherExportCollection);
+      logger.info(batchVoucherExportsJson.encodePrettily());
+
+      addServerRqRsData(HttpMethod.GET, BATCH_GROUPS, batchVoucherExportsJson);
+      serverResponse(ctx, 200, APPLICATION_JSON, batchVoucherExportsJson.encode());
+    }
+  }
+  
   private void handleGetSequence(RoutingContext ctx) {
     if (ERROR_TENANT.equals(ctx.request().getHeader(OKAPI_HEADER_TENANT))) {
       serverResponse(ctx, 500, TEXT_PLAIN, INTERNAL_SERVER_ERROR.getReasonPhrase());
