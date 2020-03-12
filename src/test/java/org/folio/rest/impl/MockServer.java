@@ -160,6 +160,7 @@ public class MockServer {
   private static final String NON_EXIST_CONFIG_TENANT = "invoicetest";
   private static final String INVALID_PREFIX_CONFIG_TENANT = "invalid_prefix_config_tenant";
   public static final String PREFIX_CONFIG_WITHOUT_VALUE_TENANT = "prefix_without_value_config_tenant";
+  public static final String PREFIX_CONFIG_WITH_NON_EXISTING_VALUE_TENANT = "prefix_with_non_existing_value_config_tenant";
 
   private static final String INVOICE_LINES_COLLECTION = BASE_MOCK_DATA_PATH + "invoiceLines/invoice_lines.json";
   private static final String VOUCHER_LINES_COLLECTION = BASE_MOCK_DATA_PATH + "voucherLines/voucher_lines.json";
@@ -187,6 +188,7 @@ public class MockServer {
   static final Header DELETE_VOUCHER_LINE_ERROR_X_OKAPI_TENANT = new Header(OKAPI_HEADER_TENANT, DELETE_VOUCHER_LINES_ERROR_TENANT);
   static final Header NON_EXIST_CONFIG_X_OKAPI_TENANT = new Header(OKAPI_HEADER_TENANT, NON_EXIST_CONFIG_TENANT);
   static final Header PREFIX_CONFIG_WITHOUT_VALUE_X_OKAPI_TENANT = new Header(OKAPI_HEADER_TENANT, PREFIX_CONFIG_WITHOUT_VALUE_TENANT);
+  static final Header PREFIX_CONFIG_WITH_NON_EXISTING_VALUE_X_OKAPI_TENANT = new Header(OKAPI_HEADER_TENANT, PREFIX_CONFIG_WITH_NON_EXISTING_VALUE_TENANT);
 
   static final Header CREATE_INVOICE_TRANSACTION_SUMMARY_ERROR_X_OKAPI_TENANT = new Header(OKAPI_HEADER_TENANT,
     CREATE_INVOICE_TRANSACTION_SUMMARY_ERROR_TENANT);
@@ -1213,6 +1215,15 @@ public class MockServer {
         Config voucherNumberPrefixConfig = new Config()
           .withModule(INVOICE_CONFIG_MODULE_NAME)
           .withConfigName(VOUCHER_NUMBER_CONFIG_NAME);
+        configs.withConfigs(Collections.singletonList(voucherNumberPrefixConfig)).setTotalRecords(1);
+        serverResponse(ctx, 200, APPLICATION_JSON, JsonObject.mapFrom(configs).encodePrettily());
+        return;
+      }
+      case PREFIX_CONFIG_WITH_NON_EXISTING_VALUE_TENANT : {
+        Config voucherNumberPrefixConfig = new Config()
+          .withModule(INVOICE_CONFIG_MODULE_NAME)
+          .withConfigName(VOUCHER_NUMBER_CONFIG_NAME)
+          .withValue("{\"allowVoucherNumberEdit\":false}");
         configs.withConfigs(Collections.singletonList(voucherNumberPrefixConfig)).setTotalRecords(1);
         serverResponse(ctx, 200, APPLICATION_JSON, JsonObject.mapFrom(configs).encodePrettily());
         return;
