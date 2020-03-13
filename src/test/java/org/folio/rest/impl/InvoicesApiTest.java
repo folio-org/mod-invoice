@@ -59,6 +59,7 @@ import static org.folio.rest.impl.MockServer.INVALID_PREFIX_CONFIG_X_OKAPI_TENAN
 import static org.folio.rest.impl.MockServer.INVOICE_NUMBER_ERROR_X_OKAPI_TENANT;
 import static org.folio.rest.impl.MockServer.NON_EXIST_CONFIG_X_OKAPI_TENANT;
 import static org.folio.rest.impl.MockServer.PREFIX_CONFIG_WITHOUT_VALUE_X_OKAPI_TENANT;
+import static org.folio.rest.impl.MockServer.PREFIX_CONFIG_WITH_NON_EXISTING_VALUE_X_OKAPI_TENANT;
 import static org.folio.rest.impl.MockServer.TEST_PREFIX;
 import static org.folio.rest.impl.MockServer.addMockEntry;
 import static org.folio.rest.impl.MockServer.getAcqMembershipsSearches;
@@ -719,6 +720,11 @@ public class InvoicesApiTest extends ApiTestBase {
 
     Headers nonExistValueConfigHeaders = prepareHeaders(X_OKAPI_URL, PREFIX_CONFIG_WITHOUT_VALUE_X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID);
     verifySuccessfulPut(prepareInvoiceLines(reqData), reqData, id, jsonBody, nonExistValueConfigHeaders);
+
+    MockServer.release();
+
+    Headers nonExistNeededValueConfigHeaders = prepareHeaders(X_OKAPI_URL, PREFIX_CONFIG_WITH_NON_EXISTING_VALUE_X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID);
+    verifySuccessfulPut(prepareInvoiceLines(reqData), reqData, id, jsonBody, nonExistNeededValueConfigHeaders);
   }
 
   private List<InvoiceLine> prepareInvoiceLines(Invoice reqData) {

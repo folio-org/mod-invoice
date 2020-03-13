@@ -646,7 +646,8 @@ public class InvoiceHelper extends AbstractHelper {
       .filter(this::isVoucherNumberPrefixConfig)
       .map(config -> {
         if(config.getValue() != null) {
-          return new JsonObject(config.getValue()).getString(VOUCHER_NUMBER_PREFIX_CONFIG);
+          String prefix = new JsonObject(config.getValue()).getString(VOUCHER_NUMBER_PREFIX_CONFIG);
+          return StringUtils.isNotEmpty(prefix) ? prefix : EMPTY;
         } else {
           return EMPTY;
         }
