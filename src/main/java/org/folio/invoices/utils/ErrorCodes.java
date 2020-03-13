@@ -27,7 +27,8 @@ public enum ErrorCodes {
   USER_HAS_NO_PERMISSIONS("userHasNoPermission", "User does not have permissions - operation is restricted"),
   USER_HAS_NO_ACQ_PERMISSIONS("userHasNoAcqUnitsPermission", "User does not have permissions to manage acquisition units assignments - operation is restricted"),
   ACQ_UNITS_NOT_FOUND("acqUnitsNotFound", "Acquisitions units assigned to the record not found"),
-  AWAITING_PAYMENT_ERROR("awaitingPaymentError", "Failed to apply awaiting payment to encumbrance");
+  AWAITING_PAYMENT_ERROR("awaitingPaymentError", "Failed to apply awaiting payment to encumbrance"),
+  INVOICE_PAYMENT_FAILURE("invoicePaymentFailure", "Invoice payment failure");
 
   private final String code;
   private final String description;

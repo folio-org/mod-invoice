@@ -17,6 +17,9 @@ import static org.folio.invoices.utils.ResourcePathResolver.BATCH_GROUPS;
 import static org.folio.invoices.utils.ResourcePathResolver.BATCH_VOUCHER_EXPORT_CONFIGS;
 import static org.folio.invoices.utils.ResourcePathResolver.BATCH_VOUCHER_EXPORT_CONFIGS_CREDENTIALS;
 import static org.folio.invoices.utils.ResourcePathResolver.BATCH_VOUCHER_STORAGE;
+import static org.folio.invoices.utils.ResourcePathResolver.FINANCE_CREDITS;
+import static org.folio.invoices.utils.ResourcePathResolver.FINANCE_PAYMENTS;
+import static org.folio.invoices.utils.ResourcePathResolver.FINANCE_TRANSACTIONS;
 import static org.folio.invoices.utils.ResourcePathResolver.FOLIO_INVOICE_NUMBER;
 import static org.folio.invoices.utils.ResourcePathResolver.FUNDS;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICES;
@@ -92,6 +95,8 @@ import org.folio.rest.acq.model.VoucherLine;
 import org.folio.rest.acq.model.VoucherLineCollection;
 import org.folio.rest.acq.model.finance.Fund;
 import org.folio.rest.acq.model.finance.FundCollection;
+import org.folio.rest.acq.model.finance.Transaction;
+import org.folio.rest.acq.model.finance.TransactionCollection;
 import org.folio.rest.acq.model.orders.CompositePoLine;
 import org.folio.rest.acq.model.units.AcquisitionsUnit;
 import org.folio.rest.acq.model.units.AcquisitionsUnitCollection;
@@ -160,6 +165,7 @@ public class MockServer {
   private static final String NON_EXIST_CONFIG_TENANT = "invoicetest";
   private static final String INVALID_PREFIX_CONFIG_TENANT = "invalid_prefix_config_tenant";
   public static final String PREFIX_CONFIG_WITHOUT_VALUE_TENANT = "prefix_without_value_config_tenant";
+  public static final String PREFIX_CONFIG_WITH_NON_EXISTING_VALUE_TENANT = "prefix_with_non_existing_value_config_tenant";
 
   private static final String INVOICE_LINES_COLLECTION = BASE_MOCK_DATA_PATH + "invoiceLines/invoice_lines.json";
   private static final String VOUCHER_LINES_COLLECTION = BASE_MOCK_DATA_PATH + "voucherLines/voucher_lines.json";
@@ -187,6 +193,7 @@ public class MockServer {
   static final Header DELETE_VOUCHER_LINE_ERROR_X_OKAPI_TENANT = new Header(OKAPI_HEADER_TENANT, DELETE_VOUCHER_LINES_ERROR_TENANT);
   static final Header NON_EXIST_CONFIG_X_OKAPI_TENANT = new Header(OKAPI_HEADER_TENANT, NON_EXIST_CONFIG_TENANT);
   static final Header PREFIX_CONFIG_WITHOUT_VALUE_X_OKAPI_TENANT = new Header(OKAPI_HEADER_TENANT, PREFIX_CONFIG_WITHOUT_VALUE_TENANT);
+  static final Header PREFIX_CONFIG_WITH_NON_EXISTING_VALUE_X_OKAPI_TENANT = new Header(OKAPI_HEADER_TENANT, PREFIX_CONFIG_WITH_NON_EXISTING_VALUE_TENANT);
 
   static final Header CREATE_INVOICE_TRANSACTION_SUMMARY_ERROR_X_OKAPI_TENANT = new Header(OKAPI_HEADER_TENANT,
     CREATE_INVOICE_TRANSACTION_SUMMARY_ERROR_TENANT);
@@ -301,6 +308,8 @@ public class MockServer {
     router.route(HttpMethod.POST, resourcesPath(INVOICE_TRANSACTION_SUMMARIES)).handler(this::handlePostInvoiceSummary);
     router.route(HttpMethod.POST, resourcesPath(AWAITING_PAYMENTS)).handler(this::handlePostAwaitingPayment);
     router.route(HttpMethod.POST, resourcesPath(BATCH_GROUPS)).handler(ctx -> handlePost(ctx, BatchGroup.class, BATCH_GROUPS, false));
+    router.route(HttpMethod.POST, resourcesPath(FINANCE_PAYMENTS)).handler(ctx -> handlePost(ctx, Transaction.class, FINANCE_PAYMENTS, false));
+    router.route(HttpMethod.POST, resourcesPath(FINANCE_CREDITS)).handler(ctx -> handlePost(ctx, Transaction.class, FINANCE_CREDITS, false));
 
     router.route(HttpMethod.GET, resourcesPath(INVOICES)).handler(this::handleGetInvoices);
     router.route(HttpMethod.GET, resourcesPath(INVOICE_LINES)).handler(this::handleGetInvoiceLines);
@@ -327,6 +336,7 @@ public class MockServer {
     router.route(HttpMethod.GET, resourcesPath(BATCH_GROUPS)).handler(this::handleGetBatchGroups);
     router.route(HttpMethod.GET, resourceByIdPath(BATCH_GROUPS)).handler(this::handleGetBatchGroupById);
     router.route(HttpMethod.GET, resourceByIdPath(BATCH_VOUCHER_STORAGE)).handler(this::handleGetBatchVoucherById);
+    router.route(HttpMethod.GET, resourcesPath(FINANCE_TRANSACTIONS)).handler(this::handleGetFinanceTransactions);
 
     router.route(HttpMethod.DELETE, resourceByIdPath(INVOICES)).handler(ctx -> handleDeleteRequest(ctx, INVOICES));
     router.route(HttpMethod.DELETE, resourceByIdPath(INVOICE_LINES)).handler(ctx -> handleDeleteRequest(ctx, INVOICE_LINES));
@@ -859,14 +869,14 @@ public class MockServer {
       Matcher matcher = Pattern.compile(".*vendorInvoiceNo==(\\S[^)]+).*").matcher(queryParam);
       final String vendorNumber = matcher.find() ? matcher.group(1) : EMPTY;
       switch (vendorNumber) {
-      case EXISTING_VENDOR_INV_NO:
-        invoice.put(TOTAL_RECORDS, 1);
-        break;
-      case EMPTY:
-        invoice.put(TOTAL_RECORDS, 3);
-        break;
-      default:
-        invoice.put(TOTAL_RECORDS, 0);
+        case EXISTING_VENDOR_INV_NO:
+          invoice.put(TOTAL_RECORDS, 1);
+          break;
+        case EMPTY:
+          invoice.put(TOTAL_RECORDS, 3);
+          break;
+        default:
+          invoice.put(TOTAL_RECORDS, 0);
       }
       addServerRqRsData(HttpMethod.GET, INVOICES, invoice);
       serverResponse(ctx, 200, APPLICATION_JSON, invoice.encodePrettily());
@@ -1086,6 +1096,39 @@ public class MockServer {
     }
   }
 
+  private void handleGetFinanceTransactions(RoutingContext ctx) {
+    logger.info("handleGetFinanceTransactions got: " + ctx.request().path());
+
+    String query = StringUtils.trimToEmpty(ctx.request().getParam("query"));
+    if (query.contains(BAD_QUERY)) {
+      serverResponse(ctx, 400, APPLICATION_JSON, Response.Status.BAD_REQUEST.getReasonPhrase());
+    } else {
+
+      Matcher sourceInvoiceIdMatcher = Pattern.compile(".*sourceInvoiceId==(\\S+).*").matcher(query);
+      final String sourceInvoiceId = sourceInvoiceIdMatcher.find() ? sourceInvoiceIdMatcher.group(1) : EMPTY;
+
+      TransactionCollection transactions;
+      try {
+        transactions = new JsonObject(ApiTestBase.getMockData(FINANCE_TRANSACTIONS)).mapTo(TransactionCollection.class);
+      } catch (IOException e) {
+        transactions = new TransactionCollection();
+      }
+
+      if (StringUtils.isNotEmpty(sourceInvoiceId)) {
+        transactions.getTransactions().removeIf(transaction -> !transaction.getSourceInvoiceId().equals(sourceInvoiceId));
+        List<String> sourceInvoiceIds = extractIdsFromQuery("sourceInvoiceId", "==", query);
+        if (!sourceInvoiceIds.isEmpty()) {
+          transactions.getTransactions().removeIf(transaction -> !sourceInvoiceIds.contains(transaction.getSourceInvoiceId()));
+        }
+      }
+
+      JsonObject data = JsonObject.mapFrom(transactions.withTotalRecords(transactions.getTransactions().size()));
+      addServerRqRsData(HttpMethod.GET, FINANCE_TRANSACTIONS, data);
+      serverResponse(ctx, 200, APPLICATION_JSON, data.encodePrettily());
+    }
+
+  }
+
   private Supplier<JsonObject> getJsonObjectFromFile(String mockDataPath, String id) {
     return () -> {
       String filePath = String.format(MOCK_DATA_PATH_PATTERN, mockDataPath, id);
@@ -1217,6 +1260,15 @@ public class MockServer {
         serverResponse(ctx, 200, APPLICATION_JSON, JsonObject.mapFrom(configs).encodePrettily());
         return;
       }
+      case PREFIX_CONFIG_WITH_NON_EXISTING_VALUE_TENANT : {
+        Config voucherNumberPrefixConfig = new Config()
+          .withModule(INVOICE_CONFIG_MODULE_NAME)
+          .withConfigName(VOUCHER_NUMBER_CONFIG_NAME)
+          .withValue("{\"allowVoucherNumberEdit\":false}");
+        configs.withConfigs(Collections.singletonList(voucherNumberPrefixConfig)).setTotalRecords(1);
+        serverResponse(ctx, 200, APPLICATION_JSON, JsonObject.mapFrom(configs).encodePrettily());
+        return;
+      }
       default: {
 
         Config localeConfig = new Config()
@@ -1230,9 +1282,9 @@ public class MockServer {
         configs.getConfigs().add(localeConfig);
         configs.getConfigs().add(voucherNumberPrefixConfig);
         configs.withTotalRecords(configs.getConfigs().size());
-        }
-        serverResponse(ctx, 200, APPLICATION_JSON, JsonObject.mapFrom(configs).encodePrettily());
       }
+      serverResponse(ctx, 200, APPLICATION_JSON, JsonObject.mapFrom(configs).encodePrettily());
+    }
   }
 
   private void handleGetFundRecords(RoutingContext ctx) {

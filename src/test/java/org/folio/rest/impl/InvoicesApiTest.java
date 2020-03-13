@@ -4,6 +4,7 @@ import static java.util.UUID.randomUUID;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static java.util.stream.Collectors.groupingBy;
+import static java.util.stream.Collectors.summarizingDouble;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toMap;
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
@@ -35,6 +36,9 @@ import static org.folio.invoices.utils.HelperUtils.getFundDistributionAmount;
 import static org.folio.invoices.utils.HelperUtils.getNoAcqUnitCQL;
 import static org.folio.invoices.utils.HelperUtils.getNotProratedAdjustments;
 import static org.folio.invoices.utils.ResourcePathResolver.AWAITING_PAYMENTS;
+import static org.folio.invoices.utils.ResourcePathResolver.FINANCE_CREDITS;
+import static org.folio.invoices.utils.ResourcePathResolver.FINANCE_PAYMENTS;
+import static org.folio.invoices.utils.ResourcePathResolver.FINANCE_TRANSACTIONS;
 import static org.folio.invoices.utils.ResourcePathResolver.FOLIO_INVOICE_NUMBER;
 import static org.folio.invoices.utils.ResourcePathResolver.FUNDS;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICES;
@@ -93,6 +97,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
+import java.util.DoubleSummaryStatistics;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -117,6 +122,7 @@ import org.folio.rest.acq.model.finance.AwaitingPayment;
 import org.folio.rest.acq.model.finance.Fund;
 import org.folio.rest.acq.model.finance.FundCollection;
 import org.folio.rest.acq.model.finance.InvoiceTransactionSummary;
+import org.folio.rest.acq.model.finance.Transaction;
 import org.folio.rest.acq.model.orders.CompositePoLine;
 import org.folio.rest.acq.model.units.AcquisitionsUnitMembershipCollection;
 import org.folio.rest.jaxrs.model.Adjustment;
@@ -1512,6 +1518,68 @@ public class InvoicesApiTest extends ApiTestBase {
   }
 
   @Test
+  public void testPaymentsAndCreditsUpdateValidInvoiceTransitionToPaid() {
+    logger.info("=== Test of payments and credits for transition invoice to paid ===");
+
+    List<InvoiceLine> invoiceLines = new ArrayList<>();
+    List<CompositePoLine> poLines = new ArrayList<>();
+
+    int numOfInvoiceLines = 2;
+    int numOfFundDistributions = 2;
+    double invoiceTotal = 10d;
+
+
+
+    for (int i = 0; i < 2; i++) {
+      invoiceLines.add(getMockAsJson(INVOICE_LINE_WITH_APPROVED_INVOICE_SAMPLE_PATH).mapTo(InvoiceLine.class));
+      poLines.add(getMockAsJson(String.format("%s%s.json", PO_LINE_MOCK_DATA_PATH, EXISTENT_PO_LINE_ID)).mapTo(CompositePoLine.class));
+    }
+
+    Invoice invoice = getMockAsJson(APPROVED_INVOICE_SAMPLE_PATH).mapTo(Invoice.class).withStatus(Invoice.Status.PAID);
+    String id = invoice.getId();
+
+    for (int i = 0; i < 2; i++) {
+      InvoiceLine invoiceLine = invoiceLines.get(i);
+      invoiceLine.setId(UUID.randomUUID().toString());
+      invoiceLine.setInvoiceId(invoice.getId());
+      invoiceLine.getFundDistributions().clear();
+
+      for(int j = 0; j < 2; j++) {
+        invoiceLine.getFundDistributions().add(new FundDistribution()
+          .withDistributionType(i%2 == 0 ? FundDistribution.DistributionType.AMOUNT : FundDistribution.DistributionType.PERCENTAGE)
+          .withValue((j%2 != 0 ? 1 : -1)  * (i%2 == 0 ? 1d / (2 * numOfInvoiceLines) : 100d / (2 * numOfInvoiceLines))));
+      }
+
+      String poLineId = UUID.randomUUID().toString();
+      invoiceLine.setPoLineId(poLineId);
+      poLines.get(i).setId(poLineId);
+    }
+
+    Map<String, DoubleSummaryStatistics> expectedPymentsAndCredits
+      = invoiceLines.stream().flatMap(l -> l.getFundDistributions().stream()).collect(groupingBy(f -> f.getValue() > 0 ? FINANCE_PAYMENTS : FINANCE_CREDITS, summarizingDouble(FundDistribution::getValue)));
+
+
+    invoiceLines.forEach(line -> addMockEntry(INVOICE_LINES, JsonObject.mapFrom(line)));
+    poLines.forEach(line -> addMockEntry(ORDER_LINES, JsonObject.mapFrom(line)));
+    prepareMockVoucher(id);
+
+    String jsonBody = JsonObject.mapFrom(invoice).encode();
+
+    verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, "", 204);
+    assertThat(serverRqRs.get(INVOICES, HttpMethod.PUT).get(0).getString(STATUS), is(Invoice.Status.PAID.value()));
+
+    validatePoLinesPaymentStatus();
+    assertThatVoucherPaid();
+
+    assertThat(getRqRsEntries(HttpMethod.GET, FINANCE_TRANSACTIONS), hasSize(1));
+
+    List<Transaction> payments = getRqRsEntries(HttpMethod.POST, FINANCE_PAYMENTS).stream().map(x -> x.mapTo(Transaction.class)).collect(toList());
+    List<Transaction> credits = getRqRsEntries(HttpMethod.POST, FINANCE_CREDITS).stream().map(x -> x.mapTo(Transaction.class)).collect(toList());
+    assertThat(payments, hasSize(2));
+    assertThat(credits, hasSize(2));
+  }
+
+  @Test
   public void testUpdateInvoiceTransitionToPaidPoLineIdNotSpecified() {
     logger.info("=== Test transition invoice to paid, invoice line doesn't have poLineId ===");
 
@@ -1687,7 +1755,7 @@ public class InvoicesApiTest extends ApiTestBase {
     verifyPut(String.format(INVOICE_ID_PATH, id), JsonObject.mapFrom(reqData), "", 204);
 
     assertThat(getRqRsEntries(HttpMethod.PUT, INVOICES).get(0).getString(STATUS), is(Invoice.Status.PAID.value()));
-    assertThat(getRqRsEntries(HttpMethod.GET, INVOICE_LINES), hasSize(1));
+    assertThat(getRqRsEntries(HttpMethod.GET, INVOICE_LINES), hasSize(2));
     assertThat(getRqRsEntries(HttpMethod.GET, INVOICE_LINES).get(0).mapTo(InvoiceLineCollection.class).getTotalRecords(), equalTo(1));
     assertThat(getRqRsEntries(HttpMethod.PUT, ORDER_LINES), empty());
     assertThatVoucherPaid();
@@ -1735,13 +1803,22 @@ public class InvoicesApiTest extends ApiTestBase {
     verifyPut(String.format(INVOICE_ID_PATH, id), JsonObject.mapFrom(reqData), "", 204);
 
     assertThat(getRqRsEntries(HttpMethod.PUT, INVOICES).get(0).getString(STATUS), is(Invoice.Status.PAID.value()));
-    assertThat(getRqRsEntries(HttpMethod.GET, INVOICE_LINES), hasSize(1));
+    assertThat(getRqRsEntries(HttpMethod.GET, INVOICE_LINES), hasSize(2));
     assertThat(getRqRsEntries(HttpMethod.GET, INVOICE_LINES).get(0).mapTo(InvoiceLineCollection.class).getTotalRecords(), equalTo(3));
     assertThat(getRqRsEntries(HttpMethod.PUT, ORDER_LINES), hasSize(3));
     getRqRsEntries(HttpMethod.PUT, ORDER_LINES).stream()
       .map(entries -> entries.mapTo(CompositePoLine.class))
       .forEach(compositePoLine -> assertThat(compositePoLine.getPaymentStatus(), equalTo(CompositePoLine.PaymentStatus.FULLY_PAID)));
     assertThatVoucherPaid();
+
+    assertThat(getRqRsEntries(HttpMethod.PUT, INVOICES).get(0).getString(STATUS), is(Invoice.Status.PAID.value()));
+    assertThat(getRqRsEntries(HttpMethod.GET, INVOICE_LINES), hasSize(2));
+    assertThat(getRqRsEntries(HttpMethod.GET, INVOICE_LINES).get(0).mapTo(InvoiceLineCollection.class).getTotalRecords(), equalTo(3));
+    assertThat(getRqRsEntries(HttpMethod.PUT, ORDER_LINES), hasSize(3));
+
+    assertThat(getRqRsEntries(HttpMethod.GET, FINANCE_TRANSACTIONS), hasSize(1));
+    assertThat(getRqRsEntries(HttpMethod.POST, FINANCE_PAYMENTS), hasSize(3));
+    assertThat(getRqRsEntries(HttpMethod.POST, FINANCE_CREDITS), hasSize(0));
 
   }
 

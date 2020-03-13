@@ -137,6 +137,7 @@ public class InvoiceHelper extends AbstractHelper {
   private final VoucherHelper voucherHelper;
   private final VoucherLineHelper voucherLineHelper;
   private final ProtectionHelper protectionHelper;
+  private final FinanceHelper financeHelper;
 
   public InvoiceHelper(Map<String, String> okapiHeaders, Context ctx, String lang) {
     super(getHttpClient(okapiHeaders), okapiHeaders, ctx, lang);
@@ -144,6 +145,7 @@ public class InvoiceHelper extends AbstractHelper {
     voucherHelper = new VoucherHelper(httpClient, okapiHeaders, ctx, lang);
     voucherLineHelper = new VoucherLineHelper(httpClient, okapiHeaders, ctx, lang);
     protectionHelper = new ProtectionHelper(httpClient, okapiHeaders, ctx, lang);
+    financeHelper = new FinanceHelper(httpClient, okapiHeaders, ctx, lang);
 
   }
 
@@ -987,7 +989,8 @@ public class InvoiceHelper extends AbstractHelper {
    * @return CompletableFuture that indicates when transition is completed
    */
   private CompletableFuture<Void> payInvoice(Invoice invoice) {
-    return VertxCompletableFuture.allOf(ctx, payPoLines(invoice), payVoucher(invoice));
+    return financeHelper.handlePaymentsAndCredits(invoice)
+    .thenCompose(vVoid -> VertxCompletableFuture.allOf(ctx, payPoLines(invoice), payVoucher(invoice)));
   }
 
   /**
