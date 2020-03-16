@@ -56,6 +56,31 @@ resourceTypes:
       collection-item:
         schema: batchVoucherExport
         exampleItem: !include acq-models/mod-invoice-storage/examples/batch_voucher_export.sample
+    /upload:
+      is: [language]
+      post:
+        description: (Re)upload the batch voucher associated with this voucher export to the configured URI, using the configured credentials
+        responses:
+          202:
+            description: "Batch voucher export record successfully (Re)uploaded"
+            body:
+              application/json:
+                example: !include acq-models/mod-invoice-storage/examples/batch_voucher_export.sample
+          400:
+            description: "Bad request, e.g. malformed request body or query parameter. Details of the error (e.g. name of the parameter or line/character number with malformed data) provided in the response."
+            body:
+              text/plain:
+                example: "unable to FTP upload of the batch voucher -- malformed JSON at 13:3"
+          401:
+            description: "Not authorized to perform requested action"
+            body:
+              text/plain:
+                example: "unable to FTP upload of the batch voucher -- unauthorized"
+          500:
+            description: "Internal server error, e.g. due to misconfiguration"
+            body:
+              text/plain:
+                example: "Internal server error, contact administrator"
     get:
       description: Return a batch-voucher-export with given {id}
       is: [validate]
@@ -65,3 +90,32 @@ resourceTypes:
     delete:
       description: Delete a batch-voucher-export with given {id}
       is: [validate]
+
+  /scheduled:
+    is: [language]
+    post:
+      description: Conditionally creates a batch voucher export
+      responses:
+        204:
+          description: "Checks configuration successfully"
+        202:
+          description: "Batch voucher export record successfully (Re)uploaded"
+          body:
+            application/json:
+              example: !include acq-models/mod-invoice-storage/examples/batch_voucher_export.sample
+        400:
+          description: "Bad request, e.g. malformed request body or query parameter. Details of the error (e.g. name of the parameter or line/character number with malformed data) provided in the response."
+          body:
+            text/plain:
+              example: "unable to FTP upload of the batch voucher -- malformed JSON at 13:3"
+        401:
+          description: "Not authorized to perform requested action"
+          body:
+            text/plain:
+              example: "unable to FTP upload of the batch voucher -- unauthorized"
+        500:
+          description: "Internal server error, e.g. due to misconfiguration"
+          body:
+            text/plain:
+              example: "Internal server error, contact administrator"
+
