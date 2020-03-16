@@ -171,6 +171,7 @@ public class ApiTestBase {
     try {
       return new JsonObject(getMockData(fullPath));
     } catch (IOException e) {
+      e.printStackTrace();
       fail(e.getMessage());
     }
     return new JsonObject();

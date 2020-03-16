@@ -10,9 +10,12 @@ import static org.folio.invoices.utils.ResourcePathResolver.BATCH_VOUCHER_EXPORT
 import static org.folio.invoices.utils.ResourcePathResolver.resourceByIdPath;
 import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
 
+import java.net.URISyntaxException;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 
+import org.folio.invoices.utils.UploadHelperFactory;
 import org.folio.rest.jaxrs.model.Credentials;
 import org.folio.rest.jaxrs.model.ExportConfig;
 import org.folio.rest.jaxrs.model.ExportConfigCollection;
@@ -110,5 +113,24 @@ public class BatchVoucherExportConfigHelper extends AbstractHelper {
     String endpoint = String.format(GET_EXPORT_CONFIGS_BY_QUERY, limit, offset, queryParam, lang);
     return handleGetRequest(endpoint, httpClient, ctx, okapiHeaders, logger)
       .thenCompose(json -> VertxCompletableFuture.supplyBlockingAsync(ctx, () -> json.mapTo(ExportConfigCollection.class)));
+  }
+
+  public CompletableFuture<String> test(String id) {
+    CompletableFuture<ExportConfig> exportConfigFut = getExportConfig(id);
+    CompletableFuture<Credentials> crededntialsFut = getExportConfigCredentials(id);
+
+    return CompletableFuture.allOf(exportConfigFut, crededntialsFut)
+      .thenApply(v -> {
+        try {
+          ExportConfig config = exportConfigFut.join();
+          return UploadHelperFactory.get(config.getUploadURI());
+        } catch (URISyntaxException e) {
+          throw new CompletionException(e);
+        }
+      })
+      .thenCompose(helper -> {
+        Credentials creds = crededntialsFut.join();
+        return helper.login(creds.getUsername(), creds.getPassword());
+      });
   }
 }
