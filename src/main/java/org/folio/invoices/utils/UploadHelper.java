@@ -8,6 +8,6 @@ public interface UploadHelper {
 
   public CompletableFuture<String> logout();
 
-  // to be added later (MODINVOICE-133)
-  // public ComplateableFuture<String> upload( ... );
+  // upload method to be added later (MODINVOICE-133)
+
 }
