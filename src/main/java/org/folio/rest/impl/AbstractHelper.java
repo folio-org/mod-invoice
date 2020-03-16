@@ -34,6 +34,7 @@ import org.apache.commons.collections4.CollectionUtils;
 import org.folio.invoices.events.handlers.MessageAddress;
 import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.invoices.utils.HelperUtils;
+import org.folio.rest.jaxrs.model.Config;
 import org.folio.rest.jaxrs.model.Configs;
 import org.folio.rest.jaxrs.model.Error;
 import org.folio.rest.jaxrs.model.Errors;
@@ -53,9 +54,14 @@ public abstract class AbstractHelper {
   public static final String ID = "id";
   public static final String ERROR_CAUSE = "cause";
   public static final String DEFAULT_SYSTEM_CURRENCY = "USD";
+  private static final String SYSTEM_CURRENCY_PROPERTY_NAME = "currency";
+  static final String LOCALE_SETTINGS = "localeSettings";
+  static final String SYSTEM_CONFIG_MODULE_NAME = "ORG";
+  static final String INVOICE_CONFIG_MODULE_NAME = "INVOICE";
   public static final String CONFIG_QUERY = "module==%s and configName==%s";
   public static final String QUERY_BY_INVOICE_ID = "invoiceId==%s";
   static final String SEARCH_PARAMS = "?limit=%s&offset=%s%s&lang=%s";
+  static final String SYSTEM_CONFIG_QUERY = String.format(CONFIG_QUERY, SYSTEM_CONFIG_MODULE_NAME, LOCALE_SETTINGS);
 
   private static final String EXCEPTION_CALLING_ENDPOINT_MSG = "Exception calling {} {}";
 
@@ -130,6 +136,25 @@ public abstract class AbstractHelper {
 
   public Configs getLoadedTenantConfiguration() {
     return this.tenantConfiguration;
+  }
+
+  /**
+   *  Retrieves systemCurrency from mod-configuration
+   *  if config is empty than use {@link #DEFAULT_SYSTEM_CURRENCY}
+   */
+  String getSystemCurrency() {
+    JsonObject configValue = getLoadedTenantConfiguration().getConfigs()
+      .stream()
+      .filter(this::isLocaleConfig)
+      .map(config -> new JsonObject(config.getValue()))
+      .findFirst()
+      .orElseGet(JsonObject::new);
+
+    return configValue.getString(SYSTEM_CURRENCY_PROPERTY_NAME, DEFAULT_SYSTEM_CURRENCY);
+  }
+
+  private boolean isLocaleConfig(Config config) {
+    return SYSTEM_CONFIG_MODULE_NAME.equals(config.getModule()) && LOCALE_SETTINGS.equals(config.getConfigName());
   }
 
   protected CompletableFuture<String> createRecordInStorage(JsonObject recordData, String endpoint) {
