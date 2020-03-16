@@ -1,4 +1,25 @@
-## 3.1.0 - Unreleased
+## 3.2.0 - Unreleased
+
+## 3.1.0 - Released
+
+The focus of this release was to introduce Batch Voucher Exports CRUD APIs and add business logic for integration during the approval of an invoice
+
+[Full Changelog](https://github.com/folio-org/mod-invoice/compare/v3.0.1...v3.1.0)
+
+### Stories
+* [MODINVOICE-139](https://issues.folio.org/browse/MODINVOICE-139) - Create PUT /voucher/vouchers/<id>
+* [MODINVOICE-130](https://issues.folio.org/browse/MODINVOICE-130) - Create batch-voucher API
+* [MODINVOICE-129](https://issues.folio.org/browse/MODINVOICE-129) - Create credentials API
+* [MODINVOICE-128](https://issues.folio.org/browse/MODINVOICE-128) - Create batch-voucher-configurations CRUD API
+* [MODINVOICE-127](https://issues.folio.org/browse/MODINVOICE-127) - Create batch-group CRUD API
+* [MODINVOICE-126](https://issues.folio.org/browse/MODINVOICE-126) - XML schema for batch-voucher
+* [MODINVOICE-122](https://issues.folio.org/browse/MODINVOICE-122) - Investigate OOM issues on mod-invoice
+* [MODINVOICE-117](https://issues.folio.org/browse/MODINVOICE-117) - Include invoice level Fund distributions in Voucher information summary
+* [MODINVOICE-113](https://issues.folio.org/browse/MODINVOICE-113) - Call awaiting-payment API upon invoice approval
+
+### Bug Fixes
+* [MODINVOICE-147](https://issues.folio.org/browse/MODINVOICE-147) - Invoice approval fails if a voucherNumberPrefix isn't configured
+* [MODINVOICE-118](https://issues.folio.org/browse/MODINVOICE-118) - mod-invoice was out-of-memory killed on folio-snapshot-demo system
 
 ## 3.0.1 - Released
 
