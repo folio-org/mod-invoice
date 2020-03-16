@@ -12,9 +12,9 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
-import org.folio.rest.acq.model.BatchVoucher;
+import org.folio.exceptions.FtpException;
 import org.folio.invoices.utils.FtpUploadHelper;
-import org.folio.invoices.utils.FtpUploadHelper.FtpException;
+import org.folio.rest.acq.model.BatchVoucher;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;

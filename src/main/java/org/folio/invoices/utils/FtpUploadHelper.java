@@ -8,6 +8,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 
 import org.apache.commons.net.ftp.FTPClient;
+import org.folio.exceptions.FtpException;
 import org.folio.rest.acq.model.BatchVoucher;
 
 import io.vertx.core.json.JsonObject;
@@ -89,27 +90,6 @@ public class FtpUploadHelper implements UploadHelper {
         throw new CompletionException(e);
       }
     });
-  }
-
-  public static final class FtpException extends Exception {
-
-    private static final long serialVersionUID = 1951421211166849200L;
-    private final String replyMessage;
-    private final Integer replyCode;
-
-    public FtpException(Integer replyCode, String replyMessage) {
-      super(replyMessage);
-      this.replyMessage = replyMessage;
-      this.replyCode = replyCode;
-    }
-
-    public String getReplyMessage() {
-      return replyMessage;
-    }
-
-    public Integer getReplyCode() {
-      return replyCode;
-    }
   }
 
 }
