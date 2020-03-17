@@ -115,7 +115,7 @@ public class BatchVoucherExportConfigHelper extends AbstractHelper {
       .thenCompose(json -> VertxCompletableFuture.supplyBlockingAsync(ctx, () -> json.mapTo(ExportConfigCollection.class)));
   }
 
-  public CompletableFuture<String> test(String id) {
+  public CompletableFuture<String> testUploadUri(String id) {
     CompletableFuture<ExportConfig> exportConfigFut = getExportConfig(id);
     CompletableFuture<Credentials> crededntialsFut = getExportConfigCredentials(id);
 
