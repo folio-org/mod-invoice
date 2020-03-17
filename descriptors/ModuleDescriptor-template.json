@@ -411,6 +411,16 @@
           "modulePermissions": [
             "batch-voucher-storage.batch-voucher-exports.item.post"
           ]
+        },
+        {
+          "methods": ["POST"],
+          "pathPattern": "/batch-voucher/batch-voucher-exports/scheduled",
+          "permissionsRequired": ["batch-voucher.batch-voucher-exports.scheduled.item.post"]
+        },
+        {
+          "methods": ["POST"],
+          "pathPattern": "/batch-voucher/batch-voucher-exports/{id}/upload",
+          "permissionsRequired": ["batch-voucher.batch-voucher-exports.upload.item.post"]
         }
       ]
     },
@@ -777,6 +787,16 @@
       "description": "Create a new Batch-voucher-export"
     },
     {
+      "permissionName": "batch-voucher.batch-voucher-exports.scheduled.item.post",
+      "displayName": "Batch-voucher-exports - Conditionally create a batch voucher export",
+      "description": "Conditionally create a batch voucher export"
+    },
+    {
+      "permissionName": "batch-voucher.batch-voucher-exports.upload.item.post",
+      "displayName": "Batch-voucher-exports - (Re)upload the batch voucher associated with this voucher export to the configured URI, using the configured credentials",
+      "description": "(Re)upload the batch voucher associated with this voucher export to the configured URI, using the configured credentials"
+    },
+    {
       "permissionName": "batch-voucher.batch-voucher-exports.item.put",
       "displayName": "Batch-voucher-exports - modify a existing Batch-voucher-export",
       "description": "Modify an existing Batch-voucher-export"
@@ -795,7 +815,9 @@
         "batch-voucher.batch-voucher-exports.item.get",
         "batch-voucher.batch-voucher-exports.item.post",
         "batch-voucher.batch-voucher-exports.item.put",
-        "batch-voucher.batch-voucher-exports.item.delete"
+        "batch-voucher.batch-voucher-exports.item.delete",
+        "batch-voucher.batch-voucher-exports.scheduled.item.post",
+        "batch-voucher.batch-voucher-exports.upload.item.post"
       ],
       "visible": false
     },
