@@ -22,7 +22,7 @@ import me.escoffier.vertx.completablefuture.VertxCompletableFuture;
 
 public class BatchVoucherExportsHelper extends AbstractHelper {
   private static final String GET_BATCH_VOUCHER_EXPORTS_BY_QUERY = resourcesPath(BATCH_VOUCHER_EXPORTS_STORAGE) + SEARCH_PARAMS;
- 
+
   public BatchVoucherExportsHelper(Map<String, String> okapiHeaders, Context ctx, String lang) {
     super(okapiHeaders, ctx, lang);
   }
@@ -36,23 +36,10 @@ public class BatchVoucherExportsHelper extends AbstractHelper {
    * @return completable future with {@link BatchVoucherExportCollection} on success or an exception if processing fails
    */
   public CompletableFuture<BatchVoucherExportCollection> getBatchVoucherExports(int limit, int offset, String query) {
-    CompletableFuture<BatchVoucherExportCollection> future = new VertxCompletableFuture<>(ctx);
-    try {
-      String queryParam = getEndpointWithQuery(query, logger);
-      String endpoint = String.format(GET_BATCH_VOUCHER_EXPORTS_BY_QUERY, limit, offset, queryParam, lang);
-      handleGetRequest(endpoint, httpClient, ctx, okapiHeaders, logger).thenAccept(jsonVouchers -> {
-        logger.info("Successfully retrieved batch voucher exports: " + jsonVouchers.encodePrettily());
-        future.complete(jsonVouchers.mapTo(BatchVoucherExportCollection.class));
-      })
-        .exceptionally(t -> {
-          logger.error("Error getting batch voucher exports", t);
-          future.completeExceptionally(t);
-          return null;
-        });
-    } catch (Exception e) {
-      future.completeExceptionally(e);
-    }
-    return future;
+    String queryParam = getEndpointWithQuery(query, logger);
+    String endpoint = String.format(GET_BATCH_VOUCHER_EXPORTS_BY_QUERY, limit, offset, queryParam, lang);
+    return handleGetRequest(endpoint, httpClient, ctx, okapiHeaders, logger).thenCompose(jsonVouchers -> VertxCompletableFuture
+      .supplyBlockingAsync(ctx, () -> jsonVouchers.mapTo(BatchVoucherExportCollection.class)));
   }
 
   /**
