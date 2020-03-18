@@ -91,7 +91,6 @@ public class BatchVoucherExportsHelper extends AbstractHelper {
 
   /**
    * Delete Batch voucher export
-   *
    * @param id batch voucher export id to be deleted
    */
   public CompletableFuture<Void> deleteBatchVoucherExportById(String id) {
