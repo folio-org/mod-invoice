@@ -1,0 +1,20 @@
+{
+  "batchVoucherExports": [
+    {
+      "id": "566c9156-e52f-4597-9fee-5ddac91d14f2",
+      "status": "Uploaded",
+      "message": "Batch voucher export message",
+      "batchGroupId": "e91d44e4-ae4f-401a-b355-3ea44f57a628",
+      "start": "2020-01-27T00:00:00.000+0000",
+      "end": "2020-01-28T00:00:00.000+0000",
+      "batchVoucherId": "35657479-83b9-4760-9c39-b58dcd02ee27",
+      "metadata": {
+        "createdDate" : "2020-01-28T00:00:35.222+0000",
+        "createdByUserId" : "6618f188-4ec9-52e2-88ec-9632793c357e",
+        "updatedDate" : "2020-01-28T00:01:16.111+0000",
+        "updatedByUserId" : "6618f188-4ec9-52e2-88ec-9632793c357e"
+      }
+    }
+  ],
+  "totalRecords": 1
+}

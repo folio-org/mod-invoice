@@ -369,6 +369,62 @@
       ]
     },
     {
+      "id": "batch-voucher.batch-voucher-exports",
+      "version": "1.0",
+      "handlers": [
+        {
+          "methods": ["GET"],
+          "pathPattern": "/batch-voucher/batch-voucher-exports/{id}",
+          "permissionsRequired": ["batch-voucher.batch-voucher-exports.item.get"],
+          "modulePermissions": [
+            "batch-voucher-storage.batch-voucher-exports.item.get"
+          ]
+        },
+        {
+          "methods": ["GET"],
+          "pathPattern": "/batch-voucher/batch-voucher-exports",
+          "permissionsRequired": ["batch-voucher.batch-voucher-exports.collection.get"],
+          "modulePermissions": [
+            "batch-voucher-storage.batch-voucher-exports.collection.get"
+          ]
+        },
+        {
+          "methods": ["PUT"],
+          "pathPattern": "/batch-voucher/batch-voucher-exports/{id}",
+          "permissionsRequired": ["batch-voucher.batch-voucher-exports.item.put"],
+          "modulePermissions": [
+            "batch-voucher-storage.batch-voucher-exports.item.put"
+          ]
+        },
+        {
+          "methods": ["DELETE"],
+          "pathPattern": "/batch-voucher/batch-voucher-exports/{id}",
+          "permissionsRequired": ["batch-voucher.batch-voucher-exports.item.delete"],
+          "modulePermissions": [
+            "batch-voucher-storage.batch-voucher-exports.item.delete"
+          ]
+        },
+        {
+          "methods": ["POST"],
+          "pathPattern": "/batch-voucher/batch-voucher-exports",
+          "permissionsRequired": ["batch-voucher.batch-voucher-exports.item.post"],
+          "modulePermissions": [
+            "batch-voucher-storage.batch-voucher-exports.item.post"
+          ]
+        },
+        {
+          "methods": ["POST"],
+          "pathPattern": "/batch-voucher/batch-voucher-exports/scheduled",
+          "permissionsRequired": ["batch-voucher.batch-voucher-exports.scheduled.item.post"]
+        },
+        {
+          "methods": ["POST"],
+          "pathPattern": "/batch-voucher/batch-voucher-exports/{id}/upload",
+          "permissionsRequired": ["batch-voucher.batch-voucher-exports.upload.item.post"]
+        }
+      ]
+    },
+    {
       "id": "_jsonSchemas",
       "version": "1.0",
       "interfaceType" : "multiple",
@@ -435,6 +491,10 @@
     },
     {
       "id": "batch-group-storage.batch-groups",
+      "version": "1.0"
+    },
+    {
+      "id": "batch-voucher-storage.batch-voucher-exports",
       "version": "1.0"
     }
   ],
@@ -712,6 +772,56 @@
       "visible": false
     },
     {
+      "permissionName": "batch-voucher.batch-voucher-exports.collection.get",
+      "displayName": "Batch-voucher-exports - get collection of Batch-voucher-exports",
+      "description": "Get collection of Batch-voucher-exports"
+    },
+    {
+      "permissionName": "batch-voucher.batch-voucher-exports.item.get",
+      "displayName": "Batch-voucher-exports - get an existing Batch-voucher-export",
+      "description": "Get an existing Batch-voucher-export"
+    },
+    {
+      "permissionName": "batch-voucher.batch-voucher-exports.item.post",
+      "displayName": "Batch-voucher-exports - create a new Batch-voucher-export",
+      "description": "Create a new Batch-voucher-export"
+    },
+    {
+      "permissionName": "batch-voucher.batch-voucher-exports.scheduled.item.post",
+      "displayName": "Batch-voucher-exports - Conditionally create a batch voucher export",
+      "description": "Conditionally create a batch voucher export"
+    },
+    {
+      "permissionName": "batch-voucher.batch-voucher-exports.upload.item.post",
+      "displayName": "Batch-voucher-exports - (Re)upload the batch voucher associated with this voucher export to the configured URI, using the configured credentials",
+      "description": "(Re)upload the batch voucher associated with this voucher export to the configured URI, using the configured credentials"
+    },
+    {
+      "permissionName": "batch-voucher.batch-voucher-exports.item.put",
+      "displayName": "Batch-voucher-exports - modify a existing Batch-voucher-export",
+      "description": "Modify an existing Batch-voucher-export"
+    },
+    {
+      "permissionName": "batch-voucher.batch-voucher-exports.item.delete",
+      "displayName": "Batch-voucher-exports - delete an existing Batch-voucher-export",
+      "description": "Delete an existing Batch-voucher-export"
+    },
+    {
+      "permissionName": "batch-voucher.batch-voucher-exports.all",
+      "displayName": "Batch-voucher-exports module - all permissions",
+      "description": "Entire set of permissions needed to use the batch-voucher-exports module",
+      "subPermissions": [
+        "batch-voucher.batch-voucher-exports.collection.get",
+        "batch-voucher.batch-voucher-exports.item.get",
+        "batch-voucher.batch-voucher-exports.item.post",
+        "batch-voucher.batch-voucher-exports.item.put",
+        "batch-voucher.batch-voucher-exports.item.delete",
+        "batch-voucher.batch-voucher-exports.scheduled.item.post",
+        "batch-voucher.batch-voucher-exports.upload.item.post"
+      ],
+      "visible": false
+    },
+    {
       "permissionName": "invoice.all",
       "displayName": "Invoice module - all permissions",
       "description": "Entire set of permissions needed to use the invoice module",
@@ -735,7 +845,8 @@
         "invoices.acquisitions-units-assignments.all",
         "batch-voucher.export-configurations.all",
         "batch-groups.all",
-        "batch-voucher.all"
+        "batch-voucher.all",
+        "batch-voucher.batch-voucher-exports.all"
       ],
       "visible": false
     }
