@@ -118,13 +118,8 @@ public class InvoiceHelper extends AbstractHelper {
   static final int MAX_IDS_FOR_GET_RQ = 15;
   static final String NO_INVOICE_LINES_ERROR_MSG = "An invoice cannot be approved if there are no corresponding lines of invoice.";
   static final String TOTAL = "total";
-  static final String SYSTEM_CONFIG_MODULE_NAME = "ORG";
-  static final String INVOICE_CONFIG_MODULE_NAME = "INVOICE";
-  static final String LOCALE_SETTINGS = "localeSettings";
   static final String VOUCHER_NUMBER_CONFIG_NAME = "voucherNumber";
   static final String VOUCHER_NUMBER_PREFIX_CONFIG = "voucherNumberPrefix";
-  private static final String SYSTEM_CURRENCY_PROPERTY_NAME = "currency";
-  private static final String SYSTEM_CONFIG_QUERY = String.format(CONFIG_QUERY, SYSTEM_CONFIG_MODULE_NAME, LOCALE_SETTINGS);
   private static final String VOUCHER_NUMBER_CONFIG_QUERY = String.format(CONFIG_QUERY, INVOICE_CONFIG_MODULE_NAME, VOUCHER_NUMBER_CONFIG_NAME);
   private static final String GET_INVOICES_BY_QUERY = resourcesPath(INVOICES) + SEARCH_PARAMS;
   private static final String GET_FUNDS_BY_QUERY = resourcesPath(FUNDS) + "?query=%s&limit=%s&lang=%s";
@@ -744,25 +739,6 @@ public class InvoiceHelper extends AbstractHelper {
       .withInvoiceLineId(invoiceLine.getId());
   }
 
-  /**
-   *  Retrieves systemCurrency from mod-configuration
-   *  if config is empty than use {@link #DEFAULT_SYSTEM_CURRENCY}
-   */
-  private String getSystemCurrency() {
-    JsonObject configValue = getLoadedTenantConfiguration().getConfigs()
-      .stream()
-      .filter(this::isLocaleConfig)
-      .map(config -> new JsonObject(config.getValue()))
-      .findFirst()
-      .orElseGet(JsonObject::new);
-
-    return configValue.getString(SYSTEM_CURRENCY_PROPERTY_NAME, DEFAULT_SYSTEM_CURRENCY);
-  }
-
-  private boolean isLocaleConfig(Config config) {
-    return SYSTEM_CONFIG_MODULE_NAME.equals(config.getModule()) && LOCALE_SETTINGS.equals(config.getConfigName());
-  }
-
   private CompletableFuture<Void> setExchangeRateFactor(Voucher voucher) {
     return VertxCompletableFuture.supplyBlockingAsync(ctx, () -> getExchangeRateProvider()
         .getExchangeRate(voucher.getInvoiceCurrency(), voucher.getSystemCurrency()))
@@ -990,8 +966,9 @@ public class InvoiceHelper extends AbstractHelper {
    * @return CompletableFuture that indicates when transition is completed
    */
   private CompletableFuture<Void> payInvoice(Invoice invoice) {
-    return financeHelper.handlePaymentsAndCredits(invoice)
-    .thenCompose(vVoid -> VertxCompletableFuture.allOf(ctx, payPoLines(invoice), payVoucher(invoice)));
+    return fetchInvoiceLinesByInvoiceId(invoice.getId())
+      .thenCompose(invoiceLines -> financeHelper.handlePaymentsAndCredits(invoice, invoiceLines))
+      .thenCompose(vVoid -> VertxCompletableFuture.allOf(ctx, payPoLines(invoice), payVoucher(invoice)));
   }
 
   /**

@@ -1,11 +1,46 @@
 package org.folio.rest.impl;
 
-import io.vertx.core.Context;
-import io.vertx.core.json.JsonObject;
-import me.escoffier.vertx.completablefuture.VertxCompletableFuture;
-import org.apache.commons.collections4.ListUtils;
+import static java.util.concurrent.CompletableFuture.completedFuture;
+import static java.util.stream.Collectors.groupingBy;
+import static java.util.stream.Collectors.toList;
+import static org.folio.invoices.utils.ErrorCodes.CURRENT_FISCAL_YEAR_NOT_FOUND;
+import static org.folio.invoices.utils.ErrorCodes.FUNDS_NOT_FOUND;
+import static org.folio.invoices.utils.ErrorCodes.TRANSACTION_CREATION_FAILURE;
+import static org.folio.invoices.utils.HelperUtils.collectResultsOnSuccess;
+import static org.folio.invoices.utils.HelperUtils.convertIdsToCqlQuery;
+import static org.folio.invoices.utils.HelperUtils.convertToDoubleWithRounding;
+import static org.folio.invoices.utils.HelperUtils.getEndpointWithQuery;
+import static org.folio.invoices.utils.HelperUtils.getFundDistributionAmount;
+import static org.folio.invoices.utils.HelperUtils.handleGetRequest;
+import static org.folio.invoices.utils.ResourcePathResolver.FINANCE_CREDITS;
+import static org.folio.invoices.utils.ResourcePathResolver.FINANCE_PAYMENTS;
+import static org.folio.invoices.utils.ResourcePathResolver.FINANCE_TRANSACTIONS;
+import static org.folio.invoices.utils.ResourcePathResolver.FUNDS;
+import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
+import static org.folio.rest.impl.InvoiceHelper.MAX_IDS_FOR_GET_RQ;
+
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
+import java.util.concurrent.CompletionStage;
+import java.util.function.BiConsumer;
+
+import javax.money.CurrencyUnit;
+import javax.money.Monetary;
+import javax.money.MonetaryAmount;
+import javax.money.convert.CurrencyConversion;
+
+import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.folio.invoices.rest.exceptions.HttpException;
-import org.folio.invoices.utils.HelperUtils;
+import org.folio.rest.acq.model.finance.FiscalYear;
+import org.folio.rest.acq.model.finance.Fund;
+import org.folio.rest.acq.model.finance.FundCollection;
 import org.folio.rest.acq.model.finance.Transaction;
 import org.folio.rest.acq.model.finance.TransactionCollection;
 import org.folio.rest.jaxrs.model.FundDistribution;
@@ -14,40 +49,20 @@ import org.folio.rest.jaxrs.model.InvoiceLine;
 import org.folio.rest.jaxrs.model.Parameter;
 import org.folio.rest.tools.client.interfaces.HttpClientInterface;
 import org.javamoney.moneta.Money;
-import org.javamoney.moneta.function.MonetaryOperators;
 
-import javax.money.CurrencyUnit;
-import javax.money.Monetary;
-import javax.money.MonetaryAmount;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
-
-import static java.util.concurrent.CompletableFuture.completedFuture;
-import static java.util.stream.Collectors.groupingBy;
-import static java.util.stream.Collectors.mapping;
-import static java.util.stream.Collectors.reducing;
-import static java.util.stream.Collectors.toList;
-import static org.folio.invoices.utils.ErrorCodes.INVOICE_PAYMENT_FAILURE;
-import static org.folio.invoices.utils.HelperUtils.getEndpointWithQuery;
-import static org.folio.invoices.utils.ResourcePathResolver.FINANCE_CREDITS;
-import static org.folio.invoices.utils.ResourcePathResolver.FINANCE_PAYMENTS;
-import static org.folio.invoices.utils.ResourcePathResolver.FINANCE_TRANSACTIONS;
-import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
+import io.vertx.core.Context;
+import io.vertx.core.json.JsonObject;
+import me.escoffier.vertx.completablefuture.VertxCompletableFuture;
+import one.util.streamex.StreamEx;
 
 public class FinanceHelper extends AbstractHelper {
 
   private static final String GET_TRANSACTIONS_BY_QUERY = resourcesPath(FINANCE_TRANSACTIONS) + SEARCH_PARAMS;
-  private static final String EMPTY = "";
-
-  private final InvoiceLineHelper invoiceLineHelper;
+  private static final String GET_FUNDS_WITH_SEARCH_PARAMS = resourcesPath(FUNDS) + SEARCH_PARAMS;
+  private static final String GET_CURRENT_FISCAL_YEAR_BY_ID = "/finance/ledgers/%s/current-fiscal-year?lang=%s";
 
   public FinanceHelper(HttpClientInterface httpClient, Map<String, String> okapiHeaders, Context ctx, String lang) {
     super(httpClient, okapiHeaders, ctx, lang);
-    invoiceLineHelper = new InvoiceLineHelper(httpClient, okapiHeaders, ctx, lang);
   }
 
   /**
@@ -55,13 +70,16 @@ public class FinanceHelper extends AbstractHelper {
    * @param invoice {@link Invoice} that should be processed
    * @return {@link CompletableFuture<Void>}
    */
-  public CompletableFuture<Void> handlePaymentsAndCredits(Invoice invoice) {
+  public CompletableFuture<Void> handlePaymentsAndCredits(Invoice invoice, List<InvoiceLine > invoiceLines) {
     return isPaymentsAlreadyProcessed(invoice.getId()).thenCompose(isProcessed -> {
         if (isProcessed) {
           return completedFuture(null);
         }
-      return invoiceLineHelper.getInvoiceLinesByInvoiceId(invoice.getId())
-          .thenCompose(lines -> createPaymentsAndCredits(invoice, getPaymentsAndCredits(invoice, getFundDistributionsGroupedByInvoices(lines))));
+
+      return loadTenantConfiguration(SYSTEM_CONFIG_QUERY)
+        .thenCompose(lines -> buildTransactions(invoiceLines, invoice))
+        .thenCompose(this::createPaymentsAndCredits);
+
     });
   }
 
@@ -72,24 +90,137 @@ public class FinanceHelper extends AbstractHelper {
    */
   public CompletableFuture<Boolean> isPaymentsAlreadyProcessed(String invoiceId) {
     String endpoint = String.format(GET_TRANSACTIONS_BY_QUERY, 0, 0, getEndpointWithQuery("sourceInvoiceId==" + invoiceId, logger), lang);
-        return HelperUtils.handleGetRequest(endpoint, httpClient, ctx, okapiHeaders, logger)
-      .thenApply(c -> c.mapTo(TransactionCollection.class).getTotalRecords() > 0);
+    return handleGetRequest(endpoint, httpClient, ctx, okapiHeaders, logger)
+      .thenApply(transactionCollection -> transactionCollection.mapTo(TransactionCollection.class).getTotalRecords() > 0);
   }
 
-  private Map<InvoiceLine, List<FundDistribution>> getFundDistributionsGroupedByInvoices(List<InvoiceLine> lines) {
-    return lines.stream().collect(groupingBy(line -> line, mapping(InvoiceLine::getFundDistributions, reducing(new ArrayList<>(), ListUtils::union))));
+  private CompletableFuture<List<Transaction>> buildTransactions(List<InvoiceLine> invoiceLines, Invoice invoice) {
+    List<Transaction> transactions = buildBaseTransactions(invoiceLines, invoice);
+    Map<String, List<Transaction>> groupedByFund = groupTransactionsByFund(transactions);
+
+    return groupByLedgerIds(groupedByFund).thenCompose(groupedByLedgerId -> VertxCompletableFuture.allOf(ctx,
+      groupedByLedgerId.entrySet()
+        .stream()
+        .map(entry -> getCurrentFiscalYear(entry.getKey()).thenAcceptAsync(fiscalYear -> updateTransactions(entry.getValue(), fiscalYear)))
+        .collect(toList())
+        .toArray(new CompletableFuture[0])))
+      .thenApply(aVoid -> transactions);
   }
 
-  private List<Transaction> getPaymentsAndCredits(Invoice invoice, Map<InvoiceLine, List<FundDistribution>> fundDistributionsSortedByInvoice) {
-    return fundDistributionsSortedByInvoice.entrySet().stream().flatMap(x -> x.getValue().stream().map(t -> resolveAndGetTransaction(t, invoice, x.getKey()))).collect(toList());
+  private List<Transaction> buildBaseTransactions(List<InvoiceLine> invoiceLines, Invoice invoice) {
+    return invoiceLines
+      .stream()
+      .flatMap(invoiceLine -> invoiceLine.getFundDistributions()
+        .stream()
+        .map(fundDistribution -> buildTransaction(fundDistribution, invoiceLine, invoice)))
+      .collect(toList());
   }
 
-  private CompletionStage<Void> createPaymentsAndCredits(Invoice invoice, List<Transaction> transactionsList) {
-    return VertxCompletableFuture.allOf(ctx, transactionsList.stream().map(tr -> postRecorderWithoutResponseBody(JsonObject.mapFrom(tr), resolveTransactionPath(tr))
+  private Map<String, List<Transaction>> groupTransactionsByFund(List<Transaction> transactions) {
+    return transactions.stream()
+      .collect(groupingBy(
+        transaction -> transaction.getTransactionType() == Transaction.TransactionType.PAYMENT ? transaction.getFromFundId()
+          : transaction.getToFundId()));
+  }
+
+  private Transaction buildTransaction(FundDistribution fundDistribution, InvoiceLine invoiceLine, Invoice invoice) {
+    Transaction transaction = new Transaction();
+    CurrencyUnit currency = Monetary.getCurrency(invoice.getCurrency());
+    transaction.setCurrency(invoice.getCurrency());
+    transaction.setSourceInvoiceId(invoice.getId());
+    transaction.setSourceInvoiceLineId(invoiceLine.getId());
+    transaction.setPaymentEncumbranceId(fundDistribution.getEncumbrance());
+
+    MonetaryAmount amount = getFundDistributionAmount(fundDistribution, invoiceLine.getTotal(), currency);
+    if (amount.isPositive()) {
+      transaction.withFromFundId(fundDistribution.getFundId()).withTransactionType(Transaction.TransactionType.PAYMENT);
+    } else {
+      transaction.withToFundId(fundDistribution.getFundId()).withTransactionType(Transaction.TransactionType.CREDIT);
+    }
+
+    transaction.setAmount(convertToDoubleWithRounding(amount.abs()));
+    return transaction;
+  }
+
+  private CompletableFuture<Map<String, List<Transaction>>> groupByLedgerIds(Map<String, List<Transaction>> groupedByFund) {
+    return getFunds(groupedByFund).thenApply(lists -> lists.stream()
+      .flatMap(Collection::stream)
+      .collect(HashMap::new, accumulator(groupedByFund), Map::putAll));
+  }
+
+  private CompletableFuture<List<List<Fund>>> getFunds(Map<String, List<Transaction>> groupedByFund) {
+    return collectResultsOnSuccess(StreamEx.ofSubLists(new ArrayList<>(groupedByFund.entrySet()), MAX_IDS_FOR_GET_RQ)
+      .map(entries -> entries.stream()
+        .map(Map.Entry::getKey)
+        .distinct()
+        .collect(toList()))
+      .map(this::getFundsByIds)
+      .toList());
+  }
+
+  private CompletableFuture<List<Fund>> getFundsByIds(List<String> ids) {
+    String query = convertIdsToCqlQuery(ids);
+    String queryParam = getEndpointWithQuery(query, logger);
+    String endpoint = String.format(GET_FUNDS_WITH_SEARCH_PARAMS, MAX_IDS_FOR_GET_RQ, 0, queryParam, lang);
+
+    return handleGetRequest(endpoint, httpClient, ctx, okapiHeaders, logger)
+      .thenApply(entries -> entries.mapTo(FundCollection.class))
+      .thenApply(fundCollection -> {
+        if (ids.size() == fundCollection.getFunds().size()) {
+          return fundCollection.getFunds();
+        }
+        String missingIds = String.join(", ", CollectionUtils.subtract(ids, fundCollection.getFunds().stream().map(Fund::getId).collect(toList())));
+        logger.info("Funds with ids - {} are missing.", missingIds);
+        throw new HttpException(400, FUNDS_NOT_FOUND.toError().withParameters(Collections.singletonList(new Parameter().withKey("funds").withValue(missingIds))));
+      });
+  }
+
+  private BiConsumer<HashMap<String, List<Transaction>>, Fund> accumulator(Map<String, List<Transaction>> groupedByFund) {
+    return (map, fund) -> map.merge(fund.getLedgerId(), groupedByFund.get(fund.getId()), (transactions, transactions2) -> {
+      transactions.addAll(transactions2);
+      return transactions;
+    });
+  }
+
+  private CompletableFuture<FiscalYear> getCurrentFiscalYear(String ledgerId) {
+    String endpoint = String.format(GET_CURRENT_FISCAL_YEAR_BY_ID, ledgerId, lang);
+    return handleGetRequest(endpoint, httpClient, ctx, okapiHeaders, logger).thenApply(entry -> entry.mapTo(FiscalYear.class))
       .exceptionally(t -> {
-        logger.error("Failed to update invoice with id {}", t, invoice.getId());
-        Parameter parameter = new Parameter().withKey("invoiceId").withValue(invoice.getId());
-        throw new HttpException(400, INVOICE_PAYMENT_FAILURE.toError().withParameters(Collections.singletonList(parameter)));
+        if (isFiscalYearNotFound(t)) {
+          List<Parameter> parameters = Collections.singletonList(new Parameter().withValue(ledgerId)
+            .withKey("ledgerId"));
+          throw new HttpException(400, CURRENT_FISCAL_YEAR_NOT_FOUND.toError()
+            .withParameters(parameters));
+        }
+        throw new CompletionException(t.getCause());
+      });
+  }
+
+  private boolean isFiscalYearNotFound(Throwable t) {
+    return t.getCause() instanceof HttpException && ((HttpException) t.getCause()).getCode() == 404;
+  }
+
+  private void updateTransactions(List<Transaction> transactions, FiscalYear fiscalYear) {
+    String finalCurrency = StringUtils.isNotEmpty(fiscalYear.getCurrency()) ? fiscalYear.getCurrency() : getSystemCurrency();
+    transactions.forEach(transaction ->  {
+      String initialCurrency = transaction.getCurrency();
+      MonetaryAmount initialAmount = Money.of(transaction.getAmount(), initialCurrency);
+      CurrencyConversion conversion = getExchangeRateProvider().getCurrencyConversion(finalCurrency);
+      transaction.withFiscalYearId(fiscalYear.getId())
+        .withCurrency(finalCurrency)
+        .withAmount(convertToDoubleWithRounding(initialAmount.with(conversion)));
+    });
+  }
+
+  private CompletionStage<Void> createPaymentsAndCredits(List<Transaction> transactions) {
+    return VertxCompletableFuture.allOf(ctx, transactions.stream().map(tr -> createRecordInStorage(JsonObject.mapFrom(tr), resolveTransactionPath(tr))
+      .exceptionally(t -> {
+        logger.error("Failed to create transaction for invoice with id - {}", t, tr.getSourceInvoiceId());
+        List<Parameter> parameters = new ArrayList<>();
+        parameters.add(new Parameter().withKey("invoiceLineId").withValue(tr.getSourceInvoiceLineId()));
+        parameters.add(new Parameter().withKey("fundId")
+          .withValue((tr.getTransactionType() == Transaction.TransactionType.PAYMENT) ? tr.getFromFundId() : tr.getToFundId()));
+        throw new HttpException(400, TRANSACTION_CREATION_FAILURE.toError().withParameters(parameters));
       }))
       .toArray(CompletableFuture[]::new));
   }
@@ -98,46 +229,4 @@ public class FinanceHelper extends AbstractHelper {
     return resourcesPath(transaction.getTransactionType() == Transaction.TransactionType.PAYMENT ? FINANCE_PAYMENTS : FINANCE_CREDITS);
   }
 
-  private Transaction resolveAndGetTransaction(FundDistribution distribution, Invoice invoice, InvoiceLine invoiceLine) {
-    if (distribution.getValue() > 0) {
-      return buildPaymentTransaction(distribution, invoice, invoiceLine);
-    } else {
-      return buildCreditTransaction(distribution, invoice, invoiceLine);
-    }
-  }
-
-  private Transaction buildPaymentTransaction(FundDistribution distribution, Invoice invoice, InvoiceLine invoiceLine) {
-    return buildBaseTransaction(distribution, invoice, invoiceLine)
-      .withTransactionType(Transaction.TransactionType.PAYMENT)
-      .withToFundId(EMPTY)
-      .withFromFundId(distribution.getFundId());
-  }
-
-  private Transaction buildCreditTransaction(FundDistribution distribution, Invoice invoice, InvoiceLine invoiceLine) {
-    return buildBaseTransaction(distribution, invoice, invoiceLine)
-      .withTransactionType(Transaction.TransactionType.CREDIT)
-      .withToFundId(distribution.getFundId())
-      .withFromFundId(EMPTY);
-  }
-
-  private Transaction buildBaseTransaction(FundDistribution distribution, Invoice invoice, InvoiceLine invoiceLine) {
-    Transaction transaction = new Transaction();
-    CurrencyUnit currency = Monetary.getCurrency(invoice.getCurrency());
-    MonetaryAmount amount = Money.of(invoice.getTotal(), currency);
-    transaction.setAmount(calculateTransactionAmount(distribution, amount));
-    transaction.setCurrency(invoice.getCurrency());
-    transaction.setSourceInvoiceId(invoice.getId());
-    transaction.setSourceInvoiceLineId(invoiceLine.getId());
-    return transaction;
-  }
-
-  private double calculateTransactionAmount(FundDistribution distribution, MonetaryAmount estimatedPrice) {
-    if (distribution.getDistributionType() == FundDistribution.DistributionType.PERCENTAGE) {
-      return estimatedPrice.with(MonetaryOperators.percent(distribution.getValue()))
-        .with(MonetaryOperators.rounding())
-        .getNumber()
-        .doubleValue();
-    }
-    return Math.abs(distribution.getValue());
-  }
 }

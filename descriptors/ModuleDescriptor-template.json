@@ -53,7 +53,6 @@
             "invoice-storage.invoices.item.get",
             "invoice-storage.invoice-lines.item.put",
             "invoice-storage.invoice-lines.collection.get",
-            "finance.funds.collection.get",
             "orders.po-lines.item.put",
             "orders.po-lines.item.get",
             "voucher-storage.vouchers.collection.get",
@@ -69,7 +68,9 @@
             "finance.invoice-transaction-summaries.item.post",
             "finance.payments.item.post",
             "finance.credits.item.post",
-            "finance.transactions.collection.get"
+            "finance.transactions.collection.get",
+            "finance.funds.collection.get",
+            "finance.ledgers.current-fiscal-year.item.get"
           ]
         },
         {
@@ -429,12 +430,20 @@
       "version": "1.0"
     },
     {
+      "id": "batch-voucher-storage.batch-vouchers",
+      "version": "1.0"
+    },
+    {
       "id": "finance.transactions",
       "version": "2.0"
     },
     {
       "id": "batch-group-storage.batch-groups",
       "version": "1.0"
+    },
+    {
+      "id": "finance.ledgers",
+      "version": "1.3"
     }
   ],
   "permissionSets": [

@@ -1,5 +1,6 @@
 package org.folio.rest.impl;
 
+import static java.time.temporal.ChronoUnit.DAYS;
 import static java.util.stream.Collectors.toList;
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 import static javax.ws.rs.core.MediaType.APPLICATION_XML;
@@ -68,8 +69,10 @@ import static org.folio.rest.impl.VouchersApiTest.VOUCHER_MOCK_DATA_PATH;
 import static org.junit.Assert.fail;
 
 import java.io.IOException;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -93,6 +96,7 @@ import org.folio.rest.acq.model.BatchGroupCollection;
 import org.folio.rest.acq.model.SequenceNumber;
 import org.folio.rest.acq.model.VoucherLine;
 import org.folio.rest.acq.model.VoucherLineCollection;
+import org.folio.rest.acq.model.finance.FiscalYear;
 import org.folio.rest.acq.model.finance.Fund;
 import org.folio.rest.acq.model.finance.FundCollection;
 import org.folio.rest.acq.model.finance.Transaction;
@@ -101,6 +105,7 @@ import org.folio.rest.acq.model.orders.CompositePoLine;
 import org.folio.rest.acq.model.units.AcquisitionsUnit;
 import org.folio.rest.acq.model.units.AcquisitionsUnitCollection;
 import org.folio.rest.acq.model.units.AcquisitionsUnitMembershipCollection;
+import org.folio.rest.jaxrs.model.BatchVoucher;
 import org.folio.rest.jaxrs.model.Config;
 import org.folio.rest.jaxrs.model.Configs;
 import org.folio.rest.jaxrs.model.Credentials;
@@ -131,7 +136,6 @@ import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
 import io.vertx.ext.web.handler.BodyHandler;
 import one.util.streamex.StreamEx;
-import org.folio.rest.jaxrs.model.BatchVoucher;
 
 public class MockServer {
 
@@ -190,7 +194,6 @@ public class MockServer {
   static final Header GET_FUNDS_ERROR_X_OKAPI_TENANT = new Header(OKAPI_HEADER_TENANT, GET_FUNDS_ERROR_TENANT);
   static final Header CREATE_VOUCHER_LINE_ERROR_X_OKAPI_TENANT = new Header(OKAPI_HEADER_TENANT, CREATE_VOUCHER_LINES_ERROR_TENANT);
   static final Header GET_VOUCHER_LINE_ERROR_X_OKAPI_TENANT = new Header(OKAPI_HEADER_TENANT, GET_VOUCHER_LINES_ERROR_TENANT);
-  static final Header DELETE_VOUCHER_LINE_ERROR_X_OKAPI_TENANT = new Header(OKAPI_HEADER_TENANT, DELETE_VOUCHER_LINES_ERROR_TENANT);
   static final Header NON_EXIST_CONFIG_X_OKAPI_TENANT = new Header(OKAPI_HEADER_TENANT, NON_EXIST_CONFIG_TENANT);
   static final Header PREFIX_CONFIG_WITHOUT_VALUE_X_OKAPI_TENANT = new Header(OKAPI_HEADER_TENANT, PREFIX_CONFIG_WITHOUT_VALUE_TENANT);
   static final Header PREFIX_CONFIG_WITH_NON_EXISTING_VALUE_X_OKAPI_TENANT = new Header(OKAPI_HEADER_TENANT, PREFIX_CONFIG_WITH_NON_EXISTING_VALUE_TENANT);
@@ -199,6 +202,9 @@ public class MockServer {
     CREATE_INVOICE_TRANSACTION_SUMMARY_ERROR_TENANT);
   static final Header POST_AWAITING_PAYMENT_ERROR_X_OKAPI_TENANT = new Header(OKAPI_HEADER_TENANT,
     POST_AWAITING_PAYMENT_ERROR_TENANT);
+  static final String CURRENT_FISCAL_YEAR = "currentFiscalYear";
+  static final String SYSTEM_CURRENCY = "GBP";
+  static final String FISCAL_YEAR_ID = UUID.randomUUID().toString();
 
   private final int port;
   private final Vertx vertx;
@@ -215,7 +221,7 @@ public class MockServer {
     // Setup Mock Server...
     HttpServer server = vertx.createHttpServer();
     CompletableFuture<HttpServer> deploymentComplete = new CompletableFuture<>();
-    server.requestHandler(defineRoutes()::handle).listen(port, result -> {
+    server.requestHandler(defineRoutes()).listen(port, result -> {
       if (result.succeeded()) {
         deploymentComplete.complete(result.result());
       } else {
@@ -308,8 +314,8 @@ public class MockServer {
     router.route(HttpMethod.POST, resourcesPath(INVOICE_TRANSACTION_SUMMARIES)).handler(this::handlePostInvoiceSummary);
     router.route(HttpMethod.POST, resourcesPath(AWAITING_PAYMENTS)).handler(this::handlePostAwaitingPayment);
     router.route(HttpMethod.POST, resourcesPath(BATCH_GROUPS)).handler(ctx -> handlePost(ctx, BatchGroup.class, BATCH_GROUPS, false));
-    router.route(HttpMethod.POST, resourcesPath(FINANCE_PAYMENTS)).handler(ctx -> handlePost(ctx, Transaction.class, FINANCE_PAYMENTS, false));
-    router.route(HttpMethod.POST, resourcesPath(FINANCE_CREDITS)).handler(ctx -> handlePost(ctx, Transaction.class, FINANCE_CREDITS, false));
+    router.route(HttpMethod.POST, resourcesPath(FINANCE_PAYMENTS)).handler(ctx -> handlePostEntry(ctx, Transaction.class, FINANCE_PAYMENTS));
+    router.route(HttpMethod.POST, resourcesPath(FINANCE_CREDITS)).handler(ctx -> handlePostEntry(ctx, Transaction.class, FINANCE_CREDITS));
 
     router.route(HttpMethod.GET, resourcesPath(INVOICES)).handler(this::handleGetInvoices);
     router.route(HttpMethod.GET, resourcesPath(INVOICE_LINES)).handler(this::handleGetInvoiceLines);
@@ -337,6 +343,7 @@ public class MockServer {
     router.route(HttpMethod.GET, resourceByIdPath(BATCH_GROUPS)).handler(this::handleGetBatchGroupById);
     router.route(HttpMethod.GET, resourceByIdPath(BATCH_VOUCHER_STORAGE)).handler(this::handleGetBatchVoucherById);
     router.route(HttpMethod.GET, resourcesPath(FINANCE_TRANSACTIONS)).handler(this::handleGetFinanceTransactions);
+    router.route(HttpMethod.GET, "/finance/ledgers/:id/current-fiscal-year").handler(this::handleGetCurrentFiscalYearByLedgerId);
 
     router.route(HttpMethod.DELETE, resourceByIdPath(INVOICES)).handler(ctx -> handleDeleteRequest(ctx, INVOICES));
     router.route(HttpMethod.DELETE, resourceByIdPath(INVOICE_LINES)).handler(ctx -> handleDeleteRequest(ctx, INVOICE_LINES));
@@ -355,6 +362,29 @@ public class MockServer {
     router.route(HttpMethod.PUT, resourceByIdPath(BATCH_GROUPS)).handler(ctx -> handlePutGenericSubObj(ctx, BATCH_GROUPS));
 
     return router;
+  }
+
+  private void handleGetCurrentFiscalYearByLedgerId(RoutingContext ctx) {
+    logger.info("got: " + ctx.request().path());
+    String id = ctx.request().getParam(ID);
+    logger.info("id: " + id);
+
+    addServerRqRsData(HttpMethod.GET, CURRENT_FISCAL_YEAR, new JsonObject().put(ID, id));
+
+    if (ID_FOR_INTERNAL_SERVER_ERROR.equals(id)) {
+      serverResponse(ctx, 500, APPLICATION_JSON, INTERNAL_SERVER_ERROR.getReasonPhrase());
+    } else if (ID_DOES_NOT_EXIST.equals(id)) {
+      serverResponse(ctx, 404, APPLICATION_JSON, id);
+    } else  {
+      FiscalYear fiscalYear = new FiscalYear();
+      fiscalYear.setId(FISCAL_YEAR_ID);
+      fiscalYear.setCode("test2020");
+      fiscalYear.setName("test");
+      fiscalYear.setPeriodStart(Date.from(Instant.now().minus(365, DAYS)));
+      fiscalYear.setPeriodEnd(Date.from(Instant.now().plus(365, DAYS)));
+      fiscalYear.setCurrency(SYSTEM_CURRENCY);
+      serverResponse(ctx, 200, APPLICATION_JSON, JsonObject.mapFrom(fiscalYear).encodePrettily());
+    }
   }
 
   private void handlePostAwaitingPayment(RoutingContext ctx) {
@@ -1103,26 +1133,9 @@ public class MockServer {
     if (query.contains(BAD_QUERY)) {
       serverResponse(ctx, 400, APPLICATION_JSON, Response.Status.BAD_REQUEST.getReasonPhrase());
     } else {
-
-      Matcher sourceInvoiceIdMatcher = Pattern.compile(".*sourceInvoiceId==(\\S+).*").matcher(query);
-      final String sourceInvoiceId = sourceInvoiceIdMatcher.find() ? sourceInvoiceIdMatcher.group(1) : EMPTY;
-
-      TransactionCollection transactions;
-      try {
-        transactions = new JsonObject(ApiTestBase.getMockData(FINANCE_TRANSACTIONS)).mapTo(TransactionCollection.class);
-      } catch (IOException e) {
-        transactions = new TransactionCollection();
-      }
-
-      if (StringUtils.isNotEmpty(sourceInvoiceId)) {
-        transactions.getTransactions().removeIf(transaction -> !transaction.getSourceInvoiceId().equals(sourceInvoiceId));
-        List<String> sourceInvoiceIds = extractIdsFromQuery("sourceInvoiceId", "==", query);
-        if (!sourceInvoiceIds.isEmpty()) {
-          transactions.getTransactions().removeIf(transaction -> !sourceInvoiceIds.contains(transaction.getSourceInvoiceId()));
-        }
-      }
-
-      JsonObject data = JsonObject.mapFrom(transactions.withTotalRecords(transactions.getTransactions().size()));
+      List<Transaction> transactions = getMockEntries(FINANCE_TRANSACTIONS, Transaction.class).orElse(Collections.emptyList());
+      TransactionCollection  transactionCollection = new TransactionCollection().withTransactions(transactions);
+      JsonObject data = JsonObject.mapFrom(transactionCollection.withTotalRecords(transactions.size()));
       addServerRqRsData(HttpMethod.GET, FINANCE_TRANSACTIONS, data);
       serverResponse(ctx, 200, APPLICATION_JSON, data.encodePrettily());
     }
@@ -1295,15 +1308,23 @@ public class MockServer {
     if (query.contains(ID_FOR_INTERNAL_SERVER_ERROR) || GET_FUNDS_ERROR_TENANT.equals(tenant)) {
       serverResponse(ctx, 500, APPLICATION_JSON, Response.Status.INTERNAL_SERVER_ERROR.getReasonPhrase());
     } else {
-      try {
-        FundCollection fundCollection = new JsonObject(ApiTestBase.getMockData(FUNDS_MOCK_DATA_PATH + "fundsCollection.json")).mapTo(FundCollection.class);
-        List<Fund> funds = fundCollection.getFunds();
+      FundCollection fundCollection;
+      List<Fund> funds = getMockEntries(FUNDS, Fund.class).orElse(Collections.emptyList());
+      fundCollection = new FundCollection().withFunds(funds);
+      if (funds.isEmpty()) {
+        try {
+          fundCollection = new JsonObject(ApiTestBase.getMockData(FUNDS_MOCK_DATA_PATH + "fundsCollection.json")).mapTo(FundCollection.class);
+          funds = fundCollection.getFunds();
 
-        if (query.startsWith("id==")) {
-          List<String> fundIds = extractIdsFromQuery(query);
-          funds.removeIf(item -> !fundIds.contains(item.getId()));
+          if (query.startsWith("id==")) {
+            List<String> fundIds = extractIdsFromQuery(query);
+            funds.removeIf(item -> !fundIds.contains(item.getId()));
+          }
+
+        } catch (Exception e) {
+          serverResponse(ctx, 500, APPLICATION_JSON, INTERNAL_SERVER_ERROR.getReasonPhrase());
         }
-
+      }
         fundCollection.setTotalRecords(funds.size());
         JsonObject fundsJson = JsonObject.mapFrom(fundCollection);
         addServerRqRsData(HttpMethod.GET, FUNDS, fundsJson);
@@ -1312,9 +1333,6 @@ public class MockServer {
           .setStatusCode(200)
           .putHeader(HttpHeaders.CONTENT_TYPE, APPLICATION_JSON)
           .end(fundsJson.encodePrettily());
-      } catch (Exception e) {
-        serverResponse(ctx, 500, APPLICATION_JSON, INTERNAL_SERVER_ERROR.getReasonPhrase());
-      }
     }
   }
 

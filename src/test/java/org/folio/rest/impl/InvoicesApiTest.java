@@ -4,7 +4,6 @@ import static java.util.UUID.randomUUID;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static java.util.stream.Collectors.groupingBy;
-import static java.util.stream.Collectors.summarizingDouble;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toMap;
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
@@ -13,6 +12,7 @@ import static org.awaitility.Awaitility.await;
 import static org.folio.invoices.utils.ErrorCodes.ADJUSTMENT_FUND_DISTRIBUTIONS_NOT_PRESENT;
 import static org.folio.invoices.utils.ErrorCodes.ADJUSTMENT_FUND_DISTRIBUTIONS_SUMMARY_MISMATCH;
 import static org.folio.invoices.utils.ErrorCodes.AWAITING_PAYMENT_ERROR;
+import static org.folio.invoices.utils.ErrorCodes.CURRENT_FISCAL_YEAR_NOT_FOUND;
 import static org.folio.invoices.utils.ErrorCodes.EXTERNAL_ACCOUNT_NUMBER_IS_MISSING;
 import static org.folio.invoices.utils.ErrorCodes.FUNDS_NOT_FOUND;
 import static org.folio.invoices.utils.ErrorCodes.FUND_DISTRIBUTIONS_NOT_PRESENT;
@@ -48,13 +48,16 @@ import static org.folio.invoices.utils.ResourcePathResolver.ORDER_LINES;
 import static org.folio.invoices.utils.ResourcePathResolver.VOUCHERS;
 import static org.folio.invoices.utils.ResourcePathResolver.VOUCHER_LINES;
 import static org.folio.invoices.utils.ResourcePathResolver.VOUCHER_NUMBER;
+import static org.folio.rest.impl.AbstractHelper.ID;
 import static org.folio.rest.impl.InvoiceHelper.MAX_IDS_FOR_GET_RQ;
 import static org.folio.rest.impl.InvoiceHelper.NO_INVOICE_LINES_ERROR_MSG;
 import static org.folio.rest.impl.InvoiceLinesApiTest.INVOICE_LINES_LIST_PATH;
 import static org.folio.rest.impl.InvoiceLinesApiTest.INVOICE_LINE_WITH_APPROVED_INVOICE_SAMPLE_PATH;
 import static org.folio.rest.impl.InvoicesImpl.PROTECTED_AND_MODIFIED_FIELDS;
+import static org.folio.rest.impl.MockServer.CURRENT_FISCAL_YEAR;
 import static org.folio.rest.impl.MockServer.ERROR_CONFIG_X_OKAPI_TENANT;
 import static org.folio.rest.impl.MockServer.ERROR_X_OKAPI_TENANT;
+import static org.folio.rest.impl.MockServer.FISCAL_YEAR_ID;
 import static org.folio.rest.impl.MockServer.INVALID_PREFIX_CONFIG_X_OKAPI_TENANT;
 import static org.folio.rest.impl.MockServer.INVOICE_NUMBER_ERROR_X_OKAPI_TENANT;
 import static org.folio.rest.impl.MockServer.NON_EXIST_CONFIG_X_OKAPI_TENANT;
@@ -76,10 +79,13 @@ import static org.folio.rest.impl.ProtectionHelper.ACQUISITIONS_UNIT_IDS;
 import static org.folio.rest.impl.VoucherHelper.DEFAULT_SYSTEM_CURRENCY;
 import static org.folio.rest.impl.VouchersApiTest.VOUCHERS_LIST_PATH;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.allOf;
 import static org.hamcrest.Matchers.arrayContaining;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.endsWith;
+import static org.hamcrest.Matchers.everyItem;
+import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.Matchers.hasProperty;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.isEmptyOrNullString;
@@ -98,7 +104,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
-import java.util.DoubleSummaryStatistics;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -107,6 +112,7 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import javax.money.CurrencyUnit;
 import javax.money.Monetary;
@@ -141,6 +147,8 @@ import org.folio.rest.jaxrs.model.Voucher;
 import org.folio.rest.jaxrs.model.VoucherCollection;
 import org.folio.rest.jaxrs.model.VoucherLine;
 import org.hamcrest.Matchers;
+import org.hamcrest.beans.HasProperty;
+import org.hamcrest.beans.HasPropertyWithValue;
 import org.hamcrest.core.Every;
 import org.javamoney.moneta.Money;
 import org.javamoney.moneta.function.MonetaryOperators;
@@ -1524,68 +1532,6 @@ public class InvoicesApiTest extends ApiTestBase {
   }
 
   @Test
-  public void testPaymentsAndCreditsUpdateValidInvoiceTransitionToPaid() {
-    logger.info("=== Test of payments and credits for transition invoice to paid ===");
-
-    List<InvoiceLine> invoiceLines = new ArrayList<>();
-    List<CompositePoLine> poLines = new ArrayList<>();
-
-    int numOfInvoiceLines = 2;
-    int numOfFundDistributions = 2;
-    double invoiceTotal = 10d;
-
-
-
-    for (int i = 0; i < 2; i++) {
-      invoiceLines.add(getMockAsJson(INVOICE_LINE_WITH_APPROVED_INVOICE_SAMPLE_PATH).mapTo(InvoiceLine.class));
-      poLines.add(getMockAsJson(String.format("%s%s.json", PO_LINE_MOCK_DATA_PATH, EXISTENT_PO_LINE_ID)).mapTo(CompositePoLine.class));
-    }
-
-    Invoice invoice = getMockAsJson(APPROVED_INVOICE_SAMPLE_PATH).mapTo(Invoice.class).withStatus(Invoice.Status.PAID);
-    String id = invoice.getId();
-
-    for (int i = 0; i < 2; i++) {
-      InvoiceLine invoiceLine = invoiceLines.get(i);
-      invoiceLine.setId(UUID.randomUUID().toString());
-      invoiceLine.setInvoiceId(invoice.getId());
-      invoiceLine.getFundDistributions().clear();
-
-      for(int j = 0; j < 2; j++) {
-        invoiceLine.getFundDistributions().add(new FundDistribution()
-          .withDistributionType(i%2 == 0 ? FundDistribution.DistributionType.AMOUNT : FundDistribution.DistributionType.PERCENTAGE)
-          .withValue((j%2 != 0 ? 1 : -1)  * (i%2 == 0 ? 1d / (2 * numOfInvoiceLines) : 100d / (2 * numOfInvoiceLines))));
-      }
-
-      String poLineId = UUID.randomUUID().toString();
-      invoiceLine.setPoLineId(poLineId);
-      poLines.get(i).setId(poLineId);
-    }
-
-    Map<String, DoubleSummaryStatistics> expectedPymentsAndCredits
-      = invoiceLines.stream().flatMap(l -> l.getFundDistributions().stream()).collect(groupingBy(f -> f.getValue() > 0 ? FINANCE_PAYMENTS : FINANCE_CREDITS, summarizingDouble(FundDistribution::getValue)));
-
-
-    invoiceLines.forEach(line -> addMockEntry(INVOICE_LINES, JsonObject.mapFrom(line)));
-    poLines.forEach(line -> addMockEntry(ORDER_LINES, JsonObject.mapFrom(line)));
-    prepareMockVoucher(id);
-
-    String jsonBody = JsonObject.mapFrom(invoice).encode();
-
-    verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, "", 204);
-    assertThat(serverRqRs.get(INVOICES, HttpMethod.PUT).get(0).getString(STATUS), is(Invoice.Status.PAID.value()));
-
-    validatePoLinesPaymentStatus();
-    assertThatVoucherPaid();
-
-    assertThat(getRqRsEntries(HttpMethod.GET, FINANCE_TRANSACTIONS), hasSize(1));
-
-    List<Transaction> payments = getRqRsEntries(HttpMethod.POST, FINANCE_PAYMENTS).stream().map(x -> x.mapTo(Transaction.class)).collect(toList());
-    List<Transaction> credits = getRqRsEntries(HttpMethod.POST, FINANCE_CREDITS).stream().map(x -> x.mapTo(Transaction.class)).collect(toList());
-    assertThat(payments, hasSize(2));
-    assertThat(credits, hasSize(2));
-  }
-
-  @Test
   public void testUpdateInvoiceTransitionToPaidPoLineIdNotSpecified() {
     logger.info("=== Test transition invoice to paid, invoice line doesn't have poLineId ===");
 
@@ -1618,6 +1564,7 @@ public class InvoicesApiTest extends ApiTestBase {
 
     assertThat(updatedPoLines, hasSize(1));
     assertThatVoucherPaid();
+
   }
 
   @Test
@@ -1714,7 +1661,7 @@ public class InvoicesApiTest extends ApiTestBase {
 
     Invoice reqData = getMockAsJson(APPROVED_INVOICE_SAMPLE_PATH).mapTo(Invoice.class).withStatus(Invoice.Status.PAID);
     String id = reqData.getId();
-
+    List<InvoiceLine> invoiceLines = new ArrayList<>();
     // Prepare invoice lines
     for (int i = 0; i < 3; i++) {
       InvoiceLine invoiceLine = getMockAsJson(INVOICE_LINE_WITH_APPROVED_INVOICE_SAMPLE_PATH).mapTo(InvoiceLine.class);
@@ -1722,6 +1669,7 @@ public class InvoicesApiTest extends ApiTestBase {
       invoiceLine.setInvoiceId(id);
       invoiceLine.setPoLineId(EXISTENT_PO_LINE_ID);
       invoiceLine.setReleaseEncumbrance(false);
+      invoiceLines.add(invoiceLine);
       addMockEntry(INVOICE_LINES, JsonObject.mapFrom(invoiceLine));
     }
 
@@ -1735,6 +1683,8 @@ public class InvoicesApiTest extends ApiTestBase {
     assertThat(serverRqRs.get(ORDER_LINES, HttpMethod.PUT), notNullValue());
     assertThat(serverRqRs.get(ORDER_LINES, HttpMethod.PUT), hasSize(1));
     assertThat(serverRqRs.get(ORDER_LINES, HttpMethod.PUT).get(0).mapTo(CompositePoLine.class).getPaymentStatus(), equalTo(CompositePoLine.PaymentStatus.PARTIALLY_PAID));
+
+    checkCreditsPayments(reqData, invoiceLines);
   }
 
   @Test
@@ -1749,6 +1699,7 @@ public class InvoicesApiTest extends ApiTestBase {
     invoiceLine.setInvoiceId(id);
     invoiceLine.setPoLineId(EXISTENT_PO_LINE_ID);
     invoiceLine.setReleaseEncumbrance(false);
+    invoiceLine.setSubTotal(-invoiceLine.getSubTotal());
 
     CompositePoLine poLine = getMockAsJson(String.format("%s%s.json", PO_LINE_MOCK_DATA_PATH, EXISTENT_PO_LINE_ID)).mapTo(CompositePoLine.class);
     poLine.setId(EXISTENT_PO_LINE_ID);
@@ -1761,10 +1712,12 @@ public class InvoicesApiTest extends ApiTestBase {
     verifyPut(String.format(INVOICE_ID_PATH, id), JsonObject.mapFrom(reqData), "", 204);
 
     assertThat(getRqRsEntries(HttpMethod.PUT, INVOICES).get(0).getString(STATUS), is(Invoice.Status.PAID.value()));
-    assertThat(getRqRsEntries(HttpMethod.GET, INVOICE_LINES), hasSize(2));
+    assertThat(getRqRsEntries(HttpMethod.GET, INVOICE_LINES), hasSize(1));
     assertThat(getRqRsEntries(HttpMethod.GET, INVOICE_LINES).get(0).mapTo(InvoiceLineCollection.class).getTotalRecords(), equalTo(1));
     assertThat(getRqRsEntries(HttpMethod.PUT, ORDER_LINES), empty());
     assertThatVoucherPaid();
+
+    checkCreditsPayments(reqData, Collections.singletonList(invoiceLine));
   }
 
   private void prepareMockVoucher(String invoiceId) {
@@ -1778,6 +1731,134 @@ public class InvoicesApiTest extends ApiTestBase {
       voucher.setId(ID_FOR_INTERNAL_SERVER_ERROR_PUT);
     }
     addMockEntry(VOUCHERS, JsonObject.mapFrom(voucher));
+  }
+
+  @Test
+  public void testPutInvoiceByIdChangeStatusToPayedFundsNotFound() {
+    logger.info("=== Test Put Invoice By Id Funds not found ===");
+
+
+    Invoice reqData = getMockAsJson(APPROVED_INVOICE_SAMPLE_PATH).mapTo(Invoice.class).withStatus(Invoice.Status.PAID);
+    String id = reqData.getId();
+    reqData.setStatus(Status.PAID);
+    InvoiceLine invoiceLine = getMockAsJson(INVOICE_LINE_WITH_APPROVED_INVOICE_SAMPLE_PATH).mapTo(InvoiceLine.class);
+
+    invoiceLine.setId(UUID.randomUUID().toString());
+    invoiceLine.setInvoiceId(reqData.getId());
+    invoiceLine.getFundDistributions().get(0).withFundId(ID_DOES_NOT_EXIST);
+
+    addMockEntry(INVOICE_LINES, JsonObject.mapFrom(invoiceLine));
+    prepareMockVoucher(id);
+
+    Errors errors = verifyPut(String.format(INVOICE_ID_PATH, id), JsonObject.mapFrom(reqData), APPLICATION_JSON, 400).as(Errors.class);
+
+    assertThat(getRqRsEntries(HttpMethod.GET, INVOICE_LINES), hasSize(1));
+
+    assertThat(getRqRsEntries(HttpMethod.GET, FINANCE_TRANSACTIONS), hasSize(1));
+    assertThat(getRqRsEntries(HttpMethod.GET, FUNDS), hasSize(1));
+    assertThat(getRqRsEntries(HttpMethod.POST, FINANCE_PAYMENTS), hasSize(0));
+    assertThat(getRqRsEntries(HttpMethod.POST, FINANCE_CREDITS), hasSize(0));
+
+    assertThat(errors.getErrors(), hasSize(1));
+    Error error = errors.getErrors().get(0);
+    assertThat(error.getCode(), equalTo(FUNDS_NOT_FOUND.getCode()));
+    assertThat(error.getParameters().get(0).getValue(), equalTo(ID_DOES_NOT_EXIST));
+  }
+
+  @Test
+  public void testPutInvoiceByIdChangeStatusToPayedGetFundsServerError() {
+    logger.info("=== Test Put Invoice By Id, get Funds server error ===");
+
+    Invoice reqData = getMockAsJson(APPROVED_INVOICE_SAMPLE_PATH).mapTo(Invoice.class).withStatus(Invoice.Status.PAID);
+    String id = reqData.getId();
+    reqData.setStatus(Status.PAID);
+    InvoiceLine invoiceLine = getMockAsJson(INVOICE_LINE_WITH_APPROVED_INVOICE_SAMPLE_PATH).mapTo(InvoiceLine.class);
+
+    invoiceLine.setId(UUID.randomUUID().toString());
+    invoiceLine.setInvoiceId(reqData.getId());
+    invoiceLine.getFundDistributions().get(0).withFundId(ID_FOR_INTERNAL_SERVER_ERROR);
+
+    addMockEntry(INVOICE_LINES, JsonObject.mapFrom(invoiceLine));
+    prepareMockVoucher(id);
+
+    Errors errors = verifyPut(String.format(INVOICE_ID_PATH, id), JsonObject.mapFrom(reqData), APPLICATION_JSON, 500).as(Errors.class);
+
+    assertThat(getRqRsEntries(HttpMethod.GET, INVOICE_LINES), hasSize(1));
+
+    assertThat(getRqRsEntries(HttpMethod.GET, FINANCE_TRANSACTIONS), hasSize(1));
+    assertThat(getRqRsEntries(HttpMethod.GET, FUNDS), hasSize(0));
+    assertThat(getRqRsEntries(HttpMethod.POST, FINANCE_PAYMENTS), hasSize(0));
+    assertThat(getRqRsEntries(HttpMethod.POST, FINANCE_CREDITS), hasSize(0));
+
+    assertThat(errors.getErrors(), hasSize(1));
+    Error error = errors.getErrors().get(0);
+    assertThat(error.getCode(), equalTo(GENERIC_ERROR_CODE.getCode()));
+  }
+
+  @Test
+  public void testUpdateInvoiceTransitionToPaidTransactionsAlreadyExists() {
+    logger.info("=== Test transition invoice to paid - transactions already exist in finance storage ===");
+
+    Invoice reqData = getMockAsJson(APPROVED_INVOICE_SAMPLE_PATH).mapTo(Invoice.class).withStatus(Invoice.Status.PAID);
+    String id = reqData.getId();
+
+    // Prepare existing transaction
+    Transaction transaction = new Transaction()
+      .withSourceInvoiceId(id)
+      .withFiscalYearId(FISCAL_YEAR_ID)
+      .withTransactionType(Transaction.TransactionType.PAYMENT)
+      .withAmount(1.00)
+      .withToFundId(EXISTING_FUND_ID);
+
+    addMockEntry(FINANCE_TRANSACTIONS, transaction);
+
+    String jsonBody = JsonObject.mapFrom(reqData).encode();
+
+    verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, "", 204);
+
+    assertThat(getRqRsEntries(HttpMethod.GET, FINANCE_TRANSACTIONS), hasSize(1));
+    assertThat(getRqRsEntries(HttpMethod.GET, FUNDS), hasSize(0));
+    assertThat(getRqRsEntries(HttpMethod.GET, CURRENT_FISCAL_YEAR), hasSize(0));
+    assertThat(getRqRsEntries(HttpMethod.POST, FINANCE_PAYMENTS), hasSize(0));
+    assertThat(getRqRsEntries(HttpMethod.POST, FINANCE_CREDITS), hasSize(0));
+
+  }
+
+  @Test
+  public void testPutInvoiceByIdChangeStatusToPayedCurrentFiscalYearNotFound() {
+    logger.info("=== Test Put Invoice By Id, Current fiscal year not found ===");
+
+    Invoice reqData = getMockAsJson(APPROVED_INVOICE_SAMPLE_PATH).mapTo(Invoice.class).withStatus(Invoice.Status.PAID);
+    String id = reqData.getId();
+    reqData.setStatus(Status.PAID);
+    InvoiceLine invoiceLine = getMockAsJson(INVOICE_LINE_WITH_APPROVED_INVOICE_SAMPLE_PATH).mapTo(InvoiceLine.class);
+
+    invoiceLine.setId(UUID.randomUUID().toString());
+    invoiceLine.setInvoiceId(reqData.getId());
+    invoiceLine.getFundDistributions().forEach(fundDistribution -> {
+      Fund fund = new Fund()
+        .withId(fundDistribution.getFundId())
+        .withLedgerId(ID_DOES_NOT_EXIST);
+      addMockEntry(FUNDS, fund);
+    });
+
+
+    addMockEntry(INVOICE_LINES, JsonObject.mapFrom(invoiceLine));
+    prepareMockVoucher(id);
+
+    Errors errors = verifyPut(String.format(INVOICE_ID_PATH, id), JsonObject.mapFrom(reqData), APPLICATION_JSON, 400).as(Errors.class);
+
+    assertThat(getRqRsEntries(HttpMethod.GET, INVOICE_LINES), hasSize(1));
+
+    assertThat(getRqRsEntries(HttpMethod.GET, FINANCE_TRANSACTIONS), hasSize(1));
+    assertThat(getRqRsEntries(HttpMethod.GET, FUNDS), hasSize(1));
+    assertThat(getRqRsEntries(HttpMethod.GET, CURRENT_FISCAL_YEAR), hasSize(1));
+    assertThat(getRqRsEntries(HttpMethod.POST, FINANCE_PAYMENTS), hasSize(0));
+    assertThat(getRqRsEntries(HttpMethod.POST, FINANCE_CREDITS), hasSize(0));
+
+    assertThat(errors.getErrors(), hasSize(1));
+    Error error = errors.getErrors().get(0);
+    assertThat(error.getCode(), equalTo(CURRENT_FISCAL_YEAR_NOT_FOUND.getCode()));
   }
 
   @Test
@@ -1809,7 +1890,7 @@ public class InvoicesApiTest extends ApiTestBase {
     verifyPut(String.format(INVOICE_ID_PATH, id), JsonObject.mapFrom(reqData), "", 204);
 
     assertThat(getRqRsEntries(HttpMethod.PUT, INVOICES).get(0).getString(STATUS), is(Invoice.Status.PAID.value()));
-    assertThat(getRqRsEntries(HttpMethod.GET, INVOICE_LINES), hasSize(2));
+    assertThat(getRqRsEntries(HttpMethod.GET, INVOICE_LINES), hasSize(1));
     assertThat(getRqRsEntries(HttpMethod.GET, INVOICE_LINES).get(0).mapTo(InvoiceLineCollection.class).getTotalRecords(), equalTo(3));
     assertThat(getRqRsEntries(HttpMethod.PUT, ORDER_LINES), hasSize(3));
     getRqRsEntries(HttpMethod.PUT, ORDER_LINES).stream()
@@ -1817,15 +1898,11 @@ public class InvoicesApiTest extends ApiTestBase {
       .forEach(compositePoLine -> assertThat(compositePoLine.getPaymentStatus(), equalTo(CompositePoLine.PaymentStatus.FULLY_PAID)));
     assertThatVoucherPaid();
 
-    assertThat(getRqRsEntries(HttpMethod.PUT, INVOICES).get(0).getString(STATUS), is(Invoice.Status.PAID.value()));
-    assertThat(getRqRsEntries(HttpMethod.GET, INVOICE_LINES), hasSize(2));
-    assertThat(getRqRsEntries(HttpMethod.GET, INVOICE_LINES).get(0).mapTo(InvoiceLineCollection.class).getTotalRecords(), equalTo(3));
-    assertThat(getRqRsEntries(HttpMethod.PUT, ORDER_LINES), hasSize(3));
-
     assertThat(getRqRsEntries(HttpMethod.GET, FINANCE_TRANSACTIONS), hasSize(1));
     assertThat(getRqRsEntries(HttpMethod.POST, FINANCE_PAYMENTS), hasSize(3));
     assertThat(getRqRsEntries(HttpMethod.POST, FINANCE_CREDITS), hasSize(0));
 
+    checkCreditsPayments(reqData, invoiceLines);
   }
 
   @Test
@@ -2256,5 +2333,39 @@ public class InvoicesApiTest extends ApiTestBase {
 
   private void checkVoucherAcqUnitIdsList(Voucher voucherCreated, Invoice invoice) {
     assertTrue("acqUnitId lists are equal", CollectionUtils.isEqualCollection(voucherCreated.getAcqUnitIds(), invoice.getAcqUnitIds()));
+  }
+
+  private void checkCreditsPayments(Invoice invoice, List<InvoiceLine> invoiceLines) {
+    int paymentsCount = Math.toIntExact(invoiceLines.stream()
+      .flatMapToDouble(invoiceLine -> invoiceLine.getFundDistributions()
+        .stream().mapToDouble(fundDistribution -> getFundDistributionAmount(fundDistribution, invoiceLine.getTotal(), invoice.getCurrency()).getNumber().doubleValue()))
+      .filter(value -> value > 0)
+      .count());
+    int creditsCount = invoiceLines.stream()
+      .mapToInt(invoiceLine -> invoiceLine.getFundDistributions()
+        .size()).sum() - paymentsCount;
+
+    assertThat(getRqRsEntries(HttpMethod.GET, FINANCE_TRANSACTIONS), hasSize(1));
+    assertThat(getRqRsEntries(HttpMethod.GET, FUNDS), hasSize(1));
+    assertThat(getRqRsEntries(HttpMethod.GET, CURRENT_FISCAL_YEAR), hasSize(1));
+    assertThat(getRqRsEntries(HttpMethod.POST, FINANCE_PAYMENTS), hasSize(paymentsCount));
+    assertThat(getRqRsEntries(HttpMethod.POST, FINANCE_CREDITS), hasSize(creditsCount));
+
+    List<Transaction> payments = getRqRsEntries(HttpMethod.POST, FINANCE_PAYMENTS).stream().map(t -> t.mapTo(Transaction.class)).collect(toList());
+    List<Transaction> credits = getRqRsEntries(HttpMethod.POST, FINANCE_CREDITS).stream().map(t -> t.mapTo(Transaction.class)).collect(toList());
+
+    assertThat(payments, everyItem(HasProperty.hasProperty("fromFundId")));
+    assertThat(credits, everyItem(HasProperty.hasProperty("toFundId")));
+
+    List<Transaction> transactions = Stream.concat(getRqRsEntries(HttpMethod.POST, FINANCE_PAYMENTS).stream(), getRqRsEntries(HttpMethod.POST, FINANCE_CREDITS).stream())
+      .map(entry -> entry.mapTo(Transaction.class)).collect(Collectors.toList());
+
+    assertThat(transactions, allOf(
+      Every.everyItem(HasPropertyWithValue.hasProperty("sourceInvoiceId", is(invoice.getId()))),
+      Every.everyItem(HasProperty.hasProperty("sourceInvoiceLineId")),
+      Every.everyItem(HasProperty.hasProperty("currency")),
+      Every.everyItem(HasPropertyWithValue.hasProperty("amount", greaterThanOrEqualTo(0.0))),
+      Every.everyItem(HasPropertyWithValue.hasProperty("fiscalYearId", is(FISCAL_YEAR_ID)))
+    ));
   }
 }
