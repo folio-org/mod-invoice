@@ -51,7 +51,8 @@ import io.vertx.core.logging.LoggerFactory;
   BatchVoucherModelConverterTest.class,
   DefaultJAXBRootElementNameResolverTest.class,
   JAXBUtilTest.class,
-  XMLConverterTest.class
+  XMLConverterTest.class,
+  BatchVoucherExportsApiTest.class
 })
 public class ApiTestSuite {
   private static final Logger logger = LoggerFactory.getLogger(ApiTestSuite.class);
