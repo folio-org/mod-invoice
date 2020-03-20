@@ -171,6 +171,7 @@ public class ApiTestBase {
     try {
       return new JsonObject(getMockData(fullPath));
     } catch (IOException e) {
+      logger.error("Failed to load mock data: {}", fullPath, e);
       fail(e.getMessage());
     }
     return new JsonObject();

@@ -127,8 +127,9 @@ public class BatchVoucherImpl implements BatchVoucherExportConfigurations, Batch
   public void postBatchVoucherExportConfigurationsCredentialsTestById(String id, String lang, Map<String, String> okapiHeaders,
       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     BatchVoucherExportConfigHelper helper = new BatchVoucherExportConfigHelper(okapiHeaders, vertxContext, lang);
-
-    asyncResultHandler.handle(succeededFuture(helper.buildOkResponse(null)));
+    helper.testUploadUri(id)
+      .thenAccept(msg -> asyncResultHandler.handle(succeededFuture(helper.buildOkResponse(msg))))
+      .exceptionally(t -> handleErrorResponse(asyncResultHandler, helper, t));
   }
 
   private Void handleErrorResponse(Handler<AsyncResult<Response>> asyncResultHandler, AbstractHelper helper, Throwable t) {
