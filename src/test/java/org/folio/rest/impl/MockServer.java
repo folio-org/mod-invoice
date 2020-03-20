@@ -44,8 +44,10 @@ import static org.folio.rest.impl.ApiTestBase.VOUCHER_NUMBER_VALUE;
 import static org.folio.rest.impl.ApiTestBase.getMockData;
 import static org.folio.rest.impl.BatchGroupsApiTest.BATCH_GROUPS_LIST_PATH;
 import static org.folio.rest.impl.BatchGroupsApiTest.BATCH_GROUP_MOCK_DATA_PATH;
+import static org.folio.rest.impl.BatchVoucherExportConfigCredentialsTest.BATCH_VOUCHER_EXPORT_CONFIG_BAD_CREDENTIALS_SAMPLE_PATH_WITH_ID;
 import static org.folio.rest.impl.BatchVoucherExportsApiTest.BATCH_VOUCHER_EXPORTS_MOCK_DATA_PATH;
 import static org.folio.rest.impl.BatchVoucherExportConfigCredentialsTest.BATCH_VOUCHER_EXPORT_CONFIG_CREDENTIALS_SAMPLE_PATH_WITH_ID;
+import static org.folio.rest.impl.BatchVoucherExportConfigCredentialsTest.CONFIGURATION_ID;
 import static org.folio.rest.impl.BatchVoucherExportConfigTest.BATCH_VOUCHER_EXPORT_CONFIGS_SAMPLE_PATH;
 import static org.folio.rest.impl.BatchVoucherExportConfigTest.BATCH_VOUCHER_EXPORT_CONFIG_SAMPLE_PATH;
 import static org.folio.rest.impl.BatchVoucherExportsApiTest.BATCH_VOUCHER_EXPORTS_LIST_PATH;
@@ -99,6 +101,7 @@ import org.folio.rest.acq.model.orders.CompositePoLine;
 import org.folio.rest.acq.model.units.AcquisitionsUnit;
 import org.folio.rest.acq.model.units.AcquisitionsUnitCollection;
 import org.folio.rest.acq.model.units.AcquisitionsUnitMembershipCollection;
+import org.folio.rest.jaxrs.model.BatchVoucher;
 import org.folio.rest.jaxrs.model.Config;
 import org.folio.rest.jaxrs.model.Configs;
 import org.folio.rest.jaxrs.model.Credentials;
@@ -113,6 +116,11 @@ import org.folio.rest.jaxrs.model.InvoiceLine;
 import org.folio.rest.jaxrs.model.InvoiceLineCollection;
 import org.folio.rest.jaxrs.model.Voucher;
 import org.folio.rest.jaxrs.model.VoucherCollection;
+import org.mockftpserver.fake.FakeFtpServer;
+import org.mockftpserver.fake.UserAccount;
+import org.mockftpserver.fake.filesystem.DirectoryEntry;
+import org.mockftpserver.fake.filesystem.FileSystem;
+import org.mockftpserver.fake.filesystem.UnixFakeFileSystem;
 
 import com.google.common.collect.HashBasedTable;
 import com.google.common.collect.Table;
@@ -206,6 +214,14 @@ public class MockServer {
   static Table<String, HttpMethod, List<JsonObject>> serverRqRs = HashBasedTable.create();
   static HashMap<String, List<String>> serverRqQueries = new HashMap<>();
 
+  private static FakeFtpServer fakeFtpServer;
+
+  private static final String user_home_dir = "/invoices";
+  private static final String username_valid = "jsmith";
+  private static final String password_valid = "letmein";
+
+  private static String ftpUri;
+
   MockServer(int port) {
     this.port = port;
     this.vertx = Vertx.vertx();
@@ -222,10 +238,32 @@ public class MockServer {
         deploymentComplete.completeExceptionally(result.cause());
       }
     });
+
+    fakeFtpServer = new FakeFtpServer();
+    fakeFtpServer.setServerControlPort(0); // use any free port
+
+    FileSystem fileSystem = new UnixFakeFileSystem();
+    fileSystem.add(new DirectoryEntry(user_home_dir));
+    fakeFtpServer.setFileSystem(fileSystem);
+
+    UserAccount userAccount = new UserAccount(username_valid, password_valid, user_home_dir);
+
+    fakeFtpServer.addUserAccount(userAccount);
+
+    fakeFtpServer.start();
+
+    ftpUri = "ftp://localhost:" + fakeFtpServer.getServerControlPort() + "/";
+    logger.info("Mock FTP server running at: " + ftpUri);
+
     deploymentComplete.get(60, TimeUnit.SECONDS);
   }
 
   void close() {
+    if(fakeFtpServer != null && !fakeFtpServer.isShutdown()) {
+      logger.info("Shutting down mock FTP server");
+      fakeFtpServer.stop();
+    }
+
     vertx.close(res -> {
       if (res.failed()) {
         logger.error("Failed to shut down mock server", res.cause());
@@ -308,7 +346,6 @@ public class MockServer {
     router.route(HttpMethod.POST, "/invoice-storage/invoices/:id/documents").handler(this::handlePostInvoiceDocument);
     router.route(HttpMethod.POST, resourcesPath(BATCH_VOUCHER_EXPORT_CONFIGS)).handler(ctx -> handlePostEntry(ctx, ExportConfig.class, BATCH_VOUCHER_EXPORT_CONFIGS));
     router.route(HttpMethod.POST, "/batch-voucher-storage/export-configurations/:id/credentials").handler(this::handlePostCredentials);
-    router.route(HttpMethod.POST, "/batch-voucher-storage/export-configurations/:id/credentials/test").handler(this::handlePostCredentialsTest);
     router.route(HttpMethod.POST, resourcesPath(INVOICE_TRANSACTION_SUMMARIES)).handler(this::handlePostInvoiceSummary);
     router.route(HttpMethod.POST, resourcesPath(AWAITING_PAYMENTS)).handler(this::handlePostAwaitingPayment);
     router.route(HttpMethod.POST, resourcesPath(BATCH_GROUPS)).handler(ctx -> handlePost(ctx, BatchGroup.class, BATCH_GROUPS, false));
@@ -483,7 +520,7 @@ public class MockServer {
     if (ID_FOR_INTERNAL_SERVER_ERROR.equals(id)) {
       serverResponse(ctx, 500, APPLICATION_JSON, Response.Status.INTERNAL_SERVER_ERROR.getReasonPhrase());
     } else {
-      JsonObject credentials = getMockCredentials();
+      JsonObject credentials = getMockCredentials(id);
       if (credentials == null) {
         ctx.response().setStatusCode(404).end(id);
       } else {
@@ -505,9 +542,11 @@ public class MockServer {
       if (exportConfig == null) {
         ctx.response().setStatusCode(404).end(id);
       } else {
-        // validate content against schema
         ExportConfig exportConfigSchema = exportConfig.mapTo(ExportConfig.class);
         exportConfigSchema.setId(id);
+        exportConfigSchema.setUploadURI(ftpUri);
+
+        // validate content against schema
         exportConfig = JsonObject.mapFrom(exportConfigSchema);
         addServerRqRsData(HttpMethod.GET, BATCH_VOUCHER_EXPORT_CONFIGS, exportConfig);
         serverResponse(ctx, 200, APPLICATION_JSON, exportConfig.encodePrettily());
@@ -629,10 +668,6 @@ public class MockServer {
     ctx.response().putHeader(HttpHeaders.LOCATION, ctx.request().path() + "/" + id);
 
     serverResponse(ctx, 201, APPLICATION_JSON, jsonObject.encodePrettily());
-  }
-
-  private void handlePostCredentialsTest(RoutingContext ctx) {
-    serverResponse(ctx, 200, APPLICATION_JSON, "");
   }
 
   private void handleGetVoucherLines(RoutingContext ctx) {
@@ -1133,9 +1168,13 @@ public class MockServer {
     };
   }
 
-  private JsonObject getMockCredentials() {
+  private JsonObject getMockCredentials(String id) {
     try {
-      return new JsonObject(getMockData(BATCH_VOUCHER_EXPORT_CONFIG_CREDENTIALS_SAMPLE_PATH_WITH_ID));
+      if(CONFIGURATION_ID.equals(id)) {
+        return new JsonObject(getMockData(BATCH_VOUCHER_EXPORT_CONFIG_CREDENTIALS_SAMPLE_PATH_WITH_ID));
+      } else {
+        return new JsonObject(getMockData(BATCH_VOUCHER_EXPORT_CONFIG_BAD_CREDENTIALS_SAMPLE_PATH_WITH_ID));
+      }
     } catch (IOException e) {
       return null;
     }
