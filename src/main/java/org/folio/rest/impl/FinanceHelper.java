@@ -72,7 +72,7 @@ public class FinanceHelper extends AbstractHelper {
    */
   public CompletableFuture<Void> handlePaymentsAndCredits(Invoice invoice, List<InvoiceLine > invoiceLines) {
     return isPaymentsAlreadyProcessed(invoice.getId()).thenCompose(isProcessed -> {
-        if (isProcessed) {
+        if (Boolean.TRUE.equals(isProcessed)) {
           return completedFuture(null);
         }
 
@@ -125,13 +125,13 @@ public class FinanceHelper extends AbstractHelper {
 
   private Transaction buildTransaction(FundDistribution fundDistribution, InvoiceLine invoiceLine, Invoice invoice) {
     Transaction transaction = new Transaction();
-    CurrencyUnit currency = Monetary.getCurrency(invoice.getCurrency());
+
     transaction.setCurrency(invoice.getCurrency());
     transaction.setSourceInvoiceId(invoice.getId());
     transaction.setSourceInvoiceLineId(invoiceLine.getId());
     transaction.setPaymentEncumbranceId(fundDistribution.getEncumbrance());
 
-    MonetaryAmount amount = getFundDistributionAmount(fundDistribution, invoiceLine.getTotal(), currency);
+    MonetaryAmount amount = getFundDistributionAmount(fundDistribution, invoiceLine.getTotal(), invoice.getCurrency());
     if (amount.isPositive()) {
       transaction.withFromFundId(fundDistribution.getFundId()).withTransactionType(Transaction.TransactionType.PAYMENT);
     } else {
