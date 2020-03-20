@@ -1699,7 +1699,10 @@ public class InvoicesApiTest extends ApiTestBase {
     invoiceLine.setInvoiceId(id);
     invoiceLine.setPoLineId(EXISTENT_PO_LINE_ID);
     invoiceLine.setReleaseEncumbrance(false);
+
+    // to test credit creation
     invoiceLine.setSubTotal(-invoiceLine.getSubTotal());
+    invoiceLine.setTotal(-invoiceLine.getTotal());
 
     CompositePoLine poLine = getMockAsJson(String.format("%s%s.json", PO_LINE_MOCK_DATA_PATH, EXISTENT_PO_LINE_ID)).mapTo(CompositePoLine.class);
     poLine.setId(EXISTENT_PO_LINE_ID);
