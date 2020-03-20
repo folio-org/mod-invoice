@@ -2365,7 +2365,8 @@ public class InvoicesApiTest extends ApiTestBase {
       Every.everyItem(HasProperty.hasProperty("sourceInvoiceLineId")),
       Every.everyItem(HasProperty.hasProperty("currency")),
       Every.everyItem(HasPropertyWithValue.hasProperty("amount", greaterThanOrEqualTo(0.0))),
-      Every.everyItem(HasPropertyWithValue.hasProperty("fiscalYearId", is(FISCAL_YEAR_ID)))
+      Every.everyItem(HasPropertyWithValue.hasProperty("fiscalYearId", is(FISCAL_YEAR_ID))),
+      Every.everyItem(HasPropertyWithValue.hasProperty("source", is(Transaction.Source.VOUCHER)))
     ));
   }
 }
