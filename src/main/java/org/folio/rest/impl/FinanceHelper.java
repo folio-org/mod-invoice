@@ -82,12 +82,13 @@ public class FinanceHelper extends AbstractHelper {
   }
 
   /**
-   * This method check if the payments have already been processed
-   * @param invoiceId id of invoice for which payments are verifying
-   * @return {@link CompletableFuture<Boolean>} with true if payments have already processed otherwise - with false
+   * This method check if the payments or credits have already been processed
+   * @param invoiceId id of invoice for which payments and credits are verifying
+   * @return {@link CompletableFuture<Boolean>} with true if payments or credits have already processed otherwise - with false
    */
   public CompletableFuture<Boolean> isPaymentsAlreadyProcessed(String invoiceId) {
-    String endpoint = String.format(GET_TRANSACTIONS_BY_QUERY, 0, 0, getEndpointWithQuery("sourceInvoiceId==" + invoiceId, logger), lang);
+    String query = String.format("sourceInvoiceId==%s and (transactionType==Payment or transactionType==Credit)", invoiceId);
+    String endpoint = String.format(GET_TRANSACTIONS_BY_QUERY, 0, 0, getEndpointWithQuery(query, logger), lang);
     return handleGetRequest(endpoint, httpClient, ctx, okapiHeaders, logger)
       .thenApply(transactionCollection -> transactionCollection.mapTo(TransactionCollection.class).getTotalRecords() > 0);
   }
