@@ -316,7 +316,11 @@
         {
           "methods": ["POST"],
           "pathPattern": "/batch-voucher/export-configurations/{id}/credentials/test",
-          "permissionsRequired": ["batch-voucher.export-configurations.credentials.test"]
+          "permissionsRequired": ["batch-voucher.export-configurations.credentials.test"],
+          "modulePermissions": [
+            "batch-voucher-storage.export-configurations.item.get",
+            "batch-voucher-storage.export-configurations.credentials.item.get"
+          ]
         }
       ]
     },
