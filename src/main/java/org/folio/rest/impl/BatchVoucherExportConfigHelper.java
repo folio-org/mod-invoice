@@ -117,9 +117,9 @@ public class BatchVoucherExportConfigHelper extends AbstractHelper {
 
   public CompletableFuture<String> testUploadUri(String id) {
     CompletableFuture<ExportConfig> exportConfigFut = getExportConfig(id);
-    CompletableFuture<Credentials> crededntialsFut = getExportConfigCredentials(id);
+    CompletableFuture<Credentials> credentialsFut = getExportConfigCredentials(id);
 
-    return CompletableFuture.allOf(exportConfigFut, crededntialsFut)
+    return CompletableFuture.allOf(exportConfigFut, credentialsFut)
       .thenApply(v -> {
         try {
           ExportConfig config = exportConfigFut.join();
@@ -129,7 +129,7 @@ public class BatchVoucherExportConfigHelper extends AbstractHelper {
         }
       })
       .thenCompose(helper -> {
-        Credentials creds = crededntialsFut.join();
+        Credentials creds = credentialsFut.join();
         return helper.login(creds.getUsername(), creds.getPassword());
       });
   }
