@@ -29,10 +29,10 @@ traits:
   searchable: !include raml-util/traits/searchable.raml
 
 resourceTypes:
-  collection: !include raml-util/rtypes/collection.raml
-  collection-item: !include raml-util/rtypes/item-collection.raml
-  get-delete: !include raml-util/rtypes/get-delete.raml
-  get-only: !include raml-util/rtypes/get-only.raml
+  collection: !include raml-util/rtypes/collection-with-json-response.raml
+  collection-item: !include raml-util/rtypes/item-collection-with-json-response.raml
+  get-delete: !include raml-util/rtypes/get-delete-with-json-response.raml
+  get-only: !include raml-util/rtypes/get-only-with-json-response.raml
 
 /invoice:
   /invoices:

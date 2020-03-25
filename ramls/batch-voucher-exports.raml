@@ -24,8 +24,8 @@ traits:
   searchable: !include raml-util/traits/searchable.raml
 
 resourceTypes:
-  collection: !include raml-util/rtypes/collection.raml
-  collection-item: !include raml-util/rtypes/item-collection.raml
+  collection: !include raml-util/rtypes/collection-with-json-response.raml
+  collection-item: !include raml-util/rtypes/item-collection-with-json-response.raml
 
 /batch-voucher/batch-voucher-exports:
   displayName: Batch-voucher-exports
@@ -69,17 +69,17 @@ resourceTypes:
           400:
             description: "Bad request, e.g. malformed request body or query parameter. Details of the error (e.g. name of the parameter or line/character number with malformed data) provided in the response."
             body:
-              text/plain:
+              application/json:
                 example: "unable to FTP upload of the batch voucher -- malformed JSON at 13:3"
           401:
             description: "Not authorized to perform requested action"
             body:
-              text/plain:
+              application/json:
                 example: "unable to FTP upload of the batch voucher -- unauthorized"
           500:
             description: "Internal server error, e.g. due to misconfiguration"
             body:
-              text/plain:
+              application/json:
                 example: "Internal server error, contact administrator"
     get:
       description: Return a batch-voucher-export with given {id}
@@ -106,16 +106,16 @@ resourceTypes:
         400:
           description: "Bad request, e.g. malformed request body or query parameter. Details of the error (e.g. name of the parameter or line/character number with malformed data) provided in the response."
           body:
-            text/plain:
+            application/json:
               example: "unable to FTP upload of the batch voucher -- malformed JSON at 13:3"
         401:
           description: "Not authorized to perform requested action"
           body:
-            text/plain:
+            application/json:
               example: "unable to FTP upload of the batch voucher -- unauthorized"
         500:
           description: "Internal server error, e.g. due to misconfiguration"
           body:
-            text/plain:
+            application/json:
               example: "Internal server error, contact administrator"
 
