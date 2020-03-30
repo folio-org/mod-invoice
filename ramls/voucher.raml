@@ -70,6 +70,9 @@ resourceTypes:
           404:
             description: "Voucher with a given ID not found"
             body:
+              text/plain:
+                example: |
+                  "Voucher not found"
               application/json:
                 example:
                   strict: false
@@ -77,6 +80,9 @@ resourceTypes:
           400:
             description: "Bad request, e.g. malformed request body or query parameter. Details of the error (e.g. name of the parameter or line/character number with malformed data) provided in the response."
             body:
+              text/plain:
+                example: |
+                  "unable to update Voucher -- malformed JSON at 13:4"
               application/json:
                 example:
                   strict: false
@@ -84,6 +90,8 @@ resourceTypes:
           500:
             description: "Internal server error, e.g. due to misconfiguration"
             body:
+              text/plain:
+                example: "internal server error, contact administrator"
               application/json:
                 example:
                   strict: false
@@ -133,6 +141,8 @@ resourceTypes:
         400:
           description: "Bad request"
           body:
+            text/plain:
+              example: "Bad request"
             application/json:
               example:
                 strict: false
