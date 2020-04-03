@@ -10,7 +10,6 @@ The main focus of this bugfix release was to fix issues
 * [MODINVOICE-109](https://issues.folio.org/browse/MODINVOICE-109) - Create payment or credit when Invoice marked as 'Paid
 
 ### Bug Fixes
-* [MODINVOICE-149](https://issues.folio.org/browse/MODINVOICE-149) - Error message when trying to pay an invoice
 * [MODINVOICE-100](https://issues.folio.org/browse/MODINVOICE-100) - Fix raml(contract) to return application/json responses wherever possible
 
 ## 3.1.0 - Released
