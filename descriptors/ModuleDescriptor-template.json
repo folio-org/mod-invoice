@@ -4,7 +4,7 @@
   "provides": [
     {
       "id": "invoice",
-      "version": "3.3",
+      "version": "3.4",
       "handlers": [
         {
           "methods": ["GET"],
@@ -391,7 +391,7 @@
     },
     {
       "id": "finance.funds",
-      "version": "1.0"
+      "version": "1.1"
     },
     {
       "id": "invoice-storage.invoices",
@@ -407,7 +407,7 @@
     },
     {
       "id": "order-lines",
-      "version": "1.0"
+      "version": "1.1"
     },
     {
       "id": "voucher-storage.vouchers",
@@ -435,7 +435,7 @@
     },
     {
       "id": "finance.transactions",
-      "version": "2.0"
+      "version": "2.1"
     },
     {
       "id": "batch-group-storage.batch-groups",
@@ -443,7 +443,7 @@
     },
     {
       "id": "finance.ledgers",
-      "version": "1.3"
+      "version": "1.4"
     }
   ],
   "permissionSets": [
