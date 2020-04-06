@@ -1,7 +1,7 @@
 #%RAML 1.0
 
 title: Batch voucher export configurations
-version: v1.0
+version: v1.1
 protocols: [ HTTP, HTTPS ]
 baseUri: http://github.com/folio-org/mod-invoice
 
@@ -25,8 +25,8 @@ traits:
   searchable: !include raml-util/traits/searchable.raml
 
 resourceTypes:
-  collection: !include raml-util/rtypes/collection.raml
-  collection-item: !include raml-util/rtypes/item-collection.raml
+  collection: !include raml-util/rtypes/collection-with-json-response.raml
+  collection-item: !include raml-util/rtypes/item-collection-with-json-response.raml
 
 /batch-voucher/export-configurations:
     type:
@@ -74,16 +74,28 @@ resourceTypes:
               body:
                 text/plain:
                   example: "unable to add credentials -- malformed JSON at 13:3"
+                application/json:
+                  example:
+                    strict: false
+                    value: !include raml-util/examples/errors.sample
             401:
               description: "Not authorized to perform requested action"
               body:
                 text/plain:
                   example: "unable to create credentials -- unauthorized"
+                application/json:
+                  example:
+                    strict: false
+                    value: !include raml-util/examples/errors.sample
             500:
               description: "Internal server error, e.g. due to misconfiguration"
               body:
                 text/plain:
                   example: "Internal server error, contact administrator"
+                application/json:
+                  example:
+                    strict: false
+                    value: !include raml-util/examples/errors.sample
         get:
           description: "Get the credentials for the specified export_configuration"
           responses:
@@ -100,11 +112,19 @@ resourceTypes:
               body:
                 text/plain:
                   example: "Credentials not found"
+                application/json:
+                  example:
+                    strict: false
+                    value: !include raml-util/examples/errors.sample
             500:
               description: "Internal server error, e.g. due to misconfiguration"
               body:
                 text/plain:
                   example: "internal server error, contact administrator"
+                application/json:
+                  example:
+                    strict: false
+                    value: !include raml-util/examples/errors.sample
         put:
           description: Edit a credentials record
           body:
@@ -122,17 +142,29 @@ resourceTypes:
                 text/plain:
                   example: |
                     "Voucher not found"
+                application/json:
+                  example:
+                    strict: false
+                    value: !include raml-util/examples/errors.sample
             400:
               description: "Bad request, e.g. malformed request body or query parameter. Details of the error (e.g. name of the parameter or line/character number with malformed data) provided in the response."
               body:
                 text/plain:
                   example: |
                     "unable to update Credentials -- malformed JSON at 13:4"
+                application/json:
+                  example:
+                    strict: false
+                    value: !include raml-util/examples/errors.sample
             500:
               description: "Internal server error, e.g. due to misconfiguration"
               body:
                 text/plain:
                   example: "internal server error, contact administrator"
+                application/json:
+                  example:
+                    strict: false
+                    value: !include raml-util/examples/errors.sample
         /test:
           is: [language]
           post:

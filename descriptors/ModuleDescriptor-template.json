@@ -4,7 +4,7 @@
   "provides": [
     {
       "id": "invoice",
-      "version": "3.3",
+      "version": "3.4",
       "handlers": [
         {
           "methods": ["GET"],
@@ -53,7 +53,6 @@
             "invoice-storage.invoices.item.get",
             "invoice-storage.invoice-lines.item.put",
             "invoice-storage.invoice-lines.collection.get",
-            "finance.funds.collection.get",
             "orders.po-lines.item.put",
             "orders.po-lines.item.get",
             "voucher-storage.vouchers.collection.get",
@@ -66,7 +65,12 @@
             "acquisitions-units.units.collection.get",
             "acquisitions-units.memberships.collection.get",
             "finance.awaiting-payment.item.post",
-            "finance.invoice-transaction-summaries.item.post"
+            "finance.invoice-transaction-summaries.item.post",
+            "finance.payments.item.post",
+            "finance.credits.item.post",
+            "finance.transactions.collection.get",
+            "finance.funds.collection.get",
+            "finance.ledgers.current-fiscal-year.item.get"
           ]
         },
         {
@@ -182,7 +186,7 @@
     },
     {
       "id": "voucher",
-      "version": "2.1",
+      "version": "2.2",
       "handlers": [
         {
           "methods": ["GET"],
@@ -259,7 +263,7 @@
     },
     {
       "id": "batch-voucher.export-configurations",
-      "version": "1.0",
+      "version": "1.1",
       "handlers": [
         {
           "methods": ["GET"],
@@ -318,7 +322,7 @@
     },
     {
       "id": "batch-group",
-      "version": "1.0",
+      "version": "1.1",
       "handlers": [
         {
           "methods": ["GET"],
@@ -356,7 +360,7 @@
     },
     {
       "id": "batch-voucher.batch-vouchers",
-      "version": "1.0",
+      "version": "1.1",
       "handlers": [
         {
           "methods": ["GET"],
@@ -387,7 +391,7 @@
     },
     {
       "id": "finance.funds",
-      "version": "1.0"
+      "version": "1.1"
     },
     {
       "id": "invoice-storage.invoices",
@@ -403,7 +407,7 @@
     },
     {
       "id": "order-lines",
-      "version": "1.0"
+      "version": "1.1"
     },
     {
       "id": "voucher-storage.vouchers",
@@ -431,11 +435,15 @@
     },
     {
       "id": "finance.transactions",
-      "version": "2.0"
+      "version": "2.1"
     },
     {
       "id": "batch-group-storage.batch-groups",
       "version": "1.0"
+    },
+    {
+      "id": "finance.ledgers",
+      "version": "1.4"
     }
   ],
   "permissionSets": [
