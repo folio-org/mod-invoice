@@ -1,5 +1,17 @@
 ## 3.2.0 - Unreleased
 
+## 3.1.1 - Released
+
+The main focus of this bugfix release was to fix issues
+
+[Full Changelog](https://github.com/folio-org/mod-invoice/compare/v3.1.0...v3.1.1)
+
+### Stories
+* [MODINVOICE-109](https://issues.folio.org/browse/MODINVOICE-109) - Create payment or credit when Invoice marked as 'Paid
+
+### Bug Fixes
+* [MODINVOICE-100](https://issues.folio.org/browse/MODINVOICE-100) - Fix raml(contract) to return application/json responses wherever possible
+
 ## 3.1.0 - Released
 
 The focus of this release was to introduce Batch Voucher Exports CRUD APIs and add business logic for integration during the approval of an invoice
