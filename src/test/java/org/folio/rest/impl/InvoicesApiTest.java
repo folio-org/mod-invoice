@@ -48,7 +48,6 @@ import static org.folio.invoices.utils.ResourcePathResolver.ORDER_LINES;
 import static org.folio.invoices.utils.ResourcePathResolver.VOUCHERS;
 import static org.folio.invoices.utils.ResourcePathResolver.VOUCHER_LINES;
 import static org.folio.invoices.utils.ResourcePathResolver.VOUCHER_NUMBER;
-import static org.folio.rest.impl.AbstractHelper.ID;
 import static org.folio.rest.impl.InvoiceHelper.MAX_IDS_FOR_GET_RQ;
 import static org.folio.rest.impl.InvoiceHelper.NO_INVOICE_LINES_ERROR_MSG;
 import static org.folio.rest.impl.InvoiceLinesApiTest.INVOICE_LINES_LIST_PATH;
@@ -1397,6 +1396,10 @@ public class InvoicesApiTest extends ApiTestBase {
     int paymentCreditNumber = invoiceLines.stream()
       .filter(invoiceLine -> invoiceLine.getTotal() != 0)
       .mapToInt(line -> line.getFundDistributions().size())
+      .sum();
+    paymentCreditNumber += invoice.getAdjustments()
+      .stream()
+      .mapToInt(adj -> adj.getFundDistributions().size())
       .sum();
 
     assertThat(awaitingPaymentsCreated, hasSize(awaitingPaymentsNumber));
