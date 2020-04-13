@@ -9,6 +9,7 @@ import static org.folio.invoices.utils.ErrorCodes.TRANSACTION_CREATION_FAILURE;
 import static org.folio.invoices.utils.HelperUtils.collectResultsOnSuccess;
 import static org.folio.invoices.utils.HelperUtils.convertIdsToCqlQuery;
 import static org.folio.invoices.utils.HelperUtils.convertToDoubleWithRounding;
+import static org.folio.invoices.utils.HelperUtils.getAdjustmentFundDistributionAmount;
 import static org.folio.invoices.utils.HelperUtils.getEndpointWithQuery;
 import static org.folio.invoices.utils.HelperUtils.getFundDistributionAmount;
 import static org.folio.invoices.utils.HelperUtils.handleGetRequest;
@@ -41,6 +42,7 @@ import org.folio.rest.acq.model.finance.Fund;
 import org.folio.rest.acq.model.finance.FundCollection;
 import org.folio.rest.acq.model.finance.Transaction;
 import org.folio.rest.acq.model.finance.TransactionCollection;
+import org.folio.rest.jaxrs.model.Adjustment;
 import org.folio.rest.jaxrs.model.FundDistribution;
 import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.jaxrs.model.InvoiceLine;
@@ -95,6 +97,9 @@ public class FinanceHelper extends AbstractHelper {
 
   private CompletableFuture<List<Transaction>> buildTransactions(List<InvoiceLine> invoiceLines, Invoice invoice) {
     List<Transaction> transactions = buildBaseTransactions(invoiceLines, invoice);
+
+    transactions.addAll(buildAdjustmentTransactions(invoice));
+
     Map<String, List<Transaction>> groupedByFund = groupTransactionsByFund(transactions);
 
     return groupByLedgerIds(groupedByFund).thenCompose(groupedByLedgerId -> VertxCompletableFuture.allOf(ctx,
@@ -106,12 +111,38 @@ public class FinanceHelper extends AbstractHelper {
       .thenApply(aVoid -> transactions);
   }
 
+  private List<Transaction> buildAdjustmentTransactions(Invoice invoice) {
+    return invoice.getAdjustments().stream()
+      .flatMap(adjustment -> adjustment.getFundDistributions().stream()
+        .map(fundDistribution -> buildTransactionByAdjustments(fundDistribution, adjustment, invoice)))
+      .collect(toList());
+  }
+
+  private Transaction buildTransactionByAdjustments(FundDistribution fundDistribution, Adjustment adjustment, Invoice invoice) {
+    Transaction transaction = new Transaction();
+
+    transaction.setCurrency(invoice.getCurrency());
+    transaction.setSourceInvoiceId(invoice.getId());
+    transaction.setPaymentEncumbranceId(fundDistribution.getEncumbrance());
+    transaction.setSource(Transaction.Source.VOUCHER);
+
+    MonetaryAmount amount = getAdjustmentFundDistributionAmount(fundDistribution, adjustment, invoice);
+    if (amount.isPositive()) {
+      transaction.withFromFundId(fundDistribution.getFundId()).withTransactionType(Transaction.TransactionType.PAYMENT);
+    } else {
+      transaction.withToFundId(fundDistribution.getFundId()).withTransactionType(Transaction.TransactionType.CREDIT);
+    }
+
+    transaction.setAmount(convertToDoubleWithRounding(amount.abs()));
+    return transaction;
+  }
+
   private List<Transaction> buildBaseTransactions(List<InvoiceLine> invoiceLines, Invoice invoice) {
     return invoiceLines
       .stream()
       .flatMap(invoiceLine -> invoiceLine.getFundDistributions()
         .stream()
-        .map(fundDistribution -> buildTransaction(fundDistribution, invoiceLine, invoice)))
+        .map(fundDistribution -> buildTransactionByInvoiceLine(fundDistribution, invoiceLine, invoice)))
       .collect(toList());
   }
 
@@ -122,7 +153,7 @@ public class FinanceHelper extends AbstractHelper {
           : transaction.getToFundId()));
   }
 
-  private Transaction buildTransaction(FundDistribution fundDistribution, InvoiceLine invoiceLine, Invoice invoice) {
+  private Transaction buildTransactionByInvoiceLine(FundDistribution fundDistribution, InvoiceLine invoiceLine, Invoice invoice) {
     Transaction transaction = new Transaction();
 
     transaction.setCurrency(invoice.getCurrency());

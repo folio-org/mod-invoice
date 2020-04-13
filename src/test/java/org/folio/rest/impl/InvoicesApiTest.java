@@ -32,6 +32,7 @@ import static org.folio.invoices.utils.HelperUtils.calculateAdjustment;
 import static org.folio.invoices.utils.HelperUtils.calculateInvoiceLineTotals;
 import static org.folio.invoices.utils.HelperUtils.calculateVoucherAmount;
 import static org.folio.invoices.utils.HelperUtils.convertToDoubleWithRounding;
+import static org.folio.invoices.utils.HelperUtils.getAdjustmentFundDistributionAmount;
 import static org.folio.invoices.utils.HelperUtils.getFundDistributionAmount;
 import static org.folio.invoices.utils.HelperUtils.getNoAcqUnitCQL;
 import static org.folio.invoices.utils.HelperUtils.getNotProratedAdjustments;
@@ -48,7 +49,6 @@ import static org.folio.invoices.utils.ResourcePathResolver.ORDER_LINES;
 import static org.folio.invoices.utils.ResourcePathResolver.VOUCHERS;
 import static org.folio.invoices.utils.ResourcePathResolver.VOUCHER_LINES;
 import static org.folio.invoices.utils.ResourcePathResolver.VOUCHER_NUMBER;
-import static org.folio.rest.impl.AbstractHelper.ID;
 import static org.folio.rest.impl.InvoiceHelper.MAX_IDS_FOR_GET_RQ;
 import static org.folio.rest.impl.InvoiceHelper.NO_INVOICE_LINES_ERROR_MSG;
 import static org.folio.rest.impl.InvoiceLinesApiTest.INVOICE_LINES_LIST_PATH;
@@ -1398,6 +1398,10 @@ public class InvoicesApiTest extends ApiTestBase {
       .filter(invoiceLine -> invoiceLine.getTotal() != 0)
       .mapToInt(line -> line.getFundDistributions().size())
       .sum();
+    paymentCreditNumber += invoice.getAdjustments()
+      .stream()
+      .mapToInt(adj -> adj.getFundDistributions().size())
+      .sum();
 
     assertThat(awaitingPaymentsCreated, hasSize(awaitingPaymentsNumber));
     List<AwaitingPayment> awaitingPayments = awaitingPaymentsCreated.stream().map(entries -> entries.mapTo(AwaitingPayment.class)).collect(toList());
@@ -1902,7 +1906,7 @@ public class InvoicesApiTest extends ApiTestBase {
     assertThatVoucherPaid();
 
     assertThat(getRqRsEntries(HttpMethod.GET, FINANCE_TRANSACTIONS), hasSize(1));
-    assertThat(getRqRsEntries(HttpMethod.POST, FINANCE_PAYMENTS), hasSize(3));
+    assertThat(getRqRsEntries(HttpMethod.POST, FINANCE_PAYMENTS), hasSize(5));
     assertThat(getRqRsEntries(HttpMethod.POST, FINANCE_CREDITS), hasSize(0));
 
     checkCreditsPayments(reqData, invoiceLines);
@@ -2339,20 +2343,31 @@ public class InvoicesApiTest extends ApiTestBase {
   }
 
   private void checkCreditsPayments(Invoice invoice, List<InvoiceLine> invoiceLines) {
-    int paymentsCount = Math.toIntExact(invoiceLines.stream()
+    int invoiceLinePaymentsCount = Math.toIntExact(invoiceLines.stream()
       .flatMapToDouble(invoiceLine -> invoiceLine.getFundDistributions()
         .stream().mapToDouble(fundDistribution -> getFundDistributionAmount(fundDistribution, invoiceLine.getTotal(), invoice.getCurrency()).getNumber().doubleValue()))
       .filter(value -> value > 0)
       .count());
-    int creditsCount = invoiceLines.stream()
+    int invoiceLineCreditsCount = invoiceLines.stream()
       .mapToInt(invoiceLine -> invoiceLine.getFundDistributions()
-        .size()).sum() - paymentsCount;
+        .size()).sum() - invoiceLinePaymentsCount;
+
+    int adjustmentPaymentsCount = Math.toIntExact(invoice.getAdjustments().stream()
+      .flatMapToDouble(adjustment -> adjustment.getFundDistributions()
+        .stream().mapToDouble(fundDistribution -> getAdjustmentFundDistributionAmount(fundDistribution, adjustment, invoice).getNumber().doubleValue()))
+      .filter(value -> value > 0)
+      .count());
+
+    int adjustmentCreditsCount = invoice.getAdjustments().stream()
+      .mapToInt(adjustment -> adjustment.getFundDistributions()
+        .size()).sum() - adjustmentPaymentsCount;
+
 
     assertThat(getRqRsEntries(HttpMethod.GET, FINANCE_TRANSACTIONS), hasSize(1));
     assertThat(getRqRsEntries(HttpMethod.GET, FUNDS), hasSize(1));
     assertThat(getRqRsEntries(HttpMethod.GET, CURRENT_FISCAL_YEAR), hasSize(1));
-    assertThat(getRqRsEntries(HttpMethod.POST, FINANCE_PAYMENTS), hasSize(paymentsCount));
-    assertThat(getRqRsEntries(HttpMethod.POST, FINANCE_CREDITS), hasSize(creditsCount));
+    assertThat(getRqRsEntries(HttpMethod.POST, FINANCE_PAYMENTS), hasSize(invoiceLinePaymentsCount + adjustmentPaymentsCount));
+    assertThat(getRqRsEntries(HttpMethod.POST, FINANCE_CREDITS), hasSize(invoiceLineCreditsCount + adjustmentCreditsCount));
 
     List<Transaction> payments = getRqRsEntries(HttpMethod.POST, FINANCE_PAYMENTS).stream().map(t -> t.mapTo(Transaction.class)).collect(toList());
     List<Transaction> credits = getRqRsEntries(HttpMethod.POST, FINANCE_CREDITS).stream().map(t -> t.mapTo(Transaction.class)).collect(toList());
