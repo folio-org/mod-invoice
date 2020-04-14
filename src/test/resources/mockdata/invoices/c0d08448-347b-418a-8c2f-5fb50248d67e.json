@@ -1,6 +1,39 @@
 {
   "id": "c0d08448-347b-418a-8c2f-5fb50248d67e",
   "accountingCode": "2556",
+  "adjustments": [
+    {
+      "description": "Test adjustment with fixed amount",
+      "fundDistributions": [
+        {
+          "code": "USHIST",
+          "fundId": "1d1574f1-9196-4a57-8d1f-3b2e4309eb81",
+          "distributionType": "amount",
+          "value": 5.06
+        }
+      ],
+      "prorate": "Not prorated",
+      "relationToTotal": "In addition to",
+      "type": "Amount",
+      "value": 5.06
+    },
+    {
+      "description": "Test percentage adjustment",
+      "fundDistributions": [
+        {
+          "code": "USHIST",
+          "fundId": "1d1574f1-9196-4a57-8d1f-3b2e4309eb81",
+          "distributionType": "amount",
+          "value": 3.5
+        }
+      ],
+      "prorate": "Not prorated",
+      "relationToTotal": "In addition to",
+      "type": "Percentage",
+      "value": 3.5
+    }
+  ],
+  "adjustmentsTotal" : 109.18,
   "approvedBy": "ab18897b-0e40-4f31-896b-9c9adc979a88",
   "approvalDate": "2018-07-29T00:00:00.000+0000",
   "chkSubscriptionOverlap": false,
@@ -12,28 +45,13 @@
   "paymentMethod": "EFT",
   "status": "Approved",
   "source": "User",
-  "total": 5.0,
+  "subTotal": 34.82,
+  "total": 144.0,
   "vendorInvoiceNo": "YK75851",
   "voucherNumber": "478",
   "paymentId": "a5065f0d-fb88-4d23-b0c1-57e754fba40e",
   "poNumbers": [
     "AB268758XYZ"
-  ],
-  "adjustments": [
-    {
-      "description": "Test adjustment with fixed amount",
-      "prorate": "Not prorated",
-      "relationToTotal": "In addition to",
-      "type": "Amount",
-      "value": 5.06
-    },
-    {
-      "description": "Test percentage adjustment",
-      "prorate": "Not prorated",
-      "relationToTotal": "In addition to",
-      "type": "Percentage",
-      "value": 3.5
-    }
   ],
   "vendorId": "168f8a63-d612-406e-813f-c7527f241ac3",
   "manualPayment": true
