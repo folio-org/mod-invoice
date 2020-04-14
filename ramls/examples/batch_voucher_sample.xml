@@ -22,7 +22,9 @@
       <disbursementNumber>EFT546789</disbursementNumber>
       <disbursementDate>2019-12-06T00:01:04Z</disbursementDate>
       <disbursementAmount>23.45</disbursementAmount>
+      <enclosureNeeded>false</enclosureNeeded>
       <exchangeRate>1</exchangeRate>
+      <folioInvoiceNo>123folionumber456</folioInvoiceNo>
       <invoiceCurrency>USD</invoiceCurrency>
       <invoiceNote>Process immediately</invoiceNote>
       <status>Paid</status>

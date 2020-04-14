@@ -43,7 +43,7 @@ public class BatchVoucherSchemaXSDTest {
   @BeforeClass
   public static void beforeAll(){
     XSD_BATCH_VOUCHER_SCHEMA_PATH = Paths.get("", "ramls/schemas/batch_voucher.xsd").toAbsolutePath();
-    XML_BATCH_VOUCHER_EXAMPLES_PATH = Paths.get("ramls/examples", "batch_voucher_xml.sample").toAbsolutePath();
+    XML_BATCH_VOUCHER_EXAMPLES_PATH = Paths.get("ramls/examples", "batch_voucher_sample.xml").toAbsolutePath();
 
     jsonRequiredAnn = new AnnotationModel<>(NotNull.class, null, null);
     jaxbRequiredAnn = new AnnotationModel<>(XmlElement.class, "required", Boolean.TRUE);

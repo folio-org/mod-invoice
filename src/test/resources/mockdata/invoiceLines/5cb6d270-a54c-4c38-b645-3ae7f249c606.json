@@ -27,6 +27,7 @@
   "adjustments": [
     {
       "description": "Test adjustment",
+      "exportToAccounting": false,
       "type": "Percentage",
       "relationToTotal": "In addition to",
       "prorate": "Not prorated",

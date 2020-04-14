@@ -14,7 +14,7 @@ import org.junit.Test;
 import javax.xml.stream.XMLStreamException;
 
 public class XMLConverterTest {
-  private static Path XML_BATCH_VOUCHER_EXAMPLES_PATH = Paths.get("ramls/examples", "batch_voucher_xml.sample")
+  private static Path XML_BATCH_VOUCHER_EXAMPLES_PATH = Paths.get("ramls/examples", "batch_voucher_sample.xml")
     .toAbsolutePath();
 
   XMLConverter xmlConverter = XMLConverter.getInstance();

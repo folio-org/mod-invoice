@@ -60,9 +60,19 @@
           <xs:documentation>The amount of the payment made outside of FOLIO</xs:documentation>
         </xs:annotation>
       </xs:element>
+      <xs:element name="enclosureNeeded" type="xs:boolean" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Indicates that an enclosure is needed</xs:documentation>
+        </xs:annotation>
+      </xs:element>
       <xs:element name="exchangeRate" type="xs:decimal" minOccurs="0">
         <xs:annotation>
           <xs:documentation>Exchange rate used to generate transaction</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="folioInvoiceNo" type="xs:string">
+        <xs:annotation>
+          <xs:documentation>Represents associated invoice number</xs:documentation>
         </xs:annotation>
       </xs:element>
       <xs:element name="invoiceCurrency" type="xs:string">
