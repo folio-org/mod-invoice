@@ -488,7 +488,7 @@ public class InvoiceHelper extends AbstractHelper {
     return loadTenantConfiguration(SYSTEM_CONFIG_QUERY, VOUCHER_NUMBER_CONFIG_QUERY)
       .thenCompose(ok -> getInvoiceLinesWithTotals(invoice))
       .thenApply(lines -> validateBeforeApproval(invoice, lines))
-      .thenCompose(invoiceLines -> updateEncumbrances(invoiceLines, invoice.getCurrency()))
+      .thenCompose(invoiceLines -> updateEncumbrances(invoiceLines, invoice))
       .thenCompose(lines -> prepareVoucher(invoice)
           .thenCompose(voucher -> handleVoucherWithLines(getAllFundDistributions(lines, invoice), voucher))
       );
@@ -699,28 +699,35 @@ public class InvoiceHelper extends AbstractHelper {
       });
   }
 
-  private CompletableFuture<List<InvoiceLine>> updateEncumbrances(List<InvoiceLine> invoiceLines, String currency) {
+  private CompletableFuture<List<InvoiceLine>> updateEncumbrances(List<InvoiceLine> invoiceLines, Invoice invoice) {
 
-    return VertxCompletableFuture.supplyBlockingAsync(ctx, () -> buildAwaitingPayments(invoiceLines, currency))
+    return VertxCompletableFuture.supplyBlockingAsync(ctx, () -> buildAwaitingPayments(invoiceLines, invoice))
       .thenCompose(awaitingPayments -> {
-        InvoiceTransactionSummary summary = buildInvoiceTransactionsSummary(invoiceLines, awaitingPayments.size());
+        InvoiceTransactionSummary summary = buildInvoiceTransactionsSummary(invoice, invoiceLines, awaitingPayments.size());
         return createInvoiceTransactionSummary(summary)
           .thenCompose(s -> postAwaitingPayments(awaitingPayments));
       }).thenApply(aVoid -> invoiceLines);
   }
 
-  private InvoiceTransactionSummary buildInvoiceTransactionsSummary(List<InvoiceLine> invoiceLines, int numEncumbrances) {
+  private InvoiceTransactionSummary buildInvoiceTransactionsSummary(Invoice invoice, List<InvoiceLine> invoiceLines, int numEncumbrances) {
     return new InvoiceTransactionSummary()
-      .withId(invoiceLines.get(0).getInvoiceId())
+      .withId(invoice.getId())
       .withNumEncumbrances(numEncumbrances)
-      .withNumPaymentsCredits(calculatePaymentsNumber(invoiceLines));
+      .withNumPaymentsCredits(calculatePaymentsAndCreditsNumber(invoice, invoiceLines));
   }
 
-  private int calculatePaymentsNumber(List<InvoiceLine> invoiceLines) {
-    return invoiceLines.stream()
+  private int calculatePaymentsAndCreditsNumber(Invoice invoice, List<InvoiceLine> invoiceLines) {
+    int invoiceLinesTransactionNumber = invoiceLines.stream()
       .filter(invoiceLine -> invoiceLine.getTotal() != 0)
       .mapToInt(invoiceLine -> invoiceLine.getFundDistributions().size())
       .sum();
+
+    int adjustmentTransactionsNumber = invoice.getAdjustments()
+      .stream()
+      .mapToInt(adj -> adj.getFundDistributions().size())
+      .sum();
+
+    return invoiceLinesTransactionNumber + adjustmentTransactionsNumber;
   }
 
   private CompletableFuture<String> createInvoiceTransactionSummary(InvoiceTransactionSummary summary) {
@@ -738,16 +745,16 @@ public class InvoiceHelper extends AbstractHelper {
       .toArray(CompletableFuture[]::new));
   }
 
-  private List<AwaitingPayment> buildAwaitingPayments(List<InvoiceLine> invoiceLines, String currency) {
+  private List<AwaitingPayment> buildAwaitingPayments(List<InvoiceLine> invoiceLines, Invoice invoice) {
     CurrencyConversion conversion = getExchangeRateProvider().getCurrencyConversion(getSystemCurrency());
     return invoiceLines.stream()
       .flatMap(line -> line.getFundDistributions().stream()
         .filter(fundDistribution -> Objects.nonNull(fundDistribution.getEncumbrance()))
-        .map(fundDistribution -> buildAwaitingPayment(fundDistribution, line, currency, conversion)))
+        .map(fundDistribution -> buildAwaitingPaymentByInvoiceLine(fundDistribution, line, invoice.getCurrency(), conversion)))
       .collect(toList());
   }
 
-  private AwaitingPayment buildAwaitingPayment(FundDistribution fundDistribution, InvoiceLine invoiceLine, String currency, CurrencyConversion conversion) {
+  private AwaitingPayment buildAwaitingPaymentByInvoiceLine(FundDistribution fundDistribution, InvoiceLine invoiceLine, String currency, CurrencyConversion conversion) {
     MonetaryAmount amount = getFundDistributionAmount(fundDistribution, invoiceLine.getTotal(), currency).with(conversion);
     return new AwaitingPayment()
       .withAmountAwaitingPayment(convertToDoubleWithRounding(amount))
@@ -1129,7 +1136,7 @@ public class InvoiceHelper extends AbstractHelper {
     // 2. Calculate Adjustments Total
     // If there are no invoice lines then adjustmentsTotal = sum of all invoice adjustments
     // If lines are present then adjustmentsTotal = notProratedInvoiceAdjustments + sum of invoiceLines adjustmentsTotal
-    MonetaryAmount adjustmentsTotal = null;
+    MonetaryAmount adjustmentsTotal;
     if (lines.isEmpty()) {
       List<Adjustment> proratedAdjustments = new ArrayList<>(getProratedAdjustments(invoice));
       proratedAdjustments.addAll(getNotProratedAdjustments(invoice));
