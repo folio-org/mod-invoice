@@ -13,6 +13,7 @@ types:
   exportConfig: !include acq-models/mod-invoice-storage/schemas/export_configuration.json
   exportConfigCollection: !include acq-models/mod-invoice-storage/schemas/export_configuration_collection.json
   credentials: !include acq-models/mod-invoice-storage/schemas/credentials.json
+  message: !include acq-models/common/schemas/message.json
   errors: !include raml-util/schemas/errors.schema
   UUID:
     type: string
@@ -171,5 +172,11 @@ resourceTypes:
             description: "Test that you can connect to and log into the uploadURI with the configured credentials"
             responses:
               200:
-                description: "Returns item with a given ID"
+                description: "Return message from FTP server"
+                body:
+                  application/json:
+                    type: message
+                    example:
+                      strict: false
+                      value: !include acq-models/common/examples/message.sample
 
