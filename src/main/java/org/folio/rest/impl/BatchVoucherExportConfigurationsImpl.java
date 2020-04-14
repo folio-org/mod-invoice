@@ -6,7 +6,7 @@ import java.util.Map;
 
 import javax.ws.rs.core.Response;
 
-import org.folio.dto.MessageDTO;
+import org.folio.rest.acq.model.Message;
 import org.folio.rest.annotations.Validate;
 import org.folio.rest.jaxrs.model.Credentials;
 import org.folio.rest.jaxrs.model.ExportConfig;
@@ -118,7 +118,7 @@ public class BatchVoucherExportConfigurationsImpl implements BatchVoucherExportC
                                                                       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     BatchVoucherExportConfigHelper helper = new BatchVoucherExportConfigHelper(okapiHeaders, vertxContext, lang);
     helper.testUploadUri(id)
-      .thenAccept(msg -> asyncResultHandler.handle(succeededFuture(helper.buildOkResponse(new MessageDTO(msg)))))
+      .thenAccept(msg -> asyncResultHandler.handle(succeededFuture(helper.buildOkResponse(new Message().withMessage(msg)))))
       .exceptionally(t -> handleErrorResponse(asyncResultHandler, helper, t));
   }
 
