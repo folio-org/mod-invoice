@@ -1,4 +1,4 @@
-package org.folio.helpers;
+package org.folio.rest.impl;
 
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 import static javax.ws.rs.core.MediaType.APPLICATION_XML;
@@ -17,7 +17,6 @@ import javax.xml.stream.XMLStreamException;
 import org.folio.HttpStatus;
 import org.folio.converters.BatchVoucherModelConverter;
 import org.folio.jaxb.XMLConverter;
-import org.folio.rest.impl.AbstractHelper;
 import org.folio.rest.jaxrs.model.BatchVoucher;
 import org.folio.rest.jaxrs.model.Error;
 import org.folio.rest.jaxrs.model.Errors;

@@ -1,4 +1,4 @@
-package org.folio.helpers;
+package org.folio.rest.impl;
 
 import static org.folio.invoices.utils.HelperUtils.BATCH_VOUCHER_EXPORT;
 import static org.folio.invoices.utils.HelperUtils.INVOICE;

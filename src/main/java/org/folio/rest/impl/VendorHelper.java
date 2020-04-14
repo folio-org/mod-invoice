@@ -1,4 +1,4 @@
-package org.folio.helpers;
+package org.folio.rest.impl;
 
 import static java.util.stream.Collectors.toList;
 import static org.folio.invoices.utils.HelperUtils.convertIdsToCqlQuery;
@@ -11,9 +11,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 
-
 import org.folio.rest.acq.model.Organization;
-import org.folio.rest.impl.AbstractHelper;
 
 import io.vertx.core.Context;
 import io.vertx.core.json.JsonObject;

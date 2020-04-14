@@ -8,7 +8,6 @@ import javax.ws.rs.core.Response;
 
 import org.folio.rest.annotations.Validate;
 import org.folio.rest.jaxrs.resource.BatchVoucherBatchVouchers;
-import org.folio.helpers.BatchVoucherHelper;
 
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Context;

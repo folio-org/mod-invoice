@@ -1,11 +1,10 @@
-package org.folio.services.vouchers.batch;
+package org.folio.rest.impl;
 
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
-import org.folio.rest.impl.AbstractHelper;
 import org.folio.rest.jaxrs.model.BatchVoucherExport;
-import org.folio.helpers.BatchVoucherExportsHelper;
+import org.folio.services.vouchers.batch.BatchVoucherGenerateService;
 
 import io.vertx.core.Context;
 import io.vertx.core.json.JsonObject;
@@ -14,13 +13,13 @@ import io.vertx.core.logging.LoggerFactory;
 import static org.folio.invoices.utils.ResourcePathResolver.BATCH_VOUCHER_STORAGE;
 import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
 
-public class BatchVoucherManager extends AbstractHelper {
+public class BatchVoucherPersisteHelper extends AbstractHelper {
   private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
   private final BatchVoucherGenerateService batchVoucherGenerateService;
   private final BatchVoucherExportsHelper batchVoucherExportsHelper;
 
-  public BatchVoucherManager(Map<String, String> okapiHeaders, Context ctx, String lang) {
+  public BatchVoucherPersisteHelper(Map<String, String> okapiHeaders, Context ctx, String lang) {
     super(okapiHeaders, ctx, lang);
     this.batchVoucherGenerateService = new BatchVoucherGenerateService(okapiHeaders, ctx, lang);
     this.batchVoucherExportsHelper = new BatchVoucherExportsHelper(okapiHeaders, ctx, lang);
