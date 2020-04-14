@@ -81,14 +81,14 @@ public class BatchVoucherExportsImpl implements BatchVoucherBatchVoucherExports 
   @Validate
   @Override
   public void postBatchVoucherBatchVoucherExportsUploadById(String id, String lang, Map<String, String> okapiHeaders,
-                                                            Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     asyncResultHandler.handle(succeededFuture(PostBatchVoucherBatchVoucherExportsUploadByIdResponse.respond500WithApplicationJson(NOT_SUPPORTED)));
   }
 
   @Validate
   @Override
   public void postBatchVoucherBatchVoucherExportsScheduled(String lang, Map<String, String> okapiHeaders,
-                                                           Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     asyncResultHandler.handle(succeededFuture(PostBatchVoucherBatchVoucherExportsScheduledResponse.respond500WithApplicationJson(NOT_SUPPORTED)));
   }
 

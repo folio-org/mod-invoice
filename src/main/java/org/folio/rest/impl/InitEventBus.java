@@ -32,6 +32,7 @@ public class InitEventBus implements PostDeployVerticle {
   @Autowired
   @Qualifier("batchVoucherPersistHandler")
   Handler<Message<JsonObject>> batchVoucherPersistHandler;
+
   public InitEventBus() {
     SpringContextUtil.autowireDependencies(this, Vertx.currentContext());
   }

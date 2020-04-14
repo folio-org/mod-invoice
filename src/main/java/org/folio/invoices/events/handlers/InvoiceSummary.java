@@ -39,7 +39,6 @@ public class InvoiceSummary implements Handler<Message<JsonObject>> {
 
   @Override
   public void handle(Message<JsonObject> message) {
-
     JsonObject body = message.body();
     Map<String, String> okapiHeaders = getOkapiHeaders(message);
 
