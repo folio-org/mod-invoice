@@ -7,7 +7,8 @@
       "adjustments": [
        {
       	  "description": "Extra Taxes",
-      	  "type": "Amount",
+         "exportToAccounting": false,
+         "type": "Amount",
       	  "value": 10.0,
           "prorate": "Not prorated",
           "relationToTotal": "In addition to"
