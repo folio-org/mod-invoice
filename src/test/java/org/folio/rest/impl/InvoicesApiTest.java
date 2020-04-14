@@ -1422,18 +1422,7 @@ public class InvoicesApiTest extends ApiTestBase {
         .map(FundDistribution::getInvoiceLineId)
         .distinct().collect(Collectors.toList()), hasSize(voucherLine.getSourceIds().size()));
     });
-    MonetaryAmount voucherLinesSum = voucherLines.stream()
-      .map(voucherLine -> (MonetaryAmount) Money.of(voucherLine.getAmount(), voucherCreated.getSystemCurrency()))
-      .reduce(MonetaryFunctions::sum).orElse(Money.of(0, voucherCreated.getSystemCurrency()));
 
-    MonetaryAmount invoiceTotal = Money.of(invoice.getTotal(), invoice.getCurrency())
-      .multiply(DefaultNumberValue.of(voucherCreated.getExchangeRate()))
-      .getFactory()
-      .setCurrency(voucherCreated.getSystemCurrency())
-      .create()
-      .with(MonetaryOperators.rounding());
-
-    assertTrue(voucherLinesSum.isEqualTo(invoiceTotal));
   }
 
   private double calculateVoucherLineAmount(List<FundDistribution> fundDistributions, Voucher voucher) {
