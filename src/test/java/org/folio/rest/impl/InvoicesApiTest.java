@@ -28,14 +28,12 @@ import static org.folio.invoices.utils.ErrorCodes.VOUCHER_NOT_FOUND;
 import static org.folio.invoices.utils.ErrorCodes.VOUCHER_NUMBER_PREFIX_NOT_ALPHA;
 import static org.folio.invoices.utils.ErrorCodes.VOUCHER_UPDATE_FAILURE;
 import static org.folio.invoices.utils.HelperUtils.INVOICE;
-import static org.folio.invoices.utils.HelperUtils.calculateAdjustment;
 import static org.folio.invoices.utils.HelperUtils.calculateInvoiceLineTotals;
 import static org.folio.invoices.utils.HelperUtils.calculateVoucherAmount;
 import static org.folio.invoices.utils.HelperUtils.convertToDoubleWithRounding;
 import static org.folio.invoices.utils.HelperUtils.getAdjustmentFundDistributionAmount;
 import static org.folio.invoices.utils.HelperUtils.getFundDistributionAmount;
 import static org.folio.invoices.utils.HelperUtils.getNoAcqUnitCQL;
-import static org.folio.invoices.utils.HelperUtils.getNotProratedAdjustments;
 import static org.folio.invoices.utils.ResourcePathResolver.AWAITING_PAYMENTS;
 import static org.folio.invoices.utils.ResourcePathResolver.FINANCE_CREDITS;
 import static org.folio.invoices.utils.ResourcePathResolver.FINANCE_PAYMENTS;
@@ -78,6 +76,7 @@ import static org.folio.rest.impl.MockServer.serverRqRs;
 import static org.folio.rest.impl.ProtectionHelper.ACQUISITIONS_UNIT_IDS;
 import static org.folio.rest.impl.VoucherHelper.DEFAULT_SYSTEM_CURRENCY;
 import static org.folio.rest.impl.VouchersApiTest.VOUCHERS_LIST_PATH;
+import static org.folio.rest.jaxrs.model.FundDistribution.DistributionType.AMOUNT;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.allOf;
 import static org.hamcrest.Matchers.arrayContaining;
@@ -151,6 +150,7 @@ import org.hamcrest.beans.HasProperty;
 import org.hamcrest.beans.HasPropertyWithValue;
 import org.hamcrest.core.Every;
 import org.javamoney.moneta.Money;
+import org.javamoney.moneta.function.MonetaryFunctions;
 import org.javamoney.moneta.function.MonetaryOperators;
 import org.javamoney.moneta.spi.DefaultNumberValue;
 import org.junit.Test;
@@ -447,7 +447,7 @@ public class InvoicesApiTest extends ApiTestBase {
     FundDistribution fundDistribution1 = new FundDistribution()
       .withDistributionType(FundDistribution.DistributionType.PERCENTAGE)
       .withValue(100d)
-      .withFundId(UUID.randomUUID().toString());
+      .withFundId(EXISTING_FUND_ID);
 
     Adjustment adjustment2 = new Adjustment()
       .withProrate(Prorate.NOT_PRORATED)
@@ -457,9 +457,9 @@ public class InvoicesApiTest extends ApiTestBase {
       .withRelationToTotal(Adjustment.RelationToTotal.IN_ADDITION_TO);
 
     FundDistribution fundDistribution2 = new FundDistribution()
-      .withDistributionType(FundDistribution.DistributionType.AMOUNT)
+      .withDistributionType(AMOUNT)
       .withValue(50d)
-      .withFundId(UUID.randomUUID().toString());
+      .withFundId(EXISTING_FUND_ID);
 
     adjustment1.getFundDistributions().add(fundDistribution1);
     adjustment2.getFundDistributions().add(fundDistribution2);
@@ -511,7 +511,7 @@ public class InvoicesApiTest extends ApiTestBase {
           .add(BigDecimal.valueOf(invoiceLine.getAdjustmentsTotal()))
           .divide(BigDecimal.valueOf(invoiceLine.getFundDistributions().size()), 2, RoundingMode.HALF_EVEN).doubleValue();
         invoiceLine.getFundDistributions()
-          .forEach(fundDistribution -> fundDistribution.withDistributionType(FundDistribution.DistributionType.AMOUNT)
+          .forEach(fundDistribution -> fundDistribution.withDistributionType(AMOUNT)
             .setValue(fundDistrValue));
         addMockEntry(INVOICE_LINES, JsonObject.mapFrom(invoiceLine));
       });
@@ -551,7 +551,7 @@ public class InvoicesApiTest extends ApiTestBase {
       .withValue(50d);
     FundDistribution amountDistribution = new FundDistribution()
       .withFundId(EXISTING_FUND_ID)
-      .withDistributionType(FundDistribution.DistributionType.AMOUNT)
+      .withDistributionType(AMOUNT)
       .withValue(50d);
 
     invoiceLine.getFundDistributions().addAll(Arrays.asList(percentageDistribution, amountDistribution));
@@ -593,7 +593,7 @@ public class InvoicesApiTest extends ApiTestBase {
       .withValue(33.33333333d);
     FundDistribution amountDistribution = new FundDistribution()
       .withFundId(EXISTING_FUND_ID)
-      .withDistributionType(FundDistribution.DistributionType.AMOUNT)
+      .withDistributionType(AMOUNT)
       .withValue(66.66d);
 
     invoiceLine.getFundDistributions().addAll(Arrays.asList(percentageDistribution, amountDistribution));
@@ -1008,7 +1008,7 @@ public class InvoicesApiTest extends ApiTestBase {
     String id = reqData.getId();
     invoiceLine.setId(UUID.randomUUID().toString());
     invoiceLine.setInvoiceId(id);
-    invoiceLine.getFundDistributions().get(0).setDistributionType(FundDistribution.DistributionType.AMOUNT);
+    invoiceLine.getFundDistributions().get(0).setDistributionType(AMOUNT);
     invoiceLine.getFundDistributions().get(0).setValue(100d);
     invoiceLine.setSubTotal(300d);
 
@@ -1042,7 +1042,7 @@ public class InvoicesApiTest extends ApiTestBase {
       .withValue(50d)
       .withFundId(UUID.randomUUID().toString());
     FundDistribution fundDistribution2 = new FundDistribution()
-      .withDistributionType(FundDistribution.DistributionType.AMOUNT)
+      .withDistributionType(AMOUNT)
       .withValue(50d)
       .withFundId(UUID.randomUUID().toString());
 
@@ -1172,12 +1172,12 @@ public class InvoicesApiTest extends ApiTestBase {
       .withValue(50d)
       .withEncumbrance(UUID.randomUUID().toString());
     FundDistribution fd2 = new FundDistribution()
-      .withDistributionType(FundDistribution.DistributionType.AMOUNT)
+      .withDistributionType(AMOUNT)
       .withFundId(EXISTING_FUND_ID)
       .withValue(3d)
       .withEncumbrance(UUID.randomUUID().toString());
     FundDistribution fd3 = new FundDistribution()
-      .withDistributionType(FundDistribution.DistributionType.AMOUNT)
+      .withDistributionType(AMOUNT)
       .withFundId(EXISTING_FUND_ID)
       .withValue(2d)
       .withEncumbrance(UUID.randomUUID().toString());
@@ -1415,56 +1415,25 @@ public class InvoicesApiTest extends ApiTestBase {
 
     voucherLines.forEach(voucherLine -> {
       assertThat(voucherCreated.getId(), equalTo(voucherLine.getVoucherId()));
-      assertThat(calculateVoucherLineAmount(voucherLine.getFundDistributions(), invoiceLines, invoice, voucherCreated), equalTo(voucherLine.getAmount()));
+      assertThat(voucherLine.getFundDistributions(), Every.everyItem(hasProperty("distributionType", is(AMOUNT))));
+      assertThat(calculateVoucherLineAmount(voucherLine.getFundDistributions(), voucherCreated), equalTo(voucherLine.getAmount()));
       assertThat(voucherLine.getFundDistributions().stream()
+        .filter(fundDistribution -> Objects.nonNull(fundDistribution.getInvoiceLineId()))
         .map(FundDistribution::getInvoiceLineId)
         .distinct().collect(Collectors.toList()), hasSize(voucherLine.getSourceIds().size()));
     });
+
   }
 
-  private double calculateVoucherLineAmount(List<FundDistribution> fundDistributions, List<InvoiceLine> invoiceLines, Invoice invoice, Voucher voucher) {
-    CurrencyUnit invoiceCurrency = Monetary.getCurrency(voucher.getInvoiceCurrency());
+  private double calculateVoucherLineAmount(List<FundDistribution> fundDistributions, Voucher voucher) {
     CurrencyUnit systemCurrency = Monetary.getCurrency(voucher.getSystemCurrency());
-    MonetaryAmount voucherLineAmount = Money.of(0, invoiceCurrency);
+    MonetaryAmount voucherLineAmount = Money.of(0, systemCurrency);
 
     for (FundDistribution fundDistribution : fundDistributions) {
-      if (fundDistribution.getDistributionType() == FundDistribution.DistributionType.AMOUNT) {
-        voucherLineAmount = voucherLineAmount.add(Money.of(fundDistribution.getValue(), invoiceCurrency));
-      } else if (Objects.nonNull(fundDistribution.getInvoiceLineId())) {
-        InvoiceLine invoiceLine = findLineById(invoiceLines, fundDistribution.getInvoiceLineId());
-        MonetaryAmount fundDistributionValue = Money.of(invoiceLine.getTotal(), invoiceCurrency)
-          .with(MonetaryOperators.percent(fundDistribution.getValue()));
-        voucherLineAmount = voucherLineAmount.add(fundDistributionValue);
-      } else {
-        Adjustment adjustment = findAdjustmentByFundDistribution(getNotProratedAdjustments(invoice.getAdjustments()), fundDistribution);
-        MonetaryAmount fundDistributionValue = calculateAdjustment(adjustment, Money.of(invoice.getTotal(), invoiceCurrency))
-          .with(MonetaryOperators.percent(fundDistribution.getValue()));
-        voucherLineAmount = voucherLineAmount.add(fundDistributionValue);
-      }
-
+        voucherLineAmount = voucherLineAmount.add(Money.of(fundDistribution.getValue(), systemCurrency));
     }
 
-    MonetaryAmount convertedAmount = voucherLineAmount
-      .multiply(DefaultNumberValue.of(voucher.getExchangeRate()))
-      .getFactory()
-      .setCurrency(systemCurrency)
-      .create();
-
-    return convertToDoubleWithRounding(convertedAmount);
-  }
-
-  private Adjustment findAdjustmentByFundDistribution(List<Adjustment> adjustments, FundDistribution fundDistribution) {
-    return adjustments.stream()
-      .filter(adjustment -> adjustment.getFundDistributions().stream()
-        .anyMatch(distribution -> distribution.equals(fundDistribution)))
-      .findFirst().orElseThrow(AssertionError::new);
-  }
-
-  private InvoiceLine findLineById(List<InvoiceLine> invoiceLines, String invoiceLineId) {
-    return invoiceLines.stream()
-      .filter(invoiceLine -> invoiceLineId.equals(invoiceLine.getId()))
-      .findFirst()
-      .orElseThrow(() -> new IllegalArgumentException("Cannot find invoiceLine associated with fundDistribution"));
+    return convertToDoubleWithRounding(voucherLineAmount);
   }
 
   private int getExpectedVoucherLinesQuantity(List<Fund> fundsSearches) {
