@@ -17,13 +17,13 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import org.folio.exceptions.BatchVoucherGenerationException;
-import org.folio.rest.impl.VendorHelper;
 import org.folio.invoices.utils.HelperUtils;
 import org.folio.rest.acq.model.FundDistribution;
 import org.folio.rest.acq.model.Organization;
 import org.folio.rest.acq.model.VoucherLine;
 import org.folio.rest.impl.BatchGroupHelper;
 import org.folio.rest.impl.InvoiceHelper;
+import org.folio.rest.impl.VendorHelper;
 import org.folio.rest.impl.VoucherHelper;
 import org.folio.rest.impl.VoucherLineHelper;
 import org.folio.rest.jaxrs.model.BatchVoucher;

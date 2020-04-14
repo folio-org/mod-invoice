@@ -1,23 +1,18 @@
 package org.folio.rest.impl;
 
 import static org.folio.invoices.utils.HelperUtils.BATCH_VOUCHER_EXPORT;
-import static org.folio.invoices.utils.HelperUtils.INVOICE;
 import static org.folio.invoices.utils.HelperUtils.getEndpointWithQuery;
 import static org.folio.invoices.utils.HelperUtils.handleDeleteRequest;
 import static org.folio.invoices.utils.HelperUtils.handleGetRequest;
 import static org.folio.invoices.utils.HelperUtils.handlePutRequest;
 import static org.folio.invoices.utils.ResourcePathResolver.BATCH_VOUCHER_EXPORTS_STORAGE;
-import static org.folio.invoices.utils.ResourcePathResolver.BATCH_VOUCHER_STORAGE;
 import static org.folio.invoices.utils.ResourcePathResolver.resourceByIdPath;
 import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
 
 import java.util.Map;
-import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
-import org.apache.commons.lang3.StringUtils;
 import org.folio.invoices.events.handlers.MessageAddress;
-import org.folio.rest.impl.AbstractHelper;
 import org.folio.rest.jaxrs.model.BatchVoucherExport;
 import org.folio.rest.jaxrs.model.BatchVoucherExportCollection;
 import org.folio.rest.tools.client.interfaces.HttpClientInterface;

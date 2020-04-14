@@ -1,5 +1,8 @@
 package org.folio.rest.impl;
 
+import static org.folio.invoices.utils.ResourcePathResolver.BATCH_VOUCHER_STORAGE;
+import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
+
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
@@ -10,8 +13,6 @@ import io.vertx.core.Context;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
-import static org.folio.invoices.utils.ResourcePathResolver.BATCH_VOUCHER_STORAGE;
-import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
 
 public class BatchVoucherPersisteHelper extends AbstractHelper {
   private final Logger logger = LoggerFactory.getLogger(this.getClass());
