@@ -37,11 +37,11 @@ public class VoucherHelper extends AbstractHelper {
   private static final String EXCEPTION_CALLING_ENDPOINT_MSG = "Exception calling {} {}";
   private static final String GET_VOUCHERS_BY_QUERY = resourcesPath(VOUCHERS) + SEARCH_PARAMS;
 
-  VoucherHelper(HttpClientInterface httpClient, Map<String, String> okapiHeaders, Context ctx, String lang) {
+  public VoucherHelper(HttpClientInterface httpClient, Map<String, String> okapiHeaders, Context ctx, String lang) {
     super(httpClient, okapiHeaders, ctx, lang);
   }
 
-  VoucherHelper(Map<String, String> okapiHeaders, Context ctx, String lang) {
+  public VoucherHelper(Map<String, String> okapiHeaders, Context ctx, String lang) {
     super(okapiHeaders, ctx, lang);
   }
 
