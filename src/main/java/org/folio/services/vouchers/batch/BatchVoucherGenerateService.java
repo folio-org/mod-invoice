@@ -4,9 +4,11 @@ import static java.util.stream.Collectors.groupingBy;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toMap;
 
+import java.text.SimpleDateFormat;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -35,10 +37,11 @@ import org.folio.rest.jaxrs.model.Voucher;
 import org.folio.rest.jaxrs.model.VoucherCollection;
 
 import io.vertx.core.Context;
+import io.vertx.core.json.JsonObject;
 import me.escoffier.vertx.completablefuture.VertxCompletableFuture;
 
 public class BatchVoucherGenerateService {
-  private static final DateTimeFormatter fromFormatter =
+  private static final DateTimeFormatter fromFormatter = //new SimpleDateFormat("yyyy-MM-dd'T'hh:mm:ss.SSSz", Locale.ENGLISH);
     DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSZ").withLocale( Locale.UK ).withZone( ZoneId.of("UTC"));
 
   private final VoucherHelper voucherHelper;
@@ -71,13 +74,13 @@ public class BatchVoucherGenerateService {
         return VertxCompletableFuture.allOf(voucherLines, invoices)
           .thenCompose(v -> buildBatchVoucher(batchVoucherExport, vouchers, voucherLines.join(), invoices.join()))
           .thenAccept(batchVoucher -> {
-            closeHttpConnections();
             future.complete(batchVoucher);
+            closeHttpConnections();
             });
       })
       .exceptionally(t -> {
-        closeHttpConnections();
         future.completeExceptionally(t);
+        closeHttpConnections();
         return null;
       });
      return future;
@@ -97,8 +100,8 @@ public class BatchVoucherGenerateService {
           .map(voucher -> buildBatchedVoucher(voucher, voucherLinesMap, invoiceMap, orgMap))
           .collect(toList());
         batchVoucher.setTotalRecords(batchedVouchers.size());
-        batchVoucher.setBatchedVouchers(batchedVouchers);
-        batchVoucher.setCreated(fromFormatter.format(Instant.now()));
+        batchVoucher.withBatchedVouchers(batchedVouchers);
+        batchVoucher.setCreated(new Date());
         batchVoucher.setBatchGroup(batchGroup.getName());
         return batchVoucher;
       });
@@ -133,7 +136,7 @@ public class BatchVoucherGenerateService {
       batchedVoucher.setDisbursementDate(voucher.getDisbursementDate());
     }
     batchedVoucher.setDisbursementAmount(voucher.getDisbursementAmount());
-    batchedVoucher.setBatchedVoucherLines(buildBatchedVoucherLines(voucher.getId(), mapVoucherLines));
+    batchedVoucher.withBatchedVoucherLines(buildBatchedVoucherLines(voucher.getId(), mapVoucherLines));
     return batchedVoucher;
   }
 
@@ -152,7 +155,7 @@ public class BatchVoucherGenerateService {
       .stream()
       .map(FundDistribution::getCode)
       .collect(toList());
-    batchedVoucherLine.setFundCodes(fundCodes);
+    batchedVoucherLine.withFundCodes(fundCodes);
     return batchedVoucherLine;
   }
 
@@ -171,8 +174,11 @@ public class BatchVoucherGenerateService {
   }
 
   private String buildBatchVoucherQuery(BatchVoucherExport batchVoucherExport) {
-    return "batchGroupId==" + batchVoucherExport.getBatchGroupId() + " and voucherDate>=" + batchVoucherExport.getStart()
-        + " and voucherDate<=" + batchVoucherExport.getEnd();
+    JsonObject voucherJSON = JsonObject.mapFrom(batchVoucherExport);
+    String voucherStart = voucherJSON.getString("start");
+    String voucherEnd = voucherJSON.getString("end");
+    return "batchGroupId==" + batchVoucherExport.getBatchGroupId() + " and voucherDate>=" + voucherStart
+        + " and voucherDate<=" + voucherEnd;
   }
 
   private String buildVoucherLinesQuery(VoucherCollection voucherCollection) {

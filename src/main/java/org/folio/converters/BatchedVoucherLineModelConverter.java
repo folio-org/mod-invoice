@@ -15,7 +15,7 @@ public class BatchedVoucherLineModelConverter implements Converter<BatchedVouche
 
     BatchedVoucherLineType.FundCodes fundCodes = new BatchedVoucherLineType.FundCodes();
     fundCodes.withFundCode(batchedVoucherLine.getFundCodes());
-    batchedVoucherLineType.withFundCodes(fundCodes);
+    batchedVoucherLineType.setFundCodes(fundCodes);
     return batchedVoucherLineType;
   }
 }

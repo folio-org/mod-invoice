@@ -31,9 +31,15 @@ public class BatchVoucherModelConverter implements Converter<BatchVoucher, Batch
   public BatchVoucherType convert(BatchVoucher batchVoucher) {
     BatchVoucherType xmlBatchVoucherType = new BatchVoucherType();
     xmlBatchVoucherType.setId(batchVoucher.getId());
-    xmlBatchVoucherType.setStart(JAXBUtil.convertDateTime(batchVoucher.getStart()));
-    xmlBatchVoucherType.setEnd(JAXBUtil.convertDateTime(batchVoucher.getEnd()));
-    xmlBatchVoucherType.setCreated(JAXBUtil.convertDateTime(batchVoucher.getCreated()));
+    if (batchVoucher.getStart() != null) {
+      xmlBatchVoucherType.setStart(JAXBUtil.convertOldJavaDate(batchVoucher.getStart()));
+    }
+    if (batchVoucher.getEnd() != null) {
+      xmlBatchVoucherType.setEnd(JAXBUtil.convertOldJavaDate(batchVoucher.getEnd()));
+    }
+    if (batchVoucher.getCreated() != null) {
+      xmlBatchVoucherType.setCreated(JAXBUtil.convertOldJavaDate(batchVoucher.getCreated()));
+    }
     xmlBatchVoucherType.setBatchGroup(batchVoucher.getBatchGroup());
     xmlBatchVoucherType.setTotalRecords(BigInteger.valueOf(batchVoucher.getTotalRecords()));
 

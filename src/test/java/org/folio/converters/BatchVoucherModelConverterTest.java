@@ -1,7 +1,7 @@
 package org.folio.converters;
 
 import static java.math.BigInteger.valueOf;
-import static org.folio.jaxb.JAXBUtil.convertDateTime;
+import static org.folio.jaxb.JAXBUtil.convertOldJavaDate;
 import static org.junit.Assert.assertEquals;
 
 import java.io.IOException;
@@ -45,9 +45,9 @@ public class BatchVoucherModelConverterTest {
 
   private void assertCommonFields(BatchVoucher json, BatchVoucherType xml) {
     assertEquals(json.getId(), xml.getId());
-    assertEquals(convertDateTime(json.getStart()), xml.getStart());
-    assertEquals(convertDateTime(json.getEnd()), xml.getEnd());
-    assertEquals(convertDateTime(json.getCreated()), xml.getCreated());
+    assertEquals(convertOldJavaDate(json.getStart()), xml.getStart());
+    assertEquals(convertOldJavaDate(json.getEnd()), xml.getEnd());
+    assertEquals(convertOldJavaDate(json.getCreated()), xml.getCreated());
     assertEquals(valueOf(json.getTotalRecords()), xml.getTotalRecords());
   }
 

@@ -78,7 +78,7 @@ public class FtpUploadHelperTest {
       fakeFtpServer.stop();
     }
   }
-  
+
   @Test
   public void testFailedConnect() throws URISyntaxException, InterruptedException, ExecutionException, TimeoutException {
     logger.info("=== Test unsuccessful login ===");
@@ -104,7 +104,7 @@ public class FtpUploadHelperTest {
       })
       .get(10, TimeUnit.SECONDS);
   }
-  
+
   @Test
   public void testSuccessfulLogin() throws URISyntaxException, InterruptedException, ExecutionException, TimeoutException {
     logger.info("=== Test successful login ===");
@@ -153,10 +153,10 @@ public class FtpUploadHelperTest {
 
     BatchVoucher batchVoucher = new BatchVoucher();
     batchVoucher.setId(UUID.randomUUID().toString());
-    batchVoucher.setStart(sdf.format(start));
-    batchVoucher.setEnd(sdf.format(end));
+    batchVoucher.setStart(start);
+    batchVoucher.setEnd(end);
     batchVoucher.setBatchGroup(UUID.randomUUID().toString());
-    batchVoucher.setCreated(sdf.format(new Date()));
+    batchVoucher.setCreated(new Date());
 
     FtpUploadHelper helper = new FtpUploadHelper(uri);
     helper.login(username_valid, password_valid)
@@ -185,10 +185,10 @@ public class FtpUploadHelperTest {
 
     BatchVoucher batchVoucher = new BatchVoucher();
     batchVoucher.setId(UUID.randomUUID().toString());
-    batchVoucher.setStart(sdf.format(start));
-    batchVoucher.setEnd(sdf.format(end));
+    batchVoucher.setStart(start);
+    batchVoucher.setEnd(end);
     batchVoucher.setBatchGroup(UUID.randomUUID().toString());
-    batchVoucher.setCreated(sdf.format(new Date()));
+    batchVoucher.setCreated(new Date());
 
     FtpUploadHelper helper = new FtpUploadHelper(uri);
     helper.login(username_valid, password_valid)
@@ -207,5 +207,5 @@ public class FtpUploadHelperTest {
           .thenAccept(logger::info);
       }).get(10, TimeUnit.SECONDS);
   }
-  
+
 }
