@@ -61,7 +61,7 @@ public class BatchVoucherGenerateService {
     voucherHelper.getVouchers(Integer.MAX_VALUE, 0, voucherCQL)
       .thenApply(voucherCollection -> {
         if (voucherCollection.getVouchers().isEmpty()) {
-          future.completeExceptionally(new BatchVoucherGenerationException("Vouchers for batch voucher export were not found"));
+          throw new BatchVoucherGenerationException("Vouchers for batch voucher export were not found");
         }
         return voucherCollection;
       })
@@ -71,13 +71,13 @@ public class BatchVoucherGenerateService {
         return VertxCompletableFuture.allOf(voucherLines, invoices)
           .thenCompose(v -> buildBatchVoucher(batchVoucherExport, vouchers, voucherLines.join(), invoices.join()))
           .thenAccept(batchVoucher -> {
-            future.complete(batchVoucher);
             closeHttpConnections();
+            future.complete(batchVoucher);
             });
       })
       .exceptionally(t -> {
-        future.completeExceptionally(t);
         closeHttpConnections();
+        future.completeExceptionally(t);
         return null;
       });
      return future;
