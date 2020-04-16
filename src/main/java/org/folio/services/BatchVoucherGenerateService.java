@@ -1,5 +1,6 @@
 package org.folio.services;
 
+import static java.util.concurrent.CompletableFuture.allOf;
 import static java.util.stream.Collectors.toList;
 
 import java.util.ArrayList;
@@ -55,7 +56,7 @@ public class BatchVoucherGenerateService {
       .thenCompose(vouchers -> {
         CompletableFuture<Map<String, List<VoucherLine>>> voucherLines = voucherLinesRetrieveService.getVoucherLinesMap(vouchers);
         CompletableFuture<Map<String, Invoice>> invoices = invoiceRetrieveService.getInvoiceMap(vouchers);
-        return VertxCompletableFuture.allOf(voucherLines, invoices)
+        return allOf(voucherLines, invoices)
           .thenCompose(v -> buildBatchVoucher(batchVoucherExport, vouchers, voucherLines.join(), invoices.join()))
           .thenAccept(batchVoucher -> {
             future.complete(batchVoucher);

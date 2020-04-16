@@ -11,12 +11,8 @@ import org.folio.services.BatchVoucherGenerateService;
 
 import io.vertx.core.Context;
 import io.vertx.core.json.JsonObject;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
 
 public class BatchVoucherPersisteHelper extends AbstractHelper {
-  private final Logger logger = LoggerFactory.getLogger(this.getClass());
-
   private final BatchVoucherGenerateService batchVoucherGenerateService;
   private final BatchVoucherExportsHelper batchVoucherExportsHelper;
 
