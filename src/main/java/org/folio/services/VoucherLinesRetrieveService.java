@@ -2,7 +2,6 @@ package org.folio.services;
 
 import static java.util.stream.Collectors.groupingBy;
 import static java.util.stream.Collectors.toList;
-import static java.util.stream.Collectors.toMap;
 import static org.folio.invoices.utils.HelperUtils.buildIdsChunks;
 import static org.folio.invoices.utils.HelperUtils.collectResultsOnSuccess;
 import static org.folio.invoices.utils.HelperUtils.convertIdsToCqlQuery;
@@ -10,10 +9,8 @@ import static org.folio.invoices.utils.HelperUtils.convertIdsToCqlQuery;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import org.folio.rest.acq.model.Organization;
 import org.folio.rest.acq.model.VoucherLine;
 import org.folio.rest.acq.model.VoucherLineCollection;
 import org.folio.rest.impl.VoucherLineHelper;
