@@ -36,9 +36,9 @@ import static org.folio.invoices.utils.ResourcePathResolver.VOUCHER_NUMBER;
 import static org.folio.invoices.utils.ResourcePathResolver.VOUCHER_NUMBER_START;
 import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
 import static org.folio.rest.RestVerticle.OKAPI_HEADER_TENANT;
-import static org.folio.rest.impl.AbstractHelper.ID;
 import static org.folio.rest.impl.ApiTestBase.BASE_MOCK_DATA_PATH;
 import static org.folio.rest.impl.ApiTestBase.FOLIO_INVOICE_NUMBER_VALUE;
+
 import static org.folio.rest.impl.ApiTestBase.ID_DOES_NOT_EXIST;
 import static org.folio.rest.impl.ApiTestBase.ID_FOR_INTERNAL_SERVER_ERROR;
 import static org.folio.rest.impl.ApiTestBase.ID_FOR_INTERNAL_SERVER_ERROR_PUT;
@@ -55,7 +55,6 @@ import static org.folio.rest.impl.BatchVoucherExportConfigCredentialsTest.CONFIG
 import static org.folio.rest.impl.BatchVoucherExportConfigTest.BATCH_VOUCHER_EXPORT_CONFIGS_SAMPLE_PATH;
 import static org.folio.rest.impl.BatchVoucherExportConfigTest.BATCH_VOUCHER_EXPORT_CONFIG_SAMPLE_PATH;
 import static org.folio.rest.impl.BatchVoucherExportsApiTest.BATCH_VOUCHER_EXPORTS_LIST_PATH;
-import static org.folio.rest.impl.BatchVoucherExportsApiTest.BATCH_VOUCHER_EXPORTS_MOCK_DATA_PATH;
 import static org.folio.rest.impl.BatchVoucherImplTest.BATCH_VOUCHER_MOCK_DATA_PATH;
 import static org.folio.rest.impl.DocumentsApiTest.INVOICE_DOCUMENTS_SAMPLE_PATH;
 import static org.folio.rest.impl.DocumentsApiTest.INVOICE_SAMPLE_DOCUMENTS_PATH;
@@ -96,6 +95,7 @@ import java.util.regex.Pattern;
 import javax.ws.rs.core.Response;
 
 import org.apache.commons.lang3.StringUtils;
+import org.folio.HttpStatus;
 import org.folio.invoices.utils.ResourcePathResolver;
 import org.folio.rest.acq.model.BatchGroup;
 import org.folio.rest.acq.model.BatchGroupCollection;
@@ -159,6 +159,7 @@ public class MockServer {
   private static final String QUERY = "query";
   private static final String LIMIT = "limit";
   private static final String OFFSET = "offset";
+  static final String ACTIVE_VENDOR_ID = "d0fb5aa0-cdf1-11e8-a8d5-f2801f1b9fd1";
 
   private static final String MOCK_DATA_INVOICES = "mockdata/invoices/invoices.json";
   static final String TEST_PREFIX = "testPrefix";
@@ -190,10 +191,11 @@ public class MockServer {
   static final String ACQUISITIONS_UNITS_COLLECTION = ACQUISITIONS_UNITS_MOCK_DATA_PATH + "/units.json";
   static final String ACQUISITIONS_MEMBERSHIPS_COLLECTION = ACQUISITIONS_UNITS_MOCK_DATA_PATH + "/memberships.json";
   private static final String PO_LINES_MOCK_DATA_PATH = BASE_MOCK_DATA_PATH + "poLines/";
-  private static final String ID_PATH_PARAM = "/:" + ID;
+  private static final String ID_PATH_PARAM = "/:" + AbstractHelper.ID;
   private static final String VALUE_PATH_PARAM = "/:value";
   private static final String TOTAL_RECORDS = "totalRecords";
   public static final String SEARCH_INVOICE_BY_LINE_ID_NOT_FOUND = "b37cd8e7-d291-40f0-b687-57728ee3fc26";
+  private static final String ORGANIZATIONS_MOCK_DATA_PATH = BASE_MOCK_DATA_PATH + "organizations/";
 
   static final Header INVOICE_NUMBER_ERROR_X_OKAPI_TENANT = new Header(OKAPI_HEADER_TENANT, INVOICE_NUMBER_ERROR_TENANT);
   static final Header ERROR_X_OKAPI_TENANT = new Header(OKAPI_HEADER_TENANT, ERROR_TENANT);
@@ -218,6 +220,7 @@ public class MockServer {
   static final String CURRENT_FISCAL_YEAR = "currentFiscalYear";
   static final String SYSTEM_CURRENCY = "GBP";
   static final String FISCAL_YEAR_ID = UUID.randomUUID().toString();
+  public static final String ACTIVE_ACCESS_VENDOR = "168f8a63-d612-406e-813f-c7527f241ac3";
 
   private final int port;
   private final Vertx vertx;
@@ -326,11 +329,11 @@ public class MockServer {
   }
 
   private static List<JsonObject> getCollectionRecords(List<JsonObject> entries) {
-    return entries.stream().filter(json -> !json.containsKey(ID)).collect(toList());
+    return entries.stream().filter(json -> !json.containsKey(AbstractHelper.ID)).collect(toList());
   }
 
   private static List<JsonObject> getRecordsByIds(List<JsonObject> entries) {
-    return entries.stream().filter(json -> json.containsKey(ID)).collect(toList());
+    return entries.stream().filter(json -> json.containsKey(AbstractHelper.ID)).collect(toList());
   }
 
   public static List<JsonObject> getBatchGroupUpdates() {
@@ -393,6 +396,7 @@ public class MockServer {
     router.route(HttpMethod.GET, "/finance/ledgers/:id/current-fiscal-year").handler(this::handleGetCurrentFiscalYearByLedgerId);
     router.route(HttpMethod.GET, resourcesPath(BATCH_VOUCHER_EXPORTS_STORAGE)).handler(this::handleGetBatchVoucherExports);
     router.route(HttpMethod.GET, resourceByIdPath(BATCH_VOUCHER_EXPORTS_STORAGE)).handler(this::handleGetBatchVoucherExportsById);
+    router.get("/organizations-storage/organizations").handler(this::handleGetAccessProviders);
 
     router.route(HttpMethod.DELETE, resourceByIdPath(INVOICES)).handler(ctx -> handleDeleteRequest(ctx, INVOICES));
     router.route(HttpMethod.DELETE, resourceByIdPath(INVOICE_LINES)).handler(ctx -> handleDeleteRequest(ctx, INVOICE_LINES));
@@ -417,10 +421,10 @@ public class MockServer {
 
   private void handleGetCurrentFiscalYearByLedgerId(RoutingContext ctx) {
     logger.info("got: " + ctx.request().path());
-    String id = ctx.request().getParam(ID);
+    String id = ctx.request().getParam(AbstractHelper.ID);
     logger.info("id: " + id);
 
-    addServerRqRsData(HttpMethod.GET, CURRENT_FISCAL_YEAR, new JsonObject().put(ID, id));
+    addServerRqRsData(HttpMethod.GET, CURRENT_FISCAL_YEAR, new JsonObject().put(AbstractHelper.ID, id));
 
     if (ID_FOR_INTERNAL_SERVER_ERROR.equals(id)) {
       serverResponse(ctx, 500, APPLICATION_JSON, INTERNAL_SERVER_ERROR.getReasonPhrase());
@@ -553,7 +557,7 @@ public class MockServer {
 
   private void handleGetBatchVoucherExportConfigCredentials(RoutingContext ctx) {
     logger.info("handleGetBatchVoucherExportConfigCredentials got: GET " + ctx.request().path());
-    String id = ctx.request().getParam(ID);
+    String id = ctx.request().getParam(AbstractHelper.ID);
     logger.info("id: " + id);
     if (ID_FOR_INTERNAL_SERVER_ERROR.equals(id)) {
       serverResponse(ctx, 500, APPLICATION_JSON, Response.Status.INTERNAL_SERVER_ERROR.getReasonPhrase());
@@ -571,7 +575,7 @@ public class MockServer {
 
   private void handleGetBatchVoucherExportConfigById(RoutingContext ctx) {
     logger.info("handleGetBatchVoucherExportConfigById got: GET " + ctx.request().path());
-    String id = ctx.request().getParam(ID);
+    String id = ctx.request().getParam(AbstractHelper.ID);
     logger.info("id: " + id);
     if (ID_FOR_INTERNAL_SERVER_ERROR.equals(id)) {
       serverResponse(ctx, 500, APPLICATION_JSON, Response.Status.INTERNAL_SERVER_ERROR.getReasonPhrase());
@@ -783,7 +787,7 @@ public class MockServer {
       String invoiceId = EMPTY;
       List<String> includedLineIds = Collections.emptyList();
       List<String> excludedLineIds = getRqRsEntries(HttpMethod.DELETE, INVOICE_LINES).stream()
-        .map(json -> json.getString(ID))
+        .map(json -> json.getString(AbstractHelper.ID))
         .collect(toList());
 
       if (queryParam.contains(INVOICE_ID)) {
@@ -831,7 +835,7 @@ public class MockServer {
       JsonObject body = ctx.getBodyAsJson();
       if (generateId) {
         String id = UUID.randomUUID().toString();
-        body.put(ID, id);
+        body.put(AbstractHelper.ID, id);
       }
       T entry = body.mapTo(tClass);
       addServerRqRsData(HttpMethod.POST, entryName, body);
@@ -842,7 +846,7 @@ public class MockServer {
 
   private void handleGetInvoiceById(RoutingContext ctx) {
     logger.info("handleGetInvoiceById got: GET " + ctx.request().path());
-    String id = ctx.request().getParam(ID);
+    String id = ctx.request().getParam(AbstractHelper.ID);
     logger.info("id: " + id);
     if (ID_FOR_INTERNAL_SERVER_ERROR.equals(id)) {
       serverResponse(ctx, 500, APPLICATION_JSON, Response.Status.INTERNAL_SERVER_ERROR.getReasonPhrase());
@@ -863,7 +867,7 @@ public class MockServer {
 
   private void handleGetVoucherLineById(RoutingContext ctx) {
     logger.info("handleGetVoucherLinesById got: GET " + ctx.request().path());
-    String id = ctx.request().getParam(ID);
+    String id = ctx.request().getParam(AbstractHelper.ID);
     logger.info("id: " + id);
 
     try {
@@ -884,7 +888,7 @@ public class MockServer {
 
   private void handleGetInvoiceLineById(RoutingContext ctx) {
     logger.info("handleGetInvoiceLinesById got: GET " + ctx.request().path());
-    String id = ctx.request().getParam(ID);
+    String id = ctx.request().getParam(AbstractHelper.ID);
     logger.info("id: " + id);
     if (ID_FOR_INTERNAL_SERVER_ERROR.equals(id)) {
       serverResponse(ctx, 500, APPLICATION_JSON, Response.Status.INTERNAL_SERVER_ERROR.getReasonPhrase());
@@ -1002,10 +1006,10 @@ public class MockServer {
   }
 
   private void handleDeleteRequest(RoutingContext ctx, String type) {
-    String id = ctx.request().getParam(ID);
+    String id = ctx.request().getParam(AbstractHelper.ID);
     String tenant = ctx.request().getHeader(OKAPI_HEADER_TENANT);
     // Register request
-    addServerRqRsData(HttpMethod.DELETE, type, new JsonObject().put(ID, id));
+    addServerRqRsData(HttpMethod.DELETE, type, new JsonObject().put(AbstractHelper.ID, id));
 
     if (ID_DOES_NOT_EXIST.equals(id)) {
       serverResponse(ctx, 404, TEXT_PLAIN, id);
@@ -1018,10 +1022,10 @@ public class MockServer {
 
   private void handleGetPoLineById(RoutingContext ctx) {
     logger.info("got: " + ctx.request().path());
-    String id = ctx.request().getParam(ID);
+    String id = ctx.request().getParam(AbstractHelper.ID);
     logger.info("id: " + id);
 
-    addServerRqRsData(HttpMethod.GET, ResourcePathResolver.ORDER_LINES, new JsonObject().put(ID, id));
+    addServerRqRsData(HttpMethod.GET, ResourcePathResolver.ORDER_LINES, new JsonObject().put(AbstractHelper.ID, id));
 
     if (ID_FOR_INTERNAL_SERVER_ERROR.equals(id)) {
       serverResponse(ctx, 500, APPLICATION_JSON, INTERNAL_SERVER_ERROR.getReasonPhrase());
@@ -1063,7 +1067,7 @@ public class MockServer {
   }
 
   private Optional<JsonObject> getMockEntry(String objName, String id) {
-    return getRqRsEntries(HttpMethod.OTHER, objName).stream().filter(obj -> id.equals(obj.getString(ID))).findAny();
+    return getRqRsEntries(HttpMethod.OTHER, objName).stream().filter(obj -> id.equals(obj.getString(AbstractHelper.ID))).findAny();
   }
 
   private <T> Optional<List<T>> getMockEntries(String objName, Class<T> tClass) {
@@ -1087,7 +1091,7 @@ public class MockServer {
 
   private void handlePutGenericSubObj(RoutingContext ctx, String subObj) {
     logger.info("handlePutGenericSubObj got: PUT " + ctx.request().path());
-    String id = ctx.request().getParam(ID);
+    String id = ctx.request().getParam(AbstractHelper.ID);
     String tenant = ctx.request().getHeader(OKAPI_HEADER_TENANT);
     addServerRqRsData(HttpMethod.PUT, subObj, ctx.getBodyAsJson());
 
@@ -1127,7 +1131,7 @@ public class MockServer {
 
   private void handleGetVoucherById(RoutingContext ctx) {
     logger.info("handleGetVoucherById got: GET " + ctx.request().path());
-    String id = ctx.request().getParam(ID);
+    String id = ctx.request().getParam(AbstractHelper.ID);
     logger.info("id: " + id);
     if (ID_FOR_INTERNAL_SERVER_ERROR.equals(id)) {
       serverResponse(ctx, 500, APPLICATION_JSON, Response.Status.INTERNAL_SERVER_ERROR.getReasonPhrase());
@@ -1148,7 +1152,7 @@ public class MockServer {
 
   private void handleGetBatchGroupById(RoutingContext ctx) {
     logger.info("handleGetBatchGroupById got: GET " + ctx.request().path());
-    String id = ctx.request().getParam(ID);
+    String id = ctx.request().getParam(AbstractHelper.ID);
     logger.info("id: " + id);
     if (ID_FOR_INTERNAL_SERVER_ERROR.equals(id)) {
       serverResponse(ctx, 500, APPLICATION_JSON, Response.Status.INTERNAL_SERVER_ERROR.getReasonPhrase());
@@ -1169,7 +1173,7 @@ public class MockServer {
 
   private void handleGetBatchVoucherExportsById(RoutingContext ctx) {
     logger.info("handleGetBatchVoucherExportsById got: GET " + ctx.request().path());
-    String id = ctx.request().getParam(ID);
+    String id = ctx.request().getParam(AbstractHelper.ID);
     logger.info("id: " + id);
     if (ID_FOR_INTERNAL_SERVER_ERROR.equals(id)) {
       serverResponse(ctx, 500, APPLICATION_JSON, Response.Status.INTERNAL_SERVER_ERROR.getReasonPhrase());
@@ -1190,7 +1194,7 @@ public class MockServer {
 
   private void handleGetBatchVoucherById(RoutingContext ctx) {
     logger.info("handleGetBatchVoucherById got: GET " + ctx.request().path());
-    String id = ctx.request().getParam(ID);
+    String id = ctx.request().getParam(AbstractHelper.ID);
     logger.info("id: " + id);
     if (ID_FOR_INTERNAL_SERVER_ERROR.equals(id)) {
       serverResponse(ctx, 500, APPLICATION_XML, Response.Status.INTERNAL_SERVER_ERROR.getReasonPhrase());
@@ -1258,6 +1262,9 @@ public class MockServer {
     if (queryParam.contains(INVOICE_ID)) {
       invoiceId = queryParam.split(INVOICE_ID + "==")[1];
     }
+    if (queryParam.contains("batchGroupId") && queryParam.contains("voucherDate")){
+      invoiceId = "c0d08448-347b-418a-8c2f-5fb50248d67e";
+    }
     if (queryParam.contains(BAD_QUERY)) {
       serverResponse(ctx, 400, APPLICATION_JSON, Response.Status.BAD_REQUEST.getReasonPhrase());
     } else if (queryParam.contains(ID_FOR_INTERNAL_SERVER_ERROR) || GET_VOUCHERS_ERROR_TENANT.equals(tenant)) {
@@ -1275,8 +1282,8 @@ public class MockServer {
       VoucherCollection voucherCollection = new VoucherCollection();
       List<Voucher> vouchers  = getMockEntries(VOUCHERS, Voucher.class).orElseGet(getFromFile);
 
-      Function<Voucher, String> voucherIdGetter = Voucher::getInvoiceId;
-      voucherCollection.setVouchers(filterEntriesByStringValue(invoiceId, vouchers, voucherIdGetter));
+      Function<Voucher, String> invoiceIdGetter = Voucher::getInvoiceId;
+      voucherCollection.setVouchers(filterEntriesByStringValue(invoiceId, vouchers, invoiceIdGetter));
       voucherCollection.setTotalRecords(voucherCollection.getVouchers().size());
 
       JsonObject vouchersJson = JsonObject.mapFrom(voucherCollection);
@@ -1457,6 +1464,63 @@ public class MockServer {
     }
   }
 
+  private void getOrganizations(RoutingContext ctx) {
+    logger.info("handleGetOrganizationById got: " + ctx.request().path());
+    String vendorId = ctx.request().getParam(ApiTestBase.ID);
+    JsonObject body;
+    if (ACTIVE_VENDOR_ID.equals(vendorId)) {
+      serverResponse(ctx, HttpStatus.HTTP_NOT_FOUND.toInt(), APPLICATION_JSON, "vendor not found");
+      body = getOrganizationById(vendorId);
+      if (body != null) {
+        serverResponse(ctx, HttpStatus.HTTP_OK.toInt(), APPLICATION_JSON, body.encodePrettily());
+      } else {
+        serverResponse(ctx, HttpStatus.HTTP_NOT_FOUND.toInt(), APPLICATION_JSON, "vendor not found");
+      }
+    }
+  }
+
+  private void handleGetAccessProviders(RoutingContext ctx) {
+    logger.info("handleGetAccessProviders got: " + ctx.request().path());
+    String query = ctx.request().getParam("query");
+    JsonObject body = null;
+
+    try {
+     if (query.contains(ACTIVE_ACCESS_VENDOR)) {
+       body = new JsonObject(ApiTestBase.getMockData(ORGANIZATIONS_MOCK_DATA_PATH + "one_access_providers_active.json"));
+     }
+    } catch(IOException e) {
+      ctx.response()
+        .setStatusCode(HttpStatus.HTTP_NOT_FOUND.toInt())
+        .end();
+    }
+
+    if (body != null) {
+      serverResponse(ctx, HttpStatus.HTTP_OK.toInt(), APPLICATION_JSON, body.encodePrettily());
+    } else {
+      ctx.response()
+        .setStatusCode(HttpStatus.HTTP_NOT_FOUND.toInt())
+        .end();
+    }
+  }
+
+  private JsonObject getOrganizationById(String organizationId) {
+    logger.debug("Searching for organization by id={}", organizationId);
+    JsonObject body;
+    try {
+      switch (organizationId) {
+        case ACTIVE_VENDOR_ID:
+          body = new JsonObject(ApiTestBase.getMockData(ORGANIZATIONS_MOCK_DATA_PATH + "active_vendor.json"));
+          break;
+        default:
+          body = null;
+      }
+    } catch (IOException e) {
+      body = null;
+    }
+    return body;
+  }
+
+
   private void addServerRqQuery(String objName, String query) {
     serverRqQueries.computeIfAbsent(objName, key -> new ArrayList<>())
       .add(query);
@@ -1471,7 +1535,7 @@ public class MockServer {
   }
 
   private List<String> extractIdsFromQuery(String query, String relation) {
-    return extractIdsFromQuery(ID, relation, query);
+    return extractIdsFromQuery(AbstractHelper.ID, relation, query);
   }
 
   private List<String> extractIdsFromQuery(String fieldName, String relation, String query) {

@@ -81,7 +81,7 @@ public class ApiTestBase {
   public static final Header ACCEPT_JSON_HEADER = new Header(HttpHeaders.ACCEPT, APPLICATION_JSON);
   public static final Header ACCEPT_XML_HEADER = new Header(HttpHeaders.ACCEPT, APPLICATION_XML);
   public static final String BAD_QUERY = "unprocessableQuery";
-
+  public static final String ID = "id";
   public static final String ID_DOES_NOT_EXIST = "d25498e7-3ae6-45fe-9612-ec99e2700d2f";
 
   public static final String BASE_MOCK_DATA_PATH = "mockdata/";

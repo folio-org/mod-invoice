@@ -6,13 +6,14 @@ import static org.folio.rest.impl.ApiTestSuite.mockPort;
 import static org.junit.Assert.assertEquals;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 
-import org.folio.rest.acq.model.VoucherLineCollection;
 import org.folio.rest.impl.ApiTestBase;
 import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.jaxrs.model.InvoiceCollection;
@@ -43,7 +44,6 @@ public class InvoiceRetrieveServiceTest extends ApiTestBase {
 
   @Test
   public void positiveGetInvoicesByChunksTest() throws IOException, ExecutionException, InterruptedException {
-
     InvoiceRetrieveService service = new InvoiceRetrieveService(okapiHeaders, context, "en");
     JsonObject vouchersList = new JsonObject(getMockData(VOUCHERS_LIST_PATH));
     List<Voucher> vouchers = vouchersList.getJsonArray("vouchers") .stream()
@@ -58,7 +58,6 @@ public class InvoiceRetrieveServiceTest extends ApiTestBase {
 
   @Test
   public void positiveGetInvoiceMapTest() throws IOException, ExecutionException, InterruptedException {
-
     InvoiceRetrieveService service = new InvoiceRetrieveService(okapiHeaders, context, "en");
     JsonObject vouchersList = new JsonObject(getMockData(VOUCHERS_LIST_PATH));
     List<Voucher> vouchers = vouchersList.getJsonArray("vouchers") .stream()
@@ -66,7 +65,8 @@ public class InvoiceRetrieveServiceTest extends ApiTestBase {
       .collect(toList());
 
     vouchers.remove(1);
-    VoucherCollection voucherCollection = new VoucherCollection();voucherCollection.setVouchers(vouchers);
+    VoucherCollection voucherCollection = new VoucherCollection();
+    voucherCollection.setVouchers(vouchers);
 
     CompletableFuture<Map<String, Invoice>> future = service.getInvoiceMap(voucherCollection);
     Map<String, Invoice> lineMap = future.get();
