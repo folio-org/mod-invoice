@@ -1,6 +1,8 @@
 package org.folio.converters;
 
 import java.math.BigDecimal;
+import java.util.List;
+import java.util.stream.Collectors;
 
 import org.folio.rest.jaxrs.model.BatchedVoucherLine;
 import org.folio.rest.jaxrs.model.jaxb.BatchedVoucherLineType;
@@ -14,8 +16,17 @@ public class BatchedVoucherLineModelConverter implements Converter<BatchedVouche
     batchedVoucherLineType.setExternalAccountNumber(batchedVoucherLine.getExternalAccountNumber());
 
     BatchedVoucherLineType.FundCodes fundCodes = new BatchedVoucherLineType.FundCodes();
-    fundCodes.withFundCode(batchedVoucherLine.getFundCodes());
+    List<String> normalizedFundCodes = batchedVoucherLine.getFundCodes()
+      .stream()
+      .map(this::normalizeFundCode)
+      .collect(Collectors.toList());
+
+    fundCodes.withFundCode(normalizedFundCodes);
     batchedVoucherLineType.setFundCodes(fundCodes);
     return batchedVoucherLineType;
+  }
+
+  private String normalizeFundCode(String fundCode){
+    return fundCode != null ? fundCode : "Empty";
   }
 }

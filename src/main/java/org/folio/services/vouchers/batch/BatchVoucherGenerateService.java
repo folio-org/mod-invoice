@@ -3,26 +3,30 @@ package org.folio.services.vouchers.batch;
 import static java.util.stream.Collectors.groupingBy;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toMap;
+import static org.folio.invoices.utils.HelperUtils.collectResultsOnSuccess;
+import static org.folio.invoices.utils.HelperUtils.convertIdsToCqlQuery;
 
-import java.text.SimpleDateFormat;
-import java.time.Instant;
-import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 import org.folio.exceptions.BatchVoucherGenerationException;
-import org.folio.invoices.utils.HelperUtils;
 import org.folio.rest.acq.model.FundDistribution;
 import org.folio.rest.acq.model.Organization;
+import org.folio.rest.acq.model.OrganizationCollection;
 import org.folio.rest.acq.model.VoucherLine;
+import org.folio.rest.acq.model.VoucherLineCollection;
 import org.folio.rest.impl.BatchGroupHelper;
 import org.folio.rest.impl.InvoiceHelper;
 import org.folio.rest.impl.VendorHelper;
@@ -33,16 +37,17 @@ import org.folio.rest.jaxrs.model.BatchVoucherExport;
 import org.folio.rest.jaxrs.model.BatchedVoucher;
 import org.folio.rest.jaxrs.model.BatchedVoucherLine;
 import org.folio.rest.jaxrs.model.Invoice;
+import org.folio.rest.jaxrs.model.InvoiceCollection;
 import org.folio.rest.jaxrs.model.Voucher;
 import org.folio.rest.jaxrs.model.VoucherCollection;
 
 import io.vertx.core.Context;
 import io.vertx.core.json.JsonObject;
 import me.escoffier.vertx.completablefuture.VertxCompletableFuture;
+import one.util.streamex.StreamEx;
 
 public class BatchVoucherGenerateService {
-  private static final DateTimeFormatter fromFormatter = //new SimpleDateFormat("yyyy-MM-dd'T'hh:mm:ss.SSSz", Locale.ENGLISH);
-    DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSZ").withLocale( Locale.UK ).withZone( ZoneId.of("UTC"));
+  static final int MAX_IDS_FOR_GET_RQ = 15;
 
   private final VoucherHelper voucherHelper;
   private final VoucherLineHelper voucherLineHelper;
@@ -69,7 +74,7 @@ public class BatchVoucherGenerateService {
         return voucherCollection;
       })
       .thenCompose(vouchers -> {
-        CompletableFuture<Map<String, List<VoucherLine>>> voucherLines = getVoucherCollectionLinesMap(vouchers);
+        CompletableFuture<Map<String, List<VoucherLine>>> voucherLines = getVoucherLinesMap(vouchers);
         CompletableFuture<Map<String, Invoice>> invoices = getInvoiceMap(vouchers);
         return VertxCompletableFuture.allOf(voucherLines, invoices)
           .thenCompose(v -> buildBatchVoucher(batchVoucherExport, vouchers, voucherLines.join(), invoices.join()))
@@ -88,10 +93,9 @@ public class BatchVoucherGenerateService {
 
   private CompletableFuture<BatchVoucher> buildBatchVoucher(BatchVoucherExport batchVoucherExport,
       VoucherCollection voucherCollection, Map<String, List<VoucherLine>> voucherLinesMap, Map<String, Invoice> invoiceMap) {
-    Set<String> vendorIds = getVendorIds(invoiceMap);
-    return vendorHelper.getVendors(vendorIds)
-      .thenCombine(batchGroupHelper.getBatchGroup(batchVoucherExport.getBatchGroupId()), (vendors, batchGroup) -> {
-        Map<String, Organization> orgMap = vendors.stream().collect(toMap(Organization::getId, Function.identity()));
+    List<Invoice> invoices = new ArrayList<>(invoiceMap.values());
+    return getOrganizationMap(invoices, MAX_IDS_FOR_GET_RQ)
+      .thenCombine(batchGroupHelper.getBatchGroup(batchVoucherExport.getBatchGroupId()), (orgMap, batchGroup) -> {
         BatchVoucher batchVoucher = new BatchVoucher();
         batchVoucher.setStart(batchVoucherExport.getStart());
         batchVoucher.setEnd(batchVoucherExport.getStart());
@@ -105,13 +109,6 @@ public class BatchVoucherGenerateService {
         batchVoucher.setBatchGroup(batchGroup.getName());
         return batchVoucher;
       });
-  }
-
-  private Set<String> getVendorIds(Map<String, Invoice> invoiceCollection) {
-    return invoiceCollection.values()
-      .stream()
-      .map(Invoice::getVendorId)
-      .collect(Collectors.toSet());
   }
 
   private BatchedVoucher buildBatchedVoucher(Voucher voucher, Map<String, List<VoucherLine>> mapVoucherLines,
@@ -160,17 +157,66 @@ public class BatchVoucherGenerateService {
   }
 
   private CompletableFuture<Map<String, Invoice>> getInvoiceMap(VoucherCollection voucherCollection) {
-    String query = buildInvoiceListQuery(voucherCollection);
-    return invoiceHelper.getInvoices(Integer.MAX_VALUE, 0, query)
-      .thenApply(invoiceCollection -> invoiceCollection.getInvoices().stream().collect(toMap(Invoice::getId, Function.identity())));
+    return getInvoicesByChunks(voucherCollection.getVouchers(), MAX_IDS_FOR_GET_RQ)
+      .thenApply(invoiceCollections ->
+              invoiceCollections.stream()
+                                .map(InvoiceCollection::getInvoices)
+                                .collect(toList()).stream()
+                                .flatMap(List::stream)
+                                .collect(Collectors.toList()))
+      .thenApply(invoices -> invoices.stream().collect(toMap(Invoice::getId, Function.identity())));
   }
 
-  private CompletableFuture<Map<String, List<VoucherLine>>> getVoucherCollectionLinesMap(VoucherCollection voucherCollection) {
-    String query = buildVoucherLinesQuery(voucherCollection);
-    return voucherLineHelper.getVoucherLines(Integer.MAX_VALUE, 0, query)
-      .thenApply(voucherLineCollection -> voucherLineCollection.getVoucherLines()
-        .stream()
-        .collect(groupingBy(VoucherLine::getVoucherId)));
+  private CompletableFuture<Map<String, Organization>> getOrganizationMap(List<Invoice> invoices, int maxRecordsPerGet) {
+    return getVendorsByChunks(invoices, maxRecordsPerGet)
+      .thenApply(organizationCollections ->
+        organizationCollections.stream()
+                               .map(OrganizationCollection::getOrganizations)
+                               .collect(toList()).stream()
+                               .flatMap(List::stream)
+                               .collect(Collectors.toList()))
+      .thenApply(organizations -> organizations.stream().collect(toMap(Organization::getId, Function.identity())));
+  }
+
+  private CompletableFuture<Map<String, List<VoucherLine>>> getVoucherLinesMap(VoucherCollection voucherCollection) {
+    return getVoucherLinesByChunks(voucherCollection.getVouchers(), MAX_IDS_FOR_GET_RQ)
+      .thenApply(voucherLineCollections ->
+        voucherLineCollections.stream()
+                              .map(VoucherLineCollection::getVoucherLines)
+                              .collect(toList()).stream()
+                              .flatMap(List::stream)
+                              .collect(Collectors.toList()))
+      .thenApply(voucherLines -> voucherLines.stream().collect(groupingBy(VoucherLine::getVoucherId)));
+  }
+
+  private CompletableFuture<List<InvoiceCollection>> getInvoicesByChunks(List<Voucher> vouchers, int maxRecordsPerGet) {
+    List<CompletableFuture<InvoiceCollection>> invoiceFutureList = buildIdChunks(vouchers, maxRecordsPerGet).values()
+      .stream()
+      .map(this::buildInvoiceListQuery)
+      .map(query -> invoiceHelper.getInvoices(maxRecordsPerGet, 0, query))
+      .collect(Collectors.toList());
+
+    return collectResultsOnSuccess(invoiceFutureList);
+  }
+
+  private CompletableFuture<List<VoucherLineCollection>> getVoucherLinesByChunks(List<Voucher> vouchers, int maxRecordsPerGet) {
+    List<CompletableFuture<VoucherLineCollection>> invoiceFutureList = buildIdChunks(vouchers, maxRecordsPerGet).values()
+      .stream()
+      .map(this::buildVoucherLinesQuery)
+      .map(query -> voucherLineHelper.getVoucherLines(maxRecordsPerGet, 0, query))
+      .collect(Collectors.toList());
+
+    return collectResultsOnSuccess(invoiceFutureList);
+  }
+
+  private CompletableFuture<List<OrganizationCollection>> getVendorsByChunks(List<Invoice> invoices, int maxRecordsPerGet) {
+    List<CompletableFuture<OrganizationCollection>> invoiceFutureList = buildIdChunks(invoices, maxRecordsPerGet).values()
+      .stream()
+      .map(this::getVendorIds)
+      .map(vendorHelper::getVendors)
+      .collect(Collectors.toList());
+
+    return collectResultsOnSuccess(invoiceFutureList);
   }
 
   private String buildBatchVoucherQuery(BatchVoucherExport batchVoucherExport) {
@@ -178,23 +224,41 @@ public class BatchVoucherGenerateService {
     String voucherStart = voucherJSON.getString("start");
     String voucherEnd = voucherJSON.getString("end");
     return "batchGroupId==" + batchVoucherExport.getBatchGroupId() + " and voucherDate>=" + voucherStart
-        + " and voucherDate<=" + voucherEnd;
+      + " and voucherDate<=" + voucherEnd;
   }
 
-  private String buildVoucherLinesQuery(VoucherCollection voucherCollection) {
-    List<String> voucherIds = voucherCollection.getVouchers()
-      .stream()
+  private String buildVoucherLinesQuery(List<Voucher> vouchers) {
+    List<String> voucherIds = vouchers.stream()
       .map(Voucher::getId)
       .collect(Collectors.toList());
-    return HelperUtils.convertIdsToCqlQuery(voucherIds, "voucherId", true);
+    return convertIdsToCqlQuery(voucherIds, "voucherId", true);
   }
 
-  private String buildInvoiceListQuery(VoucherCollection voucherCollection) {
-    List<String> invoiceIds = voucherCollection.getVouchers()
-      .stream()
+  private String buildInvoiceListQuery(List<Voucher> vouchers) {
+    List<String> invoiceIds = vouchers.stream()
       .map(Voucher::getInvoiceId)
       .collect(Collectors.toList());
-    return HelperUtils.convertIdsToCqlQuery(invoiceIds);
+    return convertIdsToCqlQuery(invoiceIds);
+  }
+
+  private Set<String> getVendorIds(List<Invoice> invoices) {
+    return invoices.stream()
+      .map(Invoice::getVendorId)
+      .collect(Collectors.toSet());
+  }
+
+  private <T> Map<Integer, List<T>> buildIdChunks(List<T> source, int maxListRecords) {
+    int size = source.size();
+    if (size <= 0)
+      return Collections.emptyMap();
+    int fullChunks = (size - 1) / maxListRecords;
+    HashMap<Integer, List<T>> idChunkMap = new HashMap<>();
+    IntStream.range(0, fullChunks + 1)
+                    .forEach(n -> {
+                      List<T> subList = source.subList(n * maxListRecords, n == fullChunks ? size : (n + 1) * maxListRecords);
+                      idChunkMap.put(n, subList);
+                    });
+     return idChunkMap;
   }
 
   private void closeHttpConnections() {

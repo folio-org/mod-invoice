@@ -12,6 +12,8 @@ import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 
 import org.folio.rest.acq.model.Organization;
+import org.folio.rest.acq.model.OrganizationCollection;
+import org.folio.rest.acq.model.VoucherLineCollection;
 
 import io.vertx.core.Context;
 import io.vertx.core.json.JsonObject;
@@ -42,12 +44,10 @@ public class VendorHelper extends AbstractHelper {
    * @param vendorIds - {@link Set<String>} of access providers id
    * @return CompletableFuture with {@link List<Organization>} of vendors
    */
-  public CompletableFuture<List<Organization>> getVendors(Set<String> vendorIds) {
+  public CompletableFuture<OrganizationCollection> getVendors(Set<String> vendorIds) {
     String query = convertIdsToCqlQuery(new ArrayList<>(vendorIds));
     String endpoint = String.format(ORGANIZATIONS_WITH_QUERY_ENDPOINT, vendorIds.size(), lang, encodeQuery(query, logger));
-    return handleGetRequest(endpoint, httpClient, ctx, okapiHeaders, logger).thenApply(jsons -> jsons.getJsonArray(ORGANIZATIONS)
-      .stream()
-      .map(obj -> ((JsonObject) obj).mapTo(Organization.class))
-      .collect(toList()));
+    return handleGetRequest(endpoint, httpClient, ctx, okapiHeaders, logger)
+              .thenApply(vendorsJSON -> vendorsJSON.mapTo(OrganizationCollection.class));
   }
 }
