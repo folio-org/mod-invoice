@@ -17,6 +17,7 @@ import org.folio.rest.impl.ApiTestBase;
 import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.jaxrs.model.InvoiceCollection;
 import org.folio.rest.jaxrs.model.Voucher;
+import org.folio.rest.jaxrs.model.VoucherCollection;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -41,7 +42,7 @@ public class InvoiceRetrieveServiceTest extends ApiTestBase {
   }
 
   @Test
-  public void positiveTest() throws IOException, ExecutionException, InterruptedException {
+  public void positiveGetInvoicesByChunksTest() throws IOException, ExecutionException, InterruptedException {
 
     InvoiceRetrieveService service = new InvoiceRetrieveService(okapiHeaders, context, "en");
     JsonObject vouchersList = new JsonObject(getMockData(VOUCHERS_LIST_PATH));
@@ -53,5 +54,22 @@ public class InvoiceRetrieveServiceTest extends ApiTestBase {
     CompletableFuture<List<InvoiceCollection>> future = service.getInvoicesByChunks(vouchers);
     List<InvoiceCollection> lineCollections = future.get();
     assertEquals(3, lineCollections.get(0).getInvoices().size());
+  }
+
+  @Test
+  public void positiveGetInvoiceMapTest() throws IOException, ExecutionException, InterruptedException {
+
+    InvoiceRetrieveService service = new InvoiceRetrieveService(okapiHeaders, context, "en");
+    JsonObject vouchersList = new JsonObject(getMockData(VOUCHERS_LIST_PATH));
+    List<Voucher> vouchers = vouchersList.getJsonArray("vouchers") .stream()
+      .map(obj -> ((JsonObject) obj).mapTo(Voucher.class))
+      .collect(toList());
+
+    vouchers.remove(1);
+    VoucherCollection voucherCollection = new VoucherCollection();voucherCollection.setVouchers(vouchers);
+
+    CompletableFuture<Map<String, Invoice>> future = service.getInvoiceMap(voucherCollection);
+    Map<String, Invoice> lineMap = future.get();
+    assertEquals(3, lineMap.values().size());
   }
 }
