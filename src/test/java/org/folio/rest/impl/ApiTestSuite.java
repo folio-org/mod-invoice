@@ -20,6 +20,8 @@ import org.folio.rest.impl.protection.InvoicesProtectionTest;
 import org.folio.rest.impl.protection.LinesProtectionTest;
 import org.folio.rest.tools.utils.NetworkUtils;
 import org.folio.schemas.xsd.BatchVoucherSchemaXSDTest;
+import org.folio.services.InvoiceRetrieveServiceTest;
+import org.folio.services.VoucherLinesRetrieveServiceTest;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.runner.RunWith;
@@ -57,7 +59,9 @@ import io.vertx.core.logging.LoggerFactory;
   XMLConverterTest.class,
   FtpUploadHelperTest.class,
   BatchVoucherExportsApiTest.class,
-  HelperUtilsTest.class
+  HelperUtilsTest.class,
+  InvoiceRetrieveServiceTest.class,
+  VoucherLinesRetrieveServiceTest.class
 })
 public class ApiTestSuite {
   private static final Logger logger = LoggerFactory.getLogger(ApiTestSuite.class);
