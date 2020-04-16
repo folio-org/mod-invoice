@@ -4,6 +4,7 @@
   "adjustments": [
     {
       "description": "Test adjustment with fixed amount",
+      "exportToAccounting": false,
       "fundDistributions": [
         {
           "code": "USHIST",
@@ -19,6 +20,7 @@
     },
     {
       "description": "Test percentage adjustment",
+      "exportToAccounting": false,
       "fundDistributions": [
         {
           "code": "USHIST",

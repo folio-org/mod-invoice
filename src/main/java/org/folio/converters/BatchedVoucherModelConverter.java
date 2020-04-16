@@ -26,22 +26,21 @@ public class BatchedVoucherModelConverter implements Converter<BatchedVoucher, B
     batchedVoucherType.setAmount(BigDecimal.valueOf(batchedVoucher.getAmount()));
 
     batchedVoucherType.setDisbursementNumber(batchedVoucher.getDisbursementNumber());
-    if (batchedVoucher.getDisbursementDate() != null) {
-      batchedVoucherType.setDisbursementDate(JAXBUtil.convertOldJavaDate(batchedVoucher.getDisbursementDate()));
-    }
+    batchedVoucherType.setDisbursementDate(JAXBUtil.convertOldJavaDate(batchedVoucher.getDisbursementDate()));
     batchedVoucherType.setDisbursementAmount(BigDecimal.valueOf(batchedVoucher.getAmount()));
 
+    batchedVoucherType.setEnclosureNeeded(batchedVoucher.getEnclosureNeeded());
     batchedVoucherType.setExchangeRate(BigDecimal.valueOf(batchedVoucher.getExchangeRate()));
     batchedVoucherType.setInvoiceCurrency(batchedVoucher.getInvoiceCurrency());
+    batchedVoucherType.setFolioInvoiceNo(batchedVoucher.getFolioInvoiceNo());
+    batchedVoucherType.setInvoiceCurrency(batchedVoucher.getDisbursementNumber());
     batchedVoucherType.setSystemCurrency(batchedVoucher.getSystemCurrency());
     batchedVoucherType.setType(PaymentAccountType.fromValue(batchedVoucher.getType()
       .toString()));
 
     batchedVoucherType.setVendorInvoiceNo(batchedVoucher.getVendorInvoiceNo());
     batchedVoucherType.setVendorName(batchedVoucher.getVendorName());
-    if (batchedVoucher.getVoucherDate() != null) {
-      batchedVoucherType.setVoucherDate(JAXBUtil.convertOldJavaDate(batchedVoucher.getVoucherDate()));
-    }
+    batchedVoucherType.setVoucherDate(JAXBUtil.convertOldJavaDate(batchedVoucher.getVoucherDate()));
     batchedVoucherType.setInvoiceNote(batchedVoucher.getInvoiceNote());
     batchedVoucherType.setStatus(batchedVoucher.getStatus()
       .toString());

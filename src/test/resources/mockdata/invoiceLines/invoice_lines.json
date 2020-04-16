@@ -36,6 +36,7 @@
       "adjustments": [
         {
           "description": "Adjustment label",
+          "exportToAccounting": false,
           "type": "Percentage",
           "value": 10.1,
           "prorate": "Not prorated",
@@ -78,6 +79,7 @@
       "adjustments": [
         {
           "description": "Adjustment label",
+          "exportToAccounting": false,
           "type": "Percentage",
           "value": 10.1,
           "prorate": "Not prorated",
@@ -127,6 +129,7 @@
       "adjustments": [
         {
           "description": "Adjustment label",
+          "exportToAccounting": false,
           "type": "Amount",
           "value": 1.1,
           "prorate": "Not prorated",
@@ -169,6 +172,7 @@
       "adjustments": [
         {
           "description": "Adjustment label",
+          "exportToAccounting": false,
           "type": "Percentage",
           "value": 10.1,
           "prorate": "Not prorated",
@@ -187,6 +191,7 @@
       "adjustments": [
         {
           "description": "Percentage Adjustment",
+          "exportToAccounting": false,
           "type": "Percentage",
           "value": 10.1,
           "relationToTotal": "In addition to",
@@ -194,6 +199,7 @@
         },
         {
           "description": "Amount Adjustment",
+          "exportToAccounting": false,
           "type": "Amount",
           "value": 5,
           "relationToTotal": "In addition to",

@@ -38,7 +38,6 @@ import java.util.stream.IntStream;
 import javax.money.CurrencyUnit;
 import javax.money.Monetary;
 import javax.money.MonetaryAmount;
-import javax.money.convert.CurrencyConversion;
 
 import org.apache.commons.collections4.map.CaseInsensitiveMap;
 import org.apache.commons.lang3.ArrayUtils;
@@ -396,15 +395,12 @@ public class HelperUtils {
     return convertToDoubleWithRounding(amount);
   }
 
-  public static Double calculateVoucherLineAmount(List<MonetaryAmount> amounts, CurrencyConversion conversion) {
-    MonetaryAmount voucherLineAmount = Money.zero(amounts.get(0).getCurrency());
-    for (MonetaryAmount amount : amounts) {
-     voucherLineAmount = voucherLineAmount.add(amount);
-    }
-
-    MonetaryAmount convertedAmount = voucherLineAmount.with(conversion);
-
-    return convertToDoubleWithRounding(convertedAmount);
+  public static double calculateVoucherLineAmount(List<FundDistribution> fundDistributions, String systemCurrency) {
+    MonetaryAmount voucherLineAmount = fundDistributions.stream()
+      .map(fundDistribution -> Money.of(fundDistribution.getValue(), systemCurrency))
+      .reduce(Money::add)
+      .orElse(Money.zero(Monetary.getCurrency(systemCurrency)));
+    return convertToDoubleWithRounding(voucherLineAmount);
   }
 
   public static void calculateInvoiceLineTotals(InvoiceLine invoiceLine, Invoice invoice) {
@@ -456,17 +452,21 @@ public class HelperUtils {
     return jsonObject.getString(ID);
   }
 
-  public static Money getFundDistributionAmount(FundDistribution fundDistribution, double total, CurrencyUnit currencyUnit) {
+  public static MonetaryAmount getFundDistributionAmount(FundDistribution fundDistribution, MonetaryAmount totalAmount) {
     return fundDistribution.getDistributionType() == PERCENTAGE ?
-      Money.of(total, currencyUnit).with(MonetaryOperators.percent(fundDistribution.getValue())) :
-      Money.of(fundDistribution.getValue(), currencyUnit);
+      totalAmount.with(MonetaryOperators.percent(fundDistribution.getValue())) :
+      Money.of(fundDistribution.getValue(), totalAmount.getCurrency());
   }
 
-  public static Money getFundDistributionAmount(FundDistribution fundDistribution, double total, String currencyUnit) {
-    return getFundDistributionAmount(fundDistribution, total, Monetary.getCurrency(currencyUnit));
+  public static MonetaryAmount getFundDistributionAmount(FundDistribution fundDistribution, double total, String currencyUnit) {
+    return getFundDistributionAmount(fundDistribution, Money.of(total, currencyUnit));
   }
 
-  public static Money getAdjustmentFundDistributionAmount(FundDistribution fundDistribution, Adjustment adjustment, Invoice invoice) {
+  public static MonetaryAmount getFundDistributionAmount(FundDistribution fundDistribution, double total, CurrencyUnit currencyUnit) {
+    return getFundDistributionAmount(fundDistribution, Money.of(total, currencyUnit));
+  }
+
+  public static MonetaryAmount getAdjustmentFundDistributionAmount(FundDistribution fundDistribution, Adjustment adjustment, Invoice invoice) {
     MonetaryAmount adjustmentTotal = calculateAdjustment(adjustment, Money.of(invoice.getSubTotal(), invoice.getCurrency()));
     return getFundDistributionAmount(fundDistribution, adjustmentTotal.getNumber().doubleValue(), invoice.getCurrency());
   }

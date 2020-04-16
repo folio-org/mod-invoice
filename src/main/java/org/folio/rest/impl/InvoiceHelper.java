@@ -79,8 +79,6 @@ import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.collections4.ListUtils;
 import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.tuple.MutablePair;
-import org.apache.commons.lang3.tuple.Pair;
 import org.folio.HttpStatus;
 import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.invoices.utils.AcqDesiredPermissions;
@@ -492,7 +490,7 @@ public class InvoiceHelper extends AbstractHelper {
       .thenApply(lines -> validateBeforeApproval(invoice, lines))
       .thenCompose(invoiceLines -> updateEncumbrances(invoiceLines, invoice))
       .thenCompose(lines -> prepareVoucher(invoice)
-          .thenCompose(voucher -> handleVoucherWithLines(getFundDistrAmountPairs(lines, invoice), voucher))
+          .thenCompose(voucher -> handleVoucherWithLines(getAllFundDistributions(lines, invoice), voucher))
       );
   }
 
@@ -548,27 +546,47 @@ public class InvoiceHelper extends AbstractHelper {
   private Double sumMixedDistributions(List<FundDistribution> fundDistributions, double total, CurrencyUnit currencyUnit) {
     return fundDistributions.stream()
       .map(fundDistribution -> getFundDistributionAmount(fundDistribution, total, currencyUnit))
-      .reduce(Money::add)
+      .reduce(MonetaryAmount::add)
       .orElse(Money.zero(currencyUnit))
       .getNumber().doubleValue();
   }
 
-  private List<Pair<FundDistribution, ? extends MonetaryAmount>> getFundDistrAmountPairs(List<InvoiceLine> invoiceLines, Invoice invoice) {
-    List<Pair<FundDistribution, ? extends MonetaryAmount>> fundDistributions = invoiceLines.stream()
-      .flatMap(invoiceLine -> invoiceLine.getFundDistributions()
-        .stream()
-        .map(fundDistribution -> new MutablePair<>(fundDistribution.withInvoiceLineId(invoiceLine.getId()),
-            getFundDistributionAmount(fundDistribution, invoiceLine.getTotal(), invoice.getCurrency()))))
-      .collect(toList());
+  private List<FundDistribution> getAllFundDistributions(List<InvoiceLine> invoiceLines, Invoice invoice) {
+    CurrencyConversion conversion = getExchangeRateProvider().getCurrencyConversion(getSystemCurrency());
 
-    fundDistributions.addAll(getNotProratedAdjustments(invoice).stream()
-      .flatMap(adjustment -> adjustment.getFundDistributions()
-        .stream()
-        .map(fundDistribution -> new MutablePair<>(fundDistribution,
-            getAdjustmentFundDistributionAmount(fundDistribution, adjustment, invoice))))
-      .collect(toList()));
+    List<FundDistribution> fundDistributions = getInvoiceLineFundDistributions(invoiceLines, invoice, conversion);
+    fundDistributions.addAll(getAdjustmentFundDistributions(invoice, conversion));
 
     return fundDistributions;
+  }
+
+  private List<FundDistribution> getInvoiceLineFundDistributions(List<InvoiceLine> invoiceLines, Invoice invoice, CurrencyConversion conversion) {
+    return invoiceLines.stream()
+      .flatMap(invoiceLine -> invoiceLine.getFundDistributions()
+        .stream()
+        .map(fundDistribution -> fundDistribution.withInvoiceLineId(invoiceLine.getId())
+          .withValue(getFundDistributionAmountWithConversion(fundDistribution, Money.of(invoiceLine.getTotal(), invoice.getCurrency()), conversion))
+          .withDistributionType(FundDistribution.DistributionType.AMOUNT)
+        )
+      )
+      .collect(toList());
+  }
+
+  private double getFundDistributionAmountWithConversion(FundDistribution fundDistribution, MonetaryAmount totalAmount, CurrencyConversion conversion) {
+    MonetaryAmount amount = getFundDistributionAmount(fundDistribution, totalAmount).with(conversion);
+    return amount.getNumber().doubleValue();
+  }
+
+  private List<FundDistribution> getAdjustmentFundDistributions(Invoice invoice, CurrencyConversion conversion) {
+    return getNotProratedAdjustments(invoice).stream()
+      .flatMap(adjustment -> adjustment.getFundDistributions()
+        .stream()
+        .map(fundDistribution -> fundDistribution
+            .withValue(getAdjustmentFundDistributionAmount(fundDistribution, adjustment, invoice).with(conversion).getNumber().doubleValue())
+            .withDistributionType(FundDistribution.DistributionType.AMOUNT)
+        )
+      )
+      .collect(toList());
   }
 
   /**
@@ -589,7 +607,8 @@ public class InvoiceHelper extends AbstractHelper {
         invoice.setVoucherNumber(voucher.getVoucherNumber());
         voucher.setAcqUnitIds(invoice.getAcqUnitIds());
         return withRequiredFields(voucher, invoice);
-      });
+      })
+      .thenCompose(voucher -> setExchangeRateFactor(voucher.withSystemCurrency(getSystemCurrency())));
   }
 
   /**
@@ -664,13 +683,12 @@ public class InvoiceHelper extends AbstractHelper {
   /**
    *  Handles creation (or update) of prepared voucher and voucher lines creation
    *
-   * @param invoiceLines {@link List<InvoiceLine>} associated with processed invoice
+   * @param fundDistributions {@link List<FundDistribution>} associated with processed invoice
    * @param voucher associated with processed invoice
    * @return CompletableFuture that indicates when handling is completed
    */
-  private CompletableFuture<Void> handleVoucherWithLines(List<Pair<FundDistribution, ? extends MonetaryAmount>> invoiceLines, Voucher voucher) {
-    return setExchangeRateFactor(voucher.withSystemCurrency(getSystemCurrency()))
-      .thenCompose(v -> groupFundDistrosByExternalAcctNo(invoiceLines))
+  private CompletableFuture<Void> handleVoucherWithLines(List<FundDistribution> fundDistributions, Voucher voucher) {
+    return groupFundDistrosByExternalAcctNo(fundDistributions)
       .thenApply(fundDistrosGroupedByExternalAcctNo -> buildVoucherLineRecords(fundDistrosGroupedByExternalAcctNo, voucher))
       .thenCompose(voucherLines -> {
         Double calculatedAmount = HelperUtils.calculateVoucherAmount(voucher, voucherLines);
@@ -746,22 +764,21 @@ public class InvoiceHelper extends AbstractHelper {
       .withInvoiceLineId(invoiceLine.getId());
   }
 
-  private CompletableFuture<Void> setExchangeRateFactor(Voucher voucher) {
+  private CompletableFuture<Voucher> setExchangeRateFactor(Voucher voucher) {
     return VertxCompletableFuture.supplyBlockingAsync(ctx, () -> getExchangeRateProvider()
         .getExchangeRate(voucher.getInvoiceCurrency(), voucher.getSystemCurrency()))
-      .thenAccept(exchangeRate -> voucher.setExchangeRate(exchangeRate.getFactor().doubleValue()));
+      .thenApply(exchangeRate -> voucher.withExchangeRate(exchangeRate.getFactor().doubleValue()));
   }
 
   /**
    * Prepares the data necessary for the generation of voucher lines based on the invoice lines found
    *
-   * @param fundDistributionAmountPairs {@link List<InvoiceLine>} associated with processed {@link Invoice}
+   * @param fundDistributions {@link List<InvoiceLine>} associated with processed {@link Invoice}
    * @return {@link InvoiceLine#fundDistributions} grouped by {@link Fund#externalAccountNo}
    */
-  private CompletableFuture<Map<String,  List<Pair<FundDistribution, ? extends MonetaryAmount>>>> groupFundDistrosByExternalAcctNo(
-    List<Pair<FundDistribution, ? extends MonetaryAmount>> fundDistributionAmountPairs) {
+  private CompletableFuture<Map<String,  List<FundDistribution>>> groupFundDistrosByExternalAcctNo(List<FundDistribution> fundDistributions) {
 
-    Map<String, List<Pair<FundDistribution, ? extends MonetaryAmount>>> fundDistrosGroupedByFundId = groupFundDistrosByFundId(fundDistributionAmountPairs);
+    Map<String, List<FundDistribution>> fundDistrosGroupedByFundId = groupFundDistrosByFundId(fundDistributions);
 
     return fetchFundsByIds(new ArrayList<>(fundDistrosGroupedByFundId.keySet()))
       .thenApply(this::groupFundsByExternalAcctNo)
@@ -774,8 +791,8 @@ public class InvoiceHelper extends AbstractHelper {
     return funds.stream().collect(groupingBy(Fund::getExternalAccountNo));
   }
 
-  private Map<String,  List<Pair<FundDistribution, ? extends MonetaryAmount>>> mapExternalAcctNoToFundDistros(
-    Map<String, List<Pair<FundDistribution, ? extends MonetaryAmount>>> fundDistrosGroupedByFundId,
+  private Map<String,  List<FundDistribution>> mapExternalAcctNoToFundDistros(
+    Map<String, List<FundDistribution>> fundDistrosGroupedByFundId,
     Map<String, List<Fund>> fundsGroupedByExternalAccountNo) {
 
     return fundsGroupedByExternalAccountNo.keySet()
@@ -789,9 +806,9 @@ public class InvoiceHelper extends AbstractHelper {
           .collect(toList())));
   }
 
-  private Map<String,  List<Pair<FundDistribution, ? extends MonetaryAmount>>> groupFundDistrosByFundId(List<Pair<FundDistribution, ? extends MonetaryAmount>> fundDistributions) {
+  private Map<String,  List<FundDistribution>> groupFundDistrosByFundId(List<FundDistribution> fundDistributions) {
     return fundDistributions.stream()
-      .collect(groupingBy(pair -> pair.getKey().getFundId()));
+      .collect(groupingBy(FundDistribution::getFundId));
   }
 
   private CompletableFuture<List<Fund>> fetchFundsByIds(List<String> fundIds) {
@@ -835,7 +852,7 @@ public class InvoiceHelper extends AbstractHelper {
     return fundIds.stream()
       .filter(id -> existingFunds.stream()
         .map(Fund::getId)
-        .noneMatch(fundIds::contains))
+        .noneMatch(existingId -> existingId.equals(id)))
       .collect(toList());
   }
 
@@ -851,24 +868,24 @@ public class InvoiceHelper extends AbstractHelper {
       .thenCompose(fc -> VertxCompletableFuture.supplyBlockingAsync(ctx, () -> fc.mapTo(FundCollection.class).getFunds()));
   }
 
-  private List<VoucherLine> buildVoucherLineRecords(Map<String, List<Pair<FundDistribution, ? extends MonetaryAmount>>> fundDistroGroupedByExternalAcctNo, Voucher voucher) {
-
-    CurrencyConversion conversion = getExchangeRateProvider().getCurrencyConversion(voucher.getSystemCurrency());
+  private List<VoucherLine> buildVoucherLineRecords(Map<String, List<FundDistribution>> fundDistroGroupedByExternalAcctNo, Voucher voucher) {
 
     return fundDistroGroupedByExternalAcctNo.entrySet().stream()
-      .map(entry -> buildVoucherLineRecord(entry, conversion))
+      .map(entry -> buildVoucherLineRecord(entry, voucher.getSystemCurrency()))
       .collect(Collectors.toList());
   }
 
-  private VoucherLine buildVoucherLineRecord(Map.Entry<String, List<Pair<FundDistribution, ? extends MonetaryAmount>>> fundDistroAssociatedWithAcctNo, CurrencyConversion conversion) {
-    String externalAccountNumber = fundDistroAssociatedWithAcctNo.getKey();
-    List<FundDistribution> fundDistributions = fundDistroAssociatedWithAcctNo.getValue().stream().map(Pair::getKey).collect(toList());
+  private VoucherLine buildVoucherLineRecord(Map.Entry<String, List<FundDistribution>> fundDistroAcctNoEntry, String systemCurrency) {
+    String externalAccountNumber = fundDistroAcctNoEntry.getKey();
+    List<FundDistribution> fundDistributions = fundDistroAcctNoEntry.getValue();
+
+    double voucherLineAmount = calculateVoucherLineAmount(fundDistroAcctNoEntry.getValue(), systemCurrency);
 
     return new VoucherLine()
       .withExternalAccountNumber(externalAccountNumber)
       .withFundDistributions(fundDistributions)
       .withSourceIds(collectInvoiceLineIds(fundDistributions))
-      .withAmount(calculateVoucherLineAmount(fundDistroAssociatedWithAcctNo.getValue().stream().map(Pair::getValue).collect(toList()), conversion));
+      .withAmount(voucherLineAmount);
   }
 
   private List<String> collectInvoiceLineIds(List<FundDistribution> fundDistributions) {
