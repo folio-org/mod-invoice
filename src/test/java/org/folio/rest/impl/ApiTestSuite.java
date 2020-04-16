@@ -63,7 +63,7 @@ public class ApiTestSuite {
   private static final Logger logger = LoggerFactory.getLogger(ApiTestSuite.class);
 
   private static final int okapiPort = NetworkUtils.nextFreePort();
-  static final int mockPort = NetworkUtils.nextFreePort();
+  public static final int mockPort = NetworkUtils.nextFreePort();
   private static Vertx vertx;
   private static MockServer mockServer;
   private static boolean initialised;

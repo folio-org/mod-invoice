@@ -36,9 +36,7 @@ public class VoucherLinesRetrieveService {
           .collect(toList()).stream()
           .flatMap(List::stream)
           .collect(Collectors.toList()))
-      .thenAccept(voucherLines -> {
-        future.complete(voucherLines.stream().collect(groupingBy(VoucherLine::getVoucherId)));
-      })
+      .thenAccept(voucherLines -> future.complete(voucherLines.stream().collect(groupingBy(VoucherLine::getVoucherId))))
       .thenAccept(v -> voucherLineHelper.closeHttpClient())
       .exceptionally(t -> {
         future.completeExceptionally(t);

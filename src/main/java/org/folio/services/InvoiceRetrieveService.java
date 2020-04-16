@@ -37,9 +37,7 @@ public class InvoiceRetrieveService {
           .collect(toList()).stream()
           .flatMap(List::stream)
           .collect(Collectors.toList()))
-      .thenAccept(invoices -> {
-            future.complete(invoices.stream().collect(toMap(Invoice::getId, Function.identity())));
-      })
+      .thenAccept(invoices -> future.complete(invoices.stream().collect(toMap(Invoice::getId, Function.identity()))))
       .thenAccept(v -> invoiceHelper.closeHttpClient())
       .exceptionally(t -> {
         future.completeExceptionally(t);

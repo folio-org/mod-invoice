@@ -1,6 +1,5 @@
 package org.folio.rest.impl;
 
-import static java.util.stream.Collectors.toList;
 import static org.folio.invoices.utils.HelperUtils.convertIdsToCqlQuery;
 import static org.folio.invoices.utils.HelperUtils.encodeQuery;
 import static org.folio.invoices.utils.HelperUtils.handleGetRequest;
@@ -13,13 +12,10 @@ import java.util.concurrent.CompletableFuture;
 
 import org.folio.rest.acq.model.Organization;
 import org.folio.rest.acq.model.OrganizationCollection;
-import org.folio.rest.acq.model.VoucherLineCollection;
 
 import io.vertx.core.Context;
-import io.vertx.core.json.JsonObject;
 
 public class VendorHelper extends AbstractHelper {
-  private static final String ORGANIZATIONS = "organizations";
   private static final String ORGANIZATIONS_STORAGE_VENDORS = "/organizations-storage/organizations/";
   private static final String ORGANIZATIONS_WITH_QUERY_ENDPOINT = "/organizations-storage/organizations?limit=%d&lang=%s&query=%s";
 

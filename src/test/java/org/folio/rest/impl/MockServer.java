@@ -747,7 +747,7 @@ public class MockServer {
 
   private <T> List<T> filterEntriesByStringValue(String id, List<T> entries, Function<T, String> invoiceIdGetter) {
     if (StringUtils.isNotEmpty(id)) {
-      return entries.stream().filter(line -> id.equals(invoiceIdGetter.apply(line))).collect(toList());
+      return entries.stream().filter(line -> id.contains(invoiceIdGetter.apply(line))).collect(toList());
     }
     return entries;
   }
@@ -912,6 +912,20 @@ public class MockServer {
       serverResponse(ctx, 404, APPLICATION_JSON, Response.Status.NOT_FOUND.getReasonPhrase());
     } else if (queryParam.contains(ID_FOR_INTERNAL_SERVER_ERROR)) {
       serverResponse(ctx, 500, APPLICATION_JSON, Response.Status.INTERNAL_SERVER_ERROR.getReasonPhrase());
+    } else if (queryParam.contains("id==")) {
+      List<Invoice> invoices;
+      InvoiceCollection invoiceCollection = new InvoiceCollection();
+      try {
+        invoices = new JsonObject(ApiTestBase.getMockData(MOCK_DATA_INVOICES)).mapTo(InvoiceCollection.class).getInvoices();
+      } catch (IOException e) {
+        invoices = new ArrayList<Invoice>();
+      }
+      invoiceCollection.setInvoices(invoices);
+      invoiceCollection.setTotalRecords(invoiceCollection.getInvoices().size());
+      JsonObject invoicesJson = JsonObject.mapFrom(invoiceCollection);
+
+      addServerRqRsData(HttpMethod.GET, INVOICES, JsonObject.mapFrom(invoiceCollection));
+      serverResponse(ctx, 200, APPLICATION_JSON, invoicesJson.encode());
     } else if (queryParam.startsWith(QUERY_PARAM_START_WITH)) {
       Matcher lineIdMatcher = Pattern.compile(".*invoiceLines.id==(\\S+).*").matcher(queryParam);
       final String lineId = lineIdMatcher.find() ? lineIdMatcher.group(1) : EMPTY;
