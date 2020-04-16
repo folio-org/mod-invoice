@@ -7,7 +7,7 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
 import org.folio.rest.jaxrs.model.BatchVoucherExport;
-import org.folio.services.vouchers.batch.BatchVoucherGenerateService;
+import org.folio.services.BatchVoucherGenerateService;
 
 import io.vertx.core.Context;
 import io.vertx.core.json.JsonObject;
@@ -27,7 +27,8 @@ public class BatchVoucherPersisteHelper extends AbstractHelper {
   }
 
   public CompletableFuture<String> persistBatchVoucher(BatchVoucherExport batchVoucherExport) {
-    return batchVoucherGenerateService.generateBatchVoucher(batchVoucherExport)
+    CompletableFuture<String> future = new CompletableFuture<>();
+    batchVoucherGenerateService.generateBatchVoucher(batchVoucherExport)
       .thenApply(JsonObject::mapFrom)
       .thenCompose(jsonInvoice -> createRecordInStorage(jsonInvoice, resourcesPath(BATCH_VOUCHER_STORAGE)))
       .thenApply(batchVoucherId -> {
@@ -35,19 +36,21 @@ public class BatchVoucherPersisteHelper extends AbstractHelper {
         batchVoucherExport.setBatchVoucherId(batchVoucherId);
         return batchVoucherId;
       })
-      .thenApply(batchVoucherId -> {
+      .thenAccept(batchVoucherId -> {
         batchVoucherExportsHelper.updateBatchVoucherExportRecord(batchVoucherExport)
           .thenAccept(v-> closeHttpClient());
         logger.debug("Batch voucher generated and batch voucher export updated");
-        return batchVoucherId;
+        future.complete(batchVoucherId);
       })
       .exceptionally(t -> {
         batchVoucherExport.setStatus(BatchVoucherExport.Status.ERROR);
         batchVoucherExportsHelper.updateBatchVoucherExportRecord(batchVoucherExport)
           .thenAccept(v-> closeHttpClient());
         logger.error("Exception occurs, when generating batch voucher", t);
+        future.complete(null);
         return null;
       });
+    return future;
   }
 
   @Override

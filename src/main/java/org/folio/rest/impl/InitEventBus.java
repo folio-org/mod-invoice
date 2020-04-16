@@ -27,7 +27,7 @@ public class InitEventBus implements PostDeployVerticle {
 
   @Autowired
   @Qualifier("invoiceSummaryHandler")
-  Handler<Message<JsonObject>> orderStatusHandler;
+  Handler<Message<JsonObject>> invoiceSummaryHandler;
 
   @Autowired
   @Qualifier("batchVoucherPersistHandler")
@@ -46,7 +46,7 @@ public class InitEventBus implements PostDeployVerticle {
       Promise<Void> invoiceSummaryRegistrationHandler = Promise.promise();
 
       MessageConsumer<JsonObject> invoiceSummaryConsumer = eb.localConsumer(MessageAddress.INVOICE_TOTALS.address);
-      invoiceSummaryConsumer.handler(orderStatusHandler)
+      invoiceSummaryConsumer.handler(invoiceSummaryHandler)
         .completionHandler(invoiceSummaryRegistrationHandler);
 
       Promise<Void> batchVoucherPersistRegistrationHandler = Promise.promise();
