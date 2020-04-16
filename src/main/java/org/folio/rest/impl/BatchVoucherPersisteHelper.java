@@ -7,7 +7,7 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
 import org.folio.rest.jaxrs.model.BatchVoucherExport;
-import org.folio.services.vouchers.batch.BatchVoucherGenerateService;
+import org.folio.services.BatchVoucherGenerateService;
 
 import io.vertx.core.Context;
 import io.vertx.core.json.JsonObject;
