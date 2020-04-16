@@ -1,5 +1,7 @@
 package org.folio.rest.impl;
 
+import static io.restassured.config.EncoderConfig.encoderConfig;
+import static io.restassured.config.HttpClientConfig.httpClientConfig;
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 import static javax.ws.rs.core.MediaType.TEXT_PLAIN;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_DOCUMENTS;
@@ -10,6 +12,10 @@ import static org.junit.Assert.assertEquals;
 
 import java.io.IOException;
 
+import io.restassured.RestAssured;
+import io.restassured.http.ContentType;
+import io.restassured.http.Headers;
+import io.restassured.response.Response;
 import org.folio.rest.jaxrs.model.InvoiceCollection;
 import org.folio.rest.jaxrs.model.InvoiceDocument;
 import org.junit.Assert;
@@ -38,8 +44,7 @@ public class DocumentsApiTest extends ApiTestBase {
 
     String body = getMockData(INVOICE_DOCUMENT_SAMPLE_PATH);
 
-    final InvoiceDocument createdDoc = verifyPostResponse(DOCUMENT_ENDPOINT, body, prepareHeaders(X_OKAPI_TENANT), APPLICATION_JSON,201).as(InvoiceDocument.class);
-
+    final InvoiceDocument createdDoc = verifyPostResponse(DOCUMENT_ENDPOINT, body, prepareHeaders(X_OKAPI_TENANT), "application/octet-stream", APPLICATION_JSON, 201).as(InvoiceDocument.class);
     String docId = createdDoc.getDocumentMetadata().getId();
     assertThat(docId, notNullValue());
     assertThat(MockServer.serverRqRs.get(INVOICE_DOCUMENTS, HttpMethod.POST), hasSize(1));
@@ -79,6 +84,27 @@ public class DocumentsApiTest extends ApiTestBase {
   public void testDeleteDocument() {
     logger.info("=== Test delete document by id ===");
     verifyDeleteResponse(String.format(DOCUMENT_ENDPOINT_WITH_ID, VALID_UUID), "", 204);
+  }
+
+  public Response verifyPostResponse(String url, Object body, Headers headers, String contentType, String expectedContentType, int expectedCode) {
+    return RestAssured
+      .given()
+      .config(RestAssured.config()
+        .encoderConfig(encoderConfig().encodeContentTypeAs("application/octet-stream", ContentType.JSON)))
+      .with()
+        .header(X_OKAPI_URL)
+        .header(X_OKAPI_TOKEN)
+        .headers(headers)
+        .contentType(contentType)
+        .body(convertToString(body))
+      .post(url)
+        .then()
+          .log()
+          .all()
+          .statusCode(expectedCode)
+          .contentType(expectedContentType)
+          .extract()
+          .response();
   }
 
 }

@@ -1,24 +1,32 @@
 package org.folio.rest.impl;
 
-import static io.vertx.core.Future.succeededFuture;
-import static org.folio.invoices.utils.ErrorCodes.MISMATCH_BETWEEN_ID_IN_PATH_AND_BODY;
-
-import java.util.Map;
-
-import javax.ws.rs.core.Response;
-
-import org.apache.commons.lang3.StringUtils;
-import org.folio.rest.annotations.Validate;
-import org.folio.rest.jaxrs.model.Invoice;
-import org.folio.rest.jaxrs.model.InvoiceDocument;
-import org.folio.rest.jaxrs.model.InvoiceLine;
-
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Context;
 import io.vertx.core.Handler;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
+import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang3.ArrayUtils;
+import org.apache.commons.lang3.StringUtils;
+import org.folio.rest.annotations.Stream;
+import org.folio.rest.annotations.Validate;
+import org.folio.rest.jaxrs.model.Invoice;
+import org.folio.rest.jaxrs.model.InvoiceDocument;
+import org.folio.rest.jaxrs.model.InvoiceLine;
+
+import javax.ws.rs.core.Response;
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.Map;
+import java.util.Objects;
+
+import static io.vertx.core.Future.succeededFuture;
+import static org.apache.commons.io.FileUtils.ONE_MB;
+import static org.apache.commons.lang3.CharEncoding.UTF_8;
+import static org.folio.invoices.utils.ErrorCodes.DOCUMENT_IS_TOO_LARGE;
+import static org.folio.invoices.utils.ErrorCodes.MISMATCH_BETWEEN_ID_IN_PATH_AND_BODY;
+import static org.folio.rest.RestVerticle.STREAM_COMPLETE;
 
 public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
 
@@ -28,11 +36,13 @@ public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
   private static final String INVOICE_LINE_LOCATION_PREFIX = "/invoice/invoice-lines/%s";
   public static final String PROTECTED_AND_MODIFIED_FIELDS = "protectedAndModifiedFields";
   private static final String DOCUMENTS_LOCATION_PREFIX = "/invoice/invoices/%s/documents/%s";
+  private byte[] requestBytesArray = new byte[0];
+  private static final long MAX_DOCUMENT_SIZE = 25 * ONE_MB;
 
   @Validate
   @Override
   public void postInvoiceInvoices(String lang, Invoice invoice, Map<String, String> okapiHeaders,
-      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+                                  Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     InvoiceHelper helper = new InvoiceHelper(okapiHeaders, vertxContext, lang);
 
     helper.validateIncomingInvoice(invoice)
@@ -40,7 +50,7 @@ public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
         if (Boolean.TRUE.equals(isValid)) {
           helper.createInvoice(invoice)
             .thenAccept(invoiceWithId -> asyncResultHandler.handle(succeededFuture(
-                helper.buildResponseWithLocation(String.format(INVOICE_LOCATION_PREFIX, invoiceWithId.getId()), invoiceWithId))))
+              helper.buildResponseWithLocation(String.format(INVOICE_LOCATION_PREFIX, invoiceWithId.getId()), invoiceWithId))))
             .exceptionally(t -> {
               logger.error("Failed to create invoice ", t);
               return handleErrorResponse(asyncResultHandler, helper, t);
@@ -55,7 +65,7 @@ public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
   @Validate
   @Override
   public void getInvoiceInvoices(int offset, int limit, String query, String lang, Map<String, String> okapiHeaders,
-      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+                                 Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     InvoiceHelper helper = new InvoiceHelper(okapiHeaders, vertxContext, lang);
 
     helper.getInvoices(limit, offset, query)
@@ -69,7 +79,7 @@ public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
   @Validate
   @Override
   public void getInvoiceInvoicesById(String id, String lang, Map<String, String> okapiHeaders,
-      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+                                     Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     InvoiceHelper helper = new InvoiceHelper(okapiHeaders, vertxContext, lang);
 
     helper.getInvoice(id)
@@ -80,7 +90,7 @@ public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
   @Validate
   @Override
   public void putInvoiceInvoicesById(String id, String lang, Invoice invoice, Map<String, String> okapiHeaders,
-      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+                                     Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
 
     invoice.setId(id);
 
@@ -106,7 +116,7 @@ public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
   @Validate
   @Override
   public void deleteInvoiceInvoicesById(String id, String lang, Map<String, String> okapiHeaders,
-      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+                                        Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     InvoiceHelper helper = new InvoiceHelper(okapiHeaders, vertxContext, lang);
 
     helper.deleteInvoice(id)
@@ -117,7 +127,7 @@ public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
   @Validate
   @Override
   public void getInvoiceInvoiceLines(int offset, int limit, String query, String lang, Map<String, String> okapiHeaders,
-      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+                                     Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     InvoiceLineHelper helper = new InvoiceLineHelper(okapiHeaders, vertxContext, lang);
     helper.getInvoiceLines(limit, offset, query)
       .thenAccept(lines -> asyncResultHandler.handle(succeededFuture(helper.buildOkResponse(lines))))
@@ -127,7 +137,7 @@ public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
   @Validate
   @Override
   public void postInvoiceInvoiceLines(String lang, InvoiceLine invoiceLine, Map<String, String> okapiHeaders,
-      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+                                      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     InvoiceLineHelper helper = new InvoiceLineHelper(okapiHeaders, vertxContext, lang);
     logger.info("== Creating InvoiceLine for an existing invoice ==");
 
@@ -140,7 +150,7 @@ public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
   @Validate
   @Override
   public void getInvoiceInvoiceLinesById(String id, String lang, Map<String, String> okapiHeaders,
-      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+                                         Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     InvoiceLineHelper invoiceLineHelper = new InvoiceLineHelper(okapiHeaders, vertxContext, lang);
 
     invoiceLineHelper.getInvoiceLinePersistTotal(id)
@@ -151,7 +161,7 @@ public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
   @Validate
   @Override
   public void putInvoiceInvoiceLinesById(String invoiceLineId, String lang, InvoiceLine invoiceLine,
-      Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+                                         Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     InvoiceLineHelper invoiceLinesHelper = new InvoiceLineHelper(okapiHeaders, vertxContext, lang);
 
     if (StringUtils.isEmpty(invoiceLine.getId())) {
@@ -166,7 +176,7 @@ public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
   @Validate
   @Override
   public void deleteInvoiceInvoiceLinesById(String id, String lang, Map<String, String> okapiHeaders,
-      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+                                            Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     InvoiceLineHelper invoiceLineHelper = new InvoiceLineHelper(okapiHeaders, vertxContext, lang);
 
     invoiceLineHelper.deleteInvoiceLine(id)
@@ -177,15 +187,57 @@ public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
   @Validate
   @Override
   public void getInvoiceInvoiceNumber(String lang, Map<String, String> okapiHeaders,
-      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+                                      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     asyncResultHandler.handle(succeededFuture(GetInvoiceInvoiceNumberResponse.respond500WithTextPlain(NOT_SUPPORTED)));
   }
 
   @Validate
   @Override
-  public void postInvoiceInvoicesDocumentsById(String id, String lang, InvoiceDocument entity, Map<String, String> okapiHeaders,
-    Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+  public void getInvoiceInvoicesDocumentsById(String id, int offset, int limit, String query, String lang, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     DocumentHelper documentHelper = new DocumentHelper(okapiHeaders, vertxContext, lang);
+    documentHelper.getDocumentsByInvoiceId(id, limit, offset, query)
+      .thenAccept(documents -> asyncResultHandler.handle(succeededFuture(documentHelper.buildOkResponse(documents))))
+      .exceptionally(t -> handleErrorResponse(asyncResultHandler, documentHelper, t));
+  }
+
+  @Validate
+  @Stream
+  @Override
+  public void postInvoiceInvoicesDocumentsById(String id, String lang, InputStream is, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+    try {
+      if(Objects.isNull(okapiHeaders.get(STREAM_COMPLETE))) {
+        // This code will be executed for each stream's chunk
+        processBytesArrayFromStream(is);
+      } else {
+        DocumentHelper documentHelper = new DocumentHelper(okapiHeaders, vertxContext, lang);
+        // This code will be executed one time after stream completing
+        if (Objects.nonNull(requestBytesArray)) {
+          InvoiceDocument entity = new JsonObject(IOUtils.toString(requestBytesArray, UTF_8)).mapTo(InvoiceDocument.class);
+          createInvoiceDocument(id, entity, asyncResultHandler, documentHelper);
+        } else {
+          handleOversizeErrorResponse(asyncResultHandler, documentHelper);
+        }
+      }
+    } catch (Exception e) {
+      asyncResultHandler.handle(succeededFuture(PostInvoiceInvoicesDocumentsByIdResponse.respond500WithTextPlain("Internal Server Error")));
+    }
+  }
+
+  private void processBytesArrayFromStream(InputStream is) throws IOException {
+    if (Objects.nonNull(requestBytesArray) && requestBytesArray.length < MAX_DOCUMENT_SIZE && is.available() < MAX_DOCUMENT_SIZE) {
+      requestBytesArray = ArrayUtils.addAll(requestBytesArray, IOUtils.toByteArray(is));
+    } else {
+      requestBytesArray = null;
+    }
+    is.close();
+  }
+
+  private void handleOversizeErrorResponse(Handler<AsyncResult<Response>> asyncResultHandler, DocumentHelper documentHelper) {
+    documentHelper.addProcessingError(DOCUMENT_IS_TOO_LARGE.toError());
+    asyncResultHandler.handle(succeededFuture(documentHelper.buildErrorResponse(413)));
+  }
+
+  private void createInvoiceDocument(String id, InvoiceDocument entity, Handler<AsyncResult<Response>> asyncResultHandler, DocumentHelper documentHelper) {
     if (!entity.getDocumentMetadata().getInvoiceId().equals(id)) {
       documentHelper.addProcessingError(MISMATCH_BETWEEN_ID_IN_PATH_AND_BODY.toError());
       asyncResultHandler.handle(succeededFuture(documentHelper.buildErrorResponse(422)));
@@ -201,17 +253,8 @@ public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
 
   @Validate
   @Override
-  public void getInvoiceInvoicesDocumentsById(String id, int offset, int limit, String query, String lang, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
-    DocumentHelper documentHelper = new DocumentHelper(okapiHeaders, vertxContext, lang);
-    documentHelper.getDocumentsByInvoiceId(id, limit, offset, query)
-      .thenAccept(documents -> asyncResultHandler.handle(succeededFuture(documentHelper.buildOkResponse(documents))))
-      .exceptionally(t -> handleErrorResponse(asyncResultHandler, documentHelper, t));
-  }
-
-  @Validate
-  @Override
   public void getInvoiceInvoicesDocumentsByIdAndDocumentId(String id, String documentId, String lang,
-      Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+                                                           Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     DocumentHelper documentHelper = new DocumentHelper(okapiHeaders, vertxContext, lang);
     documentHelper.getDocumentByInvoiceIdAndDocumentId(id, documentId)
       .thenAccept(document -> {
@@ -224,7 +267,7 @@ public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
   @Validate
   @Override
   public void deleteInvoiceInvoicesDocumentsByIdAndDocumentId(String invoiceId, String documentId, String lang,
-      Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+                                                              Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     DocumentHelper documentHelper = new DocumentHelper(okapiHeaders, vertxContext, lang);
 
     documentHelper.deleteDocument(invoiceId, documentId)
