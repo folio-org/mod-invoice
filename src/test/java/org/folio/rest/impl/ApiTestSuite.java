@@ -10,6 +10,8 @@ import org.folio.converters.BatchedVoucherLinesModelConverterTest;
 import org.folio.converters.BatchedVoucherModelConverterTest;
 import org.folio.invoices.events.handlers.InvoiceSummaryTest;
 import org.folio.invoices.util.FtpUploadHelperTest;
+import org.folio.invoices.util.HelperUtilsTest;
+import org.folio.invoices.utils.HelperUtils;
 import org.folio.jaxb.DefaultJAXBRootElementNameResolverTest;
 import org.folio.jaxb.JAXBUtilTest;
 import org.folio.jaxb.XMLConverterTest;
@@ -54,7 +56,8 @@ import io.vertx.core.logging.LoggerFactory;
   JAXBUtilTest.class,
   XMLConverterTest.class,
   FtpUploadHelperTest.class,
-  BatchVoucherExportsApiTest.class
+  BatchVoucherExportsApiTest.class,
+  HelperUtilsTest.class
 })
 public class ApiTestSuite {
   private static final Logger logger = LoggerFactory.getLogger(ApiTestSuite.class);
