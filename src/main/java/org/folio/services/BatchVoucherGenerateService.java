@@ -26,7 +26,6 @@ import org.folio.rest.jaxrs.model.VoucherCollection;
 
 import io.vertx.core.Context;
 import io.vertx.core.json.JsonObject;
-import me.escoffier.vertx.completablefuture.VertxCompletableFuture;
 
 public class BatchVoucherGenerateService {
   private final VoucherHelper voucherHelper;
@@ -104,7 +103,9 @@ public class BatchVoucherGenerateService {
     batchedVoucher.setInvoiceCurrency(voucher.getInvoiceCurrency());
     batchedVoucher.setExchangeRate(voucher.getExchangeRate());
     batchedVoucher.setStatus(BatchedVoucher.Status.fromValue(voucher.getStatus().value()));
+    batchedVoucher.setEnclosureNeeded(false);
     Invoice invoice = mapInvoices.get(voucher.getInvoiceId());
+    batchedVoucher.setFolioInvoiceNo(invoice.getFolioInvoiceNo());
     Organization organization = vendorsMap.get(invoice.getVendorId());
     batchedVoucher.setInvoiceNote(invoice.getNote());
     batchedVoucher.setVendorName(organization.getName());
