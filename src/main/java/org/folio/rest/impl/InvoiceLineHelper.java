@@ -72,11 +72,11 @@ public class InvoiceLineHelper extends AbstractHelper {
 
   private final ProtectionHelper protectionHelper;
 
-  InvoiceLineHelper(Map<String, String> okapiHeaders, Context ctx, String lang) {
+  public InvoiceLineHelper(Map<String, String> okapiHeaders, Context ctx, String lang) {
     this(getHttpClient(okapiHeaders), okapiHeaders, ctx, lang);
   }
 
-  InvoiceLineHelper(HttpClientInterface httpClient, Map<String, String> okapiHeaders, Context ctx, String lang) {
+  public InvoiceLineHelper(HttpClientInterface httpClient, Map<String, String> okapiHeaders, Context ctx, String lang) {
     super(httpClient, okapiHeaders, ctx, lang);
     protectionHelper = new ProtectionHelper(httpClient, okapiHeaders, ctx, lang);
   }

@@ -16,6 +16,7 @@
       "disbursementNumber": "EFT546789",
       "disbursementDate": "2019-05-05T00:00:00.000+0000",
       "disbursementAmount": 5,
+      "batchGroupId": "e91d44e4-ae4f-401a-b355-3ea44f57a628",
       "metadata": {
         "createdDate": "2019-05-06T00:00:00.000+0000",
         "createdByUserId": "28d1057c-d137-11e8-a8d5-f2801f1b9fd1"
@@ -37,6 +38,7 @@
       "disbursementNumber": "EFT546789",
       "disbursementDate": "2019-05-05T00:00:00.000+0000",
       "disbursementAmount": 5,
+      "batchGroupId": "2a2cb998-1437-41d1-88ad-01930aaeadd5",
       "metadata": {
         "createdDate": "2019-05-06T00:00:00.000+0000",
         "createdByUserId": "28d1057c-d137-11e8-a8d5-f2801f1b9fd1"

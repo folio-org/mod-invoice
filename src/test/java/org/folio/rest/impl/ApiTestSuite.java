@@ -10,6 +10,8 @@ import org.folio.converters.BatchedVoucherLinesModelConverterTest;
 import org.folio.converters.BatchedVoucherModelConverterTest;
 import org.folio.invoices.events.handlers.InvoiceSummaryTest;
 import org.folio.invoices.util.FtpUploadHelperTest;
+import org.folio.invoices.util.HelperUtilsTest;
+import org.folio.invoices.utils.HelperUtils;
 import org.folio.jaxb.DefaultJAXBRootElementNameResolverTest;
 import org.folio.jaxb.JAXBUtilTest;
 import org.folio.jaxb.XMLConverterTest;
@@ -18,6 +20,10 @@ import org.folio.rest.impl.protection.InvoicesProtectionTest;
 import org.folio.rest.impl.protection.LinesProtectionTest;
 import org.folio.rest.tools.utils.NetworkUtils;
 import org.folio.schemas.xsd.BatchVoucherSchemaXSDTest;
+import org.folio.services.BatchVoucherGenerateService;
+import org.folio.services.BatchVoucherGenerateServiceTest;
+import org.folio.services.InvoiceRetrieveServiceTest;
+import org.folio.services.VoucherLinesRetrieveServiceTest;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.runner.RunWith;
@@ -54,13 +60,17 @@ import io.vertx.core.logging.LoggerFactory;
   JAXBUtilTest.class,
   XMLConverterTest.class,
   FtpUploadHelperTest.class,
-  BatchVoucherExportsApiTest.class
+  BatchVoucherExportsApiTest.class,
+  HelperUtilsTest.class,
+  InvoiceRetrieveServiceTest.class,
+  VoucherLinesRetrieveServiceTest.class,
+  BatchVoucherGenerateServiceTest.class
 })
 public class ApiTestSuite {
   private static final Logger logger = LoggerFactory.getLogger(ApiTestSuite.class);
 
   private static final int okapiPort = NetworkUtils.nextFreePort();
-  static final int mockPort = NetworkUtils.nextFreePort();
+  public static final int mockPort = NetworkUtils.nextFreePort();
   private static Vertx vertx;
   private static MockServer mockServer;
   private static boolean initialised;

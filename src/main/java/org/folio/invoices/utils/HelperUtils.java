@@ -22,6 +22,7 @@ import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -32,6 +33,7 @@ import java.util.concurrent.CompletionException;
 import java.util.function.Predicate;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.IntStream;
 
 import javax.money.CurrencyUnit;
 import javax.money.Monetary;
@@ -78,6 +80,7 @@ public class HelperUtils {
   public static final String SEARCH_PARAMS = "?limit=%s&offset=%s%s&lang=%s";
   public static final String IS_DELETED_PROP = "isDeleted";
   public static final String ALL_UNITS_CQL = IS_DELETED_PROP + "=*";
+  public static final String BATCH_VOUCHER_EXPORT = "batchVoucherExport";
 
   private static final String EXCEPTION_CALLING_ENDPOINT_MSG = "Exception calling {} {}";
   private static final String CALLING_ENDPOINT_MSG = "Sending {} {}";
@@ -466,5 +469,19 @@ public class HelperUtils {
   public static MonetaryAmount getAdjustmentFundDistributionAmount(FundDistribution fundDistribution, Adjustment adjustment, Invoice invoice) {
     MonetaryAmount adjustmentTotal = calculateAdjustment(adjustment, Money.of(invoice.getSubTotal(), invoice.getCurrency()));
     return getFundDistributionAmount(fundDistribution, adjustmentTotal.getNumber().doubleValue(), invoice.getCurrency());
+  }
+
+  public static <T> Map<Integer, List<T>> buildIdsChunks(List<T> source, int maxListRecords) {
+    int size = source.size();
+    if (size <= 0)
+      return Collections.emptyMap();
+    int fullChunks = (size - 1) / maxListRecords;
+    HashMap<Integer, List<T>> idChunkMap = new HashMap<>();
+    IntStream.range(0, fullChunks + 1)
+      .forEach(n -> {
+        List<T> subList = source.subList(n * maxListRecords, n == fullChunks ? size : (n + 1) * maxListRecords);
+        idChunkMap.put(n, subList);
+      });
+    return idChunkMap;
   }
 }

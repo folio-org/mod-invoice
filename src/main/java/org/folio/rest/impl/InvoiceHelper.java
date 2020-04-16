@@ -619,7 +619,7 @@ public class InvoiceHelper extends AbstractHelper {
    * @return voucher
    */
   private Voucher withRequiredFields(Voucher voucher, Invoice invoice) {
-
+    voucher.setVoucherDate(new Date());
     voucher.setInvoiceCurrency(invoice.getCurrency());
     voucher.setExportToAccounting(invoice.getExportToAccounting());
     voucher.setAccountingCode(invoice.getAccountingCode());

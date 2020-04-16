@@ -229,6 +229,16 @@
               <generateBuilders>true</generateBuilders>
             </configuration>
           </execution>
+          <execution>
+            <id>mod-orgs</id>
+            <goals>
+              <goal>generate</goal>
+            </goals>
+            <configuration>
+              <sourceDirectory>${basedir}/ramls/acq-models/mod-orgs/schemas</sourceDirectory>
+              <targetPackage>org.folio.rest.acq.model</targetPackage>
+            </configuration>
+          </execution>
         </executions>
       </plugin>
 

@@ -31,8 +31,9 @@ public class BatchedVoucherModelConverter implements Converter<BatchedVoucher, B
 
     batchedVoucherType.setEnclosureNeeded(batchedVoucher.getEnclosureNeeded());
     batchedVoucherType.setExchangeRate(BigDecimal.valueOf(batchedVoucher.getExchangeRate()));
+    batchedVoucherType.setInvoiceCurrency(batchedVoucher.getInvoiceCurrency());
     batchedVoucherType.setFolioInvoiceNo(batchedVoucher.getFolioInvoiceNo());
-    batchedVoucherType.setInvoiceCurrency(batchedVoucher.getDisbursementNumber());
+    batchedVoucherType.setInvoiceCurrency(batchedVoucher.getInvoiceCurrency());
     batchedVoucherType.setSystemCurrency(batchedVoucher.getSystemCurrency());
     batchedVoucherType.setType(PaymentAccountType.fromValue(batchedVoucher.getType()
       .toString()));

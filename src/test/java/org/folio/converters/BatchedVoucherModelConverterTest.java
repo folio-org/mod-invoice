@@ -49,7 +49,7 @@ public class BatchedVoucherModelConverterTest {
     assertEquals(BigDecimal.valueOf(batchedVoucher.getAmount()), batchedVoucherType.getDisbursementAmount());
 
     assertEquals(BigDecimal.valueOf(batchedVoucher.getExchangeRate()), batchedVoucherType.getExchangeRate());
-    assertEquals(batchedVoucher.getDisbursementNumber(), batchedVoucherType.getInvoiceCurrency());
+    assertEquals(batchedVoucher.getInvoiceCurrency(), batchedVoucherType.getInvoiceCurrency());
     assertEquals(batchedVoucher.getSystemCurrency(), batchedVoucherType.getSystemCurrency());
     assertEquals(PaymentAccountType.fromValue(batchedVoucher.getType()
       .toString()), batchedVoucherType.getType());

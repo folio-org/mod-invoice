@@ -81,10 +81,10 @@ public class ApiTestBase {
   public static final Header ACCEPT_JSON_HEADER = new Header(HttpHeaders.ACCEPT, APPLICATION_JSON);
   public static final Header ACCEPT_XML_HEADER = new Header(HttpHeaders.ACCEPT, APPLICATION_XML);
   public static final String BAD_QUERY = "unprocessableQuery";
-
+  public static final String ID = "id";
   public static final String ID_DOES_NOT_EXIST = "d25498e7-3ae6-45fe-9612-ec99e2700d2f";
 
-  static final String BASE_MOCK_DATA_PATH = "mockdata/";
+  public static final String BASE_MOCK_DATA_PATH = "mockdata/";
   static final String INVOICE_LINE_NUMBER_VALUE = "1";
   static final String VOUCHER_NUMBER_VALUE = "1";
   static final String LANG_PARAM = "lang";
@@ -152,7 +152,7 @@ public class ApiTestBase {
     }
   }
 
-  static String getMockData(String path) throws IOException {
+ public static String getMockData(String path) throws IOException {
     logger.info("Using mock datafile: {}", path);
     try (InputStream resourceAsStream = ApiTestBase.class.getClassLoader().getResourceAsStream(path)) {
       if (resourceAsStream != null) {

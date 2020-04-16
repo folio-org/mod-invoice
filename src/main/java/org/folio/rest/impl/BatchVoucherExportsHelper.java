@@ -1,5 +1,6 @@
 package org.folio.rest.impl;
 
+import static org.folio.invoices.utils.HelperUtils.BATCH_VOUCHER_EXPORT;
 import static org.folio.invoices.utils.HelperUtils.getEndpointWithQuery;
 import static org.folio.invoices.utils.HelperUtils.handleDeleteRequest;
 import static org.folio.invoices.utils.HelperUtils.handleGetRequest;
@@ -11,6 +12,7 @@ import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
+import org.folio.invoices.events.handlers.MessageAddress;
 import org.folio.rest.jaxrs.model.BatchVoucherExport;
 import org.folio.rest.jaxrs.model.BatchVoucherExportCollection;
 import org.folio.rest.tools.client.interfaces.HttpClientInterface;
@@ -73,8 +75,21 @@ public class BatchVoucherExportsHelper extends AbstractHelper {
    * @return completable future with {@link BatchVoucherExport} on success or an exception if processing fails
    */
   public CompletableFuture<BatchVoucherExport> createBatchVoucherExports(BatchVoucherExport batchVoucherExport) {
-    return createRecordInStorage(JsonObject.mapFrom(batchVoucherExport), resourcesPath(BATCH_VOUCHER_EXPORTS_STORAGE))
-      .thenApply(batchVoucherExport::withId);
+    CompletableFuture<BatchVoucherExport> future = new CompletableFuture<>();
+    createRecordInStorage(JsonObject.mapFrom(batchVoucherExport), resourcesPath(BATCH_VOUCHER_EXPORTS_STORAGE))
+                  .thenApply(batchVoucherExportId -> {
+                    BatchVoucherExport batchVoucherExportWitId = batchVoucherExport.withId(batchVoucherExportId);
+                    future.complete(batchVoucherExport.withId(batchVoucherExportId));
+                    return batchVoucherExportWitId;
+                  })
+                  .thenAccept(this::persistBatchVoucher);
+    return future;
+  }
+
+  private void persistBatchVoucher(BatchVoucherExport batchVoucherExport) {
+    VertxCompletableFuture.runAsync(ctx,
+      () -> sendEvent(MessageAddress.BATCH_VOUCHER_PERSIST_TOPIC
+              , new JsonObject().put(BATCH_VOUCHER_EXPORT, JsonObject.mapFrom(batchVoucherExport))));
   }
 
   /**

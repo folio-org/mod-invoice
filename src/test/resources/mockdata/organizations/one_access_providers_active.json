@@ -1,0 +1,14 @@
+{
+  "organizations": [
+     {
+      "id": "168f8a63-d612-406e-813f-c7527f241ac3",
+      "name": "Jean Simmons",
+      "code": "SJEAN",
+      "description": "Individual donor to library archives",
+      "status": "Active",
+      "language": "en-us",
+      "isVendor": true
+    }
+  ],
+  "totalRecords": 1
+}

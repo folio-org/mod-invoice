@@ -6,10 +6,10 @@ import java.util.Map;
 
 import javax.ws.rs.core.Response;
 
-import org.folio.rest.acq.model.Message;
 import org.folio.rest.annotations.Validate;
 import org.folio.rest.jaxrs.model.Credentials;
 import org.folio.rest.jaxrs.model.ExportConfig;
+import org.folio.rest.jaxrs.model.Message;
 import org.folio.rest.jaxrs.resource.BatchVoucherExportConfigurations;
 
 import io.vertx.core.AsyncResult;
