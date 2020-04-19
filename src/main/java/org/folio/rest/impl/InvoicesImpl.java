@@ -11,6 +11,7 @@ import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.folio.rest.annotations.Stream;
 import org.folio.rest.annotations.Validate;
+import org.folio.rest.jaxrs.model.Errors;
 import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.jaxrs.model.InvoiceDocument;
 import org.folio.rest.jaxrs.model.InvoiceLine;
@@ -18,14 +19,16 @@ import org.folio.rest.jaxrs.model.InvoiceLine;
 import javax.ws.rs.core.Response;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
+import java.util.Collections;
 import java.util.Map;
 import java.util.Objects;
 
 import static io.vertx.core.Future.succeededFuture;
 import static org.apache.commons.io.FileUtils.ONE_MB;
-import static org.apache.commons.lang3.CharEncoding.UTF_8;
 import static org.folio.invoices.utils.ErrorCodes.DOCUMENT_IS_TOO_LARGE;
 import static org.folio.invoices.utils.ErrorCodes.MISMATCH_BETWEEN_ID_IN_PATH_AND_BODY;
+import static org.folio.rest.RestVerticle.STREAM_ABORT;
 import static org.folio.rest.RestVerticle.STREAM_COMPLETE;
 
 public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
@@ -205,17 +208,18 @@ public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
   @Override
   public void postInvoiceInvoicesDocumentsById(String id, String lang, InputStream is, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     try {
-      if(Objects.isNull(okapiHeaders.get(STREAM_COMPLETE))) {
+      if (Objects.isNull(okapiHeaders.get(STREAM_COMPLETE))) {
         // This code will be executed for each stream's chunk
         processBytesArrayFromStream(is);
+      } else if (Objects.nonNull(okapiHeaders.get(STREAM_ABORT))) {
+        asyncResultHandler.handle(succeededFuture(PostInvoiceInvoicesDocumentsByIdResponse.respond400WithTextPlain("Stream aborted")));
       } else {
-        DocumentHelper documentHelper = new DocumentHelper(okapiHeaders, vertxContext, lang);
         // This code will be executed one time after stream completing
         if (Objects.nonNull(requestBytesArray)) {
-          InvoiceDocument entity = new JsonObject(IOUtils.toString(requestBytesArray, UTF_8)).mapTo(InvoiceDocument.class);
-          createInvoiceDocument(id, entity, asyncResultHandler, documentHelper);
+          processDocumentCreation(id, lang, okapiHeaders, asyncResultHandler, vertxContext);
         } else {
-          handleOversizeErrorResponse(asyncResultHandler, documentHelper);
+          Errors errors = new Errors().withErrors(Collections.singletonList(DOCUMENT_IS_TOO_LARGE.toError())).withTotalRecords(1);
+          asyncResultHandler.handle(succeededFuture(PostInvoiceInvoicesDocumentsByIdResponse.respond413WithApplicationJson(errors)));
         }
       }
     } catch (Exception e) {
@@ -267,12 +271,9 @@ public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
     is.close();
   }
 
-  private void handleOversizeErrorResponse(Handler<AsyncResult<Response>> asyncResultHandler, DocumentHelper documentHelper) {
-    documentHelper.addProcessingError(DOCUMENT_IS_TOO_LARGE.toError());
-    asyncResultHandler.handle(succeededFuture(documentHelper.buildErrorResponse(413)));
-  }
-
-  private void createInvoiceDocument(String id, InvoiceDocument entity, Handler<AsyncResult<Response>> asyncResultHandler, DocumentHelper documentHelper) {
+  private void processDocumentCreation(String id, String lang, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) throws IOException {
+    DocumentHelper documentHelper = new DocumentHelper(okapiHeaders, vertxContext, lang);
+    InvoiceDocument entity = new JsonObject(new String(requestBytesArray, StandardCharsets.UTF_8)).mapTo(InvoiceDocument.class);
     if (!entity.getDocumentMetadata().getInvoiceId().equals(id)) {
       documentHelper.addProcessingError(MISMATCH_BETWEEN_ID_IN_PATH_AND_BODY.toError());
       asyncResultHandler.handle(succeededFuture(documentHelper.buildErrorResponse(422)));
@@ -285,5 +286,4 @@ public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
         .exceptionally(t -> handleErrorResponse(asyncResultHandler, documentHelper, t));
     }
   }
-
 }

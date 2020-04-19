@@ -1,31 +1,42 @@
 package org.folio.rest.impl;
 
-import static io.restassured.config.EncoderConfig.encoderConfig;
-import static io.restassured.config.HttpClientConfig.httpClientConfig;
-import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
-import static javax.ws.rs.core.MediaType.TEXT_PLAIN;
-import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_DOCUMENTS;
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.hasSize;
-import static org.hamcrest.Matchers.notNullValue;
-import static org.junit.Assert.assertEquals;
-
-import java.io.IOException;
-
 import io.restassured.RestAssured;
-import io.restassured.http.ContentType;
-import io.restassured.http.Headers;
-import io.restassured.response.Response;
-import org.folio.rest.jaxrs.model.InvoiceCollection;
-import org.folio.rest.jaxrs.model.InvoiceDocument;
-import org.junit.Assert;
-import org.junit.Test;
-
+import io.vertx.core.Vertx;
+import io.vertx.core.buffer.Buffer;
+import io.vertx.core.http.HttpClientRequest;
+import io.vertx.core.http.HttpClientResponse;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
+import io.vertx.ext.unit.Async;
+import io.vertx.ext.unit.TestContext;
+import io.vertx.ext.unit.junit.VertxUnitRunner;
+import org.apache.commons.lang3.StringUtils;
+import org.folio.rest.jaxrs.model.Error;
+import org.folio.rest.jaxrs.model.Errors;
+import org.folio.rest.jaxrs.model.InvoiceCollection;
+import org.folio.rest.jaxrs.model.InvoiceDocument;
+import org.junit.Assert;
+import org.junit.Test;
+import org.junit.runner.RunWith;
 
+import java.io.IOException;
+import java.util.List;
+
+import static io.vertx.core.http.HttpHeaders.ACCEPT;
+import static io.vertx.core.http.HttpHeaders.CONTENT_TYPE;
+import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
+import static javax.ws.rs.core.MediaType.APPLICATION_OCTET_STREAM;
+import static javax.ws.rs.core.MediaType.TEXT_PLAIN;
+import static org.apache.commons.io.FileUtils.ONE_MB;
+import static org.folio.invoices.utils.ErrorCodes.DOCUMENT_IS_TOO_LARGE;
+import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_DOCUMENTS;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.hasSize;
+import static org.junit.Assert.assertEquals;
+
+@RunWith(VertxUnitRunner.class)
 public class DocumentsApiTest extends ApiTestBase {
   private static final Logger logger = LoggerFactory.getLogger(DocumentsApiTest.class);
   private static final String INVOICE_ID = "733cafd3-895f-4e33-87b7-bf40dc3c8069";
@@ -36,18 +47,68 @@ public class DocumentsApiTest extends ApiTestBase {
   static final String INVOICE_DOCUMENT_SAMPLE_PATH = BASE_MOCK_DATA_PATH + "documents/10a34f8a-98d1-45af-a9f6-14b7174ceb51.json";
   static final String INVOICE_SAMPLE_DOCUMENTS_PATH = BASE_MOCK_DATA_PATH + "documents/documents.json";
   static final String DOCUMENT_ID = "10a34f8a-98d1-45af-a9f6-14b7174ceb51";
+  static final int size = (int) (30 * ONE_MB);
 
 
   @Test
-  public void testPostAndDocument() throws IOException {
+  public void testPostAndDocument(TestContext context) throws IOException {
     logger.info("=== Test create document ===");
 
-    String body = getMockData(INVOICE_DOCUMENT_SAMPLE_PATH);
+    String mock = getMockData(INVOICE_DOCUMENT_SAMPLE_PATH);
 
-    final InvoiceDocument createdDoc = verifyPostResponse(DOCUMENT_ENDPOINT, body, prepareHeaders(X_OKAPI_TENANT), "application/octet-stream", APPLICATION_JSON, 201).as(InvoiceDocument.class);
-    String docId = createdDoc.getDocumentMetadata().getId();
-    assertThat(docId, notNullValue());
-    assertThat(MockServer.serverRqRs.get(INVOICE_DOCUMENTS, HttpMethod.POST), hasSize(1));
+    Async async = context.async();
+    HttpClientRequest request = Vertx.vertx().createHttpClient().postAbs(RestAssured.baseURI + DOCUMENT_ENDPOINT, response -> {
+      Buffer body = Buffer.buffer();
+      response.handler(body::appendBuffer);
+      response.endHandler(end -> verifySuccessResponse(context, async, response, body));
+      response.exceptionHandler(t -> processException(async, t));
+    });
+    request.setChunked(true);
+    prepareRequestHeaders(request);
+    request.write(mock);
+    request.end();
+  }
+
+  private void verifySuccessResponse(TestContext context, Async async, HttpClientResponse response, Buffer body) {
+    context.assertEquals(201, response.statusCode());
+    context.assertNotNull(response.headers().get(CONTENT_TYPE));
+    context.assertEquals(MockServer.serverRqRs.get(INVOICE_DOCUMENTS, HttpMethod.POST).size(), 1);
+    context.assertNotNull(new JsonObject(body).mapTo(InvoiceDocument.class).getDocumentMetadata().getId());
+    async.complete();
+  }
+
+  @Test
+  public void testPostAndDocumentOversize(TestContext context) throws IOException {
+    logger.info("=== Test create document - oversize ===");
+
+    InvoiceDocument document = new JsonObject(getMockData(INVOICE_DOCUMENT_SAMPLE_PATH)).mapTo(InvoiceDocument.class);
+    String stringData = StringUtils.repeat("*", size);
+
+    document.getContents().setData(stringData);
+
+    Async async = context.async();
+    HttpClientRequest request = Vertx.vertx().createHttpClient().postAbs(RestAssured.baseURI + DOCUMENT_ENDPOINT, response -> {
+      Buffer body = Buffer.buffer();
+      response.handler(body::appendBuffer);
+      response.endHandler(end -> verifyErrorResponse(context, async, response, body));
+      response.exceptionHandler(t -> processException(async, t));
+    });
+    request.setChunked(true);
+    prepareRequestHeaders(request);
+    request.write(JsonObject.mapFrom(document).encode());
+    request.end();
+  }
+
+  private void verifyErrorResponse(TestContext context, Async async, HttpClientResponse response, Buffer body) {
+    context.assertEquals(413, response.statusCode());
+    context.assertNotNull(response.headers().get(CONTENT_TYPE));
+    context.assertNull(MockServer.serverRqRs.get(INVOICE_DOCUMENTS, HttpMethod.POST));
+    Errors errors = new JsonObject(body).mapTo(Errors.class);
+    List<Error> errs = errors.getErrors();
+    context.assertEquals(errors.getTotalRecords(), 1);
+    context.assertEquals(errs.size(), 1);
+    context.assertEquals(errs.get(0).getCode(), DOCUMENT_IS_TOO_LARGE.getCode());
+    async.complete();
   }
 
   @Test
@@ -62,7 +123,7 @@ public class DocumentsApiTest extends ApiTestBase {
   }
 
   @Test
-  public void testGetDocuments() throws IOException {
+  public void testGetDocuments() {
     logger.info("=== Test Get Invoices by without query - get 200 by successful retrieval of documents ===");
 
     final InvoiceCollection resp = verifySuccessGet(DOCUMENT_ENDPOINT, InvoiceCollection.class);
@@ -86,25 +147,16 @@ public class DocumentsApiTest extends ApiTestBase {
     verifyDeleteResponse(String.format(DOCUMENT_ENDPOINT_WITH_ID, VALID_UUID), "", 204);
   }
 
-  public Response verifyPostResponse(String url, Object body, Headers headers, String contentType, String expectedContentType, int expectedCode) {
-    return RestAssured
-      .given()
-      .config(RestAssured.config()
-        .encoderConfig(encoderConfig().encodeContentTypeAs("application/octet-stream", ContentType.JSON)))
-      .with()
-        .header(X_OKAPI_URL)
-        .header(X_OKAPI_TOKEN)
-        .headers(headers)
-        .contentType(contentType)
-        .body(convertToString(body))
-      .post(url)
-        .then()
-          .log()
-          .all()
-          .statusCode(expectedCode)
-          .contentType(expectedContentType)
-          .extract()
-          .response();
+  private void processException(Async async, Throwable t) {
+    logger.info("Exception calling: " + DOCUMENT_ENDPOINT, t);
+    async.complete();
   }
 
+  private void prepareRequestHeaders(HttpClientRequest request) {
+    request.putHeader(CONTENT_TYPE, APPLICATION_OCTET_STREAM);
+    request.putHeader(X_OKAPI_TOKEN.getName(), X_OKAPI_TOKEN.getValue());
+    request.putHeader(X_OKAPI_TENANT.getName(), X_OKAPI_TENANT.getValue());
+    request.putHeader(X_OKAPI_URL.getName(), X_OKAPI_URL.getValue());
+    request.putHeader(ACCEPT, APPLICATION_JSON);
+  }
 }
