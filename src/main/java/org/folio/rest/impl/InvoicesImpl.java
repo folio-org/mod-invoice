@@ -271,7 +271,7 @@ public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
     is.close();
   }
 
-  private void processDocumentCreation(String id, String lang, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) throws IOException {
+  private void processDocumentCreation(String id, String lang, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     DocumentHelper documentHelper = new DocumentHelper(okapiHeaders, vertxContext, lang);
     InvoiceDocument entity = new JsonObject(new String(requestBytesArray, StandardCharsets.UTF_8)).mapTo(InvoiceDocument.class);
     if (!entity.getDocumentMetadata().getInvoiceId().equals(id)) {
