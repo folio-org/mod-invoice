@@ -619,11 +619,11 @@ public class InvoiceHelper extends AbstractHelper {
    * @return voucher
    */
   private Voucher withRequiredFields(Voucher voucher, Invoice invoice) {
-
+    voucher.setVoucherDate(new Date());
     voucher.setInvoiceCurrency(invoice.getCurrency());
     voucher.setExportToAccounting(invoice.getExportToAccounting());
     voucher.setAccountingCode(invoice.getAccountingCode());
-
+    voucher.setBatchGroupId(invoice.getBatchGroupId());
     // TODO Start using real information to create a voucher when it becomes known where to get these values from.
     voucher.setType(Voucher.Type.VOUCHER);
     voucher.setStatus(Voucher.Status.AWAITING_PAYMENT);

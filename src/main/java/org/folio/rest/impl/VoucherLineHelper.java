@@ -24,11 +24,11 @@ import me.escoffier.vertx.completablefuture.VertxCompletableFuture;
 public class VoucherLineHelper extends AbstractHelper {
   private static final String GET_VOUCHER_LINE_BY_QUERY = resourcesPath(VOUCHER_LINES) + SEARCH_PARAMS;
 
-  VoucherLineHelper(Map<String, String> okapiHeaders, Context ctx, String lang) {
+  public VoucherLineHelper(Map<String, String> okapiHeaders, Context ctx, String lang) {
     super(okapiHeaders, ctx, lang);
   }
 
-  VoucherLineHelper(HttpClientInterface httpClient, Map<String, String> okapiHeaders, Context ctx, String lang) {
+  public VoucherLineHelper(HttpClientInterface httpClient, Map<String, String> okapiHeaders, Context ctx, String lang) {
     super(httpClient, okapiHeaders, ctx, lang);
   }
 

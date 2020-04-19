@@ -12,5 +12,6 @@
   "accountingCode": "0206",
   "disbursementNumber": "EFT546789",
   "disbursementDate": "2019-05-05T00:00:00.000+0000",
-  "disbursementAmount": 5
+  "disbursementAmount": 5,
+  "batchGroupId": "e91d44e4-ae4f-401a-b355-3ea44f57a628"
 }

@@ -1,6 +1,7 @@
 package org.folio.rest.impl;
 
 import static io.vertx.core.Future.succeededFuture;
+
 import java.util.Map;
 
 import javax.ws.rs.core.Response;
@@ -78,18 +79,6 @@ public class BatchVoucherExportsImpl implements BatchVoucherBatchVoucherExports 
       .exceptionally(t -> handleErrorResponse(asyncResultHandler, helper, t));
   }
 
-  private void logInfo(String message, Object entry) {
-    if (logger.isInfoEnabled()) {
-      logger.info(message, JsonObject.mapFrom(entry)
-        .encodePrettily());
-    }
-  }
-
-  private Void handleErrorResponse(Handler<AsyncResult<Response>> asyncResultHandler, AbstractHelper helper, Throwable t) {
-    asyncResultHandler.handle(succeededFuture(helper.buildErrorResponse(t)));
-    return null;
-  }
-
   @Validate
   @Override
   public void postBatchVoucherBatchVoucherExportsUploadById(String id, String lang, Map<String, String> okapiHeaders,
@@ -102,5 +91,17 @@ public class BatchVoucherExportsImpl implements BatchVoucherBatchVoucherExports 
   public void postBatchVoucherBatchVoucherExportsScheduled(String lang, Map<String, String> okapiHeaders,
       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     asyncResultHandler.handle(succeededFuture(PostBatchVoucherBatchVoucherExportsScheduledResponse.respond500WithApplicationJson(NOT_SUPPORTED)));
+  }
+
+  private void logInfo(String message, Object entry) {
+    if (logger.isInfoEnabled()) {
+      logger.info(message, JsonObject.mapFrom(entry)
+        .encodePrettily());
+    }
+  }
+
+  private Void handleErrorResponse(Handler<AsyncResult<Response>> asyncResultHandler, AbstractHelper helper, Throwable t) {
+    asyncResultHandler.handle(succeededFuture(helper.buildErrorResponse(t)));
+    return null;
   }
 }
