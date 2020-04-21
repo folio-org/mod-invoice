@@ -2,7 +2,6 @@ package org.folio.rest.impl;
 
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 import static javax.ws.rs.core.Response.Status.CREATED;
-import static org.folio.rest.impl.AbstractHelper.ID;
 import static org.folio.rest.impl.MockServer.getBatchVoucherExportUpdates;
 import static org.junit.Assert.assertEquals;
 import static org.hamcrest.CoreMatchers.is;
@@ -32,6 +31,7 @@ public class BatchVoucherExportsApiTest extends ApiTestBase {
   private static final String BATCH_VOUCHER_EXPORTS_ID_PATH = BATCH_VOUCHER_EXPORTS_PATH + "/%s";
   private static final String BAD_BATCH_VOUCHER_EXPORTS_ID = "d25498e7-3ae6-45fe-9612-ec99e2700d2f";
   private static final String VALID_BATCH_VOUCHER_EXPORTS_ID ="566c9156-e52f-4597-9fee-5ddac91d14f2";
+  private static final String BAD_BATCH_VOUCHER_GROUP_ID =  "e91d44e4-ae4f-401a-b355-3ea44f57a621";
   private static final String BATCH_VOUCHER_EXPORT_SAMPLE_PATH = BATCH_VOUCHER_EXPORTS_MOCK_DATA_PATH + VALID_BATCH_VOUCHER_EXPORTS_ID + ".json";
   private static final String BATCH_VOUCHER_EXPORT_UPLOAD_ENDPOINT_PATH = String
     .format("/batch-voucher/batch-voucher-exports/%s/upload", BAD_BATCH_VOUCHER_EXPORTS_ID);

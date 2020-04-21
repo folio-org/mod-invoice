@@ -64,7 +64,8 @@ import io.vertx.core.logging.LoggerFactory;
   HelperUtilsTest.class,
   InvoiceRetrieveServiceTest.class,
   VoucherLinesRetrieveServiceTest.class,
-  BatchVoucherGenerateServiceTest.class
+  BatchVoucherGenerateServiceTest.class,
+  BatchVoucherExportsHelperTest.class
 })
 public class ApiTestSuite {
   private static final Logger logger = LoggerFactory.getLogger(ApiTestSuite.class);
