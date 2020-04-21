@@ -46,21 +46,18 @@ public class BatchVoucherGenerateService {
     CompletableFuture<BatchVoucher> future = new CompletableFuture<>();
     String voucherCQL = buildBatchVoucherQuery(batchVoucherExport);
     voucherHelper.getVouchers(Integer.MAX_VALUE, 0, voucherCQL)
-      .thenApply(voucherCollection -> {
-        if (voucherCollection.getVouchers().isEmpty()) {
-          throw new BatchVoucherGenerationException("Vouchers for batch voucher export were not found");
-        }
-        return voucherCollection;
-      })
       .thenCompose(vouchers -> {
-        CompletableFuture<Map<String, List<VoucherLine>>> voucherLines = voucherLinesRetrieveService.getVoucherLinesMap(vouchers);
-        CompletableFuture<Map<String, Invoice>> invoices = invoiceRetrieveService.getInvoiceMap(vouchers);
-        return allOf(voucherLines, invoices)
-          .thenCompose(v -> buildBatchVoucher(batchVoucherExport, vouchers, voucherLines.join(), invoices.join()))
-          .thenAccept(batchVoucher -> {
-            future.complete(batchVoucher);
-            closeHttpConnections();
+        if (!vouchers.getVouchers().isEmpty()) {
+          CompletableFuture<Map<String, List<VoucherLine>>> voucherLines = voucherLinesRetrieveService.getVoucherLinesMap(vouchers);
+          CompletableFuture<Map<String, Invoice>> invoices = invoiceRetrieveService.getInvoiceMap(vouchers);
+          return allOf(voucherLines, invoices)
+            .thenCompose(v -> buildBatchVoucher(batchVoucherExport, vouchers, voucherLines.join(), invoices.join()))
+            .thenAccept(batchVoucher -> {
+              future.complete(batchVoucher);
+              closeHttpConnections();
             });
+        }
+       throw new BatchVoucherGenerationException("Vouchers for batch voucher export were not found");
       })
       .exceptionally(t -> {
         future.completeExceptionally(t);

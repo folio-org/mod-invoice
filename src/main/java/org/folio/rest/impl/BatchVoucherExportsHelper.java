@@ -82,7 +82,12 @@ public class BatchVoucherExportsHelper extends AbstractHelper {
                     future.complete(batchVoucherExport.withId(batchVoucherExportId));
                     return batchVoucherExportWitId;
                   })
-                  .thenAccept(this::persistBatchVoucher);
+                  .thenAccept(this::persistBatchVoucher)
+                  .exceptionally(t -> {
+                    logger.error("Create batch voucher export error.");
+                    future.completeExceptionally(t);
+                    return null;
+                  });
     return future;
   }
 
