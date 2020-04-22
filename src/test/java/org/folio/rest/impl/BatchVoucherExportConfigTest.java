@@ -12,7 +12,7 @@ import java.io.IOException;
 import org.folio.rest.jaxrs.model.ExportConfig;
 import org.folio.rest.jaxrs.model.ExportConfig.Format;
 import org.folio.rest.jaxrs.model.ExportConfigCollection;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import io.vertx.core.http.HttpMethod;
 import io.vertx.core.json.JsonObject;
@@ -30,7 +30,7 @@ public class BatchVoucherExportConfigTest extends ApiTestBase {
       + EXPORT_CONFIG_ID + ".json";
   static final String BATCH_VOUCHER_EXPORT_CONFIGS_SAMPLE_PATH = BATCH_VOUCHER_EXPORT_CONFIG_SAMPLE_PATH + "configs.json";
   static final String BATCH_VOUCHER_EXPORT_CONFIG_ENDPOINT_WITH_ID = BATCH_VOUCHER_EXPORT_CONFIGS_ENDPOINT + "/" + EXPORT_CONFIG_ID;
-  
+
 
   @Test
   public void testPostExportConfig() throws IOException {
@@ -50,15 +50,13 @@ public class BatchVoucherExportConfigTest extends ApiTestBase {
   public void testGetExportConfig() {
     logger.info("=== Test get batch voucher export configuration by id ===");
 
-    String endpoint = String.format(BATCH_VOUCHER_EXPORT_CONFIG_ENDPOINT_WITH_ID, EXPORT_CONFIG_ID);
-
-    final ExportConfig exportConfig = verifySuccessGet(endpoint, ExportConfig.class);
+    final ExportConfig exportConfig = verifySuccessGet(BATCH_VOUCHER_EXPORT_CONFIG_ENDPOINT_WITH_ID, ExportConfig.class);
     assertThat(MockServer.serverRqRs.get(BATCH_VOUCHER_EXPORT_CONFIGS, HttpMethod.GET), hasSize(1));
     assertEquals(EXPORT_CONFIG_ID, exportConfig.getId());
   }
 
   @Test
-  public void testGetExportConfigs() throws IOException {
+  public void testGetExportConfigs() {
     logger.info("=== Test Get batch voucher export configurations without query - get 200 by successful retrieval of configs ===");
 
     final ExportConfigCollection resp = verifySuccessGet(BATCH_VOUCHER_EXPORT_CONFIGS_ENDPOINT, ExportConfigCollection.class);
@@ -81,7 +79,7 @@ public class BatchVoucherExportConfigTest extends ApiTestBase {
   @Test
   public void testDeleteExportConfig() {
     logger.info("=== Test delete batch voucher export configuration by id ===");
-    verifyDeleteResponse(String.format(BATCH_VOUCHER_EXPORT_CONFIG_ENDPOINT_WITH_ID, VALID_UUID), "", 204);
+    verifyDeleteResponse(BATCH_VOUCHER_EXPORT_CONFIG_ENDPOINT_WITH_ID, "", 204);
   }
 
 }

@@ -15,9 +15,9 @@ import java.util.concurrent.TimeoutException;
 import org.folio.exceptions.FtpException;
 import org.folio.invoices.utils.FtpUploadHelper;
 import org.folio.rest.acq.model.BatchVoucher;
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
 import org.mockftpserver.fake.FakeFtpServer;
 import org.mockftpserver.fake.UserAccount;
 import org.mockftpserver.fake.filesystem.DirectoryEntry;
@@ -52,7 +52,7 @@ public class FtpUploadHelperTest {
     sdf.setTimeZone(TimeZone.getTimeZone("UTC"));
   }
 
-  @BeforeClass
+  @BeforeAll
   public static void setup() {
     fakeFtpServer = new FakeFtpServer();
     fakeFtpServer.setServerControlPort(0); // use any free port
@@ -71,7 +71,7 @@ public class FtpUploadHelperTest {
     logger.info("Mock FTP server running at: " + uri);
   }
 
-  @AfterClass
+  @AfterAll
   public static void teardown() {
     if(fakeFtpServer != null && !fakeFtpServer.isShutdown()) {
       logger.info("Shutting down mock FTP server");
@@ -85,9 +85,7 @@ public class FtpUploadHelperTest {
 
     FtpUploadHelper helper = new FtpUploadHelper("ftp://localhost:1");
     helper.login(username_valid, password_valid)
-      .thenAccept(m -> {
-        fail("Expected a connection failure but got: " + m);
-      })
+      .thenAccept(m -> fail("Expected a connection failure but got: " + m))
       .exceptionally(t -> {
         String message;
         if (t.getCause() instanceof FtpException) {
@@ -98,10 +96,7 @@ public class FtpUploadHelperTest {
         logger.info(message);
         return null;
       })
-      .whenComplete((i, t) -> {
-        helper.logout()
-          .thenAccept(logger::info);
-      })
+      .whenComplete((i, t) -> helper.logout().thenAccept(logger::info))
       .get(10, TimeUnit.SECONDS);
   }
 
@@ -116,10 +111,10 @@ public class FtpUploadHelperTest {
         logger.error(t);
         fail(t.getMessage());
         return null;
-      }).whenComplete((i,t) -> {
-        helper.logout()
-        .thenAccept(logger::info);
-      }).get(10, TimeUnit.SECONDS);
+      })
+      .whenComplete((i, t) -> helper.logout()
+        .thenAccept(logger::info))
+      .get(10, TimeUnit.SECONDS);
   }
 
   @Test
@@ -128,9 +123,7 @@ public class FtpUploadHelperTest {
 
     FtpUploadHelper helper = new FtpUploadHelper(uri);
     helper.login(username_valid, password_invalid)
-      .thenAccept(m -> {
-        fail("Expected a login failure but got: " + m);
-      })
+      .thenAccept(m -> fail("Expected a login failure but got: " + m))
       .exceptionally(t -> {
         String message;
         if (t.getCause() instanceof FtpException) {
@@ -148,12 +141,11 @@ public class FtpUploadHelperTest {
     logger.info("=== Test successful upload ===");
 
     Date end = new Date();
-    Date start = end;
-    start.setTime(System.currentTimeMillis() - 864000000);
+    end.setTime(System.currentTimeMillis() - 864000000);
 
     BatchVoucher batchVoucher = new BatchVoucher();
     batchVoucher.setId(UUID.randomUUID().toString());
-    batchVoucher.setStart(start);
+    batchVoucher.setStart(end);
     batchVoucher.setEnd(end);
     batchVoucher.setBatchGroup(UUID.randomUUID().toString());
     batchVoucher.setCreated(new Date());
@@ -161,18 +153,16 @@ public class FtpUploadHelperTest {
     FtpUploadHelper helper = new FtpUploadHelper(uri);
     helper.login(username_valid, password_valid)
       .thenAccept(logger::info)
-      .thenCompose(v -> {
-        return helper.upload(filename, batchVoucher);
-      })
+      .thenCompose(v -> helper.upload(filename, batchVoucher))
       .thenAccept(logger::info)
       .exceptionally(t -> {
         logger.error(t);
         fail(t.getMessage());
         return null;
-      }).whenComplete((i,t) -> {
-        helper.logout()
-        .thenAccept(logger::info);
-      }).get(10, TimeUnit.SECONDS);
+      })
+      .whenComplete((i, t) -> helper.logout()
+        .thenAccept(logger::info))
+      .get(10, TimeUnit.SECONDS);
   }
 
   @Test
@@ -180,12 +170,11 @@ public class FtpUploadHelperTest {
     logger.info("=== Test unsuccessful upload ===");
 
     Date end = new Date();
-    Date start = end;
-    start.setTime(System.currentTimeMillis() - 864000000);
+    end.setTime(System.currentTimeMillis() - 864000000);
 
     BatchVoucher batchVoucher = new BatchVoucher();
     batchVoucher.setId(UUID.randomUUID().toString());
-    batchVoucher.setStart(start);
+    batchVoucher.setStart(end);
     batchVoucher.setEnd(end);
     batchVoucher.setBatchGroup(UUID.randomUUID().toString());
     batchVoucher.setCreated(new Date());
@@ -193,19 +182,15 @@ public class FtpUploadHelperTest {
     FtpUploadHelper helper = new FtpUploadHelper(uri);
     helper.login(username_valid, password_valid)
       .thenAccept(logger::info)
-      .thenCompose(v -> {
-        return helper.upload("/invalid/path/"+filename, batchVoucher);
-      })
-      .thenAccept(m -> {
-        fail("Expected upload failure but got " + m);
-      })
+      .thenCompose(v -> helper.upload("/invalid/path/"+filename, batchVoucher))
+      .thenAccept(m -> fail("Expected upload failure but got " + m))
       .exceptionally(t -> {
         logger.info(t);
         return null;
-      }).whenComplete((i,t) -> {
-        helper.logout()
-          .thenAccept(logger::info);
-      }).get(10, TimeUnit.SECONDS);
+      })
+      .whenComplete((i, t) -> helper.logout()
+        .thenAccept(logger::info))
+      .get(10, TimeUnit.SECONDS);
   }
 
 }

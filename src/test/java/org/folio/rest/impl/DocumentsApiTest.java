@@ -6,14 +6,14 @@ import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_DOCUMENTS;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.notNullValue;
-import static org.junit.Assert.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
 
 import org.folio.rest.jaxrs.model.InvoiceCollection;
 import org.folio.rest.jaxrs.model.InvoiceDocument;
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import io.vertx.core.http.HttpMethod;
 import io.vertx.core.json.JsonObject;
@@ -57,7 +57,7 @@ public class DocumentsApiTest extends ApiTestBase {
   }
 
   @Test
-  public void testGetDocuments() throws IOException {
+  public void testGetDocuments() {
     logger.info("=== Test Get Invoices by without query - get 200 by successful retrieval of documents ===");
 
     final InvoiceCollection resp = verifySuccessGet(DOCUMENT_ENDPOINT, InvoiceCollection.class);
@@ -72,7 +72,7 @@ public class DocumentsApiTest extends ApiTestBase {
     JsonObject jsonBody = new JsonObject(getMockData(INVOICE_DOCUMENT_SAMPLE_PATH));
     String id = jsonBody.getJsonObject("documentMetadata").getString("id");
     String response = verifyPut(String.format(DOCUMENT_ENDPOINT_WITH_ID, id), jsonBody, TEXT_PLAIN, 400).body().asString();
-    Assert.assertTrue(response.contains("API resource does not support this HTTP method"));
+    assertTrue(response.contains("API resource does not support this HTTP method"));
   }
 
   @Test

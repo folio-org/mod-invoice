@@ -7,11 +7,11 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
-import java.util.concurrent.ExecutionException;
 
 import org.folio.rest.jaxrs.model.BatchVoucherExport;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import io.vertx.core.Context;
 import io.vertx.core.Vertx;
@@ -20,7 +20,7 @@ public class BatchVoucherExportsHelperTest extends ApiTestBase {
   private Context context;
   private Map<String, String> okapiHeaders;
 
-  @Before
+  @BeforeEach
   public void setUp()  {
     super.setUp();
     context = Vertx.vertx().getOrCreateContext();
@@ -31,10 +31,13 @@ public class BatchVoucherExportsHelperTest extends ApiTestBase {
     okapiHeaders.put(X_OKAPI_USER_ID.getName(), X_OKAPI_USER_ID.getValue());
   }
 
-  @Test(expected = CompletionException.class)
-  public void testPostBatchVoucherExportsFailedIfBatchVoucherExportIsIncorrect() throws ExecutionException, InterruptedException {
-    BatchVoucherExportsHelper helper = new BatchVoucherExportsHelper(okapiHeaders, context, "en");
-    CompletableFuture<BatchVoucherExport> future = helper.createBatchVoucherExports(null);
-    future.join();
+  @Test
+  public void testPostBatchVoucherExportsFailedIfBatchVoucherExportIsIncorrect() {
+    Assertions.assertThrows(CompletionException.class, () -> {
+      BatchVoucherExportsHelper helper = new BatchVoucherExportsHelper(okapiHeaders, context, "en");
+      CompletableFuture<BatchVoucherExport> future = helper.createBatchVoucherExports(null);
+      future.join();
+    });
+
   }
 }

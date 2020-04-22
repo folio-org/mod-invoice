@@ -2,17 +2,13 @@ package org.folio.rest.impl;
 
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 import static javax.ws.rs.core.MediaType.TEXT_PLAIN;
-import static org.folio.rest.impl.AbstractHelper.ID;
-import static org.folio.rest.impl.InvoicesApiTest.BAD_QUERY;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
-import java.net.MalformedURLException;
-
 import org.folio.rest.jaxrs.model.Errors;
 import org.folio.rest.jaxrs.model.VoucherLine;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import io.restassured.response.Response;
 import io.vertx.core.json.JsonObject;
@@ -71,7 +67,7 @@ public class VoucherLinesApiTest extends ApiTestBase {
   }
 
   @Test
-  public void testGetVouchersVoucherLinesByIdNotFoundTest() throws MalformedURLException {
+  public void testGetVouchersVoucherLinesByIdNotFoundTest() {
     logger.info("=== Test Get Voucher line by Id - 404 Not found ===");
 
     final Response resp = verifyGet(String.format(VOUCHER_LINES_ID_PATH, NOT_FOUND_VOUCHER_LINE_ID), APPLICATION_JSON, 404);
@@ -101,7 +97,7 @@ public class VoucherLinesApiTest extends ApiTestBase {
   }
 
   @Test
-  public void testPutVouchersVoucherLinesByNonExistentId() throws Exception {
+  public void testPutVouchersVoucherLinesByNonExistentId() {
     VoucherLine reqData = getMockAsJson(VOUCHER_LINE_PATH).mapTo(VoucherLine.class);
     reqData.setId(ID_DOES_NOT_EXIST);
     String jsonBody = JsonObject.mapFrom(reqData).encode();
@@ -110,7 +106,7 @@ public class VoucherLinesApiTest extends ApiTestBase {
   }
 
   @Test
-  public void testPutVouchersVoucherLinesInvalidIdFormat() throws Exception {
+  public void testPutVouchersVoucherLinesInvalidIdFormat() {
     VoucherLine reqData = getMockAsJson(VOUCHER_LINE_PATH).mapTo(VoucherLine.class);
     reqData.setId(ID_BAD_FORMAT);
     String jsonBody = JsonObject.mapFrom(reqData).encode();
