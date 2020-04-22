@@ -7,11 +7,9 @@ import java.util.concurrent.TimeoutException;
 
 import org.folio.converters.BatchVoucherModelConverterTest;
 import org.folio.converters.BatchedVoucherLinesModelConverterTest;
-import org.folio.converters.BatchedVoucherModelConverterTest;
 import org.folio.invoices.events.handlers.InvoiceSummaryTest;
 import org.folio.invoices.util.FtpUploadHelperTest;
 import org.folio.invoices.util.HelperUtilsTest;
-import org.folio.invoices.utils.HelperUtils;
 import org.folio.jaxb.DefaultJAXBRootElementNameResolverTest;
 import org.folio.jaxb.JAXBUtilTest;
 import org.folio.jaxb.XMLConverterTest;
@@ -20,7 +18,6 @@ import org.folio.rest.impl.protection.InvoicesProtectionTest;
 import org.folio.rest.impl.protection.LinesProtectionTest;
 import org.folio.rest.tools.utils.NetworkUtils;
 import org.folio.schemas.xsd.BatchVoucherSchemaXSDTest;
-import org.folio.services.BatchVoucherGenerateService;
 import org.folio.services.BatchVoucherGenerateServiceTest;
 import org.folio.services.InvoiceRetrieveServiceTest;
 import org.folio.services.VoucherLinesRetrieveServiceTest;
@@ -54,7 +51,6 @@ import io.vertx.core.logging.LoggerFactory;
   BatchVoucherSchemaXSDTest.class,
   BatchVoucherImplTest.class,
   BatchedVoucherLinesModelConverterTest.class,
-  BatchedVoucherModelConverterTest.class,
   BatchVoucherModelConverterTest.class,
   DefaultJAXBRootElementNameResolverTest.class,
   JAXBUtilTest.class,
