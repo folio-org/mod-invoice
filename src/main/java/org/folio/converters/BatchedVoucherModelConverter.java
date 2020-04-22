@@ -26,7 +26,9 @@ public class BatchedVoucherModelConverter implements Converter<BatchedVoucher, B
     batchedVoucherType.setAmount(BigDecimal.valueOf(batchedVoucher.getAmount()));
 
     batchedVoucherType.setDisbursementNumber(batchedVoucher.getDisbursementNumber());
-    batchedVoucherType.setDisbursementDate(JAXBUtil.convertOldJavaDate(batchedVoucher.getDisbursementDate()));
+    if (batchedVoucher.getDisbursementDate() != null) {
+      batchedVoucherType.setDisbursementDate(JAXBUtil.convertOldJavaDate(batchedVoucher.getDisbursementDate()));
+    }
     batchedVoucherType.setDisbursementAmount(BigDecimal.valueOf(batchedVoucher.getAmount()));
 
     batchedVoucherType.setEnclosureNeeded(batchedVoucher.getEnclosureNeeded());
@@ -35,15 +37,15 @@ public class BatchedVoucherModelConverter implements Converter<BatchedVoucher, B
     batchedVoucherType.setFolioInvoiceNo(batchedVoucher.getFolioInvoiceNo());
     batchedVoucherType.setInvoiceCurrency(batchedVoucher.getInvoiceCurrency());
     batchedVoucherType.setSystemCurrency(batchedVoucher.getSystemCurrency());
-    batchedVoucherType.setType(PaymentAccountType.fromValue(batchedVoucher.getType()
-      .toString()));
+    batchedVoucherType.setType(PaymentAccountType.fromValue(batchedVoucher.getType().toString()));
 
     batchedVoucherType.setVendorInvoiceNo(batchedVoucher.getVendorInvoiceNo());
     batchedVoucherType.setVendorName(batchedVoucher.getVendorName());
-    batchedVoucherType.setVoucherDate(JAXBUtil.convertOldJavaDate(batchedVoucher.getVoucherDate()));
+    if (batchedVoucher.getVoucherDate() != null) {
+      batchedVoucherType.setVoucherDate(JAXBUtil.convertOldJavaDate(batchedVoucher.getVoucherDate()));
+    }
     batchedVoucherType.setInvoiceNote(batchedVoucher.getInvoiceNote());
-    batchedVoucherType.setStatus(batchedVoucher.getStatus()
-      .toString());
+    batchedVoucherType.setStatus(batchedVoucher.getStatus().toString());
 
     BatchedVoucherType.BatchedVoucherLines batchedVoucherLines = convertBatchedVoucherLines(batchedVoucher);
     batchedVoucherType.withBatchedVoucherLines(batchedVoucherLines);

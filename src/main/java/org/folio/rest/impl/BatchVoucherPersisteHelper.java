@@ -42,7 +42,7 @@ public class BatchVoucherPersisteHelper extends AbstractHelper {
         batchVoucherExport.setStatus(BatchVoucherExport.Status.ERROR);
         batchVoucherExportsHelper.updateBatchVoucherExportRecord(batchVoucherExport)
           .thenAccept(v-> closeHttpClient());
-        logger.error("Exception occurs, when generating batch voucher", t);
+        logger.error("Exception occurs, when generating batch voucher", t.getMessage());
         future.complete(null);
         return null;
       });

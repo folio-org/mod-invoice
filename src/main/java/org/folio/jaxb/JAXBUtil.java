@@ -57,8 +57,7 @@ public final class JAXBUtil {
   private static XMLGregorianCalendar getXmlGregorianCalendar(Instant instant) {
     XMLGregorianCalendar result;
     try {
-      result = DatatypeFactory.newInstance()
-        .newXMLGregorianCalendar(instant.toString());
+      result = DatatypeFactory.newInstance().newXMLGregorianCalendar(instant.toString());
     } catch (DatatypeConfigurationException e) {
       throw new ConversionFailedException(Instant.class, XMLGregorianCalendar.class, e);
     }

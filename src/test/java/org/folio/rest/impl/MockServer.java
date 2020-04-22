@@ -221,6 +221,7 @@ public class MockServer {
   static final String SYSTEM_CURRENCY = "GBP";
   static final String FISCAL_YEAR_ID = UUID.randomUUID().toString();
   public static final String ACTIVE_ACCESS_VENDOR = "168f8a63-d612-406e-813f-c7527f241ac3";
+  public static final String EXCEPTION_CASE_BATCH_VOUCHER_EXPORT_GENERATION = "batchGroupId==null and voucherDate>=null and voucherDate<=null";
 
   private final int port;
   private final Vertx vertx;
@@ -1261,6 +1262,14 @@ public class MockServer {
     String invoiceId = EMPTY;
     if (queryParam.contains(INVOICE_ID)) {
       invoiceId = queryParam.split(INVOICE_ID + "==")[1];
+    }
+    if (EXCEPTION_CASE_BATCH_VOUCHER_EXPORT_GENERATION.equals(queryParam)){
+      VoucherCollection voucherCollection = new VoucherCollection();
+      voucherCollection.withVouchers(new ArrayList<>());
+      JsonObject vouchersJson = JsonObject.mapFrom(voucherCollection);
+      addServerRqRsData(HttpMethod.GET, VOUCHERS, vouchersJson);
+      serverResponse(ctx, 200, APPLICATION_JSON, vouchersJson.encode());
+      return;
     }
     if (queryParam.contains("batchGroupId") && queryParam.contains("voucherDate")){
       invoiceId = "c0d08448-347b-418a-8c2f-5fb50248d67e";
