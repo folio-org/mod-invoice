@@ -15,8 +15,9 @@ import java.util.concurrent.ExecutionException;
 import org.folio.rest.impl.ApiTestBase;
 import org.folio.rest.jaxrs.model.BatchVoucher;
 import org.folio.rest.jaxrs.model.BatchVoucherExport;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import io.vertx.core.Context;
 import io.vertx.core.Vertx;
@@ -30,7 +31,7 @@ public class BatchVoucherGenerateServiceTest extends ApiTestBase {
   private static final String BATCH_VOUCHER_EXPORT_SAMPLE_PATH = BATCH_VOUCHER_EXPORTS_MOCK_DATA_PATH
     + VALID_BATCH_VOUCHER_EXPORTS_ID + ".json";
 
-  @Before
+  @BeforeEach
   public void setUp()  {
     super.setUp();
     context = Vertx.vertx().getOrCreateContext();
@@ -51,11 +52,13 @@ public class BatchVoucherGenerateServiceTest extends ApiTestBase {
     assertNotNull(batchVoucher);
   }
 
-  @Test(expected = CompletionException.class)
+  @Test
   public void negativeGetbatchVoucherIfVouchersIsAbsentTest() {
-    BatchVoucherGenerateService service = new BatchVoucherGenerateService(okapiHeaders, context, "en");
-    BatchVoucherExport batchVoucherExport = new BatchVoucherExport();
-    CompletableFuture<BatchVoucher> future = service.generateBatchVoucher(batchVoucherExport);
-    future.join();
+    Assertions.assertThrows(CompletionException.class, () -> {
+      BatchVoucherGenerateService service = new BatchVoucherGenerateService(okapiHeaders, context, "en");
+      BatchVoucherExport batchVoucherExport = new BatchVoucherExport();
+      CompletableFuture<BatchVoucher> future = service.generateBatchVoucher(batchVoucherExport);
+      future.join();
+    });
   }
 }

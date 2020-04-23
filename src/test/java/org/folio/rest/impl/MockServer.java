@@ -38,7 +38,6 @@ import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
 import static org.folio.rest.RestVerticle.OKAPI_HEADER_TENANT;
 import static org.folio.rest.impl.ApiTestBase.BASE_MOCK_DATA_PATH;
 import static org.folio.rest.impl.ApiTestBase.FOLIO_INVOICE_NUMBER_VALUE;
-
 import static org.folio.rest.impl.ApiTestBase.ID_DOES_NOT_EXIST;
 import static org.folio.rest.impl.ApiTestBase.ID_FOR_INTERNAL_SERVER_ERROR;
 import static org.folio.rest.impl.ApiTestBase.ID_FOR_INTERNAL_SERVER_ERROR_PUT;
@@ -49,12 +48,12 @@ import static org.folio.rest.impl.ApiTestBase.getMockData;
 import static org.folio.rest.impl.BatchGroupsApiTest.BATCH_GROUPS_LIST_PATH;
 import static org.folio.rest.impl.BatchGroupsApiTest.BATCH_GROUP_MOCK_DATA_PATH;
 import static org.folio.rest.impl.BatchVoucherExportConfigCredentialsTest.BATCH_VOUCHER_EXPORT_CONFIG_BAD_CREDENTIALS_SAMPLE_PATH_WITH_ID;
-import static org.folio.rest.impl.BatchVoucherExportsApiTest.BATCH_VOUCHER_EXPORTS_MOCK_DATA_PATH;
 import static org.folio.rest.impl.BatchVoucherExportConfigCredentialsTest.BATCH_VOUCHER_EXPORT_CONFIG_CREDENTIALS_SAMPLE_PATH_WITH_ID;
 import static org.folio.rest.impl.BatchVoucherExportConfigCredentialsTest.CONFIGURATION_ID;
 import static org.folio.rest.impl.BatchVoucherExportConfigTest.BATCH_VOUCHER_EXPORT_CONFIGS_SAMPLE_PATH;
 import static org.folio.rest.impl.BatchVoucherExportConfigTest.BATCH_VOUCHER_EXPORT_CONFIG_SAMPLE_PATH;
 import static org.folio.rest.impl.BatchVoucherExportsApiTest.BATCH_VOUCHER_EXPORTS_LIST_PATH;
+import static org.folio.rest.impl.BatchVoucherExportsApiTest.BATCH_VOUCHER_EXPORTS_MOCK_DATA_PATH;
 import static org.folio.rest.impl.BatchVoucherImplTest.BATCH_VOUCHER_MOCK_DATA_PATH;
 import static org.folio.rest.impl.DocumentsApiTest.INVOICE_DOCUMENTS_SAMPLE_PATH;
 import static org.folio.rest.impl.DocumentsApiTest.INVOICE_SAMPLE_DOCUMENTS_PATH;
@@ -925,7 +924,7 @@ public class MockServer {
       InvoiceCollection invoiceCollection = new InvoiceCollection();
 
       if (lineId.equals(SEARCH_INVOICE_BY_LINE_ID_NOT_FOUND)) {
-        invoiceCollection.setInvoices(new ArrayList<Invoice>());
+        invoiceCollection.setInvoices(new ArrayList<>());
         invoiceCollection.setTotalRecords(invoiceCollection.getInvoices().size());
         JsonObject invoicesJson = JsonObject.mapFrom(invoiceCollection);
 
@@ -935,7 +934,7 @@ public class MockServer {
         try {
           invoices = new JsonObject(ApiTestBase.getMockData(MOCK_DATA_INVOICES)).mapTo(InvoiceCollection.class).getInvoices();
         } catch (IOException e) {
-          invoices = new ArrayList<Invoice>();
+          invoices = new ArrayList<>();
         }
 
         Optional<List<Invoice>> invoiceOptional = getMockEntries(INVOICES, Invoice.class);
@@ -954,7 +953,7 @@ public class MockServer {
       try {
         invoices = new JsonObject(ApiTestBase.getMockData(MOCK_DATA_INVOICES)).mapTo(InvoiceCollection.class).getInvoices();
       } catch (IOException e) {
-        invoices = new ArrayList<Invoice>();
+        invoices = new ArrayList<>();
       }
       invoiceCollection.setInvoices(invoices);
       invoiceCollection.setTotalRecords(invoiceCollection.getInvoices().size());

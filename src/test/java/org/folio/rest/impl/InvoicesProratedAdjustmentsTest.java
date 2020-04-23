@@ -34,21 +34,20 @@ import org.folio.rest.jaxrs.model.Adjustment;
 import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.jaxrs.model.InvoiceLine;
 import org.folio.rest.jaxrs.model.Metadata;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
-import junitparams.JUnitParamsRunner;
-import junitparams.Parameters;
 
-@RunWith(JUnitParamsRunner.class)
 public class InvoicesProratedAdjustmentsTest extends ApiTestBase {
 
   private static final Logger logger = LoggerFactory.getLogger(InvoicesProratedAdjustmentsTest.class);
 
-  @Test
-  @Parameters({
+  @ParameterizedTest
+  @CsvSource({
     "BY_AMOUNT, AMOUNT",
     "BY_AMOUNT, PERCENTAGE",
     "BY_LINE, AMOUNT",
@@ -83,8 +82,8 @@ public class InvoicesProratedAdjustmentsTest extends ApiTestBase {
     assertThat(adjustment.getId(), not(isEmptyOrNullString()));
   }
 
-  @Test
-  @Parameters({
+  @ParameterizedTest
+  @CsvSource({
     "BY_AMOUNT, AMOUNT",
     "BY_AMOUNT, PERCENTAGE",
     "BY_LINE, AMOUNT",
@@ -146,8 +145,8 @@ public class InvoicesProratedAdjustmentsTest extends ApiTestBase {
     assertThat(lineAdjustment.getValue(), is(expectedProratedAdjValue));
   }
 
-  @Test
-  @Parameters({
+  @ParameterizedTest
+  @ValueSource(strings = {
     "AMOUNT",
     "PERCENTAGE"
   })
@@ -215,8 +214,8 @@ public class InvoicesProratedAdjustmentsTest extends ApiTestBase {
       });
   }
 
-  @Test
-  @Parameters({
+  @ParameterizedTest
+  @ValueSource(strings = {
     "AMOUNT",
     "PERCENTAGE"
   })
@@ -736,8 +735,8 @@ public class InvoicesProratedAdjustmentsTest extends ApiTestBase {
     assertThat(lineAdjustment2.getValue(), is(7.25d));
   }
 
-  @Test
-  @Parameters({
+  @ParameterizedTest
+  @CsvSource({
     "BY_AMOUNT, AMOUNT",
     "BY_AMOUNT, PERCENTAGE",
     "BY_LINE, AMOUNT",
@@ -781,8 +780,8 @@ public class InvoicesProratedAdjustmentsTest extends ApiTestBase {
     assertThat(invoiceToStorage.getAdjustmentsTotal(), is(expectedAdjTotal));
   }
 
-  @Test
-  @Parameters({
+  @ParameterizedTest
+  @CsvSource({
     "BY_AMOUNT, AMOUNT",
     "BY_AMOUNT, PERCENTAGE",
     "BY_LINE, AMOUNT",
@@ -842,8 +841,8 @@ public class InvoicesProratedAdjustmentsTest extends ApiTestBase {
     assertThat(lineAdjustment.getValue(), is(expectedAdjValue));
   }
 
-  @Test
-  @Parameters({
+  @ParameterizedTest
+  @CsvSource({
     "BY_AMOUNT, AMOUNT",
     "BY_AMOUNT, PERCENTAGE",
     "BY_LINE, AMOUNT",
@@ -921,8 +920,8 @@ public class InvoicesProratedAdjustmentsTest extends ApiTestBase {
     }
   }
 
-  @Test
-  @Parameters({
+  @ParameterizedTest
+  @CsvSource({
     "BY_AMOUNT, AMOUNT",
     "BY_AMOUNT, PERCENTAGE",
     "BY_LINE, AMOUNT",
