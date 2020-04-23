@@ -10,16 +10,17 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
+import java.io.IOException;
+
+import org.folio.rest.jaxrs.model.BatchGroup;
+import org.folio.rest.jaxrs.model.BatchGroupCollection;
+import org.folio.rest.jaxrs.model.Errors;
+import org.junit.jupiter.api.Test;
+
 import io.restassured.response.Response;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
-import org.folio.rest.jaxrs.model.BatchGroup;
-import org.folio.rest.jaxrs.model.BatchGroupCollection;
-import org.folio.rest.jaxrs.model.Errors;
-import org.junit.Test;
-
-import java.io.IOException;
 
 public class BatchGroupsApiTest extends ApiTestBase {
 
@@ -115,14 +116,12 @@ public class BatchGroupsApiTest extends ApiTestBase {
   @Test
   public void testDeleteExistingBatchGroup() {
     logger.info("=== Test Delete Batch group ===");
-    String id = VALID_BATCH_GROUP_ID;
-    verifyDeleteResponse(String.format(BATCH_GROUPS_ID_PATH, id),"",204);
+    verifyDeleteResponse(String.format(BATCH_GROUPS_ID_PATH, VALID_BATCH_GROUP_ID),"",204);
   }
 
   @Test
   public void testDeleteNonExistingBatchGroup() {
     logger.info("=== Test Delete Non-existing Batch group ===");
-    String id = BAD_BATCH_GROUP_ID;
-    verifyDeleteResponse(String.format(BATCH_GROUPS_ID_PATH, id),"",404);
+    verifyDeleteResponse(String.format(BATCH_GROUPS_ID_PATH, BAD_BATCH_GROUP_ID),"",404);
   }
 }

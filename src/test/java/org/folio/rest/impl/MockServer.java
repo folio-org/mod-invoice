@@ -20,9 +20,6 @@ import static org.folio.invoices.utils.ResourcePathResolver.BATCH_VOUCHER_EXPORT
 import static org.folio.invoices.utils.ResourcePathResolver.BATCH_VOUCHER_STORAGE;
 import static org.folio.invoices.utils.ResourcePathResolver.FINANCE_CREDITS;
 import static org.folio.invoices.utils.ResourcePathResolver.FINANCE_PAYMENTS;
-import static org.folio.invoices.utils.ResourcePathResolver.FINANCE_CREDITS;
-import static org.folio.invoices.utils.ResourcePathResolver.FINANCE_PAYMENTS;
-import static org.folio.invoices.utils.ResourcePathResolver.FINANCE_TRANSACTIONS;
 import static org.folio.invoices.utils.ResourcePathResolver.FINANCE_TRANSACTIONS;
 import static org.folio.invoices.utils.ResourcePathResolver.FOLIO_INVOICE_NUMBER;
 import static org.folio.invoices.utils.ResourcePathResolver.FUNDS;
@@ -139,7 +136,6 @@ import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
 import io.vertx.ext.web.handler.BodyHandler;
 import one.util.streamex.StreamEx;
-import org.folio.rest.jaxrs.model.BatchVoucher;
 
 public class MockServer {
 
@@ -878,7 +874,7 @@ public class MockServer {
       InvoiceCollection invoiceCollection = new InvoiceCollection();
 
       if (lineId.equals(SEARCH_INVOICE_BY_LINE_ID_NOT_FOUND)) {
-        invoiceCollection.setInvoices(new ArrayList<Invoice>());
+        invoiceCollection.setInvoices(new ArrayList<>());
         invoiceCollection.setTotalRecords(invoiceCollection.getInvoices().size());
         JsonObject invoicesJson = JsonObject.mapFrom(invoiceCollection);
 
@@ -888,7 +884,7 @@ public class MockServer {
         try {
           invoices = new JsonObject(ApiTestBase.getMockData(MOCK_DATA_INVOICES)).mapTo(InvoiceCollection.class).getInvoices();
         } catch (IOException e) {
-          invoices = new ArrayList<Invoice>();
+          invoices = new ArrayList<>();
         }
 
         Optional<List<Invoice>> invoiceOptional = getMockEntries(INVOICES, Invoice.class);

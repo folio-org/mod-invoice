@@ -2,11 +2,11 @@ package org.folio.rest.impl;
 
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 import static javax.ws.rs.core.MediaType.APPLICATION_XML;
-import static org.junit.Assert.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import org.folio.rest.jaxrs.model.BatchVoucher;
 import org.folio.rest.jaxrs.model.jaxb.BatchVoucherType;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import io.restassured.http.Headers;
 import io.restassured.response.Response;

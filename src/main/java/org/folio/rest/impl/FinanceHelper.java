@@ -236,7 +236,7 @@ public class FinanceHelper extends AbstractHelper {
     transactions.forEach(transaction ->  {
       String initialCurrency = transaction.getCurrency();
       MonetaryAmount initialAmount = Money.of(transaction.getAmount(), initialCurrency);
-      CurrencyConversion conversion = getExchangeRateProvider().getCurrencyConversion(finalCurrency);
+      CurrencyConversion conversion = getCurrentExchangeRateProvider().getCurrencyConversion(finalCurrency);
       transaction.withFiscalYearId(fiscalYear.getId())
         .withCurrency(finalCurrency)
         .withAmount(convertToDoubleWithRounding(initialAmount.with(conversion)));

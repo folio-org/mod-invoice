@@ -2,18 +2,20 @@ package org.folio.rest.impl;
 
 import static io.vertx.core.Future.succeededFuture;
 
+import java.util.Map;
+
+import javax.ws.rs.core.Response;
+
+import org.folio.rest.annotations.Validate;
+import org.folio.rest.jaxrs.model.BatchGroup;
+import org.folio.rest.jaxrs.resource.BatchGroups;
+
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Context;
 import io.vertx.core.Handler;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
-import org.folio.rest.annotations.Validate;
-import org.folio.rest.jaxrs.model.BatchGroup;
-import org.folio.rest.jaxrs.resource.BatchGroups;
-
-import javax.ws.rs.core.Response;
-import java.util.Map;
 
 public class BatchGroupsImpl implements BatchGroups {
 
