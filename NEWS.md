@@ -1,5 +1,16 @@
 ## 3.2.0 - Unreleased
 
+## 3.1.2 - Released
+
+The main focus of this bugfix release was to fix bugs related to invoice payment
+
+[Full Changelog](https://github.com/folio-org/mod-invoice/compare/v3.1.1...v3.1.2)
+
+### Bug Fixes
+* [MODINVOICE-160](https://issues.folio.org/browse/MODINVOICE-160) - Can not save voucher detail edits
+* [MODINVOICE-157](https://issues.folio.org/browse/MODINVOICE-157) - mod-invoice running with high memory
+* [MODINVOICE-155](https://issues.folio.org/browse/MODINVOICE-155) - Payments not created for invoice level Fund distribution
+
 ## 3.1.1 - Released
 
 The main focus of this bugfix release was to fix issues
