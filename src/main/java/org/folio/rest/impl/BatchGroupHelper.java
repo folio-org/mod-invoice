@@ -9,16 +9,17 @@ import static org.folio.invoices.utils.ResourcePathResolver.BATCH_GROUPS;
 import static org.folio.invoices.utils.ResourcePathResolver.resourceByIdPath;
 import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
 
-import io.vertx.core.Context;
-import io.vertx.core.json.JsonObject;
-import io.vertx.core.logging.Logger;
-import me.escoffier.vertx.completablefuture.VertxCompletableFuture;
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+
 import org.folio.rest.jaxrs.model.BatchGroup;
 import org.folio.rest.jaxrs.model.BatchGroupCollection;
 import org.folio.rest.tools.client.interfaces.HttpClientInterface;
 
-import java.util.Map;
-import java.util.concurrent.CompletableFuture;
+import io.vertx.core.Context;
+import io.vertx.core.json.JsonObject;
+import io.vertx.core.logging.Logger;
+import me.escoffier.vertx.completablefuture.VertxCompletableFuture;
 
 public class BatchGroupHelper extends AbstractHelper {
 

@@ -17,6 +17,9 @@ import static org.folio.rest.RestVerticle.OKAPI_HEADER_TENANT;
 import static org.folio.rest.impl.AbstractHelper.ID;
 import static org.folio.rest.jaxrs.model.Adjustment.Prorate.NOT_PRORATED;
 import static org.folio.rest.jaxrs.model.FundDistribution.DistributionType.PERCENTAGE;
+import static org.javamoney.moneta.convert.ExchangeRateType.ECB;
+import static org.javamoney.moneta.convert.ExchangeRateType.IDENTITY;
+import static org.javamoney.moneta.convert.ExchangeRateType.IMF;
 
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
@@ -37,6 +40,8 @@ import javax.money.CurrencyUnit;
 import javax.money.Monetary;
 import javax.money.MonetaryAmount;
 import javax.money.convert.CurrencyConversion;
+import javax.money.convert.ExchangeRateProvider;
+import javax.money.convert.MonetaryConversions;
 
 import org.apache.commons.collections4.map.CaseInsensitiveMap;
 import org.apache.commons.lang3.ArrayUtils;
@@ -466,5 +471,9 @@ public class HelperUtils {
   public static Money getAdjustmentFundDistributionAmount(FundDistribution fundDistribution, Adjustment adjustment, Invoice invoice) {
     MonetaryAmount adjustmentTotal = calculateAdjustment(adjustment, Money.of(invoice.getSubTotal(), invoice.getCurrency()));
     return getFundDistributionAmount(fundDistribution, adjustmentTotal.getNumber().doubleValue(), invoice.getCurrency());
+  }
+
+  public static ExchangeRateProvider getInvoiceExchangeRateProvider() {
+    return MonetaryConversions.getExchangeRateProvider(IDENTITY, ECB, IMF);
   }
 }

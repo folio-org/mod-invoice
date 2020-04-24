@@ -7,14 +7,15 @@ import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.junit.Assert.assertEquals;
 
+import java.io.IOException;
+
+import org.folio.rest.jaxrs.model.Credentials;
+import org.junit.Test;
+
 import io.vertx.core.http.HttpMethod;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
-import org.folio.rest.jaxrs.model.Credentials;
-import org.junit.Test;
-
-import java.io.IOException;
 
 public class BatchVoucherExportConfigCredentialsTest extends ApiTestBase {
 
@@ -48,9 +49,7 @@ public class BatchVoucherExportConfigCredentialsTest extends ApiTestBase {
   public void testGetExportConfigCredentials() {
     logger.info("=== Test get batch voucher export configuration credentials ===");
 
-    String endpoint = String.format(BATCH_VOUCHER_EXPORT_CONFIGS_CREDENTIALS_ENDPOINT);
-
-    final Credentials credentials = verifySuccessGet(endpoint, Credentials.class);
+    final Credentials credentials = verifySuccessGet(BATCH_VOUCHER_EXPORT_CONFIGS_CREDENTIALS_ENDPOINT, Credentials.class);
     assertThat(MockServer.serverRqRs.get(BATCH_VOUCHER_EXPORT_CONFIGS_CREDENTIALS, HttpMethod.GET), hasSize(1));
     assertEquals(CREDENTIALS_ID, credentials.getId());
   }

@@ -14,15 +14,15 @@ import org.folio.rest.jaxrs.model.BatchVoucher;
 import org.folio.rest.jaxrs.model.BatchedVoucher;
 import org.folio.rest.jaxrs.model.jaxb.BatchVoucherType;
 import org.folio.rest.jaxrs.model.jaxb.BatchedVoucherType;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import io.vertx.core.json.JsonObject;
 
-@RunWith(MockitoJUnitRunner.class)
+@ExtendWith(MockitoExtension.class)
 public class BatchVoucherModelConverterTest {
   public static final String RESOURCES_PATH = "src/test/resources/mockdata/batchVouchers";
   public static final String VALID_BATCH_VOUCHER_JSON = "35657479-83b9-4760-9c39-b58dcd02ee14.json";

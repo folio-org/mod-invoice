@@ -29,22 +29,20 @@ import org.folio.rest.impl.MockServer;
 import org.folio.rest.jaxrs.model.Error;
 import org.folio.rest.jaxrs.model.Errors;
 import org.folio.rest.jaxrs.model.Invoice;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import io.restassured.http.Headers;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
-import junitparams.JUnitParamsRunner;
-import junitparams.Parameters;
 
-@RunWith(JUnitParamsRunner.class)
 public class InvoicesProtectionTest extends ProtectedEntityTestBase {
 
   private static final Logger logger = LoggerFactory.getLogger(InvoicesProtectionTest.class);
 
-  @Test
-  @Parameters({
+  @ParameterizedTest
+  @ValueSource(strings = {
     "READ",
     "CREATE",
     "UPDATE",
@@ -64,8 +62,8 @@ public class InvoicesProtectionTest extends ProtectedEntityTestBase {
     validateNumberOfRequests(1, 0);
   }
 
-  @Test
-  @Parameters({
+  @ParameterizedTest
+  @ValueSource(strings = {
     "READ",
     "CREATE",
     "UPDATE",
@@ -82,8 +80,8 @@ public class InvoicesProtectionTest extends ProtectedEntityTestBase {
     validateNumberOfRequests(1, 0);
   }
 
-  @Test
-  @Parameters({
+  @ParameterizedTest
+  @ValueSource(strings = {
     "READ",
     "CREATE",
     "UPDATE",
@@ -100,8 +98,8 @@ public class InvoicesProtectionTest extends ProtectedEntityTestBase {
     validateNumberOfRequests(1, 1);
   }
 
-  @Test
-  @Parameters({
+  @ParameterizedTest
+  @ValueSource(strings = {
     "READ",
     "UPDATE",
     "CREATE",
@@ -120,8 +118,8 @@ public class InvoicesProtectionTest extends ProtectedEntityTestBase {
     validateNumberOfRequests(1, 1);
   }
 
-  @Test
-  @Parameters({
+  @ParameterizedTest
+  @ValueSource(strings = {
     "CREATE",
     "UPDATE"
   })
@@ -139,14 +137,14 @@ public class InvoicesProtectionTest extends ProtectedEntityTestBase {
     validateNumberOfRequests(0, 0);
   }
 
-  @Test
-  @Parameters({
+  @ParameterizedTest
+  @ValueSource(strings = {
     "CREATE",
     "UPDATE"
   })
   public void testAssigningSoftDeletedUnit(ProtectedOperations operation) {
     logger.info("=== Test invoice contains \"soft deleted\" unit id - expecting of call only to Units API ===");
-    
+
     final Headers headers = prepareHeaders(X_OKAPI_TENANT, ALL_DESIRED_PERMISSIONS_HEADER, X_OKAPI_USER_ID);
 
     // Prepare acq unit in storage for update case and
@@ -160,18 +158,18 @@ public class InvoicesProtectionTest extends ProtectedEntityTestBase {
 
     // Prepare invoice with 2 acq units (one is "soft deleted") and add it as mock data for update case
     Invoice invoice = prepareInvoice(Arrays.asList(unit1.getId(), unit2.getId()));
-    
+
     // Add the third unit to request
     invoice.getAcqUnitIds().add(unit3.getId());
-    
+
     Errors errors = operation.process(INVOICE_PATH, encodePrettily(invoice),
         headers, APPLICATION_JSON, HttpStatus.HTTP_UNPROCESSABLE_ENTITY.toInt()).as(Errors.class);
-    
+
     assertThat(errors.getErrors(), hasSize(1));
     Error error = errors.getErrors().get(0);
     assertThat(error.getCode(), equalTo(ACQ_UNITS_NOT_FOUND.getCode()));
     assertThat(error.getAdditionalProperties().get(ACQUISITIONS_UNIT_IDS), instanceOf(List.class));
-    
+
     // Verify number of sub-requests
     validateNumberOfRequests(1, 0);
 
@@ -187,7 +185,7 @@ public class InvoicesProtectionTest extends ProtectedEntityTestBase {
   public void testGetInvoiceWithAssignedSoftDeletedUnit() {
     logger.info("=== Test invoice contains only \"soft deleted\" unit id - expecting of call only to Units API ===");
 
-    final Headers headers = prepareHeaders(X_OKAPI_TENANT, ALL_DESIRED_PERMISSIONS_HEADER, X_OKAPI_USER_ID); 
+    final Headers headers = prepareHeaders(X_OKAPI_TENANT, ALL_DESIRED_PERMISSIONS_HEADER, X_OKAPI_USER_ID);
     // Prepare acq unit in storage for update case
     AcquisitionsUnit unit1 = prepareTestUnit(true).withProtectRead(true);
     // Add all acq units as mock data
@@ -195,13 +193,13 @@ public class InvoicesProtectionTest extends ProtectedEntityTestBase {
 
     // Prepare invoice with one acq unit ("soft deleted")
     Invoice invoice = prepareInvoice(Collections.singletonList(unit1.getId()));
-    
+
     ProtectedOperations.READ.process(INVOICE_PATH, encodePrettily(invoice), headers, APPLICATION_JSON,
         HttpStatus.HTTP_OK.toInt());
-    
+
     // Verify number of sub-requests
     validateNumberOfRequests(1, 0);
-    
+
     // Verify that unit was deleted so logic skipped membership check
     List<AcquisitionsUnit> acquisitionsUnits = MockServer.getAcqUnitsSearches()
       .get(0)

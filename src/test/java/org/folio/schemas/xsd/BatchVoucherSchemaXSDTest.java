@@ -1,5 +1,8 @@
 package org.folio.schemas.xsd;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+
 import java.io.FileInputStream;
 import java.io.FileReader;
 import java.io.InputStream;
@@ -26,9 +29,8 @@ import org.folio.rest.jaxrs.model.BatchedVoucherLine;
 import org.folio.rest.jaxrs.model.jaxb.BatchVoucherType;
 import org.folio.rest.jaxrs.model.jaxb.BatchedVoucherLineType;
 import org.folio.rest.jaxrs.model.jaxb.BatchedVoucherType;
-import org.junit.Assert;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
 
 public class BatchVoucherSchemaXSDTest {
   private static Path XSD_BATCH_VOUCHER_SCHEMA_PATH ;
@@ -40,7 +42,7 @@ public class BatchVoucherSchemaXSDTest {
   private static Map<String, String> batchedVoucherRequiredFields;
   private static Map<String, String> batchedVoucherLinesRequiredFields;
 
-  @BeforeClass
+  @BeforeAll
   public static void beforeAll(){
     XSD_BATCH_VOUCHER_SCHEMA_PATH = Paths.get("", "ramls/schemas/batch_voucher.xsd").toAbsolutePath();
     XML_BATCH_VOUCHER_EXAMPLES_PATH = Paths.get("ramls/examples", "batch_voucher_xml.sample").toAbsolutePath();
@@ -119,10 +121,10 @@ public class BatchVoucherSchemaXSDTest {
     throws NoSuchFieldException, NoSuchMethodException, InvocationTargetException, IllegalAccessException {
       Field field = clazz.getDeclaredField(fieldName);
       Annotation annotation = field.getAnnotation(annotationModel.annotationType);
-      Assert.assertNotNull("Field should have annotation : " + annotationModel.annotationType.getName(), annotation);
+      assertNotNull(annotation, "Field should have annotation : " + annotationModel.annotationType.getName());
       if (!StringUtils.isEmpty(annotationModel.fieldName)) {
         T act = (T) annotation.getClass().getDeclaredMethod(annotationModel.fieldName).invoke(annotation, null);
-        Assert.assertEquals(annotationModel.fieldValue, act);
+        assertEquals(annotationModel.fieldValue, act);
       }
   }
 

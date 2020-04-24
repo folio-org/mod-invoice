@@ -26,21 +26,18 @@ import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.jaxrs.model.InvoiceLine;
 import org.folio.rest.jaxrs.model.InvoiceLineCollection;
 import org.hamcrest.Matchers;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
-import junitparams.JUnitParamsRunner;
-import junitparams.Parameters;
 
-@RunWith(JUnitParamsRunner.class)
 public class InvoiceLinesProratedAdjustmentsTest extends ApiTestBase {
 
   private static final Logger logger = LoggerFactory.getLogger(InvoiceLinesProratedAdjustmentsTest.class);
 
-  @Test
-  @Parameters({
+  @ParameterizedTest
+  @CsvSource({
     "BY_AMOUNT, AMOUNT",
     "BY_AMOUNT, PERCENTAGE",
     "BY_LINE, AMOUNT",
@@ -85,8 +82,8 @@ public class InvoiceLinesProratedAdjustmentsTest extends ApiTestBase {
     assertThat(lineAdjustment.getValue(), is(expectedAdjValue));
   }
 
-  @Test
-  @Parameters({
+  @ParameterizedTest
+  @CsvSource({
     "BY_AMOUNT, AMOUNT",
     "BY_AMOUNT, PERCENTAGE",
     "BY_LINE, AMOUNT",
@@ -106,7 +103,7 @@ public class InvoiceLinesProratedAdjustmentsTest extends ApiTestBase {
     addMockEntry(INVOICE_LINES, lineData);
 
     // Prepare request body
-    InvoiceLine invoiceLineBody = copyObject(lineData).withSubTotal(25d).withQuantity(10);;
+    InvoiceLine invoiceLineBody = copyObject(lineData).withSubTotal(25d).withQuantity(10);
     String lineId = invoiceLineBody.getId();
 
     // Send update request
@@ -137,8 +134,8 @@ public class InvoiceLinesProratedAdjustmentsTest extends ApiTestBase {
     assertThat(lineAdjustment.getValue(), is(expectedAdjValue));
   }
 
-  @Test
-  @Parameters({
+  @ParameterizedTest
+  @CsvSource({
     "BY_AMOUNT, AMOUNT",
     "BY_AMOUNT, PERCENTAGE",
     "BY_LINE, AMOUNT",
