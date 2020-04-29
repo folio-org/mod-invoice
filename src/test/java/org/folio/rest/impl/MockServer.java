@@ -38,7 +38,6 @@ import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
 import static org.folio.rest.RestVerticle.OKAPI_HEADER_TENANT;
 import static org.folio.rest.impl.ApiTestBase.BASE_MOCK_DATA_PATH;
 import static org.folio.rest.impl.ApiTestBase.FOLIO_INVOICE_NUMBER_VALUE;
-
 import static org.folio.rest.impl.ApiTestBase.ID_DOES_NOT_EXIST;
 import static org.folio.rest.impl.ApiTestBase.ID_FOR_INTERNAL_SERVER_ERROR;
 import static org.folio.rest.impl.ApiTestBase.ID_FOR_INTERNAL_SERVER_ERROR_PUT;
@@ -49,12 +48,12 @@ import static org.folio.rest.impl.ApiTestBase.getMockData;
 import static org.folio.rest.impl.BatchGroupsApiTest.BATCH_GROUPS_LIST_PATH;
 import static org.folio.rest.impl.BatchGroupsApiTest.BATCH_GROUP_MOCK_DATA_PATH;
 import static org.folio.rest.impl.BatchVoucherExportConfigCredentialsTest.BATCH_VOUCHER_EXPORT_CONFIG_BAD_CREDENTIALS_SAMPLE_PATH_WITH_ID;
-import static org.folio.rest.impl.BatchVoucherExportsApiTest.BATCH_VOUCHER_EXPORTS_MOCK_DATA_PATH;
 import static org.folio.rest.impl.BatchVoucherExportConfigCredentialsTest.BATCH_VOUCHER_EXPORT_CONFIG_CREDENTIALS_SAMPLE_PATH_WITH_ID;
 import static org.folio.rest.impl.BatchVoucherExportConfigCredentialsTest.CONFIGURATION_ID;
 import static org.folio.rest.impl.BatchVoucherExportConfigTest.BATCH_VOUCHER_EXPORT_CONFIGS_SAMPLE_PATH;
 import static org.folio.rest.impl.BatchVoucherExportConfigTest.BATCH_VOUCHER_EXPORT_CONFIG_SAMPLE_PATH;
 import static org.folio.rest.impl.BatchVoucherExportsApiTest.BATCH_VOUCHER_EXPORTS_LIST_PATH;
+import static org.folio.rest.impl.BatchVoucherExportsApiTest.BATCH_VOUCHER_EXPORTS_MOCK_DATA_PATH;
 import static org.folio.rest.impl.BatchVoucherImplTest.BATCH_VOUCHER_MOCK_DATA_PATH;
 import static org.folio.rest.impl.DocumentsApiTest.INVOICE_DOCUMENTS_SAMPLE_PATH;
 import static org.folio.rest.impl.DocumentsApiTest.INVOICE_SAMPLE_DOCUMENTS_PATH;
@@ -221,6 +220,7 @@ public class MockServer {
   static final String SYSTEM_CURRENCY = "GBP";
   static final String FISCAL_YEAR_ID = UUID.randomUUID().toString();
   public static final String ACTIVE_ACCESS_VENDOR = "168f8a63-d612-406e-813f-c7527f241ac3";
+  public static final String EXCEPTION_CASE_BATCH_VOUCHER_EXPORT_GENERATION = "batchGroupId==null and voucherDate>=null and voucherDate<=null";
 
   private final int port;
   private final Vertx vertx;
@@ -924,7 +924,7 @@ public class MockServer {
       InvoiceCollection invoiceCollection = new InvoiceCollection();
 
       if (lineId.equals(SEARCH_INVOICE_BY_LINE_ID_NOT_FOUND)) {
-        invoiceCollection.setInvoices(new ArrayList<Invoice>());
+        invoiceCollection.setInvoices(new ArrayList<>());
         invoiceCollection.setTotalRecords(invoiceCollection.getInvoices().size());
         JsonObject invoicesJson = JsonObject.mapFrom(invoiceCollection);
 
@@ -934,7 +934,7 @@ public class MockServer {
         try {
           invoices = new JsonObject(ApiTestBase.getMockData(MOCK_DATA_INVOICES)).mapTo(InvoiceCollection.class).getInvoices();
         } catch (IOException e) {
-          invoices = new ArrayList<Invoice>();
+          invoices = new ArrayList<>();
         }
 
         Optional<List<Invoice>> invoiceOptional = getMockEntries(INVOICES, Invoice.class);
@@ -953,7 +953,7 @@ public class MockServer {
       try {
         invoices = new JsonObject(ApiTestBase.getMockData(MOCK_DATA_INVOICES)).mapTo(InvoiceCollection.class).getInvoices();
       } catch (IOException e) {
-        invoices = new ArrayList<Invoice>();
+        invoices = new ArrayList<>();
       }
       invoiceCollection.setInvoices(invoices);
       invoiceCollection.setTotalRecords(invoiceCollection.getInvoices().size());
@@ -1261,6 +1261,14 @@ public class MockServer {
     String invoiceId = EMPTY;
     if (queryParam.contains(INVOICE_ID)) {
       invoiceId = queryParam.split(INVOICE_ID + "==")[1];
+    }
+    if (EXCEPTION_CASE_BATCH_VOUCHER_EXPORT_GENERATION.equals(queryParam)){
+      VoucherCollection voucherCollection = new VoucherCollection();
+      voucherCollection.withVouchers(new ArrayList<>());
+      JsonObject vouchersJson = JsonObject.mapFrom(voucherCollection);
+      addServerRqRsData(HttpMethod.GET, VOUCHERS, vouchersJson);
+      serverResponse(ctx, 200, APPLICATION_JSON, vouchersJson.encode());
+      return;
     }
     if (queryParam.contains("batchGroupId") && queryParam.contains("voucherDate")){
       invoiceId = "c0d08448-347b-418a-8c2f-5fb50248d67e";

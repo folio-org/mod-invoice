@@ -79,10 +79,15 @@ public class BatchVoucherExportsHelper extends AbstractHelper {
     createRecordInStorage(JsonObject.mapFrom(batchVoucherExport), resourcesPath(BATCH_VOUCHER_EXPORTS_STORAGE))
                   .thenApply(batchVoucherExportId -> {
                     BatchVoucherExport batchVoucherExportWitId = batchVoucherExport.withId(batchVoucherExportId);
-                    future.complete(batchVoucherExport.withId(batchVoucherExportId));
+                    future.complete(batchVoucherExportWitId);
                     return batchVoucherExportWitId;
                   })
-                  .thenAccept(this::persistBatchVoucher);
+                  .thenAccept(this::persistBatchVoucher)
+                  .exceptionally(t -> {
+                    logger.error("Create batch voucher export error.");
+                    future.completeExceptionally(t);
+                    return null;
+                  });
     return future;
   }
 

@@ -6,8 +6,6 @@ import static org.folio.rest.impl.ApiTestSuite.mockPort;
 import static org.junit.Assert.assertEquals;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -19,19 +17,19 @@ import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.jaxrs.model.InvoiceCollection;
 import org.folio.rest.jaxrs.model.Voucher;
 import org.folio.rest.jaxrs.model.VoucherCollection;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import io.vertx.core.Context;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
 
 public class InvoiceRetrieveServiceTest extends ApiTestBase {
-  private  Context context;
-  private  Map<String, String> okapiHeaders;
+  private static Context context;
+  private static Map<String, String> okapiHeaders;
   private static final String VOUCHERS_LIST_PATH = BASE_MOCK_DATA_PATH + "vouchers/vouchers.json";
 
-  @Before
+  @BeforeEach
   public void setUp()  {
     super.setUp();
     context = Vertx.vertx().getOrCreateContext();
@@ -46,7 +44,7 @@ public class InvoiceRetrieveServiceTest extends ApiTestBase {
   public void positiveGetInvoicesByChunksTest() throws IOException, ExecutionException, InterruptedException {
     InvoiceRetrieveService service = new InvoiceRetrieveService(okapiHeaders, context, "en");
     JsonObject vouchersList = new JsonObject(getMockData(VOUCHERS_LIST_PATH));
-    List<Voucher> vouchers = vouchersList.getJsonArray("vouchers") .stream()
+    List<Voucher> vouchers = vouchersList.getJsonArray("vouchers").stream()
       .map(obj -> ((JsonObject) obj).mapTo(Voucher.class))
       .collect(toList());
 

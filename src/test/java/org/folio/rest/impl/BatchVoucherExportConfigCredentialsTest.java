@@ -10,7 +10,7 @@ import static org.junit.Assert.assertEquals;
 import java.io.IOException;
 
 import org.folio.rest.jaxrs.model.Credentials;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import io.vertx.core.http.HttpMethod;
 import io.vertx.core.json.JsonObject;
@@ -61,9 +61,7 @@ public class BatchVoucherExportConfigCredentialsTest extends ApiTestBase {
   public void testGetExportConfigCredentials() {
     logger.info("=== Test get batch voucher export configuration credentials ===");
 
-    String endpoint = String.format(BATCH_VOUCHER_EXPORT_CONFIGS_CREDENTIALS_ENDPOINT);
-
-    final Credentials credentials = verifySuccessGet(endpoint, Credentials.class);
+    final Credentials credentials = verifySuccessGet(BATCH_VOUCHER_EXPORT_CONFIGS_CREDENTIALS_ENDPOINT, Credentials.class);
     assertThat(MockServer.serverRqRs.get(BATCH_VOUCHER_EXPORT_CONFIGS_CREDENTIALS, HttpMethod.GET), hasSize(1));
     assertEquals(CREDENTIALS_ID, credentials.getId());
   }
@@ -80,7 +78,7 @@ public class BatchVoucherExportConfigCredentialsTest extends ApiTestBase {
   }
 
   @Test
-  public void testPostExportConfigCredentialsTestSuccess() throws IOException {
+  public void testPostExportConfigCredentialsTestSuccess() {
     logger.info("=== Test create batch voucher export config credentials test endpoint - 200 expected ===");
 
     verifyPostResponse(BATCH_VOUCHER_EXPORT_CONFIGS_CREDENTIALS_TEST_ENDPOINT, "",
@@ -88,7 +86,7 @@ public class BatchVoucherExportConfigCredentialsTest extends ApiTestBase {
   }
 
   @Test
-  public void testPostExportConfigCredentialsTestFailure() throws IOException {
+  public void testPostExportConfigCredentialsTestFailure() {
     logger.info("=== Test create batch voucher export config credentials test endpoint - 400 expected ===");
 
     verifyPostResponse(BATCH_VOUCHER_EXPORT_CONFIGS_CREDENTIALS_TEST_ERROR_ENDPOINT, "",

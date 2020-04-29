@@ -17,7 +17,6 @@ import org.folio.rest.jaxrs.model.Error;
 import org.folio.rest.jaxrs.model.Errors;
 import org.folio.rest.jaxrs.model.InvoiceCollection;
 import org.folio.rest.jaxrs.model.InvoiceDocument;
-import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -34,7 +33,9 @@ import static org.folio.invoices.utils.ErrorCodes.DOCUMENT_IS_TOO_LARGE;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_DOCUMENTS;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasSize;
-import static org.junit.Assert.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 
 @RunWith(VertxUnitRunner.class)
 public class DocumentsApiTest extends ApiTestBase {
@@ -138,7 +139,7 @@ public class DocumentsApiTest extends ApiTestBase {
     JsonObject jsonBody = new JsonObject(getMockData(INVOICE_DOCUMENT_SAMPLE_PATH));
     String id = jsonBody.getJsonObject("documentMetadata").getString("id");
     String response = verifyPut(String.format(DOCUMENT_ENDPOINT_WITH_ID, id), jsonBody, TEXT_PLAIN, 400).body().asString();
-    Assert.assertTrue(response.contains("API resource does not support this HTTP method"));
+    assertTrue(response.contains("API resource does not support this HTTP method"));
   }
 
   @Test

@@ -1,22 +1,27 @@
 package org.folio.services;
 
-import org.folio.rest.impl.ApiTestBase;
-import org.folio.rest.jaxrs.model.BatchVoucher;
-import org.folio.rest.jaxrs.model.BatchVoucherExport;
-import org.junit.Before;
-import org.junit.Test;
-import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
-import io.vertx.core.Context;
-import io.vertx.core.Vertx;
-import io.vertx.core.json.JsonObject;
 import static org.folio.invoices.utils.HelperUtils.OKAPI_URL;
 import static org.folio.rest.impl.ApiTestSuite.mockPort;
 import static org.folio.rest.impl.BatchVoucherExportsApiTest.BATCH_VOUCHER_EXPORTS_MOCK_DATA_PATH;
 import static org.junit.Assert.assertNotNull;
+
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
+import java.util.concurrent.ExecutionException;
+
+import org.folio.rest.impl.ApiTestBase;
+import org.folio.rest.jaxrs.model.BatchVoucher;
+import org.folio.rest.jaxrs.model.BatchVoucherExport;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
+import io.vertx.core.Context;
+import io.vertx.core.Vertx;
+import io.vertx.core.json.JsonObject;
 
 
 public class BatchVoucherGenerateServiceTest extends ApiTestBase {
@@ -26,7 +31,7 @@ public class BatchVoucherGenerateServiceTest extends ApiTestBase {
   private static final String BATCH_VOUCHER_EXPORT_SAMPLE_PATH = BATCH_VOUCHER_EXPORTS_MOCK_DATA_PATH
     + VALID_BATCH_VOUCHER_EXPORTS_ID + ".json";
 
-  @Before
+  @BeforeEach
   public void setUp()  {
     super.setUp();
     context = Vertx.vertx().getOrCreateContext();
@@ -38,12 +43,22 @@ public class BatchVoucherGenerateServiceTest extends ApiTestBase {
   }
 
   @Test
-  public void positiveGetInvoicesByChunksTest() throws IOException, ExecutionException, InterruptedException {
+  public void positiveGenerateBatchVoucherTest() throws IOException, ExecutionException, InterruptedException {
     BatchVoucherGenerateService service = new BatchVoucherGenerateService(okapiHeaders, context, "en");
     BatchVoucherExport batchVoucherExport = new JsonObject(getMockData(BATCH_VOUCHER_EXPORT_SAMPLE_PATH)).mapTo(BatchVoucherExport.class);
 
     CompletableFuture<BatchVoucher> future = service.generateBatchVoucher(batchVoucherExport);
     BatchVoucher batchVoucher = future.get();
     assertNotNull(batchVoucher);
+  }
+
+  @Test
+  public void negativeGetbatchVoucherIfVouchersIsAbsentTest() {
+    Assertions.assertThrows(CompletionException.class, () -> {
+      BatchVoucherGenerateService service = new BatchVoucherGenerateService(okapiHeaders, context, "en");
+      BatchVoucherExport batchVoucherExport = new BatchVoucherExport();
+      CompletableFuture<BatchVoucher> future = service.generateBatchVoucher(batchVoucherExport);
+      future.join();
+    });
   }
 }

@@ -24,9 +24,8 @@ import javax.ws.rs.core.Response;
 import org.folio.rest.impl.ApiTestBase;
 import org.folio.rest.impl.MockServer;
 import org.folio.rest.jaxrs.model.Invoice;
-import org.junit.BeforeClass;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
 
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Handler;
@@ -37,10 +36,7 @@ import io.vertx.core.eventbus.ReplyException;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
-import io.vertx.ext.unit.TestContext;
-import io.vertx.ext.unit.junit.VertxUnitRunner;
 
-@RunWith(VertxUnitRunner.class)
 public class InvoiceSummaryTest extends ApiTestBase {
   private static final Logger logger = LoggerFactory.getLogger(InvoiceSummaryTest.class);
 
@@ -48,16 +44,17 @@ public class InvoiceSummaryTest extends ApiTestBase {
 
   private static Vertx vertx;
 
-  @BeforeClass
+  @BeforeAll
   public static void before() throws InterruptedException, ExecutionException, TimeoutException {
     ApiTestBase.before();
 
     vertx = Vertx.vertx();
-    vertx.eventBus().consumer(TEST_ADDRESS, new InvoiceSummary(vertx));
+    vertx.eventBus()
+      .consumer(TEST_ADDRESS, new InvoiceSummary(vertx));
   }
 
   @Test
-  public void testUpdateInvoiceTotals(TestContext context) {
+  public void testUpdateInvoiceTotals() {
     logger.info("=== Test case when invoice summary update is expected due to sub-total change ===");
 
     Invoice invoice = getMockAsJson(OPEN_INVOICE_SAMPLE_PATH).mapTo(Invoice.class);
@@ -66,21 +63,22 @@ public class InvoiceSummaryTest extends ApiTestBase {
     invoice.setTotal(15d);
     MockServer.addMockEntry(INVOICES, invoice);
 
-    sendEvent(createBody(OPEN_INVOICE_ID), context.asyncAssertSuccess(result -> {
+    sendEvent(createBody(OPEN_INVOICE_ID), result -> {
       assertThat(getInvoiceRetrievals(), hasSize(1));
       assertThat(getInvoiceLineSearches(), hasSize(1));
       assertThat(getInvoiceUpdates(), hasSize(1));
 
-      Invoice updatedInvoice = getInvoiceUpdates().get(0).mapTo(Invoice.class);
+      Invoice updatedInvoice = getInvoiceUpdates().get(0)
+        .mapTo(Invoice.class);
       assertThat(updatedInvoice.getAdjustmentsTotal(), not(invoice.getAdjustmentsTotal()));
       assertThat(updatedInvoice.getSubTotal(), not(invoice.getSubTotal()));
       assertThat(updatedInvoice.getTotal(), not(invoice.getTotal()));
-      assertThat(result.body(), equalTo(Response.Status.OK.getReasonPhrase()));
-    }));
+      assertThat(result.result().body(), equalTo(Response.Status.OK.getReasonPhrase()));
+    });
   }
 
   @Test
-  public void testUpdateInvoiceTotalsNoLines(TestContext context) {
+  public void testUpdateInvoiceTotalsNoLines() {
     logger.info("=== Test case when invoice summary update is expected when no lines found ===");
 
     // Setting non zero values which should be resulted to zeros
@@ -90,21 +88,22 @@ public class InvoiceSummaryTest extends ApiTestBase {
       .withTotal(15d)
       .withCurrency("USD");
 
-    sendEvent(createBody(invoice), context.asyncAssertSuccess(result -> {
+    sendEvent(createBody(invoice), result -> {
       assertThat(getInvoiceRetrievals(), empty());
       assertThat(getInvoiceLineSearches(), hasSize(1));
       assertThat(getInvoiceUpdates(), hasSize(1));
 
-      Invoice updatedInvoice = getInvoiceUpdates().get(0).mapTo(Invoice.class);
+      Invoice updatedInvoice = getInvoiceUpdates().get(0)
+        .mapTo(Invoice.class);
       assertThat(updatedInvoice.getAdjustmentsTotal(), is(0d));
       assertThat(updatedInvoice.getSubTotal(), is(0d));
       assertThat(updatedInvoice.getTotal(), is(0d));
-      assertThat(result.body(), equalTo(Response.Status.OK.getReasonPhrase()));
-    }));
+      assertThat(result.result().body(), equalTo(Response.Status.OK.getReasonPhrase()));
+    });
   }
 
   @Test
-  public void testUpdateNotRequired(TestContext context) {
+  public void testUpdateNotRequired() {
     logger.info("=== Test case when no invoice update is expected ===");
 
     Invoice invoice = new Invoice().withId(VALID_UUID)
@@ -114,24 +113,24 @@ public class InvoiceSummaryTest extends ApiTestBase {
       .withCurrency("USD");
     MockServer.addMockEntry(INVOICES, invoice);
 
-    sendEvent(createBody(VALID_UUID), context.asyncAssertSuccess(result -> {
+    sendEvent(createBody(VALID_UUID), result -> {
       assertThat(getInvoiceRetrievals(), hasSize(1));
       assertThat(getInvoiceLineSearches(), hasSize(1));
       assertThat(getInvoiceUpdates(), empty());
-      assertThat(result.body(), equalTo(Response.Status.OK.getReasonPhrase()));
-    }));
+      assertThat(result.result().body(), equalTo(Response.Status.OK.getReasonPhrase()));
+    });
   }
 
   @Test
-  public void testNonexistentInvoice(TestContext context) {
+  public void testNonexistentInvoice() {
     logger.info("=== Test case when invoice is not found ===");
-    sendEvent(createBody(ID_DOES_NOT_EXIST), context.asyncAssertFailure(result -> {
+    sendEvent(createBody(ID_DOES_NOT_EXIST), result -> {
       assertThat(getInvoiceRetrievals(), empty());
       assertThat(getInvoiceLineSearches(), empty());
       assertThat(getInvoiceUpdates(), empty());
       assertThat(result, instanceOf(ReplyException.class));
       assertThat(((ReplyException) result).failureCode(), is(404));
-    }));
+    });
   }
 
   private JsonObject createBody(String id) {
@@ -146,6 +145,7 @@ public class InvoiceSummaryTest extends ApiTestBase {
     // Add okapi url header
     DeliveryOptions deliveryOptions = new DeliveryOptions().addHeader(X_OKAPI_URL.getName(), X_OKAPI_URL.getValue());
 
-    vertx.eventBus().send(TEST_ADDRESS, data, deliveryOptions, replyHandler);
+    vertx.eventBus()
+      .request(TEST_ADDRESS, data, deliveryOptions, replyHandler);
   }
 }
