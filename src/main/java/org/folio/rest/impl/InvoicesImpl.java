@@ -17,6 +17,7 @@ import org.folio.rest.jaxrs.model.InvoiceDocument;
 import org.folio.rest.jaxrs.model.InvoiceLine;
 
 import javax.ws.rs.core.Response;
+import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
@@ -207,10 +208,10 @@ public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
   @Stream
   @Override
   public void postInvoiceInvoicesDocumentsById(String id, String lang, InputStream is, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
-    try {
+    try (InputStream bis = new BufferedInputStream(is)) {
       if (Objects.isNull(okapiHeaders.get(STREAM_COMPLETE))) {
         // This code will be executed for each stream's chunk
-        processBytesArrayFromStream(is);
+        processBytesArrayFromStream(bis);
       } else if (Objects.nonNull(okapiHeaders.get(STREAM_ABORT))) {
         asyncResultHandler.handle(succeededFuture(PostInvoiceInvoicesDocumentsByIdResponse.respond400WithTextPlain("Stream aborted")));
       } else {
@@ -268,7 +269,6 @@ public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
     } else {
       requestBytesArray = null;
     }
-    is.close();
   }
 
   private void processDocumentCreation(String id, String lang, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
