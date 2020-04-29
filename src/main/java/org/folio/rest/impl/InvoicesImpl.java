@@ -1,24 +1,36 @@
 package org.folio.rest.impl;
 
-import static io.vertx.core.Future.succeededFuture;
-import static org.folio.invoices.utils.ErrorCodes.MISMATCH_BETWEEN_ID_IN_PATH_AND_BODY;
-
-import java.util.Map;
-
-import javax.ws.rs.core.Response;
-
-import org.apache.commons.lang3.StringUtils;
-import org.folio.rest.annotations.Validate;
-import org.folio.rest.jaxrs.model.Invoice;
-import org.folio.rest.jaxrs.model.InvoiceDocument;
-import org.folio.rest.jaxrs.model.InvoiceLine;
-
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Context;
 import io.vertx.core.Handler;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
+import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang3.ArrayUtils;
+import org.apache.commons.lang3.StringUtils;
+import org.folio.rest.annotations.Stream;
+import org.folio.rest.annotations.Validate;
+import org.folio.rest.jaxrs.model.Errors;
+import org.folio.rest.jaxrs.model.Invoice;
+import org.folio.rest.jaxrs.model.InvoiceDocument;
+import org.folio.rest.jaxrs.model.InvoiceLine;
+
+import javax.ws.rs.core.Response;
+import java.io.BufferedInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
+import java.util.Collections;
+import java.util.Map;
+import java.util.Objects;
+
+import static io.vertx.core.Future.succeededFuture;
+import static org.apache.commons.io.FileUtils.ONE_MB;
+import static org.folio.invoices.utils.ErrorCodes.DOCUMENT_IS_TOO_LARGE;
+import static org.folio.invoices.utils.ErrorCodes.MISMATCH_BETWEEN_ID_IN_PATH_AND_BODY;
+import static org.folio.rest.RestVerticle.STREAM_ABORT;
+import static org.folio.rest.RestVerticle.STREAM_COMPLETE;
 
 public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
 
@@ -28,6 +40,8 @@ public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
   private static final String INVOICE_LINE_LOCATION_PREFIX = "/invoice/invoice-lines/%s";
   public static final String PROTECTED_AND_MODIFIED_FIELDS = "protectedAndModifiedFields";
   private static final String DOCUMENTS_LOCATION_PREFIX = "/invoice/invoices/%s/documents/%s";
+  private byte[] requestBytesArray = new byte[0];
+  private static final long MAX_DOCUMENT_SIZE = 25 * ONE_MB;
 
   @Validate
   @Override
@@ -183,29 +197,35 @@ public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
 
   @Validate
   @Override
-  public void postInvoiceInvoicesDocumentsById(String id, String lang, InvoiceDocument entity, Map<String, String> okapiHeaders,
-    Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
-    DocumentHelper documentHelper = new DocumentHelper(okapiHeaders, vertxContext, lang);
-    if (!entity.getDocumentMetadata().getInvoiceId().equals(id)) {
-      documentHelper.addProcessingError(MISMATCH_BETWEEN_ID_IN_PATH_AND_BODY.toError());
-      asyncResultHandler.handle(succeededFuture(documentHelper.buildErrorResponse(422)));
-    } else {
-      documentHelper.createDocument(id, entity)
-        .thenAccept(document -> {
-          logInfo("Successfully created document with id={}", document);
-          asyncResultHandler.handle(succeededFuture(documentHelper.buildResponseWithLocation(String.format(DOCUMENTS_LOCATION_PREFIX, id, document.getDocumentMetadata().getId()), document)));
-        })
-        .exceptionally(t -> handleErrorResponse(asyncResultHandler, documentHelper, t));
-    }
-  }
-
-  @Validate
-  @Override
   public void getInvoiceInvoicesDocumentsById(String id, int offset, int limit, String query, String lang, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     DocumentHelper documentHelper = new DocumentHelper(okapiHeaders, vertxContext, lang);
     documentHelper.getDocumentsByInvoiceId(id, limit, offset, query)
       .thenAccept(documents -> asyncResultHandler.handle(succeededFuture(documentHelper.buildOkResponse(documents))))
       .exceptionally(t -> handleErrorResponse(asyncResultHandler, documentHelper, t));
+  }
+
+  @Validate
+  @Stream
+  @Override
+  public void postInvoiceInvoicesDocumentsById(String id, String lang, InputStream is, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+    try (InputStream bis = new BufferedInputStream(is)) {
+      if (Objects.isNull(okapiHeaders.get(STREAM_COMPLETE))) {
+        // This code will be executed for each stream's chunk
+        processBytesArrayFromStream(bis);
+      } else if (Objects.nonNull(okapiHeaders.get(STREAM_ABORT))) {
+        asyncResultHandler.handle(succeededFuture(PostInvoiceInvoicesDocumentsByIdResponse.respond400WithTextPlain("Stream aborted")));
+      } else {
+        // This code will be executed one time after stream completing
+        if (Objects.nonNull(requestBytesArray)) {
+          processDocumentCreation(id, lang, okapiHeaders, asyncResultHandler, vertxContext);
+        } else {
+          Errors errors = new Errors().withErrors(Collections.singletonList(DOCUMENT_IS_TOO_LARGE.toError())).withTotalRecords(1);
+          asyncResultHandler.handle(succeededFuture(PostInvoiceInvoicesDocumentsByIdResponse.respond413WithApplicationJson(errors)));
+        }
+      }
+    } catch (Exception e) {
+      asyncResultHandler.handle(succeededFuture(PostInvoiceInvoicesDocumentsByIdResponse.respond500WithTextPlain("Internal Server Error")));
+    }
   }
 
   @Validate
@@ -243,4 +263,27 @@ public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
     return null;
   }
 
+  private void processBytesArrayFromStream(InputStream is) throws IOException {
+    if (Objects.nonNull(requestBytesArray) && requestBytesArray.length < MAX_DOCUMENT_SIZE && is.available() < MAX_DOCUMENT_SIZE) {
+      requestBytesArray = ArrayUtils.addAll(requestBytesArray, IOUtils.toByteArray(is));
+    } else {
+      requestBytesArray = null;
+    }
+  }
+
+  private void processDocumentCreation(String id, String lang, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+    DocumentHelper documentHelper = new DocumentHelper(okapiHeaders, vertxContext, lang);
+    InvoiceDocument entity = new JsonObject(new String(requestBytesArray, StandardCharsets.UTF_8)).mapTo(InvoiceDocument.class);
+    if (!entity.getDocumentMetadata().getInvoiceId().equals(id)) {
+      documentHelper.addProcessingError(MISMATCH_BETWEEN_ID_IN_PATH_AND_BODY.toError());
+      asyncResultHandler.handle(succeededFuture(documentHelper.buildErrorResponse(422)));
+    } else {
+      documentHelper.createDocument(id, entity)
+        .thenAccept(document -> {
+          logInfo("Successfully created document with id={}", document);
+          asyncResultHandler.handle(succeededFuture(documentHelper.buildResponseWithLocation(String.format(DOCUMENTS_LOCATION_PREFIX, id, document.getDocumentMetadata().getId()), document)));
+        })
+        .exceptionally(t -> handleErrorResponse(asyncResultHandler, documentHelper, t));
+    }
+  }
 }
