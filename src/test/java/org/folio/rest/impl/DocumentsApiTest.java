@@ -9,16 +9,11 @@ import io.vertx.core.http.HttpMethod;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
-import io.vertx.ext.unit.Async;
-import io.vertx.ext.unit.TestContext;
-import io.vertx.ext.unit.junit.VertxUnitRunner;
 import org.apache.commons.lang3.StringUtils;
 import org.folio.rest.jaxrs.model.Error;
 import org.folio.rest.jaxrs.model.Errors;
 import org.folio.rest.jaxrs.model.InvoiceCollection;
 import org.folio.rest.jaxrs.model.InvoiceDocument;
-import org.junit.Test;
-import org.junit.runner.RunWith;
 
 import java.io.IOException;
 import java.util.List;
@@ -34,10 +29,19 @@ import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_DOCUMENTS;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasSize;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.concurrent.TimeUnit;
 
-@RunWith(VertxUnitRunner.class)
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import io.vertx.junit5.VertxExtension;
+import io.vertx.junit5.VertxTestContext;
+
+
+@ExtendWith(VertxExtension.class)
 public class DocumentsApiTest extends ApiTestBase {
   private static final Logger logger = LoggerFactory.getLogger(DocumentsApiTest.class);
   private static final String INVOICE_ID = "733cafd3-895f-4e33-87b7-bf40dc3c8069";
@@ -52,34 +56,38 @@ public class DocumentsApiTest extends ApiTestBase {
 
 
   @Test
-  public void testPostAndDocument(TestContext context) throws IOException {
+  public void testPostAndDocument(VertxTestContext context) throws Throwable {
     logger.info("=== Test create document ===");
 
     String mock = getMockData(INVOICE_DOCUMENT_SAMPLE_PATH);
 
-    Async async = context.async();
     HttpClientRequest request = Vertx.vertx().createHttpClient().postAbs(RestAssured.baseURI + DOCUMENT_ENDPOINT, response -> {
       Buffer body = Buffer.buffer();
       response.handler(body::appendBuffer);
-      response.endHandler(end -> verifySuccessResponse(context, async, response, body));
-      response.exceptionHandler(t -> processException(async, t));
+      response.endHandler(end -> verifySuccessResponse(context, response, body));
+      response.exceptionHandler(t -> processException(context, t));
     });
+
     request.setChunked(true);
     prepareRequestHeaders(request);
     request.write(mock);
     request.end();
+    assertTrue(context.awaitCompletion(30, TimeUnit.SECONDS));
+    if (context.failed()) {
+      throw context.causeOfFailure();
+    }
   }
 
-  private void verifySuccessResponse(TestContext context, Async async, HttpClientResponse response, Buffer body) {
-    context.assertEquals(201, response.statusCode());
-    context.assertNotNull(response.headers().get(CONTENT_TYPE));
-    context.assertEquals(MockServer.serverRqRs.get(INVOICE_DOCUMENTS, HttpMethod.POST).size(), 1);
-    context.assertNotNull(new JsonObject(body).mapTo(InvoiceDocument.class).getDocumentMetadata().getId());
-    async.complete();
+  private void verifySuccessResponse(VertxTestContext context, HttpClientResponse response, Buffer body) {
+    assertEquals(201, response.statusCode());
+    assertNotNull(response.headers().get(CONTENT_TYPE));
+    assertEquals(1 , MockServer.serverRqRs.get(INVOICE_DOCUMENTS, HttpMethod.POST).size());
+    assertNotNull(new JsonObject(body).mapTo(InvoiceDocument.class).getDocumentMetadata().getId());
+    context.completeNow();
   }
 
   @Test
-  public void testPostAndDocumentOversize(TestContext context) throws IOException {
+  public void testPostAndDocumentOversize(VertxTestContext context) throws Throwable {
     logger.info("=== Test create document - oversize ===");
 
     InvoiceDocument document = new JsonObject(getMockData(INVOICE_DOCUMENT_SAMPLE_PATH)).mapTo(InvoiceDocument.class);
@@ -87,29 +95,32 @@ public class DocumentsApiTest extends ApiTestBase {
 
     document.getContents().setData(stringData);
 
-    Async async = context.async();
     HttpClientRequest request = Vertx.vertx().createHttpClient().postAbs(RestAssured.baseURI + DOCUMENT_ENDPOINT, response -> {
       Buffer body = Buffer.buffer();
       response.handler(body::appendBuffer);
-      response.endHandler(end -> verifyErrorResponse(context, async, response, body));
-      response.exceptionHandler(t -> processException(async, t));
+      response.endHandler(end -> verifyErrorResponse(context, response, body));
+      response.exceptionHandler(t -> processException(context, t));
     });
     request.setChunked(true);
     prepareRequestHeaders(request);
     request.write(JsonObject.mapFrom(document).encode());
     request.end();
+    assertTrue(context.awaitCompletion(60, TimeUnit.SECONDS));
+    if (context.failed()) {
+      throw context.causeOfFailure();
+    }
   }
 
-  private void verifyErrorResponse(TestContext context, Async async, HttpClientResponse response, Buffer body) {
-    context.assertEquals(413, response.statusCode());
-    context.assertNotNull(response.headers().get(CONTENT_TYPE));
-    context.assertNull(MockServer.serverRqRs.get(INVOICE_DOCUMENTS, HttpMethod.POST));
+  private void verifyErrorResponse(VertxTestContext context, HttpClientResponse response, Buffer body) {
+    assertEquals(413, response.statusCode());
+    assertNotNull(response.headers().get(CONTENT_TYPE));
+    assertNull(MockServer.serverRqRs.get(INVOICE_DOCUMENTS, HttpMethod.POST));
     Errors errors = new JsonObject(body).mapTo(Errors.class);
     List<Error> errs = errors.getErrors();
-    context.assertEquals(errors.getTotalRecords(), 1);
-    context.assertEquals(errs.size(), 1);
-    context.assertEquals(errs.get(0).getCode(), DOCUMENT_IS_TOO_LARGE.getCode());
-    async.complete();
+    assertEquals(1, errors.getTotalRecords());
+    assertEquals(1, errs.size());
+    assertEquals(errs.get(0).getCode(), DOCUMENT_IS_TOO_LARGE.getCode());
+    context.completeNow();
   }
 
   @Test
@@ -148,9 +159,9 @@ public class DocumentsApiTest extends ApiTestBase {
     verifyDeleteResponse(String.format(DOCUMENT_ENDPOINT_WITH_ID, VALID_UUID), "", 204);
   }
 
-  private void processException(Async async, Throwable t) {
+  private void processException(VertxTestContext context, Throwable t) {
     logger.info("Exception calling: " + DOCUMENT_ENDPOINT, t);
-    async.complete();
+    context.failNow(t);
   }
 
   private void prepareRequestHeaders(HttpClientRequest request) {
