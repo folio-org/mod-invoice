@@ -1,12 +1,16 @@
 package org.folio.jaxb;
 
-import org.folio.rest.jaxrs.model.BatchVoucher;
-import org.folio.rest.jaxrs.model.jaxb.BatchVoucherType;
-import org.junit.Assert;
-import org.junit.Test;
-import javax.xml.namespace.QName;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
 import java.util.HashMap;
 import java.util.Map;
+
+import javax.xml.namespace.QName;
+
+import org.folio.rest.jaxrs.model.BatchVoucher;
+import org.folio.rest.jaxrs.model.jaxb.BatchVoucherType;
+import org.junit.jupiter.api.Test;
+
 
 public class DefaultJAXBRootElementNameResolverTest {
 
@@ -18,7 +22,7 @@ public class DefaultJAXBRootElementNameResolverTest {
     resolverMap.put(BatchVoucherType.class, new QName("batchVoucher"));
     DefaultJAXBRootElementNameResolver elementNameResolver = new DefaultJAXBRootElementNameResolver(resolverMap);
     QName act = elementNameResolver.getName(BatchVoucherType.class);
-    Assert.assertEquals(exp, act);
+    assertEquals(exp, act);
   }
 
   @Test
@@ -26,6 +30,6 @@ public class DefaultJAXBRootElementNameResolverTest {
     QName exp = new QName("root");
     DefaultJAXBRootElementNameResolver elementNameResolver = new DefaultJAXBRootElementNameResolver();
     QName act = elementNameResolver.getName(BatchVoucher.class);
-    Assert.assertEquals(exp, act);
+    assertEquals(exp, act);
   }
 }

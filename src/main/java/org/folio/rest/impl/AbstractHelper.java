@@ -27,7 +27,6 @@ import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 
 import javax.money.convert.ExchangeRateProvider;
-import javax.money.convert.MonetaryConversions;
 import javax.ws.rs.core.Response;
 
 import org.apache.commons.collections4.CollectionUtils;
@@ -259,6 +258,7 @@ public abstract class AbstractHelper {
       case 400:
       case 403:
       case 404:
+      case 413:
       case 422:
         responseBuilder = Response.status(code);
         break;
@@ -296,9 +296,9 @@ public abstract class AbstractHelper {
     return processingErrors.getErrors();
   }
 
-  public ExchangeRateProvider getExchangeRateProvider() {
+  public ExchangeRateProvider getCurrentExchangeRateProvider() {
     if (Objects.isNull(exchangeRateProvider)) {
-      exchangeRateProvider = MonetaryConversions.getExchangeRateProvider();
+      exchangeRateProvider = HelperUtils.getInvoiceExchangeRateProvider();
       logger.debug("Created ExchangeRateProvider name: {}", exchangeRateProvider.getContext().getProviderName());
     }
     return exchangeRateProvider;

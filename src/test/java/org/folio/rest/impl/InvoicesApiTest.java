@@ -117,11 +117,11 @@ import javax.money.CurrencyUnit;
 import javax.money.Monetary;
 import javax.money.MonetaryAmount;
 import javax.money.convert.CurrencyConversion;
-import javax.money.convert.MonetaryConversions;
 
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.reflect.FieldUtils;
 import org.apache.http.HttpStatus;
+import org.folio.invoices.utils.HelperUtils;
 import org.folio.invoices.utils.InvoiceProtectedFields;
 import org.folio.rest.acq.model.VoucherLineCollection;
 import org.folio.rest.acq.model.finance.AwaitingPayment;
@@ -150,10 +150,7 @@ import org.hamcrest.beans.HasProperty;
 import org.hamcrest.beans.HasPropertyWithValue;
 import org.hamcrest.core.Every;
 import org.javamoney.moneta.Money;
-import org.javamoney.moneta.function.MonetaryFunctions;
-import org.javamoney.moneta.function.MonetaryOperators;
-import org.javamoney.moneta.spi.DefaultNumberValue;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import io.restassured.http.Headers;
 import io.restassured.response.Response;
@@ -1206,7 +1203,7 @@ public class InvoicesApiTest extends ApiTestBase {
     Map<String, AwaitingPayment> awaitingPaymentMap = awaitingPaymentsCreated.stream()
       .map(entries -> entries.mapTo(AwaitingPayment.class))
       .collect(toMap(AwaitingPayment::getEncumbranceId, Function.identity()));
-    CurrencyConversion conversion = MonetaryConversions.getExchangeRateProvider().getCurrencyConversion("GBP"); //currency from MockServer
+    CurrencyConversion conversion = HelperUtils.getInvoiceExchangeRateProvider().getCurrencyConversion("GBP"); //currency from MockServer
     fundDistributions.forEach(fundDistribution -> {
       MonetaryAmount amount = getFundDistributionAmount(fundDistribution, 10d, reqData.getCurrency()).with(conversion);
       assertThat(convertToDoubleWithRounding(amount), is(awaitingPaymentMap.get(fundDistribution.getEncumbrance()).getAmountAwaitingPayment()));
@@ -1383,7 +1380,7 @@ public class InvoicesApiTest extends ApiTestBase {
     assertThat(invoiceUpdate.getVoucherNumber(), equalTo(voucherCreated.getVoucherNumber()));
     assertThat(invoiceUpdate.getId(), equalTo(voucherCreated.getInvoiceId()));
     assertThat(invoiceUpdate.getCurrency(), equalTo(voucherCreated.getInvoiceCurrency()));
-    assertThat(MonetaryConversions.getExchangeRateProvider().getExchangeRate(voucherCreated.getInvoiceCurrency(), voucherCreated.getSystemCurrency()).getFactor().doubleValue(), equalTo(voucherCreated.getExchangeRate()));
+    assertThat(HelperUtils.getInvoiceExchangeRateProvider().getExchangeRate(voucherCreated.getInvoiceCurrency(), voucherCreated.getSystemCurrency()).getFactor().doubleValue(), equalTo(voucherCreated.getExchangeRate()));
     assertThat(voucherCreated.getAccountingCode(), equalTo(invoiceUpdate.getAccountingCode()));
     assertThat(voucherCreated.getExportToAccounting(), is(false));
     assertThat(Voucher.Status.AWAITING_PAYMENT, equalTo(voucherCreated.getStatus()));

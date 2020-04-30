@@ -1,18 +1,20 @@
 package org.folio.invoices.util;
 
-import org.folio.invoices.utils.HelperUtils;
-import org.junit.Test;
+import static org.junit.Assert.assertEquals;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import static org.junit.Assert.assertEquals;
+
+import org.folio.invoices.utils.HelperUtils;
+import org.junit.jupiter.api.Test;
 
 public class HelperUtilsTest {
   @Test
   public void testDivideLitByChunksShouldReturnEmptyMapIfListIsEmpty(){
-    Map<Integer, List<String>> actMap = HelperUtils.buildIdsChunks(new ArrayList<String>(), 15);
+    Map<Integer, List<String>> actMap = HelperUtils.buildIdsChunks(new ArrayList<>(), 15);
     assertEquals(Collections.emptyMap(), actMap);
   }
 

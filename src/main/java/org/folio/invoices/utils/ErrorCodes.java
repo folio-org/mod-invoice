@@ -30,7 +30,8 @@ public enum ErrorCodes {
   AWAITING_PAYMENT_ERROR("awaitingPaymentError", "Failed to apply awaiting payment to encumbrance"),
   INVOICE_PAYMENT_FAILURE("invoicePaymentFailure", "Invoice payment failure"),
   CURRENT_FISCAL_YEAR_NOT_FOUND("currentFYearNotFound", "Current fiscal year not found for ledger"),
-  TRANSACTION_CREATION_FAILURE("transactionCreationFailure", "One or more transactions record(s) failed to be created"),;
+  TRANSACTION_CREATION_FAILURE("transactionCreationFailure", "One or more transactions record(s) failed to be created"),
+  DOCUMENT_IS_TOO_LARGE("documentIsTooLarge", "Document size is too large");
 
   private final String code;
   private final String description;

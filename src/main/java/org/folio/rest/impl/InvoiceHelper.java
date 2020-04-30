@@ -552,7 +552,7 @@ public class InvoiceHelper extends AbstractHelper {
   }
 
   private List<FundDistribution> getAllFundDistributions(List<InvoiceLine> invoiceLines, Invoice invoice) {
-    CurrencyConversion conversion = getExchangeRateProvider().getCurrencyConversion(getSystemCurrency());
+    CurrencyConversion conversion = getCurrentExchangeRateProvider().getCurrencyConversion(getSystemCurrency());
 
     List<FundDistribution> fundDistributions = getInvoiceLineFundDistributions(invoiceLines, invoice, conversion);
     fundDistributions.addAll(getAdjustmentFundDistributions(invoice, conversion));
@@ -746,7 +746,7 @@ public class InvoiceHelper extends AbstractHelper {
   }
 
   private List<AwaitingPayment> buildAwaitingPayments(List<InvoiceLine> invoiceLines, Invoice invoice) {
-    CurrencyConversion conversion = getExchangeRateProvider().getCurrencyConversion(getSystemCurrency());
+    CurrencyConversion conversion = getCurrentExchangeRateProvider().getCurrencyConversion(getSystemCurrency());
     return invoiceLines.stream()
       .flatMap(line -> line.getFundDistributions().stream()
         .filter(fundDistribution -> Objects.nonNull(fundDistribution.getEncumbrance()))
@@ -765,7 +765,7 @@ public class InvoiceHelper extends AbstractHelper {
   }
 
   private CompletableFuture<Voucher> setExchangeRateFactor(Voucher voucher) {
-    return VertxCompletableFuture.supplyBlockingAsync(ctx, () -> getExchangeRateProvider()
+    return VertxCompletableFuture.supplyBlockingAsync(ctx, () -> getCurrentExchangeRateProvider()
         .getExchangeRate(voucher.getInvoiceCurrency(), voucher.getSystemCurrency()))
       .thenApply(exchangeRate -> voucher.withExchangeRate(exchangeRate.getFactor().doubleValue()));
   }

@@ -47,9 +47,9 @@ import org.folio.rest.jaxrs.model.Adjustment;
 import org.folio.rest.jaxrs.model.BatchVoucher;
 import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.jaxrs.model.InvoiceLine;
-import org.junit.AfterClass;
-import org.junit.Before;
-import org.junit.BeforeClass;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
@@ -123,7 +123,7 @@ public class ApiTestBase {
     }
   }
 
-  @BeforeClass
+  @BeforeAll
   public static void before() throws InterruptedException, ExecutionException, TimeoutException {
 
     if(ApiTestSuite.isNotInitialised()) {
@@ -133,7 +133,7 @@ public class ApiTestBase {
     }
   }
 
-  @Before
+  @BeforeEach
   public void setUp() {
     clearServiceInteractions();
   }
@@ -143,7 +143,7 @@ public class ApiTestBase {
     MockServer.release();
   }
 
-  @AfterClass
+  @AfterAll
   public static void after() {
 
     if(runningOnOwn) {

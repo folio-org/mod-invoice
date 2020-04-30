@@ -1,19 +1,21 @@
 package org.folio.jaxb;
 
-import org.junit.Assert;
-import org.junit.Test;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
 import javax.xml.datatype.XMLGregorianCalendar;
+
+import org.junit.jupiter.api.Test;
 
 public class JAXBUtilTest {
 
   @Test()
-  public void testShouldConvertWithoutExceptionCorrectStringDate(){
+  public void testShouldConvertWithoutExceptionCorrectStringDate() {
     XMLGregorianCalendar date = JAXBUtil.convertDateTime("2019-12-06T01:02:03.000+0000");
-    Assert.assertEquals(2019, date.getYear());
-    Assert.assertEquals(12, date.getMonth());
-    Assert.assertEquals(6, date.getDay());
-    Assert.assertEquals(1, date.getHour());
-    Assert.assertEquals(2, date.getMinute());
-    Assert.assertEquals(3, date.getSecond());
+    assertEquals(2019, date.getYear());
+    assertEquals(12, date.getMonth());
+    assertEquals(6, date.getDay());
+    assertEquals(1, date.getHour());
+    assertEquals(2, date.getMinute());
+    assertEquals(3, date.getSecond());
   }
 }

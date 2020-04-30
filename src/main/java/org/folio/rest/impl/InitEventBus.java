@@ -54,7 +54,7 @@ public class InitEventBus implements PostDeployVerticle {
       batchVoucherPersist.handler(batchVoucherPersistHandler)
         .completionHandler(batchVoucherPersistRegistrationHandler);
 
-      invoiceSummaryRegistrationHandler.future().setHandler(result -> {
+      invoiceSummaryRegistrationHandler.future().onComplete(result -> {
         if (result.succeeded()) {
           blockingCodeFuture.complete();
         } else {

@@ -1,25 +1,25 @@
 package org.folio.rest.impl;
 
+import static io.restassured.RestAssured.given;
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 import static javax.ws.rs.core.Response.Status.CREATED;
 import static org.folio.rest.impl.MockServer.getBatchVoucherExportUpdates;
-import static org.junit.Assert.assertEquals;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static io.restassured.RestAssured.given;
+import static org.junit.Assert.assertEquals;
+
+import java.io.IOException;
+
+import org.folio.rest.jaxrs.model.BatchVoucherExport;
+import org.folio.rest.jaxrs.model.BatchVoucherExportCollection;
+import org.folio.rest.jaxrs.model.Errors;
+import org.junit.jupiter.api.Test;
 
 import io.restassured.http.Headers;
 import io.restassured.response.Response;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
-
-import org.folio.rest.jaxrs.model.BatchVoucherExport;
-import org.folio.rest.jaxrs.model.BatchVoucherExportCollection;
-import org.folio.rest.jaxrs.model.Errors;
-import org.junit.Test;
-
-import java.io.IOException;
 
 public class BatchVoucherExportsApiTest extends ApiTestBase {
 
@@ -131,19 +131,17 @@ public class BatchVoucherExportsApiTest extends ApiTestBase {
   @Test
   public void testDeleteExistingBatchVoucherExport() {
     logger.info(" === Test Delete existing Batch voucher export === ");
-    String id = VALID_BATCH_VOUCHER_EXPORTS_ID;
-    verifyDeleteResponse(String.format(BATCH_VOUCHER_EXPORTS_ID_PATH, id),"",204);
+    verifyDeleteResponse(String.format(BATCH_VOUCHER_EXPORTS_ID_PATH, VALID_BATCH_VOUCHER_EXPORTS_ID),"",204);
   }
 
   @Test
   public void testDeleteNonExistingBatchVoucherExport() {
     logger.info(" === Test Delete Non-existing Batch voucher export === ");
-    String id = BAD_BATCH_VOUCHER_EXPORTS_ID;
-    verifyDeleteResponse(String.format(BATCH_VOUCHER_EXPORTS_ID_PATH, id), "", 404);
+    verifyDeleteResponse(String.format(BATCH_VOUCHER_EXPORTS_ID_PATH, BAD_BATCH_VOUCHER_EXPORTS_ID), "", 404);
   }
 
   @Test
-  public void postBatchVoucherBatchVoucherExportsUploadTest() throws Exception {
+  public void postBatchVoucherBatchVoucherExportsUploadTest() {
     given().header(X_OKAPI_TENANT)
       .post(BATCH_VOUCHER_EXPORT_UPLOAD_ENDPOINT_PATH)
       .then()
