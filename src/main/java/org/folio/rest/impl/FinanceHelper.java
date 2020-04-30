@@ -124,7 +124,7 @@ public class FinanceHelper extends AbstractHelper {
     transaction.setCurrency(invoice.getCurrency());
     transaction.setSourceInvoiceId(invoice.getId());
     transaction.setPaymentEncumbranceId(fundDistribution.getEncumbrance());
-    transaction.setSource(Transaction.Source.VOUCHER);
+    transaction.setSource(Transaction.Source.INVOICE);
 
     MonetaryAmount amount = getAdjustmentFundDistributionAmount(fundDistribution, adjustment, invoice);
     if (amount.isPositive()) {
@@ -160,7 +160,7 @@ public class FinanceHelper extends AbstractHelper {
     transaction.setSourceInvoiceId(invoice.getId());
     transaction.setSourceInvoiceLineId(invoiceLine.getId());
     transaction.setPaymentEncumbranceId(fundDistribution.getEncumbrance());
-    transaction.setSource(Transaction.Source.VOUCHER);
+    transaction.setSource(Transaction.Source.INVOICE);
 
     MonetaryAmount amount = getFundDistributionAmount(fundDistribution, invoiceLine.getTotal(), invoice.getCurrency());
     if (amount.isPositive()) {
