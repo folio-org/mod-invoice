@@ -41,7 +41,7 @@ public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
   public static final String PROTECTED_AND_MODIFIED_FIELDS = "protectedAndModifiedFields";
   private static final String DOCUMENTS_LOCATION_PREFIX = "/invoice/invoices/%s/documents/%s";
   private byte[] requestBytesArray = new byte[0];
-  private static final long MAX_DOCUMENT_SIZE = 25 * ONE_MB;
+  private static final long MAX_DOCUMENT_SIZE = 7 * ONE_MB;
 
   @Validate
   @Override
