@@ -29,11 +29,11 @@ public class BatchVoucherExportConfigHelper extends AbstractHelper {
 
   public static final String GET_EXPORT_CONFIGS_BY_QUERY = resourcesPath(BATCH_VOUCHER_EXPORT_CONFIGS) + SEARCH_PARAMS;
 
-  BatchVoucherExportConfigHelper(Map<String, String> okapiHeaders, Context ctx, String lang) {
+  public BatchVoucherExportConfigHelper(Map<String, String> okapiHeaders, Context ctx, String lang) {
     this(getHttpClient(okapiHeaders), okapiHeaders, ctx, lang);
   }
 
-  BatchVoucherExportConfigHelper(HttpClientInterface httpClient, Map<String, String> okapiHeaders, Context ctx, String lang) {
+  public BatchVoucherExportConfigHelper(HttpClientInterface httpClient, Map<String, String> okapiHeaders, Context ctx, String lang) {
     super(httpClient, okapiHeaders, ctx, lang);
   }
 

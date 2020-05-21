@@ -1,6 +1,7 @@
 package org.folio.invoices.utils;
 
 import java.io.ByteArrayInputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -9,7 +10,8 @@ import java.util.concurrent.CompletionException;
 
 import org.apache.commons.net.ftp.FTPClient;
 import org.folio.exceptions.FtpException;
-import org.folio.rest.acq.model.BatchVoucher;
+import org.folio.rest.jaxrs.model.BatchVoucher;
+
 
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
@@ -44,11 +46,9 @@ public class FtpUploadHelper implements UploadHelper {
 
       try {
         if (ftp.login(username, password)) {
-          return ftp.getReplyString()
-            .trim();
+          return ftp.getReplyString().trim();
         } else {
-          throw new FtpException(ftp.getReplyCode(), ftp.getReplyString()
-            .trim());
+          throw new FtpException(ftp.getReplyCode(), ftp.getReplyString().trim());
         }
       } catch (Exception e) {
         logger.error("Error logging in", e);
@@ -62,8 +62,7 @@ public class FtpUploadHelper implements UploadHelper {
       try {
         if (ftp != null && ftp.isConnected()) {
           ftp.logout();
-          return ftp.getReplyString()
-            .trim();
+          return ftp.getReplyString().trim();
         }
         return null;
       } catch (Exception e) {
@@ -79,11 +78,9 @@ public class FtpUploadHelper implements UploadHelper {
         .encode()
         .getBytes())) {
         if (ftp.storeFile(filename, is)) {
-          return ftp.getReplyString()
-            .trim();
+          return ftp.getReplyString().trim();
         } else {
-          throw new FtpException(ftp.getReplyCode(), ftp.getReplyString()
-            .trim());
+          throw new FtpException(ftp.getReplyCode(), ftp.getReplyString().trim());
         }
       } catch (Exception e) {
         logger.error("Error uploading", e);

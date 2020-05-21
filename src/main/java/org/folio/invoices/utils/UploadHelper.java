@@ -1,8 +1,9 @@
 package org.folio.invoices.utils;
 
+import org.folio.rest.jaxrs.model.BatchVoucher;
 import java.util.concurrent.CompletableFuture;
 
-import org.folio.rest.acq.model.BatchVoucher;
+
 
 public interface UploadHelper {
 

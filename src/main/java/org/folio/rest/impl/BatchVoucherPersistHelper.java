@@ -12,11 +12,11 @@ import org.folio.services.BatchVoucherGenerateService;
 import io.vertx.core.Context;
 import io.vertx.core.json.JsonObject;
 
-public class BatchVoucherPersisteHelper extends AbstractHelper {
+public class BatchVoucherPersistHelper extends AbstractHelper {
   private final BatchVoucherGenerateService batchVoucherGenerateService;
   private final BatchVoucherExportsHelper batchVoucherExportsHelper;
 
-  public BatchVoucherPersisteHelper(Map<String, String> okapiHeaders, Context ctx, String lang) {
+  public BatchVoucherPersistHelper(Map<String, String> okapiHeaders, Context ctx, String lang) {
     super(okapiHeaders, ctx, lang);
     this.batchVoucherGenerateService = new BatchVoucherGenerateService(okapiHeaders, ctx, lang);
     this.batchVoucherExportsHelper = new BatchVoucherExportsHelper(okapiHeaders, ctx, lang);

@@ -11,7 +11,7 @@ import java.util.concurrent.CompletableFuture;
 import javax.ws.rs.core.Response;
 
 import org.folio.invoices.rest.exceptions.HttpException;
-import org.folio.rest.impl.BatchVoucherPersisteHelper;
+import org.folio.rest.impl.BatchVoucherPersistHelper;
 import org.folio.rest.jaxrs.model.BatchVoucherExport;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -42,7 +42,7 @@ public class BatchVoucherPersistHandler implements Handler<Message<JsonObject>> 
 
     logger.debug("Received message body: {}", body);
 
-    BatchVoucherPersisteHelper manager = new BatchVoucherPersisteHelper(okapiHeaders, ctx, body.getString(LANG));
+    BatchVoucherPersistHelper manager = new BatchVoucherPersistHelper(okapiHeaders, ctx, body.getString(LANG));
     getBatchVoucherBody(body)
       .thenCompose(manager::persistBatchVoucher)
       .handle((ok, fail) -> {

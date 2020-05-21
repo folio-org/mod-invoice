@@ -14,7 +14,8 @@ import java.util.concurrent.TimeoutException;
 
 import org.folio.exceptions.FtpException;
 import org.folio.invoices.utils.FtpUploadHelper;
-import org.folio.rest.acq.model.BatchVoucher;
+
+import org.folio.rest.jaxrs.model.BatchVoucher;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
