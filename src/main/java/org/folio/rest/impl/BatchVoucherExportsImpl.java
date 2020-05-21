@@ -1,6 +1,9 @@
 package org.folio.rest.impl;
 
 import static io.vertx.core.Future.succeededFuture;
+import static org.folio.invoices.utils.ErrorCodes.GENERIC_ERROR_CODE;
+import static org.folio.rest.jaxrs.resource.BatchVoucherBatchVoucherExports.PostBatchVoucherBatchVoucherExportsUploadByIdResponse.respond202WithApplicationJson;
+import static org.folio.rest.jaxrs.resource.BatchVoucherBatchVoucherExports.PostBatchVoucherBatchVoucherExportsUploadByIdResponse.respond500WithApplicationJson;
 
 import java.util.Map;
 
@@ -9,6 +12,7 @@ import javax.ws.rs.core.Response;
 import org.folio.rest.annotations.Validate;
 import org.folio.rest.jaxrs.model.BatchVoucherExport;
 import org.folio.rest.jaxrs.resource.BatchVoucherBatchVoucherExports;
+import org.folio.services.UploadBatchVoucherExportService;
 
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Context;
@@ -83,7 +87,10 @@ public class BatchVoucherExportsImpl implements BatchVoucherBatchVoucherExports 
   @Override
   public void postBatchVoucherBatchVoucherExportsUploadById(String id, String lang, Map<String, String> okapiHeaders,
       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
-    asyncResultHandler.handle(succeededFuture(PostBatchVoucherBatchVoucherExportsUploadByIdResponse.respond500WithApplicationJson(NOT_SUPPORTED)));
+    UploadBatchVoucherExportService uploadService = new UploadBatchVoucherExportService(okapiHeaders, vertxContext, lang);
+    uploadService.uploadBatchVoucherExport(id)
+      .thenAccept(batchVoucherExport -> asyncResultHandler.handle(succeededFuture(respond202WithApplicationJson(batchVoucherExport))))
+      .exceptionally(t ->  handleErrorResponse(asyncResultHandler));
   }
 
   @Validate
@@ -102,6 +109,10 @@ public class BatchVoucherExportsImpl implements BatchVoucherBatchVoucherExports 
 
   private Void handleErrorResponse(Handler<AsyncResult<Response>> asyncResultHandler, AbstractHelper helper, Throwable t) {
     asyncResultHandler.handle(succeededFuture(helper.buildErrorResponse(t)));
+    return null;
+  }
+  private Void handleErrorResponse(Handler<AsyncResult<Response>> asyncResultHandler) {
+    asyncResultHandler.handle(succeededFuture(PostBatchVoucherBatchVoucherExportsScheduledResponse.respond500WithApplicationJson(NOT_SUPPORTED)));
     return null;
   }
 }

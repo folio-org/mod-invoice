@@ -8,6 +8,7 @@ import org.folio.rest.impl.BatchVoucherExportsHelper;
 import org.folio.rest.impl.BatchVoucherHelper;
 import org.folio.rest.jaxrs.model.BatchVoucher;
 import org.folio.rest.jaxrs.model.BatchVoucherExport;
+import org.folio.rest.jaxrs.model.ExportConfig;
 import java.net.URISyntaxException;
 import java.util.Map;
 import java.util.Objects;
@@ -22,28 +23,32 @@ public class UploadBatchVoucherExportService {
   private final BatchVoucherHelper bvHelper;
   private final BatchVoucherExportConfigHelper bvExportConfigHelper;
   private final BatchVoucherExportsHelper bvExportsHelper;
-  private final BatchVoucherExportsHelper batchVoucherExportsHelper;
 
   public UploadBatchVoucherExportService(Map<String, String> okapiHeaders, Context ctx, String lang) {
     bvHelper = new BatchVoucherHelper(okapiHeaders, ctx, lang);
     bvExportConfigHelper = new BatchVoucherExportConfigHelper(okapiHeaders, ctx, lang);
     bvExportsHelper = new BatchVoucherExportsHelper(okapiHeaders, ctx, lang);
-    batchVoucherExportsHelper = new BatchVoucherExportsHelper(okapiHeaders, ctx, lang);
   }
 
-  public CompletableFuture<Void> uploadBatchVoucherExport(Context ctx, String acceptHeader, String batchVoucherExportId) {
+  public CompletableFuture<Void> uploadBatchVoucherExport(String batchVoucherExportId) {
     CompletableFuture<Void> future = new CompletableFuture<>();
     BatchVoucherUploadHolder uploadHolder = new BatchVoucherUploadHolder();
     return bvExportsHelper.getBatchVoucherExportById(batchVoucherExportId)
                    .thenAccept(uploadHolder::setBatchVoucherExport)
-                   .thenAccept(v -> uploadHolder.setFileFormat(acceptHeader.split("/")[1]))
-                   .thenCompose(v -> getBatchVoucher(uploadHolder.getBatchVoucherExport().getBatchVoucherId(), acceptHeader))
-                   .thenAccept(uploadHolder::setBatchVoucher)
                    .thenCompose(v -> bvExportConfigHelper
                         .getExportConfigs(1, 0, buildExportConfigQuery(uploadHolder.getBatchVoucherExport().getBatchGroupId())))
                    .thenAccept(exportConfigs -> uploadHolder.setExportConfig(exportConfigs.getExportConfigs().get(0)))
+                   .thenAccept(v -> {
+                     String fileFormat = getFileFormat(uploadHolder.getExportConfig());
+                     uploadHolder.setFileFormat(fileFormat);
+                   })
                    .thenCompose(v -> bvExportConfigHelper.getExportConfigCredentials(uploadHolder.getExportConfig().getId()))
                    .thenAccept(uploadHolder::setCredentials)
+                   .thenCompose(v -> {
+                     String fileFormat = uploadHolder.getExportConfig().getFormat().value().toLowerCase();
+                     return getBatchVoucher(uploadHolder.getBatchVoucherExport().getBatchVoucherId(), fileFormat);
+                   })
+                   .thenAccept(uploadHolder::setBatchVoucher)
                    .thenAccept(v -> uploadBatchVoucher(uploadHolder))
                    .handle((v, t) -> {
                      if (Objects.nonNull(t)) {
@@ -62,7 +67,7 @@ public class UploadBatchVoucherExportService {
 
   private void updateBatchVoucherStatus(BatchVoucherExport bvExport, BatchVoucherExport.Status status) {
     bvExport.setStatus(status);
-    batchVoucherExportsHelper.updateBatchVoucherExportRecord(bvExport)
+    bvExportsHelper.updateBatchVoucherExportRecord(bvExport)
                              .handle((voidP, throwable) -> {
                                closeHttpClient();
                                return null;
@@ -106,10 +111,13 @@ public class UploadBatchVoucherExportService {
                   + "." + fileFormat;
   }
 
+  private String getFileFormat(ExportConfig exportConfig) {
+    return exportConfig.getFormat().value().split("/")[1];
+  }
+
   private void closeHttpClient(){
     bvHelper.closeHttpClient();
     bvExportConfigHelper.closeHttpClient();
     bvExportsHelper.closeHttpClient();
-    batchVoucherExportsHelper.closeHttpClient();
   }
 }
