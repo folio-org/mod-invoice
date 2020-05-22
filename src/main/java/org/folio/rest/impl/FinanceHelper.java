@@ -137,15 +137,22 @@ public class FinanceHelper extends AbstractHelper {
       .collect(toList());
   }
 
-  private Transaction buildPendingPaymentTransactionByInvoiceLine(FundDistribution fundDistribution, InvoiceLine invoiceLine, String currency,
+  private Transaction buildPendingPaymentTransactionByInvoiceLine(FundDistribution fundDistribution, InvoiceLine invoiceLine,
+    String currency,
     CurrencyConversion conversion) {
     MonetaryAmount amount = getFundDistributionAmount(fundDistribution, invoiceLine.getTotal(), currency).with(conversion);
-    return new Transaction()
+    Transaction transaction = new Transaction();
+
+    if (fundDistribution.getEncumbrance() != null) {
+      transaction
+        .withAwaitingPayment(new AwaitingPayment()
+          .withEncumbranceId(fundDistribution.getEncumbrance())
+          .withReleaseEncumbrance(invoiceLine.getReleaseEncumbrance()));
+    }
+
+    return transaction
       .withTransactionType(TransactionType.PENDING_PAYMENT)
       .withAmount(convertToDoubleWithRounding(amount))
-      .withAwaitingPayment(new AwaitingPayment()
-        .withEncumbranceId(fundDistribution.getEncumbrance())
-        .withReleaseEncumbrance(invoiceLine.getReleaseEncumbrance()))
       .withSource(Source.INVOICE)
       .withSourceInvoiceId(invoiceLine.getInvoiceId())
       .withSourceInvoiceLineId(invoiceLine.getId())
@@ -175,7 +182,7 @@ public class FinanceHelper extends AbstractHelper {
       .withCurrency(invoice.getCurrency())
       .withSourceInvoiceId(invoice.getId())
       .withSource(Source.INVOICE)
-      .withAmount(convertToDoubleWithRounding(amount.abs()))
+      .withAmount(convertToDoubleWithRounding(amount))
       .withFromFundId(fundDistribution.getFundId());
   }
 

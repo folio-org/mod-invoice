@@ -713,21 +713,7 @@ public class InvoiceHelper extends AbstractHelper {
     return new InvoiceTransactionSummary()
       .withId(invoice.getId())
       .withNumPendingPayments(numPendingPayments)
-      .withNumPaymentsCredits(calculatePaymentsAndCreditsNumber(invoice, invoiceLines));
-  }
-
-  private int calculatePaymentsAndCreditsNumber(Invoice invoice, List<InvoiceLine> invoiceLines) {
-    int invoiceLinesTransactionNumber = invoiceLines.stream()
-      .filter(invoiceLine -> invoiceLine.getTotal() != 0)
-      .mapToInt(invoiceLine -> invoiceLine.getFundDistributions().size())
-      .sum();
-
-    int adjustmentTransactionsNumber = invoice.getAdjustments()
-      .stream()
-      .mapToInt(adj -> adj.getFundDistributions().size())
-      .sum();
-
-    return invoiceLinesTransactionNumber + adjustmentTransactionsNumber;
+      .withNumPaymentsCredits(numPendingPayments);
   }
 
   private CompletableFuture<String> createInvoiceTransactionSummary(InvoiceTransactionSummary summary) {
