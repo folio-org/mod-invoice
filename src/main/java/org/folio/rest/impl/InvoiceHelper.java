@@ -703,13 +703,13 @@ public class InvoiceHelper extends AbstractHelper {
 
     return financeHelper.buildPendingPaymentTransactions(invoiceLines, invoice)
       .thenCompose(pendingPayments -> {
-        InvoiceTransactionSummary summary = buildInvoiceTransactionsSummary(invoice, invoiceLines, pendingPayments.size());
+        InvoiceTransactionSummary summary = buildInvoiceTransactionsSummary(invoice, pendingPayments.size());
         return createInvoiceTransactionSummary(summary)
           .thenCompose(s -> postPendingPayments(pendingPayments));
       }).thenApply(aVoid -> invoiceLines);
   }
 
-  private InvoiceTransactionSummary buildInvoiceTransactionsSummary(Invoice invoice, List<InvoiceLine> invoiceLines, int numPendingPayments) {
+  private InvoiceTransactionSummary buildInvoiceTransactionsSummary(Invoice invoice, int numPendingPayments) {
     return new InvoiceTransactionSummary()
       .withId(invoice.getId())
       .withNumPendingPayments(numPendingPayments)
