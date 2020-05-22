@@ -5,8 +5,6 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 
-import org.folio.services.ftp.UploadService;
-import org.folio.services.ftp.UploadServiceFactory;
 import org.folio.models.BatchVoucherUploadHolder;
 import org.folio.rest.impl.BatchVoucherExportConfigHelper;
 import org.folio.rest.impl.BatchVoucherExportsHelper;
@@ -14,6 +12,8 @@ import org.folio.rest.impl.BatchVoucherHelper;
 import org.folio.rest.jaxrs.model.BatchVoucher;
 import org.folio.rest.jaxrs.model.BatchVoucherExport;
 import org.folio.rest.jaxrs.model.ExportConfig;
+import org.folio.services.ftp.UploadService;
+import org.folio.services.ftp.UploadServiceFactory;
 
 import io.vertx.core.Context;
 import io.vertx.core.json.JsonObject;
@@ -32,6 +32,13 @@ public class UploadBatchVoucherExportService {
     bvHelper = new BatchVoucherHelper(okapiHeaders, ctx, lang);
     bvExportConfigHelper = new BatchVoucherExportConfigHelper(okapiHeaders, ctx, lang);
     bvExportsHelper = new BatchVoucherExportsHelper(okapiHeaders, ctx, lang);
+  }
+
+  public UploadBatchVoucherExportService(BatchVoucherHelper bvHelper, BatchVoucherExportConfigHelper bvExportConfigHelper
+    , BatchVoucherExportsHelper bvExportsHelper) {
+    this.bvHelper = bvHelper;
+    this.bvExportConfigHelper = bvExportConfigHelper;
+    this.bvExportsHelper = bvExportsHelper;
   }
 
   public CompletableFuture<Void> uploadBatchVoucherExport(String batchVoucherExportId, Context ctx) {
@@ -64,6 +71,29 @@ public class UploadBatchVoucherExportService {
     return future;
   }
 
+  public CompletableFuture<Void> uploadBatchVoucher(Context ctx, BatchVoucherUploadHolder uploadHolder) {
+    CompletableFuture<Void> future = new CompletableFuture<>();
+    try {
+      UploadService helper = UploadServiceFactory.get(uploadHolder.getExportConfig().getUploadURI());
+      helper.login(uploadHolder.getCredentials().getUsername(), uploadHolder.getCredentials().getPassword())
+        .thenAccept(LOG::info)
+        .thenCompose(v -> {
+          String fileName = generateFileName(uploadHolder.getBatchVoucher(), uploadHolder.getFileFormat());
+          return helper.upload(ctx, fileName, uploadHolder.getBatchVoucher());
+        })
+        .thenAccept(replyString -> future.complete(null))
+        .exceptionally(t -> {
+          LOG.error(t);
+          future.completeExceptionally(t);
+          return null;
+        });
+    } catch (URISyntaxException e) {
+      future.completeExceptionally(new CompletionException(e));
+    }
+    return future;
+  }
+
+
   private void failUploadUpdate(BatchVoucherExport bvExport, Throwable t) {
     if (bvExport != null) {
       bvExport.setStatus(BatchVoucherExport.Status.ERROR);
@@ -87,28 +117,6 @@ public class UploadBatchVoucherExportService {
                                closeHttpClient();
                                return null;
                              });
-  }
-
-  private CompletableFuture<Void> uploadBatchVoucher(Context ctx, BatchVoucherUploadHolder uploadHolder) {
-    CompletableFuture<Void> future = new CompletableFuture<>();
-      try {
-          UploadService helper = UploadServiceFactory.get(uploadHolder.getExportConfig().getUploadURI());
-          helper.login(uploadHolder.getCredentials().getUsername(), uploadHolder.getCredentials().getPassword())
-            .thenAccept(LOG::info)
-            .thenCompose(v -> {
-              String fileName = generateFileName(uploadHolder.getBatchVoucher(), uploadHolder.getFileFormat());
-              return helper.upload(ctx, fileName, uploadHolder.getBatchVoucher());
-            })
-            .thenAccept(replyString -> future.complete(null))
-            .exceptionally(t -> {
-              LOG.error(t);
-              future.completeExceptionally(t);
-              return null;
-            });
-        } catch (URISyntaxException e) {
-          future.completeExceptionally(new CompletionException(e));
-        }
-      return future;
   }
 
   private CompletableFuture<BatchVoucher> getBatchVoucher(String batchVoucherId, ExportConfig.Format exportFormat) {
