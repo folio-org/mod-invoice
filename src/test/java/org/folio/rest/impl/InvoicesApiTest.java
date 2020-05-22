@@ -158,7 +158,7 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 
-class InvoicesApiTest extends ApiTestBase {
+public class InvoicesApiTest extends ApiTestBase {
 
   private static final Logger logger = LoggerFactory.getLogger(InvoicesApiTest.class);
 
@@ -190,7 +190,7 @@ class InvoicesApiTest extends ApiTestBase {
   public static final String EXISTING_FUND_ID = "1d1574f1-9196-4a57-8d1f-3b2e4309eb81";
 
   @Test
-  void testGetInvoicingInvoices() {
+  public void testGetInvoicingInvoices() {
     logger.info("=== Test Get Invoices by without query - get 200 by successful retrieval of invoices ===");
 
     final InvoiceCollection resp = verifySuccessGet(INVOICE_PATH, InvoiceCollection.class, X_OKAPI_PROTECTED_READ_TENANT);
@@ -208,7 +208,7 @@ class InvoicesApiTest extends ApiTestBase {
   }
 
   @Test
-  void testGetInvoicingInvoicesWithQueryParam() {
+  public void testGetInvoicingInvoicesWithQueryParam() {
     logger.info("=== Test Get Invoices with query - get 200 by successful retrieval of invoices by query ===");
 
     String sortBy = " sortBy folioInvoiceNo";
@@ -234,7 +234,7 @@ class InvoicesApiTest extends ApiTestBase {
   }
 
   @Test
-  void testGetInvoicesForUserAssignedToAcqUnits() {
+  public void testGetInvoicesForUserAssignedToAcqUnits() {
     logger.info("=== Test Get Invoices by query - user assigned to acq units ===");
 
     Headers headers = prepareHeaders(X_OKAPI_URL, NON_EXIST_CONFIG_X_OKAPI_TENANT, X_OKAPI_USER_ID_WITH_ACQ_UNITS);
@@ -257,7 +257,7 @@ class InvoicesApiTest extends ApiTestBase {
   }
 
   @Test
-  void testGetInvoicesBadQuery() {
+  public void testGetInvoicesBadQuery() {
     logger.info("=== Test Get Invoices by query - unprocessable query to emulate 400 from storage ===");
 
     String endpointQuery = String.format("%s?query=%s", INVOICE_PATH,  BAD_QUERY);
@@ -266,7 +266,7 @@ class InvoicesApiTest extends ApiTestBase {
   }
 
   @Test
-  void testGetInvoicesInternalServerError() {
+  public void testGetInvoicesInternalServerError() {
     logger.info("=== Test Get Invoices by query - emulating 500 from storage ===");
 
     String endpointQuery = String.format("%s?query=%s", INVOICE_PATH,  ID_FOR_INTERNAL_SERVER_ERROR);
@@ -276,14 +276,14 @@ class InvoicesApiTest extends ApiTestBase {
   }
 
   @Test
-  void testGetInvoicingInvoicesBadRequestUrl() {
+  public void testGetInvoicingInvoicesBadRequestUrl() {
     logger.info("=== Test Get Invoices by query - emulating 400 by sending bad request Url ===");
 
     verifyGet(INVOICE_PATH_BAD, TEXT_PLAIN, 400);
   }
 
   @Test
-  void testGetInvoicingInvoicesById() {
+  public void testGetInvoicingInvoicesById() {
     logger.info("=== Test Get Invoice By Id ===");
 
     final Invoice resp = verifySuccessGet(String.format(INVOICE_ID_PATH, APPROVED_INVOICE_ID), Invoice.class);
@@ -298,7 +298,7 @@ class InvoicesApiTest extends ApiTestBase {
   }
 
   @Test
-  void testGetOutdatedOpenInvoiceById() {
+  public void testGetOutdatedOpenInvoiceById() {
     logger.info("=== Test Get Invoice By Id - invoice totals are outdated ===");
     Invoice invoice = getMockAsJson(APPROVED_INVOICE_SAMPLE_PATH).mapTo(Invoice.class);
     invoice.setStatus(Invoice.Status.OPEN);
@@ -322,7 +322,7 @@ class InvoicesApiTest extends ApiTestBase {
   }
 
   @Test
-  void testGetInvoiceWithoutLines() throws IOException {
+  public void testGetInvoiceWithoutLines() throws IOException {
     logger.info("=== Test Get Invoice without associated invoice lines ===");
 
     // ===  Preparing invoice for test with random id to make sure no lines exists  ===
@@ -350,7 +350,7 @@ class InvoicesApiTest extends ApiTestBase {
   }
 
   @Test
-  void testGetInvoiceWithoutLinesButProratedAdjustments() throws IOException {
+  public void testGetInvoiceWithoutLinesButProratedAdjustments() throws IOException {
     logger.info("=== Test Get Invoice without associated invoice lines ===");
 
     // ===  Preparing invoice for test with random id to make sure no lines exists  ===
@@ -384,7 +384,7 @@ class InvoicesApiTest extends ApiTestBase {
   }
 
   @Test
-  void testGetInvoiceByIdUpdateTotalException() {
+  public void testGetInvoiceByIdUpdateTotalException() {
     logger.info("=== Test success response when error happens while updating record back in storage ===");
 
     Invoice invoice = getMockAsJson(APPROVED_INVOICE_SAMPLE_PATH).mapTo(Invoice.class)
@@ -398,7 +398,7 @@ class InvoicesApiTest extends ApiTestBase {
   }
 
   @Test
-  void testGetInvoicingInvoicesByIdNotFound() {
+  public void testGetInvoicingInvoicesByIdNotFound() {
     logger.info("=== Test Get Invoices by Id - 404 Not found ===");
 
     final Response resp = verifyGet(String.format(INVOICE_ID_PATH, BAD_INVOICE_ID), APPLICATION_JSON, 404);
@@ -414,7 +414,7 @@ class InvoicesApiTest extends ApiTestBase {
   }
 
   @Test
-  void testUpdateValidInvoice() {
+  public void testUpdateValidInvoice() {
     logger.info("=== Test update invoice by id ===");
 
      String newInvoiceNumber = "testFolioInvoiceNumber";
@@ -430,7 +430,7 @@ class InvoicesApiTest extends ApiTestBase {
   }
 
   @Test
-  void testTransitionFromOpenToApproved() {
+  public void testTransitionFromOpenToApproved() {
     logger.info("=== Test transition invoice to Approved ===");
 
     Adjustment adjustment1 = new Adjustment()
@@ -493,7 +493,7 @@ class InvoicesApiTest extends ApiTestBase {
   }
 
   @Test
-  void testTransitionFromOpenToApprovedWithAmountTypeFundDistributions() {
+  public void testTransitionFromOpenToApprovedWithAmountTypeFundDistributions() {
     logger.info("=== Test transition invoice to Approved ===");
 
     List<InvoiceLine> invoiceLines = getMockAsJson(INVOICE_LINES_LIST_PATH).mapTo(InvoiceLineCollection.class).getInvoiceLines();
@@ -533,7 +533,7 @@ class InvoicesApiTest extends ApiTestBase {
   }
 
   @Test
-  void testTransitionFromOpenToApprovedWithMixedTypesFundDistributions() {
+  public void testTransitionFromOpenToApprovedWithMixedTypesFundDistributions() {
     logger.info("=== Test transition invoice to Approved ===");
 
     Invoice reqData = getMockAsJson(OPEN_INVOICE_SAMPLE_PATH).mapTo(Invoice.class);
@@ -575,7 +575,7 @@ class InvoicesApiTest extends ApiTestBase {
   }
 
   @Test
-  void testTransitionFromOpenToApprovedWithMixedTypesFundDistributionsInvalidSummary() {
+  public void testTransitionFromOpenToApprovedWithMixedTypesFundDistributionsInvalidSummary() {
     logger.info("=== Test transition invoice to Approved ===");
 
     Invoice reqData = getMockAsJson(OPEN_INVOICE_SAMPLE_PATH).mapTo(Invoice.class);
@@ -661,7 +661,7 @@ class InvoicesApiTest extends ApiTestBase {
   }
 
   @Test
-  void testInvoiceTransitionFailureOnPaidStatus() {
+  public void testInvoiceTransitionFailureOnPaidStatus() {
     logger.info(
         "=== Test invoice cannot be transitioned to \"Open\", \"Reviewed\", \"Cancelled\" or \"Approved\" status if it is in \"Paid\" status ===");
 
@@ -678,7 +678,7 @@ class InvoicesApiTest extends ApiTestBase {
   }
 
   @Test
-  void testTransitionFromOpenToApprovedWithMissingExternalAccountNumber() {
+  public void testTransitionFromOpenToApprovedWithMissingExternalAccountNumber() {
     logger.info("=== Test transition invoice to Approved with missing external account number ===");
 
     InvoiceLine invoiceLine = getMockAsJson(INVOICE_LINE_WITH_APPROVED_INVOICE_SAMPLE_PATH).mapTo(InvoiceLine.class);
@@ -708,7 +708,7 @@ class InvoicesApiTest extends ApiTestBase {
   }
 
   @Test
-  void testTransitionToApprovedWithEmptyConfig() {
+  public void testTransitionToApprovedWithEmptyConfig() {
     logger.info("=== Test transition invoice to Approved with empty config ===");
 
     Invoice reqData = getMockAsJson(REVIEWED_INVOICE_SAMPLE_PATH).mapTo(Invoice.class);
@@ -760,7 +760,7 @@ class InvoicesApiTest extends ApiTestBase {
   }
 
   @Test
-  void testTransitionToApprovedWithExistingVoucherAndVoucherLines() {
+  public void testTransitionToApprovedWithExistingVoucherAndVoucherLines() {
     logger.info("=== Test transition invoice to Approved with existing voucher and voucherLines ===");
 
     InvoiceLine invoiceLine = getMockAsJson(INVOICE_LINE_WITH_APPROVED_INVOICE_SAMPLE_PATH).mapTo(InvoiceLine.class);
@@ -800,7 +800,7 @@ class InvoicesApiTest extends ApiTestBase {
   }
 
   @Test
-  void testTransitionToApprovedWithInvalidVoucherNumberPrefix() {
+  public void testTransitionToApprovedWithInvalidVoucherNumberPrefix() {
     logger.info("=== Test transition invoice to Approved with invalid voucher number prefix ===");
 
     Headers headers = prepareHeaders(X_OKAPI_URL, INVALID_PREFIX_CONFIG_X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID);
@@ -817,7 +817,7 @@ class InvoicesApiTest extends ApiTestBase {
   }
 
   @Test
-  void testTransitionToApprovedInvalidCurrency() {
+  public void testTransitionToApprovedInvalidCurrency() {
     logger.info("=== Test transition invoice to Approved with invalid invoiceCurrency ===");
 
     InvoiceLine invoiceLine = getMockAsJson(INVOICE_LINE_WITH_APPROVED_INVOICE_SAMPLE_PATH).mapTo(InvoiceLine.class);
@@ -848,7 +848,7 @@ class InvoicesApiTest extends ApiTestBase {
   }
 
   @Test
-  void testTransitionToApprovedErrorFromModConfig() {
+  public void testTransitionToApprovedErrorFromModConfig() {
     logger.info("=== Test transition invoice to Approved with mod-config error ===");
 
     Errors errors = transitionToApprovedWithError(REVIEWED_INVOICE_SAMPLE_PATH, prepareHeaders(X_OKAPI_URL, ERROR_CONFIG_X_OKAPI_TENANT, X_OKAPI_TOKEN,
@@ -884,7 +884,7 @@ class InvoicesApiTest extends ApiTestBase {
   }
 
   @Test
-  void testTransitionToApprovedWithoutInvoiceLines() {
+  public void testTransitionToApprovedWithoutInvoiceLines() {
     logger.info("=== Test transition invoice to Approved without invoiceLines should fail ===");
 
     Invoice reqData = getMockAsJson(REVIEWED_INVOICE_WITH_EXISTING_VOUCHER_SAMPLE_PATH).mapTo(Invoice.class);
@@ -907,7 +907,7 @@ class InvoicesApiTest extends ApiTestBase {
   }
 
   @Test
-  void testTransitionToApprovedWithFundDistributionsNull() {
+  public void testTransitionToApprovedWithFundDistributionsNull() {
     logger.info("=== Test transition invoice to Approved with Fund Distributions empty will fail ===");
 
     InvoiceLine invoiceLine = getMockAsJson(INVOICE_LINE_WITH_APPROVED_INVOICE_SAMPLE_PATH).mapTo(InvoiceLine.class);
@@ -936,7 +936,7 @@ class InvoicesApiTest extends ApiTestBase {
   }
 
   @Test
-  void testTransitionToApprovedWithFundDistributionsEmpty() {
+  public void testTransitionToApprovedWithFundDistributionsEmpty() {
     logger.info("=== Test transition invoice to Approved with Fund Distributions empty will fail ===");
 
     InvoiceLine invoiceLine = getMockAsJson(INVOICE_LINE_WITH_APPROVED_INVOICE_SAMPLE_PATH).mapTo(InvoiceLine.class);
@@ -965,7 +965,7 @@ class InvoicesApiTest extends ApiTestBase {
   }
 
   @Test
-  void testTransitionToApprovedWithFundDistributionsTotalPercentageNot100() {
+  public void testTransitionToApprovedWithFundDistributionsTotalPercentageNot100() {
     logger.info("=== Test transition invoice to Approved with Fund Distributions empty will fail ===");
 
     InvoiceLine invoiceLine = getMockAsJson(INVOICE_LINE_WITH_APPROVED_INVOICE_SAMPLE_PATH).mapTo(InvoiceLine.class);
@@ -995,7 +995,7 @@ class InvoicesApiTest extends ApiTestBase {
   }
 
   @Test
-  void testTransitionToApprovedWithFundDistributionsTotalAmountNotEqualToLineTotal() {
+  public void testTransitionToApprovedWithFundDistributionsTotalAmountNotEqualToLineTotal() {
     logger.info("=== Test transition invoice to Approved with Fund Distributions empty will fail ===");
 
     InvoiceLine invoiceLine = getMockAsJson(INVOICE_LINE_WITH_APPROVED_INVOICE_SAMPLE_PATH).mapTo(InvoiceLine.class);
@@ -1026,7 +1026,7 @@ class InvoicesApiTest extends ApiTestBase {
   }
 
   @Test
-  void testTransitionToApprovedWithAdjustmentFundDistributionsTotalAmountNotEqualToAdjustmentTotal() {
+  public void testTransitionToApprovedWithAdjustmentFundDistributionsTotalAmountNotEqualToAdjustmentTotal() {
     logger.info("=== Test transition invoice to Approved with adjustment's Fund Distributions amount not equal to adjustment amount will fail ===");
 
     InvoiceLine invoiceLine = getMockAsJson(INVOICE_LINE_WITH_APPROVED_INVOICE_SAMPLE_PATH).mapTo(InvoiceLine.class);
@@ -1075,7 +1075,7 @@ class InvoicesApiTest extends ApiTestBase {
   }
 
   @Test
-  void testTransitionToApprovedWithAdjustmentFundDistributionsNotPresent() {
+  public void testTransitionToApprovedWithAdjustmentFundDistributionsNotPresent() {
     logger.info("=== Test transition invoice to Approved with adjustment's Fund Distributions empty will fail ===");
 
     InvoiceLine invoiceLine = getMockAsJson(INVOICE_LINE_WITH_APPROVED_INVOICE_SAMPLE_PATH).mapTo(InvoiceLine.class);
@@ -1114,7 +1114,7 @@ class InvoicesApiTest extends ApiTestBase {
   }
 
   @Test
-  void testTransitionToApprovedWithoutFundDistrEncumbranceId() {
+  public void testTransitionToApprovedWithoutFundDistrEncumbranceId() {
     logger.info("=== Test transition invoice to Approved without links to encumbrances ===");
 
     InvoiceLine invoiceLine = getMockAsJson(INVOICE_LINE_WITH_APPROVED_INVOICE_SAMPLE_PATH).mapTo(InvoiceLine.class);
@@ -1147,7 +1147,7 @@ class InvoicesApiTest extends ApiTestBase {
   }
 
   @Test
-  void testTransitionToApprovedWithFundDistrEncumbranceId() {
+  public void testTransitionToApprovedWithFundDistrEncumbranceId() {
     logger.info("=== Test transition invoice to Approved with links to encumbrances ===");
 
     InvoiceLine invoiceLine = getMockAsJson(INVOICE_LINE_WITH_APPROVED_INVOICE_SAMPLE_PATH).mapTo(InvoiceLine.class);
@@ -1212,7 +1212,7 @@ class InvoicesApiTest extends ApiTestBase {
   }
 
   @Test
-  void testTransitionToApprovedWithInternalServerErrorFromGetInvoiceLines() {
+  public void testTransitionToApprovedWithInternalServerErrorFromGetInvoiceLines() {
     logger.info("=== Test transition invoice to Approved with Internal Server Error when retrieving invoiceLines ===");
 
     Headers headers = prepareHeaders(X_OKAPI_URL, MockServer.GET_INVOICE_LINES_ERROR_X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID);
@@ -1225,7 +1225,7 @@ class InvoicesApiTest extends ApiTestBase {
   }
 
   @Test
-  void testTransitionToApprovedFundsNotFound() {
+  public void testTransitionToApprovedFundsNotFound() {
     logger.info("=== Test transition invoice to Approved when fund not found ===");
 
     InvoiceLine invoiceLine = getMockAsJson(INVOICE_LINE_WITH_APPROVED_INVOICE_SAMPLE_PATH).mapTo(InvoiceLine.class);
@@ -1255,7 +1255,7 @@ class InvoicesApiTest extends ApiTestBase {
   }
 
   @Test
-  void testTransitionToApprovedWithInternalServerErrorFromGetFunds() {
+  public void testTransitionToApprovedWithInternalServerErrorFromGetFunds() {
     logger.info("=== Test transition invoice to Approved with Internal Server Error when retrieving funds ===");
 
     Headers headers = prepareHeaders(X_OKAPI_URL, MockServer.GET_FUNDS_ERROR_X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID);
@@ -1268,7 +1268,7 @@ class InvoicesApiTest extends ApiTestBase {
   }
 
   @Test
-  void testTransitionToApprovedWithErrorFromGetVouchersByInvoiceId() {
+  public void testTransitionToApprovedWithErrorFromGetVouchersByInvoiceId() {
     logger.info("=== Test transition invoice to Approved when searching existing voucher ===");
 
     Headers headers = prepareHeaders(X_OKAPI_URL, MockServer.GET_VOUCHERS_ERROR_X_OKAPI_TENANT, X_OKAPI_TOKEN);
@@ -1280,7 +1280,7 @@ class InvoicesApiTest extends ApiTestBase {
   }
 
   @Test
-  void testTransitionToApprovedWithErrorFromUpdateVoucherById() {
+  public void testTransitionToApprovedWithErrorFromUpdateVoucherById() {
     logger.info("=== Test transition invoice to Approved with error when updating existing voucher  ===");
 
     Headers headers = prepareHeaders(X_OKAPI_URL, MockServer.UPDATE_VOUCHER_ERROR_X_OKAPI_TENANT, X_OKAPI_TOKEN);
@@ -1292,7 +1292,7 @@ class InvoicesApiTest extends ApiTestBase {
   }
 
   @Test
-  void testTransitionToApprovedWithErrorFromCreateVoucher() {
+  public void testTransitionToApprovedWithErrorFromCreateVoucher() {
     logger.info("=== Test transition invoice to Approved with error when creating voucher  ===");
 
     Headers headers = prepareHeaders(X_OKAPI_URL, MockServer.CREATE_VOUCHER_ERROR_X_OKAPI_TENANT, X_OKAPI_TOKEN);
@@ -1304,7 +1304,7 @@ class InvoicesApiTest extends ApiTestBase {
   }
 
   @Test
-  void testTransitionToApprovedWithErrorFromGetVoucherLines() {
+  public void testTransitionToApprovedWithErrorFromGetVoucherLines() {
     logger.info("=== Test transition invoice to Approved with error when getting voucherLines  ===");
 
     Headers headers = prepareHeaders(X_OKAPI_URL, MockServer.GET_VOUCHER_LINE_ERROR_X_OKAPI_TENANT, X_OKAPI_TOKEN);
@@ -1316,7 +1316,7 @@ class InvoicesApiTest extends ApiTestBase {
   }
 
   @Test
-  void testTransitionToApprovedWithErrorFromCreateVoucherLines() {
+  public void testTransitionToApprovedWithErrorFromCreateVoucherLines() {
     logger.info("=== Test transition invoice to Approved with error when creating voucherLines  ===");
 
     Headers headers = prepareHeaders(X_OKAPI_URL, MockServer.CREATE_VOUCHER_LINE_ERROR_X_OKAPI_TENANT, X_OKAPI_TOKEN);
@@ -1328,7 +1328,7 @@ class InvoicesApiTest extends ApiTestBase {
   }
 
   @Test
-  void testTransitionToApprovedWithErrorFromCreateInvoiceTransactionSummary() {
+  public void testTransitionToApprovedWithErrorFromCreateInvoiceTransactionSummary() {
     logger.info("=== Test transition invoice to Approved with error when creating InvoiceTransactionSummary  ===");
 
     Headers headers = prepareHeaders(X_OKAPI_URL, MockServer.CREATE_INVOICE_TRANSACTION_SUMMARY_ERROR_X_OKAPI_TENANT, X_OKAPI_TOKEN);
@@ -1340,7 +1340,7 @@ class InvoicesApiTest extends ApiTestBase {
   }
 
   @Test
-  void testTransitionToApprovedWithErrorFromCreateAwaitingPayment() {
+  public void testTransitionToApprovedWithErrorFromCreateAwaitingPayment() {
     logger.info("=== Test transition invoice to Approved with error when creating AwaitingPayment  ===");
 
     Headers headers = prepareHeaders(X_OKAPI_URL, MockServer.POST_PENDING_PAYMENT_ERROR_X_OKAPI_TENANT, X_OKAPI_TOKEN);
@@ -1433,7 +1433,7 @@ class InvoicesApiTest extends ApiTestBase {
   }
 
   @Test
-  void testUpdateValidInvoiceTransitionToPaidWithMissingPoLine() {
+  public void testUpdateValidInvoiceTransitionToPaidWithMissingPoLine() {
     logger.info("=== Test transition invoice to paid with deleted associated poLine ===");
 
     Invoice reqData = getMockAsJson(APPROVED_INVOICE_SAMPLE_PATH).mapTo(Invoice.class).withStatus(Invoice.Status.PAID);
@@ -1456,7 +1456,7 @@ class InvoicesApiTest extends ApiTestBase {
   }
 
   @Test
-  void testUpdateValidInvoiceTransitionToPaidWitErrorOnPoLineUpdate() {
+  public void testUpdateValidInvoiceTransitionToPaidWitErrorOnPoLineUpdate() {
     logger.info("=== Test transition invoice to paid with server error poLine update ===");
 
     Invoice reqData = getMockAsJson(APPROVED_INVOICE_SAMPLE_PATH).mapTo(Invoice.class).withStatus(Invoice.Status.PAID);
@@ -1479,7 +1479,7 @@ class InvoicesApiTest extends ApiTestBase {
   }
 
   @Test
-  void testUpdateValidInvoiceTransitionToPaid() {
+  public void testUpdateValidInvoiceTransitionToPaid() {
     logger.info("=== Test transition invoice to paid and mixed releaseEncumbrance ===");
 
     Invoice reqData = getMockAsJson(APPROVED_INVOICE_SAMPLE_PATH).mapTo(Invoice.class).withStatus(Invoice.Status.PAID);
@@ -1497,7 +1497,7 @@ class InvoicesApiTest extends ApiTestBase {
   }
 
   @Test
-  void testUpdateInvoiceTransitionToPaidPoLineIdNotSpecified() {
+  public void testUpdateInvoiceTransitionToPaidPoLineIdNotSpecified() {
     logger.info("=== Test transition invoice to paid, invoice line doesn't have poLineId ===");
 
     Invoice reqData = getMockAsJson(APPROVED_INVOICE_SAMPLE_PATH).mapTo(Invoice.class).withStatus(Invoice.Status.PAID);
@@ -1533,7 +1533,7 @@ class InvoicesApiTest extends ApiTestBase {
   }
 
   @Test
-  void testUpdateInvoiceTransitionToPaidNoVoucherUpdate() {
+  public void testUpdateInvoiceTransitionToPaidNoVoucherUpdate() {
     logger.info("=== Test transition invoice to paid - voucher already paid ===");
 
     Invoice reqData = getMockAsJson(APPROVED_INVOICE_SAMPLE_PATH).mapTo(Invoice.class).withStatus(Invoice.Status.PAID);
@@ -1556,7 +1556,7 @@ class InvoicesApiTest extends ApiTestBase {
   }
 
   @Test
-  void testUpdateInvoiceTransitionToPaidNoVoucher() {
+  public void testUpdateInvoiceTransitionToPaidNoVoucher() {
     logger.info("=== Test transition invoice to paid - no voucher found ===");
 
     Invoice reqData = getMockAsJson(APPROVED_INVOICE_SAMPLE_PATH).mapTo(Invoice.class).withStatus(Invoice.Status.PAID);
@@ -1573,7 +1573,7 @@ class InvoicesApiTest extends ApiTestBase {
   }
 
   @Test
-  void testUpdateInvoiceTransitionToPaidVoucherUpdateFailure() {
+  public void testUpdateInvoiceTransitionToPaidVoucherUpdateFailure() {
     logger.info("=== Test transition invoice to paid - voucher update failure ===");
 
     Invoice reqData = getMockAsJson(APPROVED_INVOICE_SAMPLE_PATH).mapTo(Invoice.class).withStatus(Invoice.Status.PAID);
@@ -1621,7 +1621,7 @@ class InvoicesApiTest extends ApiTestBase {
   }
 
   @Test
-  void testUpdateValidInvoiceTransitionToPaidReleaseEncumbranceFalse() {
+  public void testUpdateValidInvoiceTransitionToPaidReleaseEncumbranceFalse() {
     logger.info("=== Test transition invoice to paid and releaseEncumbrance false for all invoice lines ===");
 
     Invoice reqData = getMockAsJson(APPROVED_INVOICE_SAMPLE_PATH).mapTo(Invoice.class).withStatus(Invoice.Status.PAID);
@@ -1653,7 +1653,7 @@ class InvoicesApiTest extends ApiTestBase {
   }
 
   @Test
-  void testUpdateValidInvoiceTransitionToPaidReleaseEncumbranceFalseNoPoLineUpdate() {
+  public void testUpdateValidInvoiceTransitionToPaidReleaseEncumbranceFalseNoPoLineUpdate() {
     logger.info("=== Test transition invoice to paid and releaseEncumbrance false for invoice line without poLine update ===");
 
     Invoice reqData = getMockAsJson(APPROVED_INVOICE_SAMPLE_PATH).mapTo(Invoice.class).withStatus(Invoice.Status.PAID);
@@ -1702,7 +1702,7 @@ class InvoicesApiTest extends ApiTestBase {
   }
 
   @Test
-  void testPutInvoiceByIdChangeStatusToPayedFundsNotFound() {
+  public void testPutInvoiceByIdChangeStatusToPayedFundsNotFound() {
     logger.info("=== Test Put Invoice By Id Funds not found ===");
 
 
@@ -1734,7 +1734,7 @@ class InvoicesApiTest extends ApiTestBase {
   }
 
   @Test
-  void testPutInvoiceByIdChangeStatusToPayedGetFundsServerError() {
+  public void testPutInvoiceByIdChangeStatusToPayedGetFundsServerError() {
     logger.info("=== Test Put Invoice By Id, get Funds server error ===");
 
     Invoice reqData = getMockAsJson(APPROVED_INVOICE_SAMPLE_PATH).mapTo(Invoice.class).withStatus(Invoice.Status.PAID);
@@ -1764,7 +1764,7 @@ class InvoicesApiTest extends ApiTestBase {
   }
 
   @Test
-  void testUpdateInvoiceTransitionToPaidTransactionsAlreadyExists() {
+  public void testUpdateInvoiceTransitionToPaidTransactionsAlreadyExists() {
     logger.info("=== Test transition invoice to paid - transactions already exist in finance storage ===");
 
     Invoice reqData = getMockAsJson(APPROVED_INVOICE_SAMPLE_PATH).mapTo(Invoice.class).withStatus(Invoice.Status.PAID);
@@ -1793,7 +1793,7 @@ class InvoicesApiTest extends ApiTestBase {
   }
 
   @Test
-  void testPutInvoiceByIdChangeStatusToPayedCurrentFiscalYearNotFound() {
+  public void testPutInvoiceByIdChangeStatusToPayedCurrentFiscalYearNotFound() {
     logger.info("=== Test Put Invoice By Id, Current fiscal year not found ===");
 
     Invoice reqData = getMockAsJson(APPROVED_INVOICE_SAMPLE_PATH).mapTo(Invoice.class).withStatus(Invoice.Status.PAID);
@@ -1830,7 +1830,7 @@ class InvoicesApiTest extends ApiTestBase {
   }
 
   @Test
-  void testUpdateValidInvoiceTransitionToPaidReleaseEncumbranceTrue() {
+  public void testUpdateValidInvoiceTransitionToPaidReleaseEncumbranceTrue() {
     logger.info("=== Test transition invoice to paid and releaseEncumbrance true for all invoice lines ===");
     List<InvoiceLine> invoiceLines = new ArrayList<>();
     List<CompositePoLine> poLines = new ArrayList<>();
@@ -1874,7 +1874,7 @@ class InvoicesApiTest extends ApiTestBase {
   }
 
   @Test
-  void testUpdateInvoiceWithLockedTotalButWithoutTotal() throws IOException {
+  public void testUpdateInvoiceWithLockedTotalButWithoutTotal() throws IOException {
     logger.info("=== Test validation updating invoice without total which is locked ===");
 
     // ===  Preparing invoice for test  ===
@@ -1892,7 +1892,7 @@ class InvoicesApiTest extends ApiTestBase {
   }
 
   @Test
-  void testUpdateNotExistentInvoice() throws IOException {
+  public void testUpdateNotExistentInvoice() throws IOException {
     logger.info("=== Test update non existent invoice===");
 
     String jsonBody  = getMockData(APPROVED_INVOICE_SAMPLE_PATH);
@@ -1901,7 +1901,7 @@ class InvoicesApiTest extends ApiTestBase {
   }
 
   @Test
-  void testUpdateInvoiceInternalErrorOnStorage() throws IOException {
+  public void testUpdateInvoiceInternalErrorOnStorage() throws IOException {
     logger.info("=== Test update invoice by id with internal server error from storage ===");
 
     String jsonBody  = getMockData(APPROVED_INVOICE_SAMPLE_PATH);
@@ -1910,7 +1910,7 @@ class InvoicesApiTest extends ApiTestBase {
   }
 
   @Test
-  void testUpdateInvoiceByIdWithInvalidFormat() throws IOException {
+  public void testUpdateInvoiceByIdWithInvalidFormat() throws IOException {
 
     String jsonBody  = getMockData(APPROVED_INVOICE_SAMPLE_PATH);
 
@@ -1918,7 +1918,7 @@ class InvoicesApiTest extends ApiTestBase {
   }
 
   @Test
-  void testUpdateInvoiceBadLanguage() throws IOException {
+  public void testUpdateInvoiceBadLanguage() throws IOException {
     String jsonBody  = getMockData(APPROVED_INVOICE_SAMPLE_PATH);
     String endpoint = String.format(INVOICE_ID_WITH_LANG_PATH, VALID_UUID, INVALID_LANG) ;
 
@@ -1926,7 +1926,7 @@ class InvoicesApiTest extends ApiTestBase {
   }
 
   @Test
-  void testPostInvoicingInvoices() throws Exception {
+  public void testPostInvoicingInvoices() throws Exception {
     logger.info("=== Test create invoice without id and folioInvoiceNo ===");
 
     String body = getMockData(APPROVED_INVOICE_SAMPLE_PATH);
@@ -1945,7 +1945,7 @@ class InvoicesApiTest extends ApiTestBase {
   }
 
   @Test
-  void testCreateInvoiceWithLockedTotalAndTwoAdjustments() throws IOException {
+  public void testCreateInvoiceWithLockedTotalAndTwoAdjustments() throws IOException {
     logger.info("=== Test create invoice with locked total and 2 adjustments ===");
 
     // ===  Preparing invoice for test  ===
@@ -1970,7 +1970,7 @@ class InvoicesApiTest extends ApiTestBase {
   }
 
   @Test
-  void testCreateInvoiceWithTwoProratedAdjustmentsNoLines() throws IOException {
+  public void testCreateInvoiceWithTwoProratedAdjustmentsNoLines() throws IOException {
     logger.info(
         "=== Test create invoice with 1 prorated and 1 not prorated adjustments with no lines - adjustmentTotal should always be calculated irrespective if there are any invoiceLines or not===");
 
@@ -1998,7 +1998,7 @@ class InvoicesApiTest extends ApiTestBase {
   }
 
   @Test
-  void testCreateInvoiceWithLockedTotalAndTwoProratedAdjustments() throws IOException {
+  public void testCreateInvoiceWithLockedTotalAndTwoProratedAdjustments() throws IOException {
     logger.info("=== Test create invoice with locked total and 2 prorated adjustments ===");
 
     // ===  Preparing invoice for test  ===
@@ -2024,7 +2024,7 @@ class InvoicesApiTest extends ApiTestBase {
   }
 
   @Test
-  void testCreateInvoiceWithNonLockedTotalAndWithoutAdjustments() throws IOException {
+  public void testCreateInvoiceWithNonLockedTotalAndWithoutAdjustments() throws IOException {
     logger.info("=== Test create invoice without total and no adjustments ===");
 
     // ===  Preparing invoice for test  ===
@@ -2049,7 +2049,7 @@ class InvoicesApiTest extends ApiTestBase {
   }
 
   @Test
-  void testPostInvoicingInvoicesErrorFromStorage() throws Exception {
+  public void testPostInvoicingInvoicesErrorFromStorage() throws Exception {
     logger.info("=== Test create invoice without with error from storage on saving invoice  ===");
 
     Invoice reqData = getMockAsJson(APPROVED_INVOICE_SAMPLE_PATH).mapTo(Invoice.class);
@@ -2063,7 +2063,7 @@ class InvoicesApiTest extends ApiTestBase {
   }
 
   @Test
-  void testPostInvoicingInvoicesWithInvoiceNumberGenerationFail() throws IOException {
+  public void testPostInvoicingInvoicesWithInvoiceNumberGenerationFail() throws IOException {
     logger.info("=== Test create invoice without error from storage on folioInvoiceNo generation  ===");
 
     Invoice reqData = getMockAsJson(APPROVED_INVOICE_SAMPLE_PATH).mapTo(Invoice.class);
@@ -2076,7 +2076,7 @@ class InvoicesApiTest extends ApiTestBase {
   }
 
   @Test
-  void testCreateInvoiceWithLockedTotalButWithoutTotal() throws IOException {
+  public void testCreateInvoiceWithLockedTotalButWithoutTotal() throws IOException {
     logger.info("=== Test validation on creating Invoice without total which is locked ===");
 
     // ===  Preparing invoice for test  ===
@@ -2094,34 +2094,34 @@ class InvoicesApiTest extends ApiTestBase {
   }
 
   @Test
-  void testGetInvoiceNumber() {
+  public void testGetInvoiceNumber() {
     logger.info("=== Test Get Invoice number - not implemented ===");
 
     verifyGet(INVOICE_NUMBER_PATH, TEXT_PLAIN, 500);
   }
 
   @Test
-  void testDeleteInvoiceByValidId() {
+  public void testDeleteInvoiceByValidId() {
     verifyDeleteResponse(String.format(INVOICE_ID_PATH, APPROVED_INVOICE_ID), "", 204);
   }
 
   @Test
-  void testDeleteInvoiceByIdWithInvalidFormat() {
+  public void testDeleteInvoiceByIdWithInvalidFormat() {
     verifyDeleteResponse(String.format(INVOICE_ID_PATH, ID_BAD_FORMAT), TEXT_PLAIN, 400);
   }
 
   @Test
-  void testDeleteNotExistentInvoice() {
+  public void testDeleteNotExistentInvoice() {
     verifyDeleteResponse(String.format(INVOICE_ID_PATH, ID_DOES_NOT_EXIST), APPLICATION_JSON, 404);
   }
 
   @Test
-  void testDeleteInvoiceInternalErrorOnStorage() {
+  public void testDeleteInvoiceInternalErrorOnStorage() {
     verifyDeleteResponse(String.format(INVOICE_ID_PATH, ID_FOR_INTERNAL_SERVER_ERROR), APPLICATION_JSON, 500);
   }
 
   @Test
-  void testDeleteInvoiceBadLanguage() {
+  public void testDeleteInvoiceBadLanguage() {
 
     String endpoint = String.format(INVOICE_ID_WITH_LANG_PATH, VALID_UUID, INVALID_LANG) ;
 
@@ -2129,7 +2129,7 @@ class InvoicesApiTest extends ApiTestBase {
   }
 
   @Test
-  void testNumberOfRequests() {
+  public void testNumberOfRequests() {
     logger.info("=== Test number of requests on invoice PUT ===");
 
     // Invoice status APPROVED, PAID, CANCELLED - expect invoice updating with GET invoice rq + PUT invoice rq by statuses processable flow
@@ -2171,7 +2171,7 @@ class InvoicesApiTest extends ApiTestBase {
   }
 
   @Test
-  void testCreateOpenedInvoiceWithIncompatibleFields() {
+  public void testCreateOpenedInvoiceWithIncompatibleFields() {
     logger.info("=== Test create opened invoice with 'approvedBy' and 'approvedDate' fields ===");
 
     Invoice invoice = getMockAsJson(OPEN_INVOICE_WITH_APPROVED_FILEDS_SAMPLE_PATH).mapTo(Invoice.class);
@@ -2181,7 +2181,7 @@ class InvoicesApiTest extends ApiTestBase {
   }
 
   @Test
-  void testUpdateOpenedInvoiceWithIncompatibleFields() {
+  public void testUpdateOpenedInvoiceWithIncompatibleFields() {
     logger.info("=== Test update opened invoice with 'approvedBy' and 'approvedDate' fields ===");
 
     Invoice invoice = getMockAsJson(OPEN_INVOICE_WITH_APPROVED_FILEDS_SAMPLE_PATH).mapTo(Invoice.class);
@@ -2191,7 +2191,7 @@ class InvoicesApiTest extends ApiTestBase {
   }
 
   @Test
-  void testUpdateInvoiceWithProtectedFields() throws IllegalAccessException {
+  public void testUpdateInvoiceWithProtectedFields() throws IllegalAccessException {
     logger.info("=== Test update invoice by id with protected fields (all fields set) ===");
 
     Invoice invoice = getMockAsJson(APPROVED_INVOICE_SAMPLE_PATH).mapTo(Invoice.class);
@@ -2228,7 +2228,7 @@ class InvoicesApiTest extends ApiTestBase {
   }
 
   @Test
-  void testUpdateInvoiceTotalValidation() throws IOException {
+  public void testUpdateInvoiceTotalValidation() throws IOException {
     logger.info("=== Test update invoice with locked total changing total value ===");
 
     Invoice invoice = new JsonObject(getMockData(APPROVED_INVOICE_SAMPLE_PATH)).mapTo(Invoice.class);
