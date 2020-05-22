@@ -52,7 +52,8 @@ public class BatchVoucherExportsHelper extends AbstractHelper {
    */
   public CompletableFuture<BatchVoucherExport> getBatchVoucherExportById(String id) {
     CompletableFuture<BatchVoucherExport> future = new VertxCompletableFuture<>(ctx);
-    getBatchVoucherExportById(id, lang, httpClient, ctx, okapiHeaders, logger).thenAccept(future::complete)
+    getBatchVoucherExportById(id, lang, httpClient, ctx, okapiHeaders, logger)
+      .thenAccept(future::complete)
       .exceptionally(t -> {
         logger.error("Failed to retrieve batch voucher export ", t.getCause());
         future.completeExceptionally(t);

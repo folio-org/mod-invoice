@@ -51,24 +51,38 @@ public class UploadBatchVoucherExportService {
                    .thenCompose(v -> getBatchVoucher(uploadHolder.getBatchVoucherExport().getBatchVoucherId(), uploadHolder.getExportConfig().getFormat()))
                    .thenAccept(uploadHolder::setBatchVoucher)
                    .thenCompose(v -> uploadBatchVoucher(ctx, uploadHolder))
-                   .thenAccept(v -> {
-                     updateBatchVoucherStatus(uploadHolder.getBatchVoucherExport(), BatchVoucherExport.Status.UPLOADED);
-                     LOG.debug("Batch voucher uploaded on FTP");
-                     future.complete(null);
-                   })
-                   .exceptionally(t -> {
-                     uploadHolder.getBatchVoucherExport().setMessage(t.getCause().getMessage());
-                     updateBatchVoucherStatus(uploadHolder.getBatchVoucherExport(), BatchVoucherExport.Status.ERROR);
-                     LOG.error("Exception occurs, when uploading batch voucher", t.getMessage());
+                   .handle((v, throwable) -> {
+                     if (throwable == null) {
+                       succUploadUpdate(uploadHolder.getBatchVoucherExport());
+                     }
+                     else {
+                       failUploadUpdate(uploadHolder.getBatchVoucherExport(), throwable);
+                     }
                      future.complete(null);
                      return null;
                    });
     return future;
   }
 
-  private void updateBatchVoucherStatus(BatchVoucherExport bvExport, BatchVoucherExport.Status status) {
-    bvExport.setStatus(status);
-    bvExportsHelper.updateBatchVoucherExportRecord(bvExport)
+  private void failUploadUpdate(BatchVoucherExport bvExport, Throwable t) {
+    if (bvExport != null) {
+      bvExport.setStatus(BatchVoucherExport.Status.ERROR);
+      bvExport.setMessage(t.getCause().getMessage());
+      updateBatchVoucher(bvExport);
+    }
+    LOG.error("Exception occurs, when uploading batch voucher", t.getMessage());
+  }
+
+  private void succUploadUpdate(BatchVoucherExport bvExport) {
+    if (bvExport != null) {
+      bvExport.setStatus(BatchVoucherExport.Status.UPLOADED);
+      updateBatchVoucher(bvExport);
+      LOG.debug("Batch voucher uploaded on FTP");
+    }
+  }
+
+  private CompletableFuture<Void> updateBatchVoucher(BatchVoucherExport bvExport) {
+    return bvExportsHelper.updateBatchVoucherExportRecord(bvExport)
                              .handle((voidP, throwable) -> {
                                closeHttpClient();
                                return null;

@@ -145,6 +145,6 @@ public class BatchVoucherExportsApiTest extends ApiTestBase {
     given().header(X_OKAPI_TENANT)
       .post(BATCH_VOUCHER_EXPORT_UPLOAD_ENDPOINT_PATH)
       .then()
-      .statusCode(500);
+      .statusCode(202);
   }
 }
