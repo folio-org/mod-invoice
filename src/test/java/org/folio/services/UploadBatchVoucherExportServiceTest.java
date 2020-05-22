@@ -1,6 +1,7 @@
 package org.folio.services;
 
 import static java.util.concurrent.CompletableFuture.completedFuture;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -90,6 +91,7 @@ public class UploadBatchVoucherExportServiceTest extends ApiTestBase {
     verify(bvHelper).getBatchVoucherById(BV_ID, "application/xml");
     verify(bvExportsHelper).updateBatchVoucherExportRecord(any(BatchVoucherExport.class));
     verify(bvExportConfigHelper).getExportConfigs(eq(1), eq(0), anyString());
+    assertSame(bvExport.getStatus(), BatchVoucherExport.Status.UPLOADED);
   }
 
   @Test
