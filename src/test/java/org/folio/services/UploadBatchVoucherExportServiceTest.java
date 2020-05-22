@@ -95,7 +95,7 @@ public class UploadBatchVoucherExportServiceTest extends ApiTestBase {
   }
 
   @Test
-  public void testShouldFailIfBatchVoucherExportNotFound() throws ExecutionException, InterruptedException {
+  public void testShouldFailIfBatchVoucherExportNotFound() {
     //given
     CompletableFuture<BatchVoucherExport> future = new CompletableFuture<>();
     future.completeExceptionally(new HttpException(404, "Not found"));

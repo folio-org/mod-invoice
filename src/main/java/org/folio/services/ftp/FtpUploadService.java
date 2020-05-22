@@ -8,6 +8,7 @@ import java.net.URISyntaxException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.net.ftp.FTP;
 import org.apache.commons.net.ftp.FTPClient;
 import org.folio.exceptions.FtpException;
@@ -29,10 +30,22 @@ public class FtpUploadService implements UploadService {
   private final int port;
 
   public FtpUploadService(String uri) throws URISyntaxException {
+    if (!isUriValid(uri)) {
+      throw new URISyntaxException(uri, "URI should be valid ftp path");
+    }
     this.ftp = new FTPClient();
     URI u = new URI(uri);
     this.server = u.getHost();
     this.port = u.getPort() > 0 ? u.getPort() : 21;
+  }
+
+  public boolean isUriValid(String uri) throws URISyntaxException {
+    String proto = new URI(uri).getScheme();
+    if (StringUtils.isEmpty(proto) || proto.equalsIgnoreCase("FTP")) {
+      return true;
+    } else {
+      return false;
+    }
   }
 
   public CompletableFuture<String> login(String username, String password) {

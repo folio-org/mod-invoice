@@ -37,9 +37,7 @@ public class BatchVoucherExportsImpl implements BatchVoucherBatchVoucherExports 
       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     BatchVoucherExportsHelper helper = new BatchVoucherExportsHelper(okapiHeaders, vertxContext, lang);
     helper.getBatchVoucherExports(limit, offset, query)
-      .thenAccept(batchVoucherExports -> {
-        asyncResultHandler.handle(succeededFuture(helper.buildOkResponse(batchVoucherExports)));
-      })
+      .thenAccept(batchVoucherExports -> asyncResultHandler.handle(succeededFuture(helper.buildOkResponse(batchVoucherExports))))
       .exceptionally(t -> handleErrorResponse(asyncResultHandler, helper, t));
   }
 

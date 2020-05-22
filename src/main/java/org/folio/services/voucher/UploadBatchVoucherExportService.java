@@ -12,8 +12,8 @@ import org.folio.rest.impl.BatchVoucherHelper;
 import org.folio.rest.jaxrs.model.BatchVoucher;
 import org.folio.rest.jaxrs.model.BatchVoucherExport;
 import org.folio.rest.jaxrs.model.ExportConfig;
+import org.folio.services.ftp.FtpUploadService;
 import org.folio.services.ftp.UploadService;
-import org.folio.services.ftp.UploadServiceFactory;
 
 import io.vertx.core.Context;
 import io.vertx.core.json.JsonObject;
@@ -74,7 +74,7 @@ public class UploadBatchVoucherExportService {
   public CompletableFuture<Void> uploadBatchVoucher(Context ctx, BatchVoucherUploadHolder uploadHolder) {
     CompletableFuture<Void> future = new CompletableFuture<>();
     try {
-      UploadService helper = UploadServiceFactory.get(uploadHolder.getExportConfig().getUploadURI());
+      UploadService helper = new FtpUploadService(uploadHolder.getExportConfig().getUploadURI());
       helper.login(uploadHolder.getCredentials().getUsername(), uploadHolder.getCredentials().getPassword())
         .thenAccept(LOG::info)
         .thenCompose(v -> {
