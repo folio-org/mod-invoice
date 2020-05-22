@@ -8,12 +8,15 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 
 import javax.ws.rs.core.Response;
 
+import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.rest.impl.ApiTestBase;
 import org.folio.rest.impl.BatchVoucherExportConfigHelper;
 import org.folio.rest.impl.BatchVoucherExportsHelper;
@@ -25,6 +28,7 @@ import org.folio.rest.jaxrs.model.ExportConfigCollection;
 import org.folio.services.voucher.UploadBatchVoucherExportService;
 import org.junit.Before;
 import org.junit.Test;
+import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
@@ -40,6 +44,8 @@ public class UploadBatchVoucherExportServiceTest extends ApiTestBase {
   private static final String BATCH_VOUCHERS_EXPORT_CONF_PATH = BASE_MOCK_DATA_PATH + "batchVoucherExportConfigs/" + BV_EXPORT_CONF_ID  + ".json";
   private static final String CRED_PATH = BASE_MOCK_DATA_PATH + "credentials/" + CRED_ID  + ".json";
 
+  @InjectMocks
+  UploadBatchVoucherExportService service;
   @Mock
   private BatchVoucherHelper bvHelper;
   @Mock
@@ -59,7 +65,7 @@ public class UploadBatchVoucherExportServiceTest extends ApiTestBase {
   @Test
   public void testShouldSuccessUploadBatchVoucherExport() throws ExecutionException, InterruptedException {
     //given
-    UploadBatchVoucherExportService service = spy(new UploadBatchVoucherExportService(bvHelper, bvExportConfigHelper, bvExportsHelper));
+    UploadBatchVoucherExportService serviceSpy = spy(new UploadBatchVoucherExportService(bvHelper, bvExportConfigHelper, bvExportsHelper));
     BatchVoucher bv = getMockAsJson(BATCH_VOUCHERS_PATH).mapTo(BatchVoucher.class);
     Response.ResponseBuilder responseBuilder = Response.status(200).header("Content-Type", "application/json");
     Response responseBV = responseBuilder.entity(bv).build();
@@ -75,9 +81,9 @@ public class UploadBatchVoucherExportServiceTest extends ApiTestBase {
 
     doReturn(completedFuture(null)).when(bvExportsHelper).updateBatchVoucherExportRecord(any(BatchVoucherExport.class));
     doReturn(completedFuture(responseBV)).when(bvHelper).getBatchVoucherById(anyString(), anyString());
-    doReturn(completedFuture(null)).when(service).uploadBatchVoucher(any(), any());
+    doReturn(completedFuture(null)).when(serviceSpy).uploadBatchVoucher(any(), any());
     //When
-    service.uploadBatchVoucherExport(BV_EXPORT_ID, ctxMock).get();
+    serviceSpy.uploadBatchVoucherExport(BV_EXPORT_ID, ctxMock).get();
     //Then
     verify(bvExportsHelper).getBatchVoucherExportById(BV_EXPORT_ID);
     verify(bvExportConfigHelper).getExportConfigCredentials(bvExportConf.getExportConfigs().get(0).getId());
@@ -86,4 +92,17 @@ public class UploadBatchVoucherExportServiceTest extends ApiTestBase {
     verify(bvExportConfigHelper).getExportConfigs(eq(1), eq(0), anyString());
   }
 
+  @Test
+  public void testShouldFailIfBatchVoucherExportNotFound() throws ExecutionException, InterruptedException {
+    //given
+    CompletableFuture<BatchVoucherExport> future = new CompletableFuture<>();
+    future.completeExceptionally(new HttpException(404, "Not found"));
+    when(bvExportsHelper.getBatchVoucherExportById(BV_EXPORT_ID))
+      .thenReturn(future);
+    //When
+    CompletableFuture<Void> actFuture = service.uploadBatchVoucherExport(BV_EXPORT_ID, ctxMock);
+    //Then
+    actFuture.join();
+    verify(bvExportsHelper).getBatchVoucherExportById(BV_EXPORT_ID);
+  }
 }
