@@ -26,7 +26,7 @@
     <mod-configuration-client.version>5.1.0</mod-configuration-client.version>
     <spring.version>5.1.1.RELEASE</spring.version>
     <sonar.exclusions>**/models/*Holder.java,**/models/*DTO.java</sonar.exclusions>
-    <sonar.test.inclusion>**/*Test.java</sonar.test.inclusion>
+    <sonar.test.exclusions>**/*Test.java</sonar.test.exclusions>
   </properties>
 
   <dependencies>
