@@ -15,7 +15,6 @@ import static org.folio.invoices.utils.AcqDesiredPermissions.ASSIGN;
 import static org.folio.invoices.utils.AcqDesiredPermissions.MANAGE;
 import static org.folio.invoices.utils.ErrorCodes.ADJUSTMENT_FUND_DISTRIBUTIONS_NOT_PRESENT;
 import static org.folio.invoices.utils.ErrorCodes.ADJUSTMENT_FUND_DISTRIBUTIONS_SUMMARY_MISMATCH;
-import static org.folio.invoices.utils.ErrorCodes.AWAITING_PAYMENT_ERROR;
 import static org.folio.invoices.utils.ErrorCodes.EXTERNAL_ACCOUNT_NUMBER_IS_MISSING;
 import static org.folio.invoices.utils.ErrorCodes.FUNDS_NOT_FOUND;
 import static org.folio.invoices.utils.ErrorCodes.FUND_DISTRIBUTIONS_NOT_PRESENT;
@@ -23,6 +22,7 @@ import static org.folio.invoices.utils.ErrorCodes.INCOMPATIBLE_INVOICE_FIELDS_ON
 import static org.folio.invoices.utils.ErrorCodes.INVALID_INVOICE_TRANSITION_ON_PAID_STATUS;
 import static org.folio.invoices.utils.ErrorCodes.INVOICE_TOTAL_REQUIRED;
 import static org.folio.invoices.utils.ErrorCodes.LINE_FUND_DISTRIBUTIONS_SUMMARY_MISMATCH;
+import static org.folio.invoices.utils.ErrorCodes.PENDING_PAYMENT_ERROR;
 import static org.folio.invoices.utils.ErrorCodes.PO_LINE_NOT_FOUND;
 import static org.folio.invoices.utils.ErrorCodes.PO_LINE_UPDATE_FAILURE;
 import static org.folio.invoices.utils.ErrorCodes.USER_HAS_NO_ACQ_PERMISSIONS;
@@ -47,7 +47,7 @@ import static org.folio.invoices.utils.HelperUtils.handleGetRequest;
 import static org.folio.invoices.utils.HelperUtils.handlePutRequest;
 import static org.folio.invoices.utils.HelperUtils.isPostApproval;
 import static org.folio.invoices.utils.ProtectedOperationType.UPDATE;
-import static org.folio.invoices.utils.ResourcePathResolver.AWAITING_PAYMENTS;
+import static org.folio.invoices.utils.ResourcePathResolver.FINANCE_STORAGE_TRANSACTIONS;
 import static org.folio.invoices.utils.ResourcePathResolver.FOLIO_INVOICE_NUMBER;
 import static org.folio.invoices.utils.ResourcePathResolver.FUNDS;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICES;
@@ -90,6 +90,9 @@ import org.folio.rest.acq.model.finance.AwaitingPayment;
 import org.folio.rest.acq.model.finance.Fund;
 import org.folio.rest.acq.model.finance.FundCollection;
 import org.folio.rest.acq.model.finance.InvoiceTransactionSummary;
+import org.folio.rest.acq.model.finance.Transaction;
+import org.folio.rest.acq.model.finance.Transaction.Source;
+import org.folio.rest.acq.model.finance.Transaction.TransactionType;
 import org.folio.rest.acq.model.orders.CompositePoLine;
 import org.folio.rest.jaxrs.model.Adjustment;
 import org.folio.rest.jaxrs.model.Config;
@@ -488,7 +491,7 @@ public class InvoiceHelper extends AbstractHelper {
     return loadTenantConfiguration(SYSTEM_CONFIG_QUERY, VOUCHER_NUMBER_CONFIG_QUERY)
       .thenCompose(ok -> getInvoiceLinesWithTotals(invoice))
       .thenApply(lines -> validateBeforeApproval(invoice, lines))
-      .thenCompose(invoiceLines -> updateEncumbrances(invoiceLines, invoice))
+      .thenCompose(invoiceLines -> createPendingPaymentsWithInvoiceSummary(invoiceLines, invoice))
       .thenCompose(lines -> prepareVoucher(invoice)
           .thenCompose(voucher -> handleVoucherWithLines(getAllFundDistributions(lines, invoice), voucher))
       );
@@ -699,20 +702,20 @@ public class InvoiceHelper extends AbstractHelper {
       });
   }
 
-  private CompletableFuture<List<InvoiceLine>> updateEncumbrances(List<InvoiceLine> invoiceLines, Invoice invoice) {
+  private CompletableFuture<List<InvoiceLine>> createPendingPaymentsWithInvoiceSummary(List<InvoiceLine> invoiceLines, Invoice invoice) {
 
-    return VertxCompletableFuture.supplyBlockingAsync(ctx, () -> buildAwaitingPayments(invoiceLines, invoice))
-      .thenCompose(awaitingPayments -> {
-        InvoiceTransactionSummary summary = buildInvoiceTransactionsSummary(invoice, invoiceLines, awaitingPayments.size());
+    return financeHelper.buildPendingPaymentTransactions(invoiceLines, invoice)
+      .thenCompose(pendingPayments -> {
+        InvoiceTransactionSummary summary = buildInvoiceTransactionsSummary(invoice, invoiceLines, pendingPayments.size());
         return createInvoiceTransactionSummary(summary)
-          .thenCompose(s -> postAwaitingPayments(awaitingPayments));
+          .thenCompose(s -> postPendingPayments(pendingPayments));
       }).thenApply(aVoid -> invoiceLines);
   }
 
-  private InvoiceTransactionSummary buildInvoiceTransactionsSummary(Invoice invoice, List<InvoiceLine> invoiceLines, int numEncumbrances) {
+  private InvoiceTransactionSummary buildInvoiceTransactionsSummary(Invoice invoice, List<InvoiceLine> invoiceLines, int numPendingPayments) {
     return new InvoiceTransactionSummary()
       .withId(invoice.getId())
-      .withNumEncumbrances(numEncumbrances)
+      .withNumPendingPayments(numPendingPayments)
       .withNumPaymentsCredits(calculatePaymentsAndCreditsNumber(invoice, invoiceLines));
   }
 
@@ -734,34 +737,14 @@ public class InvoiceHelper extends AbstractHelper {
     return createRecordInStorage(JsonObject.mapFrom(summary), resourcesPath(INVOICE_TRANSACTION_SUMMARIES));
   }
 
-  private CompletableFuture<Void> postAwaitingPayments(List<AwaitingPayment> awaitingPayments) {
-    return VertxCompletableFuture.allOf(ctx,awaitingPayments.stream()
-      .map(awaitingPayment -> postRecorderWithoutResponseBody(JsonObject.mapFrom(awaitingPayment), resourcesPath(AWAITING_PAYMENTS))
+  private CompletableFuture<Void> postPendingPayments(List<Transaction> pendingPayments) {
+    return VertxCompletableFuture.allOf(ctx, pendingPayments.stream()
+      .map(pendingPayment -> postRecorderWithoutResponseBody(JsonObject.mapFrom(pendingPayment), resourcesPath(FINANCE_STORAGE_TRANSACTIONS))
         .exceptionally(t -> {
-          logger.error("Failed to update encumbrance with id {}", t, awaitingPayment.getEncumbranceId());
-          Parameter parameter = new Parameter().withKey("encumbranceId").withValue(awaitingPayment.getEncumbranceId());
-          throw new HttpException(400, AWAITING_PAYMENT_ERROR.toError().withParameters(Collections.singletonList(parameter)));
+          logger.error("Failed to create pending payment with id {}", t, pendingPayment.getId());
+          throw new HttpException(400, PENDING_PAYMENT_ERROR.toError());
         }))
       .toArray(CompletableFuture[]::new));
-  }
-
-  private List<AwaitingPayment> buildAwaitingPayments(List<InvoiceLine> invoiceLines, Invoice invoice) {
-    CurrencyConversion conversion = getCurrentExchangeRateProvider().getCurrencyConversion(getSystemCurrency());
-    return invoiceLines.stream()
-      .flatMap(line -> line.getFundDistributions().stream()
-        .filter(fundDistribution -> Objects.nonNull(fundDistribution.getEncumbrance()))
-        .map(fundDistribution -> buildAwaitingPaymentByInvoiceLine(fundDistribution, line, invoice.getCurrency(), conversion)))
-      .collect(toList());
-  }
-
-  private AwaitingPayment buildAwaitingPaymentByInvoiceLine(FundDistribution fundDistribution, InvoiceLine invoiceLine, String currency, CurrencyConversion conversion) {
-    MonetaryAmount amount = getFundDistributionAmount(fundDistribution, invoiceLine.getTotal(), currency).with(conversion);
-    return new AwaitingPayment()
-      .withAmountAwaitingPayment(convertToDoubleWithRounding(amount))
-      .withEncumbranceId(fundDistribution.getEncumbrance())
-      .withReleaseEncumbrance(invoiceLine.getReleaseEncumbrance())
-      .withInvoiceId(invoiceLine.getInvoiceId())
-      .withInvoiceLineId(invoiceLine.getId());
   }
 
   private CompletableFuture<Voucher> setExchangeRateFactor(Voucher voucher) {
