@@ -1,9 +1,9 @@
 package org.folio.services;
 
 import static java.util.concurrent.CompletableFuture.completedFuture;
-import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doReturn;
@@ -46,7 +46,7 @@ public class UploadBatchVoucherExportServiceTest extends ApiTestBase {
   private static final String CRED_PATH = BASE_MOCK_DATA_PATH + "credentials/" + CRED_ID  + ".json";
 
   @InjectMocks
-  UploadBatchVoucherExportService service;
+  private UploadBatchVoucherExportService service;
   @Mock
   private BatchVoucherHelper bvHelper;
   @Mock
@@ -63,6 +63,15 @@ public class UploadBatchVoucherExportServiceTest extends ApiTestBase {
     MockitoAnnotations.initMocks(this);
   }
 
+
+  @Test
+  public void testServiceConstructor() {
+    //given
+    UploadBatchVoucherExportService service =  new UploadBatchVoucherExportService(bvHelper, bvExportConfigHelper, bvExportsHelper);
+    //Then
+    assertNotNull(service);
+  }
+
   @Test
   public void testShouldSuccessUploadBatchVoucherExport() throws ExecutionException, InterruptedException {
     //given
@@ -77,11 +86,13 @@ public class UploadBatchVoucherExportServiceTest extends ApiTestBase {
     Credentials credentials = getMockAsJson(CRED_PATH).mapTo(Credentials.class);
     doReturn(completedFuture(bvExport)).when(bvExportsHelper).getBatchVoucherExportById(BV_EXPORT_ID);
 
-    doReturn(completedFuture(credentials)).when(bvExportConfigHelper).getExportConfigCredentials(anyString());
-    doReturn(completedFuture(bvExportConf)).when(bvExportConfigHelper).getExportConfigs(anyInt(), anyInt(), anyString());
+    doReturn(completedFuture(credentials))
+      .when(bvExportConfigHelper).getExportConfigCredentials(bvExportConf.getExportConfigs().get(0).getId());
+    doReturn(completedFuture(bvExportConf))
+      .when(bvExportConfigHelper).getExportConfigs(1, 0, "batchGroupId==" + bvExport.getBatchGroupId());
 
-    doReturn(completedFuture(null)).when(bvExportsHelper).updateBatchVoucherExportRecord(any(BatchVoucherExport.class));
-    doReturn(completedFuture(responseBV)).when(bvHelper).getBatchVoucherById(anyString(), anyString());
+    doReturn(completedFuture(null)).when(bvExportsHelper).updateBatchVoucherExportRecord(eq(bvExport));
+    doReturn(completedFuture(responseBV)).when(bvHelper).getBatchVoucherById(BV_ID, "application/xml");
     doReturn(completedFuture(null)).when(serviceSpy).uploadBatchVoucher(any(), any());
     //When
     serviceSpy.uploadBatchVoucherExport(BV_EXPORT_ID, ctxMock).get();
@@ -89,9 +100,9 @@ public class UploadBatchVoucherExportServiceTest extends ApiTestBase {
     verify(bvExportsHelper).getBatchVoucherExportById(BV_EXPORT_ID);
     verify(bvExportConfigHelper).getExportConfigCredentials(bvExportConf.getExportConfigs().get(0).getId());
     verify(bvHelper).getBatchVoucherById(BV_ID, "application/xml");
-    verify(bvExportsHelper).updateBatchVoucherExportRecord(any(BatchVoucherExport.class));
+    verify(bvExportsHelper).updateBatchVoucherExportRecord(eq(bvExport));
     verify(bvExportConfigHelper).getExportConfigs(eq(1), eq(0), anyString());
-    assertSame(bvExport.getStatus(), BatchVoucherExport.Status.UPLOADED);
+    assertEquals(BatchVoucherExport.Status.UPLOADED, bvExport.getStatus());
   }
 
   @Test
