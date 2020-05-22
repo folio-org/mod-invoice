@@ -27,11 +27,12 @@ import org.folio.rest.jaxrs.model.BatchVoucherExport;
 import org.folio.rest.jaxrs.model.Credentials;
 import org.folio.rest.jaxrs.model.ExportConfigCollection;
 import org.folio.services.voucher.UploadBatchVoucherExportService;
-import org.junit.Before;
-import org.junit.Test;
+
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import io.vertx.core.impl.EventLoopContext;
 
@@ -58,7 +59,7 @@ public class UploadBatchVoucherExportServiceTest extends ApiTestBase {
   @Mock
   private EventLoopContext ctxMock;
 
-  @Before
+  @BeforeEach
   public void initMocks(){
     MockitoAnnotations.initMocks(this);
   }

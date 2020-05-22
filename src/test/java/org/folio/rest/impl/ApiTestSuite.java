@@ -21,6 +21,7 @@ import org.folio.rest.tools.utils.NetworkUtils;
 import org.folio.schemas.xsd.BatchVoucherSchemaXSDTest;
 import org.folio.services.BatchVoucherGenerateServiceTest;
 import org.folio.services.InvoiceRetrieveServiceTest;
+import org.folio.services.UploadBatchVoucherExportServiceTest;
 import org.folio.services.VoucherLinesRetrieveServiceTest;
 import org.folio.services.ftp.FTPVertxCommandLoggerTest;
 import org.junit.jupiter.api.AfterAll;
@@ -202,4 +203,7 @@ public class ApiTestSuite {
   class FTPVertxCommandLoggerTestNested extends FTPVertxCommandLoggerTest {
   }
 
+  @Nested
+  class UploadBatchVoucherExportServiceTestNested extends UploadBatchVoucherExportServiceTest {
+  }
 }
