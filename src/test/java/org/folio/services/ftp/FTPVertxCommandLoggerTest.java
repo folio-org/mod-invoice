@@ -5,9 +5,9 @@ import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
-import org.apache.logging.log4j.Level;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+
 import io.vertx.core.logging.Logger;
 
 public class FTPVertxCommandLoggerTest {
@@ -23,7 +23,7 @@ public class FTPVertxCommandLoggerTest {
 
   @Test
   public void testLogInfo() {
-    FTPVertxCommandLogger obj = new FTPVertxCommandLogger(log, Level.INFO);
+    FTPVertxCommandLogger obj = new FTPVertxCommandLogger(log);
     obj.write('\n');
     verify(log).info(anyString());
   }

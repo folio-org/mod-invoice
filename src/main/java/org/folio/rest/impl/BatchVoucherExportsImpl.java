@@ -15,13 +15,8 @@ import org.folio.services.voucher.UploadBatchVoucherExportService;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Context;
 import io.vertx.core.Handler;
-import io.vertx.core.json.JsonObject;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
 
 public class BatchVoucherExportsImpl implements BatchVoucherBatchVoucherExports {
-
-  private static final Logger logger = LoggerFactory.getLogger(BatchVoucherExportsImpl.class);
   private static final String BATCH_VOUCHER_EXPORTS_LOCATION_PREFIX = "/batch-voucher/batch-voucher-exports/%s";
   private static final String NOT_SUPPORTED = "Not supported";  // To overcome sonarcloud warning
 
@@ -43,7 +38,6 @@ public class BatchVoucherExportsImpl implements BatchVoucherBatchVoucherExports 
     BatchVoucherExportsHelper helper = new BatchVoucherExportsHelper(okapiHeaders, vertxContext, lang);
     helper.getBatchVoucherExports(limit, offset, query)
       .thenAccept(batchVoucherExports -> {
-        logInfo("Successfully retrieved batch voucher exports: {}", batchVoucherExports);
         asyncResultHandler.handle(succeededFuture(helper.buildOkResponse(batchVoucherExports)));
       })
       .exceptionally(t -> handleErrorResponse(asyncResultHandler, helper, t));
@@ -96,13 +90,6 @@ public class BatchVoucherExportsImpl implements BatchVoucherBatchVoucherExports 
   public void postBatchVoucherBatchVoucherExportsScheduled(String lang, Map<String, String> okapiHeaders,
       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     asyncResultHandler.handle(succeededFuture(PostBatchVoucherBatchVoucherExportsScheduledResponse.respond500WithApplicationJson(NOT_SUPPORTED)));
-  }
-
-  private void logInfo(String message, Object entry) {
-    if (logger.isInfoEnabled()) {
-      logger.info(message, JsonObject.mapFrom(entry)
-        .encodePrettily());
-    }
   }
 
   private Void handleErrorResponse(Handler<AsyncResult<Response>> asyncResultHandler, AbstractHelper helper, Throwable t) {

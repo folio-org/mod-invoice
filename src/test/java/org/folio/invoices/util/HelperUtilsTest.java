@@ -19,13 +19,13 @@ public class HelperUtilsTest {
   }
 
   @Test
-  public void testDivideLitByChunksShouldReturnMapIfListLessThenChuckLength(){
+  void testDivideLitByChunksShouldReturnMapIfListLessThenChuckLength(){
     Map<Integer, List<String>> actMap = HelperUtils.buildIdsChunks(Arrays.asList("2","3"), 15);
     assertEquals(2, actMap.get(0).size());
   }
 
   @Test
-  public void testDivideLitByChunksShouldReturnEmptyMapIfListAboveThenChuckLength(){
+  void testDivideLitByChunksShouldReturnEmptyMapIfListAboveThenChuckLength(){
     Map<Integer, List<String>> actMap = HelperUtils.buildIdsChunks(Arrays.asList("2","3","2"), 2);
     assertEquals(2, actMap.get(0).size());
     assertEquals(1, actMap.get(1).size());

@@ -21,7 +21,7 @@ import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 
 public class UploadBatchVoucherExportService {
-  private final static Logger LOG = LoggerFactory.getLogger(UploadBatchVoucherExportService.class);
+  private static final Logger LOG = LoggerFactory.getLogger(UploadBatchVoucherExportService.class);
   public static final String DATE_TIME_DELIMITER = "T";
   public static final String DELIMITER = "_";
   private final BatchVoucherHelper bvHelper;

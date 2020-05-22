@@ -84,7 +84,7 @@ public class FtpUploadServiceTest {
   }
 
   @Test
-  public void testFailedConnect() throws URISyntaxException, InterruptedException, ExecutionException, TimeoutException {
+  void testFailedConnect() throws URISyntaxException, InterruptedException, ExecutionException, TimeoutException {
     logger.info("=== Test unsuccessful login ===");
 
     FtpUploadService helper = new FtpUploadService("ftp://localhost:1");
@@ -105,7 +105,7 @@ public class FtpUploadServiceTest {
   }
 
   @Test
-  public void testSuccessfulLogin() throws URISyntaxException, InterruptedException, ExecutionException, TimeoutException {
+  void testSuccessfulLogin() throws URISyntaxException, InterruptedException, ExecutionException, TimeoutException {
     logger.info("=== Test successful login ===");
 
     FtpUploadService helper = new FtpUploadService(uri);
@@ -122,7 +122,7 @@ public class FtpUploadServiceTest {
   }
 
   @Test
-  public void testFailedLogin() throws URISyntaxException, InterruptedException, ExecutionException, TimeoutException {
+  void testFailedLogin() throws URISyntaxException, InterruptedException, ExecutionException, TimeoutException {
     logger.info("=== Test unsuccessful login ===");
 
     FtpUploadService helper = new FtpUploadService(uri);
@@ -141,7 +141,7 @@ public class FtpUploadServiceTest {
   }
 
   @Test
-  public void testSuccessfulUpload() throws URISyntaxException, InterruptedException, ExecutionException, TimeoutException {
+  void testSuccessfulUpload() throws URISyntaxException, InterruptedException, ExecutionException, TimeoutException {
     logger.info("=== Test successful upload ===");
 
     Date end = new Date();
@@ -170,7 +170,7 @@ public class FtpUploadServiceTest {
   }
 
   @Test
-  public void testFailedUpload() throws URISyntaxException, InterruptedException, ExecutionException, TimeoutException {
+  void testFailedUpload() throws URISyntaxException, InterruptedException, ExecutionException, TimeoutException {
     logger.info("=== Test unsuccessful upload ===");
 
     Date end = new Date();

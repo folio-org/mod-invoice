@@ -41,7 +41,7 @@ public class VoucherLinesRetrieveServiceTest extends ApiTestBase {
   }
 
   @Test
-  public void positiveTest() throws IOException, ExecutionException, InterruptedException {
+  void positiveTest() throws IOException, ExecutionException, InterruptedException {
 
     VoucherLinesRetrieveService service = new VoucherLinesRetrieveService(okapiHeaders, context, "en");
     JsonObject vouchersList = new JsonObject(getMockData(VOUCHERS_LIST_PATH));
@@ -56,7 +56,7 @@ public class VoucherLinesRetrieveServiceTest extends ApiTestBase {
   }
 
   @Test
-  public void positiveGetInvoiceMapTest() throws IOException, ExecutionException, InterruptedException {
+  void positiveGetInvoiceMapTest() throws IOException, ExecutionException, InterruptedException {
 
     VoucherLinesRetrieveService service = new VoucherLinesRetrieveService(okapiHeaders, context, "en");
     JsonObject vouchersList = new JsonObject(getMockData(VOUCHERS_LIST_PATH));
