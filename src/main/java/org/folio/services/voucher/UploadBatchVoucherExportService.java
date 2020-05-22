@@ -50,12 +50,17 @@ public class UploadBatchVoucherExportService {
                         .getExportConfigs(1, 0, buildExportConfigQuery(uploadHolder.getBatchVoucherExport().getBatchGroupId())))
                    .thenAccept(exportConfigs -> uploadHolder.setExportConfig(exportConfigs.getExportConfigs().get(0)))
                    .thenAccept(v -> {
-                     String fileFormat = getFileFormat(uploadHolder.getExportConfig());
+                     String fileFormat = uploadHolder.getExportConfig().getFormat().value().split("/")[1];
                      uploadHolder.setFileFormat(fileFormat);
                    })
                    .thenCompose(v -> bvExportConfigHelper.getExportConfigCredentials(uploadHolder.getExportConfig().getId()))
                    .thenAccept(uploadHolder::setCredentials)
-                   .thenCompose(v -> getBatchVoucher(uploadHolder.getBatchVoucherExport().getBatchVoucherId(), uploadHolder.getExportConfig().getFormat()))
+                   .thenCompose(v -> {
+                      ExportConfig.Format exportFormat = uploadHolder.getExportConfig().getFormat() ;
+                      String acceptHeader = exportFormat.value().toLowerCase();
+                      return bvHelper.getBatchVoucherById(uploadHolder.getBatchVoucherExport().getBatchVoucherId(), acceptHeader)
+                       .thenApply(response -> (BatchVoucher)response.getEntity());
+                   })
                    .thenAccept(uploadHolder::setBatchVoucher)
                    .thenCompose(v -> uploadBatchVoucher(ctx, uploadHolder))
                    .handle((v, throwable) -> {
@@ -93,7 +98,6 @@ public class UploadBatchVoucherExportService {
     return future;
   }
 
-
   private void failUploadUpdate(BatchVoucherExport bvExport, Throwable t) {
     if (bvExport != null) {
       bvExport.setStatus(BatchVoucherExport.Status.ERROR);
@@ -119,12 +123,6 @@ public class UploadBatchVoucherExportService {
                              });
   }
 
-  private CompletableFuture<BatchVoucher> getBatchVoucher(String batchVoucherId, ExportConfig.Format exportFormat) {
-    String acceptHeader = exportFormat.value().toLowerCase();
-    return bvHelper.getBatchVoucherById(batchVoucherId, acceptHeader)
-            .thenApply(response -> (BatchVoucher)response.getEntity());
-  }
-
   private String buildExportConfigQuery(String groupId) {
     return "batchGroupId==" + groupId;
   }
@@ -135,10 +133,6 @@ public class UploadBatchVoucherExportService {
     String voucherStart = voucherJSON.getString("start").split(DATE_TIME_DELIMITER)[0];
     String voucherEnd = voucherJSON.getString("end").split(DATE_TIME_DELIMITER)[0];
     return "bv" + DELIMITER + voucherGroup + DELIMITER + voucherStart + DELIMITER + voucherEnd + "." + fileFormat;
-  }
-
-  private String getFileFormat(ExportConfig exportConfig) {
-    return exportConfig.getFormat().value().split("/")[1];
   }
 
   private void closeHttpClient(){

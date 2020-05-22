@@ -1,7 +1,6 @@
 package org.folio.services.ftp;
 
 import java.io.ByteArrayOutputStream;
-import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintStream;
 import org.apache.commons.net.PrintCommandListener;
@@ -20,9 +19,9 @@ public class FTPVertxCommandLogger extends OutputStream {
     this.logger = logger;
   }
 
-  private static String maskPassword(String line){
+  private String maskPassword(String line){
     if (line.contains("PASS")){
-      String password = line.substring(5, line.length() - 5);
+      String password = line.substring(5, line.length() - 3);
       line = "PASS "+ password.replaceAll("[^\\s\\\\]", "*");
     }
     return line;
@@ -30,7 +29,6 @@ public class FTPVertxCommandLogger extends OutputStream {
 
   @Override
   public void write(int b) {
-
     if (b == '\n') {
       String line = maskPassword(baos.toString());
       baos.reset();
@@ -41,7 +39,7 @@ public class FTPVertxCommandLogger extends OutputStream {
   }
 
   @Override
-  public void write(byte[] b, int off, int len) throws IOException {
+  public void write(byte[] b, int off, int len) {
     baos.write(b, off, len);
   }
 

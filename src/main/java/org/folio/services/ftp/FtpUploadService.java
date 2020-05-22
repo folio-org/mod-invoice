@@ -41,11 +41,7 @@ public class FtpUploadService implements UploadService {
 
   public boolean isUriValid(String uri) throws URISyntaxException {
     String proto = new URI(uri).getScheme();
-    if (StringUtils.isEmpty(proto) || proto.equalsIgnoreCase("FTP")) {
-      return true;
-    } else {
-      return false;
-    }
+    return StringUtils.isEmpty(proto) || proto.equalsIgnoreCase("FTP");
   }
 
   public CompletableFuture<String> login(String username, String password) {

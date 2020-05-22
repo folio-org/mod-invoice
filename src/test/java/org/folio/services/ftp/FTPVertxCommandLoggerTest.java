@@ -1,13 +1,18 @@
 package org.folio.services.ftp;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.io.IOException;
 import io.vertx.core.logging.Logger;
 
 public class FTPVertxCommandLoggerTest {
@@ -26,5 +31,35 @@ public class FTPVertxCommandLoggerTest {
     FTPVertxCommandLogger obj = new FTPVertxCommandLogger(log);
     obj.write('\n');
     verify(log).info(anyString());
+  }
+
+  @Test
+  public void testLogInfoPass() {
+    FTPVertxCommandLogger obj = new FTPVertxCommandLogger(log);
+    obj.write('P');
+    obj.write('A');
+    obj.write('S');
+    obj.write('S');
+    obj.write('T');
+    obj.write('E');
+    obj.write('S');
+    obj.write('T');
+    obj.write('\n');
+    verify(log).info(anyString());
+  }
+
+
+  @Test
+  public void testLogInfoSkipp() {
+    FTPVertxCommandLogger obj = new FTPVertxCommandLogger(log);
+    obj.write('x');
+    verify(log, never()).info(anyString());
+  }
+
+  @Test
+  public void testPassLogInfo() {
+    FTPVertxCommandLogger obj = new FTPVertxCommandLogger(log);
+    obj.write("PASS".getBytes(), 0, "PASS".length() - 1);
+    verify(log, never()).info(anyString());
   }
 }
