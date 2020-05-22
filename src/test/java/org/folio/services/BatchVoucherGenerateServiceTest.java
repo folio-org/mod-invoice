@@ -15,6 +15,7 @@ import java.util.concurrent.ExecutionException;
 import org.folio.rest.impl.ApiTestBase;
 import org.folio.rest.jaxrs.model.BatchVoucher;
 import org.folio.rest.jaxrs.model.BatchVoucherExport;
+import org.folio.services.voucher.BatchVoucherGenerateService;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

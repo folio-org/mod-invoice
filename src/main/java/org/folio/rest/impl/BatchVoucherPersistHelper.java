@@ -7,7 +7,7 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
 import org.folio.rest.jaxrs.model.BatchVoucherExport;
-import org.folio.services.BatchVoucherGenerateService;
+import org.folio.services.voucher.BatchVoucherGenerateService;
 
 import io.vertx.core.Context;
 import io.vertx.core.json.JsonObject;
@@ -39,6 +39,7 @@ public class BatchVoucherPersistHelper extends AbstractHelper {
         future.complete(batchVoucherId);
       })
       .exceptionally(t -> {
+        batchVoucherExport.setMessage(t.getCause().getMessage());
         batchVoucherExport.setStatus(BatchVoucherExport.Status.ERROR);
         batchVoucherExportsHelper.updateBatchVoucherExportRecord(batchVoucherExport)
           .thenAccept(v-> closeHttpClient());

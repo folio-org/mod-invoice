@@ -13,7 +13,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 import org.folio.exceptions.FtpException;
-import org.folio.invoices.utils.FtpUploadHelper;
+import org.folio.services.ftp.FtpUploadService;
 
 import org.folio.rest.jaxrs.model.BatchVoucher;
 import org.junit.jupiter.api.AfterAll;
@@ -25,16 +25,18 @@ import org.mockftpserver.fake.filesystem.DirectoryEntry;
 import org.mockftpserver.fake.filesystem.FileSystem;
 import org.mockftpserver.fake.filesystem.UnixFakeFileSystem;
 
+import io.vertx.core.Context;
+import io.vertx.core.Vertx;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 
-public class FtpUploadHelperTest {
+public class FtpUploadServiceTest {
 
   static {
     System.setProperty(LoggerFactory.LOGGER_DELEGATE_FACTORY_CLASS_NAME, "io.vertx.core.logging.Log4j2LogDelegateFactory");
   }
 
-  private static final Logger logger = LoggerFactory.getLogger(FtpUploadHelperTest.class);
+  private static final Logger logger = LoggerFactory.getLogger(FtpUploadServiceTest.class);
 
   private static FakeFtpServer fakeFtpServer;
 
@@ -52,6 +54,7 @@ public class FtpUploadHelperTest {
   static {
     sdf.setTimeZone(TimeZone.getTimeZone("UTC"));
   }
+  private static final Context context = Vertx.vertx().getOrCreateContext();
 
   @BeforeAll
   public static void setup() {
@@ -84,7 +87,7 @@ public class FtpUploadHelperTest {
   public void testFailedConnect() throws URISyntaxException, InterruptedException, ExecutionException, TimeoutException {
     logger.info("=== Test unsuccessful login ===");
 
-    FtpUploadHelper helper = new FtpUploadHelper("ftp://localhost:1");
+    FtpUploadService helper = new FtpUploadService("ftp://localhost:1");
     helper.login(username_valid, password_valid)
       .thenAccept(m -> fail("Expected a connection failure but got: " + m))
       .exceptionally(t -> {
@@ -105,7 +108,7 @@ public class FtpUploadHelperTest {
   public void testSuccessfulLogin() throws URISyntaxException, InterruptedException, ExecutionException, TimeoutException {
     logger.info("=== Test successful login ===");
 
-    FtpUploadHelper helper = new FtpUploadHelper(uri);
+    FtpUploadService helper = new FtpUploadService(uri);
     helper.login(username_valid, password_valid)
       .thenAccept(logger::info)
       .exceptionally(t -> {
@@ -122,7 +125,7 @@ public class FtpUploadHelperTest {
   public void testFailedLogin() throws URISyntaxException, InterruptedException, ExecutionException, TimeoutException {
     logger.info("=== Test unsuccessful login ===");
 
-    FtpUploadHelper helper = new FtpUploadHelper(uri);
+    FtpUploadService helper = new FtpUploadService(uri);
     helper.login(username_valid, password_invalid)
       .thenAccept(m -> fail("Expected a login failure but got: " + m))
       .exceptionally(t -> {
@@ -151,10 +154,10 @@ public class FtpUploadHelperTest {
     batchVoucher.setBatchGroup(UUID.randomUUID().toString());
     batchVoucher.setCreated(new Date());
 
-    FtpUploadHelper helper = new FtpUploadHelper(uri);
+    FtpUploadService helper = new FtpUploadService(uri);
     helper.login(username_valid, password_valid)
       .thenAccept(logger::info)
-      .thenCompose(v -> helper.upload(filename, batchVoucher))
+      .thenCompose(v -> helper.upload(context, filename, batchVoucher))
       .thenAccept(logger::info)
       .exceptionally(t -> {
         logger.error(t);
@@ -180,10 +183,10 @@ public class FtpUploadHelperTest {
     batchVoucher.setBatchGroup(UUID.randomUUID().toString());
     batchVoucher.setCreated(new Date());
 
-    FtpUploadHelper helper = new FtpUploadHelper(uri);
+    FtpUploadService helper = new FtpUploadService(uri);
     helper.login(username_valid, password_valid)
       .thenAccept(logger::info)
-      .thenCompose(v -> helper.upload("/invalid/path/"+filename, batchVoucher))
+      .thenCompose(v -> helper.upload(context,"/invalid/path/"+filename, batchVoucher))
       .thenAccept(m -> fail("Expected upload failure but got " + m))
       .exceptionally(t -> {
         logger.info(t);

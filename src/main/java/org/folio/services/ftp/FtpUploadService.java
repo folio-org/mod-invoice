@@ -1,31 +1,37 @@
-package org.folio.invoices.utils;
+package org.folio.services.ftp;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStreamWriter;
+import java.io.PrintWriter;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 
+import org.apache.commons.net.PrintCommandListener;
+import org.apache.commons.net.ftp.FTP;
 import org.apache.commons.net.ftp.FTPClient;
 import org.folio.exceptions.FtpException;
 import org.folio.rest.jaxrs.model.BatchVoucher;
 
-
+import io.vertx.core.Context;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
+import me.escoffier.vertx.completablefuture.VertxCompletableFuture;
 
-public class FtpUploadHelper implements UploadHelper {
+public class FtpUploadService implements UploadService {
 
-  private static final Logger logger = LoggerFactory.getLogger(FtpUploadHelper.class);
+  private static final Logger logger = LoggerFactory.getLogger(FtpUploadService.class);
+  public static final String DEFAULT_WORKING_DIR = "/files";
 
   private final FTPClient ftp;
   private final String server;
   private final int port;
 
-  public FtpUploadHelper(String uri) throws URISyntaxException {
+  public FtpUploadService(String uri) throws URISyntaxException {
     this.ftp = new FTPClient();
     URI u = new URI(uri);
     this.server = u.getHost();
@@ -72,11 +78,16 @@ public class FtpUploadHelper implements UploadHelper {
     });
   }
 
-  public CompletableFuture<String> upload(String filename, BatchVoucher batchVoucher) {
-    return CompletableFuture.supplyAsync(() -> {
+  public CompletableFuture<String> upload(Context ctx, String filename, BatchVoucher batchVoucher) {
+  return VertxCompletableFuture.supplyBlockingAsync(ctx, () -> {
       try (InputStream is = new ByteArrayInputStream(JsonObject.mapFrom(batchVoucher)
         .encode()
         .getBytes())) {
+        ftp.addProtocolCommandListener( FTPVertxCommandLogger.getDefListener(logger));
+        ftp.setBufferSize(1024 * 1024);
+        ftp.setControlKeepAliveTimeout(300);
+        ftp.setFileType(FTP.BINARY_FILE_TYPE);
+        ftp.changeWorkingDirectory(DEFAULT_WORKING_DIR);
         if (ftp.storeFile(filename, is)) {
           return ftp.getReplyString().trim();
         } else {
@@ -85,6 +96,13 @@ public class FtpUploadHelper implements UploadHelper {
       } catch (Exception e) {
         logger.error("Error uploading", e);
         throw new CompletionException(e);
+      } finally {
+        try {
+          ftp.logout();
+          ftp.disconnect();
+        } catch (IOException e) {
+          logger.error("Error logout", e);
+        }
       }
     });
   }

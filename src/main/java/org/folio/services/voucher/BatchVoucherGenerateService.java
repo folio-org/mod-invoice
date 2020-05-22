@@ -1,4 +1,4 @@
-package org.folio.services;
+package org.folio.services.voucher;
 
 import static java.util.concurrent.CompletableFuture.allOf;
 import static java.util.stream.Collectors.toList;
@@ -23,6 +23,9 @@ import org.folio.rest.jaxrs.model.BatchedVoucherLine;
 import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.jaxrs.model.Voucher;
 import org.folio.rest.jaxrs.model.VoucherCollection;
+import org.folio.services.InvoiceRetrieveService;
+import org.folio.services.VendorRetrieveService;
+import org.folio.services.VoucherLinesRetrieveService;
 
 import io.vertx.core.Context;
 import io.vertx.core.json.JsonObject;

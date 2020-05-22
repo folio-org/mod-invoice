@@ -15,7 +15,7 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 
-import org.folio.invoices.utils.UploadHelperFactory;
+import org.folio.services.ftp.UploadServiceFactory;
 import org.folio.rest.jaxrs.model.Credentials;
 import org.folio.rest.jaxrs.model.ExportConfig;
 import org.folio.rest.jaxrs.model.ExportConfigCollection;
@@ -123,7 +123,7 @@ public class BatchVoucherExportConfigHelper extends AbstractHelper {
       .thenApply(v -> {
         try {
           ExportConfig config = exportConfigFut.join();
-          return UploadHelperFactory.get(config.getUploadURI());
+          return UploadServiceFactory.get(config.getUploadURI());
         } catch (URISyntaxException e) {
           throw new CompletionException(e);
         }

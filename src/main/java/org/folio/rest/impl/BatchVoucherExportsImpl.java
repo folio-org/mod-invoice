@@ -1,9 +1,7 @@
 package org.folio.rest.impl;
 
 import static io.vertx.core.Future.succeededFuture;
-import static org.folio.invoices.utils.ErrorCodes.GENERIC_ERROR_CODE;
 import static org.folio.rest.jaxrs.resource.BatchVoucherBatchVoucherExports.PostBatchVoucherBatchVoucherExportsUploadByIdResponse.respond202WithApplicationJson;
-import static org.folio.rest.jaxrs.resource.BatchVoucherBatchVoucherExports.PostBatchVoucherBatchVoucherExportsUploadByIdResponse.respond500WithApplicationJson;
 
 import java.util.Map;
 
@@ -12,7 +10,7 @@ import javax.ws.rs.core.Response;
 import org.folio.rest.annotations.Validate;
 import org.folio.rest.jaxrs.model.BatchVoucherExport;
 import org.folio.rest.jaxrs.resource.BatchVoucherBatchVoucherExports;
-import org.folio.services.UploadBatchVoucherExportService;
+import org.folio.services.voucher.UploadBatchVoucherExportService;
 
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Context;
@@ -88,7 +86,7 @@ public class BatchVoucherExportsImpl implements BatchVoucherBatchVoucherExports 
   public void postBatchVoucherBatchVoucherExportsUploadById(String id, String lang, Map<String, String> okapiHeaders,
       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     UploadBatchVoucherExportService uploadService = new UploadBatchVoucherExportService(okapiHeaders, vertxContext, lang);
-    uploadService.uploadBatchVoucherExport(id)
+    uploadService.uploadBatchVoucherExport(id, vertxContext)
       .thenAccept(batchVoucherExport -> asyncResultHandler.handle(succeededFuture(respond202WithApplicationJson(batchVoucherExport))))
       .exceptionally(t ->  handleErrorResponse(asyncResultHandler));
   }

@@ -1,7 +1,12 @@
-package org.folio.services;
+package org.folio.services.voucher;
 
-import org.folio.invoices.utils.UploadHelper;
-import org.folio.invoices.utils.UploadHelperFactory;
+import java.net.URISyntaxException;
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
+
+import org.folio.services.ftp.UploadService;
+import org.folio.services.ftp.UploadServiceFactory;
 import org.folio.models.BatchVoucherUploadHolder;
 import org.folio.rest.impl.BatchVoucherExportConfigHelper;
 import org.folio.rest.impl.BatchVoucherExportsHelper;
@@ -9,17 +14,16 @@ import org.folio.rest.impl.BatchVoucherHelper;
 import org.folio.rest.jaxrs.model.BatchVoucher;
 import org.folio.rest.jaxrs.model.BatchVoucherExport;
 import org.folio.rest.jaxrs.model.ExportConfig;
-import java.net.URISyntaxException;
-import java.util.Map;
-import java.util.Objects;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionException;
+
 import io.vertx.core.Context;
+import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 
 public class UploadBatchVoucherExportService {
   private final static Logger LOG = LoggerFactory.getLogger(UploadBatchVoucherExportService.class);
+  public static final String DATE_TIME_DELIMITER = "T";
+  public static final String DELIMITER = "_";
   private final BatchVoucherHelper bvHelper;
   private final BatchVoucherExportConfigHelper bvExportConfigHelper;
   private final BatchVoucherExportsHelper bvExportsHelper;
@@ -30,10 +34,10 @@ public class UploadBatchVoucherExportService {
     bvExportsHelper = new BatchVoucherExportsHelper(okapiHeaders, ctx, lang);
   }
 
-  public CompletableFuture<Void> uploadBatchVoucherExport(String batchVoucherExportId) {
+  public CompletableFuture<Void> uploadBatchVoucherExport(String batchVoucherExportId, Context ctx) {
     CompletableFuture<Void> future = new CompletableFuture<>();
     BatchVoucherUploadHolder uploadHolder = new BatchVoucherUploadHolder();
-    return bvExportsHelper.getBatchVoucherExportById(batchVoucherExportId)
+    bvExportsHelper.getBatchVoucherExportById(batchVoucherExportId)
                    .thenAccept(uploadHolder::setBatchVoucherExport)
                    .thenCompose(v -> bvExportConfigHelper
                         .getExportConfigs(1, 0, buildExportConfigQuery(uploadHolder.getBatchVoucherExport().getBatchGroupId())))
@@ -44,25 +48,22 @@ public class UploadBatchVoucherExportService {
                    })
                    .thenCompose(v -> bvExportConfigHelper.getExportConfigCredentials(uploadHolder.getExportConfig().getId()))
                    .thenAccept(uploadHolder::setCredentials)
-                   .thenCompose(v -> {
-                     String fileFormat = uploadHolder.getExportConfig().getFormat().value().toLowerCase();
-                     return getBatchVoucher(uploadHolder.getBatchVoucherExport().getBatchVoucherId(), fileFormat);
-                   })
+                   .thenCompose(v -> getBatchVoucher(uploadHolder.getBatchVoucherExport().getBatchVoucherId(), uploadHolder.getExportConfig().getFormat()))
                    .thenAccept(uploadHolder::setBatchVoucher)
-                   .thenAccept(v -> uploadBatchVoucher(uploadHolder))
-                   .handle((v, t) -> {
-                     if (Objects.nonNull(t)) {
-                       updateBatchVoucherStatus(uploadHolder.getBatchVoucherExport(), BatchVoucherExport.Status.ERROR);
-                       LOG.error("Exception occurs, when uploading batch voucher", t.getMessage());
-                       future.complete(null);
-                     }
-                     else {
-                       updateBatchVoucherStatus(uploadHolder.getBatchVoucherExport(), BatchVoucherExport.Status.UPLOADED);
-                       LOG.debug("Batch voucher uploaded on FTP");
-                       future.complete(null);
-                     }
+                   .thenCompose(v -> uploadBatchVoucher(ctx, uploadHolder))
+                   .thenAccept(v -> {
+                     updateBatchVoucherStatus(uploadHolder.getBatchVoucherExport(), BatchVoucherExport.Status.UPLOADED);
+                     LOG.debug("Batch voucher uploaded on FTP");
+                     future.complete(null);
+                   })
+                   .exceptionally(t -> {
+                     uploadHolder.getBatchVoucherExport().setMessage(t.getCause().getMessage());
+                     updateBatchVoucherStatus(uploadHolder.getBatchVoucherExport(), BatchVoucherExport.Status.ERROR);
+                     LOG.error("Exception occurs, when uploading batch voucher", t.getMessage());
+                     future.complete(null);
                      return null;
                    });
+    return future;
   }
 
   private void updateBatchVoucherStatus(BatchVoucherExport bvExport, BatchVoucherExport.Status status) {
@@ -74,30 +75,32 @@ public class UploadBatchVoucherExportService {
                              });
   }
 
-  private CompletableFuture<Void> uploadBatchVoucher(BatchVoucherUploadHolder uploadHolder) {
+  private CompletableFuture<Void> uploadBatchVoucher(Context ctx, BatchVoucherUploadHolder uploadHolder) {
+    CompletableFuture<Void> future = new CompletableFuture<>();
       try {
-          UploadHelper helper = UploadHelperFactory.get(uploadHolder.getExportConfig().getUploadURI());
-          return helper.login(uploadHolder.getCredentials().getUsername(), uploadHolder.getCredentials().getPassword())
+          UploadService helper = UploadServiceFactory.get(uploadHolder.getExportConfig().getUploadURI());
+          helper.login(uploadHolder.getCredentials().getUsername(), uploadHolder.getCredentials().getPassword())
             .thenAccept(LOG::info)
             .thenCompose(v -> {
               String fileName = generateFileName(uploadHolder.getBatchVoucher(), uploadHolder.getFileFormat());
-              return helper.upload(fileName, uploadHolder.getBatchVoucher());
+              return helper.upload(ctx, fileName, uploadHolder.getBatchVoucher());
             })
-            .thenAccept(LOG::info)
+            .thenAccept(replyString -> future.complete(null))
             .exceptionally(t -> {
               LOG.error(t);
+              future.completeExceptionally(t);
               return null;
-            })
-            .whenComplete((i, t) -> helper.logout()
-              .thenAccept(LOG::info));
+            });
         } catch (URISyntaxException e) {
-          throw new CompletionException(e);
+          future.completeExceptionally(new CompletionException(e));
         }
+      return future;
   }
 
-  private CompletableFuture<BatchVoucher> getBatchVoucher(String acceptHeader, String batchVoucherId) {
+  private CompletableFuture<BatchVoucher> getBatchVoucher(String batchVoucherId, ExportConfig.Format exportFormat) {
+    String acceptHeader = exportFormat.value().toLowerCase();
     return bvHelper.getBatchVoucherById(batchVoucherId, acceptHeader)
-            .thenApply(response -> response.readEntity(BatchVoucher.class));
+            .thenApply(response -> (BatchVoucher)response.getEntity());
   }
 
   private String buildExportConfigQuery(String groupId) {
@@ -105,10 +108,11 @@ public class UploadBatchVoucherExportService {
   }
 
   private String generateFileName(BatchVoucher batchVoucher, String fileFormat) {
-    return "/files/bv" + "_" + batchVoucher.getBatchGroup()
-              + "_" + batchVoucher.getStart().toString()
-                + "_to_" + batchVoucher.getEnd().toString()
-                  + "." + fileFormat;
+    JsonObject voucherJSON = JsonObject.mapFrom(batchVoucher);
+    String voucherGroup = voucherJSON.getString("batchGroup");
+    String voucherStart = voucherJSON.getString("start").split(DATE_TIME_DELIMITER)[0];
+    String voucherEnd = voucherJSON.getString("end").split(DATE_TIME_DELIMITER)[0];
+    return "bv" + DELIMITER + voucherGroup + DELIMITER + voucherStart + DELIMITER + voucherEnd + "." + fileFormat;
   }
 
   private String getFileFormat(ExportConfig exportConfig) {
