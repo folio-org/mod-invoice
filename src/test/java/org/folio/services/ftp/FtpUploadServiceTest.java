@@ -1,4 +1,4 @@
-package org.folio.invoices.util;
+package org.folio.services.ftp;
 
 import static org.junit.Assert.fail;
 
@@ -13,7 +13,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 import org.folio.exceptions.FtpException;
-import org.folio.services.ftp.FtpUploadService;
 
 import org.folio.rest.jaxrs.model.BatchVoucher;
 import org.junit.jupiter.api.AfterAll;

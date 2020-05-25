@@ -5,7 +5,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.net.UnknownHostException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 
@@ -24,7 +23,7 @@ import me.escoffier.vertx.completablefuture.VertxCompletableFuture;
 public class FtpUploadService implements UploadService {
 
   private static final Logger logger = LoggerFactory.getLogger(FtpUploadService.class);
-  public static final String DEFAULT_WORKING_DIR = "/files/mod-invoice";
+  public static final String DEFAULT_WORKING_DIR = "/files/invoices";
 
   private final FTPClient ftp;
   private final String server;
@@ -127,10 +126,7 @@ public class FtpUploadService implements UploadService {
   public boolean checkDirectoryExists(String dirPath) throws IOException {
     ftp.changeWorkingDirectory(dirPath);
     int returnCode = ftp.getReplyCode();
-    if (returnCode == 550) {
-      return false;
-    }
-    return true;
+    return returnCode == 550;
   }
 
   public static class DefaultServerResolver implements FTPClient.HostnameResolver {
@@ -141,7 +137,7 @@ public class FtpUploadService implements UploadService {
     }
 
     @Override
-    public String resolve(String hostname) throws UnknownHostException {
+    public String resolve(String hostname) {
       return this.client.getRemoteAddress().getHostAddress();
     }
   }

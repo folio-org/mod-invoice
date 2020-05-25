@@ -1,4 +1,4 @@
-package org.folio.services;
+package org.folio.services.voucher;
 
 import static java.util.concurrent.CompletableFuture.completedFuture;
 import static org.junit.Assert.assertEquals;
@@ -26,7 +26,6 @@ import org.folio.rest.jaxrs.model.BatchVoucher;
 import org.folio.rest.jaxrs.model.BatchVoucherExport;
 import org.folio.rest.jaxrs.model.Credentials;
 import org.folio.rest.jaxrs.model.ExportConfigCollection;
-import org.folio.services.voucher.UploadBatchVoucherExportService;
 
 import org.mockito.InjectMocks;
 import org.mockito.Mock;

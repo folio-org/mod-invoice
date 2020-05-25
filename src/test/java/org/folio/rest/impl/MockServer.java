@@ -230,11 +230,11 @@ public class MockServer {
 
   private static FakeFtpServer fakeFtpServer;
 
-  private static final String user_home_dir = "/invoices";
-  private static final String username_valid = "jsmith";
-  private static final String password_valid = "letmein";
+  public static final String user_home_dir = "/invoices";
+  public static final String username_valid = "jsmith";
+  public static final String password_valid = "letmein";
 
-  private static String ftpUri;
+  public static String ftpUri;
 
   MockServer(int port) {
     this.port = port;
