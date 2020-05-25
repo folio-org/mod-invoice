@@ -39,7 +39,7 @@ public class BatchVoucherExportsApiTest extends ApiTestBase {
     .format("/batch-voucher/batch-voucher-exports/scheduled");
 
   @Test
-  void testPostBatchVoucherExports() {
+  public void testPostBatchVoucherExports() {
     logger.info(" === Test POST Batch Voucher Exports === ");
     String jsonBody = getMockAsJson(BATCH_VOUCHER_EXPORT_SAMPLE_PATH).toString();
     Response resp = verifySuccessPost(BATCH_VOUCHER_EXPORTS_PATH, jsonBody);
@@ -47,7 +47,7 @@ public class BatchVoucherExportsApiTest extends ApiTestBase {
   }
 
   @Test
-  void testPostBatchVoucherExports422() {
+  public void testPostBatchVoucherExports422() {
     logger.info(" === Test POST Batch Voucher Exports 422 - voucher \"end\" is required and cannot be null === ");
     BatchVoucherExport batchVoucherExport = getMockAsJson(BATCH_VOUCHER_EXPORT_SAMPLE_PATH).mapTo(BatchVoucherExport.class);
     batchVoucherExport.setEnd(null);
@@ -57,7 +57,7 @@ public class BatchVoucherExportsApiTest extends ApiTestBase {
   }
 
   @Test
-  void testGetBatchVoucherExports() {
+  public void testGetBatchVoucherExports() {
     logger.info(" === Test Get Batch-voucher-exports without query - get 200 by successful retrieval of batch-voucher-exports === ");
 
     final BatchVoucherExportCollection resp = verifySuccessGet(BATCH_VOUCHER_EXPORTS_PATH, BatchVoucherExportCollection.class);
@@ -66,7 +66,7 @@ public class BatchVoucherExportsApiTest extends ApiTestBase {
   }
 
   @Test
-  void testGetBatchVoucherExportBadQuery() {
+  public void testGetBatchVoucherExportBadQuery() {
     logger.info(" === Test Get Batch voucher export by query - unprocessable query to emulate 400 from storage === ");
 
     String endpointQuery = String.format("%s?query=%s", BATCH_VOUCHER_EXPORTS_PATH, BAD_QUERY);
@@ -74,7 +74,7 @@ public class BatchVoucherExportsApiTest extends ApiTestBase {
   }
 
   @Test
-  void testGetBatchVoucherExportsByIdInternalServerError() {
+  public void testGetBatchVoucherExportsByIdInternalServerError() {
     logger.info(" === Test Get Batch-voucher-exports by query - emulating 500 from storage === ");
 
     String endpointQuery = String.format("%s?query=%s", BATCH_VOUCHER_EXPORTS_PATH,  ID_FOR_INTERNAL_SERVER_ERROR);
@@ -83,7 +83,7 @@ public class BatchVoucherExportsApiTest extends ApiTestBase {
   }
 
   @Test
-  void testGetBatchVoucherExportsById() throws IOException {
+  public void testGetBatchVoucherExportsById() throws IOException {
     logger.info(" === Test Get Batch-voucher-exports By Id === ");
 
     JsonObject batchVoucherExportsList = new JsonObject(getMockData(BATCH_VOUCHER_EXPORTS_LIST_PATH));
@@ -100,7 +100,7 @@ public class BatchVoucherExportsApiTest extends ApiTestBase {
   }
 
   @Test
-  void testGetBatchVoucherExportsByIdNotFound() {
+  public void testGetBatchVoucherExportsByIdNotFound() {
     logger.info(" === Test Get Batch-voucher-exports by Id - 404 Not found === ");
 
     final Response resp = verifyGet(String.format(BATCH_VOUCHER_EXPORTS_ID_PATH, BAD_BATCH_VOUCHER_EXPORTS_ID), APPLICATION_JSON, 404);
@@ -115,7 +115,7 @@ public class BatchVoucherExportsApiTest extends ApiTestBase {
   }
 
   @Test
-  void testUpdateBatchVoucherExport() {
+  public void testUpdateBatchVoucherExport() {
     logger.info(" === Test Put Batch voucher export === ");
 
     String newMessage = "Updated message";
@@ -131,19 +131,19 @@ public class BatchVoucherExportsApiTest extends ApiTestBase {
   }
 
   @Test
-  void testDeleteExistingBatchVoucherExport() {
+  public void testDeleteExistingBatchVoucherExport() {
     logger.info(" === Test Delete existing Batch voucher export === ");
     verifyDeleteResponse(String.format(BATCH_VOUCHER_EXPORTS_ID_PATH, VALID_BATCH_VOUCHER_EXPORTS_ID),"",204);
   }
 
   @Test
-  void testDeleteNonExistingBatchVoucherExport() {
+  public void testDeleteNonExistingBatchVoucherExport() {
     logger.info(" === Test Delete Non-existing Batch voucher export === ");
     verifyDeleteResponse(String.format(BATCH_VOUCHER_EXPORTS_ID_PATH, BAD_BATCH_VOUCHER_EXPORTS_ID), "", 404);
   }
 
   @Test
-  void postBatchVoucherBatchVoucherExportsUploadTest() {
+  public void postBatchVoucherBatchVoucherExportsUploadTest() {
     given().header(X_OKAPI_TENANT)
       .post(BATCH_VOUCHER_EXPORT_UPLOAD_ENDPOINT_PATH)
       .then()

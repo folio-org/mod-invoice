@@ -43,7 +43,7 @@ public class BatchVoucherGenerateServiceTest extends ApiTestBase {
   }
 
   @Test
-  void positiveGenerateBatchVoucherTest() throws IOException, ExecutionException, InterruptedException {
+  public void positiveGenerateBatchVoucherTest() throws IOException, ExecutionException, InterruptedException {
     BatchVoucherGenerateService service = new BatchVoucherGenerateService(okapiHeaders, context, "en");
     BatchVoucherExport batchVoucherExport = new JsonObject(getMockData(BATCH_VOUCHER_EXPORT_SAMPLE_PATH)).mapTo(BatchVoucherExport.class);
 
@@ -53,7 +53,7 @@ public class BatchVoucherGenerateServiceTest extends ApiTestBase {
   }
 
   @Test
-  void negativeGetbatchVoucherIfVouchersIsAbsentTest() {
+  public void negativeGetbatchVoucherIfVouchersIsAbsentTest() {
     Assertions.assertThrows(CompletionException.class, () -> {
       BatchVoucherGenerateService service = new BatchVoucherGenerateService(okapiHeaders, context, "en");
       BatchVoucherExport batchVoucherExport = new BatchVoucherExport();
