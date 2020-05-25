@@ -13,6 +13,7 @@ import javax.ws.rs.core.Response;
 import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.rest.impl.BatchVoucherPersistHelper;
 import org.folio.rest.jaxrs.model.BatchVoucherExport;
+import org.folio.services.voucher.UploadBatchVoucherExportService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -25,13 +26,13 @@ import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import me.escoffier.vertx.completablefuture.VertxCompletableFuture;
 
-@Component("batchVoucherPersistHandler")
-public class BatchVoucherPersistHandler implements Handler<Message<JsonObject>> {
+@Component("batchVoucherProcessHandler")
+public class BatchVoucherProcessHandler implements Handler<Message<JsonObject>> {
   protected final Logger logger = LoggerFactory.getLogger(this.getClass());
   private final Context ctx;
 
   @Autowired
-  public BatchVoucherPersistHandler(Vertx vertx) {
+  public BatchVoucherProcessHandler(Vertx vertx) {
     ctx = vertx.getOrCreateContext();
   }
 
@@ -43,8 +44,12 @@ public class BatchVoucherPersistHandler implements Handler<Message<JsonObject>> 
     logger.debug("Received message body: {}", body);
 
     BatchVoucherPersistHelper manager = new BatchVoucherPersistHelper(okapiHeaders, ctx, body.getString(LANG));
-    getBatchVoucherBody(body)
-      .thenCompose(manager::persistBatchVoucher)
+    UploadBatchVoucherExportService uploadService = new UploadBatchVoucherExportService(okapiHeaders, ctx, body.getString(LANG));
+
+    getBatchVoucherExportBody(body)
+      .thenCompose(bvExport -> manager.persistBatchVoucher(bvExport)
+                                      .thenAccept(bvExport::withBatchVoucherId)
+                                      .thenCompose(id -> uploadService.uploadBatchVoucherExport(bvExport)))
       .handle((ok, fail) -> {
         // Sending reply message just in case some logic requires it
         if (fail == null) {
@@ -61,7 +66,7 @@ public class BatchVoucherPersistHandler implements Handler<Message<JsonObject>> 
       });
   }
 
-  private CompletableFuture<BatchVoucherExport> getBatchVoucherBody(JsonObject body) {
+  private CompletableFuture<BatchVoucherExport> getBatchVoucherExportBody(JsonObject body) {
      return VertxCompletableFuture.supplyAsync(ctx,
        () -> body.getJsonObject(BATCH_VOUCHER_EXPORT).mapTo(BatchVoucherExport.class));
   }

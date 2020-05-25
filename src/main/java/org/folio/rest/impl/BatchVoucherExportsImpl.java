@@ -78,7 +78,7 @@ public class BatchVoucherExportsImpl implements BatchVoucherBatchVoucherExports 
   public void postBatchVoucherBatchVoucherExportsUploadById(String id, String lang, Map<String, String> okapiHeaders,
       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     UploadBatchVoucherExportService uploadService = new UploadBatchVoucherExportService(okapiHeaders, vertxContext, lang);
-    uploadService.uploadBatchVoucherExport(id, vertxContext)
+    uploadService.uploadBatchVoucherExport(id)
       .thenAccept(v -> asyncResultHandler.handle(succeededFuture(respond202WithApplicationJson(v))))
       .exceptionally(t -> handleErrorResponse(asyncResultHandler));
   }

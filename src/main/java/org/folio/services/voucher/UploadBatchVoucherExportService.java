@@ -5,6 +5,7 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 
+import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.models.BatchVoucherUploadHolder;
 import org.folio.rest.impl.BatchVoucherExportConfigHelper;
 import org.folio.rest.impl.BatchVoucherExportsHelper;
@@ -24,45 +25,36 @@ public class UploadBatchVoucherExportService {
   private static final Logger LOG = LoggerFactory.getLogger(UploadBatchVoucherExportService.class);
   public static final String DATE_TIME_DELIMITER = "T";
   public static final String DELIMITER = "_";
+  private final Context ctx;
   private final BatchVoucherHelper bvHelper;
   private final BatchVoucherExportConfigHelper bvExportConfigHelper;
   private final BatchVoucherExportsHelper bvExportsHelper;
 
   public UploadBatchVoucherExportService(Map<String, String> okapiHeaders, Context ctx, String lang) {
-    bvHelper = new BatchVoucherHelper(okapiHeaders, ctx, lang);
-    bvExportConfigHelper = new BatchVoucherExportConfigHelper(okapiHeaders, ctx, lang);
-    bvExportsHelper = new BatchVoucherExportsHelper(okapiHeaders, ctx, lang);
+    this.bvHelper = new BatchVoucherHelper(okapiHeaders, ctx, lang);
+    this.bvExportConfigHelper = new BatchVoucherExportConfigHelper(okapiHeaders, ctx, lang);
+    this.bvExportsHelper = new BatchVoucherExportsHelper(okapiHeaders, ctx, lang);
+    this.ctx = ctx;
   }
 
-  public UploadBatchVoucherExportService(BatchVoucherHelper bvHelper, BatchVoucherExportConfigHelper bvExportConfigHelper
+  public UploadBatchVoucherExportService(Context ctx, BatchVoucherHelper bvHelper, BatchVoucherExportConfigHelper bvExportConfigHelper
     , BatchVoucherExportsHelper bvExportsHelper) {
     this.bvHelper = bvHelper;
     this.bvExportConfigHelper = bvExportConfigHelper;
     this.bvExportsHelper = bvExportsHelper;
+    this.ctx = ctx;
   }
 
-  public CompletableFuture<Void> uploadBatchVoucherExport(String batchVoucherExportId, Context ctx) {
+  public CompletableFuture<Void> uploadBatchVoucherExport(String batchVoucherExportId) {
     CompletableFuture<Void> future = new CompletableFuture<>();
     BatchVoucherUploadHolder uploadHolder = new BatchVoucherUploadHolder();
     bvExportsHelper.getBatchVoucherExportById(batchVoucherExportId)
                    .thenAccept(uploadHolder::setBatchVoucherExport)
-                   .thenCompose(v -> bvExportConfigHelper
-                        .getExportConfigs(1, 0, buildExportConfigQuery(uploadHolder.getBatchVoucherExport().getBatchGroupId())))
-                   .thenAccept(exportConfigs -> uploadHolder.setExportConfig(exportConfigs.getExportConfigs().get(0)))
-                   .thenAccept(v -> {
-                     String fileFormat = uploadHolder.getExportConfig().getFormat().value().split("/")[1];
-                     uploadHolder.setFileFormat(fileFormat);
-                   })
-                   .thenCompose(v -> bvExportConfigHelper.getExportConfigCredentials(uploadHolder.getExportConfig().getId()))
-                   .thenAccept(uploadHolder::setCredentials)
-                   .thenCompose(v -> {
-                      ExportConfig.Format exportFormat = uploadHolder.getExportConfig().getFormat() ;
-                      String acceptHeader = exportFormat.value().toLowerCase();
-                      return bvHelper.getBatchVoucherById(uploadHolder.getBatchVoucherExport().getBatchVoucherId(), acceptHeader)
-                       .thenApply(response -> (BatchVoucher)response.getEntity());
-                   })
-                   .thenAccept(uploadHolder::setBatchVoucher)
-                   .thenCompose(v -> uploadBatchVoucher(ctx, uploadHolder))
+                   .thenCompose(v -> updateHolderWithExportConfig(uploadHolder))
+                   .thenAccept(v ->  updateHolderWithFileFormat(uploadHolder))
+                   .thenCompose(v -> updateHolderWithCredentials(uploadHolder))
+                   .thenCompose(v -> updateHolderWithBatchVoucher(uploadHolder))
+                   .thenCompose(v -> uploadBatchVoucher(uploadHolder))
                    .handle((v, throwable) -> {
                      if (throwable == null) {
                        succUploadUpdate(uploadHolder.getBatchVoucherExport());
@@ -76,7 +68,29 @@ public class UploadBatchVoucherExportService {
     return future;
   }
 
-  public CompletableFuture<Void> uploadBatchVoucher(Context ctx, BatchVoucherUploadHolder uploadHolder) {
+  public CompletableFuture<Void> uploadBatchVoucherExport(BatchVoucherExport batchVoucherExport) {
+    CompletableFuture<Void> future = new CompletableFuture<>();
+    BatchVoucherUploadHolder uploadHolder = new BatchVoucherUploadHolder();
+    uploadHolder.setBatchVoucherExport(batchVoucherExport);
+    updateHolderWithExportConfig(uploadHolder)
+      .thenAccept(v ->  updateHolderWithFileFormat(uploadHolder))
+      .thenCompose(v -> updateHolderWithCredentials(uploadHolder))
+      .thenCompose(v -> updateHolderWithBatchVoucher(uploadHolder))
+      .thenCompose(v -> uploadBatchVoucher(uploadHolder))
+      .handle((v, throwable) -> {
+        if (throwable == null) {
+          succUploadUpdate(uploadHolder.getBatchVoucherExport());
+        }
+        else {
+          failUploadUpdate(uploadHolder.getBatchVoucherExport(), throwable);
+        }
+        future.complete(null);
+        return null;
+      });
+    return future;
+  }
+
+  public CompletableFuture<Void> uploadBatchVoucher(BatchVoucherUploadHolder uploadHolder) {
     CompletableFuture<Void> future = new CompletableFuture<>();
     try {
       UploadService helper = new FtpUploadService(uploadHolder.getExportConfig().getUploadURI());
@@ -94,6 +108,55 @@ public class UploadBatchVoucherExportService {
         });
     } catch (URISyntaxException e) {
       future.completeExceptionally(new CompletionException(e));
+    }
+    return future;
+  }
+
+  private CompletableFuture<Void> updateHolderWithExportConfig(BatchVoucherUploadHolder uploadHolder) {
+    CompletableFuture<Void> future = new CompletableFuture<>();
+    bvExportConfigHelper
+              .getExportConfigs(1, 0, buildExportConfigQuery(uploadHolder.getBatchVoucherExport().getBatchGroupId()))
+              .thenAccept(exportConfigs -> uploadHolder.setExportConfig(exportConfigs.getExportConfigs().get(0)))
+              .thenAccept(v -> future.complete(null))
+              .exceptionally(t -> {
+                future.completeExceptionally(new HttpException(404, "Batch export configuration was not found"));
+                return null;
+              });
+    return future;
+  }
+
+  private void updateHolderWithFileFormat(BatchVoucherUploadHolder uploadHolder) {
+    String fileFormat = uploadHolder.getExportConfig().getFormat().value().split("/")[1];
+    uploadHolder.setFileFormat(fileFormat);
+  }
+
+  private CompletableFuture<Void> updateHolderWithCredentials(BatchVoucherUploadHolder uploadHolder) {
+    CompletableFuture<Void> future = new CompletableFuture<>();
+    bvExportConfigHelper.getExportConfigCredentials(uploadHolder.getExportConfig().getId())
+      .thenAccept(uploadHolder::setCredentials)
+      .thenAccept(v -> future.complete(null))
+      .exceptionally(t -> {
+        future.completeExceptionally(new HttpException(404, "Credentials for export configuration was not found"));
+        return null;
+      });
+    return future;
+  }
+
+  private CompletableFuture<Void> updateHolderWithBatchVoucher(BatchVoucherUploadHolder uploadHolder) {
+    CompletableFuture<Void> future = new CompletableFuture<>();
+    try {
+      ExportConfig.Format exportFormat = uploadHolder.getExportConfig().getFormat();
+      String acceptHeader = exportFormat.value().toLowerCase();
+      bvHelper.getBatchVoucherById(uploadHolder.getBatchVoucherExport().getBatchVoucherId(), acceptHeader)
+        .thenApply(response -> (BatchVoucher) response.getEntity())
+        .thenAccept(uploadHolder::setBatchVoucher)
+        .thenAccept(v -> future.complete(null))
+        .exceptionally(t -> {
+          future.completeExceptionally(new HttpException(404, "Batch voucher was not found"));
+          return null;
+        });
+    } catch (Exception e) {
+      future.completeExceptionally(new HttpException(500, "File format error"));
     }
     return future;
   }

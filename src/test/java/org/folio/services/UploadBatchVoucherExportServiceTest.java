@@ -68,7 +68,7 @@ public class UploadBatchVoucherExportServiceTest extends ApiTestBase {
   @Test
   public void testServiceConstructor() {
     //given
-    UploadBatchVoucherExportService service =  new UploadBatchVoucherExportService(bvHelper, bvExportConfigHelper, bvExportsHelper);
+    UploadBatchVoucherExportService service =  new UploadBatchVoucherExportService(ctxMock, bvHelper, bvExportConfigHelper, bvExportsHelper);
     //Then
     assertNotNull(service);
   }
@@ -76,7 +76,7 @@ public class UploadBatchVoucherExportServiceTest extends ApiTestBase {
   @Test
   public void testShouldSuccessUploadBatchVoucherExport() throws ExecutionException, InterruptedException {
     //given
-    UploadBatchVoucherExportService serviceSpy = spy(new UploadBatchVoucherExportService(bvHelper, bvExportConfigHelper, bvExportsHelper));
+    UploadBatchVoucherExportService serviceSpy = spy(new UploadBatchVoucherExportService(ctxMock, bvHelper, bvExportConfigHelper, bvExportsHelper));
     BatchVoucher bv = getMockAsJson(BATCH_VOUCHERS_PATH).mapTo(BatchVoucher.class);
     Response.ResponseBuilder responseBuilder = Response.status(200).header("Content-Type", "application/json");
     Response responseBV = responseBuilder.entity(bv).build();
@@ -94,9 +94,9 @@ public class UploadBatchVoucherExportServiceTest extends ApiTestBase {
 
     doReturn(completedFuture(null)).when(bvExportsHelper).updateBatchVoucherExportRecord(eq(bvExport));
     doReturn(completedFuture(responseBV)).when(bvHelper).getBatchVoucherById(BV_ID, "application/xml");
-    doReturn(completedFuture(null)).when(serviceSpy).uploadBatchVoucher(any(), any());
+    doReturn(completedFuture(null)).when(serviceSpy).uploadBatchVoucher(any());
     //When
-    serviceSpy.uploadBatchVoucherExport(BV_EXPORT_ID, ctxMock).get();
+    serviceSpy.uploadBatchVoucherExport(BV_EXPORT_ID).get();
     //Then
     verify(bvExportsHelper).getBatchVoucherExportById(BV_EXPORT_ID);
     verify(bvExportConfigHelper).getExportConfigCredentials(bvExportConf.getExportConfigs().get(0).getId());
@@ -114,7 +114,7 @@ public class UploadBatchVoucherExportServiceTest extends ApiTestBase {
     when(bvExportsHelper.getBatchVoucherExportById(BV_EXPORT_ID))
       .thenReturn(future);
     //When
-    CompletableFuture<Void> actFuture = service.uploadBatchVoucherExport(BV_EXPORT_ID, ctxMock);
+    CompletableFuture<Void> actFuture = service.uploadBatchVoucherExport(BV_EXPORT_ID);
     //Then
     actFuture.join();
     verify(bvExportsHelper).getBatchVoucherExportById(BV_EXPORT_ID);

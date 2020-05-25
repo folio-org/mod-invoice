@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.net.UnknownHostException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 
@@ -23,7 +24,7 @@ import me.escoffier.vertx.completablefuture.VertxCompletableFuture;
 public class FtpUploadService implements UploadService {
 
   private static final Logger logger = LoggerFactory.getLogger(FtpUploadService.class);
-  public static final String DEFAULT_WORKING_DIR = "/files";
+  public static final String DEFAULT_WORKING_DIR = "/files/mod-invoice";
 
   private final FTPClient ftp;
   private final String server;
@@ -94,6 +95,9 @@ public class FtpUploadService implements UploadService {
         ftp.setControlKeepAliveTimeout(300);
         ftp.setFileType(FTP.BINARY_FILE_TYPE);
         ftp.changeWorkingDirectory(DEFAULT_WORKING_DIR);
+        ftp.setPassiveNatWorkaroundStrategy(new DefaultServerResolver(ftp));
+        ftp.enterLocalPassiveMode();
+        changeWorkingDirectory();
         if (ftp.storeFile(filename, is)) {
           return ftp.getReplyString().trim();
         } else {
@@ -111,6 +115,35 @@ public class FtpUploadService implements UploadService {
         }
       }
     });
+  }
+
+  private void changeWorkingDirectory() throws IOException {
+    if (!checkDirectoryExists(DEFAULT_WORKING_DIR)){
+      ftp.makeDirectory(DEFAULT_WORKING_DIR);
+    }
+    ftp.changeWorkingDirectory(DEFAULT_WORKING_DIR);
+  }
+
+  public boolean checkDirectoryExists(String dirPath) throws IOException {
+    ftp.changeWorkingDirectory(dirPath);
+    int returnCode = ftp.getReplyCode();
+    if (returnCode == 550) {
+      return false;
+    }
+    return true;
+  }
+
+  public static class DefaultServerResolver implements FTPClient.HostnameResolver {
+    private FTPClient client;
+
+    public DefaultServerResolver(FTPClient client) {
+      this.client = client;
+    }
+
+    @Override
+    public String resolve(String hostname) throws UnknownHostException {
+      return this.client.getRemoteAddress().getHostAddress();
+    }
   }
 
 }
