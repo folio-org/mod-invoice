@@ -526,6 +526,10 @@
     {
       "id": "finance.ledgers",
       "version": "1.4"
+    },
+    {
+      "id":"organizations-storage.organizations",
+      "version": "3.0"
     }
   ],
   "permissionSets": [
