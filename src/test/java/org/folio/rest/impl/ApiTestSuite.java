@@ -9,7 +9,7 @@ import org.folio.converters.BatchVoucherModelConverterTest;
 import org.folio.converters.BatchedVoucherLinesModelConverterTest;
 import org.folio.converters.BatchedVoucherModelConverterTest;
 import org.folio.invoices.events.handlers.InvoiceSummaryTest;
-import org.folio.invoices.util.FtpUploadHelperTest;
+import org.folio.services.ftp.FtpUploadServiceTest;
 import org.folio.invoices.util.HelperUtilsTest;
 import org.folio.jaxb.DefaultJAXBRootElementNameResolverTest;
 import org.folio.jaxb.JAXBUtilTest;
@@ -19,9 +19,11 @@ import org.folio.rest.impl.protection.InvoicesProtectionTest;
 import org.folio.rest.impl.protection.LinesProtectionTest;
 import org.folio.rest.tools.utils.NetworkUtils;
 import org.folio.schemas.xsd.BatchVoucherSchemaXSDTest;
-import org.folio.services.BatchVoucherGenerateServiceTest;
+import org.folio.services.voucher.BatchVoucherGenerateServiceTest;
 import org.folio.services.InvoiceRetrieveServiceTest;
+import org.folio.services.voucher.UploadBatchVoucherExportServiceTest;
 import org.folio.services.VoucherLinesRetrieveServiceTest;
+import org.folio.services.ftp.FTPVertxCommandLoggerTest;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Nested;
@@ -170,7 +172,7 @@ public class ApiTestSuite {
   }
 
   @Nested
-  class FtpUploadHelperTestNested extends FtpUploadHelperTest {
+  class FtpUploadServiceTestNested extends FtpUploadServiceTest {
   }
 
   @Nested
@@ -197,4 +199,11 @@ public class ApiTestSuite {
   class BatchVoucherExportsHelperTestNested extends BatchVoucherExportsHelperTest {
   }
 
+  @Nested
+  class FTPVertxCommandLoggerTestNested extends FTPVertxCommandLoggerTest {
+  }
+
+  @Nested
+  class UploadBatchVoucherExportServiceTestNested extends UploadBatchVoucherExportServiceTest {
+  }
 }

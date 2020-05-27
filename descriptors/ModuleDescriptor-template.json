@@ -378,7 +378,7 @@
     },
     {
       "id": "batch-voucher.batch-voucher-exports",
-      "version": "1.0",
+      "version": "1.1",
       "handlers": [
         {
           "methods": ["GET"],
@@ -418,13 +418,17 @@
           "permissionsRequired": ["batch-voucher.batch-voucher-exports.item.post"],
           "modulePermissions": [
             "batch-voucher-storage.batch-voucher-exports.item.post",
-            "batch-voucher-storage.batch-vouchers.item.post",
             "batch-voucher-storage.batch-voucher-exports.item.put",
+            "batch-voucher-storage.batch-vouchers.item.post",
+            "batch-voucher-storage.batch-vouchers.item.get",
+            "batch-voucher-storage.export-configurations.collection.get",
+            "batch-voucher-storage.export-configurations.credentials.item.get",
             "invoice-storage.invoices.item.get",
             "invoice-storage.invoices.collection.get",
             "voucher-storage.vouchers.collection.get",
             "voucher-storage.voucher-lines.collection.get",
-            "batch-group-storage.batch-groups.item.get"
+            "batch-group-storage.batch-groups.item.get",
+            "organizations-storage.organizations.collection.get"
           ]
         },
         {
@@ -435,7 +439,14 @@
         {
           "methods": ["POST"],
           "pathPattern": "/batch-voucher/batch-voucher-exports/{id}/upload",
-          "permissionsRequired": ["batch-voucher.batch-voucher-exports.upload.item.post"]
+          "permissionsRequired": ["batch-voucher.batch-voucher-exports.upload.item.post"],
+          "modulePermissions": [
+            "batch-voucher-storage.batch-voucher-exports.item.put",
+            "batch-voucher-storage.batch-voucher-exports.item.get",
+            "batch-voucher-storage.export-configurations.collection.get",
+            "batch-voucher-storage.export-configurations.credentials.item.get",
+            "batch-voucher-storage.batch-vouchers.item.get"
+          ]
         }
       ]
     },
@@ -515,6 +526,10 @@
     {
       "id": "finance.ledgers",
       "version": "1.4"
+    },
+    {
+      "id":"organizations-storage.organizations",
+      "version": "3.0"
     }
   ],
   "permissionSets": [

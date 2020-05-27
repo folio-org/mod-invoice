@@ -30,8 +30,8 @@ public class InitEventBus implements PostDeployVerticle {
   Handler<Message<JsonObject>> invoiceSummaryHandler;
 
   @Autowired
-  @Qualifier("batchVoucherPersistHandler")
-  Handler<Message<JsonObject>> batchVoucherPersistHandler;
+  @Qualifier("batchVoucherProcessHandler")
+  Handler<Message<JsonObject>> batchVoucherProcessHandler;
 
   public InitEventBus() {
     SpringContextUtil.autowireDependencies(this, Vertx.currentContext());
@@ -51,7 +51,7 @@ public class InitEventBus implements PostDeployVerticle {
 
       Promise<Void> batchVoucherPersistRegistrationHandler = Promise.promise();
       MessageConsumer<JsonObject> batchVoucherPersist = eb.localConsumer(MessageAddress.BATCH_VOUCHER_PERSIST_TOPIC.address);
-      batchVoucherPersist.handler(batchVoucherPersistHandler)
+      batchVoucherPersist.handler(batchVoucherProcessHandler)
         .completionHandler(batchVoucherPersistRegistrationHandler);
 
       invoiceSummaryRegistrationHandler.future().onComplete(result -> {
