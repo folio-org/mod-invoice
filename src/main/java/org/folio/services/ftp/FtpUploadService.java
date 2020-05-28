@@ -114,13 +114,13 @@ public class FtpUploadService implements UploadService {
   }
 
   private void changeWorkingDirectory() throws IOException {
-    if (!checkDirectoryExists(DEFAULT_WORKING_DIR)){
+    if (isDirectoryAbsent(DEFAULT_WORKING_DIR)){
       ftp.makeDirectory(DEFAULT_WORKING_DIR);
     }
     ftp.changeWorkingDirectory(DEFAULT_WORKING_DIR);
   }
 
-  public boolean checkDirectoryExists(String dirPath) throws IOException {
+  public boolean isDirectoryAbsent(String dirPath) throws IOException {
     ftp.changeWorkingDirectory(dirPath);
     int returnCode = ftp.getReplyCode();
     return returnCode == 550;
