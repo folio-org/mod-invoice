@@ -86,14 +86,11 @@ public class FtpUploadService implements UploadService {
 
   public CompletableFuture<String> upload(Context ctx, String filename, BatchVoucher batchVoucher) {
   return VertxCompletableFuture.supplyBlockingAsync(ctx, () -> {
-      try (InputStream is = new ByteArrayInputStream(JsonObject.mapFrom(batchVoucher)
-        .encode()
-        .getBytes())) {
+      try (InputStream is = new ByteArrayInputStream(JsonObject.mapFrom(batchVoucher).encodePrettily().getBytes())) {
         ftp.addProtocolCommandListener( FTPVertxCommandLogger.getDefListener(logger));
         ftp.setBufferSize(1024 * 1024);
         ftp.setControlKeepAliveTimeout(300);
         ftp.setFileType(FTP.BINARY_FILE_TYPE);
-        ftp.changeWorkingDirectory(DEFAULT_WORKING_DIR);
         ftp.setPassiveNatWorkaroundStrategy(new DefaultServerResolver(ftp));
         ftp.enterLocalPassiveMode();
         changeWorkingDirectory();
