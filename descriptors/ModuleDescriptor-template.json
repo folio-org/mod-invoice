@@ -506,6 +506,10 @@
       "version": "3.0"
     },
     {
+      "id": "finance-storage.transactions",
+      "version": "3.0"
+    },
+    {
       "id": "batch-group-storage.batch-groups",
       "version": "1.0"
     },
