@@ -5,6 +5,7 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 
+import org.apache.commons.lang3.StringUtils;
 import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.models.BatchVoucherUploadHolder;
 import org.folio.rest.impl.BatchVoucherExportConfigHelper;
@@ -173,6 +174,7 @@ public class UploadBatchVoucherExportService {
   private void succUploadUpdate(BatchVoucherExport bvExport) {
     if (bvExport != null) {
       bvExport.setStatus(BatchVoucherExport.Status.UPLOADED);
+      bvExport.setMessage(StringUtils.EMPTY);
       updateBatchVoucher(bvExport);
       LOG.debug("Batch voucher uploaded on FTP");
     }
