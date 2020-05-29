@@ -37,10 +37,13 @@ import javax.money.convert.CurrencyConversion;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.folio.invoices.rest.exceptions.HttpException;
+import org.folio.rest.acq.model.finance.AwaitingPayment;
 import org.folio.rest.acq.model.finance.FiscalYear;
 import org.folio.rest.acq.model.finance.Fund;
 import org.folio.rest.acq.model.finance.FundCollection;
 import org.folio.rest.acq.model.finance.Transaction;
+import org.folio.rest.acq.model.finance.Transaction.Source;
+import org.folio.rest.acq.model.finance.Transaction.TransactionType;
 import org.folio.rest.acq.model.finance.TransactionCollection;
 import org.folio.rest.jaxrs.model.Adjustment;
 import org.folio.rest.jaxrs.model.FundDistribution;
@@ -111,11 +114,76 @@ public class FinanceHelper extends AbstractHelper {
       .thenApply(aVoid -> transactions);
   }
 
+  public CompletableFuture<List<Transaction>> buildPendingPaymentTransactions(List<InvoiceLine> invoiceLines, Invoice invoice) {
+    List<Transaction> transactions = buildBasePendingPaymentTransactions(invoiceLines, invoice);
+
+    transactions.addAll(buildAdjustmentPendingPaymentTransactions(invoice));
+
+    Map<String, List<Transaction>> groupedByFund = groupTransactionsByFund(transactions);
+    return groupByLedgerIds(groupedByFund).thenCompose(groupedByLedgerId -> VertxCompletableFuture.allOf(ctx,
+      groupedByLedgerId.entrySet()
+        .stream()
+        .map(entry -> getCurrentFiscalYear(entry.getKey()).thenAcceptAsync(fiscalYear -> updatePendingPaymentTransactionWithFiscalYear(entry.getValue(), fiscalYear)))
+        .collect(toList())
+        .toArray(new CompletableFuture[0])))
+      .thenApply(aVoid -> transactions);
+  }
+
+  private List<Transaction> buildBasePendingPaymentTransactions(List<InvoiceLine> invoiceLines, Invoice invoice) {
+    CurrencyConversion conversion = getCurrentExchangeRateProvider().getCurrencyConversion(getSystemCurrency());
+    return invoiceLines.stream()
+      .flatMap(line -> line.getFundDistributions().stream()
+        .map(fundDistribution -> buildPendingPaymentTransactionByInvoiceLine(fundDistribution, line, invoice.getCurrency(), conversion)))
+      .collect(toList());
+  }
+
+  private Transaction buildPendingPaymentTransactionByInvoiceLine(FundDistribution fundDistribution, InvoiceLine invoiceLine,
+    String currency,
+    CurrencyConversion conversion) {
+    MonetaryAmount amount = getFundDistributionAmount(fundDistribution, invoiceLine.getTotal(), currency).with(conversion);
+    Transaction transaction = new Transaction();
+
+    if (fundDistribution.getEncumbrance() != null) {
+      transaction
+        .withAwaitingPayment(new AwaitingPayment()
+          .withEncumbranceId(fundDistribution.getEncumbrance())
+          .withReleaseEncumbrance(invoiceLine.getReleaseEncumbrance()));
+    }
+
+    return transaction
+      .withTransactionType(TransactionType.PENDING_PAYMENT)
+      .withAmount(convertToDoubleWithRounding(amount))
+      .withSource(Source.INVOICE)
+      .withSourceInvoiceId(invoiceLine.getInvoiceId())
+      .withSourceInvoiceLineId(invoiceLine.getId())
+      .withFromFundId(fundDistribution.getFundId());
+  }
+
   private List<Transaction> buildAdjustmentTransactions(Invoice invoice) {
     return invoice.getAdjustments().stream()
       .flatMap(adjustment -> adjustment.getFundDistributions().stream()
         .map(fundDistribution -> buildTransactionByAdjustments(fundDistribution, adjustment, invoice)))
       .collect(toList());
+  }
+
+
+  private List<Transaction> buildAdjustmentPendingPaymentTransactions(Invoice invoice) {
+    return invoice.getAdjustments().stream()
+      .flatMap(adjustment -> adjustment.getFundDistributions().stream()
+        .map(fundDistribution -> buildPendingPaymentTransactionByAdjustments(fundDistribution, adjustment, invoice)))
+      .collect(toList());
+  }
+
+  private Transaction buildPendingPaymentTransactionByAdjustments(FundDistribution fundDistribution, Adjustment adjustment, Invoice invoice) {
+    MonetaryAmount amount = getAdjustmentFundDistributionAmount(fundDistribution, adjustment, invoice);
+
+    return new Transaction()
+      .withTransactionType(TransactionType.PENDING_PAYMENT)
+      .withCurrency(invoice.getCurrency())
+      .withSourceInvoiceId(invoice.getId())
+      .withSource(Source.INVOICE)
+      .withAmount(convertToDoubleWithRounding(amount))
+      .withFromFundId(fundDistribution.getFundId());
   }
 
   private Transaction buildTransactionByAdjustments(FundDistribution fundDistribution, Adjustment adjustment, Invoice invoice) {
@@ -149,7 +217,9 @@ public class FinanceHelper extends AbstractHelper {
   private Map<String, List<Transaction>> groupTransactionsByFund(List<Transaction> transactions) {
     return transactions.stream()
       .collect(groupingBy(
-        transaction -> transaction.getTransactionType() == Transaction.TransactionType.PAYMENT ? transaction.getFromFundId()
+        transaction -> transaction.getTransactionType() == Transaction.TransactionType.PAYMENT ||
+           transaction.getTransactionType() == TransactionType.PENDING_PAYMENT
+          ? transaction.getFromFundId()
           : transaction.getToFundId()));
   }
 
@@ -202,7 +272,7 @@ public class FinanceHelper extends AbstractHelper {
         }
         String missingIds = String.join(", ", CollectionUtils.subtract(ids, fundCollection.getFunds().stream().map(Fund::getId).collect(toList())));
         logger.info("Funds with ids - {} are missing.", missingIds);
-        throw new HttpException(400, FUNDS_NOT_FOUND.toError().withParameters(Collections.singletonList(new Parameter().withKey("funds").withValue(missingIds))));
+        throw new HttpException(404, FUNDS_NOT_FOUND.toError().withParameters(Collections.singletonList(new Parameter().withKey("funds").withValue(missingIds))));
       });
   }
 
@@ -241,6 +311,12 @@ public class FinanceHelper extends AbstractHelper {
         .withCurrency(finalCurrency)
         .withAmount(convertToDoubleWithRounding(initialAmount.with(conversion)));
     });
+  }
+
+  private void updatePendingPaymentTransactionWithFiscalYear(List<Transaction> transactions, FiscalYear fiscalYear) {
+    String finalCurrency = StringUtils.isNotEmpty(fiscalYear.getCurrency()) ? fiscalYear.getCurrency() : getSystemCurrency();
+    transactions.forEach(transaction -> transaction.withFiscalYearId(fiscalYear.getId())
+      .withCurrency(finalCurrency));
   }
 
   private CompletionStage<Void> createPaymentsAndCredits(List<Transaction> transactions) {
