@@ -15,11 +15,11 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 
-import org.folio.invoices.utils.UploadHelperFactory;
 import org.folio.rest.jaxrs.model.Credentials;
 import org.folio.rest.jaxrs.model.ExportConfig;
 import org.folio.rest.jaxrs.model.ExportConfigCollection;
 import org.folio.rest.tools.client.interfaces.HttpClientInterface;
+import org.folio.services.ftp.FtpUploadService;
 
 import io.vertx.core.Context;
 import io.vertx.core.json.JsonObject;
@@ -29,11 +29,11 @@ public class BatchVoucherExportConfigHelper extends AbstractHelper {
 
   public static final String GET_EXPORT_CONFIGS_BY_QUERY = resourcesPath(BATCH_VOUCHER_EXPORT_CONFIGS) + SEARCH_PARAMS;
 
-  BatchVoucherExportConfigHelper(Map<String, String> okapiHeaders, Context ctx, String lang) {
+  public BatchVoucherExportConfigHelper(Map<String, String> okapiHeaders, Context ctx, String lang) {
     this(getHttpClient(okapiHeaders), okapiHeaders, ctx, lang);
   }
 
-  BatchVoucherExportConfigHelper(HttpClientInterface httpClient, Map<String, String> okapiHeaders, Context ctx, String lang) {
+  public BatchVoucherExportConfigHelper(HttpClientInterface httpClient, Map<String, String> okapiHeaders, Context ctx, String lang) {
     super(httpClient, okapiHeaders, ctx, lang);
   }
 
@@ -123,7 +123,7 @@ public class BatchVoucherExportConfigHelper extends AbstractHelper {
       .thenApply(v -> {
         try {
           ExportConfig config = exportConfigFut.join();
-          return UploadHelperFactory.get(config.getUploadURI());
+          return new FtpUploadService(config.getUploadURI());
         } catch (URISyntaxException e) {
           throw new CompletionException(e);
         }

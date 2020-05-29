@@ -1,8 +1,7 @@
-package org.folio.services;
+package org.folio.services.voucher;
 
 import static org.folio.invoices.utils.HelperUtils.OKAPI_URL;
 import static org.folio.rest.impl.ApiTestSuite.mockPort;
-import static org.folio.rest.impl.BatchVoucherExportsApiTest.BATCH_VOUCHER_EXPORTS_MOCK_DATA_PATH;
 import static org.junit.Assert.assertNotNull;
 
 import java.io.IOException;
@@ -28,6 +27,7 @@ public class BatchVoucherGenerateServiceTest extends ApiTestBase {
   private Context context;
   private Map<String, String> okapiHeaders;
   private static final String VALID_BATCH_VOUCHER_EXPORTS_ID ="566c9156-e52f-4597-9fee-5ddac91d14f2";
+  public static final String BATCH_VOUCHER_EXPORTS_MOCK_DATA_PATH = BASE_MOCK_DATA_PATH + "batchVoucherExports/";
   private static final String BATCH_VOUCHER_EXPORT_SAMPLE_PATH = BATCH_VOUCHER_EXPORTS_MOCK_DATA_PATH
     + VALID_BATCH_VOUCHER_EXPORTS_ID + ".json";
 

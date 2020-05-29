@@ -35,6 +35,8 @@ public class BatchVoucherExportsApiTest extends ApiTestBase {
   private static final String BATCH_VOUCHER_EXPORT_SAMPLE_PATH = BATCH_VOUCHER_EXPORTS_MOCK_DATA_PATH + VALID_BATCH_VOUCHER_EXPORTS_ID + ".json";
   private static final String BATCH_VOUCHER_EXPORT_UPLOAD_ENDPOINT_PATH = String
     .format("/batch-voucher/batch-voucher-exports/%s/upload", BAD_BATCH_VOUCHER_EXPORTS_ID);
+  private static final String BATCH_VOUCHER_EXPORT_SCHEDULE_ENDPOINT_PATH = String
+    .format("/batch-voucher/batch-voucher-exports/scheduled");
 
   @Test
   public void testPostBatchVoucherExports() {
@@ -145,6 +147,6 @@ public class BatchVoucherExportsApiTest extends ApiTestBase {
     given().header(X_OKAPI_TENANT)
       .post(BATCH_VOUCHER_EXPORT_UPLOAD_ENDPOINT_PATH)
       .then()
-      .statusCode(500);
+      .statusCode(202);
   }
 }
