@@ -8,7 +8,6 @@ import org.folio.jaxb.JAXBUtil;
 import org.folio.rest.jaxrs.model.BatchVoucher;
 import org.folio.rest.jaxrs.model.jaxb.BatchVoucherType;
 import org.folio.rest.jaxrs.model.jaxb.BatchedVoucherType;
-import org.jetbrains.annotations.NotNull;
 import org.springframework.core.convert.converter.Converter;
 
 public class BatchVoucherModelConverter implements Converter<BatchVoucher, BatchVoucherType> {
@@ -48,7 +47,6 @@ public class BatchVoucherModelConverter implements Converter<BatchVoucher, Batch
     return xmlBatchVoucherType;
   }
 
-  @NotNull
   private BatchVoucherType.BatchedVouchers convertBatchedVouchers(BatchVoucher batchVoucher) {
     BatchVoucherType.BatchedVouchers batchedVouchers = new BatchVoucherType.BatchedVouchers();
     List<BatchedVoucherType> batchedVouchersList = batchVoucher.getBatchedVouchers()
