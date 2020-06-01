@@ -15,8 +15,8 @@
 
   <properties>
     <jsonschema_paths>acq-models/mod-invoice-storage/schemas,raml-util/schemas,acq-models/common/schemas/</jsonschema_paths>
-    <raml-module-builder.version>29.4.0</raml-module-builder.version>
-    <vertx.version>3.9.0</vertx.version>
+    <raml-module-builder.version>30.0.1</raml-module-builder.version>
+    <vertx.version>3.9.1</vertx.version>
     <junit.version>4.12</junit.version>
     <rest-assured.version>4.3.0</rest-assured.version>
     <generated_sources_dir>${project.build.directory}/generated-sources</generated_sources_dir>

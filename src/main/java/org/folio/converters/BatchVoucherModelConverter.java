@@ -8,8 +8,9 @@ import org.folio.jaxb.JAXBUtil;
 import org.folio.rest.jaxrs.model.BatchVoucher;
 import org.folio.rest.jaxrs.model.jaxb.BatchVoucherType;
 import org.folio.rest.jaxrs.model.jaxb.BatchedVoucherType;
-import org.jetbrains.annotations.NotNull;
 import org.springframework.core.convert.converter.Converter;
+
+import javax.validation.constraints.NotNull;
 
 public class BatchVoucherModelConverter implements Converter<BatchVoucher, BatchVoucherType> {
 
