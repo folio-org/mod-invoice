@@ -11,7 +11,6 @@ import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 
@@ -26,12 +25,11 @@ import org.folio.rest.jaxrs.model.BatchVoucher;
 import org.folio.rest.jaxrs.model.BatchVoucherExport;
 import org.folio.rest.jaxrs.model.Credentials;
 import org.folio.rest.jaxrs.model.ExportConfigCollection;
-
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
 
 import io.vertx.core.impl.EventLoopContext;
 
@@ -53,8 +51,6 @@ public class UploadBatchVoucherExportServiceTest extends ApiTestBase {
   private BatchVoucherExportConfigHelper bvExportConfigHelper;
   @Mock
   private BatchVoucherExportsHelper bvExportsHelper;
-  @Mock
-  private Map<String, String> okapiHeadersMock;
   @Mock
   private EventLoopContext ctxMock;
 
@@ -117,5 +113,30 @@ public class UploadBatchVoucherExportServiceTest extends ApiTestBase {
     //Then
     actFuture.join();
     verify(bvExportsHelper).getBatchVoucherExportById(BV_EXPORT_ID);
+  }
+
+  @Test
+  public void testFineNameGenerateLogicIdThereIsSeparatorInUUID() throws ExecutionException, InterruptedException {
+    //given
+    UploadBatchVoucherExportService serviceSpy = spy(new UploadBatchVoucherExportService(ctxMock, bvHelper, bvExportConfigHelper, bvExportsHelper));
+    BatchVoucher bv = getMockAsJson(BATCH_VOUCHERS_PATH).mapTo(BatchVoucher.class);
+    String expId = "b58dcd02ee14";
+    bv.setId("xxx-yyy-zzz-" + expId);
+    //When
+    String actFileName = serviceSpy.generateFileName(bv, "json");
+    //Then
+    assertEquals("bv_"+expId+"_Amherst College (AC)_2019-12-06_2019-12-07.json", actFileName);
+  }
+
+  @Test
+  public void testFineNameGenerateLogicIdThereNoSeparatorInUUID() throws ExecutionException, InterruptedException {
+    //given
+    UploadBatchVoucherExportService serviceSpy = spy(new UploadBatchVoucherExportService(ctxMock, bvHelper, bvExportConfigHelper, bvExportsHelper));
+    BatchVoucher bv = getMockAsJson(BATCH_VOUCHERS_PATH).mapTo(BatchVoucher.class);
+    bv.setId("xxxyyyzzb58dcd02ee14");
+    //When
+    String actFileName = serviceSpy.generateFileName(bv, "json");
+    //Then
+    assertEquals("bv_"+bv.getId()+"_Amherst College (AC)_2019-12-06_2019-12-07.json", actFileName);
   }
 }
