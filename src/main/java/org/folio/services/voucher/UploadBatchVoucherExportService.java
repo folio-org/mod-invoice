@@ -113,6 +113,15 @@ public class UploadBatchVoucherExportService {
     return future;
   }
 
+  public String generateFileName(BatchVoucher batchVoucher, String fileFormat) {
+    JsonObject voucherJSON = JsonObject.mapFrom(batchVoucher);
+    String bvShortUUID = batchVoucher.getId().substring(batchVoucher.getId().lastIndexOf('-') + 1);
+    String voucherGroup = voucherJSON.getString("batchGroup");
+    String voucherStart = voucherJSON.getString("start").split(DATE_TIME_DELIMITER)[0];
+    String voucherEnd = voucherJSON.getString("end").split(DATE_TIME_DELIMITER)[0];
+    return "bv" + DELIMITER + bvShortUUID + DELIMITER + voucherGroup + DELIMITER + voucherStart + DELIMITER + voucherEnd + "." + fileFormat;
+  }
+
   private CompletableFuture<Void> updateHolderWithExportConfig(BatchVoucherUploadHolder uploadHolder) {
     CompletableFuture<Void> future = new CompletableFuture<>();
     bvExportConfigHelper
@@ -190,14 +199,6 @@ public class UploadBatchVoucherExportService {
 
   private String buildExportConfigQuery(String groupId) {
     return "batchGroupId==" + groupId;
-  }
-
-  private String generateFileName(BatchVoucher batchVoucher, String fileFormat) {
-    JsonObject voucherJSON = JsonObject.mapFrom(batchVoucher);
-    String voucherGroup = voucherJSON.getString("batchGroup");
-    String voucherStart = voucherJSON.getString("start").split(DATE_TIME_DELIMITER)[0];
-    String voucherEnd = voucherJSON.getString("end").split(DATE_TIME_DELIMITER)[0];
-    return "bv" + DELIMITER + voucherGroup + DELIMITER + voucherStart + DELIMITER + voucherEnd + "." + fileFormat;
   }
 
   private void closeHttpClient(){
