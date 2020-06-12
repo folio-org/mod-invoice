@@ -487,7 +487,7 @@
     },
     {
       "id": "order-lines",
-      "version": "1.1"
+      "version": "1.3"
     },
     {
       "id": "voucher-storage.vouchers",
@@ -527,7 +527,7 @@
     },
     {
       "id": "batch-voucher-storage.batch-voucher-exports",
-      "version": "1.0"
+      "version": "1.1"
     },
     {
       "id": "finance.ledgers",
@@ -535,7 +535,7 @@
     },
     {
       "id":"organizations-storage.organizations",
-      "version": "3.0"
+      "version": "3.1"
     }
   ],
   "permissionSets": [

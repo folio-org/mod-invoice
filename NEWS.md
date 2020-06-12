@@ -1,4 +1,23 @@
-## 3.2.0 - Unreleased
+## 4.1.0 - Unreleased
+## 4.0.0 - Released
+
+The focus of this release was to create a batch and upload to FTP and set money aside as awaiting payment for Invoices that are 'Approved'
+
+[Full Changelog](https://github.com/folio-org/mod-invoice/compare/v3.1.1...v4.0.0)
+
+### Stories
+* [MODINVOICE-167](https://issues.folio.org/browse/MODINVOICE-167) - mod-invoice: Update to RMB v30.0.1
+* [MODINVOICE-163](https://issues.folio.org/browse/MODINVOICE-163) - Securing APIs by default
+* [MODINVOICE-140](https://issues.folio.org/browse/MODINVOICE-140) - Create Pending payments upon invoice transition to approved
+* [MODINVOICE-137](https://issues.folio.org/browse/MODINVOICE-137) - Implement "test" endpoint
+* [MODINVOICE-136](https://issues.folio.org/browse/MODINVOICE-136) - Evaluate fund distributions when generating voucher
+* [MODINVOICE-133](https://issues.folio.org/browse/MODINVOICE-133) - Implement the "upload" endpoint
+* [MODINVOICE-132](https://issues.folio.org/browse/MODINVOICE-132) - Batch voucher generation and persistence
+
+### Bug Fixes
+* [MODINVOICE-170](https://issues.folio.org/browse/MODINVOICE-170) - Fix batch voucher file name generation
+* [MODINVOICE-161](https://issues.folio.org/browse/MODINVOICE-161) - Fix batch voucher converting from JSON to XML
+* [MODINVOICE-124](https://issues.folio.org/browse/MODINVOICE-124) - Limit document size
 
 ## 3.1.1 - Released
 
