@@ -94,7 +94,6 @@ public class BatchVoucherGenerateService {
       Map<String, Invoice> mapInvoices, Map<String, Organization> vendorsMap) {
     BatchedVoucher batchedVoucher = new BatchedVoucher();
     batchedVoucher.setVoucherNumber(voucher.getVoucherNumber());
-    batchedVoucher.setVendorInvoiceNo(voucher.getInvoiceId());
     batchedVoucher.setAccountingCode(voucher.getAccountingCode());
     batchedVoucher.setVoucherDate(voucher.getVoucherDate());
     batchedVoucher.setType(BatchedVoucher.Type.fromValue(voucher.getType().value()));
@@ -106,6 +105,7 @@ public class BatchVoucherGenerateService {
     batchedVoucher.setEnclosureNeeded(false);
     Invoice invoice = mapInvoices.get(voucher.getInvoiceId());
     batchedVoucher.setFolioInvoiceNo(invoice.getFolioInvoiceNo());
+    batchedVoucher.setVendorInvoiceNo(invoice.getVendorInvoiceNo());
     Organization organization = vendorsMap.get(invoice.getVendorId());
     batchedVoucher.setInvoiceNote(invoice.getNote());
     batchedVoucher.setVendorName(organization.getName());
