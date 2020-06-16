@@ -37,6 +37,7 @@ import javax.money.convert.CurrencyConversion;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.folio.invoices.rest.exceptions.HttpException;
+import org.folio.models.FundDistributionTransactionHolder;
 import org.folio.rest.acq.model.finance.AwaitingPayment;
 import org.folio.rest.acq.model.finance.FiscalYear;
 import org.folio.rest.acq.model.finance.Fund;
@@ -103,9 +104,7 @@ public class FinanceHelper extends AbstractHelper {
 
     transactions.addAll(buildAdjustmentTransactions(invoice));
 
-    Map<String, List<Transaction>> groupedByFund = groupTransactionsByFund(transactions);
-
-    return groupByLedgerIds(groupedByFund).thenCompose(groupedByLedgerId -> VertxCompletableFuture.allOf(ctx,
+    return groupByLedgerIds(transactions).thenCompose(groupedByLedgerId -> VertxCompletableFuture.allOf(ctx,
       groupedByLedgerId.entrySet()
         .stream()
         .map(entry -> getCurrentFiscalYear(entry.getKey()).thenAcceptAsync(fiscalYear -> updateTransactions(entry.getValue(), fiscalYear)))
@@ -115,12 +114,12 @@ public class FinanceHelper extends AbstractHelper {
   }
 
   public CompletableFuture<List<Transaction>> buildPendingPaymentTransactions(List<InvoiceLine> invoiceLines, Invoice invoice) {
-    List<Transaction> transactions = buildBasePendingPaymentTransactions(invoiceLines, invoice);
+    List<FundDistributionTransactionHolder> distributionTransactionHolders = buildBasePendingPaymentTransactions(invoiceLines, invoice);
 
-    transactions.addAll(buildAdjustmentPendingPaymentTransactions(invoice));
+    distributionTransactionHolders.addAll(buildAdjustmentFundDistributionPendingPaymentHolderList(invoice));
+    List<Transaction> transactions = distributionTransactionHolders.stream().map(FundDistributionTransactionHolder::getTransaction).collect(toList());
 
-    Map<String, List<Transaction>> groupedByFund = groupTransactionsByFund(transactions);
-    return groupByLedgerIds(groupedByFund).thenCompose(groupedByLedgerId -> VertxCompletableFuture.allOf(ctx,
+    return groupHoldersByLedgerIds(distributionTransactionHolders).thenCompose(groupedByLedgerId -> VertxCompletableFuture.allOf(ctx,
       groupedByLedgerId.entrySet()
         .stream()
         .map(entry -> getCurrentFiscalYear(entry.getKey()).thenAcceptAsync(fiscalYear -> updatePendingPaymentTransactionWithFiscalYear(entry.getValue(), fiscalYear)))
@@ -129,7 +128,11 @@ public class FinanceHelper extends AbstractHelper {
       .thenApply(aVoid -> transactions);
   }
 
-  private List<Transaction> buildBasePendingPaymentTransactions(List<InvoiceLine> invoiceLines, Invoice invoice) {
+  private Map<String, List<FundDistributionTransactionHolder>> groupHoldersByFund(List<FundDistributionTransactionHolder> distributionTransactionHolders) {
+    return distributionTransactionHolders.stream().collect(groupingBy(holder -> holder.getFundDistribution().getFundId()));
+  }
+
+  private List<FundDistributionTransactionHolder> buildBasePendingPaymentTransactions(List<InvoiceLine> invoiceLines, Invoice invoice) {
     CurrencyConversion conversion = getCurrentExchangeRateProvider().getCurrencyConversion(getSystemCurrency());
     return invoiceLines.stream()
       .flatMap(line -> line.getFundDistributions().stream()
@@ -137,7 +140,7 @@ public class FinanceHelper extends AbstractHelper {
       .collect(toList());
   }
 
-  private Transaction buildPendingPaymentTransactionByInvoiceLine(FundDistribution fundDistribution, InvoiceLine invoiceLine,
+  private FundDistributionTransactionHolder buildPendingPaymentTransactionByInvoiceLine(FundDistribution fundDistribution, InvoiceLine invoiceLine,
     String currency,
     CurrencyConversion conversion) {
     MonetaryAmount amount = getFundDistributionAmount(fundDistribution, invoiceLine.getTotal(), currency).with(conversion);
@@ -150,13 +153,17 @@ public class FinanceHelper extends AbstractHelper {
           .withReleaseEncumbrance(invoiceLine.getReleaseEncumbrance()));
     }
 
-    return transaction
+    Transaction pendingPayment =  transaction
       .withTransactionType(TransactionType.PENDING_PAYMENT)
       .withAmount(convertToDoubleWithRounding(amount))
       .withSource(Source.INVOICE)
       .withSourceInvoiceId(invoiceLine.getInvoiceId())
       .withSourceInvoiceLineId(invoiceLine.getId())
       .withFromFundId(fundDistribution.getFundId());
+
+    return new FundDistributionTransactionHolder()
+      .withTransaction(pendingPayment)
+      .withFundDistribution(fundDistribution);
   }
 
   private List<Transaction> buildAdjustmentTransactions(Invoice invoice) {
@@ -166,24 +173,26 @@ public class FinanceHelper extends AbstractHelper {
       .collect(toList());
   }
 
-
-  private List<Transaction> buildAdjustmentPendingPaymentTransactions(Invoice invoice) {
+  private List<FundDistributionTransactionHolder> buildAdjustmentFundDistributionPendingPaymentHolderList(Invoice invoice) {
     return invoice.getAdjustments().stream()
       .flatMap(adjustment -> adjustment.getFundDistributions().stream()
-        .map(fundDistribution -> buildPendingPaymentTransactionByAdjustments(fundDistribution, adjustment, invoice)))
+        .map(fundDistribution -> buildFundDistributionPendingPaymentHolder(fundDistribution, adjustment, invoice)))
       .collect(toList());
   }
 
-  private Transaction buildPendingPaymentTransactionByAdjustments(FundDistribution fundDistribution, Adjustment adjustment, Invoice invoice) {
+  private FundDistributionTransactionHolder buildFundDistributionPendingPaymentHolder(FundDistribution fundDistribution, Adjustment adjustment, Invoice invoice) {
     MonetaryAmount amount = getAdjustmentFundDistributionAmount(fundDistribution, adjustment, invoice);
 
-    return new Transaction()
+    Transaction pendingPayment = new Transaction()
       .withTransactionType(TransactionType.PENDING_PAYMENT)
       .withCurrency(invoice.getCurrency())
       .withSourceInvoiceId(invoice.getId())
       .withSource(Source.INVOICE)
       .withAmount(convertToDoubleWithRounding(amount))
       .withFromFundId(fundDistribution.getFundId());
+    return new FundDistributionTransactionHolder()
+      .withTransaction(pendingPayment)
+      .withFundDistribution(fundDistribution);
   }
 
   private Transaction buildTransactionByAdjustments(FundDistribution fundDistribution, Adjustment adjustment, Invoice invoice) {
@@ -243,18 +252,27 @@ public class FinanceHelper extends AbstractHelper {
     return transaction;
   }
 
-  private CompletableFuture<Map<String, List<Transaction>>> groupByLedgerIds(Map<String, List<Transaction>> groupedByFund) {
-    return getFunds(groupedByFund).thenApply(lists -> lists.stream()
+  private CompletableFuture<Map<String, List<Transaction>>> groupByLedgerIds(List<Transaction> transactions) {
+    Map<String, List<Transaction>> groupedByFund = groupTransactionsByFund(transactions);
+    return getFunds(new ArrayList<>(groupedByFund.keySet())).thenApply(lists -> lists.stream()
       .flatMap(Collection::stream)
       .collect(HashMap::new, accumulator(groupedByFund), Map::putAll));
   }
 
-  private CompletableFuture<List<List<Fund>>> getFunds(Map<String, List<Transaction>> groupedByFund) {
-    return collectResultsOnSuccess(StreamEx.ofSubLists(new ArrayList<>(groupedByFund.entrySet()), MAX_IDS_FOR_GET_RQ)
-      .map(entries -> entries.stream()
-        .map(Map.Entry::getKey)
-        .distinct()
-        .collect(toList()))
+  private CompletableFuture<Map<String, List<FundDistributionTransactionHolder>>> groupHoldersByLedgerIds(List<FundDistributionTransactionHolder> holders) {
+    Map<String, List<FundDistributionTransactionHolder>> groupedByFund = groupHoldersByFund(holders);
+    return getFunds(new ArrayList<>(groupedByFund.keySet())).thenApply(funds -> funds.stream()
+      .flatMap(Collection::stream)
+      .map(fund -> {
+        groupedByFund.get(fund.getId()).stream()
+          .forEach(holder -> holder.getFundDistribution().setCode(fund.getCode()));
+        return fund;
+      })
+      .collect(HashMap::new, accumulator(groupedByFund), Map::putAll));
+  }
+
+  private CompletableFuture<List<List<Fund>>> getFunds(List<String> fundIds) {
+    return collectResultsOnSuccess(StreamEx.ofSubLists(fundIds, MAX_IDS_FOR_GET_RQ)
       .map(this::getFundsByIds)
       .toList());
   }
@@ -276,10 +294,10 @@ public class FinanceHelper extends AbstractHelper {
       });
   }
 
-  private BiConsumer<HashMap<String, List<Transaction>>, Fund> accumulator(Map<String, List<Transaction>> groupedByFund) {
-    return (map, fund) -> map.merge(fund.getLedgerId(), groupedByFund.get(fund.getId()), (transactions, transactions2) -> {
-      transactions.addAll(transactions2);
-      return transactions;
+  private <T> BiConsumer<HashMap<String, List<T>>, Fund> accumulator(Map<String, List<T>> groupedByFund) {
+    return (map, fund) -> map.merge(fund.getLedgerId(), groupedByFund.get(fund.getId()), (list, list1) -> {
+      list.addAll(list1);
+      return list;
     });
   }
 
@@ -313,10 +331,12 @@ public class FinanceHelper extends AbstractHelper {
     });
   }
 
-  private void updatePendingPaymentTransactionWithFiscalYear(List<Transaction> transactions, FiscalYear fiscalYear) {
+  private void updatePendingPaymentTransactionWithFiscalYear(List<FundDistributionTransactionHolder> holders, FiscalYear fiscalYear) {
     String finalCurrency = StringUtils.isNotEmpty(fiscalYear.getCurrency()) ? fiscalYear.getCurrency() : getSystemCurrency();
-    transactions.forEach(transaction -> transaction.withFiscalYearId(fiscalYear.getId())
-      .withCurrency(finalCurrency));
+    holders.stream()
+      .map(FundDistributionTransactionHolder::getTransaction)
+      .forEach(transaction -> transaction.withFiscalYearId(fiscalYear.getId())
+        .withCurrency(finalCurrency));
   }
 
   private CompletionStage<Void> createPaymentsAndCredits(List<Transaction> transactions) {
