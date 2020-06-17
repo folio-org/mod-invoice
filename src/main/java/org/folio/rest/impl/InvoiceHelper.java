@@ -504,6 +504,7 @@ public class InvoiceHelper extends AbstractHelper {
   }
 
   private void checkVendorHasAccountingCode(Invoice invoice) {
+    // accounting code is erpCode from organization record
     if (Boolean.TRUE.equals(invoice.getExportToAccounting()) && StringUtils.isEmpty(invoice.getAccountingCode())) {
       throw new HttpException(400, ACCOUNTING_CODE_NOT_PRESENT);
     }
