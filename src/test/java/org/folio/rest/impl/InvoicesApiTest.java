@@ -9,6 +9,7 @@ import static java.util.stream.Collectors.toMap;
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 import static javax.ws.rs.core.MediaType.TEXT_PLAIN;
 import static org.awaitility.Awaitility.await;
+import static org.folio.invoices.utils.ErrorCodes.ACCOUNTING_CODE_NOT_PRESENT;
 import static org.folio.invoices.utils.ErrorCodes.ADJUSTMENT_FUND_DISTRIBUTIONS_NOT_PRESENT;
 import static org.folio.invoices.utils.ErrorCodes.ADJUSTMENT_FUND_DISTRIBUTIONS_SUMMARY_MISMATCH;
 import static org.folio.invoices.utils.ErrorCodes.CURRENT_FISCAL_YEAR_NOT_FOUND;
@@ -1212,6 +1213,31 @@ public class InvoicesApiTest extends ApiTestBase {
       MonetaryAmount amount = getFundDistributionAmount(fundDistribution, 10d, reqData.getCurrency()).with(conversion);
       assertThat(convertToDoubleWithRounding(amount), is(pendingPaymentMap.get(fundDistribution.getEncumbrance()).getAmount()));
     });
+  }
+
+  @Test
+  public void testTransitionToApprovedWithoutAccountingCode() {
+    logger.info("=== Test transition invoice to Approved without specified accounting code ===");
+
+    InvoiceLine invoiceLine = getMockAsJson(INVOICE_LINE_WITH_APPROVED_INVOICE_SAMPLE_PATH).mapTo(InvoiceLine.class);
+    Invoice reqData = getMockAsJson(REVIEWED_INVOICE_WITH_EXISTING_VOUCHER_SAMPLE_PATH).mapTo(Invoice.class);
+    reqData.setStatus(Invoice.Status.APPROVED);
+    reqData.setCurrency("GBP");
+    reqData.setExportToAccounting(true);
+    reqData.setAccountingCode(null);
+
+    String id = reqData.getId();
+
+
+    String jsonBody = JsonObject.mapFrom(reqData).encode();
+    Headers headers = prepareHeaders(X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID);
+
+    Errors errors = verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, headers, APPLICATION_JSON, 400).then()
+      .extract()
+      .as(Errors.class);
+
+    assertEquals(ACCOUNTING_CODE_NOT_PRESENT.getCode(), errors.getErrors().get(0).getCode());
+
   }
 
   @Test
