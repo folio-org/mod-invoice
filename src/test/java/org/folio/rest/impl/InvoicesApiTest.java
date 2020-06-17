@@ -11,7 +11,6 @@ import static javax.ws.rs.core.MediaType.TEXT_PLAIN;
 import static org.awaitility.Awaitility.await;
 import static org.folio.invoices.utils.ErrorCodes.ADJUSTMENT_FUND_DISTRIBUTIONS_NOT_PRESENT;
 import static org.folio.invoices.utils.ErrorCodes.ADJUSTMENT_FUND_DISTRIBUTIONS_SUMMARY_MISMATCH;
-import static org.folio.invoices.utils.ErrorCodes.PENDING_PAYMENT_ERROR;
 import static org.folio.invoices.utils.ErrorCodes.CURRENT_FISCAL_YEAR_NOT_FOUND;
 import static org.folio.invoices.utils.ErrorCodes.EXTERNAL_ACCOUNT_NUMBER_IS_MISSING;
 import static org.folio.invoices.utils.ErrorCodes.FUNDS_NOT_FOUND;
@@ -21,6 +20,7 @@ import static org.folio.invoices.utils.ErrorCodes.INVALID_INVOICE_TRANSITION_ON_
 import static org.folio.invoices.utils.ErrorCodes.INVOICE_TOTAL_REQUIRED;
 import static org.folio.invoices.utils.ErrorCodes.LINE_FUND_DISTRIBUTIONS_SUMMARY_MISMATCH;
 import static org.folio.invoices.utils.ErrorCodes.MOD_CONFIG_ERROR;
+import static org.folio.invoices.utils.ErrorCodes.PENDING_PAYMENT_ERROR;
 import static org.folio.invoices.utils.ErrorCodes.PO_LINE_NOT_FOUND;
 import static org.folio.invoices.utils.ErrorCodes.PO_LINE_UPDATE_FAILURE;
 import static org.folio.invoices.utils.ErrorCodes.PROHIBITED_FIELD_CHANGING;
@@ -469,6 +469,7 @@ public class InvoicesApiTest extends ApiTestBase {
       .forEach(invoiceLine -> {
         invoiceLine.setId(UUID.randomUUID().toString());
         invoiceLine.setInvoiceId(id);
+        invoiceLine.getFundDistributions().forEach(fundDistribution -> fundDistribution.setCode(null));
         addMockEntry(INVOICE_LINES, JsonObject.mapFrom(invoiceLine));
       });
 
@@ -507,7 +508,7 @@ public class InvoicesApiTest extends ApiTestBase {
           .add(BigDecimal.valueOf(invoiceLine.getAdjustmentsTotal()))
           .divide(BigDecimal.valueOf(invoiceLine.getFundDistributions().size()), 2, RoundingMode.HALF_EVEN).doubleValue();
         invoiceLine.getFundDistributions()
-          .forEach(fundDistribution -> fundDistribution.withDistributionType(AMOUNT)
+          .forEach(fundDistribution -> fundDistribution.withDistributionType(AMOUNT).withCode(null)
             .setValue(fundDistrValue));
         addMockEntry(INVOICE_LINES, JsonObject.mapFrom(invoiceLine));
       });
@@ -543,6 +544,7 @@ public class InvoicesApiTest extends ApiTestBase {
     invoiceLine.setId(UUID.randomUUID().toString());
     FundDistribution percentageDistribution = new FundDistribution()
       .withFundId(EXISTING_FUND_ID)
+      .withCode(null)
       .withDistributionType(FundDistribution.DistributionType.PERCENTAGE)
       .withValue(50d);
     FundDistribution amountDistribution = new FundDistribution()
@@ -741,6 +743,7 @@ public class InvoicesApiTest extends ApiTestBase {
       .forEach(invoiceLine -> {
         invoiceLine.setId(UUID.randomUUID().toString());
         invoiceLine.setInvoiceId(reqData.getId());
+        invoiceLine.getFundDistributions().forEach(fundDistribution -> fundDistribution.setCode(null));
         addMockEntry(INVOICE_LINES, JsonObject.mapFrom(invoiceLine));
       });
     return invoiceLines;
@@ -769,6 +772,7 @@ public class InvoicesApiTest extends ApiTestBase {
     Invoice reqData = getMockAsJson(REVIEWED_INVOICE_WITH_EXISTING_VOUCHER_SAMPLE_PATH).mapTo(Invoice.class);
     invoiceLine.setId(UUID.randomUUID().toString());
     invoiceLine.setInvoiceId(reqData.getId());
+    invoiceLine.getFundDistributions().forEach(fundDistribution -> fundDistribution.setCode(null));
     prepareMockVoucher(reqData.getId());
     VoucherLine voucherLine = new VoucherLine().withVoucherId(EXISTING_VOUCHER_ID);
     addMockEntry(INVOICE_LINES, JsonObject.mapFrom(invoiceLine));
@@ -1190,7 +1194,6 @@ public class InvoicesApiTest extends ApiTestBase {
     verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, headers, "", 204);
 
     List<JsonObject> invoiceSummariesCreated = serverRqRs.get(INVOICE_TRANSACTION_SUMMARIES, HttpMethod.POST);
-    List<JsonObject> awaitingPaymentsCreated = serverRqRs.get(AWAITING_PAYMENTS, HttpMethod.POST);
     List<JsonObject> pendingPaymesCreated = serverRqRs.get(FINANCE_STORAGE_TRANSACTIONS, HttpMethod.POST);
 
     assertThat(invoiceSummariesCreated, hasSize(1));
@@ -1407,8 +1410,12 @@ public class InvoicesApiTest extends ApiTestBase {
 
     voucherLines.forEach(voucherLine -> {
       assertThat(voucherCreated.getId(), equalTo(voucherLine.getVoucherId()));
-      assertThat(voucherLine.getFundDistributions(), Every.everyItem(hasProperty("distributionType", is(AMOUNT))));
+      assertThat(voucherLine.getFundDistributions(), allOf(
+        Every.everyItem(hasProperty("distributionType", is(AMOUNT))),
+        Every.everyItem(hasProperty("code"))
+      ));
       assertThat(calculateVoucherLineAmount(voucherLine.getFundDistributions(), voucherCreated), equalTo(voucherLine.getAmount()));
+
       assertThat(voucherLine.getFundDistributions().stream()
         .filter(fundDistribution -> Objects.nonNull(fundDistribution.getInvoiceLineId()))
         .map(FundDistribution::getInvoiceLineId)
