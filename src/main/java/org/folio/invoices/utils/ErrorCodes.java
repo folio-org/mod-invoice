@@ -12,6 +12,7 @@ public enum ErrorCodes {
   PO_LINE_UPDATE_FAILURE("poLineUpdateFailure", "One or more purchase order line record(s) cannot be updated"),
   VOUCHER_NOT_FOUND("voucherNotFound", "The voucher record is not found"),
   FUND_DISTRIBUTIONS_NOT_PRESENT("fundDistributionsNotPresent", "At least one fund distribution should present for every associated invoice line"),
+  ACCOUNTING_CODE_NOT_PRESENT("accountingCodeNotPresent", "Invoice can not be approved, because it requires an accounting code to be export to accounting"),
   ADJUSTMENT_FUND_DISTRIBUTIONS_NOT_PRESENT("adjustmentFundDistributionsNotPresent", "At least one fund distribution should present for every non-prorated adjustment"),
   LINE_FUND_DISTRIBUTIONS_SUMMARY_MISMATCH("lineFundDistributionsSummaryMismatch", "Fund distributions summary should be 100 % or equal to subtotal for every associated invoice lines"),
   ADJUSTMENT_FUND_DISTRIBUTIONS_SUMMARY_MISMATCH("adjustmentFundDistributionsSummaryMismatch", "Fund distributions summary should be 100 % or equal to subtotal for every non-prorated adjustment"),

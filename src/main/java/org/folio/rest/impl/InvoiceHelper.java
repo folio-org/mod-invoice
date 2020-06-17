@@ -13,6 +13,7 @@ import static org.apache.commons.lang3.StringUtils.isAlpha;
 import static org.apache.commons.lang3.StringUtils.isEmpty;
 import static org.folio.invoices.utils.AcqDesiredPermissions.ASSIGN;
 import static org.folio.invoices.utils.AcqDesiredPermissions.MANAGE;
+import static org.folio.invoices.utils.ErrorCodes.ACCOUNTING_CODE_NOT_PRESENT;
 import static org.folio.invoices.utils.ErrorCodes.ADJUSTMENT_FUND_DISTRIBUTIONS_NOT_PRESENT;
 import static org.folio.invoices.utils.ErrorCodes.ADJUSTMENT_FUND_DISTRIBUTIONS_SUMMARY_MISMATCH;
 import static org.folio.invoices.utils.ErrorCodes.EXTERNAL_ACCOUNT_NUMBER_IS_MISSING;
@@ -487,18 +488,25 @@ public class InvoiceHelper extends AbstractHelper {
 
     return loadTenantConfiguration(SYSTEM_CONFIG_QUERY, VOUCHER_NUMBER_CONFIG_QUERY)
       .thenCompose(ok -> getInvoiceLinesWithTotals(invoice))
-      .thenApply(lines -> validateBeforeApproval(invoice, lines))
-      .thenCompose(invoiceLines -> createPendingPaymentsWithInvoiceSummary(invoiceLines, invoice))
-      .thenCompose(lines -> prepareVoucher(invoice)
-          .thenCompose(voucher -> handleVoucherWithLines(getAllFundDistributions(lines, invoice), voucher))
-      );
+      .thenCompose(lines -> {
+        validateBeforeApproval(invoice, lines);
+        return createPendingPaymentsWithInvoiceSummary(lines, invoice)
+          .thenCompose(v -> prepareVoucher(invoice)
+          .thenCompose(voucher -> handleVoucherWithLines(getAllFundDistributions(lines, invoice), voucher)));
+      });
   }
 
-  private List<InvoiceLine> validateBeforeApproval(Invoice invoice, List<InvoiceLine> lines) {
+  private void validateBeforeApproval(Invoice invoice, List<InvoiceLine> lines) {
+    checkVendorHasAccountingCode(invoice);
     verifyInvoiceLineNotEmpty(lines);
     validateInvoiceLineFundDistributions(lines, Monetary.getCurrency(invoice.getCurrency()));
     validateInvoiceAdjustmentsDistributions(getNotProratedAdjustments(invoice) , Monetary.getCurrency(invoice.getCurrency()));
-    return lines;
+  }
+
+  private void checkVendorHasAccountingCode(Invoice invoice) {
+    if (Boolean.TRUE.equals(invoice.getExportToAccounting()) && StringUtils.isEmpty(invoice.getAccountingCode())) {
+      throw new HttpException(400, ACCOUNTING_CODE_NOT_PRESENT);
+    }
   }
 
   private void verifyInvoiceLineNotEmpty(List<InvoiceLine> invoiceLines) {
@@ -699,14 +707,13 @@ public class InvoiceHelper extends AbstractHelper {
       });
   }
 
-  private CompletableFuture<List<InvoiceLine>> createPendingPaymentsWithInvoiceSummary(List<InvoiceLine> invoiceLines, Invoice invoice) {
+  private CompletableFuture<Void> createPendingPaymentsWithInvoiceSummary(List<InvoiceLine> invoiceLines, Invoice invoice) {
 
     return financeHelper.buildPendingPaymentTransactions(invoiceLines, invoice)
       .thenCompose(pendingPayments -> {
         InvoiceTransactionSummary summary = buildInvoiceTransactionsSummary(invoice, pendingPayments.size());
-        return createInvoiceTransactionSummary(summary)
-          .thenCompose(s -> postPendingPayments(pendingPayments));
-      }).thenApply(aVoid -> invoiceLines);
+        return createInvoiceTransactionSummary(summary).thenCompose(s -> postPendingPayments(pendingPayments));
+      });
   }
 
   private InvoiceTransactionSummary buildInvoiceTransactionsSummary(Invoice invoice, int numPendingPayments) {
