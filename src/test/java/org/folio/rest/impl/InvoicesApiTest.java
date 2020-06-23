@@ -1140,6 +1140,7 @@ public class InvoicesApiTest extends ApiTestBase {
 
     List<JsonObject> invoiceSummariesCreated = serverRqRs.get(INVOICE_TRANSACTION_SUMMARIES, HttpMethod.POST);
     List<JsonObject> awaitingPaymentsCreated = serverRqRs.get(AWAITING_PAYMENTS, HttpMethod.POST);
+    List<JsonObject> pendingPaymentsCreated = serverRqRs.get(FINANCE_STORAGE_TRANSACTIONS, HttpMethod.POST);
 
     assertThat(invoiceSummariesCreated, hasSize(1));
     assertThat(awaitingPaymentsCreated, nullValue());
@@ -1149,6 +1150,7 @@ public class InvoicesApiTest extends ApiTestBase {
     int numPendingPayments = invoiceLine.getFundDistributions().size();
     assertThat(transactionSummary.getNumPendingPayments(), is(numPendingPayments));
     assertThat(transactionSummary.getNumPaymentsCredits(), is(numPendingPayments));
+    assertThat(pendingPaymentsCreated, hasSize(numPendingPayments));
   }
 
   @Test

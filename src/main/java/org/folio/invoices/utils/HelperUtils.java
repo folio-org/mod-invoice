@@ -15,8 +15,8 @@ import static org.folio.invoices.utils.ResourcePathResolver.resourceByIdPath;
 import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
 import static org.folio.rest.RestVerticle.OKAPI_HEADER_TENANT;
 import static org.folio.rest.impl.AbstractHelper.ID;
-import static org.folio.rest.jaxrs.model.Adjustment.Prorate.NOT_PRORATED;
 import static org.folio.rest.jaxrs.model.FundDistribution.DistributionType.PERCENTAGE;
+import static org.folio.services.AdjustmentsService.NOT_PRORATED_ADJUSTMENTS_PREDICATE;
 import static org.javamoney.moneta.convert.ExchangeRateType.ECB;
 import static org.javamoney.moneta.convert.ExchangeRateType.IDENTITY;
 import static org.javamoney.moneta.convert.ExchangeRateType.IMF;
@@ -92,7 +92,7 @@ public class HelperUtils {
   private static final Pattern CQL_SORT_BY_PATTERN = Pattern.compile("(.*)(\\ssortBy\\s.*)", Pattern.CASE_INSENSITIVE);
 
 
-  private static final Predicate<Adjustment> NOT_PRORATED_ADJUSTMENTS_PREDICATE = adj -> adj.getProrate() == NOT_PRORATED;
+
 
   private HelperUtils() {
 
@@ -437,20 +437,6 @@ public class HelperUtils {
       case VOUCHER_LINES: return VOUCHERS+ "." + ProtectionHelper.ACQUISITIONS_UNIT_IDS;
       default: return ProtectionHelper.ACQUISITIONS_UNIT_IDS;
     }
-  }
-
-  public static List<Adjustment> getNotProratedAdjustments(List<Adjustment> adjustments) {
-    return filterAdjustments(adjustments, NOT_PRORATED_ADJUSTMENTS_PREDICATE);
-  }
-
-  public static List<Adjustment> getProratedAdjustments(List<Adjustment> adjustments) {
-    return filterAdjustments(adjustments, NOT_PRORATED_ADJUSTMENTS_PREDICATE.negate());
-  }
-
-  private static List<Adjustment> filterAdjustments(List<Adjustment> adjustments, Predicate<Adjustment> predicate) {
-    return adjustments.stream()
-      .filter(predicate)
-      .collect(toList());
   }
 
   public static String getId(JsonObject jsonObject) {
