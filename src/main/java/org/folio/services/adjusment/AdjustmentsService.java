@@ -1,7 +1,8 @@
-package org.folio.services;
+package org.folio.services.adjusment;
 
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toMap;
+import static org.apache.commons.lang3.StringUtils.isNotEmpty;
 import static org.folio.rest.impl.InvoiceLineHelper.HYPHEN_SEPARATOR;
 import static org.folio.rest.jaxrs.model.Adjustment.Prorate.NOT_PRORATED;
 
@@ -13,6 +14,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
+import java.util.Objects;
 import java.util.function.BiFunction;
 import java.util.function.Predicate;
 
@@ -31,20 +33,25 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 
-public abstract class AdjustmentsService {
+public class AdjustmentsService {
   private final Logger logger = LoggerFactory.getLogger(this.getClass());
   public static final Predicate<Adjustment> NOT_PRORATED_ADJUSTMENTS_PREDICATE = adj -> adj.getProrate() == NOT_PRORATED;
   public static final Predicate<Adjustment> PRORATED_ADJUSTMENTS_PREDICATE = NOT_PRORATED_ADJUSTMENTS_PREDICATE.negate();
+  public static final Predicate<Adjustment> INVOICE_LINE_PRORATED_ADJUSTMENT_PREDICATE = adjustment -> isNotEmpty(adjustment.getAdjustmentId());
 
-  public List<Adjustment> getProratedAdjustments(List<Adjustment> adjustments) {
-    return filterAdjustments(adjustments, PRORATED_ADJUSTMENTS_PREDICATE);
+  public List<Adjustment> getProratedAdjustments(Invoice invoice) {
+    return filterAdjustments(invoice.getAdjustments(), PRORATED_ADJUSTMENTS_PREDICATE);
   }
 
-  public List<Adjustment> getNotProratedAdjustments(List<Adjustment> adjustments) {
-    return filterAdjustments(adjustments, NOT_PRORATED_ADJUSTMENTS_PREDICATE);
+  public List<Adjustment> getNotProratedAdjustments(Invoice invoice) {
+    return filterAdjustments(invoice.getAdjustments(), NOT_PRORATED_ADJUSTMENTS_PREDICATE);
   }
 
-  public List<Adjustment> filterAdjustments(List<Adjustment> adjustments, Predicate<Adjustment> predicate) {
+  public List<Adjustment> getProratedAdjustments(InvoiceLine invoiceLine) {
+    return filterAdjustments(invoiceLine.getAdjustments(), INVOICE_LINE_PRORATED_ADJUSTMENT_PREDICATE);
+  }
+
+  private List<Adjustment> filterAdjustments(List<Adjustment> adjustments, Predicate<Adjustment> predicate) {
     return adjustments.stream()
       .filter(predicate)
       .collect(toList());
@@ -53,7 +60,7 @@ public abstract class AdjustmentsService {
   public List<InvoiceLine> applyProratedAdjustments(List<InvoiceLine> lines, Invoice invoice) {
     CurrencyUnit currencyUnit = Monetary.getCurrency(invoice.getCurrency());
     sortByInvoiceLineNumber(lines);
-    List<Adjustment> proratedAdjustments = getProratedAdjustments(invoice.getAdjustments());
+    List<Adjustment> proratedAdjustments = getProratedAdjustments(invoice);
     List<InvoiceLine> updatedLines = new ArrayList<>();
     for (Adjustment adjustment : proratedAdjustments) {
       switch (adjustment.getProrate()) {
@@ -76,7 +83,20 @@ public abstract class AdjustmentsService {
       .collect(toList());
   }
 
-  public abstract boolean isAdjustmentIdsNotUnique(List<Adjustment> adjustments);
+  public List<InvoiceLine> processProratedAdjustments(List<InvoiceLine> lines, Invoice invoice) {
+    List<Adjustment> proratedAdjustments = getProratedAdjustments(invoice);
+
+    // Remove previously applied prorated adjustments if they are no longer available at invoice level
+    List<InvoiceLine> updatedLines = filterDeletedAdjustments(proratedAdjustments, lines);
+
+    // Apply prorated adjustments to each invoice line
+    updatedLines.addAll(applyProratedAdjustments(lines, invoice));
+
+    // Return only unique invoice lines
+    return updatedLines.stream()
+      .distinct()
+      .collect(toList());
+  }
 
   /**
    * Removes adjustments at invoice line level based on invoice's prorated adjustments which are no longer available
@@ -90,7 +110,7 @@ public abstract class AdjustmentsService {
 
     return invoiceLines.stream()
       .filter(line -> line.getAdjustments()
-        .removeIf(adj -> (adj.getProrate() != Adjustment.Prorate.NOT_PRORATED) && !adjIds.contains(adj.getAdjustmentId())))
+        .removeIf(adj -> Objects.nonNull(adj.getAdjustmentId()) && !adjIds.contains(adj.getAdjustmentId())))
       .collect(toList());
   }
 
@@ -136,7 +156,8 @@ public abstract class AdjustmentsService {
     return JsonObject.mapFrom(adjustment)
       .mapTo(adjustment.getClass())
       .withId(null)
-      .withAdjustmentId(adjustment.getId());
+      .withAdjustmentId(adjustment.getId())
+      .withProrate(NOT_PRORATED);
   }
 
   private boolean addAdjustmentToLine(InvoiceLine line, Adjustment proratedAdjustment) {

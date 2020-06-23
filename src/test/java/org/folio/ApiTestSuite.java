@@ -1,4 +1,4 @@
-package org.folio.rest.impl;
+package org.folio;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
@@ -9,6 +9,20 @@ import org.folio.converters.BatchVoucherModelConverterTest;
 import org.folio.converters.BatchedVoucherLinesModelConverterTest;
 import org.folio.converters.BatchedVoucherModelConverterTest;
 import org.folio.invoices.events.handlers.InvoiceSummaryTest;
+import org.folio.rest.impl.BatchGroupsApiTest;
+import org.folio.rest.impl.BatchVoucherExportConfigCredentialsTest;
+import org.folio.rest.impl.BatchVoucherExportConfigTest;
+import org.folio.rest.impl.BatchVoucherExportsApiTest;
+import org.folio.rest.impl.BatchVoucherExportsHelperTest;
+import org.folio.rest.impl.BatchVoucherImplTest;
+import org.folio.rest.impl.DocumentsApiTest;
+import org.folio.rest.impl.InvoiceLinesApiTest;
+import org.folio.rest.impl.InvoiceLinesProratedAdjustmentsTest;
+import org.folio.rest.impl.InvoicesApiTest;
+import org.folio.rest.impl.InvoicesProratedAdjustmentsTest;
+import org.folio.rest.impl.MockServer;
+import org.folio.rest.impl.VoucherLinesApiTest;
+import org.folio.rest.impl.VouchersApiTest;
 import org.folio.services.ftp.FtpUploadServiceTest;
 import org.folio.invoices.util.HelperUtilsTest;
 import org.folio.jaxb.DefaultJAXBRootElementNameResolverTest;
@@ -19,6 +33,8 @@ import org.folio.rest.impl.protection.InvoicesProtectionTest;
 import org.folio.rest.impl.protection.LinesProtectionTest;
 import org.folio.rest.tools.utils.NetworkUtils;
 import org.folio.schemas.xsd.BatchVoucherSchemaXSDTest;
+import org.folio.services.validator.InvoiceLineValidator;
+import org.folio.services.validator.InvoiceLineValidatorTest;
 import org.folio.services.voucher.BatchVoucherGenerateServiceTest;
 import org.folio.services.InvoiceRetrieveServiceTest;
 import org.folio.services.voucher.UploadBatchVoucherExportServiceTest;
@@ -205,5 +221,9 @@ public class ApiTestSuite {
 
   @Nested
   class UploadBatchVoucherExportServiceTestNested extends UploadBatchVoucherExportServiceTest {
+  }
+
+  @Nested
+  class InvoiceLineValidatorTestNested extends InvoiceLineValidatorTest {
   }
 }

@@ -16,7 +16,6 @@ import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
 import static org.folio.rest.RestVerticle.OKAPI_HEADER_TENANT;
 import static org.folio.rest.impl.AbstractHelper.ID;
 import static org.folio.rest.jaxrs.model.FundDistribution.DistributionType.PERCENTAGE;
-import static org.folio.services.AdjustmentsService.NOT_PRORATED_ADJUSTMENTS_PREDICATE;
 import static org.javamoney.moneta.convert.ExchangeRateType.ECB;
 import static org.javamoney.moneta.convert.ExchangeRateType.IDENTITY;
 import static org.javamoney.moneta.convert.ExchangeRateType.IMF;
@@ -26,14 +25,11 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
-import java.util.function.Predicate;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.IntStream;
@@ -47,8 +43,6 @@ import javax.money.convert.MonetaryConversions;
 import org.apache.commons.collections4.map.CaseInsensitiveMap;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.builder.EqualsBuilder;
-import org.apache.commons.lang3.reflect.FieldUtils;
 import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.rest.impl.ProtectionHelper;
 import org.folio.rest.jaxrs.model.Adjustment;
@@ -326,28 +320,6 @@ public class HelperUtils {
   public static boolean isPostApproval(Invoice invoice) {
     return invoice.getStatus() == Invoice.Status.APPROVED || invoice.getStatus() == Invoice.Status.PAID
         || invoice.getStatus() == Invoice.Status.CANCELLED;
-  }
-
-  public static Set<String> findChangedProtectedFields(Object newObject, Object existedObject, List<String> protectedFields) {
-    Set<String> fields = new HashSet<>();
-    for(String field : protectedFields) {
-      try {
-        if(isFieldNotEmpty(newObject, existedObject, field) && isFieldChanged(newObject, existedObject, field)) {
-          fields.add(field);
-        }
-      } catch(IllegalAccessException e) {
-        throw new CompletionException(e);
-      }
-    }
-    return fields;
-  }
-
-  private static boolean isFieldNotEmpty(Object newObject, Object existedObject, String field) {
-    return FieldUtils.getDeclaredField(newObject.getClass(), field, true) != null && FieldUtils.getDeclaredField(existedObject.getClass(), field, true) != null;
-  }
-
-  private static boolean isFieldChanged(Object newObject, Object existedObject, String field) throws IllegalAccessException {
-    return !EqualsBuilder.reflectionEquals(FieldUtils.readDeclaredField(newObject, field, true), FieldUtils.readDeclaredField(existedObject, field, true), true, existedObject.getClass(), true);
   }
 
   /**

@@ -50,7 +50,6 @@ import static org.folio.invoices.utils.ResourcePathResolver.VOUCHERS;
 import static org.folio.invoices.utils.ResourcePathResolver.VOUCHER_LINES;
 import static org.folio.invoices.utils.ResourcePathResolver.VOUCHER_NUMBER;
 import static org.folio.rest.impl.InvoiceHelper.MAX_IDS_FOR_GET_RQ;
-import static org.folio.rest.impl.InvoiceHelper.NO_INVOICE_LINES_ERROR_MSG;
 import static org.folio.rest.impl.InvoiceLinesApiTest.INVOICE_LINES_LIST_PATH;
 import static org.folio.rest.impl.InvoiceLinesApiTest.INVOICE_LINE_WITH_APPROVED_INVOICE_SAMPLE_PATH;
 import static org.folio.rest.impl.InvoicesImpl.PROTECTED_AND_MODIFIED_FIELDS;
@@ -79,6 +78,8 @@ import static org.folio.rest.impl.ProtectionHelper.ACQUISITIONS_UNIT_IDS;
 import static org.folio.rest.impl.VoucherHelper.DEFAULT_SYSTEM_CURRENCY;
 import static org.folio.rest.impl.VouchersApiTest.VOUCHERS_LIST_PATH;
 import static org.folio.rest.jaxrs.model.FundDistribution.DistributionType.AMOUNT;
+import static org.folio.services.validator.InvoiceValidator.NO_INVOICE_LINES_ERROR_MSG;
+import static org.folio.services.validator.InvoiceValidator.TOTAL;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.allOf;
 import static org.hamcrest.Matchers.arrayContaining;
@@ -2284,7 +2285,7 @@ public class InvoicesApiTest extends ApiTestBase {
     Error error = errors.getErrors().get(0);
     assertThat(error.getCode(), equalTo(PROHIBITED_FIELD_CHANGING.getCode()));
     Object[] failedFieldNames = getModifiedProtectedFields(error);
-    assertThat(failedFieldNames, arrayContaining(InvoiceHelper.TOTAL));
+    assertThat(failedFieldNames, arrayContaining(TOTAL));
 
     // Check number of requests
     assertThat(serverRqRs.row(INVOICES).get(HttpMethod.GET), hasSize(1));

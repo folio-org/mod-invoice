@@ -1,13 +1,7 @@
 package org.folio.rest.impl;
 
-import static java.util.concurrent.CompletableFuture.completedFuture;
 import static java.util.stream.Collectors.toList;
-import static java.util.stream.Collectors.toMap;
-import static java.util.stream.Collectors.toSet;
 import static org.apache.commons.lang3.StringUtils.isEmpty;
-import static org.folio.invoices.utils.ErrorCodes.ADJUSTMENT_IDS_NOT_UNIQUE;
-import static org.folio.invoices.utils.ErrorCodes.CANNOT_ADD_ADJUSTMENTS;
-import static org.folio.invoices.utils.ErrorCodes.CANNOT_DELETE_ADJUSTMENTS;
 import static org.folio.invoices.utils.ErrorCodes.CANNOT_DELETE_INVOICE_LINE;
 import static org.folio.invoices.utils.ErrorCodes.PROHIBITED_INVOICE_LINE_CREATION;
 import static org.folio.invoices.utils.HelperUtils.INVOICE;
@@ -15,7 +9,6 @@ import static org.folio.invoices.utils.HelperUtils.INVOICE_ID;
 import static org.folio.invoices.utils.HelperUtils.QUERY_PARAM_START_WITH;
 import static org.folio.invoices.utils.HelperUtils.calculateInvoiceLineTotals;
 import static org.folio.invoices.utils.HelperUtils.combineCqlExpressions;
-import static org.folio.invoices.utils.HelperUtils.findChangedProtectedFields;
 import static org.folio.invoices.utils.HelperUtils.getEndpointWithQuery;
 import static org.folio.invoices.utils.HelperUtils.getHttpClient;
 import static org.folio.invoices.utils.HelperUtils.getInvoiceById;
@@ -37,7 +30,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 
 import javax.money.CurrencyUnit;
@@ -45,7 +37,6 @@ import javax.money.MonetaryAmount;
 
 import org.folio.invoices.events.handlers.MessageAddress;
 import org.folio.invoices.rest.exceptions.HttpException;
-import org.folio.invoices.utils.InvoiceLineProtectedFields;
 import org.folio.invoices.utils.ProtectedOperationType;
 import org.folio.rest.jaxrs.model.Adjustment;
 import org.folio.rest.jaxrs.model.Error;
@@ -55,8 +46,8 @@ import org.folio.rest.jaxrs.model.InvoiceLineCollection;
 import org.folio.rest.jaxrs.model.Parameter;
 import org.folio.rest.jaxrs.model.SequenceNumber;
 import org.folio.rest.tools.client.interfaces.HttpClientInterface;
-import org.folio.services.InvoiceLineAdjustmentsService;
-import org.folio.services.AdjustmentsService;
+import org.folio.services.adjusment.AdjustmentsService;
+import org.folio.services.validator.InvoiceLineValidator;
 import org.javamoney.moneta.Money;
 import org.javamoney.moneta.function.MonetaryFunctions;
 
@@ -72,6 +63,7 @@ public class InvoiceLineHelper extends AbstractHelper {
 
   private final ProtectionHelper protectionHelper;
   private AdjustmentsService adjustmentsService;
+  private InvoiceLineValidator validator;
 
   public InvoiceLineHelper(Map<String, String> okapiHeaders, Context ctx, String lang) {
     this(getHttpClient(okapiHeaders), okapiHeaders, ctx, lang);
@@ -80,7 +72,8 @@ public class InvoiceLineHelper extends AbstractHelper {
   public InvoiceLineHelper(HttpClientInterface httpClient, Map<String, String> okapiHeaders, Context ctx, String lang) {
     super(httpClient, okapiHeaders, ctx, lang);
     protectionHelper = new ProtectionHelper(httpClient, okapiHeaders, ctx, lang);
-    adjustmentsService = new InvoiceLineAdjustmentsService();
+    adjustmentsService = new AdjustmentsService();
+    validator = new InvoiceLineValidator();
   }
 
   public CompletableFuture<InvoiceLineCollection> getInvoiceLines(int limit, int offset, String query) {
@@ -221,44 +214,14 @@ public class InvoiceLineHelper extends AbstractHelper {
     return getInvoiceLine(invoiceLine.getId())
       .thenCompose(invoiceLineFromStorage -> getInvoice(invoiceLineFromStorage).thenCompose(invoice -> {
         // Validate if invoice line update is allowed
-        validateInvoiceLineProtectedFields(invoice, invoiceLine, invoiceLineFromStorage);
+        validator.validateProtectedFields(invoice, invoiceLine, invoiceLineFromStorage);
+        validator.validateLineAdjustmentsOnUpdate(invoiceLine, invoice);
         invoiceLine.setInvoiceLineNumber(invoiceLineFromStorage.getInvoiceLineNumber());
 
         return protectionHelper.isOperationRestricted(invoice.getAcqUnitIds(), UPDATE)
           .thenCompose(ok -> applyAdjustmentsAndUpdateLine(invoiceLine, invoiceLineFromStorage, invoice));
 
       }));
-  }
-
-  public CompletableFuture<Boolean> validateIncomingInvoiceLine(InvoiceLine invoiceLine, Invoice invoice) {
-
-    if (adjustmentsService.isAdjustmentIdsNotUnique(invoiceLine.getAdjustments())) {
-      addProcessingError(ADJUSTMENT_IDS_NOT_UNIQUE.toError());
-    }
-    Set<String> invoiceAdjustmentIds = adjustmentsService.getProratedAdjustments(invoice.getAdjustments())
-      .stream()
-      .map(Adjustment::getId)
-      .collect(toSet());
-
-    Set<String> invoiceLineAdjustmentIds = adjustmentsService.getProratedAdjustments(invoiceLine.getAdjustments())
-      .stream()
-      .map(Adjustment::getId)
-      .collect(toSet());
-
-    List<String> deletedAdjIds = invoiceAdjustmentIds.stream().filter(id -> !invoiceLineAdjustmentIds.contains(id)).collect(toList());
-
-    if (!deletedAdjIds.isEmpty()) {
-      List<Parameter> parameters = deletedAdjIds.stream().map(id -> new Parameter().withKey("adjustmentId").withValue(id)).collect(toList());
-      addProcessingError(CANNOT_DELETE_ADJUSTMENTS.toError().withParameters(parameters));
-    }
-
-    List<String> addedAdjIds = invoiceLineAdjustmentIds.stream().filter(id -> !invoiceAdjustmentIds.contains(id)).collect(toList());
-
-    if (!addedAdjIds.isEmpty()) {
-      List<Parameter> parameters = deletedAdjIds.stream().map(id -> new Parameter().withKey("adjustmentId").withValue(id)).collect(toList());
-      addProcessingError(CANNOT_ADD_ADJUSTMENTS.toError().withParameters(parameters));
-    }
-    return completedFuture(getErrors().isEmpty());
   }
 
   private CompletableFuture<Void> applyAdjustmentsAndUpdateLine(InvoiceLine invoiceLine, InvoiceLine invoiceLineFromStorage, Invoice invoice) {
@@ -292,7 +255,7 @@ public class InvoiceLineHelper extends AbstractHelper {
   public CompletableFuture<Void> deleteInvoiceLine(String lineId) {
     return getInvoicesIfExists(lineId)
       .thenCompose(invoice -> protectionHelper.isOperationRestricted(invoice.getAcqUnitIds(), DELETE)
-        .thenApply(vvoid -> invoice))
+        .thenApply(vVoid -> invoice))
       .thenCompose(invoice -> handleDeleteRequest(resourceByIdPath(INVOICE_LINES, lineId, lang), httpClient, ctx, okapiHeaders, logger)
         .thenRun(() -> updateInvoiceAndLinesAsync(invoice)));
   }
@@ -312,12 +275,7 @@ public class InvoiceLineHelper extends AbstractHelper {
     });
   }
 
-  private void validateInvoiceLineProtectedFields(Invoice existedInvoice, InvoiceLine invoiceLine, InvoiceLine existedInvoiceLine) {
-    if(isPostApproval(existedInvoice)) {
-      Set<String> fields = findChangedProtectedFields(invoiceLine, existedInvoiceLine, InvoiceLineProtectedFields.getFieldNames());
-      verifyThatProtectedFieldsUnchanged(fields);
-    }
-  }
+
 
   /**
    * Creates Invoice Line if its content is valid
@@ -325,7 +283,12 @@ public class InvoiceLineHelper extends AbstractHelper {
    * @return completable future which might hold {@link InvoiceLine} on success, {@code null} if validation fails or an exception if any issue happens
    */
   CompletableFuture<InvoiceLine> createInvoiceLine(InvoiceLine invoiceLine) {
-    return getInvoice(invoiceLine).thenApply(this::checkIfInvoiceLineCreationAllowed)
+    return getInvoice(invoiceLine)
+      .thenApply(invoice -> {
+        validator.validateLineAdjustmentsOnCreate(invoiceLine, invoice);
+        return invoice;
+      })
+      .thenApply(this::checkIfInvoiceLineCreationAllowed)
       .thenCompose(invoice -> protectionHelper.isOperationRestricted(invoice.getAcqUnitIds(), ProtectedOperationType.CREATE)
         .thenApply(v -> invoice))
       .thenCompose(invoice -> createInvoiceLine(invoiceLine, invoice));
@@ -408,11 +371,10 @@ public class InvoiceLineHelper extends AbstractHelper {
    */
   private CompletableFuture<List<InvoiceLine>> applyProratedAdjustments(InvoiceLine invoiceLine, Invoice invoice) {
 
-    if (adjustmentsService.getProratedAdjustments(invoice.getAdjustments()).isEmpty()) {
+    if (adjustmentsService.getProratedAdjustments(invoice).isEmpty()) {
       return CompletableFuture.completedFuture(Collections.emptyList());
     }
-
-    validateIncomingInvoiceLine(invoiceLine, invoice);
+    invoiceLine.getAdjustments().forEach(adjustment -> adjustment.setProrate(Adjustment.Prorate.NOT_PRORATED));
 
     return getRelatedLines(invoiceLine).thenApply(lines -> {
       // Create new list adding current line as well
@@ -483,7 +445,7 @@ public class InvoiceLineHelper extends AbstractHelper {
   private CompletableFuture<Void> updateInvoiceAndLines(Invoice invoice) {
 
     // If no prorated adjustments, just update invoice details
-    if (adjustmentsService.getProratedAdjustments(invoice.getAdjustments()).isEmpty()) {
+    if (adjustmentsService.getProratedAdjustments(invoice).isEmpty()) {
       updateInvoiceAsync(invoice);
       return CompletableFuture.completedFuture(null);
     }

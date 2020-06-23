@@ -1,6 +1,9 @@
 package org.folio.invoices.utils;
 
 import org.folio.rest.jaxrs.model.Error;
+import org.folio.rest.jaxrs.model.Errors;
+
+import java.util.Collections;
 
 public enum ErrorCodes {
 
@@ -60,5 +63,9 @@ public enum ErrorCodes {
 
   public Error toError() {
     return new Error().withCode(code).withMessage(description);
+  }
+
+  public Errors toErrors() {
+    return new Errors().withErrors(Collections.singletonList(new Error().withCode(code).withMessage(description))).withTotalRecords(1);
   }
 }
