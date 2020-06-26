@@ -1,6 +1,9 @@
 package org.folio.invoices.utils;
 
 import org.folio.rest.jaxrs.model.Error;
+import org.folio.rest.jaxrs.model.Errors;
+
+import java.util.Collections;
 
 public enum ErrorCodes {
 
@@ -32,7 +35,10 @@ public enum ErrorCodes {
   INVOICE_PAYMENT_FAILURE("invoicePaymentFailure", "Invoice payment failure"),
   CURRENT_FISCAL_YEAR_NOT_FOUND("currentFYearNotFound", "Current fiscal year not found for ledger"),
   TRANSACTION_CREATION_FAILURE("transactionCreationFailure", "One or more transactions record(s) failed to be created"),
-  DOCUMENT_IS_TOO_LARGE("documentIsTooLarge", "Document size is too large");
+  DOCUMENT_IS_TOO_LARGE("documentIsTooLarge", "Document size is too large"),
+  ADJUSTMENT_IDS_NOT_UNIQUE("adjustmentIdsNotUnique", "Adjustment ids must be unique"),
+  CANNOT_DELETE_ADJUSTMENTS("cannotDeleteAdjustment", "Prorated adjustment cannot be deleted because it is present on invoice level"),
+  CANNOT_ADD_ADJUSTMENTS("cannotAddAdjustment", "Prorated adjustment cannot be adde because it is not present on invoice level");
 
   private final String code;
   private final String description;
@@ -57,5 +63,9 @@ public enum ErrorCodes {
 
   public Error toError() {
     return new Error().withCode(code).withMessage(description);
+  }
+
+  public Errors toErrors() {
+    return new Errors().withErrors(Collections.singletonList(new Error().withCode(code).withMessage(description))).withTotalRecords(1);
   }
 }

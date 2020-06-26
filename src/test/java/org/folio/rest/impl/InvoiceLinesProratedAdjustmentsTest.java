@@ -100,6 +100,7 @@ public class InvoiceLinesProratedAdjustmentsTest extends ApiTestBase {
     addMockEntry(INVOICES, invoice);
 
     InvoiceLine lineData = getMockInvoiceLine(invoice.getId()).withSubTotal(15d).withQuantity(5);
+    lineData.setAdjustments(Collections.singletonList(createAdjustment(Adjustment.Prorate.NOT_PRORATED, type, 15d).withAdjustmentId(invoiceAdjustment.getId())));
     addMockEntry(INVOICE_LINES, lineData);
 
     // Prepare request body
@@ -208,7 +209,7 @@ public class InvoiceLinesProratedAdjustmentsTest extends ApiTestBase {
     assertThat(lineAdjustment.getAdjustmentId(), equalTo(invoiceAdjustment.getId()));
     assertThat(lineAdjustment.getDescription(), equalTo(invoiceAdjustment.getDescription()));
     assertThat(lineAdjustment.getFundDistributions(), equalTo(invoiceAdjustment.getFundDistributions()));
-    assertThat(lineAdjustment.getProrate(), equalTo(invoiceAdjustment.getProrate()));
+    assertThat(lineAdjustment.getProrate(), equalTo(Adjustment.Prorate.NOT_PRORATED));
     assertThat(lineAdjustment.getRelationToTotal(), equalTo(invoiceAdjustment.getRelationToTotal()));
     assertThat(lineAdjustment.getType(), equalTo(invoiceAdjustment.getType()));
   }

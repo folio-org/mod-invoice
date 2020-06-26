@@ -9,6 +9,7 @@ import io.vertx.core.logging.LoggerFactory;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.rest.annotations.Stream;
 import org.folio.rest.annotations.Validate;
 import org.folio.rest.jaxrs.model.Errors;
@@ -49,21 +50,14 @@ public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     InvoiceHelper helper = new InvoiceHelper(okapiHeaders, vertxContext, lang);
 
-    helper.validateIncomingInvoice(invoice)
-      .thenAccept(isValid -> {
-        if (Boolean.TRUE.equals(isValid)) {
-          helper.createInvoice(invoice)
-            .thenAccept(invoiceWithId -> asyncResultHandler.handle(succeededFuture(
-                helper.buildResponseWithLocation(String.format(INVOICE_LOCATION_PREFIX, invoiceWithId.getId()), invoiceWithId))))
-            .exceptionally(t -> {
-              logger.error("Failed to create invoice ", t);
-              return handleErrorResponse(asyncResultHandler, helper, t);
-            });
-        } else {
-          asyncResultHandler.handle(succeededFuture(helper.buildErrorResponse(422)));
-        }
-      })
-      .exceptionally(t -> handleErrorResponse(asyncResultHandler, helper, t));
+    helper.createInvoice(invoice)
+      .thenAccept(invoiceWithId -> asyncResultHandler.handle(succeededFuture(
+          helper.buildResponseWithLocation(String.format(INVOICE_LOCATION_PREFIX, invoiceWithId.getId()), invoiceWithId))))
+      .exceptionally(t -> {
+        logger.error("Failed to create invoice ", t);
+        return handleErrorResponse(asyncResultHandler, helper, t);
+      });
+
   }
 
   @Validate
@@ -99,22 +93,13 @@ public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
     invoice.setId(id);
 
     InvoiceHelper invoiceHelper = new InvoiceHelper(okapiHeaders, vertxContext, lang);
+    invoiceHelper.updateInvoice(invoice)
+      .thenAccept(ok -> asyncResultHandler.handle(succeededFuture(invoiceHelper.buildNoContentResponse())))
+      .exceptionally(t -> {
+        logger.error("Failed to update invoice with id={}", t, invoice.getId());
+        return handleErrorResponse(asyncResultHandler, invoiceHelper, t);
+      });
 
-    // Validate incoming invoice first to avoid extra calls to other services if content is invalid
-    invoiceHelper.validateIncomingInvoice(invoice)
-      .thenAccept(isValid -> {
-        if (Boolean.TRUE.equals(isValid)) {
-          invoiceHelper.updateInvoice(invoice)
-            .thenAccept(ok -> asyncResultHandler.handle(succeededFuture(invoiceHelper.buildNoContentResponse())))
-            .exceptionally(t -> {
-              logger.error("Failed to update invoice with id={}", t, invoice.getId());
-              return handleErrorResponse(asyncResultHandler, invoiceHelper, t);
-            });
-        } else {
-          asyncResultHandler.handle(succeededFuture(invoiceHelper.buildErrorResponse(422)));
-        }
-      })
-      .exceptionally(fail -> handleErrorResponse(asyncResultHandler, invoiceHelper, fail));
   }
 
   @Validate
@@ -275,8 +260,7 @@ public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
     DocumentHelper documentHelper = new DocumentHelper(okapiHeaders, vertxContext, lang);
     InvoiceDocument entity = new JsonObject(new String(requestBytesArray, StandardCharsets.UTF_8)).mapTo(InvoiceDocument.class);
     if (!entity.getDocumentMetadata().getInvoiceId().equals(id)) {
-      documentHelper.addProcessingError(MISMATCH_BETWEEN_ID_IN_PATH_AND_BODY.toError());
-      asyncResultHandler.handle(succeededFuture(documentHelper.buildErrorResponse(422)));
+      asyncResultHandler.handle(succeededFuture(documentHelper.buildErrorResponse(new HttpException(422, MISMATCH_BETWEEN_ID_IN_PATH_AND_BODY))));
     } else {
       documentHelper.createDocument(id, entity)
         .thenAccept(document -> {
