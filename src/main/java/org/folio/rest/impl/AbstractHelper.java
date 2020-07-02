@@ -8,7 +8,6 @@ import static javax.ws.rs.core.Response.Status.CREATED;
 import static javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
 import static org.folio.invoices.utils.ErrorCodes.GENERIC_ERROR_CODE;
 import static org.folio.invoices.utils.ErrorCodes.MOD_CONFIG_ERROR;
-import static org.folio.invoices.utils.ErrorCodes.PROHIBITED_FIELD_CHANGING;
 import static org.folio.invoices.utils.HelperUtils.LANG;
 import static org.folio.invoices.utils.HelperUtils.OKAPI_URL;
 import static org.folio.invoices.utils.HelperUtils.encodeQuery;
@@ -16,14 +15,11 @@ import static org.folio.invoices.utils.HelperUtils.getHttpClient;
 import static org.folio.invoices.utils.HelperUtils.handleGetRequest;
 import static org.folio.invoices.utils.HelperUtils.verifyAndExtractBody;
 import static org.folio.rest.RestVerticle.OKAPI_USERID_HEADER;
-import static org.folio.rest.impl.InvoicesImpl.PROTECTED_AND_MODIFIED_FIELDS;
 
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 
 import javax.money.convert.ExchangeRateProvider;
@@ -35,8 +31,6 @@ import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.invoices.utils.HelperUtils;
 import org.folio.rest.jaxrs.model.Config;
 import org.folio.rest.jaxrs.model.Configs;
-import org.folio.rest.jaxrs.model.Error;
-import org.folio.rest.jaxrs.model.Errors;
 import org.folio.rest.tools.client.interfaces.HttpClientInterface;
 
 import io.vertx.core.Context;
@@ -64,7 +58,6 @@ public abstract class AbstractHelper {
 
   private static final String EXCEPTION_CALLING_ENDPOINT_MSG = "Exception calling {} {}";
 
-  private final Errors processingErrors = new Errors();
   private ExchangeRateProvider exchangeRateProvider;
 
   protected final HttpClientInterface httpClient;
@@ -213,54 +206,31 @@ public abstract class AbstractHelper {
     return id;
   }
 
-  protected void addProcessingError(Error error) {
-    processingErrors.getErrors().add(error);
-  }
-
-  protected Errors getProcessingErrors() {
-    processingErrors.setTotalRecords(processingErrors.getErrors().size());
-    return processingErrors;
-  }
-
-  protected void verifyThatProtectedFieldsUnchanged(Set<String> fields) {
-    if(CollectionUtils.isNotEmpty(fields)) {
-      Error error = PROHIBITED_FIELD_CHANGING.toError().withAdditionalProperty(PROTECTED_AND_MODIFIED_FIELDS, fields);
-      throw new HttpException(400, error);
-    }
-  }
-
   public Response buildErrorResponse(Throwable throwable) {
     return buildErrorResponse(handleProcessingError(throwable));
   }
 
-  protected int handleProcessingError(Throwable throwable) {
+  protected HttpException handleProcessingError(Throwable throwable) {
     final Throwable cause = throwable.getCause();
     logger.error("Exception encountered", cause);
-    final Error error;
-    final int code;
 
     if (cause instanceof HttpException) {
-      code = ((HttpException) cause).getCode();
-      error = ((HttpException) cause).getError();
+      return ((HttpException) cause);
     } else {
-      code = INTERNAL_SERVER_ERROR.getStatusCode();
-      error = GENERIC_ERROR_CODE.toError().withAdditionalProperty(ERROR_CAUSE, cause.getMessage());
+      return new HttpException(INTERNAL_SERVER_ERROR.getStatusCode(), GENERIC_ERROR_CODE.toError().withAdditionalProperty(ERROR_CAUSE, cause.getMessage()));
     }
 
-    addProcessingError(error);
-
-    return code;
   }
 
-  public Response buildErrorResponse(int code) {
+  public Response buildErrorResponse(HttpException exception) {
     final Response.ResponseBuilder responseBuilder;
-    switch (code) {
+    switch (exception.getCode()) {
       case 400:
       case 403:
       case 404:
       case 413:
       case 422:
-        responseBuilder = Response.status(code);
+        responseBuilder = Response.status(exception.getCode());
         break;
       default:
         responseBuilder = Response.status(INTERNAL_SERVER_ERROR);
@@ -269,7 +239,7 @@ public abstract class AbstractHelper {
 
     return responseBuilder
       .header(CONTENT_TYPE, APPLICATION_JSON)
-      .entity(getProcessingErrors())
+      .entity(exception.getErrors())
       .build();
   }
 
@@ -290,10 +260,6 @@ public abstract class AbstractHelper {
 
   public void closeHttpClient() {
     httpClient.closeClient();
-  }
-
-  public List<Error> getErrors() {
-    return processingErrors.getErrors();
   }
 
   public ExchangeRateProvider getCurrentExchangeRateProvider() {

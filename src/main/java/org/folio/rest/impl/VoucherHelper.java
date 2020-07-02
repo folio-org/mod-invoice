@@ -2,7 +2,6 @@ package org.folio.rest.impl;
 
 import static java.util.concurrent.CompletableFuture.completedFuture;
 import static org.folio.invoices.utils.ErrorCodes.VOUCHER_UPDATE_FAILURE;
-import static org.folio.invoices.utils.HelperUtils.findChangedProtectedFields;
 import static org.folio.invoices.utils.HelperUtils.getEndpointWithQuery;
 import static org.folio.invoices.utils.HelperUtils.getVoucherById;
 import static org.folio.invoices.utils.HelperUtils.handleGetRequest;
@@ -14,12 +13,10 @@ import static org.folio.invoices.utils.ResourcePathResolver.resourceByIdPath;
 import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
 
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 
 import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.invoices.utils.HelperUtils;
-import org.folio.invoices.utils.VoucherProtectedFields;
 import org.folio.rest.jaxrs.model.SequenceNumber;
 import org.folio.rest.jaxrs.model.Voucher;
 import org.folio.rest.jaxrs.model.VoucherCollection;
@@ -30,12 +27,15 @@ import io.vertx.core.http.HttpMethod;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import me.escoffier.vertx.completablefuture.VertxCompletableFuture;
+import org.folio.services.validator.VoucherValidator;
 
 public class VoucherHelper extends AbstractHelper {
 
   private static final String CALLING_ENDPOINT_MSG = "Sending {} {}";
   private static final String EXCEPTION_CALLING_ENDPOINT_MSG = "Exception calling {} {}";
   private static final String GET_VOUCHERS_BY_QUERY = resourcesPath(VOUCHERS) + SEARCH_PARAMS;
+
+  private VoucherValidator validator = new VoucherValidator();
 
   public VoucherHelper(HttpClientInterface httpClient, Map<String, String> okapiHeaders, Context ctx, String lang) {
     super(httpClient, okapiHeaders, ctx, lang);
@@ -182,15 +182,10 @@ public class VoucherHelper extends AbstractHelper {
    */
   public CompletableFuture<Void> partialVoucherUpdate(String id, Voucher voucher) {
     return getVoucher(id)
-      .thenApply(voucherFromStorage -> validateIfProtectedFieldsChanged(voucherFromStorage, voucher))
-      .thenCompose(this::updateVoucher);
+      .thenAccept(voucherFromStorage -> validator.validateProtectedFields(voucher, voucherFromStorage))
+      .thenCompose(aVoid -> updateVoucher(voucher));
   }
 
-  private Voucher validateIfProtectedFieldsChanged(Voucher voucherFromStorage, Voucher updatedVoucher){
-    Set<String> fields = findChangedProtectedFields(updatedVoucher, voucherFromStorage, VoucherProtectedFields.getProtectedFields());
-    verifyThatProtectedFieldsUnchanged(fields);
-    return updatedVoucher;
-  }
 
   public CompletableFuture<Void> updateVoucher(Voucher voucher) {
     String path = resourceByIdPath(VOUCHERS, voucher.getId(), lang);

@@ -1,4 +1,18 @@
 ## 4.1.0 - Unreleased
+
+## 4.0.1 - Released
+
+The focus of this release was to honor accounting codes upon batch voucher generation, minor fixes of field mapping.
+
+[Full Changelog](https://github.com/folio-org/mod-invoice/compare/v4.0.0...v4.0.1)
+
+### Bug Fixes
+* [MODINVOICE-177](https://issues.folio.org/browse/MODINVOICE-177) - Exclude vouchers with empty accountingCode from batchVoucher generation
+* [MODINVOICE-172](https://issues.folio.org/browse/MODINVOICE-172) - Invoice requires an accounting code when "Export to accounting" is false
+* [MODINVOICE-171](https://issues.folio.org/browse/MODINVOICE-171) - The BatchedVoucher.vendorInvoiceNo field populated with the wrong value
+* [MODINVOICE-168](https://issues.folio.org/browse/MODINVOICE-168) - Populate field "voucherLine.fundDistribution.code" upon Invoice approval
+
+
 ## 4.0.0 - Released
 
 The focus of this release was to create a batch and upload to FTP and set money aside as awaiting payment for Invoices that are 'Approved'

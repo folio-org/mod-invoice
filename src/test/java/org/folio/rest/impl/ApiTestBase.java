@@ -11,7 +11,7 @@ import static org.folio.invoices.utils.HelperUtils.OKAPI_URL;
 import static org.folio.rest.RestVerticle.OKAPI_HEADER_TENANT;
 import static org.folio.rest.RestVerticle.OKAPI_HEADER_TOKEN;
 import static org.folio.rest.RestVerticle.OKAPI_USERID_HEADER;
-import static org.folio.rest.impl.ApiTestSuite.mockPort;
+import static org.folio.ApiTestSuite.mockPort;
 import static org.folio.rest.impl.InvoiceLinesApiTest.INVOICE_LINES_PATH;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.emptyIterable;
@@ -41,6 +41,7 @@ import javax.ws.rs.core.HttpHeaders;
 
 import org.apache.commons.io.IOUtils;
 import org.awaitility.core.ConditionEvaluationLogger;
+import org.folio.ApiTestSuite;
 import org.folio.invoices.events.handlers.MessageAddress;
 import org.folio.invoices.utils.HelperUtils;
 import org.folio.rest.jaxrs.model.Adjustment;
@@ -365,7 +366,9 @@ public class ApiTestBase {
   }
 
   protected static Adjustment createAdjustment(Adjustment.Prorate prorate, Adjustment.Type type, double value) {
-    return new Adjustment().withDescription("Test")
+    return new Adjustment()
+      .withId(prorate != Adjustment.Prorate.NOT_PRORATED ? UUID.randomUUID().toString() : null)
+      .withDescription("Test")
       .withProrate(prorate)
       .withType(type)
       .withValue(value);

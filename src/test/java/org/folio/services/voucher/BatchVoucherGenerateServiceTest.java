@@ -1,7 +1,7 @@
 package org.folio.services.voucher;
 
 import static org.folio.invoices.utils.HelperUtils.OKAPI_URL;
-import static org.folio.rest.impl.ApiTestSuite.mockPort;
+import static org.folio.ApiTestSuite.mockPort;
 import static org.junit.Assert.assertNotNull;
 
 import java.io.IOException;

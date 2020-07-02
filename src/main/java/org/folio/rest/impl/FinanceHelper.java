@@ -138,18 +138,25 @@ public class FinanceHelper extends AbstractHelper {
   }
 
   public CompletableFuture<List<Transaction>> buildPendingPaymentTransactions(List<InvoiceLine> invoiceLines, Invoice invoice) {
-    List<FundDistributionTransactionHolder> distributionTransactionHolders = buildBasePendingPaymentTransactions(invoiceLines, invoice);
 
-    distributionTransactionHolders.addAll(buildAdjustmentFundDistributionPendingPaymentHolderList(invoice));
-    List<Transaction> transactions = distributionTransactionHolders.stream().map(FundDistributionTransactionHolder::getTransaction).collect(toList());
+    return VertxCompletableFuture.supplyBlockingAsync(ctx.owner(), () -> {
+      List<FundDistributionTransactionHolder> distributionTransactionHolders = buildBasePendingPaymentTransactions(invoiceLines, invoice);
+      distributionTransactionHolders.addAll(buildAdjustmentFundDistributionPendingPaymentHolderList(invoice));
+      return distributionTransactionHolders;
+    })
+      .thenCompose(holders -> {
+        List<Transaction> transactions = holders.stream().map(FundDistributionTransactionHolder::getTransaction).collect(toList());
+        return groupHoldersByLedgerIds(holders)
+          .thenCompose(groupedByLedgerId -> VertxCompletableFuture.allOf(ctx,
+            groupedByLedgerId.entrySet()
+              .stream()
+              .map(entry -> getCurrentFiscalYear(entry.getKey())
+                .thenAcceptAsync(fiscalYear -> updatePendingPaymentTransactionWithFiscalYear(entry.getValue(), fiscalYear)))
+              .collect(toList())
+              .toArray(new CompletableFuture[0])))
+          .thenApply(aVoid -> transactions);
+      });
 
-    return groupHoldersByLedgerIds(distributionTransactionHolders).thenCompose(groupedByLedgerId -> VertxCompletableFuture.allOf(ctx,
-      groupedByLedgerId.entrySet()
-        .stream()
-        .map(entry -> getCurrentFiscalYear(entry.getKey()).thenAcceptAsync(fiscalYear -> updatePendingPaymentTransactionWithFiscalYear(entry.getValue(), fiscalYear)))
-        .collect(toList())
-        .toArray(new CompletableFuture[0])))
-      .thenApply(aVoid -> transactions);
   }
 
   private Map<String, List<FundDistributionTransactionHolder>> groupHoldersByFund(List<FundDistributionTransactionHolder> distributionTransactionHolders) {

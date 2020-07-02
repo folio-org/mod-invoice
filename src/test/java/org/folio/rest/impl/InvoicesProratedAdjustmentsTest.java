@@ -1,6 +1,7 @@
 package org.folio.rest.impl;
 
 import static java.util.UUID.randomUUID;
+import static org.apache.commons.lang3.StringUtils.isNotEmpty;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICES;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_LINES;
 import static org.folio.rest.impl.InvoicesApiTest.INVOICE_ID_PATH;
@@ -136,7 +137,7 @@ public class InvoicesProratedAdjustmentsTest extends ApiTestBase {
 
     Adjustment lineAdjustment = lineToStorage.getAdjustments()
       .stream()
-      .filter(adj -> adj.getProrate() != NOT_PRORATED)
+      .filter(adj -> adj.getProrate() == NOT_PRORATED && isNotEmpty(adj.getAdjustmentId()))
       .findAny()
       .orElse(null);
 
@@ -1041,7 +1042,7 @@ public class InvoicesProratedAdjustmentsTest extends ApiTestBase {
     assertThat(lineAdjustment.getAdjustmentId(), equalTo(invoiceAdjustment.getId()));
     assertThat(lineAdjustment.getDescription(), equalTo(invoiceAdjustment.getDescription()));
     assertThat(lineAdjustment.getFundDistributions(), equalTo(invoiceAdjustment.getFundDistributions()));
-    assertThat(lineAdjustment.getProrate(), equalTo(invoiceAdjustment.getProrate()));
+    assertThat(lineAdjustment.getProrate(), equalTo(NOT_PRORATED));
     assertThat(lineAdjustment.getRelationToTotal(), equalTo(invoiceAdjustment.getRelationToTotal()));
     assertThat(lineAdjustment.getType(), equalTo(invoiceAdjustment.getType()));
   }
