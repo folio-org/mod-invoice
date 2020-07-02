@@ -299,11 +299,14 @@ public class FinanceHelper extends AbstractHelper {
   }
 
   private Map<String, MonetaryAmount> getGroupedAmountByFundId(List<InvoiceLine> lines, Invoice invoice, String systemCurrency) {
+    CurrencyConversion currencyConversion = getCurrentExchangeRateProvider().getCurrencyConversion(systemCurrency);
     return lines.stream()
       .flatMap(invoiceLine -> invoiceLine.getFundDistributions().stream()
-        .map(fd -> Pair.of(fd.getFundId(),
-          getFundDistributionAmount(fd, invoiceLine.getTotal(), invoice.getCurrency())
-            .with(getCurrentExchangeRateProvider().getCurrencyConversion(systemCurrency)))))
+        .map(fd -> {
+          return Pair.of(fd.getFundId(),
+            getFundDistributionAmount(fd, invoiceLine.getTotal(), invoice.getCurrency())
+              .with(currencyConversion));
+        }))
       .collect(groupingBy(Pair::getKey, sumFundAmount(systemCurrency)));
   }
 
