@@ -11,6 +11,9 @@ import org.folio.rest.jaxrs.model.Invoice;
 import java.util.concurrent.CompletableFuture;
 
 public class RestrictionsHelper {
+  private RestrictionsHelper() {
+  }
+
   public static CompletableFuture<Invoice> checkIfInvoiceDeletionPermitted(Invoice invoice) {
     if (PAID.value().equals(invoice.getStatus().value()) || APPROVED.value().equals(invoice.getStatus().value())) {
       throw new HttpException(HttpStatus.HTTP_FORBIDDEN.toInt(), APPROVED_OR_PAID_INVOICE_DELETE_FORBIDDEN.toError());
