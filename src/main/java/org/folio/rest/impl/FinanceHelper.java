@@ -200,13 +200,11 @@ public class FinanceHelper extends AbstractHelper {
         List<String> ledgerIds = funds.stream().map(Fund::getLedgerId).collect(toList());
 
         return fetchLedgersById(ledgerIds)
-          .thenApply(ledgers -> funds.stream().collect(toMap(Fund::getId, fund -> {
-            return ledgers.stream()
-              .filter(ledger -> ledger.getId().equals(fund.getLedgerId()))
-              .findFirst()
-              .orElseThrow(() -> new HttpException(
-                HttpStatus.HTTP_UNPROCESSABLE_ENTITY.toInt(), LEDGER_NOT_FOUND.toError()));
-          })));
+          .thenApply(ledgers -> funds.stream().collect(toMap(Fund::getId, fund -> ledgers.stream()
+            .filter(ledger -> ledger.getId().equals(fund.getLedgerId()))
+            .findFirst()
+            .orElseThrow(() -> new HttpException(
+              HttpStatus.HTTP_UNPROCESSABLE_ENTITY.toInt(), LEDGER_NOT_FOUND.toError())))));
       });
   }
 
@@ -274,7 +272,7 @@ public class FinanceHelper extends AbstractHelper {
 
         Ledger processedLedger = ledgers.get(fundId);
 
-        if (processedLedger.getRestrictExpenditures() && budget.getAllowableExpenditure() != null) {
+        if (Boolean.TRUE.equals(processedLedger.getRestrictExpenditures()) && budget.getAllowableExpenditure() != null) {
 
           //[remaining amount we can expend] = (allocated * allowableExpenditure) - (allocated - (unavailable + available)) - (awaitingPayment + expended)
           Money allocated = Money.of(budget.getAllocated(), systemCurrency);
@@ -302,11 +300,9 @@ public class FinanceHelper extends AbstractHelper {
     CurrencyConversion currencyConversion = getCurrentExchangeRateProvider().getCurrencyConversion(systemCurrency);
     return lines.stream()
       .flatMap(invoiceLine -> invoiceLine.getFundDistributions().stream()
-        .map(fd -> {
-          return Pair.of(fd.getFundId(),
-            getFundDistributionAmount(fd, invoiceLine.getTotal(), invoice.getCurrency())
-              .with(currencyConversion));
-        }))
+        .map(fd -> Pair.of(fd.getFundId(),
+          getFundDistributionAmount(fd, invoiceLine.getTotal(), invoice.getCurrency())
+            .with(currencyConversion))))
       .collect(groupingBy(Pair::getKey, sumFundAmount(systemCurrency)));
   }
 
@@ -537,7 +533,7 @@ public class FinanceHelper extends AbstractHelper {
         logger.error("Failed to create transaction for invoice with id - {}", t, tr.getSourceInvoiceId());
         List<Parameter> parameters = new ArrayList<>();
         parameters.add(new Parameter().withKey("invoiceLineId").withValue(tr.getSourceInvoiceLineId()));
-        parameters.add(new Parameter().withKey("fundId")
+        parameters.add(new Parameter().withKey(FUND_ID)
           .withValue((tr.getTransactionType() == Transaction.TransactionType.PAYMENT) ? tr.getFromFundId() : tr.getToFundId()));
         throw new HttpException(400, TRANSACTION_CREATION_FAILURE.toError().withParameters(parameters));
       }))
