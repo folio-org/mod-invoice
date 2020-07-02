@@ -1,0 +1,33 @@
+{
+  "ledgers": [
+    {
+      "id": "a3ec5552-c4a4-4a15-a57c-0046db536369",
+      "name": "Ongoing",
+      "code": "ONGOING",
+      "description": "Funds used for all recurring purchases",
+      "fiscalYearOneId": "8da275b8-e099-49a1-9a31-b8241ff26ffc",
+      "ledgerStatus": "Active",
+      "currency": "USD",
+      "acqUnitIds": [
+        "0ebb1f7d-983f-3026-8a4c-5318e0ebc041"
+      ],
+      "restrictEncumbrance": true,
+      "restrictExpenditures": true
+    },
+    {
+      "id": "133a7916-f05e-4df4-8f7f-09eb2a7076d1",
+      "name": "test",
+      "code": "ONGOING",
+      "description": "",
+      "fiscalYearOneId": "8da275b8-e099-49a1-9a31-b8241ff26ffc",
+      "ledgerStatus": "Active",
+      "currency": "USD",
+      "acqUnitIds": [
+        "0ebb1f7d-983f-3026-8a4c-5318e0ebc041"
+      ],
+      "restrictEncumbrance": true,
+      "restrictExpenditures": true
+    }
+  ],
+  "totalRecords": 2
+}
