@@ -256,6 +256,7 @@ public class InvoiceLineHelper extends AbstractHelper {
     return getInvoicesIfExists(lineId)
       .thenCompose(invoice -> protectionHelper.isOperationRestricted(invoice.getAcqUnitIds(), DELETE)
         .thenApply(vVoid -> invoice))
+      .thenCompose(RestrictionsHelper::checkIfInvoiceDeletionPermitted)
       .thenCompose(invoice -> handleDeleteRequest(resourceByIdPath(INVOICE_LINES, lineId, lang), httpClient, ctx, okapiHeaders, logger)
         .thenRun(() -> updateInvoiceAndLinesAsync(invoice)));
   }

@@ -69,6 +69,7 @@ public class ApiTestBase {
 
   public static final String VALID_UUID = "8d3881f6-dd93-46f0-b29d-1c36bdb5c9f9";
   public static final String APPROVED_INVOICE_ID = "c0d08448-347b-418a-8c2f-5fb50248d67e";
+  public static final String PAID_INVOICE_ID = "c15a6442-ba7d-4198-acf1-940ba99e6929";
   public static final String ID_BAD_FORMAT = "123-45-678-90-abc";
   public static final String FOLIO_INVOICE_NUMBER_VALUE = "228D126";
   public static final Header X_OKAPI_URL = new Header(OKAPI_URL, "http://localhost:" + mockPort);
@@ -332,6 +333,10 @@ public class ApiTestBase {
   }
 
   public static Invoice getMinimalContentInvoice() {
+    return getMinimalContentInvoice(Invoice.Status.OPEN);
+  }
+
+  public static Invoice getMinimalContentInvoice(Invoice.Status invoiceStatus) {
     return new Invoice()
       .withId(MIN_INVOICE_ID)
       .withAccountingCode("CODE")
@@ -339,7 +344,7 @@ public class ApiTestBase {
       .withExportToAccounting(false)
       .withInvoiceDate(new Date())
       .withPaymentMethod("Cash")
-      .withStatus(Invoice.Status.OPEN)
+      .withStatus(invoiceStatus)
       .withSource(Invoice.Source.API)
       .withVendorInvoiceNo("vendorNumber")
       .withVendorId(UUID.randomUUID().toString())
