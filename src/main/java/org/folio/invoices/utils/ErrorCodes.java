@@ -38,7 +38,12 @@ public enum ErrorCodes {
   DOCUMENT_IS_TOO_LARGE("documentIsTooLarge", "Document size is too large"),
   ADJUSTMENT_IDS_NOT_UNIQUE("adjustmentIdsNotUnique", "Adjustment ids must be unique"),
   CANNOT_DELETE_ADJUSTMENTS("cannotDeleteAdjustment", "Prorated adjustment cannot be deleted because it is present on invoice level"),
-  CANNOT_ADD_ADJUSTMENTS("cannotAddAdjustment", "Prorated adjustment cannot be adde because it is not present on invoice level");
+  CANNOT_ADD_ADJUSTMENTS("cannotAddAdjustment", "Prorated adjustment cannot be adde because it is not present on invoice level"),
+  BUDGET_NOT_FOUND("budgetNotFoundByFundId", "Budget not found by fundId"),
+  LEDGER_NOT_FOUND("ledgerNotFound", "Ledger not found"),
+  BUDGET_IS_INACTIVE("budgetIsInactive", "Budget should be active to approve invoice"),
+  FUND_CANNOT_BE_PAID("fundCannotBePaid", "Fund cannot be paid due to restrictions");
+
 
   private final String code;
   private final String description;
