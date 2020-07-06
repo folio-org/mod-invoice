@@ -229,7 +229,7 @@ public class MockServer {
 
   static final String CURRENT_FISCAL_YEAR = "currentFiscalYear";
   static final String SYSTEM_CURRENCY = "GBP";
-  static final String FISCAL_YEAR_ID = UUID.randomUUID().toString();
+  static final String FISCAL_YEAR_ID = "279f8a63-d612-406e-813f-c7527f241ac5";
   public static final String ACTIVE_ACCESS_VENDOR = "168f8a63-d612-406e-813f-c7527f241ac3";
   public static final String EXCEPTION_CASE_BATCH_VOUCHER_EXPORT_GENERATION = "batchGroupId==null and voucherDate>=null and voucherDate<=null";
 

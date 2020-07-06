@@ -5,7 +5,7 @@
       "name": "Ongoing",
       "code": "ONGOING",
       "description": "Funds used for all recurring purchases",
-      "fiscalYearOneId": "8da275b8-e099-49a1-9a31-b8241ff26ffc",
+      "fiscalYearOneId": "279f8a63-d612-406e-813f-c7527f241ac5",
       "ledgerStatus": "Active",
       "currency": "USD",
       "acqUnitIds": [
@@ -19,7 +19,7 @@
       "name": "test",
       "code": "ONGOING",
       "description": "",
-      "fiscalYearOneId": "8da275b8-e099-49a1-9a31-b8241ff26ffc",
+      "fiscalYearOneId": "279f8a63-d612-406e-813f-c7527f241ac5",
       "ledgerStatus": "Active",
       "currency": "USD",
       "acqUnitIds": [

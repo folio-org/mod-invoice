@@ -576,12 +576,12 @@ public class InvoicesApiTest extends ApiTestBase {
     Invoice reqData = getMockAsJson(OPEN_INVOICE_SAMPLE_PATH).mapTo(Invoice.class);
     String id = reqData.getId();
     InvoiceLine invoiceLine = getMinimalContentInvoiceLine(id);
-    invoiceLine.setSubTotal(50d);
+    invoiceLine.setSubTotal(60d);
     invoiceLine.setId(UUID.randomUUID().toString());
     FundDistribution amountDistribution = new FundDistribution()
       .withFundId(FUND_ID_WITH_NOT_ENOUGH_AMOUNT_IN_BUDGET)
       .withDistributionType(AMOUNT)
-      .withValue(50d);
+      .withValue(60d);
 
     invoiceLine.getFundDistributions().add(amountDistribution);
 

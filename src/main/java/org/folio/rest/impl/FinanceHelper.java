@@ -249,21 +249,28 @@ public class FinanceHelper extends AbstractHelper {
       .collect(toList());
 
     return fetchBudgetsByFundIds(fundIds)
-      .thenCombine(getLedgersGroupedByFundId(fundIds), ((budgets, ledgers) -> {
+      .thenCompose(budgets -> getLedgersGroupedByFundId(fundIds)
+        .thenCompose(ledgers -> collectResultsOnSuccess(ledgers.values().stream()
+          .map(Ledger::getId)
+          .distinct()
+          .map(this::getCurrentFiscalYear)
+          .collect(toList()))
+          .thenAccept(fiscalYears -> {
+            final String systemCurrency = getSystemCurrency();
+            Map<String, MonetaryAmount> groupedAmountByFundId = getGroupedAmountByFundId(lines, invoice, systemCurrency);
+            List<String> failedBudgetIds = validateAndGetFailedBudgets(systemCurrency, budgets, ledgers, groupedAmountByFundId, fiscalYears);
 
-        final String systemCurrency = getSystemCurrency();
-        Map<String, MonetaryAmount> groupedAmountByFundId = getGroupedAmountByFundId(lines, invoice, systemCurrency);
-        List<String> failedBudgetIds = validateAndGetFailedBudgets(systemCurrency, budgets, ledgers, groupedAmountByFundId);
-
-        if (!failedBudgetIds.isEmpty()) {
-          throw new HttpException(422, FUND_CANNOT_BE_PAID.toError().withAdditionalProperty(BUDGETS, failedBudgetIds));
-        }
-        return null;
-      }));
+            if (!failedBudgetIds.isEmpty()) {
+              throw new HttpException(422, FUND_CANNOT_BE_PAID.toError().withAdditionalProperty(BUDGETS, failedBudgetIds));
+            }
+          })));
   }
 
   private List<String> validateAndGetFailedBudgets(String systemCurrency, List<Budget> budgets, Map<String, Ledger> ledgers,
-    Map<String, MonetaryAmount> fdMap) {
+    Map<String, MonetaryAmount> fdMap, List<FiscalYear> fiscalYears) {
+
+    CurrencyConversion currencyConversion = getCurrentExchangeRateProvider().getCurrencyConversion(systemCurrency);
+
     return budgets.stream()
       .filter(budget -> {
         String fundId = budget.getFundId();
@@ -274,14 +281,22 @@ public class FinanceHelper extends AbstractHelper {
 
         if (Boolean.TRUE.equals(processedLedger.getRestrictExpenditures()) && budget.getAllowableExpenditure() != null) {
 
-          //[remaining amount we can expend] = (allocated * allowableExpenditure) - (allocated - (unavailable + available)) - (awaitingPayment + expended)
-          Money allocated = Money.of(budget.getAllocated(), systemCurrency);
-          BigDecimal allowableExpenditures = BigDecimal.valueOf(budget.getAllowableExpenditure()).movePointLeft(2);
-          Money unavailable = Money.of(budget.getUnavailable(), systemCurrency);
-          Money available = Money.of(budget.getAvailable(), systemCurrency);
+          FiscalYear fyForLedger = fiscalYears.stream()
+            .filter(fiscalYear -> processedLedger.getFiscalYearOneId().equals(fiscalYear.getId()))
+            .findFirst()
+            .orElseThrow(
+              () -> new HttpException(HttpStatus.HTTP_UNPROCESSABLE_ENTITY.toInt(), CURRENT_FISCAL_YEAR_NOT_FOUND.toError()));
 
-          Money awaitingPayment = Money.of(budget.getAwaitingPayment(), systemCurrency);
-          Money expended = Money.of(budget.getExpenditures(), systemCurrency);
+          String fyCurrency = fyForLedger.getCurrency();
+
+          //[remaining amount we can expend] = (allocated * allowableExpenditure) - (allocated - (unavailable + available)) - (awaitingPayment + expended)
+          Money allocated = Money.of(budget.getAllocated(), fyCurrency).with(currencyConversion);
+          BigDecimal allowableExpenditures = BigDecimal.valueOf(budget.getAllowableExpenditure()).movePointLeft(2);
+          Money unavailable = Money.of(budget.getUnavailable(), fyCurrency).with(currencyConversion);
+          Money available = Money.of(budget.getAvailable(), fyCurrency).with(currencyConversion);
+
+          Money awaitingPayment = Money.of(budget.getAwaitingPayment(), fyCurrency).with(currencyConversion);
+          Money expended = Money.of(budget.getExpenditures(), fyCurrency).with(currencyConversion);
 
           MonetaryAmount amountCanBeExpended = allocated.multiply(allowableExpenditures)
             .subtract(allocated.subtract(unavailable.add(available)))
