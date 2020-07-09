@@ -12,9 +12,12 @@ import static org.awaitility.Awaitility.await;
 import static org.folio.invoices.utils.ErrorCodes.ACCOUNTING_CODE_NOT_PRESENT;
 import static org.folio.invoices.utils.ErrorCodes.ADJUSTMENT_FUND_DISTRIBUTIONS_NOT_PRESENT;
 import static org.folio.invoices.utils.ErrorCodes.ADJUSTMENT_FUND_DISTRIBUTIONS_SUMMARY_MISMATCH;
+import static org.folio.invoices.utils.ErrorCodes.BUDGET_IS_INACTIVE;
+import static org.folio.invoices.utils.ErrorCodes.BUDGET_NOT_FOUND;
 import static org.folio.invoices.utils.ErrorCodes.CURRENT_FISCAL_YEAR_NOT_FOUND;
 import static org.folio.invoices.utils.ErrorCodes.EXTERNAL_ACCOUNT_NUMBER_IS_MISSING;
 import static org.folio.invoices.utils.ErrorCodes.FUNDS_NOT_FOUND;
+import static org.folio.invoices.utils.ErrorCodes.FUND_CANNOT_BE_PAID;
 import static org.folio.invoices.utils.ErrorCodes.FUND_DISTRIBUTIONS_NOT_PRESENT;
 import static org.folio.invoices.utils.ErrorCodes.GENERIC_ERROR_CODE;
 import static org.folio.invoices.utils.ErrorCodes.INVALID_INVOICE_TRANSITION_ON_PAID_STATUS;
@@ -36,6 +39,7 @@ import static org.folio.invoices.utils.HelperUtils.getAdjustmentFundDistribution
 import static org.folio.invoices.utils.HelperUtils.getFundDistributionAmount;
 import static org.folio.invoices.utils.HelperUtils.getNoAcqUnitCQL;
 import static org.folio.invoices.utils.ResourcePathResolver.AWAITING_PAYMENTS;
+import static org.folio.invoices.utils.ResourcePathResolver.BUDGETS;
 import static org.folio.invoices.utils.ResourcePathResolver.FINANCE_CREDITS;
 import static org.folio.invoices.utils.ResourcePathResolver.FINANCE_PAYMENTS;
 import static org.folio.invoices.utils.ResourcePathResolver.FINANCE_STORAGE_TRANSACTIONS;
@@ -45,12 +49,12 @@ import static org.folio.invoices.utils.ResourcePathResolver.FUNDS;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICES;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_LINES;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_TRANSACTION_SUMMARIES;
+import static org.folio.invoices.utils.ResourcePathResolver.LEDGERS;
 import static org.folio.invoices.utils.ResourcePathResolver.ORDER_LINES;
 import static org.folio.invoices.utils.ResourcePathResolver.VOUCHERS;
 import static org.folio.invoices.utils.ResourcePathResolver.VOUCHER_LINES;
 import static org.folio.invoices.utils.ResourcePathResolver.VOUCHER_NUMBER;
 import static org.folio.rest.impl.InvoiceHelper.MAX_IDS_FOR_GET_RQ;
-import static org.folio.rest.impl.InvoiceHelper.NO_INVOICE_LINES_ERROR_MSG;
 import static org.folio.rest.impl.InvoiceLinesApiTest.INVOICE_LINES_LIST_PATH;
 import static org.folio.rest.impl.InvoiceLinesApiTest.INVOICE_LINE_WITH_APPROVED_INVOICE_SAMPLE_PATH;
 import static org.folio.rest.impl.InvoicesImpl.PROTECTED_AND_MODIFIED_FIELDS;
@@ -79,6 +83,8 @@ import static org.folio.rest.impl.ProtectionHelper.ACQUISITIONS_UNIT_IDS;
 import static org.folio.rest.impl.VoucherHelper.DEFAULT_SYSTEM_CURRENCY;
 import static org.folio.rest.impl.VouchersApiTest.VOUCHERS_LIST_PATH;
 import static org.folio.rest.jaxrs.model.FundDistribution.DistributionType.AMOUNT;
+import static org.folio.services.validator.InvoiceValidator.NO_INVOICE_LINES_ERROR_MSG;
+import static org.folio.services.validator.InvoiceValidator.TOTAL;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.allOf;
 import static org.hamcrest.Matchers.arrayContaining;
@@ -125,9 +131,12 @@ import org.apache.http.HttpStatus;
 import org.folio.invoices.utils.HelperUtils;
 import org.folio.invoices.utils.InvoiceProtectedFields;
 import org.folio.rest.acq.model.VoucherLineCollection;
+import org.folio.rest.acq.model.finance.Budget;
+import org.folio.rest.acq.model.finance.Budget.BudgetStatus;
 import org.folio.rest.acq.model.finance.Fund;
 import org.folio.rest.acq.model.finance.FundCollection;
 import org.folio.rest.acq.model.finance.InvoiceTransactionSummary;
+import org.folio.rest.acq.model.finance.Ledger;
 import org.folio.rest.acq.model.finance.Transaction;
 import org.folio.rest.acq.model.orders.CompositePoLine;
 import org.folio.rest.acq.model.units.AcquisitionsUnitMembershipCollection;
@@ -189,6 +198,9 @@ public class InvoicesApiTest extends ApiTestBase {
   private static final String STATUS = "status";
   private static final String INVALID_CURRENCY = "ABC";
   public static final String EXISTING_FUND_ID = "1d1574f1-9196-4a57-8d1f-3b2e4309eb81";
+  private static final String FUND_ID_WITH_NOT_ENOUGH_AMOUNT_IN_BUDGET = "2d1574f1-919cc4a57-8d1f-3b2e4619eb81";
+  private static final String FUND_ID_WITH_NOT_ACTIVE_BUDGET = "3d1574f1-919cc4a57-8d1f-3b2e4619eb81";
+  private static final String EXISTING_LEDGER_ID = "a3ec5552-c4a4-4a15-a57c-0046db536369";
 
   @Test
   public void testGetInvoicingInvoices() {
@@ -532,6 +544,146 @@ public class InvoicesApiTest extends ApiTestBase {
     assertThat(voucherCreated.getSystemCurrency(), equalTo("GBP"));
     verifyTransitionToApproved(voucherCreated, invoiceLines, updatedInvoice);
     checkVoucherAcqUnitIdsList(voucherCreated, reqData);
+  }
+
+  @Test
+  public void testTransitionFromOpenToApprovedWithNotActiveBudget() {
+    Invoice reqData = getMockAsJson(OPEN_INVOICE_SAMPLE_PATH).mapTo(Invoice.class);
+    String id = reqData.getId();
+    InvoiceLine invoiceLine = getMinimalContentInvoiceLine(id);
+    invoiceLine.setSubTotal(50d);
+    invoiceLine.setId(UUID.randomUUID().toString());
+    FundDistribution amountDistribution = new FundDistribution()
+      .withFundId(FUND_ID_WITH_NOT_ACTIVE_BUDGET)
+      .withDistributionType(AMOUNT)
+      .withValue(50d);
+
+    invoiceLine.getFundDistributions().add(amountDistribution);
+
+    addMockEntry(INVOICE_LINES, JsonObject.mapFrom(invoiceLine));
+
+    reqData.setStatus(Invoice.Status.APPROVED);
+
+    String jsonBody = JsonObject.mapFrom(reqData).encode();
+    Headers headers = prepareHeaders(X_OKAPI_URL, X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID);
+    Errors errors = verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, headers, APPLICATION_JSON, 422).as(Errors.class);
+    assertThat(errors.getErrors().get(0).getCode(), equalTo(BUDGET_IS_INACTIVE.getCode()));
+    assertThat(errors.getErrors().get(0).getMessage(), equalTo(BUDGET_IS_INACTIVE.getDescription()));
+  }
+
+  @Test
+  public void testTransitionFromOpenToApprovedWithNotEnoughMoney() {
+    Invoice reqData = getMockAsJson(OPEN_INVOICE_SAMPLE_PATH).mapTo(Invoice.class);
+    String id = reqData.getId();
+    InvoiceLine invoiceLine = getMinimalContentInvoiceLine(id);
+    invoiceLine.setSubTotal(60d);
+    invoiceLine.setId(UUID.randomUUID().toString());
+    FundDistribution amountDistribution = new FundDistribution()
+      .withFundId(FUND_ID_WITH_NOT_ENOUGH_AMOUNT_IN_BUDGET)
+      .withDistributionType(AMOUNT)
+      .withValue(60d);
+
+    invoiceLine.getFundDistributions().add(amountDistribution);
+
+    addMockEntry(INVOICE_LINES, JsonObject.mapFrom(invoiceLine));
+
+    reqData.setStatus(Invoice.Status.APPROVED);
+
+    String jsonBody = JsonObject.mapFrom(reqData).encode();
+    Headers headers = prepareHeaders(X_OKAPI_URL, X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID);
+    Errors errors = verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, headers, APPLICATION_JSON, 422).as(Errors.class);
+    assertThat(errors.getErrors().get(0).getCode(), equalTo(FUND_CANNOT_BE_PAID.getCode()));
+    assertThat(errors.getErrors().get(0).getMessage(), equalTo(FUND_CANNOT_BE_PAID.getDescription()));
+  }
+
+  @Test
+  public void testTransitionFromOpenToApprovedWithoutSpecifiedAllowableExpenditure() {
+    Invoice reqData = getMockAsJson(OPEN_INVOICE_SAMPLE_PATH).mapTo(Invoice.class);
+    String id = reqData.getId();
+    InvoiceLine invoiceLine = getMinimalContentInvoiceLine(id);
+    invoiceLine.setSubTotal(50d);
+    invoiceLine.setId(UUID.randomUUID().toString());
+
+    String fundId = UUID.randomUUID().toString();
+
+    Budget budget = new Budget()
+      .withId(UUID.randomUUID().toString())
+      .withFundId(fundId)
+      .withFiscalYearId(UUID.randomUUID().toString())
+      .withAllocated(45d)
+      .withAvailable(45d)
+      .withBudgetStatus(BudgetStatus.ACTIVE)
+      .withUnavailable(0d);
+
+    Fund fund = new Fund()
+      .withId(fundId)
+      .withExternalAccountNo("test")
+      .withLedgerId(EXISTING_LEDGER_ID);
+
+    FundDistribution amountDistribution = new FundDistribution()
+      .withFundId(fundId)
+      .withDistributionType(AMOUNT)
+      .withValue(50d);
+
+    invoiceLine.getFundDistributions().add(amountDistribution);
+
+    addMockEntry(INVOICE_LINES, JsonObject.mapFrom(invoiceLine));
+    addMockEntry(BUDGETS, JsonObject.mapFrom(budget));
+    addMockEntry(FUNDS, JsonObject.mapFrom(fund));
+
+    reqData.setStatus(Invoice.Status.APPROVED);
+
+    String jsonBody = JsonObject.mapFrom(reqData).encode();
+    Headers headers = prepareHeaders(X_OKAPI_URL, X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID);
+    verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, headers, "", 204);
+  }
+
+  @Test
+  public void testTransitionFromOpenToApprovedWithRestrictExpenditures() {
+    Invoice reqData = getMockAsJson(OPEN_INVOICE_SAMPLE_PATH).mapTo(Invoice.class);
+    String id = reqData.getId();
+    InvoiceLine invoiceLine = getMinimalContentInvoiceLine(id);
+    invoiceLine.setSubTotal(50d);
+    invoiceLine.setId(UUID.randomUUID().toString());
+
+    String fundId = UUID.randomUUID().toString();
+    String ledgerId = UUID.randomUUID().toString();
+
+    Budget budget = new Budget()
+      .withId(UUID.randomUUID().toString())
+      .withFundId(fundId)
+      .withFiscalYearId(UUID.randomUUID().toString())
+      .withAllocated(50d)
+      .withAvailable(50d)
+      .withBudgetStatus(BudgetStatus.ACTIVE)
+      .withUnavailable(0d);
+
+    Fund fund = new Fund()
+      .withId(fundId)
+      .withExternalAccountNo("test")
+      .withLedgerId(ledgerId);
+
+    Ledger ledger = new Ledger()
+      .withId(ledgerId)
+      .withRestrictExpenditures(false);
+
+    FundDistribution amountDistribution = new FundDistribution()
+      .withFundId(fundId)
+      .withDistributionType(AMOUNT)
+      .withValue(50d);
+
+    invoiceLine.getFundDistributions().add(amountDistribution);
+
+    addMockEntry(INVOICE_LINES, JsonObject.mapFrom(invoiceLine));
+    addMockEntry(BUDGETS, JsonObject.mapFrom(budget));
+    addMockEntry(FUNDS, JsonObject.mapFrom(fund));
+    addMockEntry(LEDGERS, JsonObject.mapFrom(ledger));
+
+    reqData.setStatus(Invoice.Status.APPROVED);
+
+    String jsonBody = JsonObject.mapFrom(reqData).encode();
+    Headers headers = prepareHeaders(X_OKAPI_URL, X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID);
+    verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, headers, "", 204);
   }
 
   @Test
@@ -1140,6 +1292,7 @@ public class InvoicesApiTest extends ApiTestBase {
 
     List<JsonObject> invoiceSummariesCreated = serverRqRs.get(INVOICE_TRANSACTION_SUMMARIES, HttpMethod.POST);
     List<JsonObject> awaitingPaymentsCreated = serverRqRs.get(AWAITING_PAYMENTS, HttpMethod.POST);
+    List<JsonObject> pendingPaymentsCreated = serverRqRs.get(FINANCE_STORAGE_TRANSACTIONS, HttpMethod.POST);
 
     assertThat(invoiceSummariesCreated, hasSize(1));
     assertThat(awaitingPaymentsCreated, nullValue());
@@ -1149,6 +1302,7 @@ public class InvoicesApiTest extends ApiTestBase {
     int numPendingPayments = invoiceLine.getFundDistributions().size();
     assertThat(transactionSummary.getNumPendingPayments(), is(numPendingPayments));
     assertThat(transactionSummary.getNumPaymentsCredits(), is(numPendingPayments));
+    assertThat(pendingPaymentsCreated, hasSize(numPendingPayments));
   }
 
   @Test
@@ -1278,8 +1432,8 @@ public class InvoicesApiTest extends ApiTestBase {
     assertThat(errors, notNullValue());
     assertThat(errors.getErrors(), hasSize(1));
     Error error = errors.getErrors().get(0);
-    assertThat(error.getMessage(), equalTo(FUNDS_NOT_FOUND.getDescription()));
-    assertThat(error.getCode(), equalTo(FUNDS_NOT_FOUND.getCode()));
+    assertThat(error.getMessage(), equalTo(BUDGET_NOT_FOUND.getDescription()));
+    assertThat(error.getCode(), equalTo(BUDGET_NOT_FOUND.getCode()));
     assertThat(error.getParameters().get(0).getValue(), containsString(ID_DOES_NOT_EXIST));
   }
 
@@ -2282,7 +2436,7 @@ public class InvoicesApiTest extends ApiTestBase {
     Error error = errors.getErrors().get(0);
     assertThat(error.getCode(), equalTo(PROHIBITED_FIELD_CHANGING.getCode()));
     Object[] failedFieldNames = getModifiedProtectedFields(error);
-    assertThat(failedFieldNames, arrayContaining(InvoiceHelper.TOTAL));
+    assertThat(failedFieldNames, arrayContaining(TOTAL));
 
     // Check number of requests
     assertThat(serverRqRs.row(INVOICES).get(HttpMethod.GET), hasSize(1));

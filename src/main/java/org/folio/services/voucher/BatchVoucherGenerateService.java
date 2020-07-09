@@ -142,7 +142,8 @@ public class BatchVoucherGenerateService {
     String voucherStart = voucherJSON.getString("start");
     String voucherEnd = voucherJSON.getString("end");
     return "batchGroupId==" + batchVoucherExport.getBatchGroupId() + " and voucherDate>=" + voucherStart
-      + " and voucherDate<=" + voucherEnd;
+      + " and voucherDate<=" + voucherEnd
+      + " and exportToAccounting==true";
   }
 
   private void closeHttpConnections() {
