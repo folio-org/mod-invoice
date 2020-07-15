@@ -1,4 +1,4 @@
-package org.folio.rest.impl;
+package org.folio.invoices.utils;
 
 import static org.folio.invoices.utils.ErrorCodes.APPROVED_OR_PAID_INVOICE_DELETE_FORBIDDEN;
 import static org.folio.rest.acq.model.Invoice.Status.APPROVED;
@@ -10,8 +10,8 @@ import org.folio.rest.jaxrs.model.Invoice;
 
 import java.util.concurrent.CompletableFuture;
 
-public class RestrictionsHelper {
-  private RestrictionsHelper() {
+public class InvoiceRestrictionsUtil {
+  private InvoiceRestrictionsUtil() {
   }
 
   public static CompletableFuture<Invoice> checkIfInvoiceDeletionPermitted(Invoice invoice) {

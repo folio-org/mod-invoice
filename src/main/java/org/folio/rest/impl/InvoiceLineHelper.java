@@ -37,6 +37,7 @@ import javax.money.MonetaryAmount;
 
 import org.folio.invoices.events.handlers.MessageAddress;
 import org.folio.invoices.rest.exceptions.HttpException;
+import org.folio.invoices.utils.InvoiceRestrictionsUtil;
 import org.folio.invoices.utils.ProtectedOperationType;
 import org.folio.rest.jaxrs.model.Adjustment;
 import org.folio.rest.jaxrs.model.Error;
@@ -256,7 +257,7 @@ public class InvoiceLineHelper extends AbstractHelper {
     return getInvoicesIfExists(lineId)
       .thenCompose(invoice -> protectionHelper.isOperationRestricted(invoice.getAcqUnitIds(), DELETE)
         .thenApply(vVoid -> invoice))
-      .thenCompose(RestrictionsHelper::checkIfInvoiceDeletionPermitted)
+      .thenCompose(InvoiceRestrictionsUtil::checkIfInvoiceDeletionPermitted)
       .thenCompose(invoice -> handleDeleteRequest(resourceByIdPath(INVOICE_LINES, lineId, lang), httpClient, ctx, okapiHeaders, logger)
         .thenRun(() -> updateInvoiceAndLinesAsync(invoice)));
   }

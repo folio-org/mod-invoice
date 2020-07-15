@@ -76,6 +76,7 @@ import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.invoices.utils.AcqDesiredPermissions;
 import org.folio.invoices.utils.ErrorCodes;
 import org.folio.invoices.utils.HelperUtils;
+import org.folio.invoices.utils.InvoiceRestrictionsUtil;
 import org.folio.invoices.utils.ProtectedOperationType;
 import org.folio.rest.acq.model.finance.Fund;
 import org.folio.rest.acq.model.finance.FundCollection;
@@ -272,7 +273,7 @@ public class InvoiceHelper extends AbstractHelper {
     return getInvoiceRecord(id)
     .thenCompose(invoice -> protectionHelper.isOperationRestricted(invoice.getAcqUnitIds(), ProtectedOperationType.DELETE)
       .thenApply(vVoid -> invoice))
-    .thenCompose(RestrictionsHelper::checkIfInvoiceDeletionPermitted)
+    .thenCompose(InvoiceRestrictionsUtil::checkIfInvoiceDeletionPermitted)
     .thenCompose(invoice -> handleDeleteRequest(resourceByIdPath(INVOICES, id, lang), httpClient, ctx, okapiHeaders, logger));
   }
 
