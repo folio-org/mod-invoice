@@ -76,6 +76,7 @@ import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.invoices.utils.AcqDesiredPermissions;
 import org.folio.invoices.utils.ErrorCodes;
 import org.folio.invoices.utils.HelperUtils;
+import org.folio.invoices.utils.InvoiceRestrictionsUtil;
 import org.folio.invoices.utils.ProtectedOperationType;
 import org.folio.rest.acq.model.finance.Fund;
 import org.folio.rest.acq.model.finance.FundCollection;
@@ -264,13 +265,16 @@ public class InvoiceHelper extends AbstractHelper {
    * Delete Invoice
    * 1. Get invoice by id
    * 2. Verify if user has permission to delete Invoice based on acquisitions units
-   * 3. If user has permission to delete then delete invoiceLine
+   * 3. Check if invoice status is not approved or paid
+   * 4. If user has permission to delete and invoice is not approved or paid then delete invoiceLine
    * @param id invoiceLine id to be deleted
    */
   public CompletableFuture<Void> deleteInvoice(String id) {
     return getInvoiceRecord(id)
-    .thenCompose(invoice -> protectionHelper.isOperationRestricted(invoice.getAcqUnitIds(), ProtectedOperationType.DELETE))
-    .thenCompose(v -> handleDeleteRequest(resourceByIdPath(INVOICES, id, lang), httpClient, ctx, okapiHeaders, logger));
+    .thenCompose(invoice -> protectionHelper.isOperationRestricted(invoice.getAcqUnitIds(), ProtectedOperationType.DELETE)
+      .thenApply(vVoid -> invoice))
+    .thenCompose(InvoiceRestrictionsUtil::checkIfInvoiceDeletionPermitted)
+    .thenCompose(invoice -> handleDeleteRequest(resourceByIdPath(INVOICES, id, lang), httpClient, ctx, okapiHeaders, logger));
   }
 
   /**

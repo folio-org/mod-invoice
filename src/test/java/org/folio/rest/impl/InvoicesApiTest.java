@@ -2289,7 +2289,17 @@ public class InvoicesApiTest extends ApiTestBase {
 
   @Test
   public void testDeleteInvoiceByValidId() {
-    verifyDeleteResponse(String.format(INVOICE_ID_PATH, APPROVED_INVOICE_ID), "", 204);
+    verifyDeleteResponse(String.format(INVOICE_ID_PATH, VALID_UUID), "", 204);
+  }
+
+  @Test
+  public void testDeleteApprovedInvoice() {
+    verifyDeleteResponse(String.format(INVOICE_ID_PATH, APPROVED_INVOICE_ID), "", 403);
+  }
+
+  @Test
+  public void testDeletePaidInvoice() {
+    verifyDeleteResponse(String.format(INVOICE_ID_PATH, PAID_INVOICE_ID), "", 403);
   }
 
   @Test

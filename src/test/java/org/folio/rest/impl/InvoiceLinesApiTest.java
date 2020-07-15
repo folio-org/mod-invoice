@@ -50,6 +50,7 @@ import org.folio.invoices.utils.InvoiceLineProtectedFields;
 import org.folio.rest.jaxrs.model.Adjustment;
 import org.folio.rest.jaxrs.model.Error;
 import org.folio.rest.jaxrs.model.Errors;
+import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.jaxrs.model.InvoiceLine;
 import org.folio.rest.jaxrs.model.InvoiceLineCollection;
 import org.hamcrest.MatcherAssert;
@@ -191,6 +192,26 @@ public class InvoiceLinesApiTest extends ApiTestBase {
     addMockEntry(INVOICES, getMinimalContentInvoice());
 
     verifyDeleteResponse(String.format(INVOICE_LINE_ID_PATH, VALID_UUID), "", 204);
+  }
+
+  @Test
+  public void deleteInvoicingInvoiceLinesByIdForApprovedInvoiceTest() {
+    logger.info("=== Test delete invoice line by id for approved invoice: Forbidden ===");
+
+    addMockEntry(INVOICE_LINES, getMinimalContentInvoiceLine().withId(VALID_UUID).withInvoiceId(APPROVED_INVOICE_ID));
+    addMockEntry(INVOICES, getMinimalContentInvoice(Invoice.Status.APPROVED));
+
+    verifyDeleteResponse(String.format(INVOICE_LINE_ID_PATH, VALID_UUID), APPLICATION_JSON, 403);
+  }
+
+  @Test
+  public void deleteInvoicingInvoiceLinesByIdForPaidInvoiceTest() {
+    logger.info("=== Test delete invoice line by id for paid invoice: Forbidden ===");
+
+    addMockEntry(INVOICE_LINES, getMinimalContentInvoiceLine().withId(VALID_UUID).withInvoiceId(APPROVED_INVOICE_ID));
+    addMockEntry(INVOICES, getMinimalContentInvoice(Invoice.Status.PAID));
+
+    verifyDeleteResponse(String.format(INVOICE_LINE_ID_PATH, VALID_UUID), APPLICATION_JSON, 403);
   }
 
   @Test
