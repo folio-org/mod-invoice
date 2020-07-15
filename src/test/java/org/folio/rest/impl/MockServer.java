@@ -19,6 +19,7 @@ import static org.folio.invoices.utils.ResourcePathResolver.BATCH_VOUCHER_EXPORT
 import static org.folio.invoices.utils.ResourcePathResolver.BATCH_VOUCHER_EXPORT_CONFIGS;
 import static org.folio.invoices.utils.ResourcePathResolver.BATCH_VOUCHER_EXPORT_CONFIGS_CREDENTIALS;
 import static org.folio.invoices.utils.ResourcePathResolver.BATCH_VOUCHER_STORAGE;
+import static org.folio.invoices.utils.ResourcePathResolver.BUDGETS;
 import static org.folio.invoices.utils.ResourcePathResolver.FINANCE_CREDITS;
 import static org.folio.invoices.utils.ResourcePathResolver.FINANCE_PAYMENTS;
 import static org.folio.invoices.utils.ResourcePathResolver.FINANCE_STORAGE_TRANSACTIONS;
@@ -30,6 +31,7 @@ import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_DOCUMENTS;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_LINES;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_LINE_NUMBER;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_TRANSACTION_SUMMARIES;
+import static org.folio.invoices.utils.ResourcePathResolver.LEDGERS;
 import static org.folio.invoices.utils.ResourcePathResolver.ORDER_LINES;
 import static org.folio.invoices.utils.ResourcePathResolver.VOUCHERS;
 import static org.folio.invoices.utils.ResourcePathResolver.VOUCHER_LINES;
@@ -102,9 +104,13 @@ import org.folio.rest.acq.model.BatchGroupCollection;
 import org.folio.rest.acq.model.SequenceNumber;
 import org.folio.rest.acq.model.VoucherLine;
 import org.folio.rest.acq.model.VoucherLineCollection;
+import org.folio.rest.acq.model.finance.Budget;
+import org.folio.rest.acq.model.finance.BudgetCollection;
 import org.folio.rest.acq.model.finance.FiscalYear;
 import org.folio.rest.acq.model.finance.Fund;
 import org.folio.rest.acq.model.finance.FundCollection;
+import org.folio.rest.acq.model.finance.Ledger;
+import org.folio.rest.acq.model.finance.LedgerCollection;
 import org.folio.rest.acq.model.finance.Transaction;
 import org.folio.rest.acq.model.finance.TransactionCollection;
 import org.folio.rest.acq.model.orders.CompositePoLine;
@@ -188,6 +194,8 @@ public class MockServer {
 
   private static final String INVOICE_LINES_COLLECTION = BASE_MOCK_DATA_PATH + "invoiceLines/invoice_lines.json";
   private static final String VOUCHER_LINES_COLLECTION = BASE_MOCK_DATA_PATH + "voucherLines/voucher_lines.json";
+  public static final String BUDGETS_PATH = BASE_MOCK_DATA_PATH + "budgets/budgets.json";
+  public static final String LEDGERS_PATH = BASE_MOCK_DATA_PATH + "ledgers/ledgers.json";
   private static final String ACQUISITIONS_UNITS_MOCK_DATA_PATH = BASE_MOCK_DATA_PATH + "acquisitionUnits";
   static final String ACQUISITIONS_UNITS_COLLECTION = ACQUISITIONS_UNITS_MOCK_DATA_PATH + "/units.json";
   static final String ACQUISITIONS_MEMBERSHIPS_COLLECTION = ACQUISITIONS_UNITS_MOCK_DATA_PATH + "/memberships.json";
@@ -221,7 +229,7 @@ public class MockServer {
 
   static final String CURRENT_FISCAL_YEAR = "currentFiscalYear";
   static final String SYSTEM_CURRENCY = "GBP";
-  static final String FISCAL_YEAR_ID = UUID.randomUUID().toString();
+  static final String FISCAL_YEAR_ID = "279f8a63-d612-406e-813f-c7527f241ac5";
   public static final String ACTIVE_ACCESS_VENDOR = "168f8a63-d612-406e-813f-c7527f241ac3";
   public static final String EXCEPTION_CASE_BATCH_VOUCHER_EXPORT_GENERATION = "batchGroupId==null and voucherDate>=null and voucherDate<=null";
 
@@ -385,6 +393,8 @@ public class MockServer {
     router.route(HttpMethod.GET, resourcesPath(VOUCHER_LINES)).handler(this::handleGetVoucherLines);
     router.route(HttpMethod.GET, resourcesPath(VOUCHER_NUMBER)).handler(this::handleGetVoucherNumber);
     router.route(HttpMethod.GET, resourcesPath(FUNDS)).handler(this::handleGetFundRecords);
+    router.route(HttpMethod.GET, resourcesPath(BUDGETS)).handler(this::handleGetBudgetRecords);
+    router.route(HttpMethod.GET, resourcesPath(LEDGERS)).handler(this::handleGetLedgerRecords);
     router.route(HttpMethod.GET, "/configurations/entries").handler(this::handleConfigurationModuleResponse);
     router.route(HttpMethod.GET, "/invoice-storage/invoices/:id/documents").handler(this::handleGetInvoiceDocuments);
     router.route(HttpMethod.GET, "/invoice-storage/invoices/:id/documents/:documentId").handler(this::handleGetInvoiceDocumentById);
@@ -1450,6 +1460,100 @@ public class MockServer {
       }
       serverResponse(ctx, 200, APPLICATION_JSON, JsonObject.mapFrom(configs).encodePrettily());
     }
+  }
+
+  private void handleGetBudgetRecords(RoutingContext ctx) {
+    String query = StringUtils.trimToEmpty(ctx.request().getParam(QUERY));
+    addServerRqQuery(BUDGETS, query);
+    if (query.contains(ID_FOR_INTERNAL_SERVER_ERROR)) {
+      serverResponse(ctx, 500, APPLICATION_JSON, INTERNAL_SERVER_ERROR.getReasonPhrase());
+    } else {
+      try {
+
+        List<String> ids = Collections.emptyList();
+        if (query.startsWith("fundId==")) {
+          ids = extractIdsFromQuery("fundId", "==", query);
+        }
+
+        JsonObject collection = getBudgetsByFundIds(ids);
+        addServerRqRsData(HttpMethod.GET, BUDGETS, collection);
+
+        ctx.response()
+          .setStatusCode(200)
+          .putHeader(HttpHeaders.CONTENT_TYPE, APPLICATION_JSON)
+          .end(collection.encodePrettily());
+      } catch (Exception e) {
+        serverResponse(ctx, 500, APPLICATION_JSON, INTERNAL_SERVER_ERROR.getReasonPhrase());
+      }
+    }
+  }
+
+  private JsonObject getBudgetsByFundIds(List<String> budgetByFundIds) {
+    Supplier<List<Budget>> getFromFile = () -> {
+      try {
+        return new JsonObject(getMockData(BUDGETS_PATH)).mapTo(BudgetCollection.class).getBudgets();
+      } catch (IOException e) {
+        return Collections.emptyList();
+      }
+    };
+
+    List<Budget> budgets = getMockEntries(BUDGETS, Budget.class).orElseGet(getFromFile);
+
+    if (!budgetByFundIds.isEmpty()) {
+      budgets.removeIf(item -> !budgetByFundIds.contains(item.getFundId()));
+    }
+
+    Object record = new BudgetCollection().withBudgets(budgets).withTotalRecords(budgets.size());
+
+
+    return JsonObject.mapFrom(record);
+  }
+
+  private void handleGetLedgerRecords(RoutingContext ctx) {
+    String query = StringUtils.trimToEmpty(ctx.request().getParam(QUERY));
+    addServerRqQuery(LEDGERS, query);
+    if (query.contains(ID_FOR_INTERNAL_SERVER_ERROR)) {
+      serverResponse(ctx, 500, APPLICATION_JSON, INTERNAL_SERVER_ERROR.getReasonPhrase());
+    } else {
+      try {
+
+        List<String> ids = Collections.emptyList();
+        if (query.startsWith("id==")) {
+          ids = extractIdsFromQuery(query);
+        }
+
+        JsonObject collection = getLedgersByIds(ids);
+        addServerRqRsData(HttpMethod.GET, LEDGERS, collection);
+
+        ctx.response()
+          .setStatusCode(200)
+          .putHeader(HttpHeaders.CONTENT_TYPE, APPLICATION_JSON)
+          .end(collection.encodePrettily());
+      } catch (Exception e) {
+        serverResponse(ctx, 500, APPLICATION_JSON, INTERNAL_SERVER_ERROR.getReasonPhrase());
+      }
+    }
+  }
+
+  private JsonObject getLedgersByIds(List<String> ledgerByFundIds) {
+    Supplier<List<Ledger>> getFromFile = () -> {
+      try {
+        return new JsonObject(getMockData(LEDGERS_PATH)).mapTo(LedgerCollection.class).getLedgers();
+      } catch (IOException e) {
+        return Collections.emptyList();
+      }
+    };
+
+    List<Ledger> ledgers = getMockEntries(LEDGERS, Ledger.class).orElseGet(getFromFile);
+
+    if (!ledgerByFundIds.isEmpty()) {
+      ledgers.removeIf(item -> !ledgerByFundIds.contains(item.getId()));
+    }
+
+    Object record = new LedgerCollection().withLedgers(ledgers).withTotalRecords(ledgers.size());
+
+
+    return JsonObject.mapFrom(record);
   }
 
   private void handleGetFundRecords(RoutingContext ctx) {

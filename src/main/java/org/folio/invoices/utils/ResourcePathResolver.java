@@ -31,6 +31,8 @@ public class ResourcePathResolver {
   public static final String BATCH_GROUPS = "batch-groups";
   public static final String BATCH_VOUCHER_STORAGE = "batch-voucher/batch-vouchers";
   public static final String BATCH_VOUCHER_EXPORTS_STORAGE = "batch-voucher/batch-voucher-exports";
+  public static final String BUDGETS = "finance.budgets";
+  public static final String LEDGERS = "finance.ledgers";
   public static final String FINANCE_TRANSACTIONS = "finance/transactions";
   public static final String FINANCE_INVOICE_PAYMENTS_SUMMARIES = "finance/invoice-payment-summaries";
   public static final String FINANCE_PAYMENTS = "finance/payments";
@@ -66,6 +68,8 @@ public class ResourcePathResolver {
     apis.put(FINANCE_INVOICE_PAYMENTS_SUMMARIES, "/finance/invoice-payment-summaries");
     apis.put(FINANCE_PAYMENTS, "/finance/payments");
     apis.put(FINANCE_CREDITS, "/finance/credits");
+    apis.put(BUDGETS, "/finance/budgets");
+    apis.put(LEDGERS, "/finance/ledgers");
 
     SUB_OBJECT_COLLECTION_APIS = Collections.unmodifiableMap(apis);
     SUB_OBJECT_ITEM_APIS = Collections.unmodifiableMap(
