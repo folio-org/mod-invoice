@@ -1,5 +1,6 @@
 package org.folio.rest.impl;
 
+import static java.util.Objects.nonNull;
 import static java.util.UUID.randomUUID;
 import static java.util.concurrent.CompletableFuture.allOf;
 import static java.util.stream.Collectors.groupingBy;
@@ -53,6 +54,7 @@ import static org.folio.rest.RestVerticle.OKAPI_HEADER_PERMISSIONS;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -61,6 +63,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import javax.money.CurrencyUnit;
@@ -78,6 +81,7 @@ import org.folio.invoices.utils.ErrorCodes;
 import org.folio.invoices.utils.HelperUtils;
 import org.folio.invoices.utils.InvoiceRestrictionsUtil;
 import org.folio.invoices.utils.ProtectedOperationType;
+import org.folio.rest.acq.model.finance.ExpenseClass;
 import org.folio.rest.acq.model.finance.Fund;
 import org.folio.rest.acq.model.finance.FundCollection;
 import org.folio.rest.acq.model.finance.InvoiceTransactionSummary;
@@ -95,11 +99,14 @@ import org.folio.rest.jaxrs.model.SequenceNumber;
 import org.folio.rest.jaxrs.model.Voucher;
 import org.folio.rest.jaxrs.model.VoucherLine;
 import org.folio.services.adjusment.AdjustmentsService;
+import org.folio.services.expence.ExpenseClassRetrieveService;
 import org.folio.services.validator.InvoiceValidator;
+import org.folio.spring.SpringContextUtil;
 import org.javamoney.moneta.Money;
 import org.javamoney.moneta.function.MonetaryFunctions;
 
 import io.vertx.core.Context;
+import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import me.escoffier.vertx.completablefuture.VertxCompletableFuture;
@@ -125,8 +132,22 @@ public class InvoiceHelper extends AbstractHelper {
   private final FinanceHelper financeHelper;
   private AdjustmentsService adjustmentsService;
   private InvoiceValidator validator;
+  private ExpenseClassRetrieveService expenseClassRetrieveService;
 
   public InvoiceHelper(Map<String, String> okapiHeaders, Context ctx, String lang) {
+    super(getHttpClient(okapiHeaders), okapiHeaders, ctx, lang);
+    SpringContextUtil.autowireDependencies(this, Vertx.currentContext());
+    invoiceLineHelper = new InvoiceLineHelper(httpClient, okapiHeaders, ctx, lang);
+    voucherHelper = new VoucherHelper(httpClient, okapiHeaders, ctx, lang);
+    voucherLineHelper = new VoucherLineHelper(httpClient, okapiHeaders, ctx, lang);
+    protectionHelper = new ProtectionHelper(httpClient, okapiHeaders, ctx, lang);
+    financeHelper = new FinanceHelper(httpClient, okapiHeaders, ctx, lang);
+    adjustmentsService = new AdjustmentsService();
+    validator = new InvoiceValidator();
+    expenseClassRetrieveService = ExpenseClassRetrieveService.getInstance();
+  }
+
+  public InvoiceHelper(Map<String, String> okapiHeaders, Context ctx, String lang, ExpenseClassRetrieveService expenseClassRetrieveService) {
     super(getHttpClient(okapiHeaders), okapiHeaders, ctx, lang);
     invoiceLineHelper = new InvoiceLineHelper(httpClient, okapiHeaders, ctx, lang);
     voucherHelper = new VoucherHelper(httpClient, okapiHeaders, ctx, lang);
@@ -135,6 +156,7 @@ public class InvoiceHelper extends AbstractHelper {
     financeHelper = new FinanceHelper(httpClient, okapiHeaders, ctx, lang);
     adjustmentsService = new AdjustmentsService();
     validator = new InvoiceValidator();
+    this.expenseClassRetrieveService = expenseClassRetrieveService;
   }
 
   public CompletableFuture<Invoice> createInvoice(Invoice invoice) {
@@ -542,7 +564,7 @@ public class InvoiceHelper extends AbstractHelper {
   private CompletableFuture<Voucher> prepareVoucher(Invoice invoice) {
     return voucherHelper.getVoucherByInvoiceId(invoice.getId())
       .thenCompose(voucher -> {
-        if (Objects.nonNull(voucher)) {
+        if (nonNull(voucher)) {
           return completedFuture(voucher);
         }
         return buildNewVoucher(invoice);
@@ -691,8 +713,8 @@ public class InvoiceHelper extends AbstractHelper {
 
     return fetchFundsByIds(new ArrayList<>(fundDistrosGroupedByFundId.keySet()))
       .thenApply(this::groupFundsByExternalAcctNo)
-      .thenApply(fundsGroupedByExternalAcctNo ->
-        mapExternalAcctNoToFundDistros(fundDistrosGroupedByFundId, fundsGroupedByExternalAcctNo)
+      .thenCombine(groupFundDistrByFundIdByExpenseClassExtNo(fundDistributions), (fundsGroupedByExternalAcctNo, groupedFundDistros) ->
+        mapExternalAcctNoToFundDistros(groupedFundDistros, fundsGroupedByExternalAcctNo)
       );
   }
 
@@ -701,24 +723,57 @@ public class InvoiceHelper extends AbstractHelper {
   }
 
   private Map<String,  List<FundDistribution>> mapExternalAcctNoToFundDistros(
-    Map<String, List<FundDistribution>> fundDistrosGroupedByFundId,
+    Map<String, Map<String, List<FundDistribution>>> fundDistrosGroupedByFundIdAndExpenseClassExtNo,
     Map<String, List<Fund>> fundsGroupedByExternalAccountNo) {
-
-    return fundsGroupedByExternalAccountNo.keySet()
-      .stream()
-      .collect(toMap(externalAccountNo -> externalAccountNo,
-        externalAccountNo -> fundsGroupedByExternalAccountNo.get(externalAccountNo)
-          .stream()
-          .map(Fund::getId)
-          .flatMap(fundId -> fundDistrosGroupedByFundId.get(fundId)
-            .stream())
-          .collect(toList())));
+    Map<String,  List<FundDistribution>> groupedFundDistribution = new HashMap<>();
+    for (Map.Entry<String, List<Fund>> fundExternalAccountNoPair : fundsGroupedByExternalAccountNo.entrySet()) {
+      String fundExternalAccountNo = fundExternalAccountNoPair.getKey();
+      for (Fund fund : fundExternalAccountNoPair.getValue()) {
+         Map<String, List<FundDistribution>> fundDistrsExpenseClassExtNo = fundDistrosGroupedByFundIdAndExpenseClassExtNo.get(fund.getId());
+         for (Map.Entry<String, List<FundDistribution>> fundDistrs : fundDistrsExpenseClassExtNo.entrySet()) {
+           String expenseClassExtAccountNo = fundDistrs.getKey();
+           String key = EMPTY.equals(expenseClassExtAccountNo) ? fundExternalAccountNo : fundExternalAccountNo + "_" + expenseClassExtAccountNo;
+           groupedFundDistribution.put(key, fundDistrs.getValue());
+         }
+      }
+    };
+    return groupedFundDistribution;
   }
 
-  private Map<String,  List<FundDistribution>> groupFundDistrosByFundId(List<FundDistribution> fundDistributions) {
+  private Map<String, List<FundDistribution>> groupFundDistrosByFundId(List<FundDistribution> fundDistributions) {
     return fundDistributions.stream()
       .collect(groupingBy(FundDistribution::getFundId));
   }
+
+  private Map<String, Map<String, List<FundDistribution>>> groupFundDistrsByFundIByExpenseClassId(List<FundDistribution> fundDistrs) {
+    return fundDistrs.stream().collect(
+            groupingBy(FundDistribution::getFundId,
+                  groupingBy(FundDistribution::getExpenseClassId)
+    ));
+  }
+
+  private CompletableFuture<Map<String, Map<String, List<FundDistribution>>>> groupFundDistrByFundIdByExpenseClassExtNo(List<FundDistribution> fundDistrs) {
+    List<String> expenseClassIds = fundDistrs.stream()
+                                             .filter(fundDistribution -> nonNull(fundDistribution.getExpenseClassId()))
+                                             .map(FundDistribution::getExpenseClassId).collect(toList());
+    return expenseClassRetrieveService.getExpenseClasses(expenseClassIds, ctx, okapiHeaders)
+                               .thenApply(expenseClasses -> expenseClasses.stream().collect(toMap(ExpenseClass::getId, Function.identity())))
+                               .thenApply(expenseClassByIds -> {
+                                 return fundDistrs.stream().collect(
+                                   groupingBy(FundDistribution::getFundId,
+                                     groupingBy(getExpenseClassExtNo(expenseClassByIds)))
+                                 );
+                               });
+  }
+
+  private Function<FundDistribution, String> getExpenseClassExtNo(Map<String, ExpenseClass> expenseClassByIds) {
+    return fundDistrsP -> {
+      return Optional.ofNullable(expenseClassByIds.get(fundDistrsP.getExpenseClassId()))
+              .map(expenseClass -> expenseClass.getExternalAccountNumberExt())
+              .orElse(EMPTY);
+    };
+  }
+
 
   private CompletableFuture<List<Fund>> fetchFundsByIds(List<String> fundIds) {
     List<CompletableFuture<List<Fund>>> futures = StreamEx
@@ -816,7 +871,7 @@ public class InvoiceHelper extends AbstractHelper {
    * @return {@link Voucher} with id
    */
   private CompletableFuture<Voucher> handleVoucher(Voucher voucher) {
-    if (Objects.nonNull(voucher.getId())) {
+    if (nonNull(voucher.getId())) {
       return voucherHelper.updateVoucher(voucher)
         .thenCompose(aVoid -> deleteVoucherLinesIfExist(voucher.getId()))
         .thenApply(aVoid -> voucher);

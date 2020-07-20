@@ -201,6 +201,8 @@ public class InvoicesApiTest extends ApiTestBase {
   private static final String FUND_ID_WITH_NOT_ENOUGH_AMOUNT_IN_BUDGET = "2d1574f1-919cc4a57-8d1f-3b2e4619eb81";
   private static final String FUND_ID_WITH_NOT_ACTIVE_BUDGET = "3d1574f1-919cc4a57-8d1f-3b2e4619eb81";
   private static final String EXISTING_LEDGER_ID = "a3ec5552-c4a4-4a15-a57c-0046db536369";
+  public static final String EXPENSE_CLASSES_MOCK_DATA_PATH = BASE_MOCK_DATA_PATH + "expense-classes/";
+  public static final String EXPENSE_CLASSES_LIST_PATH = EXPENSE_CLASSES_MOCK_DATA_PATH + "expense-classes.json";
 
   @Test
   public void testGetInvoicingInvoices() {

@@ -1,8 +1,8 @@
 package org.folio.services;
 
 import static java.util.stream.Collectors.toList;
-import static org.folio.invoices.utils.HelperUtils.OKAPI_URL;
 import static org.folio.ApiTestSuite.mockPort;
+import static org.folio.invoices.utils.HelperUtils.OKAPI_URL;
 import static org.junit.Assert.assertEquals;
 
 import java.io.IOException;
@@ -12,13 +12,17 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 
+import org.folio.rest.core.RestClient;
 import org.folio.rest.impl.ApiTestBase;
+import org.folio.rest.impl.InvoiceHelper;
 import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.jaxrs.model.InvoiceCollection;
 import org.folio.rest.jaxrs.model.Voucher;
 import org.folio.rest.jaxrs.model.VoucherCollection;
+import org.folio.services.expence.ExpenseClassRetrieveService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 
 import io.vertx.core.Context;
 import io.vertx.core.Vertx;
@@ -42,7 +46,10 @@ public class InvoiceRetrieveServiceTest extends ApiTestBase {
 
   @Test
   public void positiveGetInvoicesByChunksTest() throws IOException, ExecutionException, InterruptedException {
-    InvoiceRetrieveService service = new InvoiceRetrieveService(okapiHeaders, context, "en");
+    RestClient restClient = Mockito.mock(RestClient.class);
+    ExpenseClassRetrieveService expenseClassRetrieveService = new ExpenseClassRetrieveService(restClient);
+    InvoiceHelper invoiceHelper = new InvoiceHelper(okapiHeaders, context, "en", expenseClassRetrieveService);
+    InvoiceRetrieveService service = new InvoiceRetrieveService(invoiceHelper);
     JsonObject vouchersList = new JsonObject(getMockData(VOUCHERS_LIST_PATH));
     List<Voucher> vouchers = vouchersList.getJsonArray("vouchers").stream()
       .map(obj -> ((JsonObject) obj).mapTo(Voucher.class))
@@ -56,7 +63,10 @@ public class InvoiceRetrieveServiceTest extends ApiTestBase {
 
   @Test
   public void positiveGetInvoiceMapTest() throws IOException, ExecutionException, InterruptedException {
-    InvoiceRetrieveService service = new InvoiceRetrieveService(okapiHeaders, context, "en");
+    RestClient restClient = Mockito.mock(RestClient.class);
+    ExpenseClassRetrieveService expenseClassRetrieveService = new ExpenseClassRetrieveService(restClient);
+    InvoiceHelper invoiceHelper = new InvoiceHelper(okapiHeaders, context, "en", expenseClassRetrieveService);
+    InvoiceRetrieveService service = new InvoiceRetrieveService(invoiceHelper);
     JsonObject vouchersList = new JsonObject(getMockData(VOUCHERS_LIST_PATH));
     List<Voucher> vouchers = vouchersList.getJsonArray("vouchers") .stream()
       .map(obj -> ((JsonObject) obj).mapTo(Voucher.class))
