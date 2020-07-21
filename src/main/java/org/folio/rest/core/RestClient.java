@@ -50,45 +50,7 @@ public class RestClient {
     return get(context, okapiHeaders, endpoint, responseType);
   }
 
-  private <S> CompletableFuture<S> get(Context context, Map<String, String> okapiHeaders, String endpoint, Class<S> responseType) {
-    CompletableFuture<S> future = new VertxCompletableFuture<>(context);
-    HttpClientInterface client = getHttpClient(okapiHeaders);
-    if (logger.isDebugEnabled()) {
-      logger.debug("Calling GET {}", endpoint);
-    }
-
-    try {
-      client
-        .request(HttpMethod.GET, endpoint, okapiHeaders)
-        .thenApply(response -> {
-          if (logger.isDebugEnabled()) {
-            logger.debug("Validating response for GET {}", endpoint);
-          }
-          return verifyAndExtractBody(response);
-        })
-        .handle((body, t) -> {
-          client.closeClient();
-          if (t != null) {
-            logger.error(EXCEPTION_CALLING_ENDPOINT_MSG, t, HttpMethod.GET, endpoint);
-            future.completeExceptionally(t.getCause());
-          } else {
-            if (logger.isDebugEnabled()) {
-              logger.debug("The response body for GET {}: {}", endpoint, nonNull(body) ? body.encodePrettily() : null);
-            }
-            S responseEntity = body.mapTo(responseType);
-            future.complete(responseEntity);
-          }
-          return null;
-        });
-    } catch (Exception e) {
-      logger.error(EXCEPTION_CALLING_ENDPOINT_MSG, e, HttpMethod.GET, baseEndpoint);
-      client.closeClient();
-      future.completeExceptionally(e);
-    }
-    return future;
-  }
-
-  public <T> CompletableFuture<T> save(T entity, Context context, Map<String, String> okapiHeaders, Class<T> responseType) {
+  public <T> CompletableFuture<T> post(T entity, Context context, Map<String, String> okapiHeaders, Class<T> responseType) {
     CompletableFuture<T> future = new VertxCompletableFuture<>(context);
     String endpoint = baseEndpoint;
     JsonObject recordData = JsonObject.mapFrom(entity);
@@ -125,7 +87,7 @@ public class RestClient {
     return future;
   }
 
-  public <T> CompletableFuture<Void> update(String id, T entity, Context context, Map<String, String> okapiHeaders) {
+  public <T> CompletableFuture<Void> put(String id, T entity, Context context, Map<String, String> okapiHeaders) {
     CompletableFuture<Void> future = new VertxCompletableFuture<>(context);
     String endpoint = String.format(endpointById, id);
     JsonObject recordData = JsonObject.mapFrom(entity);
@@ -187,6 +149,44 @@ public class RestClient {
       future.completeExceptionally(e);
     }
 
+    return future;
+  }
+
+  private <S> CompletableFuture<S> get(Context context, Map<String, String> okapiHeaders, String endpoint, Class<S> responseType) {
+    CompletableFuture<S> future = new VertxCompletableFuture<>(context);
+    HttpClientInterface client = getHttpClient(okapiHeaders);
+    if (logger.isDebugEnabled()) {
+      logger.debug("Calling GET {}", endpoint);
+    }
+
+    try {
+      client
+        .request(HttpMethod.GET, endpoint, okapiHeaders)
+        .thenApply(response -> {
+          if (logger.isDebugEnabled()) {
+            logger.debug("Validating response for GET {}", endpoint);
+          }
+          return verifyAndExtractBody(response);
+        })
+        .handle((body, t) -> {
+          client.closeClient();
+          if (t != null) {
+            logger.error(EXCEPTION_CALLING_ENDPOINT_MSG, t, HttpMethod.GET, endpoint);
+            future.completeExceptionally(t.getCause());
+          } else {
+            if (logger.isDebugEnabled()) {
+              logger.debug("The response body for GET {}: {}", endpoint, nonNull(body) ? body.encodePrettily() : null);
+            }
+            S responseEntity = body.mapTo(responseType);
+            future.complete(responseEntity);
+          }
+          return null;
+        });
+    } catch (Exception e) {
+      logger.error(EXCEPTION_CALLING_ENDPOINT_MSG, e, HttpMethod.GET, baseEndpoint);
+      client.closeClient();
+      future.completeExceptionally(e);
+    }
     return future;
   }
 

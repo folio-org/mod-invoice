@@ -87,6 +87,7 @@ import org.folio.rest.acq.model.finance.FundCollection;
 import org.folio.rest.acq.model.finance.InvoiceTransactionSummary;
 import org.folio.rest.acq.model.finance.Transaction;
 import org.folio.rest.acq.model.orders.CompositePoLine;
+import org.folio.rest.core.RestClient;
 import org.folio.rest.jaxrs.model.Adjustment;
 import org.folio.rest.jaxrs.model.Config;
 import org.folio.rest.jaxrs.model.Error;
@@ -133,30 +134,33 @@ public class InvoiceHelper extends AbstractHelper {
   private AdjustmentsService adjustmentsService;
   private InvoiceValidator validator;
   private ExpenseClassRetrieveService expenseClassRetrieveService;
+  private RestClient restClient = new RestClient(resourcesPath(INVOICES));
 
   public InvoiceHelper(Map<String, String> okapiHeaders, Context ctx, String lang) {
     super(getHttpClient(okapiHeaders), okapiHeaders, ctx, lang);
     SpringContextUtil.autowireDependencies(this, Vertx.currentContext());
-    invoiceLineHelper = new InvoiceLineHelper(httpClient, okapiHeaders, ctx, lang);
-    voucherHelper = new VoucherHelper(httpClient, okapiHeaders, ctx, lang);
-    voucherLineHelper = new VoucherLineHelper(httpClient, okapiHeaders, ctx, lang);
-    protectionHelper = new ProtectionHelper(httpClient, okapiHeaders, ctx, lang);
-    financeHelper = new FinanceHelper(httpClient, okapiHeaders, ctx, lang);
-    adjustmentsService = new AdjustmentsService();
-    validator = new InvoiceValidator();
-    expenseClassRetrieveService = ExpenseClassRetrieveService.getInstance();
+    this.invoiceLineHelper = new InvoiceLineHelper(httpClient, okapiHeaders, ctx, lang);
+    this.voucherHelper = new VoucherHelper(httpClient, okapiHeaders, ctx, lang);
+    this.voucherLineHelper = new VoucherLineHelper(httpClient, okapiHeaders, ctx, lang);
+    this.protectionHelper = new ProtectionHelper(httpClient, okapiHeaders, ctx, lang);
+    this.financeHelper = new FinanceHelper(httpClient, okapiHeaders, ctx, lang);
+    this.adjustmentsService = new AdjustmentsService();
+    this.validator = new InvoiceValidator();
+    this.expenseClassRetrieveService = ExpenseClassRetrieveService.getInstance();
+    this.restClient = new RestClient(resourcesPath(INVOICES));
   }
 
   public InvoiceHelper(Map<String, String> okapiHeaders, Context ctx, String lang, ExpenseClassRetrieveService expenseClassRetrieveService) {
     super(getHttpClient(okapiHeaders), okapiHeaders, ctx, lang);
-    invoiceLineHelper = new InvoiceLineHelper(httpClient, okapiHeaders, ctx, lang);
-    voucherHelper = new VoucherHelper(httpClient, okapiHeaders, ctx, lang);
-    voucherLineHelper = new VoucherLineHelper(httpClient, okapiHeaders, ctx, lang);
-    protectionHelper = new ProtectionHelper(httpClient, okapiHeaders, ctx, lang);
-    financeHelper = new FinanceHelper(httpClient, okapiHeaders, ctx, lang);
-    adjustmentsService = new AdjustmentsService();
-    validator = new InvoiceValidator();
+    this.invoiceLineHelper = new InvoiceLineHelper(httpClient, okapiHeaders, ctx, lang);
+    this.voucherHelper = new VoucherHelper(httpClient, okapiHeaders, ctx, lang);
+    this.voucherLineHelper = new VoucherLineHelper(httpClient, okapiHeaders, ctx, lang);
+    this.protectionHelper = new ProtectionHelper(httpClient, okapiHeaders, ctx, lang);
+    this.financeHelper = new FinanceHelper(httpClient, okapiHeaders, ctx, lang);
+    this.adjustmentsService = new AdjustmentsService();
+    this.validator = new InvoiceValidator();
     this.expenseClassRetrieveService = expenseClassRetrieveService;
+    this.restClient = new RestClient(resourcesPath(INVOICES));
   }
 
   public CompletableFuture<Invoice> createInvoice(Invoice invoice) {
@@ -296,7 +300,7 @@ public class InvoiceHelper extends AbstractHelper {
     .thenCompose(invoice -> protectionHelper.isOperationRestricted(invoice.getAcqUnitIds(), ProtectedOperationType.DELETE)
       .thenApply(vVoid -> invoice))
     .thenCompose(InvoiceRestrictionsUtil::checkIfInvoiceDeletionPermitted)
-    .thenCompose(invoice -> handleDeleteRequest(resourceByIdPath(INVOICES, id, lang), httpClient, ctx, okapiHeaders, logger));
+    .thenCompose(invoice -> restClient.delete(id, ctx, okapiHeaders));
   }
 
   /**
@@ -732,7 +736,7 @@ public class InvoiceHelper extends AbstractHelper {
          Map<String, List<FundDistribution>> fundDistrsExpenseClassExtNo = fundDistrosGroupedByFundIdAndExpenseClassExtNo.get(fund.getId());
          for (Map.Entry<String, List<FundDistribution>> fundDistrs : fundDistrsExpenseClassExtNo.entrySet()) {
            String expenseClassExtAccountNo = fundDistrs.getKey();
-           String key = EMPTY.equals(expenseClassExtAccountNo) ? fundExternalAccountNo : fundExternalAccountNo + "_" + expenseClassExtAccountNo;
+           String key = EMPTY.equals(expenseClassExtAccountNo) ? fundExternalAccountNo : fundExternalAccountNo + "-" + expenseClassExtAccountNo;
            groupedFundDistribution.put(key, fundDistrs.getValue());
          }
       }
@@ -914,11 +918,8 @@ public class InvoiceHelper extends AbstractHelper {
   }
 
   public CompletableFuture<Void> updateInvoiceRecord(Invoice updatedInvoice) {
-    JsonObject jsonInvoice = JsonObject.mapFrom(updatedInvoice);
-    String path = resourceByIdPath(INVOICES, updatedInvoice.getId(), lang);
-    return handlePutRequest(path, jsonInvoice, httpClient, ctx, okapiHeaders, logger);
+    return restClient.put(updatedInvoice.getId(), updatedInvoice, ctx, okapiHeaders);
   }
-
 
   private boolean isTransitionToPaid(Invoice invoiceFromStorage, Invoice invoice) {
     return invoiceFromStorage.getStatus() == Invoice.Status.APPROVED && invoice.getStatus() == Invoice.Status.PAID;

@@ -27,7 +27,7 @@ public class ExpenseClassRetrieveService {
   }
 
   private static class SingletonHolder {
-    public static final RestClient restClient= new RestClient(ResourcePathResolver.resourcesPath(EXPENSE_CLASSES_URL));
+    public static final RestClient restClient = new RestClient(ResourcePathResolver.resourcesPath(EXPENSE_CLASSES_URL));
     public static final ExpenseClassRetrieveService HOLDER_INSTANCE = new ExpenseClassRetrieveService(restClient);
   }
 
