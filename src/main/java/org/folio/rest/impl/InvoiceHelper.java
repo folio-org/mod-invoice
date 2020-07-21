@@ -167,7 +167,7 @@ public class InvoiceHelper extends AbstractHelper {
       .thenCompose(aVoid -> validateAcqUnitsOnCreate(invoice.getAcqUnitIds()))
       .thenCompose(v -> updateWithSystemGeneratedData(invoice))
       .thenCompose(v -> invoiceRestClient.post(invoice, new RequestContext(ctx, okapiHeaders), Invoice.class))
-      .thenApply(createdInvoice -> createdInvoice.getId())
+      .thenApply(Invoice::getId)
       .thenApply(invoice::withId);
   }
 
