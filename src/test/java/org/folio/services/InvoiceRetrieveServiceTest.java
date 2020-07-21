@@ -12,7 +12,6 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 
-import org.folio.rest.core.RestClient;
 import org.folio.rest.impl.ApiTestBase;
 import org.folio.rest.impl.InvoiceHelper;
 import org.folio.rest.jaxrs.model.Invoice;
@@ -22,7 +21,6 @@ import org.folio.rest.jaxrs.model.VoucherCollection;
 import org.folio.services.expence.ExpenseClassRetrieveService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
 
 import io.vertx.core.Context;
 import io.vertx.core.Vertx;
@@ -46,8 +44,7 @@ public class InvoiceRetrieveServiceTest extends ApiTestBase {
 
   @Test
   public void positiveGetInvoicesByChunksTest() throws IOException, ExecutionException, InterruptedException {
-    RestClient restClient = Mockito.mock(RestClient.class);
-    ExpenseClassRetrieveService expenseClassRetrieveService = new ExpenseClassRetrieveService(restClient);
+    ExpenseClassRetrieveService expenseClassRetrieveService = ExpenseClassRetrieveService.getInstance();
     InvoiceHelper invoiceHelper = new InvoiceHelper(okapiHeaders, context, "en", expenseClassRetrieveService);
     InvoiceRetrieveService service = new InvoiceRetrieveService(invoiceHelper);
     JsonObject vouchersList = new JsonObject(getMockData(VOUCHERS_LIST_PATH));
@@ -63,8 +60,7 @@ public class InvoiceRetrieveServiceTest extends ApiTestBase {
 
   @Test
   public void positiveGetInvoiceMapTest() throws IOException, ExecutionException, InterruptedException {
-    RestClient restClient = Mockito.mock(RestClient.class);
-    ExpenseClassRetrieveService expenseClassRetrieveService = new ExpenseClassRetrieveService(restClient);
+    ExpenseClassRetrieveService expenseClassRetrieveService = ExpenseClassRetrieveService.getInstance();
     InvoiceHelper invoiceHelper = new InvoiceHelper(okapiHeaders, context, "en", expenseClassRetrieveService);
     InvoiceRetrieveService service = new InvoiceRetrieveService(invoiceHelper);
     JsonObject vouchersList = new JsonObject(getMockData(VOUCHERS_LIST_PATH));

@@ -34,9 +34,7 @@ import static org.folio.invoices.utils.HelperUtils.getAdjustmentFundDistribution
 import static org.folio.invoices.utils.HelperUtils.getEndpointWithQuery;
 import static org.folio.invoices.utils.HelperUtils.getFundDistributionAmount;
 import static org.folio.invoices.utils.HelperUtils.getHttpClient;
-import static org.folio.invoices.utils.HelperUtils.getInvoiceById;
 import static org.folio.invoices.utils.HelperUtils.getInvoicesFromStorage;
-import static org.folio.invoices.utils.HelperUtils.handleDeleteRequest;
 import static org.folio.invoices.utils.HelperUtils.handleGetRequest;
 import static org.folio.invoices.utils.HelperUtils.handlePutRequest;
 import static org.folio.invoices.utils.HelperUtils.isPostApproval;
@@ -88,6 +86,7 @@ import org.folio.rest.acq.model.finance.InvoiceTransactionSummary;
 import org.folio.rest.acq.model.finance.Transaction;
 import org.folio.rest.acq.model.orders.CompositePoLine;
 import org.folio.rest.core.RestClient;
+import org.folio.rest.core.models.RequestContext;
 import org.folio.rest.jaxrs.model.Adjustment;
 import org.folio.rest.jaxrs.model.Config;
 import org.folio.rest.jaxrs.model.Error;
@@ -134,7 +133,7 @@ public class InvoiceHelper extends AbstractHelper {
   private AdjustmentsService adjustmentsService;
   private InvoiceValidator validator;
   private ExpenseClassRetrieveService expenseClassRetrieveService;
-  private RestClient restClient = new RestClient(resourcesPath(INVOICES));
+  private RestClient invoiceRestClient;
 
   public InvoiceHelper(Map<String, String> okapiHeaders, Context ctx, String lang) {
     super(getHttpClient(okapiHeaders), okapiHeaders, ctx, lang);
@@ -147,7 +146,7 @@ public class InvoiceHelper extends AbstractHelper {
     this.adjustmentsService = new AdjustmentsService();
     this.validator = new InvoiceValidator();
     this.expenseClassRetrieveService = ExpenseClassRetrieveService.getInstance();
-    this.restClient = new RestClient(resourcesPath(INVOICES));
+    this.invoiceRestClient = new RestClient(resourcesPath(INVOICES));
   }
 
   public InvoiceHelper(Map<String, String> okapiHeaders, Context ctx, String lang, ExpenseClassRetrieveService expenseClassRetrieveService) {
@@ -160,15 +159,15 @@ public class InvoiceHelper extends AbstractHelper {
     this.adjustmentsService = new AdjustmentsService();
     this.validator = new InvoiceValidator();
     this.expenseClassRetrieveService = expenseClassRetrieveService;
-    this.restClient = new RestClient(resourcesPath(INVOICES));
+    this.invoiceRestClient = new RestClient(resourcesPath(INVOICES));
   }
 
   public CompletableFuture<Invoice> createInvoice(Invoice invoice) {
     return CompletableFuture.completedFuture(null).thenRun(() -> validator.validateIncomingInvoice(invoice))
       .thenCompose(aVoid -> validateAcqUnitsOnCreate(invoice.getAcqUnitIds()))
       .thenCompose(v -> updateWithSystemGeneratedData(invoice))
-      .thenApply(ok -> JsonObject.mapFrom(invoice))
-      .thenCompose(jsonInvoice -> createRecordInStorage(jsonInvoice, resourcesPath(INVOICES)))
+      .thenCompose(v -> invoiceRestClient.post(invoice, new RequestContext(ctx, okapiHeaders), Invoice.class))
+      .thenApply(createdInvoice -> createdInvoice.getId())
       .thenApply(invoice::withId);
   }
 
@@ -243,7 +242,7 @@ public class InvoiceHelper extends AbstractHelper {
    * @return completable future with {@link Invoice} on success or an exception if processing fails
    */
   public CompletableFuture<Invoice> getInvoiceRecord(String id) {
-    return getInvoiceById(id, lang, httpClient, ctx, okapiHeaders, logger);
+    return invoiceRestClient.getById(id, new RequestContext(ctx, okapiHeaders), Invoice.class);
   }
 
   /**
@@ -300,7 +299,7 @@ public class InvoiceHelper extends AbstractHelper {
     .thenCompose(invoice -> protectionHelper.isOperationRestricted(invoice.getAcqUnitIds(), ProtectedOperationType.DELETE)
       .thenApply(vVoid -> invoice))
     .thenCompose(InvoiceRestrictionsUtil::checkIfInvoiceDeletionPermitted)
-    .thenCompose(invoice -> restClient.delete(id, ctx, okapiHeaders));
+    .thenCompose(invoice -> invoiceRestClient.delete(id, new RequestContext(ctx, okapiHeaders)));
   }
 
   /**
@@ -740,7 +739,7 @@ public class InvoiceHelper extends AbstractHelper {
            groupedFundDistribution.put(key, fundDistrs.getValue());
          }
       }
-    };
+    }
     return groupedFundDistribution;
   }
 
@@ -749,33 +748,24 @@ public class InvoiceHelper extends AbstractHelper {
       .collect(groupingBy(FundDistribution::getFundId));
   }
 
-  private Map<String, Map<String, List<FundDistribution>>> groupFundDistrsByFundIByExpenseClassId(List<FundDistribution> fundDistrs) {
-    return fundDistrs.stream().collect(
-            groupingBy(FundDistribution::getFundId,
-                  groupingBy(FundDistribution::getExpenseClassId)
-    ));
-  }
-
   private CompletableFuture<Map<String, Map<String, List<FundDistribution>>>> groupFundDistrByFundIdByExpenseClassExtNo(List<FundDistribution> fundDistrs) {
     List<String> expenseClassIds = fundDistrs.stream()
                                              .filter(fundDistribution -> nonNull(fundDistribution.getExpenseClassId()))
                                              .map(FundDistribution::getExpenseClassId).collect(toList());
-    return expenseClassRetrieveService.getExpenseClasses(expenseClassIds, ctx, okapiHeaders)
+    return expenseClassRetrieveService.getExpenseClasses(expenseClassIds, new RequestContext(ctx, okapiHeaders))
                                .thenApply(expenseClasses -> expenseClasses.stream().collect(toMap(ExpenseClass::getId, Function.identity())))
-                               .thenApply(expenseClassByIds -> {
-                                 return fundDistrs.stream().collect(
+                               .thenApply(expenseClassByIds ->
+                                 fundDistrs.stream().collect(
                                    groupingBy(FundDistribution::getFundId,
                                      groupingBy(getExpenseClassExtNo(expenseClassByIds)))
-                                 );
-                               });
+                                 )
+                               );
   }
 
   private Function<FundDistribution, String> getExpenseClassExtNo(Map<String, ExpenseClass> expenseClassByIds) {
-    return fundDistrsP -> {
-      return Optional.ofNullable(expenseClassByIds.get(fundDistrsP.getExpenseClassId()))
-              .map(expenseClass -> expenseClass.getExternalAccountNumberExt())
-              .orElse(EMPTY);
-    };
+    return fundDistrsP -> Optional.ofNullable(expenseClassByIds.get(fundDistrsP.getExpenseClassId()))
+                                 .map(ExpenseClass::getExternalAccountNumberExt)
+                                 .orElse(EMPTY);
   }
 
 
@@ -918,7 +908,7 @@ public class InvoiceHelper extends AbstractHelper {
   }
 
   public CompletableFuture<Void> updateInvoiceRecord(Invoice updatedInvoice) {
-    return restClient.put(updatedInvoice.getId(), updatedInvoice, ctx, okapiHeaders);
+    return invoiceRestClient.put(updatedInvoice.getId(), updatedInvoice, new RequestContext(ctx, okapiHeaders));
   }
 
   private boolean isTransitionToPaid(Invoice invoiceFromStorage, Invoice invoice) {

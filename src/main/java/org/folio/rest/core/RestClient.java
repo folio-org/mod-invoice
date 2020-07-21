@@ -14,11 +14,11 @@ import java.util.concurrent.CompletableFuture;
 
 import org.folio.invoices.utils.HelperUtils;
 import org.folio.rest.RestConstants;
+import org.folio.rest.core.models.RequestContext;
 import org.folio.rest.tools.client.HttpClientFactory;
 import org.folio.rest.tools.client.interfaces.HttpClientInterface;
 import org.folio.rest.tools.utils.TenantTool;
 
-import io.vertx.core.Context;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
@@ -27,7 +27,7 @@ import me.escoffier.vertx.completablefuture.VertxCompletableFuture;
 
 public class RestClient {
 
-  private final static Logger logger = LoggerFactory.getLogger(RestClient.class);
+  private static final Logger logger = LoggerFactory.getLogger(RestClient.class);
   private static final String CALLING_ENDPOINT_MSG = "Sending {} {}";
   private static final String EXCEPTION_CALLING_ENDPOINT_MSG = "Exception calling {} {}";
 
@@ -39,19 +39,18 @@ public class RestClient {
     this.endpointById = baseEndpoint + "/%s";
   }
 
-  public <T> CompletableFuture<T> get(String query, int offset, int limit, Context context
-              , Map<String, String> okapiHeaders, Class<T> responseType) {
+  public <T> CompletableFuture<T> get(String query, int offset, int limit, RequestContext requestContext, Class<T> responseType) {
     String endpoint = String.format(SEARCH_ENDPOINT, baseEndpoint, limit, offset, getEndpointWithQuery(query, logger));
-    return get(context, okapiHeaders, endpoint, responseType);
+    return get(requestContext, endpoint, responseType);
   }
 
-  public <T> CompletableFuture<T> getById(String id, Context context, Map<String, String> okapiHeaders, Class<T> responseType) {
+  public <T> CompletableFuture<T> getById(String id, RequestContext requestContext, Class<T> responseType) {
     String endpoint = String.format(endpointById, id);
-    return get(context, okapiHeaders, endpoint, responseType);
+    return get(requestContext, endpoint, responseType);
   }
 
-  public <T> CompletableFuture<T> post(T entity, Context context, Map<String, String> okapiHeaders, Class<T> responseType) {
-    CompletableFuture<T> future = new VertxCompletableFuture<>(context);
+  public <T> CompletableFuture<T> post(T entity, RequestContext requestContext, Class<T> responseType) {
+    CompletableFuture<T> future = new VertxCompletableFuture<>(requestContext.getContext());
     String endpoint = baseEndpoint;
     JsonObject recordData = JsonObject.mapFrom(entity);
 
@@ -59,10 +58,10 @@ public class RestClient {
       logger.debug("Sending 'POST {}' with body: {}", endpoint, recordData.encodePrettily());
     }
 
-    HttpClientInterface client = getHttpClient(okapiHeaders);
+    HttpClientInterface client = getHttpClient(requestContext.getHeaders());
     try {
       client
-        .request(HttpMethod.POST, recordData.toBuffer(), endpoint, okapiHeaders)
+        .request(HttpMethod.POST, recordData.toBuffer(), endpoint, requestContext.getHeaders())
         .thenApply(HelperUtils::verifyAndExtractBody)
         .handle((body, t) -> {
           client.closeClient();
@@ -87,8 +86,8 @@ public class RestClient {
     return future;
   }
 
-  public <T> CompletableFuture<Void> put(String id, T entity, Context context, Map<String, String> okapiHeaders) {
-    CompletableFuture<Void> future = new VertxCompletableFuture<>(context);
+  public <T> CompletableFuture<Void> put(String id, T entity, RequestContext requestContext) {
+    CompletableFuture<Void> future = new VertxCompletableFuture<>(requestContext.getContext());
     String endpoint = String.format(endpointById, id);
     JsonObject recordData = JsonObject.mapFrom(entity);
 
@@ -96,11 +95,11 @@ public class RestClient {
       logger.debug("Sending 'PUT {}' with body: {}", endpoint, recordData.encodePrettily());
     }
 
-    HttpClientInterface client = getHttpClient(okapiHeaders);
+    HttpClientInterface client = getHttpClient(requestContext.getHeaders());
     setDefaultHeaders(client);
     try {
       client
-        .request(HttpMethod.PUT, recordData.toBuffer(), endpoint, okapiHeaders)
+        .request(HttpMethod.PUT, recordData.toBuffer(), endpoint, requestContext.getHeaders())
         .thenAccept(HelperUtils::verifyResponse)
         .handle((aVoid, t) -> {
           client.closeClient();
@@ -121,17 +120,17 @@ public class RestClient {
     return future;
   }
 
-  public CompletableFuture<Void> delete(String id, Context context, Map<String, String> okapiHeaders) {
-    CompletableFuture<Void> future = new VertxCompletableFuture<>(context);
+  public CompletableFuture<Void> delete(String id, RequestContext requestContext) {
+    CompletableFuture<Void> future = new VertxCompletableFuture<>(requestContext.getContext());
     String endpoint = String.format(endpointById, id);
     if (logger.isDebugEnabled()) {
       logger.debug(CALLING_ENDPOINT_MSG, HttpMethod.DELETE, endpoint);
     }
-    HttpClientInterface client = getHttpClient(okapiHeaders);
+    HttpClientInterface client = getHttpClient(requestContext.getHeaders());
     setDefaultHeaders(client);
 
     try {
-      client.request(HttpMethod.DELETE, endpoint, okapiHeaders)
+      client.request(HttpMethod.DELETE, endpoint, requestContext.getHeaders())
         .thenAccept(HelperUtils::verifyResponse)
         .handle((aVoid, t) -> {
           client.closeClient();
@@ -152,16 +151,16 @@ public class RestClient {
     return future;
   }
 
-  private <S> CompletableFuture<S> get(Context context, Map<String, String> okapiHeaders, String endpoint, Class<S> responseType) {
-    CompletableFuture<S> future = new VertxCompletableFuture<>(context);
-    HttpClientInterface client = getHttpClient(okapiHeaders);
+  private <S> CompletableFuture<S> get(RequestContext requestContext, String endpoint, Class<S> responseType) {
+    CompletableFuture<S> future = new VertxCompletableFuture<>(requestContext.getContext());
+    HttpClientInterface client = getHttpClient(requestContext.getHeaders());
     if (logger.isDebugEnabled()) {
       logger.debug("Calling GET {}", endpoint);
     }
 
     try {
       client
-        .request(HttpMethod.GET, endpoint, okapiHeaders)
+        .request(HttpMethod.GET, endpoint, requestContext.getHeaders())
         .thenApply(response -> {
           if (logger.isDebugEnabled()) {
             logger.debug("Validating response for GET {}", endpoint);
