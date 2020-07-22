@@ -123,7 +123,6 @@ public class InvoiceHelper extends AbstractHelper {
   private static final String GET_INVOICES_BY_QUERY = resourcesPath(INVOICES) + SEARCH_PARAMS;
   private static final String GET_FUNDS_BY_QUERY = resourcesPath(FUNDS) + "?query=%s&limit=%s&lang=%s";
   private static final String EMPTY_ARRAY = "[]";
-  public static final String EXT_NUMBER_NOISE_SYMBOLS = "NOISE_SYMBOLS";
 
   // Using variable to "cache" lines for particular invoice base on assumption that the helper is stateful and new instance is used
   private List<InvoiceLine> storedInvoiceLines;
