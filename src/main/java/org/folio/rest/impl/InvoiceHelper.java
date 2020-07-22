@@ -105,7 +105,6 @@ import org.folio.spring.SpringContextUtil;
 import org.javamoney.moneta.Money;
 import org.javamoney.moneta.function.MonetaryFunctions;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
 
 import io.vertx.core.Context;
 import io.vertx.core.Vertx;
