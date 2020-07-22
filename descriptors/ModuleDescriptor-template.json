@@ -4,7 +4,7 @@
   "provides": [
     {
       "id": "invoice",
-      "version": "5.2",
+      "version": "5.3",
       "handlers": [
         {
           "methods": ["GET"],
@@ -73,8 +73,8 @@
             "finance.budgets.collection.get",
             "finance.ledgers.collection.get",
             "finance.ledgers.current-fiscal-year.item.get",
-            "finance-storage.transactions.item.post"
-          ]
+            "finance.expense-classes.collection.get",
+            "finance-storage.transactions.item.post"]
         },
         {
           "methods": ["DELETE"],

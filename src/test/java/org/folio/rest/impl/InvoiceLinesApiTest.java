@@ -84,7 +84,6 @@ public class InvoiceLinesApiTest extends ApiTestBase {
   private static final String INVOICE_LINE_OUTDATED_TOTAL_PATH = INVOICE_LINES_MOCK_DATA_PATH + INVOICE_LINE_OUTDATED_TOTAL + ".json";
   static final String INVOICE_LINE_WITH_APPROVED_INVOICE_SAMPLE_PATH = INVOICE_LINES_MOCK_DATA_PATH + INVOICE_LINE_WITH_APPROVED_EXISTED_INVOICE_ID + ".json";
 
-
   @Test
   public void getInvoicingInvoiceLinesTest() {
     verifyGet(INVOICE_LINES_PATH, prepareHeaders(X_OKAPI_PROTECTED_READ_TENANT), APPLICATION_JSON, 200);
