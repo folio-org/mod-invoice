@@ -159,6 +159,7 @@ import org.hamcrest.beans.HasProperty;
 import org.hamcrest.beans.HasPropertyWithValue;
 import org.hamcrest.core.Every;
 import org.javamoney.moneta.Money;
+import org.junit.Assert;
 import org.junit.jupiter.api.Test;
 
 import io.restassured.http.Headers;
@@ -504,7 +505,8 @@ public class InvoicesApiTest extends ApiTestBase {
     Voucher voucherCreated = vouchersCreated.get(0).mapTo(Voucher.class);
     assertThat(voucherCreated.getVoucherNumber(), equalTo(TEST_PREFIX + VOUCHER_NUMBER_VALUE));
     assertThat(voucherCreated.getSystemCurrency(), equalTo("GBP"));
-    verifyTransitionToApproved(voucherCreated, invoiceLines, updatedInvoice);
+    verifyTransitionToApproved(voucherCreated, invoiceLines, updatedInvoice, 5);
+    verifyVoucherLineWithExpenseClasses(2L);
     checkVoucherAcqUnitIdsList(voucherCreated, reqData);
   }
 
@@ -544,7 +546,8 @@ public class InvoicesApiTest extends ApiTestBase {
     Voucher voucherCreated = vouchersCreated.get(0).mapTo(Voucher.class);
     assertThat(voucherCreated.getVoucherNumber(), equalTo(TEST_PREFIX + VOUCHER_NUMBER_VALUE));
     assertThat(voucherCreated.getSystemCurrency(), equalTo("GBP"));
-    verifyTransitionToApproved(voucherCreated, invoiceLines, updatedInvoice);
+    verifyTransitionToApproved(voucherCreated, invoiceLines, updatedInvoice, 5);
+    verifyVoucherLineWithExpenseClasses(2L);
     checkVoucherAcqUnitIdsList(voucherCreated, reqData);
   }
 
@@ -727,7 +730,9 @@ public class InvoicesApiTest extends ApiTestBase {
     Voucher voucherCreated = vouchersCreated.get(0).mapTo(Voucher.class);
     assertThat(voucherCreated.getVoucherNumber(), equalTo(TEST_PREFIX + VOUCHER_NUMBER_VALUE));
     assertThat(voucherCreated.getSystemCurrency(), equalTo("GBP"));
-    verifyTransitionToApproved(voucherCreated, Collections.singletonList(invoiceLine), updatedInvoice);
+    List<JsonObject> fundsSearches = serverRqRs.get(FUNDS, HttpMethod.GET);
+    List<Fund> funds = fundsSearches.get(0).mapTo(FundCollection.class).getFunds();
+    verifyTransitionToApproved(voucherCreated, Collections.singletonList(invoiceLine), updatedInvoice,  getExpectedVoucherLinesQuantity(funds));
     checkVoucherAcqUnitIdsList(voucherCreated, reqData);
   }
 
@@ -913,7 +918,9 @@ public class InvoicesApiTest extends ApiTestBase {
     Voucher voucherCreated = vouchersCreated.get(0).mapTo(Voucher.class);
     assertThat(voucherCreated.getSystemCurrency(), equalTo(DEFAULT_SYSTEM_CURRENCY));
     assertThat(voucherCreated.getVoucherNumber(), equalTo(VOUCHER_NUMBER_VALUE));
-    verifyTransitionToApproved(voucherCreated, invoiceLines, updatedInvoice);
+    List<JsonObject> fundsSearches = serverRqRs.get(FUNDS, HttpMethod.GET);
+    List<Fund> funds = fundsSearches.get(0).mapTo(FundCollection.class).getFunds();
+    verifyTransitionToApproved(voucherCreated, invoiceLines, updatedInvoice,  getExpectedVoucherLinesQuantity(funds));
     checkVoucherAcqUnitIdsList(voucherCreated, reqData);
   }
 
@@ -955,7 +962,9 @@ public class InvoicesApiTest extends ApiTestBase {
     Voucher updatedVoucher = vouchersUpdated.get(0).mapTo(Voucher.class);
     Invoice updatedInvoice = serverRqRs.get(INVOICES, HttpMethod.PUT).get(0).mapTo(Invoice.class);
 
-    verifyTransitionToApproved(updatedVoucher, Collections.singletonList(invoiceLine), updatedInvoice);
+    List<JsonObject> fundsSearches = serverRqRs.get(FUNDS, HttpMethod.GET);
+    List<Fund> funds = fundsSearches.get(0).mapTo(FundCollection.class).getFunds();
+    verifyTransitionToApproved(updatedVoucher, Collections.singletonList(invoiceLine), updatedInvoice,  getExpectedVoucherLinesQuantity(funds));
   }
 
   @Test
@@ -1537,7 +1546,7 @@ public class InvoicesApiTest extends ApiTestBase {
     assertThat(error.getCode(), equalTo(PENDING_PAYMENT_ERROR.getCode()));
   }
 
-  private void verifyTransitionToApproved(Voucher voucherCreated, List<InvoiceLine> invoiceLines, Invoice invoice) {
+  private void verifyTransitionToApproved(Voucher voucherCreated, List<InvoiceLine> invoiceLines, Invoice invoice, int createdVoucherLines) {
     List<JsonObject> invoiceLinesSearches = serverRqRs.get(INVOICE_LINES, HttpMethod.GET);
     List<JsonObject> voucherLinesCreated = serverRqRs.get(VOUCHER_LINES, HttpMethod.POST);
     List<JsonObject> fundsSearches = serverRqRs.get(FUNDS, HttpMethod.GET);
@@ -1553,7 +1562,7 @@ public class InvoicesApiTest extends ApiTestBase {
 
     assertThat(invoiceLinesSearches, hasSize(invoiceLines.size()/MAX_IDS_FOR_GET_RQ + 1));
     List<Fund> funds = fundsSearches.get(0).mapTo(FundCollection.class).getFunds();
-    assertThat(voucherLinesCreated, hasSize(getExpectedVoucherLinesQuantity(funds)));
+    assertThat(voucherLinesCreated, hasSize(createdVoucherLines));
 
     InvoiceTransactionSummary transactionSummary = transactionSummariesCreated.get(0).mapTo(InvoiceTransactionSummary.class);
     Invoice invoiceUpdate = invoiceUpdates.get(0).mapTo(Invoice.class);
@@ -1587,7 +1596,7 @@ public class InvoicesApiTest extends ApiTestBase {
     assertThat(transactionSummary.getNumPaymentsCredits(), is(paymentCreditNumber));
 
     assertThat(calculateVoucherAmount(voucherCreated, voucherLines), equalTo(voucherCreated.getAmount()));
-    assertThat(getExpectedVoucherLinesQuantity(funds), equalTo(voucherLinesCreated.size()));
+    assertThat(createdVoucherLines, equalTo(voucherLinesCreated.size()));
     invoiceLines.forEach(invoiceLine -> calculateInvoiceLineTotals(invoiceLine, invoiceUpdate));
 
     voucherLines.forEach(voucherLine -> {
@@ -2546,5 +2555,17 @@ public class InvoicesApiTest extends ApiTestBase {
       Every.everyItem(HasPropertyWithValue.hasProperty("fiscalYearId", is(FISCAL_YEAR_ID))),
       Every.everyItem(HasPropertyWithValue.hasProperty("source", is(Transaction.Source.INVOICE)))
     ));
+  }
+
+  private void verifyVoucherLineWithExpenseClasses(long fundDistributionCount) {
+    List<VoucherLine> voucherLines = serverRqRs.get(VOUCHER_LINES, HttpMethod.POST).stream()
+      .map(json -> json.mapTo(VoucherLine.class)).collect(Collectors.toList());
+    List<VoucherLine> expVoucherLines = voucherLines.stream()
+      .filter(voucherLinesP -> voucherLinesP.getFundDistributions().stream()
+        .anyMatch(fundDistribution -> Objects.nonNull(fundDistribution.getExpenseClassId()))
+      ).collect(toList());
+
+    long actFundDistrCount = expVoucherLines.stream().mapToLong(voucherLine -> voucherLine.getFundDistributions().size()).sum();
+    Assert.assertThat(actFundDistrCount, equalTo(fundDistributionCount));
   }
 }

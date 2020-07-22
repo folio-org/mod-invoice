@@ -104,6 +104,8 @@ import org.folio.services.validator.InvoiceValidator;
 import org.folio.spring.SpringContextUtil;
 import org.javamoney.moneta.Money;
 import org.javamoney.moneta.function.MonetaryFunctions;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 
 import io.vertx.core.Context;
 import io.vertx.core.Vertx;
@@ -132,8 +134,10 @@ public class InvoiceHelper extends AbstractHelper {
   private final FinanceHelper financeHelper;
   private AdjustmentsService adjustmentsService;
   private InvoiceValidator validator;
+  @Autowired
   private ExpenseClassRetrieveService expenseClassRetrieveService;
-  private RestClient invoiceRestClient;
+  @Autowired
+  private RestClient invoiceStorageRestClient;
 
   public InvoiceHelper(Map<String, String> okapiHeaders, Context ctx, String lang) {
     super(getHttpClient(okapiHeaders), okapiHeaders, ctx, lang);
@@ -145,8 +149,6 @@ public class InvoiceHelper extends AbstractHelper {
     this.financeHelper = new FinanceHelper(httpClient, okapiHeaders, ctx, lang);
     this.adjustmentsService = new AdjustmentsService();
     this.validator = new InvoiceValidator();
-    this.expenseClassRetrieveService = ExpenseClassRetrieveService.getInstance();
-    this.invoiceRestClient = new RestClient(resourcesPath(INVOICES));
   }
 
   public InvoiceHelper(Map<String, String> okapiHeaders, Context ctx, String lang, ExpenseClassRetrieveService expenseClassRetrieveService) {
@@ -159,14 +161,13 @@ public class InvoiceHelper extends AbstractHelper {
     this.adjustmentsService = new AdjustmentsService();
     this.validator = new InvoiceValidator();
     this.expenseClassRetrieveService = expenseClassRetrieveService;
-    this.invoiceRestClient = new RestClient(resourcesPath(INVOICES));
   }
 
   public CompletableFuture<Invoice> createInvoice(Invoice invoice) {
     return CompletableFuture.completedFuture(null).thenRun(() -> validator.validateIncomingInvoice(invoice))
       .thenCompose(aVoid -> validateAcqUnitsOnCreate(invoice.getAcqUnitIds()))
       .thenCompose(v -> updateWithSystemGeneratedData(invoice))
-      .thenCompose(v -> invoiceRestClient.post(invoice, new RequestContext(ctx, okapiHeaders), Invoice.class))
+      .thenCompose(v -> invoiceStorageRestClient.post(invoice, new RequestContext(ctx, okapiHeaders), Invoice.class))
       .thenApply(Invoice::getId)
       .thenApply(invoice::withId);
   }
@@ -242,7 +243,7 @@ public class InvoiceHelper extends AbstractHelper {
    * @return completable future with {@link Invoice} on success or an exception if processing fails
    */
   public CompletableFuture<Invoice> getInvoiceRecord(String id) {
-    return invoiceRestClient.getById(id, new RequestContext(ctx, okapiHeaders), Invoice.class);
+    return invoiceStorageRestClient.getById(id, new RequestContext(ctx, okapiHeaders), Invoice.class);
   }
 
   /**
@@ -299,7 +300,7 @@ public class InvoiceHelper extends AbstractHelper {
     .thenCompose(invoice -> protectionHelper.isOperationRestricted(invoice.getAcqUnitIds(), ProtectedOperationType.DELETE)
       .thenApply(vVoid -> invoice))
     .thenCompose(InvoiceRestrictionsUtil::checkIfInvoiceDeletionPermitted)
-    .thenCompose(invoice -> invoiceRestClient.delete(id, new RequestContext(ctx, okapiHeaders)));
+    .thenCompose(invoice -> invoiceStorageRestClient.delete(id, new RequestContext(ctx, okapiHeaders)));
   }
 
   /**
@@ -908,7 +909,7 @@ public class InvoiceHelper extends AbstractHelper {
   }
 
   public CompletableFuture<Void> updateInvoiceRecord(Invoice updatedInvoice) {
-    return invoiceRestClient.put(updatedInvoice.getId(), updatedInvoice, new RequestContext(ctx, okapiHeaders));
+    return invoiceStorageRestClient.put(updatedInvoice.getId(), updatedInvoice, new RequestContext(ctx, okapiHeaders));
   }
 
   private boolean isTransitionToPaid(Invoice invoiceFromStorage, Invoice invoice) {

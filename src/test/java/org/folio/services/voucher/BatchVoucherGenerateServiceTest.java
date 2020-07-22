@@ -2,6 +2,7 @@ package org.folio.services.voucher;
 
 import static org.folio.ApiTestSuite.mockPort;
 import static org.folio.invoices.utils.HelperUtils.OKAPI_URL;
+import static org.folio.invoices.utils.ResourcePathResolver.EXPENSE_CLASSES_URL;
 import static org.junit.Assert.assertNotNull;
 
 import java.io.IOException;
@@ -11,6 +12,8 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.ExecutionException;
 
+import org.folio.invoices.utils.ResourcePathResolver;
+import org.folio.rest.core.RestClient;
 import org.folio.rest.impl.ApiTestBase;
 import org.folio.rest.impl.InvoiceHelper;
 import org.folio.rest.jaxrs.model.BatchVoucher;
@@ -47,7 +50,7 @@ public class BatchVoucherGenerateServiceTest extends ApiTestBase {
 
   @Test
   public void positiveGenerateBatchVoucherTest() throws IOException, ExecutionException, InterruptedException {
-    ExpenseClassRetrieveService expenseClassRetrieveService = ExpenseClassRetrieveService.getInstance();
+    ExpenseClassRetrieveService expenseClassRetrieveService = new ExpenseClassRetrieveService(new RestClient(ResourcePathResolver.resourcesPath(EXPENSE_CLASSES_URL)));
     InvoiceHelper invoiceHelper = new InvoiceHelper(okapiHeaders, context, "en", expenseClassRetrieveService);
     InvoiceRetrieveService invoiceRetrieveService = new InvoiceRetrieveService(invoiceHelper);
     BatchVoucherGenerateService service = new BatchVoucherGenerateService(okapiHeaders, context, "en", invoiceRetrieveService);
@@ -61,7 +64,7 @@ public class BatchVoucherGenerateServiceTest extends ApiTestBase {
   @Test
   public void negativeGetBatchVoucherIfVouchersIsAbsentTest() {
     Assertions.assertThrows(CompletionException.class, () -> {
-      ExpenseClassRetrieveService expenseClassRetrieveService = ExpenseClassRetrieveService.getInstance();
+      ExpenseClassRetrieveService expenseClassRetrieveService = new ExpenseClassRetrieveService(new RestClient(ResourcePathResolver.resourcesPath(EXPENSE_CLASSES_URL)));
       InvoiceHelper invoiceHelper = new InvoiceHelper(okapiHeaders, context, "en", expenseClassRetrieveService);
       InvoiceRetrieveService invoiceRetrieveService = new InvoiceRetrieveService(invoiceHelper);
       BatchVoucherGenerateService service = new BatchVoucherGenerateService(okapiHeaders, context, "en", invoiceRetrieveService);
