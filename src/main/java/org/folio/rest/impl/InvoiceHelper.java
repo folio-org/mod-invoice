@@ -79,6 +79,7 @@ import org.folio.invoices.utils.ErrorCodes;
 import org.folio.invoices.utils.HelperUtils;
 import org.folio.invoices.utils.InvoiceRestrictionsUtil;
 import org.folio.invoices.utils.ProtectedOperationType;
+import org.folio.models.FundExtNoExpenseClassExtNoPair;
 import org.folio.rest.acq.model.finance.ExpenseClass;
 import org.folio.rest.acq.model.finance.Fund;
 import org.folio.rest.acq.model.finance.FundCollection;
@@ -122,7 +123,6 @@ public class InvoiceHelper extends AbstractHelper {
   private static final String GET_INVOICES_BY_QUERY = resourcesPath(INVOICES) + SEARCH_PARAMS;
   private static final String GET_FUNDS_BY_QUERY = resourcesPath(FUNDS) + "?query=%s&limit=%s&lang=%s";
   private static final String EMPTY_ARRAY = "[]";
-  public static final String DASH = "-";
   public static final String EXT_NUMBER_NOISE_SYMBOLS = "NOISE_SYMBOLS";
 
   // Using variable to "cache" lines for particular invoice base on assumption that the helper is stateful and new instance is used
@@ -712,7 +712,7 @@ public class InvoiceHelper extends AbstractHelper {
    * @param fundDistributions {@link List<InvoiceLine>} associated with processed {@link Invoice}
    * @return {@link InvoiceLine#fundDistributions} grouped by {@link Fund#externalAccountNo}
    */
-  private CompletableFuture<Map<String,  List<FundDistribution>>> groupFundDistrosByExternalAcctNo(List<FundDistribution> fundDistributions) {
+  private CompletableFuture<Map<FundExtNoExpenseClassExtNoPair,  List<FundDistribution>>> groupFundDistrosByExternalAcctNo(List<FundDistribution> fundDistributions) {
 
     Map<String, List<FundDistribution>> fundDistrosGroupedByFundId = groupFundDistrosByFundId(fundDistributions);
 
@@ -727,17 +727,17 @@ public class InvoiceHelper extends AbstractHelper {
     return funds.stream().collect(groupingBy(Fund::getExternalAccountNo));
   }
 
-  private Map<String,  List<FundDistribution>> mapExternalAcctNoToFundDistros(
+  private Map<FundExtNoExpenseClassExtNoPair,  List<FundDistribution>> mapExternalAcctNoToFundDistros(
     Map<String, Map<String, List<FundDistribution>>> fundDistrosGroupedByFundIdAndExpenseClassExtNo,
     Map<String, List<Fund>> fundsGroupedByExternalAccountNo) {
-    Map<String,  List<FundDistribution>> groupedFundDistribution = new HashMap<>();
+    Map<FundExtNoExpenseClassExtNoPair,  List<FundDistribution>> groupedFundDistribution = new HashMap<>();
     for (Map.Entry<String, List<Fund>> fundExternalAccountNoPair : fundsGroupedByExternalAccountNo.entrySet()) {
       String fundExternalAccountNo = fundExternalAccountNoPair.getKey();
       for (Fund fund : fundExternalAccountNoPair.getValue()) {
          Map<String, List<FundDistribution>> fundDistrsExpenseClassExtNo = fundDistrosGroupedByFundIdAndExpenseClassExtNo.get(fund.getId());
          for (Map.Entry<String, List<FundDistribution>> fundDistrs : fundDistrsExpenseClassExtNo.entrySet()) {
            String expenseClassExtAccountNo = fundDistrs.getKey();
-           String key = EMPTY.equals(expenseClassExtAccountNo) ? fundExternalAccountNo : fundExternalAccountNo + DASH + expenseClassExtAccountNo + EXT_NUMBER_NOISE_SYMBOLS;
+           FundExtNoExpenseClassExtNoPair key = new FundExtNoExpenseClassExtNoPair(fundExternalAccountNo, expenseClassExtAccountNo);
            groupedFundDistribution.put(key, fundDistrs.getValue());
          }
       }
@@ -828,15 +828,15 @@ public class InvoiceHelper extends AbstractHelper {
       .thenCompose(fc -> VertxCompletableFuture.supplyBlockingAsync(ctx, () -> fc.mapTo(FundCollection.class).getFunds()));
   }
 
-  private List<VoucherLine> buildVoucherLineRecords(Map<String, List<FundDistribution>> fundDistroGroupedByExternalAcctNo, Voucher voucher) {
+  private List<VoucherLine> buildVoucherLineRecords(Map<FundExtNoExpenseClassExtNoPair, List<FundDistribution>> fundDistroGroupedByExternalAcctNo, Voucher voucher) {
 
     return fundDistroGroupedByExternalAcctNo.entrySet().stream()
       .map(entry -> buildVoucherLineRecord(entry, voucher.getSystemCurrency()))
       .collect(Collectors.toList());
   }
 
-  private VoucherLine buildVoucherLineRecord(Map.Entry<String, List<FundDistribution>> fundDistroAcctNoEntry, String systemCurrency) {
-    String externalAccountNumber = fundDistroAcctNoEntry.getKey().replace(EXT_NUMBER_NOISE_SYMBOLS, EMPTY);
+  private VoucherLine buildVoucherLineRecord(Map.Entry<FundExtNoExpenseClassExtNoPair, List<FundDistribution>> fundDistroAcctNoEntry, String systemCurrency) {
+    String externalAccountNumber = fundDistroAcctNoEntry.getKey().toString();
     List<FundDistribution> fundDistributions = fundDistroAcctNoEntry.getValue();
 
     double voucherLineAmount = calculateVoucherLineAmount(fundDistroAcctNoEntry.getValue(), systemCurrency);
