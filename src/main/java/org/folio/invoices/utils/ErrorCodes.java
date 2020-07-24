@@ -1,9 +1,9 @@
 package org.folio.invoices.utils;
 
+import java.util.Collections;
+
 import org.folio.rest.jaxrs.model.Error;
 import org.folio.rest.jaxrs.model.Errors;
-
-import java.util.Collections;
 
 public enum ErrorCodes {
 
@@ -43,7 +43,8 @@ public enum ErrorCodes {
   BUDGET_NOT_FOUND("budgetNotFoundByFundId", "Budget not found by fundId"),
   LEDGER_NOT_FOUND("ledgerNotFound", "Ledger not found"),
   BUDGET_IS_INACTIVE("budgetIsInactive", "Budget should be active to approve invoice"),
-  FUND_CANNOT_BE_PAID("fundCannotBePaid", "Fund cannot be paid due to restrictions");
+  FUND_CANNOT_BE_PAID("fundCannotBePaid", "Fund cannot be paid due to restrictions"),
+  INACTIVE_EXPENSE_CLASS("inactiveExpenseClass", "Expense class is Inactive");
 
   private final String code;
   private final String description;

@@ -4,12 +4,14 @@ import static java.util.concurrent.CompletableFuture.completedFuture;
 import static java.util.stream.Collectors.groupingBy;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toMap;
+import static me.escoffier.vertx.completablefuture.VertxCompletableFuture.allOf;
 import static one.util.streamex.StreamEx.ofSubLists;
 import static org.folio.invoices.utils.ErrorCodes.BUDGET_IS_INACTIVE;
 import static org.folio.invoices.utils.ErrorCodes.BUDGET_NOT_FOUND;
 import static org.folio.invoices.utils.ErrorCodes.CURRENT_FISCAL_YEAR_NOT_FOUND;
 import static org.folio.invoices.utils.ErrorCodes.FUNDS_NOT_FOUND;
 import static org.folio.invoices.utils.ErrorCodes.FUND_CANNOT_BE_PAID;
+import static org.folio.invoices.utils.ErrorCodes.INACTIVE_EXPENSE_CLASS;
 import static org.folio.invoices.utils.ErrorCodes.LEDGER_NOT_FOUND;
 import static org.folio.invoices.utils.ErrorCodes.TRANSACTION_CREATION_FAILURE;
 import static org.folio.invoices.utils.HelperUtils.collectResultsOnSuccess;
@@ -21,6 +23,7 @@ import static org.folio.invoices.utils.HelperUtils.getEndpointWithQuery;
 import static org.folio.invoices.utils.HelperUtils.getFundDistributionAmount;
 import static org.folio.invoices.utils.HelperUtils.handleGetRequest;
 import static org.folio.invoices.utils.ResourcePathResolver.BUDGETS;
+import static org.folio.invoices.utils.ResourcePathResolver.BUDGET_EXPENSE_CLASSES;
 import static org.folio.invoices.utils.ResourcePathResolver.FINANCE_CREDITS;
 import static org.folio.invoices.utils.ResourcePathResolver.FINANCE_PAYMENTS;
 import static org.folio.invoices.utils.ResourcePathResolver.FINANCE_TRANSACTIONS;
@@ -31,18 +34,20 @@ import static org.folio.rest.impl.InvoiceHelper.MAX_IDS_FOR_GET_RQ;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.CompletionStage;
 import java.util.function.BiConsumer;
-
 import java.util.stream.Collector;
 import java.util.stream.Collectors;
+
 import javax.money.MonetaryAmount;
 import javax.money.convert.CurrencyConversion;
 
@@ -56,6 +61,7 @@ import org.folio.rest.acq.model.finance.AwaitingPayment;
 import org.folio.rest.acq.model.finance.Budget;
 import org.folio.rest.acq.model.finance.Budget.BudgetStatus;
 import org.folio.rest.acq.model.finance.BudgetCollection;
+import org.folio.rest.acq.model.finance.BudgetExpenseClassCollection;
 import org.folio.rest.acq.model.finance.FiscalYear;
 import org.folio.rest.acq.model.finance.Fund;
 import org.folio.rest.acq.model.finance.FundCollection;
@@ -72,11 +78,11 @@ import org.folio.rest.jaxrs.model.InvoiceLine;
 import org.folio.rest.jaxrs.model.Parameter;
 import org.folio.rest.tools.client.interfaces.HttpClientInterface;
 import org.javamoney.moneta.Money;
+import org.javamoney.moneta.function.MonetaryFunctions;
 
 import io.vertx.core.Context;
 import io.vertx.core.json.JsonObject;
 import me.escoffier.vertx.completablefuture.VertxCompletableFuture;
-import org.javamoney.moneta.function.MonetaryFunctions;
 
 public class FinanceHelper extends AbstractHelper {
 
@@ -87,6 +93,7 @@ public class FinanceHelper extends AbstractHelper {
   private static final String GET_LEDGERS_WITH_SEARCH_PARAMS = resourcesPath(LEDGERS) + SEARCH_PARAMS;
   private static final String GET_TRANSACTIONS_BY_QUERY = resourcesPath(FINANCE_TRANSACTIONS) + SEARCH_PARAMS;
   private static final String GET_FUNDS_WITH_SEARCH_PARAMS = resourcesPath(FUNDS) + SEARCH_PARAMS;
+  private static final String GET_BUDGET_EXPENSE_CLASSES_QUERY = resourcesPath(BUDGET_EXPENSE_CLASSES) + SEARCH_PARAMS;
   private static final String GET_CURRENT_FISCAL_YEAR_BY_ID = "/finance/ledgers/%s/current-fiscal-year?lang=%s";
 
   public FinanceHelper(HttpClientInterface httpClient, Map<String, String> okapiHeaders, Context ctx, String lang) {
@@ -384,7 +391,8 @@ public class FinanceHelper extends AbstractHelper {
       .withSourceInvoiceId(invoice.getId())
       .withSource(Source.INVOICE)
       .withAmount(convertToDoubleWithRounding(amount))
-      .withFromFundId(fundDistribution.getFundId());
+      .withFromFundId(fundDistribution.getFundId())
+      .withExpenseClassId(fundDistribution.getExpenseClassId());
     return new FundDistributionTransactionHolder()
       .withTransaction(pendingPayment)
       .withFundDistribution(fundDistribution);
@@ -397,6 +405,7 @@ public class FinanceHelper extends AbstractHelper {
     transaction.setSourceInvoiceId(invoice.getId());
     transaction.setPaymentEncumbranceId(fundDistribution.getEncumbrance());
     transaction.setSource(Transaction.Source.INVOICE);
+    transaction.setExpenseClassId(fundDistribution.getExpenseClassId());
 
     MonetaryAmount amount = getAdjustmentFundDistributionAmount(fundDistribution, adjustment, invoice);
     if (amount.isPositive()) {
@@ -435,6 +444,7 @@ public class FinanceHelper extends AbstractHelper {
     transaction.setSourceInvoiceLineId(invoiceLine.getId());
     transaction.setPaymentEncumbranceId(fundDistribution.getEncumbrance());
     transaction.setSource(Transaction.Source.INVOICE);
+    transaction.setExpenseClassId(fundDistribution.getExpenseClassId());
 
     MonetaryAmount amount = getFundDistributionAmount(fundDistribution, invoiceLine.getTotal(), invoice.getCurrency());
     if (amount.isPositive()) {
@@ -459,7 +469,7 @@ public class FinanceHelper extends AbstractHelper {
     return getFunds(new ArrayList<>(groupedByFund.keySet())).thenApply(funds -> funds.stream()
       .flatMap(Collection::stream)
       .map(fund -> {
-        groupedByFund.get(fund.getId()).stream()
+        groupedByFund.get(fund.getId())
           .forEach(holder -> holder.getFundDistribution().setCode(fund.getCode()));
         return fund;
       })
@@ -557,6 +567,53 @@ public class FinanceHelper extends AbstractHelper {
 
   private String resolveTransactionPath(Transaction transaction) {
     return resourcesPath(transaction.getTransactionType() == Transaction.TransactionType.PAYMENT ? FINANCE_PAYMENTS : FINANCE_CREDITS);
+  }
+
+  public CompletionStage<Void> checkExpenseClasses(List<InvoiceLine> invoiceLines, Invoice invoice) {
+    List<FundDistribution> fundDistributionsWithExpenseClasses = getFundDistributionsWithExpenseClasses(invoiceLines, invoice);
+
+    return allOf(ctx, fundDistributionsWithExpenseClasses.stream()
+      .map(this::checkExpenseClassIsActiveByFundDistribution)
+      .toArray(CompletableFuture[]::new));
+
+  }
+
+
+  private CompletableFuture<Void> checkExpenseClassIsActiveByFundDistribution(FundDistribution fundDistribution) {
+    String query = String.format("budget.fundId==%s and budget.budgetStatus==Active and status==Inactive and expenseClassId==%s",
+      fundDistribution.getFundId(), fundDistribution.getExpenseClassId());
+    String queryParam = QUERY_EQUALS + encodeQuery(query, logger);
+    String endpoint = String.format(GET_BUDGET_EXPENSE_CLASSES_QUERY, MAX_IDS_FOR_GET_RQ, 0, queryParam, lang);
+
+    return handleGetRequest(endpoint, httpClient, ctx, okapiHeaders, logger)
+      .thenApply(entries -> entries.mapTo(BudgetExpenseClassCollection.class))
+      .thenAccept(budgetExpenseClasses -> {
+        if (budgetExpenseClasses.getTotalRecords() > 0) {
+          throw new HttpException(400, INACTIVE_EXPENSE_CLASS.toError()
+            .withParameters(Arrays.asList(
+              new Parameter()
+                .withKey(FUND_ID).withValue(fundDistribution.getFundId()),
+              new Parameter()
+                .withKey("expenseClassId").withValue(fundDistribution.getExpenseClassId())
+            )));
+        }
+      });
+  }
+
+  private List<FundDistribution> getFundDistributionsWithExpenseClasses(List<InvoiceLine> invoiceLines, Invoice invoice) {
+
+    List<FundDistribution> fdFromInvoiceLines = invoiceLines.stream()
+      .flatMap(lines -> lines.getFundDistributions().stream())
+      .filter(fundDistribution -> Objects.nonNull(fundDistribution.getExpenseClassId()))
+      .collect(toList());
+
+    List<FundDistribution> fdFromAdjustments = invoice.getAdjustments().stream()
+      .flatMap(adj -> adj.getFundDistributions().stream())
+      .filter(fundDistribution -> Objects.nonNull(fundDistribution.getExpenseClassId()))
+      .collect(toList());
+
+    fdFromInvoiceLines.addAll(fdFromAdjustments);
+    return fdFromInvoiceLines;
   }
 
 }

@@ -1,0 +1,11 @@
+{
+  "budgetExpenseClasses": [
+    {
+      "id": "8cf5631d-fd23-408a-a1d5-e8f786633714",
+      "budgetId": "d71635df-c08c-49cc-9082-197a30fd0392",
+      "expenseClassId": "6e6ed3c9-d959-4c91-a436-6076fb373816",
+      "status": "Inactive"
+    }
+  ],
+  "totalRecords": 1
+}

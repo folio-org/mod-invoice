@@ -38,6 +38,7 @@ public class ResourcePathResolver {
   public static final String FINANCE_PAYMENTS = "finance/payments";
   public static final String FINANCE_CREDITS ="finance/credits";
   public static final String EXPENSE_CLASSES_URL = "expenseClassUrl";
+  public static final String BUDGET_EXPENSE_CLASSES = "finance-storage.budget-expense-classes";
 
   private static final Map<String, String> SUB_OBJECT_COLLECTION_APIS;
   private static final Map<String, String> SUB_OBJECT_ITEM_APIS;
@@ -71,6 +72,7 @@ public class ResourcePathResolver {
     apis.put(FINANCE_CREDITS, "/finance/credits");
     apis.put(BUDGETS, "/finance/budgets");
     apis.put(LEDGERS, "/finance/ledgers");
+    apis.put(BUDGET_EXPENSE_CLASSES, "/finance-storage/budget-expense-classes");
     apis.put(EXPENSE_CLASSES_URL, "/finance/expense-classes");
 
     SUB_OBJECT_COLLECTION_APIS = Collections.unmodifiableMap(apis);

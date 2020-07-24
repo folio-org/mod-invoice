@@ -20,6 +20,7 @@ import static org.folio.invoices.utils.ErrorCodes.FUNDS_NOT_FOUND;
 import static org.folio.invoices.utils.ErrorCodes.FUND_CANNOT_BE_PAID;
 import static org.folio.invoices.utils.ErrorCodes.FUND_DISTRIBUTIONS_NOT_PRESENT;
 import static org.folio.invoices.utils.ErrorCodes.GENERIC_ERROR_CODE;
+import static org.folio.invoices.utils.ErrorCodes.INACTIVE_EXPENSE_CLASS;
 import static org.folio.invoices.utils.ErrorCodes.INVALID_INVOICE_TRANSITION_ON_PAID_STATUS;
 import static org.folio.invoices.utils.ErrorCodes.INVOICE_TOTAL_REQUIRED;
 import static org.folio.invoices.utils.ErrorCodes.LINE_FUND_DISTRIBUTIONS_SUMMARY_MISMATCH;
@@ -204,6 +205,7 @@ public class InvoicesApiTest extends ApiTestBase {
   private static final String EXISTING_LEDGER_ID = "a3ec5552-c4a4-4a15-a57c-0046db536369";
   public static final String EXPENSE_CLASSES_MOCK_DATA_PATH = BASE_MOCK_DATA_PATH + "expense-classes/";
   public static final String EXPENSE_CLASSES_LIST_PATH = EXPENSE_CLASSES_MOCK_DATA_PATH + "expense-classes.json";
+  public static final String INACTIVE_EXPENSE_CLASS_ID = "6e6ed3c9-d959-4c91-a436-6076fb373816";
 
   @Test
   public void testGetInvoicingInvoices() {
@@ -549,6 +551,38 @@ public class InvoicesApiTest extends ApiTestBase {
     verifyTransitionToApproved(voucherCreated, invoiceLines, updatedInvoice, 5);
     verifyVoucherLineWithExpenseClasses(2L);
     checkVoucherAcqUnitIdsList(voucherCreated, reqData);
+  }
+
+  @Test
+  void testTransitionFromOpenToApprovedWithInactiveExpenseClassError() {
+    logger.info("=== Test transition invoice to Approved with inactive expense class error ===");
+
+    List<InvoiceLine> invoiceLines = getMockAsJson(INVOICE_LINES_LIST_PATH).mapTo(InvoiceLineCollection.class).getInvoiceLines();
+    Invoice reqData = getMockAsJson(OPEN_INVOICE_SAMPLE_PATH).mapTo(Invoice.class);
+    String id = reqData.getId();
+    invoiceLines
+      .forEach(invoiceLine -> {
+        invoiceLine.setId(UUID.randomUUID().toString());
+        invoiceLine.setInvoiceId(id);
+        double fundDistrValue = BigDecimal.valueOf(invoiceLine.getSubTotal())
+          .add(BigDecimal.valueOf(invoiceLine.getAdjustmentsTotal()))
+          .divide(BigDecimal.valueOf(invoiceLine.getFundDistributions().size()), 2, RoundingMode.HALF_EVEN).doubleValue();
+        invoiceLine.getFundDistributions()
+          .forEach(fundDistribution -> fundDistribution.withDistributionType(AMOUNT).withCode(null)
+            .withValue(fundDistrValue)
+            .setExpenseClassId(INACTIVE_EXPENSE_CLASS_ID)
+          );
+        addMockEntry(INVOICE_LINES, JsonObject.mapFrom(invoiceLine));
+      });
+
+    reqData.setStatus(Invoice.Status.APPROVED);
+
+    String jsonBody = JsonObject.mapFrom(reqData).encode();
+    Headers headers = prepareHeaders(X_OKAPI_URL, X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID);
+    Errors errors = verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, headers, "", 400).as(Errors.class);
+
+    assertEquals(INACTIVE_EXPENSE_CLASS.getCode(), errors.getErrors().get(0).getCode());
+
   }
 
   @Test
