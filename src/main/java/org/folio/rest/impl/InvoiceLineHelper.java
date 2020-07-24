@@ -361,14 +361,6 @@ public class InvoiceLineHelper extends AbstractHelper {
     return INVOICE_LINE_NUMBER_ENDPOINT + id;
   }
 
-  public MonetaryAmount summarizeSubTotals(List<InvoiceLine> lines, CurrencyUnit currency, boolean byAbsoluteValue) {
-    return lines.stream()
-      .map(InvoiceLine::getSubTotal)
-      .map(subTotal -> Money.of(byAbsoluteValue ? Math.abs(subTotal) : subTotal, currency))
-      .collect(MonetaryFunctions.summarizingMonetary(currency))
-      .getSum();
-  }
-
   /**
    * Applies prorated adjustments to {@code invoiceLine}. In case there is any, other lines might be affected as well
    *

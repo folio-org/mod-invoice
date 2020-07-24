@@ -3,13 +3,11 @@ package org.folio.services.adjusment;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toMap;
 import static org.apache.commons.lang3.StringUtils.isNotEmpty;
+import static org.folio.invoices.utils.HelperUtils.summarizeSubTotals;
 import static org.folio.rest.impl.InvoiceLineHelper.HYPHEN_SEPARATOR;
 import static org.folio.rest.jaxrs.model.Adjustment.Prorate.NOT_PRORATED;
 
-import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.ListIterator;
@@ -27,11 +25,11 @@ import org.folio.rest.jaxrs.model.Adjustment;
 import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.jaxrs.model.InvoiceLine;
 import org.javamoney.moneta.Money;
-import org.javamoney.moneta.function.MonetaryFunctions;
 
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
+import org.javamoney.moneta.function.MonetaryOperators;
 
 public class AdjustmentsService {
   private final Logger logger = LoggerFactory.getLogger(this.getClass());
@@ -131,25 +129,25 @@ public class AdjustmentsService {
   private List<InvoiceLine> applyProratedAdjustmentByLines(Adjustment adjustment, List<InvoiceLine> lines,
                                                            CurrencyUnit currencyUnit) {
     if (Adjustment.Type.PERCENTAGE == adjustment.getType()) {
-      return applyPercentageAdjustmentsByLines(adjustment, lines);
+      return applyPercentageAdjustmentsByLines(adjustment, lines, currencyUnit);
     } else {
       return applyAmountTypeProratedAdjustments(adjustment, lines, currencyUnit, prorateByLines(lines));
     }
   }
 
-  private List<InvoiceLine> applyPercentageAdjustmentsByLines(Adjustment adjustment, List<InvoiceLine> lines) {
-    List<InvoiceLine> updatedLines = new ArrayList<>();
-    for (InvoiceLine line : lines) {
-      Adjustment proratedAdjustment = prepareAdjustmentForLine(adjustment);
-      proratedAdjustment.setValue(BigDecimal.valueOf(adjustment.getValue())
-        .divide(BigDecimal.valueOf(lines.size()), 15, RoundingMode.HALF_EVEN)
-        .doubleValue());
+  private List<InvoiceLine> applyPercentageAdjustmentsByLines(Adjustment adjustment, List<InvoiceLine> lines, CurrencyUnit currencyUnit) {
+    Adjustment amountAdjustment = convertToAmountAdjustment(adjustment, lines, currencyUnit);
 
-      if (addAdjustmentToLine(line, proratedAdjustment)) {
-        updatedLines.add(line);
-      }
-    }
-    return updatedLines;
+    return applyAmountTypeProratedAdjustments(amountAdjustment, lines, currencyUnit, prorateByLines(lines));
+  }
+
+  private Adjustment convertToAmountAdjustment(Adjustment adjustment, List<InvoiceLine> lines, CurrencyUnit currencyUnit) {
+    MonetaryAmount subTotal = summarizeSubTotals(lines, currencyUnit, false);
+    Adjustment amountAdjustment = JsonObject.mapFrom(adjustment)
+      .mapTo(adjustment.getClass());
+    amountAdjustment.setValue(subTotal.with(MonetaryOperators.percent(adjustment.getValue())).getNumber().doubleValue());
+    amountAdjustment.setType(Adjustment.Type.AMOUNT);
+    return amountAdjustment;
   }
 
   private Adjustment prepareAdjustmentForLine(Adjustment adjustment) {
@@ -212,35 +210,17 @@ public class AdjustmentsService {
   private List<InvoiceLine> applyProratedAdjustmentByAmount(Adjustment adjustment, List<InvoiceLine> lines,
                                                             CurrencyUnit currencyUnit) {
 
+    if (adjustment.getType() == Adjustment.Type.PERCENTAGE) {
+      adjustment = convertToAmountAdjustment(adjustment, lines, currencyUnit);
+    }
+
     MonetaryAmount grandSubTotal = summarizeSubTotals(lines, currencyUnit, true);
-    if (adjustment.getType() == Adjustment.Type.AMOUNT && grandSubTotal.isZero()) {
+    if (grandSubTotal.isZero()) {
       // If summarized subTotal (by abs) is zero, each line has zero amount (e.g. gift) so adjustment should be prorated "By line"
       return applyProratedAdjustmentByLines(adjustment, lines, currencyUnit);
     }
-    if (adjustment.getType() == Adjustment.Type.PERCENTAGE) {
-      return applyPercentageAdjustmentsByAmount(adjustment, lines);
-    }
 
     return applyAmountTypeProratedAdjustments(adjustment, lines, currencyUnit, prorateByAmountFunction(grandSubTotal));
-  }
-
-  private MonetaryAmount summarizeSubTotals(List<InvoiceLine> lines, CurrencyUnit currency, boolean byAbsoluteValue) {
-    return lines.stream()
-      .map(InvoiceLine::getSubTotal)
-      .map(subTotal -> Money.of(byAbsoluteValue ? Math.abs(subTotal) : subTotal, currency))
-      .collect(MonetaryFunctions.summarizingMonetary(currency))
-      .getSum();
-  }
-
-  private List<InvoiceLine> applyPercentageAdjustmentsByAmount(Adjustment adjustment, List<InvoiceLine> lines) {
-    List<InvoiceLine> updatedLines = new ArrayList<>();
-    for (InvoiceLine line : lines) {
-      Adjustment proratedAdjustment = prepareAdjustmentForLine(adjustment);
-      if (addAdjustmentToLine(line, proratedAdjustment)) {
-        updatedLines.add(line);
-      }
-    }
-    return updatedLines;
   }
 
   private BiFunction<MonetaryAmount, InvoiceLine, MonetaryAmount> prorateByAmountFunction(MonetaryAmount grandSubTotal) {
@@ -257,14 +237,14 @@ public class AdjustmentsService {
                                                               CurrencyUnit currencyUnit) {
 
     if (adjustment.getType() == Adjustment.Type.PERCENTAGE) {
-      /*
-       * "By quantity" prorated percentage adjustments don't make sense and the client should not use that combination. We will also
-       * need to validate this on the backend and return an error response in the case where someone makes a call directly to the
-       * API with the combo.
-       */
-      return Collections.emptyList();
+      return applyPercentageAdjustmentsByQuantity(adjustment, lines, currencyUnit);
     }
     return applyAmountTypeProratedAdjustments(adjustment, lines, currencyUnit, prorateByAmountFunction(lines));
+  }
+
+  private List<InvoiceLine> applyPercentageAdjustmentsByQuantity(Adjustment adjustment, List<InvoiceLine> lines, CurrencyUnit currencyUnit) {
+    Adjustment amountAdjustment = convertToAmountAdjustment(adjustment, lines, currencyUnit);
+    return applyAmountTypeProratedAdjustments(amountAdjustment, lines, currencyUnit, prorateByAmountFunction(lines));
   }
 
   private BiFunction<MonetaryAmount, InvoiceLine, MonetaryAmount> prorateByAmountFunction(List<InvoiceLine> invoiceLines) {

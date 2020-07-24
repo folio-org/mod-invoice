@@ -53,7 +53,8 @@ public class InvoicesProratedAdjustmentsTest extends ApiTestBase {
     "BY_AMOUNT, PERCENTAGE",
     "BY_LINE, AMOUNT",
     "BY_LINE, PERCENTAGE",
-    "BY_QUANTITY, AMOUNT"
+    "BY_QUANTITY, AMOUNT",
+    "BY_QUANTITY, PERCENTAGE"
   })
   public void testUpdateInvoiceWithoutLinesAddingAdjustment(Adjustment.Prorate prorate, Adjustment.Type type) {
     logger.info("=== Updating invoice without lines ===");
@@ -89,7 +90,8 @@ public class InvoicesProratedAdjustmentsTest extends ApiTestBase {
     "BY_AMOUNT, PERCENTAGE",
     "BY_LINE, AMOUNT",
     "BY_LINE, PERCENTAGE",
-    "BY_QUANTITY, AMOUNT"
+    "BY_QUANTITY, AMOUNT",
+    "BY_QUANTITY, PERCENTAGE"
   })
   public void testUpdateInvoiceWithOneLineAddingAdjustment(Adjustment.Prorate prorate, Adjustment.Type type) {
     logger.info("=== Updating invoice with one line adding one prorated adjustment ===");
@@ -115,8 +117,7 @@ public class InvoicesProratedAdjustmentsTest extends ApiTestBase {
     assertThat(getInvoiceUpdates(), hasSize(1));
     assertThat(getInvoiceLineUpdates(), hasSize(1));
 
-    // Line adjustment value is always the same as invoice one regardless of type
-    double expectedProratedAdjValue = 15d;
+    double expectedProratedAdjValue = (type == AMOUNT) ? 15d : 3.75;
 
     /*
      * Calculated prorated adjustment value depends of type:
@@ -184,12 +185,12 @@ public class InvoicesProratedAdjustmentsTest extends ApiTestBase {
     /*
      * Total invoice adjustment value is sum of invoice line adjustments and depends on type:
      * "Amount" - this is the same as prorated adjustment value i.e. 9.30$
-     * "Percentage" - this is sum of invoice line adjustment totals i.e. 4.65% (9.30% / 2) of each sub total
+     * "Percentage" - (20 * 9.30) / 100
      */
-    assertThat(invoiceToStorage.getAdjustmentsTotal(), is(type == AMOUNT ? 9.30d : 0.93d));
+    assertThat(invoiceToStorage.getAdjustmentsTotal(), is(type == AMOUNT ? 9.30d : 1.86d));
 
     // Adjustment value is invoice prorated adjustment's value divided by number of lines but adjustment total amount is calculated based on subTotal
-    double expectedAdjValue = 4.65d;
+    double expectedAdjValue = (type == AMOUNT) ? 4.65d : 0.93;
     getInvoiceLineUpdates().stream()
       .map(json -> json.mapTo(InvoiceLine.class))
       .forEach(line -> {
@@ -197,21 +198,7 @@ public class InvoicesProratedAdjustmentsTest extends ApiTestBase {
         Adjustment adj = line.getAdjustments().get(0);
         verifyInvoiceLineAdjustmentCommon(invoiceAdjustment, adj);
         assertThat(adj.getValue(), is(expectedAdjValue));
-
-        double expectedAdjTotal;
-        if (type == AMOUNT) {
-          // In case of "Amount" type this is the same as adjustment value
-          expectedAdjTotal = expectedAdjValue;
-        } else {
-          if (invoiceLine1.getId().equals(line.getId())) {
-            // In case of "Percentage" type this is the percentage of subTotal i.e. 4.65% of 5$ = 0.2325 rounded to 0.23$
-            expectedAdjTotal = 0.23d;
-          } else {
-            // In case of "Percentage" type this is the percentage of subTotal i.e. 4.65% of 15$ = 0.6975 rounded to 0.70$
-            expectedAdjTotal = 0.70d;
-          }
-        }
-        assertThat(line.getAdjustmentsTotal(), is(expectedAdjTotal));
+        assertThat(line.getAdjustmentsTotal(), is(expectedAdjValue));
       });
   }
 
@@ -252,9 +239,9 @@ public class InvoicesProratedAdjustmentsTest extends ApiTestBase {
 
     // Depending on type either original prorated amount is split across lines adjustments or percent of subtotal is calculated
     double expectedAdjTotal1 = type == AMOUNT ? 5d : 1.5d;
-    double expectedAdjValue1 = type == AMOUNT ? 5d : 15d;
+    double expectedAdjValue1 = type == AMOUNT ? 5d : 1.5d;
     double expectedAdjTotal2 = type == AMOUNT ? 10d : 3d;
-    double expectedAdjValue2 = type == AMOUNT ? 10d : 15d;
+    double expectedAdjValue2 = type == AMOUNT ? 10d : 3d;
 
     assertThat(invoiceToStorage.getAdjustmentsTotal(), is(expectedAdjTotal1 + expectedAdjTotal2));
 
@@ -655,36 +642,36 @@ public class InvoicesProratedAdjustmentsTest extends ApiTestBase {
 
     Invoice invoiceToStorage = getInvoiceUpdates().get(0).mapTo(Invoice.class);
     assertThat(invoiceToStorage.getAdjustments(), hasSize(1));
-    assertThat(invoiceToStorage.getAdjustmentsTotal(), is(0d));
+    assertThat(invoiceToStorage.getAdjustmentsTotal(), is(10d));
     Adjustment invoiceAdjustment = invoiceToStorage.getAdjustments().get(0);
     assertThat(invoiceAdjustment.getId(), not(isEmptyOrNullString()));
 
     InvoiceLine lineToStorage1 = getLineToStorageById(invoiceLine1.getId());
     assertThat(lineToStorage1.getAdjustments(), hasSize(2));
-    assertThat(lineToStorage1.getAdjustmentsTotal(), is(9d));
+    assertThat(lineToStorage1.getAdjustmentsTotal(), is(10d));
 
     // First adjustment is not prorated
     assertThat(lineToStorage1.getAdjustments().get(0).getValue(), is(10d));
     // Second adjustment is prorated
     Adjustment line1Adjustment2 = lineToStorage1.getAdjustments().get(1);
     verifyInvoiceLineAdjustmentCommon(invoiceAdjustment, line1Adjustment2);
-    assertThat(line1Adjustment2.getValue(), is(-20d));
+    assertThat(line1Adjustment2.getValue(), is(0d));
 
     InvoiceLine lineToStorage2 = getLineToStorageById(invoiceLine2.getId());
     assertThat(lineToStorage2.getAdjustments(), hasSize(1));
-    assertThat(lineToStorage2.getAdjustmentsTotal(), is(-4d));
+    assertThat(lineToStorage2.getAdjustmentsTotal(), is(0d));
 
     Adjustment line2Adjustment1 = lineToStorage2.getAdjustments().get(0);
     verifyInvoiceLineAdjustmentCommon(invoiceAdjustment, line2Adjustment1);
-    assertThat(line2Adjustment1.getValue(), is(-20d));
+    assertThat(line2Adjustment1.getValue(), is(0d));
 
     InvoiceLine lineToStorage3 = getLineToStorageById(invoiceLine3.getId());
     assertThat(lineToStorage3.getAdjustments(), hasSize(1));
-    assertThat(lineToStorage3.getAdjustmentsTotal(), is(-5d));
+    assertThat(lineToStorage3.getAdjustmentsTotal(), is(0d));
 
     Adjustment line3Adjustment1 = lineToStorage3.getAdjustments().get(0);
     verifyInvoiceLineAdjustmentCommon(invoiceAdjustment, line3Adjustment1);
-    assertThat(line3Adjustment1.getValue(), is(-20d));
+    assertThat(line3Adjustment1.getValue(), is(0d));
   }
 
   @Test
@@ -742,7 +729,8 @@ public class InvoicesProratedAdjustmentsTest extends ApiTestBase {
     "BY_AMOUNT, PERCENTAGE",
     "BY_LINE, AMOUNT",
     "BY_LINE, PERCENTAGE",
-    "BY_QUANTITY, AMOUNT"
+    "BY_QUANTITY, AMOUNT",
+    "BY_QUANTITY, PERCENTAGE"
   })
   public void testUpdateInvoiceWithOneLineAndOneAdjustmentWithoutAdjChange(Adjustment.Prorate prorate, Adjustment.Type type) {
     logger.info("=== Updating invoice with one line and one prorated adjustment but not touching adjustment ===");
@@ -787,7 +775,8 @@ public class InvoicesProratedAdjustmentsTest extends ApiTestBase {
     "BY_AMOUNT, PERCENTAGE",
     "BY_LINE, AMOUNT",
     "BY_LINE, PERCENTAGE",
-    "BY_QUANTITY, AMOUNT"
+    "BY_QUANTITY, AMOUNT",
+    "BY_QUANTITY, PERCENTAGE"
   })
   public void testUpdateInvoiceWithOneLineAndOneAdjustmentWithAdjChange(Adjustment.Prorate prorate, Adjustment.Type type) {
     logger.info("=== Updating invoice with one line and one prorated adjustment - updating adjustment ===");
@@ -816,9 +805,7 @@ public class InvoicesProratedAdjustmentsTest extends ApiTestBase {
     assertThat(getInvoiceUpdates(), hasSize(1));
     assertThat(getInvoiceLineUpdates(), hasSize(1));
 
-
-    // Line adjustment value is always the same as invoice one regardless of type
-    double expectedAdjValue = 25d;
+    double expectedAdjValue = (type == AMOUNT) ? 25d : 6.25d;
 
     /*
      * Calculated adjustment value depends of type:
@@ -848,7 +835,8 @@ public class InvoicesProratedAdjustmentsTest extends ApiTestBase {
     "BY_AMOUNT, PERCENTAGE",
     "BY_LINE, AMOUNT",
     "BY_LINE, PERCENTAGE",
-    "BY_QUANTITY, AMOUNT"
+    "BY_QUANTITY, AMOUNT",
+    "BY_QUANTITY, PERCENTAGE"
   })
   public void testUpdateInvoiceWithOneLineAndOneAdjustmentAddingSecondAdj(Adjustment.Prorate prorate, Adjustment.Type type) {
     logger.info("=== Updating invoice with one line and one prorated adjustment - adding second adjustment ===");
@@ -910,13 +898,15 @@ public class InvoicesProratedAdjustmentsTest extends ApiTestBase {
     assertThat(lineToStorage.getAdjustments(), hasSize(2));
     assertThat(lineToStorage.getAdjustmentsTotal(), is(expectedAdjTotal));
 
+    double adjustment1ExpectedAmount = (type == AMOUNT) ? 15d : 3.75d;
+    double adjustment2ExpectedAmount = (type == AMOUNT) ? 10d : 2.5d;
     for (Adjustment adj : lineToStorage.getAdjustments()) {
       if (adjustment1.getId().equals(adj.getAdjustmentId())) {
         verifyInvoiceLineAdjustmentCommon(invoiceAdjToStorage1, adj);
-        assertThat(adj.getValue(), is(15d));
+        assertThat(adj.getValue(), is(adjustment1ExpectedAmount));
       } else {
         verifyInvoiceLineAdjustmentCommon(invoiceAdjToStorage2, adj);
-        assertThat(adj.getValue(), is(10d));
+        assertThat(adj.getValue(), is(adjustment2ExpectedAmount));
       }
     }
   }
@@ -927,7 +917,8 @@ public class InvoicesProratedAdjustmentsTest extends ApiTestBase {
     "BY_AMOUNT, PERCENTAGE",
     "BY_LINE, AMOUNT",
     "BY_LINE, PERCENTAGE",
-    "BY_QUANTITY, AMOUNT"
+    "BY_QUANTITY, AMOUNT",
+    "BY_QUANTITY, PERCENTAGE"
   })
   public void testUpdateInvoiceWithOneLineMakingAdjustmentNotProrated(Adjustment.Prorate prorate, Adjustment.Type type) {
     logger.info("=== Updating invoice with one line and one prorated adjustment - making adjustment \"Not prorated\" ===");
@@ -1006,7 +997,7 @@ public class InvoicesProratedAdjustmentsTest extends ApiTestBase {
 
     Invoice invoiceToStorage = getInvoiceUpdates().get(0).mapTo(Invoice.class);
     assertThat(invoiceToStorage.getAdjustments(), hasSize(1));
-    assertThat(invoiceToStorage.getAdjustmentsTotal(), is(0.51d));
+    assertThat(invoiceToStorage.getAdjustmentsTotal(), is(1.5d));
     Adjustment invoiceAdjustment = invoiceToStorage.getAdjustments().get(0);
     assertThat(invoiceAdjustment.getId(), not(isEmptyOrNullString()));
 
@@ -1014,11 +1005,11 @@ public class InvoicesProratedAdjustmentsTest extends ApiTestBase {
       .forEach(id -> {
         InvoiceLine lineToStorage = getLineToStorageById(id);
         assertThat(lineToStorage.getAdjustments(), hasSize(1));
-        assertThat(lineToStorage.getAdjustmentsTotal(), is(0.17d));
+        assertThat(lineToStorage.getAdjustmentsTotal(), is(0.5d));
 
         Adjustment lineAdjustment = lineToStorage.getAdjustments().get(0);
         verifyInvoiceLineAdjustmentCommon(invoiceAdjustment, lineAdjustment);
-        assertThat(lineAdjustment.getValue(), is(1.666666666666667d));
+        assertThat(lineAdjustment.getValue(), is(0.5d));
     });
   }
 
@@ -1044,6 +1035,6 @@ public class InvoicesProratedAdjustmentsTest extends ApiTestBase {
     assertThat(lineAdjustment.getFundDistributions(), equalTo(invoiceAdjustment.getFundDistributions()));
     assertThat(lineAdjustment.getProrate(), equalTo(NOT_PRORATED));
     assertThat(lineAdjustment.getRelationToTotal(), equalTo(invoiceAdjustment.getRelationToTotal()));
-    assertThat(lineAdjustment.getType(), equalTo(invoiceAdjustment.getType()));
+    assertThat(lineAdjustment.getType(), equalTo(AMOUNT));
   }
 }

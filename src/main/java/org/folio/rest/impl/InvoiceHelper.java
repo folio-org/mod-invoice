@@ -1063,7 +1063,7 @@ public class InvoiceHelper extends AbstractHelper {
     CurrencyUnit currency = Monetary.getCurrency(invoice.getCurrency());
 
     // 1. Sub-total
-    MonetaryAmount subTotal = invoiceLineHelper.summarizeSubTotals(lines, currency, false);
+    MonetaryAmount subTotal = HelperUtils.summarizeSubTotals(lines, currency, false);
 
     // 2. Calculate Adjustments Total
     // If there are no invoice lines then adjustmentsTotal = sum of all invoice adjustments
