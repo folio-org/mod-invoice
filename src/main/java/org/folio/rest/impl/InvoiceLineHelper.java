@@ -32,9 +32,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 
-import javax.money.CurrencyUnit;
-import javax.money.MonetaryAmount;
-
 import org.folio.invoices.events.handlers.MessageAddress;
 import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.invoices.utils.InvoiceRestrictionsUtil;
@@ -51,8 +48,6 @@ import org.folio.rest.jaxrs.model.SequenceNumber;
 import org.folio.rest.tools.client.interfaces.HttpClientInterface;
 import org.folio.services.adjusment.AdjustmentsService;
 import org.folio.services.validator.InvoiceLineValidator;
-import org.javamoney.moneta.Money;
-import org.javamoney.moneta.function.MonetaryFunctions;
 
 import io.vertx.core.Context;
 import io.vertx.core.json.JsonObject;
@@ -359,14 +354,6 @@ public class InvoiceLineHelper extends AbstractHelper {
 
   private String getInvoiceLineNumberEndpoint(String id) {
     return INVOICE_LINE_NUMBER_ENDPOINT + id;
-  }
-
-  public MonetaryAmount summarizeSubTotals(List<InvoiceLine> lines, CurrencyUnit currency, boolean byAbsoluteValue) {
-    return lines.stream()
-      .map(InvoiceLine::getSubTotal)
-      .map(subTotal -> Money.of(byAbsoluteValue ? Math.abs(subTotal) : subTotal, currency))
-      .collect(MonetaryFunctions.summarizingMonetary(currency))
-      .getSum();
   }
 
   /**
