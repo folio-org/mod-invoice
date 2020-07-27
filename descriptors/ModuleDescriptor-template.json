@@ -74,7 +74,9 @@
             "finance.ledgers.collection.get",
             "finance.ledgers.current-fiscal-year.item.get",
             "finance.expense-classes.collection.get",
-            "finance-storage.transactions.item.post"]
+            "finance-storage.transactions.item.post",
+            "finance-storage.budget-expense-classes.collection.get"
+          ]
         },
         {
           "methods": ["DELETE"],

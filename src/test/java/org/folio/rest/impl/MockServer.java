@@ -11,7 +11,35 @@ import static org.folio.invoices.utils.HelperUtils.ALL_UNITS_CQL;
 import static org.folio.invoices.utils.HelperUtils.INVOICE_ID;
 import static org.folio.invoices.utils.HelperUtils.IS_DELETED_PROP;
 import static org.folio.invoices.utils.HelperUtils.QUERY_PARAM_START_WITH;
-import static org.folio.invoices.utils.ResourcePathResolver.*;
+import static org.folio.invoices.utils.ResourcePathResolver.ACQUISITIONS_MEMBERSHIPS;
+import static org.folio.invoices.utils.ResourcePathResolver.ACQUISITIONS_UNITS;
+import static org.folio.invoices.utils.ResourcePathResolver.AWAITING_PAYMENTS;
+import static org.folio.invoices.utils.ResourcePathResolver.BATCH_GROUPS;
+import static org.folio.invoices.utils.ResourcePathResolver.BATCH_VOUCHER_EXPORTS_STORAGE;
+import static org.folio.invoices.utils.ResourcePathResolver.BATCH_VOUCHER_EXPORT_CONFIGS;
+import static org.folio.invoices.utils.ResourcePathResolver.BATCH_VOUCHER_EXPORT_CONFIGS_CREDENTIALS;
+import static org.folio.invoices.utils.ResourcePathResolver.BATCH_VOUCHER_STORAGE;
+import static org.folio.invoices.utils.ResourcePathResolver.BUDGETS;
+import static org.folio.invoices.utils.ResourcePathResolver.BUDGET_EXPENSE_CLASSES;
+import static org.folio.invoices.utils.ResourcePathResolver.EXPENSE_CLASSES_URL;
+import static org.folio.invoices.utils.ResourcePathResolver.FINANCE_CREDITS;
+import static org.folio.invoices.utils.ResourcePathResolver.FINANCE_PAYMENTS;
+import static org.folio.invoices.utils.ResourcePathResolver.FINANCE_STORAGE_TRANSACTIONS;
+import static org.folio.invoices.utils.ResourcePathResolver.FINANCE_TRANSACTIONS;
+import static org.folio.invoices.utils.ResourcePathResolver.FOLIO_INVOICE_NUMBER;
+import static org.folio.invoices.utils.ResourcePathResolver.FUNDS;
+import static org.folio.invoices.utils.ResourcePathResolver.INVOICES;
+import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_DOCUMENTS;
+import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_LINES;
+import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_LINE_NUMBER;
+import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_TRANSACTION_SUMMARIES;
+import static org.folio.invoices.utils.ResourcePathResolver.LEDGERS;
+import static org.folio.invoices.utils.ResourcePathResolver.ORDER_LINES;
+import static org.folio.invoices.utils.ResourcePathResolver.VOUCHERS;
+import static org.folio.invoices.utils.ResourcePathResolver.VOUCHER_LINES;
+import static org.folio.invoices.utils.ResourcePathResolver.VOUCHER_NUMBER;
+import static org.folio.invoices.utils.ResourcePathResolver.VOUCHER_NUMBER_START;
+import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
 import static org.folio.rest.RestVerticle.OKAPI_HEADER_TENANT;
 import static org.folio.rest.impl.ApiTestBase.BASE_MOCK_DATA_PATH;
 import static org.folio.rest.impl.ApiTestBase.FOLIO_INVOICE_NUMBER_VALUE;
@@ -82,6 +110,8 @@ import org.folio.rest.acq.model.VoucherLine;
 import org.folio.rest.acq.model.VoucherLineCollection;
 import org.folio.rest.acq.model.finance.Budget;
 import org.folio.rest.acq.model.finance.BudgetCollection;
+import org.folio.rest.acq.model.finance.BudgetExpenseClass;
+import org.folio.rest.acq.model.finance.BudgetExpenseClassCollection;
 import org.folio.rest.acq.model.finance.ExpenseClass;
 import org.folio.rest.acq.model.finance.ExpenseClassCollection;
 import org.folio.rest.acq.model.finance.FiscalYear;
@@ -140,6 +170,7 @@ public class MockServer {
   private static final String MOCK_DATA_PATH_PATTERN = "%s%s.json";
   private static final String FUNDS_MOCK_DATA_PATH = BASE_MOCK_DATA_PATH + "fundRecords/";
   private static final String VOUCHER_ID = "voucherId";
+  private static final String EXPENSE_CLASS_ID = "expenseClassId";
   private static final String QUERY = "query";
   private static final String LIMIT = "limit";
   private static final String OFFSET = "offset";
@@ -171,6 +202,7 @@ public class MockServer {
   public static final String PREFIX_CONFIG_WITH_NON_EXISTING_VALUE_TENANT = "prefix_with_non_existing_value_config_tenant";
 
   private static final String INVOICE_LINES_COLLECTION = BASE_MOCK_DATA_PATH + "invoiceLines/invoice_lines.json";
+  private static final String BUDGET_EXPENSE_CLASS_COLLECTION = BASE_MOCK_DATA_PATH + "budget-expense-classes/budgetExpenseClasses.json";
   private static final String VOUCHER_LINES_COLLECTION = BASE_MOCK_DATA_PATH + "voucherLines/voucher_lines.json";
   public static final String BUDGETS_PATH = BASE_MOCK_DATA_PATH + "budgets/budgets.json";
   public static final String LEDGERS_PATH = BASE_MOCK_DATA_PATH + "ledgers/ledgers.json";
@@ -391,6 +423,7 @@ public class MockServer {
     router.get("/organizations-storage/organizations").handler(this::handleGetAccessProviders);
     router.route(HttpMethod.GET, resourceByIdPath(EXPENSE_CLASSES_URL)).handler(this::handleExpenseClassesById);
     router.route(HttpMethod.GET, resourcesPath(EXPENSE_CLASSES_URL)).handler(this::handleExpenseClasses);
+    router.route(HttpMethod.GET, resourcesPath(BUDGET_EXPENSE_CLASSES)).handler(this::handleGetBudgetExpenseClass);
 
     router.route(HttpMethod.DELETE, resourceByIdPath(INVOICES)).handler(ctx -> handleDeleteRequest(ctx, INVOICES));
     router.route(HttpMethod.DELETE, resourceByIdPath(INVOICE_LINES)).handler(ctx -> handleDeleteRequest(ctx, INVOICE_LINES));
@@ -1288,6 +1321,48 @@ public class MockServer {
       serverResponse(ctx, 200, APPLICATION_JSON, data.encodePrettily());
     }
 
+  }
+
+  private void handleGetBudgetExpenseClass(RoutingContext ctx) {
+    logger.info("handle BudgetExpenseClasses got: {}?{}", ctx.request().path(), ctx.request().query());
+
+    String tenant = ctx.request().getHeader(OKAPI_HEADER_TENANT);
+    String queryParam = StringUtils.trimToEmpty(ctx.request().getParam(QUERY));
+    addServerRqQuery(BUDGET_EXPENSE_CLASSES, queryParam);
+
+    if (queryParam.contains(BAD_QUERY)) {
+      serverResponse(ctx, 400, APPLICATION_JSON, Response.Status.BAD_REQUEST.getReasonPhrase());
+    } else if (queryParam.contains(ID_FOR_INTERNAL_SERVER_ERROR)) {
+      serverResponse(ctx, 500, APPLICATION_JSON, Response.Status.INTERNAL_SERVER_ERROR.getReasonPhrase());
+    } else {
+      // By default return 0
+      BudgetExpenseClassCollection budgetExpenseClasses = new BudgetExpenseClassCollection().withTotalRecords(0);
+
+      if (queryParam.contains(EXPENSE_CLASS_ID)) {
+        String expenseClassId = queryParam.split(EXPENSE_CLASS_ID + "==")[1];
+        Supplier<BudgetExpenseClassCollection> getFromFile = () -> {
+          try {
+            return new JsonObject(getMockData(BUDGET_EXPENSE_CLASS_COLLECTION)).mapTo(BudgetExpenseClassCollection.class);
+          } catch (IOException e) {
+            return new BudgetExpenseClassCollection().withTotalRecords(0);
+          }
+        };
+
+        budgetExpenseClasses.withBudgetExpenseClasses(getFromFile.get().getBudgetExpenseClasses()
+          .stream()
+          .filter(bec -> bec.getExpenseClassId().equals(expenseClassId))
+          .filter(bec -> bec.getStatus() == BudgetExpenseClass.Status.INACTIVE)
+          .collect(toList()));
+        budgetExpenseClasses.withTotalRecords(budgetExpenseClasses.getBudgetExpenseClasses().size());
+
+      }
+
+      JsonObject budgetExpenseClassesJson = JsonObject.mapFrom(budgetExpenseClasses);
+      logger.info(budgetExpenseClassesJson.encodePrettily());
+
+      addServerRqRsData(HttpMethod.GET, BUDGET_EXPENSE_CLASSES, budgetExpenseClassesJson);
+      serverResponse(ctx, 200, APPLICATION_JSON, budgetExpenseClassesJson.encodePrettily());
+    }
   }
 
   private Supplier<JsonObject> getJsonObjectFromFile(String mockDataPath, String id) {

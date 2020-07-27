@@ -75,7 +75,6 @@ public class HelperUtils {
   public static final String LANG = "lang";
   public static final String OKAPI_URL = "X-Okapi-Url";
   public static final String QUERY_PARAM_START_WITH = "invoiceLines.id==";
-  public static final String QUERY_PARAM_FOR_BATCH_GROUP_ID = "batchGroupId==";
   public static final String SEARCH_PARAMS = "?limit=%s&offset=%s%s&lang=%s";
   public static final String IS_DELETED_PROP = "isDeleted";
   public static final String ALL_UNITS_CQL = IS_DELETED_PROP + "=*";
@@ -84,8 +83,6 @@ public class HelperUtils {
   private static final String EXCEPTION_CALLING_ENDPOINT_MSG = "Exception calling {} {}";
   private static final String CALLING_ENDPOINT_MSG = "Sending {} {}";
   private static final Pattern CQL_SORT_BY_PATTERN = Pattern.compile("(.*)(\\ssortBy\\s.*)", Pattern.CASE_INSENSITIVE);
-
-
 
 
   private HelperUtils() {

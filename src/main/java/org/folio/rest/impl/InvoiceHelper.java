@@ -515,9 +515,10 @@ public class InvoiceHelper extends AbstractHelper {
       .thenCompose(lines -> {
         validator.validateBeforeApproval(invoice, lines);
         return financeHelper.checkEnoughMoneyInBudget(lines, invoice)
+          .thenCompose(v -> financeHelper.checkExpenseClasses(lines, invoice))
           .thenCompose(v -> createPendingPaymentsWithInvoiceSummary(lines, invoice))
-          .thenCompose(v -> prepareVoucher(invoice)
-          .thenCompose(voucher -> handleVoucherWithLines(getAllFundDistributions(lines, invoice), voucher)));
+          .thenCompose(v -> prepareVoucher(invoice))
+          .thenCompose(voucher -> handleVoucherWithLines(getAllFundDistributions(lines, invoice), voucher));
       });
   }
 
