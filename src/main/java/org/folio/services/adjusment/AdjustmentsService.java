@@ -145,7 +145,7 @@ public class AdjustmentsService {
     MonetaryAmount subTotal = summarizeSubTotals(lines, currencyUnit, false);
     Adjustment amountAdjustment = JsonObject.mapFrom(adjustment)
       .mapTo(adjustment.getClass());
-    amountAdjustment.setValue(subTotal.with(MonetaryOperators.percent(adjustment.getValue())).getNumber().doubleValue());
+    amountAdjustment.setValue(subTotal.with(MonetaryOperators.percent(adjustment.getValue())).with(Monetary.getDefaultRounding()).getNumber().doubleValue());
     amountAdjustment.setType(Adjustment.Type.AMOUNT);
     return amountAdjustment;
   }
