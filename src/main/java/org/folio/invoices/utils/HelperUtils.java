@@ -449,4 +449,11 @@ public class HelperUtils {
     return MonetaryConversions.getExchangeRateProvider(IDENTITY, ECB, IMF);
   }
 
+  public static MonetaryAmount summarizeSubTotals(List<InvoiceLine> lines, CurrencyUnit currency, boolean byAbsoluteValue) {
+    return lines.stream()
+      .map(InvoiceLine::getSubTotal)
+      .map(subTotal -> Money.of(byAbsoluteValue ? Math.abs(subTotal) : subTotal, currency))
+      .collect(MonetaryFunctions.summarizingMonetary(currency))
+      .getSum();
+  }
 }
