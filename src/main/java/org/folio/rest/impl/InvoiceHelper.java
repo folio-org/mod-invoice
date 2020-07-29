@@ -1100,11 +1100,28 @@ public class InvoiceHelper extends AbstractHelper {
   }
 
   private CompletableFuture<Void> updateInvoiceLinesWithEncumbrances(List<InvoiceLine> invoiceLines, RequestContext requestContext) {
-    List<String> poLineIds = invoiceLines.stream().map(InvoiceLine::getPoLineId).collect(toList());
-    return encumbranceService.getEncumbrancesByPoLineIds(poLineIds, requestContext)
-                             .thenApply(encumbrances ->  encumbrances.stream()
-                               .collect(groupingBy(encumbr -> Pair.of(encumbr.getEncumbrance().getSourcePoLineId(), encumbr.getFromFundId()))))
-                             .thenAccept(encumbrByPoLineAndFundIdMap -> updateFundDistributionsWithEncumbrances(invoiceLines, encumbrByPoLineAndFundIdMap));
+    List<String> poLineIds = getPoLineIds(invoiceLines);
+    if (!poLineIds.isEmpty()) {
+      return encumbranceService.getEncumbrancesByPoLineIds(poLineIds, requestContext)
+        .thenApply(encumbrances -> encumbrances.stream()
+          .collect(groupingBy(encumbr -> Pair.of(encumbr.getEncumbrance().getSourcePoLineId(), encumbr.getFromFundId()))))
+        .thenAccept(encumbrByPoLineAndFundIdMap -> updateFundDistributionsWithEncumbrances(invoiceLines, encumbrByPoLineAndFundIdMap));
+    }
+    return CompletableFuture.completedFuture(null);
+  }
+
+  private List<String> getPoLineIds(List<InvoiceLine> invoiceLines) {
+    return invoiceLines.stream()
+                      .filter(invoiceLine -> isEncumbrancePresent(invoiceLine.getFundDistributions()))
+                      .map(InvoiceLine::getPoLineId)
+                      .collect(toList());
+  }
+
+  private boolean isEncumbrancePresent(List<FundDistribution> fundDistributions) {
+    return fundDistributions.stream()
+                            .filter(fund -> Objects.isNull(fund.getEncumbrance()))
+                            .findAny()
+                            .isPresent();
   }
 
   private void updateFundDistributionsWithEncumbrances(List<InvoiceLine> invoiceLines
