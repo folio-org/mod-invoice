@@ -24,8 +24,8 @@ import org.folio.rest.acq.model.finance.TransactionCollection;
 import org.folio.rest.core.RestClient;
 import org.folio.rest.core.models.RequestContext;
 import org.folio.rest.impl.ApiTestBase;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.mockito.internal.verification.Times;
@@ -43,7 +43,7 @@ public class BaseTransactionServiceTest extends ApiTestBase {
   private Map<String, String> okapiHeaders;
   public static final Header X_OKAPI_TENANT = new Header(OKAPI_HEADER_TENANT, "invoiceimpltest");
 
-  @Before
+  @BeforeEach
   public void initMocks(){
     MockitoAnnotations.initMocks(this);
     okapiHeaders = new HashMap<>();
