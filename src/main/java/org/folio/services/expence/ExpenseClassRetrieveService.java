@@ -30,7 +30,7 @@ public class ExpenseClassRetrieveService {
   public CompletableFuture<List<ExpenseClass>> getExpenseClasses(List<String> expenseClassIds, RequestContext requestContext) {
     List<CompletableFuture<ExpenseClassCollection>> expenseClassesFutureList = StreamEx
       .ofSubLists(expenseClassIds, MAX_IDS_FOR_GET_RQ)
-      .map(ids ->  getExpenseClassesChunk(expenseClassIds, requestContext))
+      .map(ids ->  getExpenseClassesChunk(ids, requestContext))
       .collect(toList());
 
     return collectResultsOnSuccess(expenseClassesFutureList)

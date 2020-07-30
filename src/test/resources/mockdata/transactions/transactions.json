@@ -1,0 +1,54 @@
+{
+  "transactions": [
+    {
+      "id": "12ac70a4-5c9d-112f-9acb-852adf67d7e1",
+      "amount": 140.80,
+      "currency": "USD",
+      "description": "PO_Line: History of Incas",
+      "fiscalYearId": "4438bc3b-4b4a-4e5e-9886-5f69b48a7a32",
+      "fromFundId": "27f27438-3197-4281-a353-511829421d6e",
+      "paymentEncumbranceId": "80c28fb4-c34e-48d6-b8c2-de6660c3e0aa",
+      "source": "Invoice",
+      "sourceFiscalYearId": "01705ce5-3c3d-4c30-b23d-a36feec28259",
+      "sourceInvoiceId": "b360db6c-b825-4d74-ac63-5be506892e2b",
+      "tags": {
+        "tagList": [
+          "important"
+        ]
+      },
+      "toFundId": "2e51c019-97f3-4523-87e9-59250e3b48bc",
+      "transactionType": "Payment"
+    },
+    {
+      "id": "5c9f769c-5fe2-4a6e-95fa-021f0d8834a0",
+      "amount": 25.17,
+      "currency": "USD",
+      "description": "PO_Line: History of Incas",
+      "encumbrance": {
+        "amountExpended": 1567.92,
+        "amountAwaitingPayment": 12.50,
+        "initialAmountEncumbered": 1720.50,
+        "status": "Unreleased",
+        "orderType":  "One-Time",
+        "subscription": false,
+        "reEncumber": false,
+        "sourcePurchaseOrderId": "e5ae4afd-3fa9-494e-a972-f541df9b877e",
+        "sourcePoLineId": "c5ced39d-672f-3cba-a13a-ceb06a5d4c6b"
+      },
+      "fiscalYearId": "684b5dc5-92f6-4db7-b996-b549d88f5e4e",
+      "fromFundId": "67cd0046-e4f1-4e4f-9024-adf0b0039d09",
+      "paymentEncumbranceId": "80c28fb4-c34e-48d6-b8c2-de6660c3e0aa",
+      "source": "Invoice",
+      "sourceFiscalYearId": "684b5dc5-92f6-4db7-b996-b549d88f5e4e",
+      "sourceInvoiceId": "041c1fe8-adfa-44eb-b6b3-f85acdd71f81",
+      "tags": {
+        "tagList": [
+          "important"
+        ]
+      },
+      "toFundId": "69640328-788e-43fc-9c3c-af39e243f3b7",
+      "transactionType": "Encumbrance"
+    }
+  ],
+  "totalRecords": 2
+}
