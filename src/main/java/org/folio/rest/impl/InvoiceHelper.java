@@ -155,6 +155,16 @@ public class InvoiceHelper extends AbstractHelper {
 
   }
 
+  public InvoiceHelper(Map<String, String> okapiHeaders, Context ctx, String lang, EncumbranceService encumbranceService) {
+    super(getHttpClient(okapiHeaders), okapiHeaders, ctx, lang);
+    invoiceLineHelper = new InvoiceLineHelper(httpClient, okapiHeaders, ctx, lang);
+    voucherHelper = new VoucherHelper(httpClient, okapiHeaders, ctx, lang);
+    voucherLineHelper = new VoucherLineHelper(httpClient, okapiHeaders, ctx, lang);
+    protectionHelper = new ProtectionHelper(httpClient, okapiHeaders, ctx, lang);
+    financeHelper = new FinanceHelper(httpClient, okapiHeaders, ctx, lang);
+    this.encumbranceService = encumbranceService;
+  }
+
   public CompletableFuture<Invoice> createInvoice(Invoice invoice) {
     return validateAcqUnitsOnCreate(invoice.getAcqUnitIds())
       .thenCompose(v -> updateWithSystemGeneratedData(invoice))
