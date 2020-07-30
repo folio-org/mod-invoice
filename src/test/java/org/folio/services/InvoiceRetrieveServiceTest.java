@@ -12,11 +12,16 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 
+import org.folio.invoices.utils.ResourcePathResolver;
+import org.folio.rest.core.RestClient;
 import org.folio.rest.impl.ApiTestBase;
+import org.folio.rest.impl.InvoiceHelper;
 import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.jaxrs.model.InvoiceCollection;
 import org.folio.rest.jaxrs.model.Voucher;
 import org.folio.rest.jaxrs.model.VoucherCollection;
+import org.folio.services.transaction.BaseTransactionService;
+import org.folio.services.transaction.EncumbranceService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -42,7 +47,11 @@ public class InvoiceRetrieveServiceTest extends ApiTestBase {
 
   @Test
   public void positiveGetInvoicesByChunksTest() throws IOException, ExecutionException, InterruptedException {
-    InvoiceRetrieveService service = new InvoiceRetrieveService(okapiHeaders, context, "en");
+    BaseTransactionService baseTransactionService = new BaseTransactionService(new RestClient(ResourcePathResolver.resourcesPath(ResourcePathResolver.FINANCE_TRANSACTIONS)));
+    EncumbranceService encumbranceService = new EncumbranceService(baseTransactionService);
+    InvoiceHelper invoiceHelper = new InvoiceHelper(okapiHeaders, context, "en", encumbranceService);
+
+    InvoiceRetrieveService service = new InvoiceRetrieveService(invoiceHelper);
     JsonObject vouchersList = new JsonObject(getMockData(VOUCHERS_LIST_PATH));
     List<Voucher> vouchers = vouchersList.getJsonArray("vouchers").stream()
       .map(obj -> ((JsonObject) obj).mapTo(Voucher.class))
@@ -56,7 +65,11 @@ public class InvoiceRetrieveServiceTest extends ApiTestBase {
 
   @Test
   public void positiveGetInvoiceMapTest() throws IOException, ExecutionException, InterruptedException {
-    InvoiceRetrieveService service = new InvoiceRetrieveService(okapiHeaders, context, "en");
+    BaseTransactionService baseTransactionService = new BaseTransactionService(new RestClient(ResourcePathResolver.resourcesPath(ResourcePathResolver.FINANCE_TRANSACTIONS)));
+    EncumbranceService encumbranceService = new EncumbranceService(baseTransactionService);
+    InvoiceHelper invoiceHelper = new InvoiceHelper(okapiHeaders, context, "en", encumbranceService);
+
+    InvoiceRetrieveService service = new InvoiceRetrieveService(invoiceHelper);
     JsonObject vouchersList = new JsonObject(getMockData(VOUCHERS_LIST_PATH));
     List<Voucher> vouchers = vouchersList.getJsonArray("vouchers") .stream()
       .map(obj -> ((JsonObject) obj).mapTo(Voucher.class))
