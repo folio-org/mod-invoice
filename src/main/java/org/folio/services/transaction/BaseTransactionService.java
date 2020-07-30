@@ -6,9 +6,12 @@ import static org.folio.invoices.utils.HelperUtils.convertIdsToCqlQuery;
 import static org.folio.rest.RestConstants.MAX_IDS_FOR_GET_RQ;
 
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
+import org.apache.commons.collections4.CollectionUtils;
 import org.folio.rest.acq.model.finance.Transaction;
 import org.folio.rest.acq.model.finance.TransactionCollection;
 import org.folio.rest.core.RestClient;
@@ -27,21 +30,24 @@ public class BaseTransactionService {
     return trFinanceRestClient.get(query, offset, limit, requestContext, TransactionCollection.class);
   }
 
-  public CompletableFuture<List<Transaction>> getTransactions(List<String> expenseClassIds, RequestContext requestContext) {
-    List<CompletableFuture<TransactionCollection>> expenseClassesFutureList = StreamEx
-      .ofSubLists(expenseClassIds, MAX_IDS_FOR_GET_RQ)
-      .map(ids ->  getTransactionsChunk(expenseClassIds, requestContext))
-      .collect(toList());
+  public CompletableFuture<List<Transaction>> getTransactions(List<String> transactionIds, RequestContext requestContext) {
+    if (!CollectionUtils.isEmpty(transactionIds)) {
+      List<CompletableFuture<TransactionCollection>> expenseClassesFutureList = StreamEx
+        .ofSubLists(transactionIds, MAX_IDS_FOR_GET_RQ)
+        .map(ids -> getTransactionsChunk(transactionIds, requestContext))
+        .collect(toList());
 
-    return collectResultsOnSuccess(expenseClassesFutureList)
-      .thenApply(expenseClassCollections ->
-        expenseClassCollections.stream().flatMap(col -> col.getTransactions().stream()).collect(toList())
-      );
+      return collectResultsOnSuccess(expenseClassesFutureList)
+        .thenApply(expenseClassCollections ->
+          expenseClassCollections.stream().flatMap(col -> col.getTransactions().stream()).collect(toList())
+        );
+    }
+    return CompletableFuture.completedFuture(Collections.emptyList());
   }
 
-  private CompletableFuture<TransactionCollection> getTransactionsChunk(List<String> expenseClassIds, RequestContext requestContext) {
-    String query = convertIdsToCqlQuery(new ArrayList<>(expenseClassIds));
-    return this.getTransactions(query, 0, expenseClassIds.size(), requestContext);
+  private CompletableFuture<TransactionCollection> getTransactionsChunk(List<String> transactionIds, RequestContext requestContext) {
+    String query = convertIdsToCqlQuery(new ArrayList<>(transactionIds));
+    return this.getTransactions(query, 0, transactionIds.size(), requestContext);
   }
 
 }

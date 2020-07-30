@@ -1118,10 +1118,7 @@ public class InvoiceHelper extends AbstractHelper {
   }
 
   private boolean isEncumbrancePresent(List<FundDistribution> fundDistributions) {
-    return fundDistributions.stream()
-                            .filter(fund -> Objects.isNull(fund.getEncumbrance()))
-                            .findAny()
-                            .isPresent();
+    return fundDistributions.stream().anyMatch(fund -> Objects.isNull(fund.getEncumbrance()));
   }
 
   private void updateFundDistributionsWithEncumbrances(List<InvoiceLine> invoiceLines
@@ -1130,7 +1127,7 @@ public class InvoiceHelper extends AbstractHelper {
       .map(line -> line.getFundDistributions().stream().collect(groupingBy(fund -> Pair.of(line.getPoLineId(), fund.getFundId()))))
       .collect(toList());
 
-    fundDistrByPoLineAndFundIdMap.forEach(fundDistrByPoLineAndFundId -> {
+    fundDistrByPoLineAndFundIdMap.forEach(fundDistrByPoLineAndFundId ->
       fundDistrByPoLineAndFundId.entrySet().forEach(entry -> {
         List<Transaction> encumbrances = encumbrByPoLineAndFundIdMap.get(entry.getKey());
         if (!CollectionUtils.isEmpty(encumbrances)) {
@@ -1138,9 +1135,7 @@ public class InvoiceHelper extends AbstractHelper {
           FundDistribution fundDistribution = entry.getValue().get(0);
           fundDistribution.withEncumbrance(encumbrance.getId());
         }
-      });
-   });
+      })
+   );
   }
-
-
 }
