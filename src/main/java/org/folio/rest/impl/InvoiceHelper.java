@@ -72,6 +72,7 @@ import javax.money.convert.CurrencyConversion;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.collections4.ListUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.tuple.Pair;
 import org.folio.HttpStatus;
 import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.invoices.utils.AcqDesiredPermissions;
@@ -101,6 +102,7 @@ import org.folio.rest.jaxrs.model.Voucher;
 import org.folio.rest.jaxrs.model.VoucherLine;
 import org.folio.services.adjusment.AdjustmentsService;
 import org.folio.services.expence.ExpenseClassRetrieveService;
+import org.folio.services.transaction.EncumbranceService;
 import org.folio.services.validator.InvoiceValidator;
 import org.folio.spring.SpringContextUtil;
 import org.javamoney.moneta.Money;
@@ -138,6 +140,8 @@ public class InvoiceHelper extends AbstractHelper {
   private ExpenseClassRetrieveService expenseClassRetrieveService;
   @Autowired
   private RestClient invoiceStorageRestClient;
+  @Autowired
+  private EncumbranceService encumbranceService;
 
   public InvoiceHelper(Map<String, String> okapiHeaders, Context ctx, String lang) {
     super(getHttpClient(okapiHeaders), okapiHeaders, ctx, lang);
@@ -512,6 +516,7 @@ public class InvoiceHelper extends AbstractHelper {
 
     return loadTenantConfiguration(SYSTEM_CONFIG_QUERY, VOUCHER_NUMBER_CONFIG_QUERY)
       .thenCompose(ok -> getInvoiceLinesWithTotals(invoice))
+      .thenCompose(lines -> updateInvoiceLinesWithEncumbrances(lines, new RequestContext(ctx, okapiHeaders)).thenApply(v -> lines))
       .thenCompose(lines -> {
         validator.validateBeforeApproval(invoice, lines);
         return financeHelper.checkEnoughMoneyInBudget(lines, invoice)
@@ -1092,5 +1097,45 @@ public class InvoiceHelper extends AbstractHelper {
       .map(line -> Money.of(line.getAdjustmentsTotal(), currency))
       .collect(MonetaryFunctions.summarizingMonetary(currency))
       .getSum();
+  }
+
+  private CompletableFuture<Void> updateInvoiceLinesWithEncumbrances(List<InvoiceLine> invoiceLines, RequestContext requestContext) {
+    List<String> poLineIds = getPoLineIds(invoiceLines);
+    if (!poLineIds.isEmpty()) {
+      return encumbranceService.getEncumbrancesByPoLineIds(poLineIds, requestContext)
+        .thenApply(encumbrances -> encumbrances.stream()
+          .collect(groupingBy(encumbr -> Pair.of(encumbr.getEncumbrance().getSourcePoLineId(), encumbr.getFromFundId()))))
+        .thenAccept(encumbrByPoLineAndFundIdMap -> updateFundDistributionsWithEncumbrances(invoiceLines, encumbrByPoLineAndFundIdMap));
+    }
+    return CompletableFuture.completedFuture(null);
+  }
+
+  private List<String> getPoLineIds(List<InvoiceLine> invoiceLines) {
+    return invoiceLines.stream()
+                      .filter(invoiceLine -> isEncumbrancePresent(invoiceLine.getFundDistributions()))
+                      .map(InvoiceLine::getPoLineId)
+                      .collect(toList());
+  }
+
+  private boolean isEncumbrancePresent(List<FundDistribution> fundDistributions) {
+    return fundDistributions.stream().anyMatch(fund -> Objects.isNull(fund.getEncumbrance()));
+  }
+
+  private void updateFundDistributionsWithEncumbrances(List<InvoiceLine> invoiceLines
+                              , Map<Pair<String, String>, List<Transaction>> encumbrByPoLineAndFundIdMap) {
+    List<Map<Pair<String, String>, List<FundDistribution>>> fundDistrByPoLineAndFundIdMap = invoiceLines.stream()
+      .map(line -> line.getFundDistributions().stream().collect(groupingBy(fund -> Pair.of(line.getPoLineId(), fund.getFundId()))))
+      .collect(toList());
+
+    fundDistrByPoLineAndFundIdMap.forEach(fundDistrByPoLineAndFundId ->
+      fundDistrByPoLineAndFundId.entrySet().forEach(entry -> {
+        List<Transaction> encumbrances = encumbrByPoLineAndFundIdMap.get(entry.getKey());
+        if (!CollectionUtils.isEmpty(encumbrances)) {
+          Transaction encumbrance = encumbrances.get(0);
+          FundDistribution fundDistribution = entry.getValue().get(0);
+          fundDistribution.withEncumbrance(encumbrance.getId());
+        }
+      })
+   );
   }
 }

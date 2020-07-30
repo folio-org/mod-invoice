@@ -33,6 +33,7 @@ import org.folio.rest.impl.protection.InvoicesProtectionTest;
 import org.folio.rest.impl.protection.LinesProtectionTest;
 import org.folio.rest.tools.utils.NetworkUtils;
 import org.folio.schemas.xsd.BatchVoucherSchemaXSDTest;
+import org.folio.services.transaction.BaseTransactionServiceTest;
 import org.folio.services.validator.InvoiceLineValidator;
 import org.folio.services.validator.InvoiceLineValidatorTest;
 import org.folio.services.voucher.BatchVoucherGenerateServiceTest;
@@ -225,5 +226,9 @@ public class ApiTestSuite {
 
   @Nested
   class InvoiceLineValidatorTestNested extends InvoiceLineValidatorTest {
+  }
+
+  @Nested
+  class BaseTransactionServiceTestNested extends BaseTransactionServiceTest {
   }
 }
