@@ -19,6 +19,7 @@ import org.folio.rest.impl.protection.InvoicesProtectionTest;
 import org.folio.rest.impl.protection.LinesProtectionTest;
 import org.folio.rest.tools.utils.NetworkUtils;
 import org.folio.schemas.xsd.BatchVoucherSchemaXSDTest;
+import org.folio.services.transaction.BaseTransactionServiceTest;
 import org.folio.services.voucher.BatchVoucherGenerateServiceTest;
 import org.folio.services.InvoiceRetrieveServiceTest;
 import org.folio.services.voucher.UploadBatchVoucherExportServiceTest;
@@ -205,5 +206,9 @@ public class ApiTestSuite {
 
   @Nested
   class UploadBatchVoucherExportServiceTestNested extends UploadBatchVoucherExportServiceTest {
+  }
+
+  @Nested
+  class BaseTransactionServiceTestNested extends BaseTransactionServiceTest {
   }
 }

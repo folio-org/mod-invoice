@@ -80,6 +80,7 @@ import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.collections4.ListUtils;
 import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.tuple.Pair;
 import org.folio.HttpStatus;
 import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.invoices.utils.AcqDesiredPermissions;
@@ -92,6 +93,8 @@ import org.folio.rest.acq.model.finance.FundCollection;
 import org.folio.rest.acq.model.finance.InvoiceTransactionSummary;
 import org.folio.rest.acq.model.finance.Transaction;
 import org.folio.rest.acq.model.orders.CompositePoLine;
+import org.folio.rest.core.RestClient;
+import org.folio.rest.core.models.RequestContext;
 import org.folio.rest.jaxrs.model.Adjustment;
 import org.folio.rest.jaxrs.model.Config;
 import org.folio.rest.jaxrs.model.Error;
@@ -103,10 +106,14 @@ import org.folio.rest.jaxrs.model.Parameter;
 import org.folio.rest.jaxrs.model.SequenceNumber;
 import org.folio.rest.jaxrs.model.Voucher;
 import org.folio.rest.jaxrs.model.VoucherLine;
+import org.folio.services.transaction.EncumbranceService;
+import org.folio.spring.SpringContextUtil;
 import org.javamoney.moneta.Money;
 import org.javamoney.moneta.function.MonetaryFunctions;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import io.vertx.core.Context;
+import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import me.escoffier.vertx.completablefuture.VertxCompletableFuture;
@@ -132,9 +139,14 @@ public class InvoiceHelper extends AbstractHelper {
   private final VoucherLineHelper voucherLineHelper;
   private final ProtectionHelper protectionHelper;
   private final FinanceHelper financeHelper;
+  @Autowired
+  private RestClient invoiceStorageRestClient;
+  @Autowired
+  private EncumbranceService encumbranceService;
 
   public InvoiceHelper(Map<String, String> okapiHeaders, Context ctx, String lang) {
     super(getHttpClient(okapiHeaders), okapiHeaders, ctx, lang);
+    SpringContextUtil.autowireDependencies(this, Vertx.currentContext());
     invoiceLineHelper = new InvoiceLineHelper(httpClient, okapiHeaders, ctx, lang);
     voucherHelper = new VoucherHelper(httpClient, okapiHeaders, ctx, lang);
     voucherLineHelper = new VoucherLineHelper(httpClient, okapiHeaders, ctx, lang);
@@ -146,8 +158,8 @@ public class InvoiceHelper extends AbstractHelper {
   public CompletableFuture<Invoice> createInvoice(Invoice invoice) {
     return validateAcqUnitsOnCreate(invoice.getAcqUnitIds())
       .thenCompose(v -> updateWithSystemGeneratedData(invoice))
-      .thenApply(ok -> JsonObject.mapFrom(invoice))
-      .thenCompose(jsonInvoice -> createRecordInStorage(jsonInvoice, resourcesPath(INVOICES)))
+      .thenCompose(v -> invoiceStorageRestClient.post(invoice, new RequestContext(ctx, okapiHeaders), Invoice.class))
+      .thenApply(Invoice::getId)
       .thenApply(invoice::withId);
   }
 
@@ -222,7 +234,7 @@ public class InvoiceHelper extends AbstractHelper {
    * @return completable future with {@link Invoice} on success or an exception if processing fails
    */
   public CompletableFuture<Invoice> getInvoiceRecord(String id) {
-    return getInvoiceById(id, lang, httpClient, ctx, okapiHeaders, logger);
+    return invoiceStorageRestClient.getById(id, new RequestContext(ctx, okapiHeaders), Invoice.class);
   }
 
   /**
@@ -276,7 +288,7 @@ public class InvoiceHelper extends AbstractHelper {
   public CompletableFuture<Void> deleteInvoice(String id) {
     return getInvoiceRecord(id)
     .thenCompose(invoice -> protectionHelper.isOperationRestricted(invoice.getAcqUnitIds(), ProtectedOperationType.DELETE))
-    .thenCompose(v -> handleDeleteRequest(resourceByIdPath(INVOICES, id, lang), httpClient, ctx, okapiHeaders, logger));
+    .thenCompose(v -> invoiceStorageRestClient.delete(id, new RequestContext(ctx, okapiHeaders)));
   }
 
   /**
@@ -488,6 +500,7 @@ public class InvoiceHelper extends AbstractHelper {
 
     return loadTenantConfiguration(SYSTEM_CONFIG_QUERY, VOUCHER_NUMBER_CONFIG_QUERY)
       .thenCompose(ok -> getInvoiceLinesWithTotals(invoice))
+      .thenCompose(lines -> updateInvoiceLinesWithEncumbrances(lines, new RequestContext(ctx, okapiHeaders)).thenApply(v -> lines))
       .thenCompose(lines -> {
         validateBeforeApproval(invoice, lines);
         return createPendingPaymentsWithInvoiceSummary(lines, invoice)
@@ -1141,5 +1154,45 @@ public class InvoiceHelper extends AbstractHelper {
       .map(line -> Money.of(line.getAdjustmentsTotal(), currency))
       .collect(MonetaryFunctions.summarizingMonetary(currency))
       .getSum();
+  }
+
+  private CompletableFuture<Void> updateInvoiceLinesWithEncumbrances(List<InvoiceLine> invoiceLines, RequestContext requestContext) {
+    List<String> poLineIds = getPoLineIds(invoiceLines);
+    if (!poLineIds.isEmpty()) {
+      return encumbranceService.getEncumbrancesByPoLineIds(poLineIds, requestContext)
+        .thenApply(encumbrances -> encumbrances.stream()
+          .collect(groupingBy(encumbr -> Pair.of(encumbr.getEncumbrance().getSourcePoLineId(), encumbr.getFromFundId()))))
+        .thenAccept(encumbrByPoLineAndFundIdMap -> updateFundDistributionsWithEncumbrances(invoiceLines, encumbrByPoLineAndFundIdMap));
+    }
+    return CompletableFuture.completedFuture(null);
+  }
+
+  private List<String> getPoLineIds(List<InvoiceLine> invoiceLines) {
+    return invoiceLines.stream()
+                      .filter(invoiceLine -> isEncumbrancePresent(invoiceLine.getFundDistributions()))
+                      .map(InvoiceLine::getPoLineId)
+                      .collect(toList());
+  }
+
+  private boolean isEncumbrancePresent(List<FundDistribution> fundDistributions) {
+    return fundDistributions.stream().anyMatch(fund -> Objects.isNull(fund.getEncumbrance()));
+  }
+
+  private void updateFundDistributionsWithEncumbrances(List<InvoiceLine> invoiceLines
+                              , Map<Pair<String, String>, List<Transaction>> encumbrByPoLineAndFundIdMap) {
+    List<Map<Pair<String, String>, List<FundDistribution>>> fundDistrByPoLineAndFundIdMap = invoiceLines.stream()
+      .map(line -> line.getFundDistributions().stream().collect(groupingBy(fund -> Pair.of(line.getPoLineId(), fund.getFundId()))))
+      .collect(toList());
+
+    fundDistrByPoLineAndFundIdMap.forEach(fundDistrByPoLineAndFundId ->
+      fundDistrByPoLineAndFundId.entrySet().forEach(entry -> {
+        List<Transaction> encumbrances = encumbrByPoLineAndFundIdMap.get(entry.getKey());
+        if (!CollectionUtils.isEmpty(encumbrances)) {
+          Transaction encumbrance = encumbrances.get(0);
+          FundDistribution fundDistribution = entry.getValue().get(0);
+          fundDistribution.withEncumbrance(encumbrance.getId());
+        }
+      })
+   );
   }
 }
