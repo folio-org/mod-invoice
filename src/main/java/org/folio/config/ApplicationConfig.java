@@ -8,15 +8,10 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 import static org.folio.invoices.utils.ResourcePathResolver.FINANCE_TRANSACTIONS;
-import static org.folio.invoices.utils.ResourcePathResolver.INVOICES;
 
 @Configuration
 @ComponentScan({"org.folio"})
 public class ApplicationConfig {
-  @Bean
-  RestClient invoiceStorageRestClient() {
-    return new RestClient(ResourcePathResolver.resourcesPath(INVOICES));
-  }
 
   @Bean
   RestClient trFinanceRestClient() {

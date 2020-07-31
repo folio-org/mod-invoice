@@ -140,8 +140,6 @@ public class InvoiceHelper extends AbstractHelper {
   private final ProtectionHelper protectionHelper;
   private final FinanceHelper financeHelper;
   @Autowired
-  private RestClient invoiceStorageRestClient;
-  @Autowired
   private EncumbranceService encumbranceService;
 
   public InvoiceHelper(Map<String, String> okapiHeaders, Context ctx, String lang) {
@@ -168,8 +166,8 @@ public class InvoiceHelper extends AbstractHelper {
   public CompletableFuture<Invoice> createInvoice(Invoice invoice) {
     return validateAcqUnitsOnCreate(invoice.getAcqUnitIds())
       .thenCompose(v -> updateWithSystemGeneratedData(invoice))
-      .thenCompose(v -> invoiceStorageRestClient.post(invoice, new RequestContext(ctx, okapiHeaders), Invoice.class))
-      .thenApply(Invoice::getId)
+      .thenApply(ok -> JsonObject.mapFrom(invoice))
+      .thenCompose(jsonInvoice -> createRecordInStorage(jsonInvoice, resourcesPath(INVOICES)))
       .thenApply(invoice::withId);
   }
 
@@ -244,7 +242,7 @@ public class InvoiceHelper extends AbstractHelper {
    * @return completable future with {@link Invoice} on success or an exception if processing fails
    */
   public CompletableFuture<Invoice> getInvoiceRecord(String id) {
-    return invoiceStorageRestClient.getById(id, new RequestContext(ctx, okapiHeaders), Invoice.class);
+    return getInvoiceById(id, lang, httpClient, ctx, okapiHeaders, logger);
   }
 
   /**
@@ -298,7 +296,7 @@ public class InvoiceHelper extends AbstractHelper {
   public CompletableFuture<Void> deleteInvoice(String id) {
     return getInvoiceRecord(id)
     .thenCompose(invoice -> protectionHelper.isOperationRestricted(invoice.getAcqUnitIds(), ProtectedOperationType.DELETE))
-    .thenCompose(v -> invoiceStorageRestClient.delete(id, new RequestContext(ctx, okapiHeaders)));
+    .thenCompose(v -> handleDeleteRequest(resourceByIdPath(INVOICES, id, lang), httpClient, ctx, okapiHeaders, logger));
   }
 
   /**

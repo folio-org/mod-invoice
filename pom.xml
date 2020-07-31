@@ -25,7 +25,7 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <mod-configuration-client.version>5.1.0</mod-configuration-client.version>
     <spring.version>5.1.1.RELEASE</spring.version>
-    <sonar.exclusions>**/models/*Holder.java,**/models/*DTO.java</sonar.exclusions>
+    <sonar.exclusions>**/models/*.java</sonar.exclusions>
     <sonar.test.exclusions>**/*Test.java</sonar.test.exclusions>
   </properties>
 
@@ -43,8 +43,7 @@
     <dependency>
       <groupId>org.folio</groupId>
       <artifactId>folio-di-support</artifactId>
-      <version>1.0.0</version>
-      <type>jar</type>
+      <version>1.1.0</version>
     </dependency>
     <dependency>
       <groupId>one.util</groupId>
@@ -107,6 +106,11 @@
       <artifactId>spring-test</artifactId>
       <version>${spring.version}</version>
       <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework</groupId>
+      <artifactId>spring-context</artifactId>
+      <version>${spring.version}</version>
     </dependency>
     <dependency>
       <groupId>org.jvnet.jaxb2_commons</groupId>
