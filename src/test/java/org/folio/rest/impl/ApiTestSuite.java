@@ -9,6 +9,7 @@ import org.folio.converters.BatchVoucherModelConverterTest;
 import org.folio.converters.BatchedVoucherLinesModelConverterTest;
 import org.folio.converters.BatchedVoucherModelConverterTest;
 import org.folio.invoices.events.handlers.InvoiceSummaryTest;
+import org.folio.rest.core.RestClientTest;
 import org.folio.services.ftp.FtpUploadServiceTest;
 import org.folio.invoices.util.HelperUtilsTest;
 import org.folio.jaxb.DefaultJAXBRootElementNameResolverTest;
@@ -210,5 +211,9 @@ public class ApiTestSuite {
 
   @Nested
   class BaseTransactionServiceTestNested extends BaseTransactionServiceTest {
+  }
+
+  @Nested
+  class RestClientTestNested extends RestClientTest {
   }
 }
