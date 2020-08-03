@@ -515,10 +515,15 @@ public class InvoiceHelper extends AbstractHelper {
   }
 
   private void invalidateInvoiceLinesCache(List<InvoiceLine> invoiceLines) {
-    invoiceLines.forEach(invoiceLine -> {
-      storedInvoiceLines.removeIf(line -> line.getId().equals(invoiceLine.getId()));
-      storedInvoiceLines.add(invoiceLine);
-    });
+    if (!CollectionUtils.isEmpty(storedInvoiceLines) && !CollectionUtils.isEmpty(invoiceLines)) {
+      Map<String, List<InvoiceLine>> linesByIdMap = invoiceLines.stream().collect(groupingBy(InvoiceLine::getId));
+      for (Map.Entry<String, List<InvoiceLine>> entry : linesByIdMap.entrySet()) {
+        boolean isRemoved = storedInvoiceLines.removeIf(line -> line.getId().equals(entry.getKey()));
+        if (isRemoved) {
+          storedInvoiceLines.addAll(entry.getValue());
+        }
+      }
+    }
   }
 
   private void validateBeforeApproval(Invoice invoice, List<InvoiceLine> lines) {
@@ -734,7 +739,6 @@ public class InvoiceHelper extends AbstractHelper {
   }
 
   private CompletableFuture<Void> createPendingPaymentsWithInvoiceSummary(List<InvoiceLine> invoiceLines, Invoice invoice) {
-
     return financeHelper.buildPendingPaymentTransactions(invoiceLines, invoice)
       .thenCompose(pendingPayments -> {
         InvoiceTransactionSummary summary = buildInvoiceTransactionsSummary(invoice, pendingPayments.size());
