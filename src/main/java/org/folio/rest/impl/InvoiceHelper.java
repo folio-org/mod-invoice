@@ -456,11 +456,7 @@ public class InvoiceHelper extends AbstractHelper {
   private CompletableFuture<Void> persistInvoiceLineUpdates(Invoice updatedInvoice, InvoiceLine invoiceLine) {
     calculateInvoiceLineTotals(invoiceLine, updatedInvoice);
     return invoiceLineHelper.updateInvoiceLineToStorage(invoiceLine)
-      .thenAccept(ok -> {
-        // Replace invoice line in the local "cache" on success
-        storedInvoiceLines.removeIf(line -> line.getId().equals(invoiceLine.getId()));
-        storedInvoiceLines.add(invoiceLine);
-      });
+      .thenAccept(ok -> invalidateInvoiceLinesCache(Collections.singletonList(invoiceLine)));
   }
 
   private void setSystemGeneratedData(Invoice invoiceFromStorage, Invoice invoice) {
@@ -510,10 +506,24 @@ public class InvoiceHelper extends AbstractHelper {
       .thenCompose(lines -> updateInvoiceLinesWithEncumbrances(lines, new RequestContext(ctx, okapiHeaders)).thenApply(v -> lines))
       .thenCompose(lines -> {
         validateBeforeApproval(invoice, lines);
-        return createPendingPaymentsWithInvoiceSummary(lines, invoice)
+        return invoiceLineHelper.persistInvoiceLines(lines)
+          .thenCompose(v -> createPendingPaymentsWithInvoiceSummary(lines, invoice))
           .thenCompose(v -> prepareVoucher(invoice)
-          .thenCompose(voucher -> handleVoucherWithLines(getAllFundDistributions(lines, invoice), voucher)));
+          .thenCompose(voucher -> handleVoucherWithLines(getAllFundDistributions(lines, invoice), voucher)))
+          .thenAccept(v -> invalidateInvoiceLinesCache(lines));
       });
+  }
+
+  private void invalidateInvoiceLinesCache(List<InvoiceLine> invoiceLines) {
+    if (!CollectionUtils.isEmpty(storedInvoiceLines) && !CollectionUtils.isEmpty(invoiceLines)) {
+      Map<String, List<InvoiceLine>> linesByIdMap = invoiceLines.stream().collect(groupingBy(InvoiceLine::getId));
+      for (Map.Entry<String, List<InvoiceLine>> entry : linesByIdMap.entrySet()) {
+        boolean isRemoved = storedInvoiceLines.removeIf(line -> line.getId().equals(entry.getKey()));
+        if (isRemoved) {
+          storedInvoiceLines.addAll(entry.getValue());
+        }
+      }
+    }
   }
 
   private void validateBeforeApproval(Invoice invoice, List<InvoiceLine> lines) {
@@ -729,7 +739,6 @@ public class InvoiceHelper extends AbstractHelper {
   }
 
   private CompletableFuture<Void> createPendingPaymentsWithInvoiceSummary(List<InvoiceLine> invoiceLines, Invoice invoice) {
-
     return financeHelper.buildPendingPaymentTransactions(invoiceLines, invoice)
       .thenCompose(pendingPayments -> {
         InvoiceTransactionSummary summary = buildInvoiceTransactionsSummary(invoice, pendingPayments.size());
