@@ -28,6 +28,10 @@ public class InvoiceRetrieveService {
     this.invoiceHelper = new InvoiceHelper(okapiHeaders, ctx, lang);
   }
 
+  public InvoiceRetrieveService(InvoiceHelper invoiceHelper) {
+    this.invoiceHelper = invoiceHelper;
+  }
+
   public CompletableFuture<Map<String, Invoice>> getInvoiceMap(VoucherCollection voucherCollection) {
     CompletableFuture<Map<String, Invoice>> future = new CompletableFuture<>();
     getInvoicesByChunks(voucherCollection.getVouchers())

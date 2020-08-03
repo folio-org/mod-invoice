@@ -45,6 +45,15 @@ public class BatchVoucherGenerateService {
     batchGroupHelper = new BatchGroupHelper(okapiHeaders, ctx, lang);
   }
 
+  public BatchVoucherGenerateService(Map<String, String> okapiHeaders, Context ctx, String lang
+          , InvoiceRetrieveService invoiceRetrieveService) {
+    vendorRetrieveService = new VendorRetrieveService(okapiHeaders, ctx, lang);
+    voucherLinesRetrieveService = new VoucherLinesRetrieveService(okapiHeaders, ctx, lang);
+    voucherHelper = new VoucherHelper(okapiHeaders, ctx, lang);
+    batchGroupHelper = new BatchGroupHelper(okapiHeaders, ctx, lang);
+    this. invoiceRetrieveService = invoiceRetrieveService;
+  }
+
   public CompletableFuture<BatchVoucher> generateBatchVoucher(BatchVoucherExport batchVoucherExport) {
     CompletableFuture<BatchVoucher> future = new CompletableFuture<>();
     String voucherCQL = buildBatchVoucherQuery(batchVoucherExport);

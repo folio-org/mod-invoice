@@ -11,9 +11,15 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.ExecutionException;
 
+import org.folio.invoices.utils.ResourcePathResolver;
+import org.folio.rest.core.RestClient;
 import org.folio.rest.impl.ApiTestBase;
+import org.folio.rest.impl.InvoiceHelper;
 import org.folio.rest.jaxrs.model.BatchVoucher;
 import org.folio.rest.jaxrs.model.BatchVoucherExport;
+import org.folio.services.InvoiceRetrieveService;
+import org.folio.services.transaction.BaseTransactionService;
+import org.folio.services.transaction.EncumbranceService;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -22,14 +28,14 @@ import io.vertx.core.Context;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
 
-
 public class BatchVoucherGenerateServiceTest extends ApiTestBase {
-  private Context context;
-  private Map<String, String> okapiHeaders;
   private static final String VALID_BATCH_VOUCHER_EXPORTS_ID ="566c9156-e52f-4597-9fee-5ddac91d14f2";
   public static final String BATCH_VOUCHER_EXPORTS_MOCK_DATA_PATH = BASE_MOCK_DATA_PATH + "batchVoucherExports/";
   private static final String BATCH_VOUCHER_EXPORT_SAMPLE_PATH = BATCH_VOUCHER_EXPORTS_MOCK_DATA_PATH
     + VALID_BATCH_VOUCHER_EXPORTS_ID + ".json";
+
+  private Context context;
+  private Map<String, String> okapiHeaders;
 
   @BeforeEach
   public void setUp()  {
@@ -44,7 +50,12 @@ public class BatchVoucherGenerateServiceTest extends ApiTestBase {
 
   @Test
   public void positiveGenerateBatchVoucherTest() throws IOException, ExecutionException, InterruptedException {
-    BatchVoucherGenerateService service = new BatchVoucherGenerateService(okapiHeaders, context, "en");
+    BaseTransactionService baseTransactionService = new BaseTransactionService(new RestClient(ResourcePathResolver.resourcesPath(ResourcePathResolver.FINANCE_TRANSACTIONS)));
+    EncumbranceService encumbranceService = new EncumbranceService(baseTransactionService);
+    InvoiceHelper invoiceHelper = new InvoiceHelper(okapiHeaders, context, "en", encumbranceService);
+    InvoiceRetrieveService invoiceRetrieveService = new InvoiceRetrieveService(invoiceHelper);
+
+    BatchVoucherGenerateService service = new BatchVoucherGenerateService(okapiHeaders, context, "en", invoiceRetrieveService);
     BatchVoucherExport batchVoucherExport = new JsonObject(getMockData(BATCH_VOUCHER_EXPORT_SAMPLE_PATH)).mapTo(BatchVoucherExport.class);
 
     CompletableFuture<BatchVoucher> future = service.generateBatchVoucher(batchVoucherExport);
@@ -55,7 +66,12 @@ public class BatchVoucherGenerateServiceTest extends ApiTestBase {
   @Test
   public void negativeGetbatchVoucherIfVouchersIsAbsentTest() {
     Assertions.assertThrows(CompletionException.class, () -> {
-      BatchVoucherGenerateService service = new BatchVoucherGenerateService(okapiHeaders, context, "en");
+      BaseTransactionService baseTransactionService = new BaseTransactionService(new RestClient(ResourcePathResolver.resourcesPath(ResourcePathResolver.FINANCE_TRANSACTIONS)));
+      EncumbranceService encumbranceService = new EncumbranceService(baseTransactionService);
+      InvoiceHelper invoiceHelper = new InvoiceHelper(okapiHeaders, context, "en", encumbranceService);
+      InvoiceRetrieveService invoiceRetrieveService = new InvoiceRetrieveService(invoiceHelper);
+
+      BatchVoucherGenerateService service = new BatchVoucherGenerateService(okapiHeaders, context, "en", invoiceRetrieveService);
       BatchVoucherExport batchVoucherExport = new BatchVoucherExport();
       CompletableFuture<BatchVoucher> future = service.generateBatchVoucher(batchVoucherExport);
       future.join();
