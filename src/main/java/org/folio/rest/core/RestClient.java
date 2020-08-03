@@ -189,7 +189,7 @@ public class RestClient {
     return future;
   }
 
-  private HttpClientInterface getHttpClient(Map<String, String> okapiHeaders) {
+  protected HttpClientInterface getHttpClient(Map<String, String> okapiHeaders) {
     final String okapiURL = okapiHeaders.getOrDefault(RestConstants.OKAPI_URL, "");
     final String tenantId = TenantTool.calculateTenantId(okapiHeaders.get(OKAPI_HEADER_TENANT));
 

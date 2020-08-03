@@ -465,11 +465,7 @@ public class InvoiceHelper extends AbstractHelper {
   private CompletableFuture<Void> persistInvoiceLineUpdates(Invoice updatedInvoice, InvoiceLine invoiceLine) {
     calculateInvoiceLineTotals(invoiceLine, updatedInvoice);
     return invoiceLineHelper.updateInvoiceLineToStorage(invoiceLine)
-      .thenAccept(ok -> {
-        // Replace invoice line in the local "cache" on success
-        storedInvoiceLines.removeIf(line -> line.getId().equals(invoiceLine.getId()));
-        storedInvoiceLines.add(invoiceLine);
-      });
+      .thenAccept(ok -> invalidateInvoiceLinesCache(Collections.singletonList(invoiceLine)));
   }
 
   private void setSystemGeneratedData(Invoice invoiceFromStorage, Invoice invoice) {
@@ -520,11 +516,25 @@ public class InvoiceHelper extends AbstractHelper {
       .thenCompose(lines -> {
         validator.validateBeforeApproval(invoice, lines);
         return financeHelper.checkEnoughMoneyInBudget(lines, invoice)
+          .thenCompose(v -> invoiceLineHelper.persistInvoiceLines(lines))
+          .thenAccept(v -> invalidateInvoiceLinesCache(lines))
           .thenCompose(v -> financeHelper.checkExpenseClasses(lines, invoice))
           .thenCompose(v -> createPendingPaymentsWithInvoiceSummary(lines, invoice))
           .thenCompose(v -> prepareVoucher(invoice))
           .thenCompose(voucher -> handleVoucherWithLines(getAllFundDistributions(lines, invoice), voucher));
       });
+  }
+
+  private void invalidateInvoiceLinesCache(List<InvoiceLine> invoiceLines) {
+    if (!CollectionUtils.isEmpty(storedInvoiceLines) && !CollectionUtils.isEmpty(invoiceLines)) {
+      Map<String, List<InvoiceLine>> linesByIdMap = invoiceLines.stream().collect(groupingBy(InvoiceLine::getId));
+      for (Map.Entry<String, List<InvoiceLine>> entry : linesByIdMap.entrySet()) {
+        boolean isRemoved = storedInvoiceLines.removeIf(line -> line.getId().equals(entry.getKey()));
+        if (isRemoved) {
+          storedInvoiceLines.addAll(entry.getValue());
+        }
+      }
+    }
   }
 
   private List<FundDistribution> getAllFundDistributions(List<InvoiceLine> invoiceLines, Invoice invoice) {
