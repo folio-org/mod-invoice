@@ -11,6 +11,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.verify;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -105,7 +106,42 @@ public class RestClientTest {
   }
 
   @Test
-  public void testShouldThrowExceptionWhenCreatingEntity() throws Exception {
+  public void testPutShouldCreateEntity() throws Exception {
+    RestClient restClient = Mockito.spy(new RestClient(FINANCE_STORAGE_TRANSACTIONS));
+
+    String uuid = UUID.randomUUID().toString();
+    Transaction expTransaction = new Transaction().withId(uuid);
+    Response response = new Response();
+    response.setCode(204);
+
+    doReturn(httpClient).when(restClient).getHttpClient(okapiHeaders);
+    String endpoint = FINANCE_STORAGE_TRANSACTIONS + "/" + uuid;
+    doReturn(completedFuture(response)).when(httpClient).request(eq(HttpMethod.PUT), any(), eq(endpoint), eq(okapiHeaders));
+
+    restClient.put(uuid, expTransaction, requestContext).get();
+
+    verify(httpClient).request(eq(HttpMethod.PUT), any(), eq(endpoint), eq(okapiHeaders));
+  }
+
+  @Test
+  public void testDeleteShouldCreateEntity() throws Exception {
+    RestClient restClient = Mockito.spy(new RestClient(FINANCE_STORAGE_TRANSACTIONS));
+
+    String uuid = UUID.randomUUID().toString();
+    Response response = new Response();
+    response.setCode(204);
+
+    doReturn(httpClient).when(restClient).getHttpClient(okapiHeaders);
+    String endpoint = FINANCE_STORAGE_TRANSACTIONS + "/" + uuid;
+    doReturn(completedFuture(response)).when(httpClient).request(eq(HttpMethod.DELETE), eq(endpoint), eq(okapiHeaders));
+
+    restClient.delete(uuid, requestContext).get();
+
+    verify(httpClient).request(eq(HttpMethod.DELETE), eq(endpoint), eq(okapiHeaders));
+  }
+
+  @Test
+  public void testShouldThrowExceptionWhenCreatingEntity() {
     Assertions.assertThrows(CompletionException.class, () -> {
       RestClient restClient = Mockito.spy(new RestClient(FINANCE_STORAGE_TRANSACTIONS));
 
