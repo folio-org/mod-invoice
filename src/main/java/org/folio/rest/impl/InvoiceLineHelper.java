@@ -420,6 +420,12 @@ public class InvoiceLineHelper extends AbstractHelper {
       .toArray(CompletableFuture[]::new));
   }
 
+  public CompletableFuture<Void> persistInvoiceLines(List<InvoiceLine> lines) {
+    return VertxCompletableFuture.allOf(ctx, lines.stream()
+      .map(this::updateInvoiceLineToStorage)
+      .toArray(CompletableFuture[]::new));
+  }
+
   private void updateInvoiceAsync(Invoice invoice) {
     VertxCompletableFuture.runAsync(ctx,
       () -> sendEvent(MessageAddress.INVOICE_TOTALS, new JsonObject().put(INVOICE, JsonObject.mapFrom(invoice))));
