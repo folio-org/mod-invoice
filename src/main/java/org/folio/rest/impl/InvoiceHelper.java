@@ -610,7 +610,7 @@ public class InvoiceHelper extends AbstractHelper {
     voucher.setExportToAccounting(invoice.getExportToAccounting());
     voucher.setAccountingCode(invoice.getAccountingCode());
     voucher.setBatchGroupId(invoice.getBatchGroupId());
-    // TODO Start using real information to create a voucher when it becomes known where to get these values from.
+
     voucher.setType(Voucher.Type.VOUCHER);
     voucher.setStatus(Voucher.Status.AWAITING_PAYMENT);
 
