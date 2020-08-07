@@ -13,7 +13,6 @@ import org.folio.rest.impl.BatchVoucherExportsHelper;
 import org.folio.rest.impl.BatchVoucherHelper;
 import org.folio.rest.jaxrs.model.BatchVoucher;
 import org.folio.rest.jaxrs.model.BatchVoucherExport;
-import org.folio.rest.jaxrs.model.ExportConfig;
 import org.folio.services.ftp.FtpUploadService;
 import org.folio.services.ftp.UploadService;
 
@@ -99,7 +98,12 @@ public class UploadBatchVoucherExportService {
         .thenAccept(LOG::info)
         .thenCompose(v -> {
           String fileName = generateFileName(uploadHolder.getBatchVoucher(), uploadHolder.getFileFormat());
-          return helper.upload(ctx, fileName, uploadHolder.getBatchVoucher());
+
+          BatchVoucher batchVoucher = uploadHolder.getBatchVoucher();
+          String format = uploadHolder.getExportConfig().getFormat().value();
+          String content = bvHelper.convertBatchVoucher(batchVoucher, format);
+
+          return helper.upload(ctx, fileName, content);
         })
         .thenAccept(replyString -> future.complete(null))
         .exceptionally(t -> {
@@ -155,10 +159,7 @@ public class UploadBatchVoucherExportService {
   private CompletableFuture<Void> updateHolderWithBatchVoucher(BatchVoucherUploadHolder uploadHolder) {
     CompletableFuture<Void> future = new CompletableFuture<>();
     try {
-      ExportConfig.Format exportFormat = uploadHolder.getExportConfig().getFormat();
-      String acceptHeader = exportFormat.value().toLowerCase();
-      bvHelper.getBatchVoucherById(uploadHolder.getBatchVoucherExport().getBatchVoucherId(), acceptHeader)
-        .thenApply(response -> (BatchVoucher) response.getEntity())
+      bvHelper.getBatchVoucherById(uploadHolder.getBatchVoucherExport().getBatchVoucherId())
         .thenAccept(uploadHolder::setBatchVoucher)
         .thenAccept(v -> future.complete(null))
         .exceptionally(t -> {
