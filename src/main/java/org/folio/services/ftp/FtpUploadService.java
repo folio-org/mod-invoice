@@ -84,9 +84,9 @@ public class FtpUploadService implements UploadService {
     });
   }
 
-  public CompletableFuture<String> upload(Context ctx, String filename, BatchVoucher batchVoucher) {
+  public CompletableFuture<String> upload(Context ctx, String filename, String content) {
   return VertxCompletableFuture.supplyBlockingAsync(ctx, () -> {
-      try (InputStream is = new ByteArrayInputStream(JsonObject.mapFrom(batchVoucher).encodePrettily().getBytes())) {
+      try (InputStream is = new ByteArrayInputStream(content.getBytes())) {
         ftp.addProtocolCommandListener( FTPVertxCommandLogger.getDefListener(logger));
         ftp.setBufferSize(1024 * 1024);
         ftp.setControlKeepAliveTimeout(300);

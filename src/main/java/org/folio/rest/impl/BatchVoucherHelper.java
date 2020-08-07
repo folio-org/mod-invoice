@@ -6,20 +6,15 @@ import static org.folio.invoices.utils.HelperUtils.handleGetRequest;
 import static org.folio.invoices.utils.ResourcePathResolver.BATCH_VOUCHER_STORAGE;
 import static org.folio.invoices.utils.ResourcePathResolver.resourceByIdPath;
 
-import java.util.Collections;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
-import javax.ws.rs.core.HttpHeaders;
-import javax.ws.rs.core.Response;
 import javax.xml.stream.XMLStreamException;
 
-import org.folio.HttpStatus;
 import org.folio.converters.BatchVoucherModelConverter;
+import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.jaxb.XMLConverter;
 import org.folio.rest.jaxrs.model.BatchVoucher;
-import org.folio.rest.jaxrs.model.Error;
-import org.folio.rest.jaxrs.model.Errors;
 import org.folio.rest.jaxrs.model.jaxb.BatchVoucherType;
 
 import io.vertx.core.Context;
@@ -43,11 +38,11 @@ public class BatchVoucherHelper extends AbstractHelper {
    * @param id batch voucher uuid
    * @return completable future with {@link BatchVoucher} on success or an exception if processing fails
    */
-  public CompletableFuture<Response> getBatchVoucherById(String id, String acceptHeader) {
-    CompletableFuture<Response> future = new VertxCompletableFuture<>(ctx);
+  public CompletableFuture<BatchVoucher> getBatchVoucherById(String id) {
+    CompletableFuture<BatchVoucher> future = new VertxCompletableFuture<>(ctx);
     String endpoint = resourceByIdPath(BATCH_VOUCHER_STORAGE, id, lang);
     handleGetRequest(endpoint, httpClient, ctx, okapiHeaders, logger)
-      .thenApplyAsync(jsonObject -> buildSuccessResponse(jsonObject, acceptHeader))
+      .thenApplyAsync(jsonObject -> jsonObject.mapTo(BatchVoucher.class))
       .thenAccept(future::complete)
       .exceptionally(t -> {
         future.completeExceptionally(t);
@@ -56,40 +51,20 @@ public class BatchVoucherHelper extends AbstractHelper {
     return future;
   }
 
-  private Response buildSuccessResponse(JsonObject jsonObjectBatchVoucher, String acceptHeader) {
-    BatchVoucher jsonBatchVoucher = jsonObjectBatchVoucher.mapTo(BatchVoucher.class);
-    switch (acceptHeader) {
-    case APPLICATION_XML:
-      BatchVoucherType xmlBatchVoucher = batchVoucherModelConverter.convert(jsonBatchVoucher);
-      String xmlBatchVoucherResponse = null;
+  public String convertBatchVoucher(BatchVoucher batchVoucher, String contentType) {
+    String content;
+    if (contentType.equalsIgnoreCase(APPLICATION_XML)) {
+      BatchVoucherType xmlBatchVoucher = batchVoucherModelConverter.convert(batchVoucher);
       try {
-        xmlBatchVoucherResponse = xmlConverter.marshal(BatchVoucherType.class, xmlBatchVoucher, null,true);
+        content = xmlConverter.marshal(BatchVoucherType.class, xmlBatchVoucher, null,true);
       } catch (XMLStreamException e) {
-        handleError(HttpStatus.HTTP_BAD_REQUEST, 500, MARSHAL_ERROR_MSG );
+        throw new HttpException(400, MARSHAL_ERROR_MSG);
       }
-      return buildSuccessResponse(xmlBatchVoucherResponse, APPLICATION_XML);
-
-    case APPLICATION_JSON:
-      return buildSuccessResponse(jsonBatchVoucher, APPLICATION_JSON);
-
-    default:
-      return handleError(HttpStatus.HTTP_BAD_REQUEST, 400, HEADER_ERROR_MSG );
+    } else if (contentType.equalsIgnoreCase(APPLICATION_JSON)){
+      content = JsonObject.mapFrom(batchVoucher).encodePrettily();
+    } else {
+      throw new HttpException(400, HEADER_ERROR_MSG);
     }
+    return content;
   }
-
-  private Response handleError(HttpStatus httpStatus, int code, String message) {
-    Error error = new Error();
-    error.setCode(httpStatus.toString());
-    error.setMessage(message);
-
-    Errors errors = new Errors();
-    errors.withErrors(Collections.singletonList(error));
-    errors.setTotalRecords(1);
-    closeHttpClient();
-    return Response.status(code)
-                   .header(HttpHeaders.CONTENT_TYPE, APPLICATION_JSON)
-                   .entity(errors)
-                   .build();
-  }
-
 }
