@@ -2,6 +2,7 @@ package org.folio.services.ftp;
 
 import static org.junit.Assert.fail;
 
+import io.vertx.core.json.JsonObject;
 import java.net.URISyntaxException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -156,7 +157,7 @@ public class FtpUploadServiceTest {
     FtpUploadService helper = new FtpUploadService(uri);
     helper.login(username_valid, password_valid)
       .thenAccept(logger::info)
-      .thenCompose(v -> helper.upload(context, filename, batchVoucher))
+      .thenCompose(v -> helper.upload(context, filename, JsonObject.mapFrom(batchVoucher).encodePrettily()))
       .thenAccept(logger::info)
       .exceptionally(t -> {
         logger.error(t);
@@ -185,7 +186,7 @@ public class FtpUploadServiceTest {
     FtpUploadService helper = new FtpUploadService(uri);
     helper.login(username_valid, password_valid)
       .thenAccept(logger::info)
-      .thenCompose(v -> helper.upload(context,"/invalid/path/"+filename, batchVoucher))
+      .thenCompose(v -> helper.upload(context,"/invalid/path/"+filename, JsonObject.mapFrom(batchVoucher).encodePrettily()))
       .thenAccept(m -> fail("Expected upload failure but got " + m))
       .exceptionally(t -> {
         logger.info(t);
