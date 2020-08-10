@@ -1,5 +1,16 @@
 ## 4.1.0 - Unreleased
 
+## 4.0.2 - Released
+
+The focus of this release was to fix pending payment creation and fix batch voucher export
+
+[Full Changelog](https://github.com/folio-org/mod-invoice/compare/v4.0.1...v4.0.2)
+
+### Bug Fixes
+* [MODINVOICE-191](https://issues.folio.org/browse/MODINVOICE-191) - Batch voucher export returns an error with message "Batch voucher not found" for xml format
+* [MODINVOICE-182](https://issues.folio.org/browse/MODINVOICE-182) - Link to encumbrance missed
+
+
 ## 4.0.1 - Released
 
 The focus of this release was to honor accounting codes upon batch voucher generation, minor fixes of field mapping.
