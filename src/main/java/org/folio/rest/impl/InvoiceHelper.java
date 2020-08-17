@@ -319,7 +319,13 @@ public class InvoiceHelper extends AbstractHelper {
     return CompletableFuture.completedFuture(null).thenRun(() -> validator.validateIncomingInvoice(invoice))
       .thenCompose(aVoid -> getInvoiceRecord(invoice.getId()))
       .thenCompose(invoiceFromStorage -> validateAndHandleInvoiceStatusTransition(invoice, invoiceFromStorage))
-      .thenCompose(ok -> updateInvoiceRecord(invoice));
+      .thenCompose(ok -> updateInvoiceRecord(invoice).thenApply(v -> invoice))
+      .thenCompose(ok -> voucherHelper.getVoucherByInvoiceId(invoice.getId()))
+      .thenCompose(voucher -> updateVoucherWithExchangeRate(voucher, invoice.getExchangeRate()))
+      .thenCombine(getInvoiceLinesWithTotals(invoice), (voucher, invoiceLines) -> {
+        return handleVoucherWithLines(getAllFundDistributions(invoiceLines, invoice), voucher);
+      })
+      .thenAccept(v -> CompletableFuture.completedFuture(null));
   }
 
   private CompletableFuture<Void> validateAndHandleInvoiceStatusTransition(Invoice invoice, Invoice invoiceFromStorage) {
@@ -521,6 +527,8 @@ public class InvoiceHelper extends AbstractHelper {
           .thenCompose(v -> financeHelper.checkExpenseClasses(lines, invoice))
           .thenCompose(v -> createPendingPaymentsWithInvoiceSummary(lines, invoice))
           .thenCompose(v -> prepareVoucher(invoice))
+          .thenApply(voucher -> voucher.withSystemCurrency(getSystemCurrency()))
+          .thenCompose(voucher -> updateVoucherWithExchangeRate(voucher, invoice.getExchangeRate()))
           .thenCompose(voucher -> handleVoucherWithLines(getAllFundDistributions(lines, invoice), voucher));
       });
   }
@@ -593,8 +601,7 @@ public class InvoiceHelper extends AbstractHelper {
         invoice.setVoucherNumber(voucher.getVoucherNumber());
         voucher.setAcqUnitIds(invoice.getAcqUnitIds());
         return withRequiredFields(voucher, invoice);
-      })
-      .thenCompose(voucher -> setExchangeRateFactor(voucher.withSystemCurrency(getSystemCurrency())));
+      });
   }
 
   /**
@@ -715,10 +722,16 @@ public class InvoiceHelper extends AbstractHelper {
       .toArray(CompletableFuture[]::new));
   }
 
-  private CompletableFuture<Voucher> setExchangeRateFactor(Voucher voucher) {
-    return VertxCompletableFuture.supplyBlockingAsync(ctx, () -> getCurrentExchangeRateProvider()
+  private CompletableFuture<Voucher> updateVoucherWithExchangeRate(Voucher voucher, Double invoiceExchangeRate) {
+    if (Objects.isNull(invoiceExchangeRate)) {
+      return VertxCompletableFuture.supplyBlockingAsync(ctx, () ->
+        getCurrentExchangeRateProvider()
         .getExchangeRate(voucher.getInvoiceCurrency(), voucher.getSystemCurrency()))
-      .thenApply(exchangeRate -> voucher.withExchangeRate(exchangeRate.getFactor().doubleValue()));
+        .thenApply(exchangeRate ->
+          voucher.withExchangeRate(exchangeRate.getFactor().doubleValue())
+        );
+    }
+    return CompletableFuture.completedFuture(voucher);
   }
 
   /**
