@@ -26,6 +26,7 @@ import javax.money.convert.ExchangeRateProvider;
 import javax.ws.rs.core.Response;
 
 import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.folio.invoices.events.handlers.MessageAddress;
 import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.invoices.utils.HelperUtils;
@@ -134,7 +135,8 @@ public abstract class AbstractHelper {
    *  Retrieves systemCurrency from mod-configuration
    *  if config is empty than use {@link #DEFAULT_SYSTEM_CURRENCY}
    */
-  String getSystemCurrency() {
+  public String getSystemCurrency() {
+    // .withCurrency(StringUtils.isNotEmpty(fiscalYear.getCurrency()) ? fiscalYear.getCurrency() : systemCurrency));
     JsonObject configValue = getLoadedTenantConfiguration().getConfigs()
       .stream()
       .filter(this::isLocaleConfig)

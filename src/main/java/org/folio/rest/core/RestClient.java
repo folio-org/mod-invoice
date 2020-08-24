@@ -39,14 +39,14 @@ public class RestClient {
     this.endpointById = baseEndpoint + "/%s";
   }
 
-  public <T> CompletableFuture<T> get(String query, int offset, int limit, RequestContext requestContext, Class<T> responseType) {
-    String endpoint = String.format(SEARCH_ENDPOINT, baseEndpoint, limit, offset, getEndpointWithQuery(query, logger));
-    return get(requestContext, endpoint, responseType);
+  public <T> CompletableFuture<T> get(String cqlQuery, int offset, int limit, RequestContext requestContext, Class<T> responseType) {
+    String endpoint = String.format(SEARCH_ENDPOINT, baseEndpoint, limit, offset, getEndpointWithQuery(cqlQuery, logger));
+    return get(endpoint, requestContext, responseType);
   }
 
   public <T> CompletableFuture<T> getById(String id, RequestContext requestContext, Class<T> responseType) {
     String endpoint = String.format(endpointById, id);
-    return get(requestContext, endpoint, responseType);
+    return get(endpoint, requestContext, responseType);
   }
 
   public <T> CompletableFuture<T> post(T entity, RequestContext requestContext, Class<T> responseType) {
@@ -151,7 +151,7 @@ public class RestClient {
     return future;
   }
 
-  private <S> CompletableFuture<S> get(RequestContext requestContext, String endpoint, Class<S> responseType) {
+  public <S> CompletableFuture<S> get(String endpoint, RequestContext requestContext, Class<S> responseType) {
     CompletableFuture<S> future = new VertxCompletableFuture<>(requestContext.getContext());
     HttpClientInterface client = getHttpClient(requestContext.getHeaders());
     if (logger.isDebugEnabled()) {

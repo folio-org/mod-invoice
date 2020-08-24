@@ -101,6 +101,7 @@ import org.folio.rest.jaxrs.model.SequenceNumber;
 import org.folio.rest.jaxrs.model.Voucher;
 import org.folio.rest.jaxrs.model.VoucherLine;
 import org.folio.services.adjusment.AdjustmentsService;
+import org.folio.services.exchange.RateOfExchangeService;
 import org.folio.services.expence.ExpenseClassRetrieveService;
 import org.folio.services.transaction.EncumbranceService;
 import org.folio.services.validator.InvoiceValidator;
@@ -142,13 +143,15 @@ public class InvoiceHelper extends AbstractHelper {
   private RestClient invoiceStorageRestClient;
   @Autowired
   private EncumbranceService encumbranceService;
+  @Autowired
+  private RateOfExchangeService rateOfExchangeService;
 
   public InvoiceHelper(Map<String, String> okapiHeaders, Context ctx, String lang) {
     super(getHttpClient(okapiHeaders), okapiHeaders, ctx, lang);
     SpringContextUtil.autowireDependencies(this, Vertx.currentContext());
-    this.invoiceLineHelper = new InvoiceLineHelper(httpClient, okapiHeaders, ctx, lang);
-    this.voucherHelper = new VoucherHelper(httpClient, okapiHeaders, ctx, lang);
-    this.voucherLineHelper = new VoucherLineHelper(httpClient, okapiHeaders, ctx, lang);
+    this.invoiceLineHelper = new InvoiceLineHelper(getHttpClient(okapiHeaders), okapiHeaders, ctx, lang);
+    this.voucherHelper = new VoucherHelper(getHttpClient(okapiHeaders), okapiHeaders, ctx, lang);
+    this.voucherLineHelper = new VoucherLineHelper(getHttpClient(okapiHeaders), okapiHeaders, ctx, lang);
     this.protectionHelper = new ProtectionHelper(httpClient, okapiHeaders, ctx, lang);
     this.financeHelper = new FinanceHelper(httpClient, okapiHeaders, ctx, lang);
     this.adjustmentsService = new AdjustmentsService();
@@ -158,7 +161,7 @@ public class InvoiceHelper extends AbstractHelper {
   public InvoiceHelper(Map<String, String> okapiHeaders, Context ctx, String lang, ExpenseClassRetrieveService expenseClassRetrieveService) {
     super(getHttpClient(okapiHeaders), okapiHeaders, ctx, lang);
     this.invoiceLineHelper = new InvoiceLineHelper(httpClient, okapiHeaders, ctx, lang);
-    this.voucherHelper = new VoucherHelper(httpClient, okapiHeaders, ctx, lang);
+    this.voucherHelper = new VoucherHelper(getHttpClient(okapiHeaders), okapiHeaders, ctx, lang);
     this.voucherLineHelper = new VoucherLineHelper(httpClient, okapiHeaders, ctx, lang);
     this.protectionHelper = new ProtectionHelper(httpClient, okapiHeaders, ctx, lang);
     this.financeHelper = new FinanceHelper(httpClient, okapiHeaders, ctx, lang);
@@ -318,14 +321,26 @@ public class InvoiceHelper extends AbstractHelper {
     logger.debug("Updating invoice...");
     return CompletableFuture.completedFuture(null).thenRun(() -> validator.validateIncomingInvoice(invoice))
       .thenCompose(aVoid -> getInvoiceRecord(invoice.getId()))
-      .thenCompose(invoiceFromStorage -> validateAndHandleInvoiceStatusTransition(invoice, invoiceFromStorage))
-      .thenCompose(ok -> updateInvoiceRecord(invoice).thenApply(v -> invoice))
-      .thenCompose(ok -> voucherHelper.getVoucherByInvoiceId(invoice.getId()))
-      .thenCompose(voucher -> updateVoucherWithExchangeRate(voucher, invoice.getExchangeRate()))
-      .thenCombine(getInvoiceLinesWithTotals(invoice), (voucher, invoiceLines) -> {
-        return handleVoucherWithLines(getAllFundDistributions(invoiceLines, invoice), voucher);
-      })
-      .thenAccept(v -> CompletableFuture.completedFuture(null));
+      .thenCompose(invoiceFromStorage -> validateAndHandleInvoiceStatusTransition(invoice, invoiceFromStorage).thenApply(v -> invoiceFromStorage))
+      .thenCompose(invoiceFromStorage -> updateInvoiceRecord(invoice).thenApply(v -> invoiceFromStorage))
+      .thenAccept(invoiceFromStorage -> updateVoucher(invoiceFromStorage, invoice));
+  }
+
+  private CompletableFuture<Void> updateVoucher(Invoice invoiceFromStorage, Invoice invoice) {
+    if (Objects.nonNull(invoice.getExchangeRate()) && !isTransitionToApproved(invoiceFromStorage, invoice)) {
+      return voucherHelper.getVoucherByInvoiceId(invoice.getId())
+        .thenApply(voucher -> {
+          if (voucher != null) {
+            updateVoucherWithExchangeRate(voucher, invoice.getExchangeRate())
+                 .thenCombine(getInvoiceLinesWithTotals(invoice), (voucherP, invoiceLines) -> {
+              return handleVoucherWithLines(getAllFundDistributions(invoiceLines, invoice), voucherP);
+            });
+          }
+          return voucher;
+        })
+        .thenAccept(v -> CompletableFuture.completedFuture(null));
+    }
+    return CompletableFuture.completedFuture(null);
   }
 
   private CompletableFuture<Void> validateAndHandleInvoiceStatusTransition(Invoice invoice, Invoice invoiceFromStorage) {
@@ -547,10 +562,8 @@ public class InvoiceHelper extends AbstractHelper {
 
   private List<FundDistribution> getAllFundDistributions(List<InvoiceLine> invoiceLines, Invoice invoice) {
     CurrencyConversion conversion = getCurrentExchangeRateProvider().getCurrencyConversion(getSystemCurrency());
-
     List<FundDistribution> fundDistributions = getInvoiceLineFundDistributions(invoiceLines, invoice, conversion);
     fundDistributions.addAll(getAdjustmentFundDistributions(invoice, conversion));
-
     return fundDistributions;
   }
 
@@ -723,15 +736,12 @@ public class InvoiceHelper extends AbstractHelper {
   }
 
   private CompletableFuture<Voucher> updateVoucherWithExchangeRate(Voucher voucher, Double invoiceExchangeRate) {
-    if (Objects.isNull(invoiceExchangeRate)) {
-      return VertxCompletableFuture.supplyBlockingAsync(ctx, () ->
-        getCurrentExchangeRateProvider()
-        .getExchangeRate(voucher.getInvoiceCurrency(), voucher.getSystemCurrency()))
-        .thenApply(exchangeRate ->
-          voucher.withExchangeRate(exchangeRate.getFactor().doubleValue())
-        );
+    if (Objects.isNull(invoiceExchangeRate) && (!voucher.getInvoiceCurrency().equals(voucher.getSystemCurrency()))) {
+      RequestContext requestContext = new RequestContext(ctx, okapiHeaders);
+      return rateOfExchangeService.getExchangeRate(voucher.getInvoiceCurrency(), voucher.getSystemCurrency(), requestContext)
+        .thenApply(exchangeRate -> voucher.withExchangeRate(exchangeRate.getExchangeRate()));
     }
-    return CompletableFuture.completedFuture(voucher);
+    return CompletableFuture.completedFuture(voucher.withExchangeRate(invoiceExchangeRate));
   }
 
   /**

@@ -1,11 +1,13 @@
 package org.folio.config;
 
+import static org.folio.invoices.utils.ResourcePathResolver.FINANCE_EXCHANGE_RATE;
 import static org.folio.invoices.utils.ResourcePathResolver.EXPENSE_CLASSES_URL;
 import static org.folio.invoices.utils.ResourcePathResolver.FINANCE_TRANSACTIONS;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICES;
 
 import org.folio.invoices.utils.ResourcePathResolver;
 import org.folio.rest.core.RestClient;
+import org.folio.services.exchange.RateOfExchangeService;
 import org.folio.services.expence.ExpenseClassRetrieveService;
 import org.folio.services.transaction.BaseTransactionService;
 import org.folio.services.transaction.EncumbranceService;
@@ -37,6 +39,11 @@ public class ApplicationConfig {
   }
 
   @Bean
+  RestClient exchangeRateRestClient() {
+    return new RestClient(ResourcePathResolver.resourcesPath(FINANCE_EXCHANGE_RATE));
+  }
+
+  @Bean
   BaseTransactionService transactionService(RestClient trFinanceRestClient) {
     return new BaseTransactionService(trFinanceRestClient);
   }
@@ -44,5 +51,10 @@ public class ApplicationConfig {
   @Bean
   EncumbranceService encumbranceService(BaseTransactionService transactionService){
     return new EncumbranceService(transactionService);
+  }
+
+  @Bean
+  RateOfExchangeService rateOfExchangeService(RestClient exchangeRateRestClient){
+    return new RateOfExchangeService(exchangeRateRestClient);
   }
 }

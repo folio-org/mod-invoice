@@ -17,6 +17,7 @@ import java.util.concurrent.CompletableFuture;
 
 import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.invoices.utils.HelperUtils;
+import org.folio.rest.core.RestClient;
 import org.folio.rest.jaxrs.model.SequenceNumber;
 import org.folio.rest.jaxrs.model.Voucher;
 import org.folio.rest.jaxrs.model.VoucherCollection;
@@ -28,6 +29,8 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import me.escoffier.vertx.completablefuture.VertxCompletableFuture;
 import org.folio.services.validator.VoucherValidator;
+import org.folio.spring.SpringContextUtil;
+import org.springframework.beans.factory.annotation.Autowired;
 
 public class VoucherHelper extends AbstractHelper {
 
@@ -39,6 +42,7 @@ public class VoucherHelper extends AbstractHelper {
 
   public VoucherHelper(HttpClientInterface httpClient, Map<String, String> okapiHeaders, Context ctx, String lang) {
     super(httpClient, okapiHeaders, ctx, lang);
+    SpringContextUtil.autowireDependencies(this, ctx);
   }
 
   public VoucherHelper(Map<String, String> okapiHeaders, Context ctx, String lang) {
