@@ -11,35 +11,7 @@ import static org.folio.invoices.utils.HelperUtils.ALL_UNITS_CQL;
 import static org.folio.invoices.utils.HelperUtils.INVOICE_ID;
 import static org.folio.invoices.utils.HelperUtils.IS_DELETED_PROP;
 import static org.folio.invoices.utils.HelperUtils.QUERY_PARAM_START_WITH;
-import static org.folio.invoices.utils.ResourcePathResolver.ACQUISITIONS_MEMBERSHIPS;
-import static org.folio.invoices.utils.ResourcePathResolver.ACQUISITIONS_UNITS;
-import static org.folio.invoices.utils.ResourcePathResolver.AWAITING_PAYMENTS;
-import static org.folio.invoices.utils.ResourcePathResolver.BATCH_GROUPS;
-import static org.folio.invoices.utils.ResourcePathResolver.BATCH_VOUCHER_EXPORTS_STORAGE;
-import static org.folio.invoices.utils.ResourcePathResolver.BATCH_VOUCHER_EXPORT_CONFIGS;
-import static org.folio.invoices.utils.ResourcePathResolver.BATCH_VOUCHER_EXPORT_CONFIGS_CREDENTIALS;
-import static org.folio.invoices.utils.ResourcePathResolver.BATCH_VOUCHER_STORAGE;
-import static org.folio.invoices.utils.ResourcePathResolver.BUDGETS;
-import static org.folio.invoices.utils.ResourcePathResolver.BUDGET_EXPENSE_CLASSES;
-import static org.folio.invoices.utils.ResourcePathResolver.EXPENSE_CLASSES_URL;
-import static org.folio.invoices.utils.ResourcePathResolver.FINANCE_CREDITS;
-import static org.folio.invoices.utils.ResourcePathResolver.FINANCE_PAYMENTS;
-import static org.folio.invoices.utils.ResourcePathResolver.FINANCE_STORAGE_TRANSACTIONS;
-import static org.folio.invoices.utils.ResourcePathResolver.FINANCE_TRANSACTIONS;
-import static org.folio.invoices.utils.ResourcePathResolver.FOLIO_INVOICE_NUMBER;
-import static org.folio.invoices.utils.ResourcePathResolver.FUNDS;
-import static org.folio.invoices.utils.ResourcePathResolver.INVOICES;
-import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_DOCUMENTS;
-import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_LINES;
-import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_LINE_NUMBER;
-import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_TRANSACTION_SUMMARIES;
-import static org.folio.invoices.utils.ResourcePathResolver.LEDGERS;
-import static org.folio.invoices.utils.ResourcePathResolver.ORDER_LINES;
-import static org.folio.invoices.utils.ResourcePathResolver.VOUCHERS;
-import static org.folio.invoices.utils.ResourcePathResolver.VOUCHER_LINES;
-import static org.folio.invoices.utils.ResourcePathResolver.VOUCHER_NUMBER;
-import static org.folio.invoices.utils.ResourcePathResolver.VOUCHER_NUMBER_START;
-import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
+import static org.folio.invoices.utils.ResourcePathResolver.*;
 import static org.folio.rest.RestVerticle.OKAPI_HEADER_TENANT;
 import static org.folio.rest.impl.ApiTestBase.BASE_MOCK_DATA_PATH;
 import static org.folio.rest.impl.ApiTestBase.FOLIO_INVOICE_NUMBER_VALUE;
@@ -65,8 +37,7 @@ import static org.folio.rest.impl.DocumentsApiTest.INVOICE_SAMPLE_DOCUMENTS_PATH
 import static org.folio.rest.impl.InvoiceHelper.INVOICE_CONFIG_MODULE_NAME;
 import static org.folio.rest.impl.InvoiceHelper.LOCALE_SETTINGS;
 import static org.folio.rest.impl.InvoiceHelper.SYSTEM_CONFIG_MODULE_NAME;
-import static org.folio.rest.impl.InvoiceHelper.VOUCHER_NUMBER_CONFIG_NAME;
-import static org.folio.rest.impl.InvoiceHelper.VOUCHER_NUMBER_PREFIX_CONFIG;
+
 import static org.folio.rest.impl.InvoiceLinesApiTest.INVOICE_LINES_MOCK_DATA_PATH;
 import static org.folio.rest.impl.InvoicesApiTest.BAD_QUERY;
 import static org.folio.rest.impl.InvoicesApiTest.EXISTING_VENDOR_INV_NO;
@@ -77,6 +48,8 @@ import static org.folio.rest.impl.ProtectionHelper.ACQUISITIONS_UNIT_ID;
 import static org.folio.rest.impl.VoucherLinesApiTest.VOUCHER_LINES_MOCK_DATA_PATH;
 import static org.folio.rest.impl.VouchersApiTest.VOUCHERS_LIST_PATH;
 import static org.folio.rest.impl.VouchersApiTest.VOUCHER_MOCK_DATA_PATH;
+import static org.folio.services.voucher.VoucherCommandService.VOUCHER_NUMBER_CONFIG_NAME;
+import static org.folio.services.voucher.VoucherCommandService.VOUCHER_NUMBER_PREFIX_CONFIG;
 import static org.junit.Assert.fail;
 
 import java.io.IOException;
@@ -112,6 +85,7 @@ import org.folio.rest.acq.model.finance.Budget;
 import org.folio.rest.acq.model.finance.BudgetCollection;
 import org.folio.rest.acq.model.finance.BudgetExpenseClass;
 import org.folio.rest.acq.model.finance.BudgetExpenseClassCollection;
+import org.folio.rest.acq.model.finance.ExchangeRate;
 import org.folio.rest.acq.model.finance.ExpenseClass;
 import org.folio.rest.acq.model.finance.ExpenseClassCollection;
 import org.folio.rest.acq.model.finance.FiscalYear;
@@ -376,7 +350,7 @@ public class MockServer {
     router.route(HttpMethod.POST, resourcesPath(INVOICES)).handler(ctx -> handlePostEntry(ctx, Invoice.class, INVOICES));
     router.route(HttpMethod.POST, resourcesPath(INVOICE_LINES)).handler(ctx -> handlePostEntry(ctx, InvoiceLine.class, INVOICE_LINES));
     router.route(HttpMethod.POST, resourceByValuePath(VOUCHER_NUMBER_START)).handler(this::handlePostVoucherStartValue);
-    router.route(HttpMethod.POST, resourcesPath(VOUCHERS)).handler(ctx -> handlePostEntry(ctx, Voucher.class, VOUCHERS));
+    router.route(HttpMethod.POST, resourcesPath(VOUCHERS_STORAGE)).handler(ctx -> handlePostEntry(ctx, Voucher.class, VOUCHERS_STORAGE));
     router.route(HttpMethod.POST, resourcesPath(VOUCHER_LINES)).handler(ctx -> handlePostEntry(ctx, VoucherLine.class, VOUCHER_LINES));
     router.route(HttpMethod.POST, "/invoice-storage/invoices/:id/documents").handler(this::handlePostInvoiceDocument);
     router.route(HttpMethod.POST, resourcesPath(BATCH_VOUCHER_EXPORT_CONFIGS)).handler(ctx -> handlePostEntry(ctx, ExportConfig.class, BATCH_VOUCHER_EXPORT_CONFIGS));
@@ -396,12 +370,12 @@ public class MockServer {
     router.route(HttpMethod.GET, resourceByIdPath(INVOICE_LINES)).handler(this::handleGetInvoiceLineById);
     router.route(HttpMethod.GET, resourcesPath(INVOICE_LINE_NUMBER)).handler(this::handleGetInvoiceLineNumber);
     router.route(HttpMethod.GET, resourceByIdPath(VOUCHER_LINES)).handler(this::handleGetVoucherLineById);
-    router.route(HttpMethod.GET, resourceByIdPath(VOUCHERS)).handler(this::handleGetVoucherById);
+    router.route(HttpMethod.GET, resourceByIdPath(VOUCHERS_STORAGE)).handler(this::handleGetVoucherById);
     router.route(HttpMethod.GET, resourceByIdPath(ORDER_LINES)).handler(this::handleGetPoLineById);
     router.route(HttpMethod.GET, resourcesPath(VOUCHER_NUMBER_START)).handler(this::handleGetSequence);
-    router.route(HttpMethod.GET, resourcesPath(VOUCHERS)).handler(this::handleGetVouchers);
+    router.route(HttpMethod.GET, resourcesPath(VOUCHERS_STORAGE)).handler(this::handleGetVouchers);
     router.route(HttpMethod.GET, resourcesPath(VOUCHER_LINES)).handler(this::handleGetVoucherLines);
-    router.route(HttpMethod.GET, resourcesPath(VOUCHER_NUMBER)).handler(this::handleGetVoucherNumber);
+    router.route(HttpMethod.GET, resourcesPath(VOUCHER_NUMBER_STORAGE)).handler(this::handleGetVoucherNumber);
     router.route(HttpMethod.GET, resourcesPath(FUNDS)).handler(this::handleGetFundRecords);
     router.route(HttpMethod.GET, resourcesPath(BUDGETS)).handler(this::handleGetBudgetRecords);
     router.route(HttpMethod.GET, resourcesPath(LEDGERS)).handler(this::handleGetLedgerRecords);
@@ -424,6 +398,7 @@ public class MockServer {
     router.route(HttpMethod.GET, resourceByIdPath(EXPENSE_CLASSES_URL)).handler(this::handleExpenseClassesById);
     router.route(HttpMethod.GET, resourcesPath(EXPENSE_CLASSES_URL)).handler(this::handleExpenseClasses);
     router.route(HttpMethod.GET, resourcesPath(BUDGET_EXPENSE_CLASSES)).handler(this::handleGetBudgetExpenseClass);
+    router.route(HttpMethod.GET, resourcesPath(FINANCE_EXCHANGE_RATE)).handler(this::handleGetRateOfExchange);
 
     router.route(HttpMethod.DELETE, resourceByIdPath(INVOICES)).handler(ctx -> handleDeleteRequest(ctx, INVOICES));
     router.route(HttpMethod.DELETE, resourceByIdPath(INVOICE_LINES)).handler(ctx -> handleDeleteRequest(ctx, INVOICE_LINES));
@@ -435,7 +410,7 @@ public class MockServer {
 
     router.route(HttpMethod.PUT, resourceByIdPath(INVOICES)).handler(ctx -> handlePutGenericSubObj(ctx, INVOICES));
     router.route(HttpMethod.PUT, resourceByIdPath(INVOICE_LINES)).handler(ctx -> handlePutGenericSubObj(ctx, INVOICE_LINES));
-    router.route(HttpMethod.PUT, resourceByIdPath(VOUCHERS)).handler(ctx -> handlePutGenericSubObj(ctx, VOUCHERS));
+    router.route(HttpMethod.PUT, resourceByIdPath(VOUCHERS_STORAGE)).handler(ctx -> handlePutGenericSubObj(ctx, VOUCHERS_STORAGE));
     router.route(HttpMethod.PUT, resourceByIdPath(VOUCHER_LINES)).handler(ctx -> handlePutGenericSubObj(ctx, VOUCHER_LINES));
     router.route(HttpMethod.PUT, resourceByIdPath(ORDER_LINES)).handler(ctx -> handlePutGenericSubObj(ctx, ResourcePathResolver.ORDER_LINES));
     router.route(HttpMethod.PUT, resourceByIdPath(BATCH_VOUCHER_EXPORT_CONFIGS)).handler(ctx -> handlePutGenericSubObj(ctx, ResourcePathResolver.BATCH_VOUCHER_EXPORT_CONFIGS));
@@ -444,6 +419,15 @@ public class MockServer {
     router.route(HttpMethod.PUT, resourceByIdPath(BATCH_VOUCHER_EXPORTS_STORAGE)).handler(ctx -> handlePutGenericSubObj(ctx, BATCH_VOUCHER_EXPORTS_STORAGE));
 
     return router;
+  }
+
+  private void handleGetRateOfExchange(RoutingContext ctx) {
+    logger.info("handleGetRateOfExchange: " + ctx.request().path());
+    String fromParam = StringUtils.trimToEmpty(ctx.request().getParam("from"));
+    String toParam = StringUtils.trimToEmpty(ctx.request().getParam("to"));
+    ExchangeRate exchangeRate = new ExchangeRate().withExchangeRate(1.0d).withFrom(fromParam).withTo(toParam);
+    addServerRqRsData(HttpMethod.GET, FINANCE_EXCHANGE_RATE, new JsonObject().mapFrom(exchangeRate));
+    serverResponse(ctx, 200, APPLICATION_JSON, JsonObject.mapFrom(exchangeRate).encodePrettily());
   }
 
   private void handleExpenseClasses(RoutingContext ctx) {
@@ -1218,7 +1202,7 @@ public class MockServer {
       SequenceNumber seqNumber = new SequenceNumber();
       seqNumber.setSequenceNumber(VOUCHER_NUMBER_VALUE);
       JsonObject jsonSequence = JsonObject.mapFrom(seqNumber);
-      addServerRqRsData(HttpMethod.GET, VOUCHER_NUMBER, jsonSequence);
+      addServerRqRsData(HttpMethod.GET, VOUCHER_NUMBER_STORAGE, jsonSequence);
       serverResponse(ctx, 200, APPLICATION_JSON, jsonSequence.encodePrettily());
     }
   }
@@ -1230,13 +1214,13 @@ public class MockServer {
     if (ID_FOR_INTERNAL_SERVER_ERROR.equals(id)) {
       serverResponse(ctx, 500, APPLICATION_JSON, Response.Status.INTERNAL_SERVER_ERROR.getReasonPhrase());
     } else {
-      JsonObject voucher = getMockEntry(VOUCHERS, id).orElseGet(getJsonObjectFromFile(VOUCHER_MOCK_DATA_PATH, id));
+      JsonObject voucher = getMockEntry(VOUCHERS_STORAGE, id).orElseGet(getJsonObjectFromFile(VOUCHER_MOCK_DATA_PATH, id));
       if (voucher != null) {
         // validate content against schema
         Voucher voucherSchema = voucher.mapTo(Voucher.class);
         voucherSchema.setId(id);
         voucher = JsonObject.mapFrom(voucherSchema);
-        addServerRqRsData(HttpMethod.GET, VOUCHERS, voucher);
+        addServerRqRsData(HttpMethod.GET, VOUCHERS_STORAGE, voucher);
         serverResponse(ctx, Response.Status.OK.getStatusCode(), APPLICATION_JSON, voucher.encodePrettily());
       } else {
         serverResponse(ctx, Response.Status.NOT_FOUND.getStatusCode(), TEXT_PLAIN, id);
@@ -1402,7 +1386,7 @@ public class MockServer {
       VoucherCollection voucherCollection = new VoucherCollection();
       voucherCollection.withVouchers(new ArrayList<>());
       JsonObject vouchersJson = JsonObject.mapFrom(voucherCollection);
-      addServerRqRsData(HttpMethod.GET, VOUCHERS, vouchersJson);
+      addServerRqRsData(HttpMethod.GET, VOUCHERS_STORAGE, vouchersJson);
       serverResponse(ctx, 200, APPLICATION_JSON, vouchersJson.encode());
       return;
     }
@@ -1424,7 +1408,7 @@ public class MockServer {
       };
 
       VoucherCollection voucherCollection = new VoucherCollection();
-      List<Voucher> vouchers  = getMockEntries(VOUCHERS, Voucher.class).orElseGet(getFromFile);
+      List<Voucher> vouchers  = getMockEntries(VOUCHERS_STORAGE, Voucher.class).orElseGet(getFromFile);
 
       Function<Voucher, String> invoiceIdGetter = Voucher::getInvoiceId;
       voucherCollection.setVouchers(filterEntriesByStringValue(invoiceId, vouchers, invoiceIdGetter));
@@ -1433,7 +1417,7 @@ public class MockServer {
       JsonObject vouchersJson = JsonObject.mapFrom(voucherCollection);
       logger.info(vouchersJson.encodePrettily());
 
-      addServerRqRsData(HttpMethod.GET, VOUCHERS, vouchersJson);
+      addServerRqRsData(HttpMethod.GET, VOUCHERS_STORAGE, vouchersJson);
       serverResponse(ctx, 200, APPLICATION_JSON, vouchersJson.encode());
     }
   }

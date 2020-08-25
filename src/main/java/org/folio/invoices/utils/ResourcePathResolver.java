@@ -17,10 +17,10 @@ public class ResourcePathResolver {
   public static final String ORDER_LINES = "orderLines";
   public static final String VOUCHER_LINES = "voucherLines";
   public static final String VOUCHER_NUMBER_START = "voucherNumberStart";
-  public static final String VOUCHER_NUMBER = "voucherNumberGet";
+  public static final String VOUCHER_NUMBER_STORAGE = "voucherNumberGet";
   public static final String FOLIO_INVOICE_NUMBER = "folioInvoiceNo";
   public static final String INVOICE_LINE_NUMBER = "invoiceLineNumber";
-  public static final String VOUCHERS = "vouchers";
+  public static final String VOUCHERS_STORAGE = "vouchers";
   public static final String FUNDS = "funds";
   public static final String INVOICE_DOCUMENTS = "invoiceDocuments";
   public static final String BATCH_VOUCHER_EXPORT_CONFIGS = "batchVoucherExportConfigs";
@@ -40,6 +40,7 @@ public class ResourcePathResolver {
   public static final String EXPENSE_CLASSES_URL = "expenseClassUrl";
   public static final String BUDGET_EXPENSE_CLASSES = "finance-storage.budget-expense-classes";
   public static final String FINANCE_EXCHANGE_RATE = "finance/exchange-rate";
+  public static final String TENANT_CONFIGURATION_ENTRIES = "configurations/entries";
 
   private static final Map<String, String> SUB_OBJECT_COLLECTION_APIS;
   private static final Map<String, String> SUB_OBJECT_ITEM_APIS;
@@ -53,10 +54,10 @@ public class ResourcePathResolver {
     apis.put(INVOICE_LINE_NUMBER, "/invoice-storage/invoice-line-number");
     apis.put(ORDER_LINES, "/orders/order-lines");
     apis.put(FOLIO_INVOICE_NUMBER, "/invoice-storage/invoice-number");
-    apis.put(VOUCHERS, "/voucher-storage/vouchers");
+    apis.put(VOUCHERS_STORAGE, "/voucher-storage/vouchers");
     apis.put(VOUCHER_LINES, "/voucher-storage/voucher-lines");
     apis.put(VOUCHER_NUMBER_START, "/voucher-storage/voucher-number/start");
-    apis.put(VOUCHER_NUMBER, "/voucher-storage/voucher-number");
+    apis.put(VOUCHER_NUMBER_STORAGE, "/voucher-storage/voucher-number");
     apis.put(FUNDS, "/finance/funds");
     apis.put(INVOICE_DOCUMENTS, "/invoice-storage/invoices/%s/documents");
     apis.put(BATCH_VOUCHER_EXPORT_CONFIGS, "/batch-voucher-storage/export-configurations");
@@ -76,6 +77,8 @@ public class ResourcePathResolver {
     apis.put(BUDGET_EXPENSE_CLASSES, "/finance-storage/budget-expense-classes");
     apis.put(EXPENSE_CLASSES_URL, "/finance/expense-classes");
     apis.put(FINANCE_EXCHANGE_RATE, "/finance/exchange-rate");
+    apis.put(TENANT_CONFIGURATION_ENTRIES, "/configurations/entries");
+
 
     SUB_OBJECT_COLLECTION_APIS = Collections.unmodifiableMap(apis);
     SUB_OBJECT_ITEM_APIS = Collections.unmodifiableMap(

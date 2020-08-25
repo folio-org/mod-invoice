@@ -48,6 +48,7 @@ import static org.folio.invoices.utils.ResourcePathResolver.ORDER_LINES;
 import static org.folio.invoices.utils.ResourcePathResolver.resourceByIdPath;
 import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
 import static org.folio.rest.RestVerticle.OKAPI_HEADER_PERMISSIONS;
+import static org.folio.services.voucher.VoucherCommandService.VOUCHER_NUMBER_CONFIG_NAME;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -105,6 +106,8 @@ import org.folio.services.exchange.RateOfExchangeService;
 import org.folio.services.expence.ExpenseClassRetrieveService;
 import org.folio.services.transaction.EncumbranceService;
 import org.folio.services.validator.InvoiceValidator;
+import org.folio.services.voucher.VoucherCommandService;
+import org.folio.services.voucher.VoucherRetrieveService;
 import org.folio.spring.SpringContextUtil;
 import org.javamoney.moneta.Money;
 import org.javamoney.moneta.function.MonetaryFunctions;
@@ -120,8 +123,6 @@ import one.util.streamex.StreamEx;
 public class InvoiceHelper extends AbstractHelper {
 
   static final int MAX_IDS_FOR_GET_RQ = 15;
-  static final String VOUCHER_NUMBER_CONFIG_NAME = "voucherNumber";
-  static final String VOUCHER_NUMBER_PREFIX_CONFIG = "voucherNumberPrefix";
   private static final String VOUCHER_NUMBER_CONFIG_QUERY = String.format(CONFIG_QUERY, INVOICE_CONFIG_MODULE_NAME, VOUCHER_NUMBER_CONFIG_NAME);
   private static final String GET_INVOICES_BY_QUERY = resourcesPath(INVOICES) + SEARCH_PARAMS;
   private static final String GET_FUNDS_BY_QUERY = resourcesPath(FUNDS) + "?query=%s&limit=%s&lang=%s";
@@ -145,6 +146,10 @@ public class InvoiceHelper extends AbstractHelper {
   private EncumbranceService encumbranceService;
   @Autowired
   private RateOfExchangeService rateOfExchangeService;
+  @Autowired
+  private VoucherCommandService voucherCommandService;
+  @Autowired
+  private VoucherRetrieveService voucherRetrieveService;
 
   public InvoiceHelper(Map<String, String> okapiHeaders, Context ctx, String lang) {
     super(getHttpClient(okapiHeaders), okapiHeaders, ctx, lang);
@@ -158,16 +163,20 @@ public class InvoiceHelper extends AbstractHelper {
     this.validator = new InvoiceValidator();
   }
 
-  public InvoiceHelper(Map<String, String> okapiHeaders, Context ctx, String lang, ExpenseClassRetrieveService expenseClassRetrieveService) {
+  public InvoiceHelper(Map<String, String> okapiHeaders, Context ctx, String lang, ExpenseClassRetrieveService expenseClassRetrieveService,
+                        VoucherCommandService voucherCommandService, VoucherRetrieveService voucherRetrieveService,
+                            VoucherHelper voucherHelper) {
     super(getHttpClient(okapiHeaders), okapiHeaders, ctx, lang);
     this.invoiceLineHelper = new InvoiceLineHelper(httpClient, okapiHeaders, ctx, lang);
-    this.voucherHelper = new VoucherHelper(getHttpClient(okapiHeaders), okapiHeaders, ctx, lang);
     this.voucherLineHelper = new VoucherLineHelper(httpClient, okapiHeaders, ctx, lang);
     this.protectionHelper = new ProtectionHelper(httpClient, okapiHeaders, ctx, lang);
     this.financeHelper = new FinanceHelper(httpClient, okapiHeaders, ctx, lang);
     this.adjustmentsService = new AdjustmentsService();
     this.validator = new InvoiceValidator();
     this.expenseClassRetrieveService = expenseClassRetrieveService;
+    this.voucherCommandService = voucherCommandService;
+    this.voucherRetrieveService = voucherRetrieveService;
+    this.voucherHelper = voucherHelper;
   }
 
   public CompletableFuture<Invoice> createInvoice(Invoice invoice) {
@@ -328,7 +337,7 @@ public class InvoiceHelper extends AbstractHelper {
 
   private CompletableFuture<Void> updateVoucher(Invoice invoiceFromStorage, Invoice invoice) {
     if (Objects.nonNull(invoice.getExchangeRate()) && !isTransitionToApproved(invoiceFromStorage, invoice)) {
-      return voucherHelper.getVoucherByInvoiceId(invoice.getId())
+      return voucherRetrieveService.getVoucherByInvoiceId(invoice.getId(), new RequestContext(ctx, okapiHeaders))
         .thenApply(voucher -> {
           if (voucher != null) {
             updateVoucherWithExchangeRate(voucher, invoice.getExchangeRate())
@@ -603,12 +612,12 @@ public class InvoiceHelper extends AbstractHelper {
    * @return completable future with {@link Voucher} on success
    */
   private CompletableFuture<Voucher> prepareVoucher(Invoice invoice) {
-    return voucherHelper.getVoucherByInvoiceId(invoice.getId())
+    return voucherRetrieveService.getVoucherByInvoiceId(invoice.getId(), new RequestContext(ctx, okapiHeaders))
       .thenCompose(voucher -> {
         if (nonNull(voucher)) {
           return completedFuture(voucher);
         }
-        return buildNewVoucher(invoice);
+        return voucherCommandService.buildNewVoucher(invoice, new RequestContext(ctx, okapiHeaders));
       })
       .thenApply(voucher -> {
         invoice.setVoucherNumber(voucher.getVoucherNumber());
@@ -635,55 +644,6 @@ public class InvoiceHelper extends AbstractHelper {
     voucher.setStatus(Voucher.Status.AWAITING_PAYMENT);
 
     return voucher;
-  }
-
-  /**
-   * Build new {@link Voucher} based on processed {@link Invoice}
-   *
-   * @param invoice invoice {@link Invoice} to be approved
-   * @return completable future with {@link Voucher}
-   */
-  private CompletableFuture<Voucher> buildNewVoucher(Invoice invoice) {
-
-    Voucher voucher = new Voucher();
-    voucher.setInvoiceId(invoice.getId());
-
-    return getVoucherNumberWithPrefix()
-      .thenApply(voucher::withVoucherNumber);
-  }
-
-  private CompletableFuture<String> getVoucherNumberWithPrefix() {
-    final String prefix = getVoucherNumberPrefix();
-    validateVoucherNumberPrefix(prefix);
-
-    return voucherHelper.generateVoucherNumber()
-      .thenApply(sequenceNumber -> prefix + sequenceNumber);
-  }
-
-  private String getVoucherNumberPrefix() {
-    return getLoadedTenantConfiguration()
-      .getConfigs().stream()
-      .filter(this::isVoucherNumberPrefixConfig)
-      .map(config -> {
-        if(config.getValue() != null) {
-          String prefix = new JsonObject(config.getValue()).getString(VOUCHER_NUMBER_PREFIX_CONFIG);
-          return StringUtils.isNotEmpty(prefix) ? prefix : EMPTY;
-        } else {
-          return EMPTY;
-        }
-      })
-      .findFirst()
-      .orElse(EMPTY);
-  }
-
-  private boolean isVoucherNumberPrefixConfig(Config config) {
-    return INVOICE_CONFIG_MODULE_NAME.equals(config.getModule()) && VOUCHER_NUMBER_CONFIG_NAME.equals(config.getConfigName());
-  }
-
-  private void validateVoucherNumberPrefix(String prefix) {
-    if (StringUtils.isNotEmpty(prefix) && !isAlpha(prefix)) {
-      throw new HttpException(500, VOUCHER_NUMBER_PREFIX_NOT_ALPHA);
-    }
   }
 
   /**
@@ -906,11 +866,11 @@ public class InvoiceHelper extends AbstractHelper {
    */
   private CompletableFuture<Voucher> handleVoucher(Voucher voucher) {
     if (nonNull(voucher.getId())) {
-      return voucherHelper.updateVoucher(voucher)
+      return voucherCommandService.updateVoucher(voucher.getId(), voucher, new RequestContext(ctx, okapiHeaders))
         .thenCompose(aVoid -> deleteVoucherLinesIfExist(voucher.getId()))
         .thenApply(aVoid -> voucher);
     } else {
-      return voucherHelper.createVoucher(voucher);
+      return voucherCommandService.createVoucher(voucher, new RequestContext(ctx, okapiHeaders));
     }
   }
 
@@ -964,7 +924,10 @@ public class InvoiceHelper extends AbstractHelper {
   private CompletableFuture<Void> payInvoice(Invoice invoice) {
     return fetchInvoiceLinesByInvoiceId(invoice.getId())
       .thenCompose(invoiceLines -> financeHelper.handlePaymentsAndCredits(invoice, invoiceLines))
-      .thenCompose(vVoid -> VertxCompletableFuture.allOf(ctx, payPoLines(invoice), payVoucher(invoice)));
+      .thenCompose(vVoid -> {
+        return VertxCompletableFuture.allOf(ctx, payPoLines(invoice),
+                               voucherCommandService.payInvoiceVoucher(invoice.getId(), new RequestContext(ctx, okapiHeaders)));
+      });
   }
 
   /**
@@ -979,19 +942,6 @@ public class InvoiceHelper extends AbstractHelper {
       .thenCompose(this::fetchPoLines)
       .thenApply(this::updatePoLinesPaymentStatus)
       .thenCompose(this::updateCompositePoLines);
-  }
-
-  /**
-   * Updates associated Voucher status to Paid.
-   *
-   * @param invoice invoice to be paid
-   * @return CompletableFuture that indicates when transition is completed
-   */
-  private CompletableFuture<Void> payVoucher(Invoice invoice) {
-
-    return voucherHelper.getVoucherByInvoiceId(invoice.getId())
-      .thenApply(voucher -> Optional.ofNullable(voucher).orElseThrow(() -> new HttpException(500, VOUCHER_NOT_FOUND.toError())))
-      .thenCompose(voucherHelper::updateVoucherStatusToPaid);
   }
 
   private CompletableFuture<List<InvoiceLine>> fetchInvoiceLinesByInvoiceId(String invoiceId) {

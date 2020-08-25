@@ -53,7 +53,6 @@ public abstract class AbstractHelper {
   public static final String SYSTEM_CONFIG_MODULE_NAME = "ORG";
   public static final String INVOICE_CONFIG_MODULE_NAME = "INVOICE";
   public static final String CONFIG_QUERY = "module==%s and configName==%s";
-  public static final String QUERY_BY_INVOICE_ID = "invoiceId==%s";
   public static final String SEARCH_PARAMS = "?limit=%s&offset=%s%s&lang=%s";
   public static final String SYSTEM_CONFIG_QUERY = String.format(CONFIG_QUERY, SYSTEM_CONFIG_MODULE_NAME, LOCALE_SETTINGS);
 

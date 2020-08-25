@@ -75,7 +75,8 @@
             "finance.ledgers.current-fiscal-year.item.get",
             "finance.expense-classes.collection.get",
             "finance-storage.transactions.item.post",
-            "finance-storage.budget-expense-classes.collection.get"
+            "finance-storage.budget-expense-classes.collection.get",
+            "finance.exchange-rate.item.get"
           ]
         },
         {
@@ -96,7 +97,8 @@
           "modulePermissions": [
             "invoice-storage.invoice-lines.collection.get",
             "acquisitions-units.units.collection.get",
-            "acquisitions-units.memberships.collection.get"
+            "acquisitions-units.memberships.collection.get",
+            "finance.exchange-rate.item.get"
           ]
         },
         {
@@ -125,7 +127,8 @@
             "invoice-storage.invoices.item.get",
             "invoice-storage.invoices.item.put",
             "acquisitions-units.units.collection.get",
-            "acquisitions-units.memberships.collection.get"
+            "acquisitions-units.memberships.collection.get",
+            "finance.exchange-rate.item.get"
           ]
         },
         {
@@ -139,7 +142,8 @@
             "invoice-storage.invoices.item.get",
             "invoice-storage.invoices.item.put",
             "acquisitions-units.units.collection.get",
-            "acquisitions-units.memberships.collection.get"
+            "acquisitions-units.memberships.collection.get",
+            "finance.exchange-rate.item.get"
           ]
         },
         {
@@ -206,7 +210,8 @@
           "pathPattern": "/voucher/vouchers/{id}",
           "permissionsRequired": ["voucher.vouchers.item.get"],
           "modulePermissions": [
-            "voucher-storage.vouchers.item.get"
+            "voucher-storage.vouchers.item.get",
+            "finance.exchange-rate.item.get"
           ]
         },
         {
@@ -215,7 +220,8 @@
           "permissionsRequired": ["voucher.vouchers.item.put"],
           "modulePermissions": [
             "voucher-storage.vouchers.item.get",
-            "voucher-storage.vouchers.item.put"
+            "voucher-storage.vouchers.item.put",
+            "finance.exchange-rate.item.get"
           ]
         },
         {

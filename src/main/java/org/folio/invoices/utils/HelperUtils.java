@@ -9,7 +9,7 @@ import static org.apache.commons.lang3.StringUtils.EMPTY;
 import static org.apache.commons.lang3.StringUtils.isEmpty;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICES;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_LINES;
-import static org.folio.invoices.utils.ResourcePathResolver.VOUCHERS;
+import static org.folio.invoices.utils.ResourcePathResolver.VOUCHERS_STORAGE;
 import static org.folio.invoices.utils.ResourcePathResolver.VOUCHER_LINES;
 import static org.folio.invoices.utils.ResourcePathResolver.resourceByIdPath;
 import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
@@ -149,12 +149,6 @@ public class HelperUtils {
                                                                  Context ctx, Map<String, String> okapiHeaders, Logger logger) {
     String endpoint = resourceByIdPath(VOUCHER_LINES, id, lang);
     return handleGetRequest(endpoint, httpClient, ctx, okapiHeaders, logger);
-  }
-
-  public static CompletableFuture<Voucher> getVoucherById(String id, String lang, HttpClientInterface httpClient, Context ctx,
-      Map<String, String> okapiHeaders, Logger logger) {
-    String endpoint = resourceByIdPath(VOUCHERS, id, lang);
-    return handleGetRequest(endpoint, httpClient, ctx, okapiHeaders, logger).thenApplyAsync(json -> json.mapTo(Voucher.class));
   }
 
   public static JsonObject verifyAndExtractBody(Response response) {
@@ -403,7 +397,7 @@ public class HelperUtils {
   public static String getAcqUnitIdsQueryParamName(String entity) {
     switch (entity) {
       case INVOICE_LINES: return INVOICES + "." + ProtectionHelper.ACQUISITIONS_UNIT_IDS;
-      case VOUCHER_LINES: return VOUCHERS+ "." + ProtectionHelper.ACQUISITIONS_UNIT_IDS;
+      case VOUCHER_LINES: return VOUCHERS_STORAGE + "." + ProtectionHelper.ACQUISITIONS_UNIT_IDS;
       default: return ProtectionHelper.ACQUISITIONS_UNIT_IDS;
     }
   }
