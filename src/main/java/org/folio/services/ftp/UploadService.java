@@ -1,6 +1,5 @@
 package org.folio.services.ftp;
 
-import org.folio.rest.jaxrs.model.BatchVoucher;
 import java.util.concurrent.CompletableFuture;
 import io.vertx.core.Context;
 
