@@ -15,6 +15,7 @@ import static org.folio.invoices.utils.HelperUtils.getHttpClient;
 import static org.folio.invoices.utils.HelperUtils.handleGetRequest;
 import static org.folio.invoices.utils.HelperUtils.verifyAndExtractBody;
 import static org.folio.rest.RestVerticle.OKAPI_USERID_HEADER;
+import static org.folio.services.exchange.ExchangeRateProviderResolver.RATE_KEY;
 
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -22,6 +23,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 
+import javax.money.convert.ConversionQuery;
+import javax.money.convert.ConversionQueryBuilder;
 import javax.money.convert.ExchangeRateProvider;
 import javax.ws.rs.core.Response;
 
@@ -32,6 +35,7 @@ import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.invoices.utils.HelperUtils;
 import org.folio.rest.jaxrs.model.Config;
 import org.folio.rest.jaxrs.model.Configs;
+import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.tools.client.interfaces.HttpClientInterface;
 
 import io.vertx.core.Context;
@@ -57,8 +61,6 @@ public abstract class AbstractHelper {
   public static final String SYSTEM_CONFIG_QUERY = String.format(CONFIG_QUERY, SYSTEM_CONFIG_MODULE_NAME, LOCALE_SETTINGS);
 
   private static final String EXCEPTION_CALLING_ENDPOINT_MSG = "Exception calling {} {}";
-
-  private ExchangeRateProvider exchangeRateProvider;
 
   protected final HttpClientInterface httpClient;
   protected final Map<String, String> okapiHeaders;
@@ -263,14 +265,6 @@ public abstract class AbstractHelper {
     httpClient.closeClient();
   }
 
-  public ExchangeRateProvider getCurrentExchangeRateProvider() {
-    if (Objects.isNull(exchangeRateProvider)) {
-      exchangeRateProvider = HelperUtils.getInvoiceExchangeRateProvider();
-      logger.debug("Created ExchangeRateProvider name: {}", exchangeRateProvider.getContext().getProviderName());
-    }
-    return exchangeRateProvider;
-  }
-
   public Response buildResponseWithLocation(String endpoint, Object body) {
     closeHttpClient();
     try {
@@ -281,6 +275,13 @@ public abstract class AbstractHelper {
         .header(CONTENT_TYPE, APPLICATION_JSON)
         .header(LOCATION, endpoint).entity(body).build();
     }
+  }
+
+  public ConversionQuery buildConversionQuery(Invoice invoice, String systemCurrency) {
+    if (invoice.getExchangeRate() != null){
+      return ConversionQueryBuilder.of().setTermCurrency(systemCurrency).set(RATE_KEY, invoice.getExchangeRate()).build();
+    }
+    return ConversionQueryBuilder.of().setTermCurrency(systemCurrency).build();
   }
 
   protected void sendEvent(MessageAddress messageAddress, JsonObject data) {
@@ -299,4 +300,6 @@ public abstract class AbstractHelper {
   protected String getCurrentUserId() {
     return okapiHeaders.get(OKAPI_USERID_HEADER);
   }
+
+
 }

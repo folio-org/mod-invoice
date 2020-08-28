@@ -1,6 +1,7 @@
 package org.folio.rest.impl;
 
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
+import static javax.ws.rs.core.MediaType.TEXT_HTML;
 import static javax.ws.rs.core.MediaType.TEXT_PLAIN;
 import static org.folio.invoices.utils.HelperUtils.INVOICE_ID;
 import static org.folio.rest.impl.MockServer.ERROR_X_OKAPI_TENANT;
@@ -106,7 +107,7 @@ public class VouchersApiTest extends ApiTestBase {
   public void testGetVouchersVoucherByIdInvalidFormat() {
     logger.info("=== Test Get Voucher by Id - 400 Bad request ===");
 
-    final Response resp = verifyGet(String.format(VOUCHER_ID_PATH, INVALID_VOUCHER_ID), APPLICATION_JSON, 404);
+    final Response resp = verifyGet(String.format(VOUCHER_ID_PATH, INVALID_VOUCHER_ID), TEXT_PLAIN, 400);
 
     String actual = resp.getBody().asString();
     logger.info(actual);
@@ -209,7 +210,7 @@ public class VouchersApiTest extends ApiTestBase {
     JsonObject vouchersList = new JsonObject(getMockData(VOUCHERS_LIST_PATH));
     JsonObject voucher = vouchersList.getJsonArray("vouchers").getJsonObject(0);
 
-    final Response resp = verifyPut(String.format(VOUCHER_ID_PATH, INVALID_VOUCHER_ID), voucher, APPLICATION_JSON, 404);
+    final Response resp = verifyPut(String.format(VOUCHER_ID_PATH, INVALID_VOUCHER_ID), voucher, TEXT_PLAIN, 400);
 
     String actual = resp.getBody().asString();
     logger.info(actual);

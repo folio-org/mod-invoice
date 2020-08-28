@@ -16,6 +16,7 @@ import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
 import static org.folio.rest.RestVerticle.OKAPI_HEADER_TENANT;
 import static org.folio.rest.impl.AbstractHelper.ID;
 import static org.folio.rest.jaxrs.model.FundDistribution.DistributionType.PERCENTAGE;
+import static org.folio.services.exchange.ExchangeRateProviderResolver.RATE_KEY;
 import static org.javamoney.moneta.convert.ExchangeRateType.ECB;
 import static org.javamoney.moneta.convert.ExchangeRateType.IDENTITY;
 import static org.javamoney.moneta.convert.ExchangeRateType.IMF;
@@ -37,6 +38,8 @@ import java.util.stream.IntStream;
 import javax.money.CurrencyUnit;
 import javax.money.Monetary;
 import javax.money.MonetaryAmount;
+import javax.money.convert.ConversionQuery;
+import javax.money.convert.ConversionQueryBuilder;
 import javax.money.convert.ExchangeRateProvider;
 import javax.money.convert.MonetaryConversions;
 
@@ -437,10 +440,6 @@ public class HelperUtils {
         idChunkMap.put(n, subList);
       });
     return idChunkMap;
-  }
-
-  public static ExchangeRateProvider getInvoiceExchangeRateProvider() {
-    return MonetaryConversions.getExchangeRateProvider(IDENTITY, ECB, IMF);
   }
 
   public static MonetaryAmount summarizeSubTotals(List<InvoiceLine> lines, CurrencyUnit currency, boolean byAbsoluteValue) {

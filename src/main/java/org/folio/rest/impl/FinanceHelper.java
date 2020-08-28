@@ -31,6 +31,7 @@ import static org.folio.invoices.utils.ResourcePathResolver.FUNDS;
 import static org.folio.invoices.utils.ResourcePathResolver.LEDGERS;
 import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
 import static org.folio.rest.impl.InvoiceHelper.MAX_IDS_FOR_GET_RQ;
+import static org.folio.services.exchange.ExchangeRateProviderResolver.RATE_KEY;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -41,6 +42,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.CompletionStage;
@@ -49,13 +51,17 @@ import java.util.stream.Collector;
 import java.util.stream.Collectors;
 
 import javax.money.MonetaryAmount;
+import javax.money.convert.ConversionQuery;
+import javax.money.convert.ConversionQueryBuilder;
 import javax.money.convert.CurrencyConversion;
+import javax.money.convert.ExchangeRateProvider;
 
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.folio.HttpStatus;
 import org.folio.invoices.rest.exceptions.HttpException;
+import org.folio.invoices.utils.HelperUtils;
 import org.folio.models.FundDistributionTransactionHolder;
 import org.folio.rest.acq.model.finance.AwaitingPayment;
 import org.folio.rest.acq.model.finance.Budget;
@@ -77,8 +83,11 @@ import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.jaxrs.model.InvoiceLine;
 import org.folio.rest.jaxrs.model.Parameter;
 import org.folio.rest.tools.client.interfaces.HttpClientInterface;
+import org.folio.services.exchange.ExchangeRateProviderResolver;
+import org.folio.spring.SpringContextUtil;
 import org.javamoney.moneta.Money;
 import org.javamoney.moneta.function.MonetaryFunctions;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import io.vertx.core.Context;
 import io.vertx.core.json.JsonObject;
@@ -96,8 +105,18 @@ public class FinanceHelper extends AbstractHelper {
   private static final String GET_BUDGET_EXPENSE_CLASSES_QUERY = resourcesPath(BUDGET_EXPENSE_CLASSES) + SEARCH_PARAMS;
   private static final String GET_CURRENT_FISCAL_YEAR_BY_ID = "/finance/ledgers/%s/current-fiscal-year?lang=%s";
 
+  @Autowired
+  private ExchangeRateProviderResolver exchangeRateProviderResolver;
+
   public FinanceHelper(HttpClientInterface httpClient, Map<String, String> okapiHeaders, Context ctx, String lang) {
     super(httpClient, okapiHeaders, ctx, lang);
+    SpringContextUtil.autowireDependencies(this, ctx);
+  }
+
+  public FinanceHelper(HttpClientInterface httpClient, Map<String, String> okapiHeaders, Context ctx, String lang,
+                       ExchangeRateProviderResolver exchangeRateProviderResolver) {
+    super(httpClient, okapiHeaders, ctx, lang);
+    this.exchangeRateProviderResolver = exchangeRateProviderResolver;
   }
 
   /**
@@ -275,8 +294,9 @@ public class FinanceHelper extends AbstractHelper {
 
   private List<String> validateAndGetFailedBudgets(String systemCurrency, List<Budget> budgets, Map<String, Ledger> ledgers,
     Map<String, MonetaryAmount> fdMap, List<FiscalYear> fiscalYears) {
-
-    CurrencyConversion currencyConversion = getCurrentExchangeRateProvider().getCurrencyConversion(systemCurrency);
+    ConversionQuery conversionQuery = ConversionQueryBuilder.of().setTermCurrency(systemCurrency).build();
+    ExchangeRateProvider exchangeRateProvider = exchangeRateProviderResolver.resolve(conversionQuery);
+    CurrencyConversion currencyConversion =  exchangeRateProvider.getCurrencyConversion(systemCurrency);
 
     return budgets.stream()
       .filter(budget -> {
@@ -319,12 +339,13 @@ public class FinanceHelper extends AbstractHelper {
   }
 
   private Map<String, MonetaryAmount> getGroupedAmountByFundId(List<InvoiceLine> lines, Invoice invoice, String systemCurrency) {
-    CurrencyConversion currencyConversion = getCurrentExchangeRateProvider().getCurrencyConversion(systemCurrency);
+    ConversionQuery conversionQuery = buildConversionQuery(invoice, systemCurrency);
+    ExchangeRateProvider exchangeRateProvider = exchangeRateProviderResolver.resolve(conversionQuery);
+    CurrencyConversion conversion = exchangeRateProvider.getCurrencyConversion(conversionQuery);
     return lines.stream()
       .flatMap(invoiceLine -> invoiceLine.getFundDistributions().stream()
         .map(fd -> Pair.of(fd.getFundId(),
-          getFundDistributionAmount(fd, invoiceLine.getTotal(), invoice.getCurrency())
-            .with(currencyConversion))))
+          getFundDistributionAmount(fd, invoiceLine.getTotal(), invoice.getCurrency()).with(conversion))))
       .collect(groupingBy(Pair::getKey, sumFundAmount(systemCurrency)));
   }
 
@@ -335,7 +356,10 @@ public class FinanceHelper extends AbstractHelper {
 
 
   private List<FundDistributionTransactionHolder> buildBasePendingPaymentTransactions(List<InvoiceLine> invoiceLines, Invoice invoice) {
-    CurrencyConversion conversion = getCurrentExchangeRateProvider().getCurrencyConversion(getSystemCurrency());
+    String systemCurrency = getSystemCurrency();
+    ConversionQuery conversionQuery = buildConversionQuery(invoice, systemCurrency);
+    ExchangeRateProvider exchangeRateProvider = exchangeRateProviderResolver.resolve(conversionQuery);
+    CurrencyConversion conversion =  exchangeRateProvider.getCurrencyConversion(conversionQuery);
     return invoiceLines.stream()
       .flatMap(line -> line.getFundDistributions().stream()
         .map(fundDistribution -> buildPendingPaymentTransactionByInvoiceLine(fundDistribution, line, invoice.getCurrency(), conversion)))
@@ -490,13 +514,13 @@ public class FinanceHelper extends AbstractHelper {
       .toList());
   }
 
-  private CompletableFuture<List<Fund>> getFundsByIds(List<String> ids) {
+  public CompletableFuture<List<Fund>> getFundsByIds(List<String> ids) {
     String query = convertIdsToCqlQuery(ids);
     String queryParam = getEndpointWithQuery(query, logger);
     String endpoint = String.format(GET_FUNDS_WITH_SEARCH_PARAMS, MAX_IDS_FOR_GET_RQ, 0, queryParam, lang);
 
     return handleGetRequest(endpoint, httpClient, ctx, okapiHeaders, logger)
-      .thenApply(entries -> entries.mapTo(FundCollection.class))
+      .thenCompose(fc -> VertxCompletableFuture.supplyBlockingAsync(ctx, () -> fc.mapTo(FundCollection.class)))
       .thenApply(fundCollection -> {
         if (ids.size() == fundCollection.getFunds().size()) {
           return fundCollection.getFunds();
@@ -537,7 +561,10 @@ public class FinanceHelper extends AbstractHelper {
     transactions.forEach(transaction ->  {
       String initialCurrency = transaction.getCurrency();
       MonetaryAmount initialAmount = Money.of(transaction.getAmount(), initialCurrency);
-      CurrencyConversion conversion = getCurrentExchangeRateProvider().getCurrencyConversion(finalCurrency);
+      String systemCurrency = getSystemCurrency();
+      ConversionQuery conversionQuery = ConversionQueryBuilder.of().setTermCurrency(systemCurrency).build();
+      ExchangeRateProvider exchangeRateProvider = exchangeRateProviderResolver.resolve(conversionQuery);
+      CurrencyConversion conversion =  exchangeRateProvider.getCurrencyConversion(finalCurrency);
       transaction.withFiscalYearId(fiscalYear.getId())
         .withCurrency(finalCurrency)
         .withAmount(convertToDoubleWithRounding(initialAmount.with(conversion)));

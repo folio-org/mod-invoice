@@ -9,11 +9,11 @@ import org.folio.rest.core.models.RequestContext;
 import java.util.concurrent.CompletableFuture;
 
 
-public class RateOfExchangeService {
+public class FinanceExchangeRateService {
   private static final String ROE_QUERY_PARANS = ResourcePathResolver.resourcesPath(FINANCE_EXCHANGE_RATE) + "?from=%s&to=%s";
   private final RestClient exchangeRateRestClient;
 
-  public RateOfExchangeService(RestClient exchangeRateRestClient) {
+  public FinanceExchangeRateService(RestClient exchangeRateRestClient) {
     this.exchangeRateRestClient = exchangeRateRestClient;
   }
 

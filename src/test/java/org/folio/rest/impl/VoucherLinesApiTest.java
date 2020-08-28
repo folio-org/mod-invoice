@@ -81,7 +81,7 @@ public class VoucherLinesApiTest extends ApiTestBase {
   @Test
   public void testGetVouchersVoucherLineByIdInvalidFormat() {
     logger.info("=== Test Get Voucher line by Id - 400 Bad request ===");
-    final Response resp = verifyGet(String.format(VOUCHER_LINES_ID_PATH, INVALID_VOUCHER_LINE_ID), APPLICATION_JSON, 404);
+    final Response resp = verifyGet(String.format(VOUCHER_LINES_ID_PATH, INVALID_VOUCHER_LINE_ID), TEXT_PLAIN, 400);
     String actual = resp.getBody().asString();
     logger.info(actual);
 

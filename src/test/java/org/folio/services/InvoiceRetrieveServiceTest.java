@@ -26,6 +26,7 @@ import org.folio.rest.jaxrs.model.InvoiceCollection;
 import org.folio.rest.jaxrs.model.Voucher;
 import org.folio.rest.jaxrs.model.VoucherCollection;
 import org.folio.services.config.TenantConfigurationService;
+import org.folio.services.exchange.ExchangeRateProviderResolver;
 import org.folio.services.expence.ExpenseClassRetrieveService;
 import org.folio.services.validator.VoucherValidator;
 import org.folio.services.voucher.VoucherCommandService;
@@ -65,7 +66,7 @@ public class InvoiceRetrieveServiceTest extends ApiTestBase {
 
     VoucherHelper voucherHelper = new VoucherHelper(okapiHeaders, context, "en", voucherRetrieveService, voucherCommandService);
     InvoiceHelper invoiceHelper = new InvoiceHelper(okapiHeaders, context, "en", expenseClassRetrieveService,
-      voucherCommandService, voucherRetrieveService, voucherHelper);
+      voucherCommandService, voucherRetrieveService, voucherHelper, new ExchangeRateProviderResolver());
     InvoiceRetrieveService service = new InvoiceRetrieveService(invoiceHelper);
     JsonObject vouchersList = new JsonObject(getMockData(VOUCHERS_LIST_PATH));
     List<Voucher> vouchers = vouchersList.getJsonArray("vouchers").stream()
@@ -89,7 +90,7 @@ public class InvoiceRetrieveServiceTest extends ApiTestBase {
 
     VoucherHelper voucherHelper = new VoucherHelper(okapiHeaders, context, "en", voucherRetrieveService, voucherCommandService);
     InvoiceHelper invoiceHelper = new InvoiceHelper(okapiHeaders, context, "en", expenseClassRetrieveService,
-      voucherCommandService, voucherRetrieveService, voucherHelper);
+      voucherCommandService, voucherRetrieveService, voucherHelper, new ExchangeRateProviderResolver());
     InvoiceRetrieveService service = new InvoiceRetrieveService(invoiceHelper);
     JsonObject vouchersList = new JsonObject(getMockData(VOUCHERS_LIST_PATH));
     List<Voucher> vouchers = vouchersList.getJsonArray("vouchers") .stream()

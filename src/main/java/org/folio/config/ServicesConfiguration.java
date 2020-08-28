@@ -2,7 +2,11 @@ package org.folio.config;
 
 import org.folio.rest.core.RestClient;
 import org.folio.services.config.TenantConfigurationService;
-import org.folio.services.exchange.RateOfExchangeService;
+import org.folio.services.exchange.ExchangeRateProviderResolver;
+import org.folio.services.exchange.FinanceExchangeRateService;
+import org.folio.services.finance.CurrentFiscalYearService;
+import org.folio.services.finance.FiscalYearService;
+import org.folio.services.finance.LedgerService;
 import org.folio.services.transaction.BaseTransactionService;
 import org.folio.services.transaction.EncumbranceService;
 import org.folio.services.validator.VoucherValidator;
@@ -22,8 +26,8 @@ public class ServicesConfiguration {
   }
 
   @Bean
-  RateOfExchangeService rateOfExchangeService(RestClient exchangeRateRestClient) {
-    return new RateOfExchangeService(exchangeRateRestClient);
+  FinanceExchangeRateService rateOfExchangeService(RestClient exchangeRateRestClient) {
+    return new FinanceExchangeRateService(exchangeRateRestClient);
   }
 
   @Bean
@@ -48,5 +52,25 @@ public class ServicesConfiguration {
   @Bean
   TenantConfigurationService tenantConfigurationService(RestClient configEntriesRestClient) {
     return new TenantConfigurationService(configEntriesRestClient);
+  }
+
+  @Bean
+  FiscalYearService fiscalYearService(RestClient fiscalYearRestClient){
+    return new FiscalYearService(fiscalYearRestClient);
+  }
+
+  @Bean
+  LedgerService ledgerService(RestClient ledgerRestClient) {
+    return new LedgerService(ledgerRestClient);
+  }
+
+  @Bean
+  CurrentFiscalYearService currentFiscalYearService(FiscalYearService fiscalYearService, LedgerService ledgerService) {
+    return new CurrentFiscalYearService(fiscalYearService, ledgerService);
+  }
+
+  @Bean
+  ExchangeRateProviderResolver exchangeRateProviderResolver() {
+    return new ExchangeRateProviderResolver();
   }
 }

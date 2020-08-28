@@ -7,6 +7,7 @@ import static java.util.stream.Collectors.groupingBy;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toMap;
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
+import static javax.ws.rs.core.MediaType.TEXT_HTML;
 import static javax.ws.rs.core.MediaType.TEXT_PLAIN;
 import static org.awaitility.Awaitility.await;
 import static org.folio.invoices.utils.ErrorCodes.ACCOUNTING_CODE_NOT_PRESENT;
@@ -124,7 +125,10 @@ import java.util.stream.Stream;
 import javax.money.CurrencyUnit;
 import javax.money.Monetary;
 import javax.money.MonetaryAmount;
+import javax.money.convert.ConversionQuery;
+import javax.money.convert.ConversionQueryBuilder;
 import javax.money.convert.CurrencyConversion;
+import javax.money.convert.ExchangeRateProvider;
 
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.reflect.FieldUtils;
@@ -155,6 +159,7 @@ import org.folio.rest.jaxrs.model.InvoiceLineCollection;
 import org.folio.rest.jaxrs.model.Voucher;
 import org.folio.rest.jaxrs.model.VoucherCollection;
 import org.folio.rest.jaxrs.model.VoucherLine;
+import org.folio.services.exchange.ExchangeRateProviderResolver;
 import org.hamcrest.Matchers;
 import org.hamcrest.beans.HasProperty;
 import org.hamcrest.beans.HasPropertyWithValue;
@@ -203,7 +208,7 @@ public class InvoicesApiTest extends ApiTestBase {
   public static final String EXISTING_FUND_ID = "1d1574f1-9196-4a57-8d1f-3b2e4309eb81";
   private static final String FUND_ID_WITH_NOT_ENOUGH_AMOUNT_IN_BUDGET = "2d1574f1-919cc4a57-8d1f-3b2e4619eb81";
   private static final String FUND_ID_WITH_NOT_ACTIVE_BUDGET = "3d1574f1-919cc4a57-8d1f-3b2e4619eb81";
-  private static final String EXISTING_LEDGER_ID = "a3ec5552-c4a4-4a15-a57c-0046db536369";
+  public static final String EXISTING_LEDGER_ID = "a3ec5552-c4a4-4a15-a57c-0046db536369";
   public static final String EXPENSE_CLASSES_MOCK_DATA_PATH = BASE_MOCK_DATA_PATH + "expense-classes/";
   public static final String EXPENSE_CLASSES_LIST_PATH = EXPENSE_CLASSES_MOCK_DATA_PATH + "expense-classes.json";
   public static final String INACTIVE_EXPENSE_CLASS_ID = "6e6ed3c9-d959-4c91-a436-6076fb373816";
@@ -507,7 +512,7 @@ public class InvoicesApiTest extends ApiTestBase {
     assertThat(vouchersCreated, hasSize(1));
     Voucher voucherCreated = vouchersCreated.get(0).mapTo(Voucher.class);
     assertThat(voucherCreated.getVoucherNumber(), equalTo(TEST_PREFIX + VOUCHER_NUMBER_VALUE));
-    assertThat(voucherCreated.getSystemCurrency(), equalTo("GBP"));
+    assertThat(voucherCreated.getSystemCurrency(), equalTo(DEFAULT_SYSTEM_CURRENCY));
     verifyTransitionToApproved(voucherCreated, invoiceLines, updatedInvoice, 5);
     verifyVoucherLineWithExpenseClasses(2L);
     checkVoucherAcqUnitIdsList(voucherCreated, reqData);
@@ -548,7 +553,7 @@ public class InvoicesApiTest extends ApiTestBase {
     assertThat(vouchersCreated, hasSize(1));
     Voucher voucherCreated = vouchersCreated.get(0).mapTo(Voucher.class);
     assertThat(voucherCreated.getVoucherNumber(), equalTo(TEST_PREFIX + VOUCHER_NUMBER_VALUE));
-    assertThat(voucherCreated.getSystemCurrency(), equalTo("GBP"));
+    assertThat(voucherCreated.getSystemCurrency(), equalTo(DEFAULT_SYSTEM_CURRENCY));
     verifyTransitionToApproved(voucherCreated, invoiceLines, updatedInvoice, 5);
     verifyVoucherLineWithExpenseClasses(2L);
     checkVoucherAcqUnitIdsList(voucherCreated, reqData);
@@ -764,7 +769,7 @@ public class InvoicesApiTest extends ApiTestBase {
     assertThat(vouchersCreated, hasSize(1));
     Voucher voucherCreated = vouchersCreated.get(0).mapTo(Voucher.class);
     assertThat(voucherCreated.getVoucherNumber(), equalTo(TEST_PREFIX + VOUCHER_NUMBER_VALUE));
-    assertThat(voucherCreated.getSystemCurrency(), equalTo("GBP"));
+    assertThat(voucherCreated.getSystemCurrency(), equalTo(DEFAULT_SYSTEM_CURRENCY));
     List<JsonObject> fundsSearches = serverRqRs.get(FUNDS, HttpMethod.GET);
     List<Fund> funds = fundsSearches.get(0).mapTo(FundCollection.class).getFunds();
     verifyTransitionToApproved(voucherCreated, Collections.singletonList(invoiceLine), updatedInvoice,  getExpectedVoucherLinesQuantity(funds));
@@ -1408,7 +1413,9 @@ public class InvoicesApiTest extends ApiTestBase {
     Map<String, Transaction> pendingPaymentMap = pendingPaymesCreated.stream()
       .map(entries -> entries.mapTo(Transaction.class))
       .collect(toMap((transaction)->transaction.getAwaitingPayment().getEncumbranceId(), Function.identity()));
-    CurrencyConversion conversion = HelperUtils.getInvoiceExchangeRateProvider().getCurrencyConversion(DEFAULT_SYSTEM_CURRENCY); //currency from MockServer
+    ConversionQuery conversionQuery = ConversionQueryBuilder.of().setTermCurrency(DEFAULT_SYSTEM_CURRENCY).build();
+    ExchangeRateProvider exchangeRateProvider = new ExchangeRateProviderResolver().resolve(conversionQuery);
+    CurrencyConversion conversion = exchangeRateProvider.getCurrencyConversion(conversionQuery); //currency from MockServer
     fundDistributions.forEach(fundDistribution -> {
       MonetaryAmount amount = getFundDistributionAmount(fundDistribution, 10d, reqData.getCurrency()).with(conversion);
       assertThat(convertToDoubleWithRounding(amount), is(pendingPaymentMap.get(fundDistribution.getEncumbrance()).getAmount()));
@@ -2147,7 +2154,7 @@ public class InvoicesApiTest extends ApiTestBase {
 
     String jsonBody  = getMockData(APPROVED_INVOICE_SAMPLE_PATH);
 
-    verifyPut(String.format(INVOICE_ID_PATH, ID_BAD_FORMAT), jsonBody, APPLICATION_JSON, 404);
+    verifyPut(String.format(INVOICE_ID_PATH, ID_BAD_FORMAT), jsonBody, TEXT_PLAIN, 400);
   }
 
   @Test
@@ -2351,7 +2358,7 @@ public class InvoicesApiTest extends ApiTestBase {
 
   @Test
   public void testDeleteInvoiceByIdWithInvalidFormat() {
-    verifyDeleteResponse(String.format(INVOICE_ID_PATH, ID_BAD_FORMAT), APPLICATION_JSON, 404);
+    verifyDeleteResponse(String.format(INVOICE_ID_PATH, ID_BAD_FORMAT), TEXT_PLAIN, 400);
   }
 
   @Test

@@ -24,6 +24,7 @@ import org.folio.rest.jaxrs.model.BatchVoucher;
 import org.folio.rest.jaxrs.model.BatchVoucherExport;
 import org.folio.services.InvoiceRetrieveService;
 import org.folio.services.config.TenantConfigurationService;
+import org.folio.services.exchange.ExchangeRateProviderResolver;
 import org.folio.services.expence.ExpenseClassRetrieveService;
 import org.folio.services.validator.VoucherValidator;
 import org.junit.jupiter.api.Assertions;
@@ -67,7 +68,7 @@ public class BatchVoucherGenerateServiceTest extends ApiTestBase {
 
     VoucherHelper voucherHelper = new VoucherHelper(okapiHeaders, context, "en", voucherRetrieveService, voucherCommandService);
     InvoiceHelper invoiceHelper = new InvoiceHelper(okapiHeaders, context, "en", expenseClassRetrieveService,
-      voucherCommandService, voucherRetrieveService, voucherHelper);
+      voucherCommandService, voucherRetrieveService, voucherHelper, new ExchangeRateProviderResolver());
     InvoiceRetrieveService invoiceRetrieveService = new InvoiceRetrieveService(invoiceHelper);
     BatchVoucherGenerateService service = new BatchVoucherGenerateService(okapiHeaders, context, "en",
               invoiceRetrieveService, voucherRetrieveService, voucherCommandService);
@@ -90,7 +91,7 @@ public class BatchVoucherGenerateServiceTest extends ApiTestBase {
 
       VoucherHelper voucherHelper = new VoucherHelper(okapiHeaders, context, "en", voucherRetrieveService, voucherCommandService);
       InvoiceHelper invoiceHelper = new InvoiceHelper(okapiHeaders, context, "en", expenseClassRetrieveService,
-                         voucherCommandService, voucherRetrieveService, voucherHelper);
+                         voucherCommandService, voucherRetrieveService, voucherHelper, new ExchangeRateProviderResolver());
       InvoiceRetrieveService invoiceRetrieveService = new InvoiceRetrieveService(invoiceHelper);
       BatchVoucherGenerateService service = new BatchVoucherGenerateService(okapiHeaders, context, "en",
               invoiceRetrieveService, voucherRetrieveService, voucherCommandService);
