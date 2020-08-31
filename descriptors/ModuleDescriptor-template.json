@@ -72,11 +72,14 @@
             "finance.funds.collection.get",
             "finance.budgets.collection.get",
             "finance.ledgers.collection.get",
+            "finance.ledgers.item.get",
             "finance.ledgers.current-fiscal-year.item.get",
             "finance.expense-classes.collection.get",
             "finance-storage.transactions.item.post",
             "finance-storage.budget-expense-classes.collection.get",
-            "finance.exchange-rate.item.get"
+            "finance.exchange-rate.item.get",
+            "finance.fiscal-years.item.get",
+            "finance.fiscal-years.collection.get"
           ]
         },
         {
