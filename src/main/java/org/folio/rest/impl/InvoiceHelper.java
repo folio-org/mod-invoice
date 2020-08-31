@@ -43,7 +43,6 @@ import static org.folio.invoices.utils.ResourcePathResolver.ORDER_LINES;
 import static org.folio.invoices.utils.ResourcePathResolver.resourceByIdPath;
 import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
 import static org.folio.rest.RestVerticle.OKAPI_HEADER_PERMISSIONS;
-import static org.folio.services.exchange.ExchangeRateProviderResolver.RATE_KEY;
 import static org.folio.services.voucher.VoucherCommandService.VOUCHER_NUMBER_CONFIG_NAME;
 
 import java.util.ArrayList;
@@ -65,7 +64,6 @@ import javax.money.CurrencyUnit;
 import javax.money.Monetary;
 import javax.money.MonetaryAmount;
 import javax.money.convert.ConversionQuery;
-import javax.money.convert.ConversionQueryBuilder;
 import javax.money.convert.CurrencyConversion;
 import javax.money.convert.ExchangeRateProvider;
 

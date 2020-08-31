@@ -1,7 +1,5 @@
 package org.folio.services.exchange;
 
-import org.javamoney.moneta.spi.AbstractCurrencyConversion;
-import org.javamoney.moneta.spi.LazyBoundCurrencyConversion;
 import javax.money.MonetaryAmount;
 import javax.money.convert.ConversionContext;
 import javax.money.convert.ConversionQuery;
@@ -9,6 +7,8 @@ import javax.money.convert.ConversionQueryBuilder;
 import javax.money.convert.CurrencyConversion;
 import javax.money.convert.ExchangeRate;
 import javax.money.convert.ExchangeRateProvider;
+
+import org.javamoney.moneta.spi.AbstractCurrencyConversion;
 
 public class ManualCurrencyConversion extends AbstractCurrencyConversion {
   private final ExchangeRateProvider rateProvider;

@@ -20,16 +20,13 @@ import static org.folio.services.exchange.ExchangeRateProviderResolver.RATE_KEY;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Map;
-import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 
 import javax.money.convert.ConversionQuery;
 import javax.money.convert.ConversionQueryBuilder;
-import javax.money.convert.ExchangeRateProvider;
 import javax.ws.rs.core.Response;
 
 import org.apache.commons.collections4.CollectionUtils;
-import org.apache.commons.lang3.StringUtils;
 import org.folio.invoices.events.handlers.MessageAddress;
 import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.invoices.utils.HelperUtils;

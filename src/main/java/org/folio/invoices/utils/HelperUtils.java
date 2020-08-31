@@ -16,10 +16,6 @@ import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
 import static org.folio.rest.RestVerticle.OKAPI_HEADER_TENANT;
 import static org.folio.rest.impl.AbstractHelper.ID;
 import static org.folio.rest.jaxrs.model.FundDistribution.DistributionType.PERCENTAGE;
-import static org.folio.services.exchange.ExchangeRateProviderResolver.RATE_KEY;
-import static org.javamoney.moneta.convert.ExchangeRateType.ECB;
-import static org.javamoney.moneta.convert.ExchangeRateType.IDENTITY;
-import static org.javamoney.moneta.convert.ExchangeRateType.IMF;
 
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
@@ -38,10 +34,6 @@ import java.util.stream.IntStream;
 import javax.money.CurrencyUnit;
 import javax.money.Monetary;
 import javax.money.MonetaryAmount;
-import javax.money.convert.ConversionQuery;
-import javax.money.convert.ConversionQueryBuilder;
-import javax.money.convert.ExchangeRateProvider;
-import javax.money.convert.MonetaryConversions;
 
 import org.apache.commons.collections4.map.CaseInsensitiveMap;
 import org.apache.commons.lang3.ArrayUtils;

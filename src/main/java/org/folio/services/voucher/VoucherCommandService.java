@@ -34,7 +34,7 @@ public class VoucherCommandService {
   private static final Logger logger = LoggerFactory.getLogger(VoucherCommandService.class);
   public static final String VOUCHER_NUMBER_CONFIG_NAME = "voucherNumber";
   public static final String VOUCHER_NUMBER_PREFIX_CONFIG = "voucherNumberPrefix";
-  private static final String VOUCHER_NUMBER_PREFIX_CONFIG_QUERY = String.format(CONFIG_QUERY, INVOICE_CONFIG_MODULE_NAME, VOUCHER_NUMBER_PREFIX_CONFIG);
+  private static final String VOUCHER_NUMBER_PREFIX_CONFIG_QUERY = String.format(CONFIG_QUERY, INVOICE_CONFIG_MODULE_NAME, VOUCHER_NUMBER_CONFIG_NAME);
 
 
   private final RestClient voucherStorageRestClient;

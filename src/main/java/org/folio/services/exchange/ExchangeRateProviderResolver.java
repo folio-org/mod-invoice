@@ -10,6 +10,7 @@ import java.util.Optional;
 import javax.money.convert.ConversionQuery;
 import javax.money.convert.ExchangeRateProvider;
 import javax.money.convert.MonetaryConversions;
+
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 
