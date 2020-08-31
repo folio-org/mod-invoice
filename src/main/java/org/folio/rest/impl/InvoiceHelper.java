@@ -44,6 +44,7 @@ import static org.folio.invoices.utils.ResourcePathResolver.resourceByIdPath;
 import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
 import static org.folio.rest.RestVerticle.OKAPI_HEADER_PERMISSIONS;
 import static org.folio.services.voucher.VoucherCommandService.VOUCHER_NUMBER_CONFIG_NAME;
+import static org.folio.services.voucher.VoucherCommandService.VOUCHER_NUMBER_PREFIX_CONFIG_QUERY;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -120,7 +121,6 @@ import one.util.streamex.StreamEx;
 public class InvoiceHelper extends AbstractHelper {
 
   static final int MAX_IDS_FOR_GET_RQ = 15;
-  private static final String VOUCHER_NUMBER_CONFIG_QUERY = String.format(CONFIG_QUERY, INVOICE_CONFIG_MODULE_NAME, VOUCHER_NUMBER_CONFIG_NAME);
   private static final String GET_INVOICES_BY_QUERY = resourcesPath(INVOICES) + SEARCH_PARAMS;
   private static final String EMPTY_ARRAY = "[]";
 
@@ -541,7 +541,7 @@ public class InvoiceHelper extends AbstractHelper {
     invoice.setApprovalDate(new Date());
     invoice.setApprovedBy(invoice.getMetadata().getUpdatedByUserId());
 
-    return loadTenantConfiguration(SYSTEM_CONFIG_QUERY, VOUCHER_NUMBER_CONFIG_QUERY)
+    return loadTenantConfiguration(SYSTEM_CONFIG_QUERY, VOUCHER_NUMBER_PREFIX_CONFIG_QUERY)
       .thenCompose(ok -> getInvoiceLinesWithTotals(invoice))
       .thenCompose(lines -> updateInvoiceLinesWithEncumbrances(lines, new RequestContext(ctx, okapiHeaders)).thenApply(v -> lines))
       .thenCompose(lines -> {
