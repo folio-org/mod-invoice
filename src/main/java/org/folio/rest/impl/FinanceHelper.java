@@ -24,6 +24,7 @@ import static org.folio.invoices.utils.HelperUtils.getFundDistributionAmount;
 import static org.folio.invoices.utils.HelperUtils.handleGetRequest;
 import static org.folio.invoices.utils.ResourcePathResolver.BUDGETS;
 import static org.folio.invoices.utils.ResourcePathResolver.BUDGET_EXPENSE_CLASSES;
+import static org.folio.invoices.utils.ResourcePathResolver.CURRENT_BUDGET;
 import static org.folio.invoices.utils.ResourcePathResolver.FINANCE_CREDITS;
 import static org.folio.invoices.utils.ResourcePathResolver.FINANCE_PAYMENTS;
 import static org.folio.invoices.utils.ResourcePathResolver.FINANCE_TRANSACTIONS;
@@ -60,7 +61,6 @@ import org.folio.models.FundDistributionTransactionHolder;
 import org.folio.rest.acq.model.finance.AwaitingPayment;
 import org.folio.rest.acq.model.finance.Budget;
 import org.folio.rest.acq.model.finance.Budget.BudgetStatus;
-import org.folio.rest.acq.model.finance.BudgetCollection;
 import org.folio.rest.acq.model.finance.BudgetExpenseClassCollection;
 import org.folio.rest.acq.model.finance.FiscalYear;
 import org.folio.rest.acq.model.finance.Fund;
@@ -89,7 +89,7 @@ public class FinanceHelper extends AbstractHelper {
   public static final String FUND_ID = "fundId";
   private static final String QUERY_EQUALS = "&query=";
 
-  private static final String GET_BUDGETS_WITH_SEARCH_PARAMS = resourcesPath(BUDGETS) + SEARCH_PARAMS;
+  private static final String GET_CURRENT_ACTIVE_BUDGET_BY_FUND_ID = resourcesPath(CURRENT_BUDGET) + "?lang=%s&status=Active";
   private static final String GET_LEDGERS_WITH_SEARCH_PARAMS = resourcesPath(LEDGERS) + SEARCH_PARAMS;
   private static final String GET_TRANSACTIONS_BY_QUERY = resourcesPath(FINANCE_TRANSACTIONS) + SEARCH_PARAMS;
   private static final String GET_FUNDS_WITH_SEARCH_PARAMS = resourcesPath(FUNDS) + SEARCH_PARAMS;
@@ -171,34 +171,26 @@ public class FinanceHelper extends AbstractHelper {
   }
 
   public CompletableFuture<List<Budget>> fetchBudgetsByFundIds(List<String> fundIds) {
-    return getBudgetsByChunks(fundIds)
-      .thenApply(lists -> lists.stream()
-        .flatMap(Collection::stream)
-        .collect(toList()));
+    List<CompletableFuture<Budget>> futureList = fundIds.stream()
+      .distinct()
+      .map(this::getActiveBudgetByFundId)
+      .collect(toList());
+
+    return VertxCompletableFuture.allOf(ctx, futureList.toArray(new CompletableFuture[0]))
+      .thenApply(v -> futureList.stream().map(CompletableFuture::join).collect(Collectors.toList()));
   }
 
-  public CompletableFuture<List<List<Budget>>> getBudgetsByChunks(List<String> ids) {
-    List<String> uniqueFundIds = ids.stream().distinct().collect(toList());
-    return collectResultsOnSuccess(ofSubLists(uniqueFundIds, MAX_IDS_FOR_GET_RQ)
-      .map(this::getBudgetsByFundIds)
-      .toList());
-  }
+  private CompletableFuture<Budget> getActiveBudgetByFundId(String fundId) {
+    String endpoint = String.format(GET_CURRENT_ACTIVE_BUDGET_BY_FUND_ID, fundId, lang);
 
-  private CompletableFuture<List<Budget>> getBudgetsByFundIds(List<String> fundIds) {
-    String query = convertIdsToCqlQuery(fundIds, FUND_ID, true);
-    String queryParam = QUERY_EQUALS + encodeQuery(query, logger);
-    String endpoint = String.format(GET_BUDGETS_WITH_SEARCH_PARAMS, MAX_IDS_FOR_GET_RQ, 0, queryParam, lang);
-
-    return handleGetRequest(endpoint, httpClient, ctx, okapiHeaders, logger)
-      .thenCompose(entries -> VertxCompletableFuture.supplyBlockingAsync(ctx, () -> entries.mapTo(BudgetCollection.class)))
-      .thenApply(budgetCollection -> {
-        if (fundIds.size() == budgetCollection.getBudgets().size()) {
-          return budgetCollection.getBudgets();
-        }
-        String missingIds = String.join(", ", CollectionUtils.subtract(fundIds, budgetCollection.getBudgets().stream().map(Budget::getId).collect(toList())));
+    return handleGetRequest(endpoint, httpClient, ctx, okapiHeaders, logger).thenApply(entries -> entries.mapTo(Budget.class))
+      .exceptionally(t -> {
+      if (t.getCause() instanceof HttpException) {
         throw new HttpException(404, BUDGET_NOT_FOUND
-          .toError().withParameters(Collections.singletonList(new Parameter().withKey("fund").withValue(missingIds))));
-      });
+          .toError().withParameters(Collections.singletonList(new Parameter().withKey("fund").withValue(fundId))));
+      }
+      throw new CompletionException(t.getCause());
+    });
   }
 
   public CompletableFuture<Map<String, Ledger>> getLedgersGroupedByFundId(List<String> fundIds) {
