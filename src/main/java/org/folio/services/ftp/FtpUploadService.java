@@ -87,7 +87,7 @@ public class FtpUploadService implements UploadService {
       try (InputStream is = new ByteArrayInputStream(content.getBytes())) {
         ftp.addProtocolCommandListener( FTPVertxCommandLogger.getDefListener(logger));
         ftp.setBufferSize(1024 * 1024);
-        ftp.setControlKeepAliveTimeout(300);
+        ftp.setConnectTimeout(30000);
         ftp.setFileType(FTP.BINARY_FILE_TYPE);
         ftp.setPassiveNatWorkaroundStrategy(new DefaultServerResolver(ftp));
         ftp.enterLocalPassiveMode();
