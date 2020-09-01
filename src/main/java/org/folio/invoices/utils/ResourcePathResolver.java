@@ -32,6 +32,7 @@ public class ResourcePathResolver {
   public static final String BATCH_VOUCHER_STORAGE = "batch-voucher/batch-vouchers";
   public static final String BATCH_VOUCHER_EXPORTS_STORAGE = "batch-voucher/batch-voucher-exports";
   public static final String BUDGETS = "finance.budgets";
+  public static final String CURRENT_BUDGET = "finance.current-budgets";
   public static final String LEDGERS = "finance.ledgers";
   public static final String FINANCE_TRANSACTIONS = "finance/transactions";
   public static final String FINANCE_INVOICE_PAYMENTS_SUMMARIES = "finance/invoice-payment-summaries";
@@ -71,6 +72,7 @@ public class ResourcePathResolver {
     apis.put(FINANCE_PAYMENTS, "/finance/payments");
     apis.put(FINANCE_CREDITS, "/finance/credits");
     apis.put(BUDGETS, "/finance/budgets");
+    apis.put(CURRENT_BUDGET, "/finance/funds/%s/budget");
     apis.put(LEDGERS, "/finance/ledgers");
     apis.put(BUDGET_EXPENSE_CLASSES, "/finance-storage/budget-expense-classes");
     apis.put(EXPENSE_CLASSES_URL, "/finance/expense-classes");
