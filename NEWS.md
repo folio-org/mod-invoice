@@ -1,5 +1,14 @@
 ## 4.1.0 - Unreleased
 
+## 4.0.3 - Released
+
+The focus of this release was to fix issue of stuck loading of invoices after an attempt to upload batch voucher on FTP
+
+[Full Changelog](https://github.com/folio-org/mod-invoice/compare/v4.0.2...v4.0.3)
+
+### Bug Fixes
+* [MODINVOICE-193](https://issues.folio.org/browse/MODINVOICE-193) - Invoice loading stuck on Bugfest
+
 ## 4.0.2 - Released
 
 The focus of this release was to fix pending payment creation and fix batch voucher export
