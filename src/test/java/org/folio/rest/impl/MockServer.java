@@ -21,6 +21,7 @@ import static org.folio.invoices.utils.ResourcePathResolver.BATCH_VOUCHER_EXPORT
 import static org.folio.invoices.utils.ResourcePathResolver.BATCH_VOUCHER_STORAGE;
 import static org.folio.invoices.utils.ResourcePathResolver.BUDGETS;
 import static org.folio.invoices.utils.ResourcePathResolver.BUDGET_EXPENSE_CLASSES;
+import static org.folio.invoices.utils.ResourcePathResolver.CURRENT_BUDGET;
 import static org.folio.invoices.utils.ResourcePathResolver.EXPENSE_CLASSES_URL;
 import static org.folio.invoices.utils.ResourcePathResolver.FINANCE_CREDITS;
 import static org.folio.invoices.utils.ResourcePathResolver.FINANCE_PAYMENTS;
@@ -439,6 +440,7 @@ public class MockServer {
     router.route(HttpMethod.PUT, resourceByIdPath(VOUCHER_LINES)).handler(ctx -> handlePutGenericSubObj(ctx, VOUCHER_LINES));
     router.route(HttpMethod.PUT, resourceByIdPath(ORDER_LINES)).handler(ctx -> handlePutGenericSubObj(ctx, ResourcePathResolver.ORDER_LINES));
     router.route(HttpMethod.PUT, resourceByIdPath(BATCH_VOUCHER_EXPORT_CONFIGS)).handler(ctx -> handlePutGenericSubObj(ctx, ResourcePathResolver.BATCH_VOUCHER_EXPORT_CONFIGS));
+    router.route(HttpMethod.GET, "/finance/funds/:id/budget").handler(this::handleGetBudgetByFinanceId);
     router.route(HttpMethod.PUT, "/batch-voucher-storage/export-configurations/:id/credentials").handler(ctx -> handlePutGenericSubObj(ctx, BATCH_VOUCHER_EXPORT_CONFIGS_CREDENTIALS));
     router.route(HttpMethod.PUT, resourceByIdPath(BATCH_GROUPS)).handler(ctx -> handlePutGenericSubObj(ctx, BATCH_GROUPS));
     router.route(HttpMethod.PUT, resourceByIdPath(BATCH_VOUCHER_EXPORTS_STORAGE)).handler(ctx -> handlePutGenericSubObj(ctx, BATCH_VOUCHER_EXPORTS_STORAGE));
@@ -759,6 +761,28 @@ public class MockServer {
 
       addServerRqRsData(HttpMethod.GET, INVOICE_DOCUMENTS, documentsJson);
       serverResponse(ctx, 200, APPLICATION_JSON, documentsJson.encode());
+    }
+  }
+
+  private void handleGetBudgetByFinanceId(RoutingContext ctx) {
+    logger.info("handleGetInvoiceDocumentById got: GET " + ctx.request().path());
+    String fundId = ctx.request().getParam("id");
+
+    JsonObject collection = getBudgetsByFundIds(Collections.singletonList(fundId));
+    BudgetCollection budgetCollection = collection.mapTo(BudgetCollection.class);
+    if (budgetCollection.getTotalRecords() > 0) {
+      Budget budget = budgetCollection.getBudgets().get(0);
+      JsonObject budgetJson = JsonObject.mapFrom(budget);
+      addServerRqRsData(HttpMethod.GET, CURRENT_BUDGET, budgetJson);
+
+      ctx.response()
+        .setStatusCode(200)
+        .putHeader(HttpHeaders.CONTENT_TYPE, APPLICATION_JSON)
+        .end(budgetJson.encodePrettily());
+    } else {
+      ctx.response()
+        .setStatusCode(404)
+        .end();
     }
   }
 
