@@ -784,7 +784,7 @@ public class InvoiceHelper extends AbstractHelper {
     List<CompletableFuture<List<Fund>>> futures = StreamEx
       .ofSubLists(fundIds, MAX_IDS_FOR_GET_RQ)
       // Send get request for each CQL query
-      .map(chunkFundIds -> financeHelper.getFundsByIds(chunkFundIds))
+      .map(financeHelper::getFundsByIds)
       .collect(toList());
 
     return collectResultsOnSuccess(futures)
