@@ -725,7 +725,7 @@ public class InvoiceHelper extends AbstractHelper {
 
     Map<String, List<FundDistribution>> fundDistrosGroupedByFundId = groupFundDistrosByFundId(fundDistributions);
 
-    return fetchFundsByIds(new ArrayList<>(fundDistrosGroupedByFundId.keySet()))
+    return retrieveFundsByIds(new ArrayList<>(fundDistrosGroupedByFundId.keySet()))
       .thenApply(this::groupFundsByExternalAcctNo)
       .thenCombine(groupFundDistrByFundIdByExpenseClassExtNo(fundDistributions), (fundsGroupedByExternalAcctNo, groupedFundDistros) ->
         mapExternalAcctNoToFundDistros(groupedFundDistros, fundsGroupedByExternalAcctNo)
@@ -780,7 +780,7 @@ public class InvoiceHelper extends AbstractHelper {
   }
 
 
-  private CompletableFuture<List<Fund>> fetchFundsByIds(List<String> fundIds) {
+  private CompletableFuture<List<Fund>> retrieveFundsByIds(List<String> fundIds) {
     List<CompletableFuture<List<Fund>>> futures = StreamEx
       .ofSubLists(fundIds, MAX_IDS_FOR_GET_RQ)
       // Send get request for each CQL query

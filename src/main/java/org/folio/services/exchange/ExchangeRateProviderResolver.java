@@ -20,7 +20,7 @@ public class ExchangeRateProviderResolver {
 
   public ExchangeRateProvider resolve(ConversionQuery conversionQuery){
     ExchangeRateProvider exchangeRateProvider = Optional.ofNullable(conversionQuery)
-            .map(conversionQueryP -> conversionQueryP.get(RATE_KEY, Double.class))
+            .map(query -> query.get(RATE_KEY, Double.class))
             .filter(Objects::nonNull)
             .map(rate -> (ExchangeRateProvider) new ManualExchangeRateProvider())
             .orElse(MonetaryConversions.getExchangeRateProvider(IDENTITY, ECB, IMF));
