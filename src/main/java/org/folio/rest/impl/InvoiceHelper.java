@@ -338,9 +338,9 @@ public class InvoiceHelper extends AbstractHelper {
         .thenApply(voucher -> {
           if (voucher != null) {
             updateVoucherWithExchangeRate(voucher, invoice.getExchangeRate())
-                 .thenCombine(getInvoiceLinesWithTotals(invoice), (voucherP, invoiceLines) -> {
-              return handleVoucherWithLines(getAllFundDistributions(invoiceLines, invoice), voucherP);
-            });
+                 .thenCombine(getInvoiceLinesWithTotals(invoice), (voucherP, invoiceLines) ->
+               handleVoucherWithLines(getAllFundDistributions(invoiceLines, invoice), voucherP)
+            );
           }
           return voucher;
         })
@@ -928,10 +928,10 @@ public class InvoiceHelper extends AbstractHelper {
   private CompletableFuture<Void> payInvoice(Invoice invoice) {
     return fetchInvoiceLinesByInvoiceId(invoice.getId())
       .thenCompose(invoiceLines -> financeHelper.handlePaymentsAndCredits(invoice, invoiceLines))
-      .thenCompose(vVoid -> {
-        return VertxCompletableFuture.allOf(ctx, payPoLines(invoice),
-                               voucherCommandService.payInvoiceVoucher(invoice.getId(), new RequestContext(ctx, okapiHeaders)));
-      });
+      .thenCompose(vVoid ->
+         VertxCompletableFuture.allOf(ctx, payPoLines(invoice),
+                               voucherCommandService.payInvoiceVoucher(invoice.getId(), new RequestContext(ctx, okapiHeaders)))
+      );
   }
 
   /**
