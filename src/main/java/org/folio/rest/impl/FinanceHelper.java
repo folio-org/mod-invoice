@@ -249,26 +249,24 @@ public class FinanceHelper extends AbstractHelper {
 
     return fetchBudgetsByFundIds(fundIds)
       .thenCompose(budgets -> getLedgersGroupedByFundId(fundIds)
-        .thenCompose(ledgers -> collectResultsOnSuccess(ledgers.values().stream()
-          .map(Ledger::getId)
-          .distinct()
-          .map(this::getCurrentFiscalYear)
-          .collect(toList()))
-          .thenAccept(fiscalYears -> {
-            final String systemCurrency = getSystemCurrency();
-            Map<String, MonetaryAmount> groupedAmountByFundId = getGroupedAmountByFundId(lines, invoice, systemCurrency);
-            List<String> failedBudgetIds = validateAndGetFailedBudgets(systemCurrency, budgets, ledgers, groupedAmountByFundId, fiscalYears);
+        .thenCompose(ledgers ->
+          this.getCurrentFiscalYear(ledgers.entrySet().iterator().next().getValue().getId())
+            .thenAccept(fiscalYear -> {
+              final String invoiceCurrency = invoice.getCurrency();
+              Map<String, MonetaryAmount> groupedAmountByFundId = getGroupedAmountByFundId(lines, invoice, invoiceCurrency);
+              List<String> failedBudgetIds = validateAndGetFailedBudgets(invoiceCurrency, budgets, ledgers, groupedAmountByFundId,
+                fiscalYear);
 
-            if (!failedBudgetIds.isEmpty()) {
-              throw new HttpException(422, FUND_CANNOT_BE_PAID.toError().withAdditionalProperty(BUDGETS, failedBudgetIds));
-            }
-          })));
+              if (!failedBudgetIds.isEmpty()) {
+                throw new HttpException(422, FUND_CANNOT_BE_PAID.toError().withAdditionalProperty(BUDGETS, failedBudgetIds));
+              }
+            })));
   }
 
-  private List<String> validateAndGetFailedBudgets(String systemCurrency, List<Budget> budgets, Map<String, Ledger> ledgers,
-    Map<String, MonetaryAmount> fdMap, List<FiscalYear> fiscalYears) {
+  private List<String> validateAndGetFailedBudgets(String invoiceCurrency, List<Budget> budgets, Map<String, Ledger> ledgers,
+    Map<String, MonetaryAmount> fdMap, FiscalYear fiscalYear) {
 
-    CurrencyConversion currencyConversion = getCurrentExchangeRateProvider().getCurrencyConversion(systemCurrency);
+    CurrencyConversion currencyConversion = getCurrentExchangeRateProvider().getCurrencyConversion(invoiceCurrency);
 
     return budgets.stream()
       .filter(budget -> {
@@ -280,13 +278,7 @@ public class FinanceHelper extends AbstractHelper {
 
         if (Boolean.TRUE.equals(processedLedger.getRestrictExpenditures()) && budget.getAllowableExpenditure() != null) {
 
-          FiscalYear fyForLedger = fiscalYears.stream()
-            .filter(fiscalYear -> processedLedger.getFiscalYearOneId().equals(fiscalYear.getId()))
-            .findFirst()
-            .orElseThrow(
-              () -> new HttpException(HttpStatus.HTTP_UNPROCESSABLE_ENTITY.toInt(), CURRENT_FISCAL_YEAR_NOT_FOUND.toError()));
-
-          String fyCurrency = fyForLedger.getCurrency();
+          String fyCurrency = fiscalYear.getCurrency();
 
           //[remaining amount we can expend] = (allocated * allowableExpenditure) - (allocated - (unavailable + available)) - (awaitingPayment + expended)
           Money allocated = Money.of(budget.getAllocated(), fyCurrency).with(currencyConversion);
