@@ -22,7 +22,6 @@ public class ManualExchangeRateProvider implements ExchangeRateProvider {
     CONTEXT = ProviderContextBuilder.of("TRE", RateType.DEFERRED, new RateType[0]).set("providerDescription", "ThunderJet Manual Exchange Rate Service").build();
   }
 
-
   @Override
   public ProviderContext getContext() {
     return CONTEXT;

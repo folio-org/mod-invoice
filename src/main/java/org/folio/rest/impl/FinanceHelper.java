@@ -59,6 +59,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.folio.HttpStatus;
 import org.folio.invoices.rest.exceptions.HttpException;
+import org.folio.invoices.utils.HelperUtils;
 import org.folio.models.FundDistributionTransactionHolder;
 import org.folio.rest.acq.model.finance.AwaitingPayment;
 import org.folio.rest.acq.model.finance.Budget;
@@ -336,7 +337,7 @@ public class FinanceHelper extends AbstractHelper {
   }
 
   private Map<String, MonetaryAmount> getGroupedAmountByFundId(List<InvoiceLine> lines, Invoice invoice, String systemCurrency) {
-    ConversionQuery conversionQuery = buildConversionQuery(invoice, systemCurrency);
+    ConversionQuery conversionQuery = HelperUtils.buildConversionQuery(invoice, systemCurrency);
     ExchangeRateProvider exchangeRateProvider = exchangeRateProviderResolver.resolve(conversionQuery);
     CurrencyConversion conversion = exchangeRateProvider.getCurrencyConversion(conversionQuery);
     return lines.stream()
@@ -354,7 +355,7 @@ public class FinanceHelper extends AbstractHelper {
 
   private List<FundDistributionTransactionHolder> buildBasePendingPaymentTransactions(List<InvoiceLine> invoiceLines, Invoice invoice) {
     String systemCurrency = getSystemCurrency();
-    ConversionQuery conversionQuery = buildConversionQuery(invoice, systemCurrency);
+    ConversionQuery conversionQuery = HelperUtils.buildConversionQuery(invoice, systemCurrency);
     ExchangeRateProvider exchangeRateProvider = exchangeRateProviderResolver.resolve(conversionQuery);
     CurrencyConversion conversion =  exchangeRateProvider.getCurrencyConversion(conversionQuery);
     return invoiceLines.stream()

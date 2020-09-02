@@ -134,7 +134,6 @@ public abstract class AbstractHelper {
    *  if config is empty than use {@link #DEFAULT_SYSTEM_CURRENCY}
    */
   public String getSystemCurrency() {
-    // .withCurrency(StringUtils.isNotEmpty(fiscalYear.getCurrency()) ? fiscalYear.getCurrency() : systemCurrency));
     JsonObject configValue = getLoadedTenantConfiguration().getConfigs()
       .stream()
       .filter(this::isLocaleConfig)
@@ -272,13 +271,6 @@ public abstract class AbstractHelper {
         .header(CONTENT_TYPE, APPLICATION_JSON)
         .header(LOCATION, endpoint).entity(body).build();
     }
-  }
-
-  public ConversionQuery buildConversionQuery(Invoice invoice, String systemCurrency) {
-    if (invoice.getExchangeRate() != null){
-      return ConversionQueryBuilder.of().setTermCurrency(systemCurrency).set(RATE_KEY, invoice.getExchangeRate()).build();
-    }
-    return ConversionQueryBuilder.of().setTermCurrency(systemCurrency).build();
   }
 
   protected void sendEvent(MessageAddress messageAddress, JsonObject data) {

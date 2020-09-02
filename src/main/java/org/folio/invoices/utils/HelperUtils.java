@@ -16,6 +16,7 @@ import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
 import static org.folio.rest.RestVerticle.OKAPI_HEADER_TENANT;
 import static org.folio.rest.impl.AbstractHelper.ID;
 import static org.folio.rest.jaxrs.model.FundDistribution.DistributionType.PERCENTAGE;
+import static org.folio.services.exchange.ExchangeRateProviderResolver.RATE_KEY;
 
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
@@ -34,6 +35,8 @@ import java.util.stream.IntStream;
 import javax.money.CurrencyUnit;
 import javax.money.Monetary;
 import javax.money.MonetaryAmount;
+import javax.money.convert.ConversionQuery;
+import javax.money.convert.ConversionQueryBuilder;
 
 import org.apache.commons.collections4.map.CaseInsensitiveMap;
 import org.apache.commons.lang3.ArrayUtils;
@@ -440,5 +443,12 @@ public class HelperUtils {
       .map(subTotal -> Money.of(byAbsoluteValue ? Math.abs(subTotal) : subTotal, currency))
       .collect(MonetaryFunctions.summarizingMonetary(currency))
       .getSum();
+  }
+
+  public static ConversionQuery buildConversionQuery(Invoice invoice, String systemCurrency) {
+    if (invoice.getExchangeRate() != null){
+      return ConversionQueryBuilder.of().setTermCurrency(systemCurrency).set(RATE_KEY, invoice.getExchangeRate()).build();
+    }
+    return ConversionQueryBuilder.of().setTermCurrency(systemCurrency).build();
   }
 }

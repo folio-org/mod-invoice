@@ -583,7 +583,7 @@ public class InvoiceHelper extends AbstractHelper {
 
   private List<FundDistribution> getAllFundDistributions(List<InvoiceLine> invoiceLines, Invoice invoice) {
     String systemCurrency = getSystemCurrency();
-    ConversionQuery conversionQuery = buildConversionQuery(invoice, systemCurrency);
+    ConversionQuery conversionQuery = HelperUtils.buildConversionQuery(invoice, systemCurrency);
     ExchangeRateProvider exchangeRateProvider = exchangeRateProviderResolver.resolve(conversionQuery);
     CurrencyConversion conversion =  exchangeRateProvider.getCurrencyConversion(conversionQuery);
     List<FundDistribution> fundDistributions = getInvoiceLineFundDistributions(invoiceLines, invoice, conversion);

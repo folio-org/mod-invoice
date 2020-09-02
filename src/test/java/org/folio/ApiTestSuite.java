@@ -35,6 +35,8 @@ import org.folio.rest.tools.utils.NetworkUtils;
 import org.folio.schemas.xsd.BatchVoucherSchemaXSDTest;
 import org.folio.services.InvoiceRetrieveServiceTest;
 import org.folio.services.VoucherLinesRetrieveServiceTest;
+import org.folio.services.finance.CurrentFiscalYearServiceTest;
+import org.folio.services.finance.ManualCurrencyConversionTest;
 import org.folio.services.ftp.FTPVertxCommandLoggerTest;
 import org.folio.services.ftp.FtpUploadServiceTest;
 import org.folio.services.transaction.BaseTransactionServiceTest;
@@ -235,4 +237,13 @@ public class ApiTestSuite {
   @Nested
   class RestClientTestNested extends RestClientTest {
   }
+
+  @Nested
+  class CurrentFiscalYearServiceTestNested extends CurrentFiscalYearServiceTest {
+  }
+
+  @Nested
+  class ManualCurrencyConversionTestNested extends ManualCurrencyConversionTest {
+  }
+
 }

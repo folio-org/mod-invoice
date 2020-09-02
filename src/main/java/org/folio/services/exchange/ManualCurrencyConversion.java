@@ -19,10 +19,12 @@ public class ManualCurrencyConversion extends AbstractCurrencyConversion {
     this.conversionQuery = conversionQuery;
     this.rateProvider = rateProvider;
   }
+
   @Override
   public ExchangeRate getExchangeRate(MonetaryAmount amount) {
     return this.rateProvider.getExchangeRate(ConversionQueryBuilder.of(this.conversionQuery).setBaseCurrency(amount.getCurrency()).build());
   }
+
   @Override
   public ExchangeRateProvider getExchangeRateProvider() {
     return this.rateProvider;
@@ -33,6 +35,7 @@ public class ManualCurrencyConversion extends AbstractCurrencyConversion {
     return new ManualCurrencyConversion(this.conversionQuery, this.rateProvider, conversionContext);
   }
 
+  @Override
   public String toString() {
     return "CurrencyConversion [MonetaryAmount -> MonetaryAmount; provider=" + this.rateProvider + ", context=" + this.getContext() + ", termCurrency=" + this.getCurrency() + ']';
   }
