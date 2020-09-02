@@ -281,7 +281,7 @@ public class FinanceHelper extends AbstractHelper {
         if (Boolean.TRUE.equals(processedLedger.getRestrictExpenditures()) && budget.getAllowableExpenditure() != null) {
 
           FiscalYear fyForLedger = fiscalYears.stream()
-            .filter(fiscalYear -> processedLedger.getFiscalYearOneId().equals(fiscalYear.getId()))
+            .filter(fiscalYear -> budget.getFiscalYearId().equals(fiscalYear.getId()))
             .findFirst()
             .orElseThrow(
               () -> new HttpException(HttpStatus.HTTP_UNPROCESSABLE_ENTITY.toInt(), CURRENT_FISCAL_YEAR_NOT_FOUND.toError()));
