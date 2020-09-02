@@ -37,6 +37,7 @@ import org.folio.services.InvoiceRetrieveServiceTest;
 import org.folio.services.VoucherLinesRetrieveServiceTest;
 import org.folio.services.finance.CurrentFiscalYearServiceTest;
 import org.folio.services.finance.ManualCurrencyConversionTest;
+import org.folio.services.finance.ManualExchangeRateProviderTest;
 import org.folio.services.ftp.FTPVertxCommandLoggerTest;
 import org.folio.services.ftp.FtpUploadServiceTest;
 import org.folio.services.transaction.BaseTransactionServiceTest;
@@ -246,4 +247,7 @@ public class ApiTestSuite {
   class ManualCurrencyConversionTestNested extends ManualCurrencyConversionTest {
   }
 
+  @Nested
+  class ManualExchangeRateProviderTestNested extends ManualExchangeRateProviderTest {
+  }
 }

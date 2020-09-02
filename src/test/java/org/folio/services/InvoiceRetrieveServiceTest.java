@@ -64,9 +64,8 @@ public class InvoiceRetrieveServiceTest extends ApiTestBase {
               new RestClient(ResourcePathResolver.resourcesPath(VOUCHER_NUMBER_STORAGE)),
                       voucherRetrieveService, new VoucherValidator(), tenantConfigurationService);
 
-    VoucherHelper voucherHelper = new VoucherHelper(okapiHeaders, context, "en", voucherRetrieveService, voucherCommandService);
     InvoiceHelper invoiceHelper = new InvoiceHelper(okapiHeaders, context, "en", expenseClassRetrieveService,
-      voucherCommandService, voucherRetrieveService, voucherHelper, new ExchangeRateProviderResolver());
+      voucherCommandService, voucherRetrieveService, new ExchangeRateProviderResolver());
     InvoiceRetrieveService service = new InvoiceRetrieveService(invoiceHelper);
     JsonObject vouchersList = new JsonObject(getMockData(VOUCHERS_LIST_PATH));
     List<Voucher> vouchers = vouchersList.getJsonArray("vouchers").stream()
@@ -88,9 +87,8 @@ public class InvoiceRetrieveServiceTest extends ApiTestBase {
       new RestClient(ResourcePathResolver.resourcesPath(VOUCHER_NUMBER_STORAGE)),
       voucherRetrieveService, new VoucherValidator(), tenantConfigurationService);
 
-    VoucherHelper voucherHelper = new VoucherHelper(okapiHeaders, context, "en", voucherRetrieveService, voucherCommandService);
     InvoiceHelper invoiceHelper = new InvoiceHelper(okapiHeaders, context, "en", expenseClassRetrieveService,
-      voucherCommandService, voucherRetrieveService, voucherHelper, new ExchangeRateProviderResolver());
+      voucherCommandService, voucherRetrieveService, new ExchangeRateProviderResolver());
     InvoiceRetrieveService service = new InvoiceRetrieveService(invoiceHelper);
     JsonObject vouchersList = new JsonObject(getMockData(VOUCHERS_LIST_PATH));
     List<Voucher> vouchers = vouchersList.getJsonArray("vouchers") .stream()

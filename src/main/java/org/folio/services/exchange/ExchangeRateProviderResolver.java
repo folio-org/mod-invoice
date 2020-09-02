@@ -16,7 +16,7 @@ import io.vertx.core.logging.LoggerFactory;
 
 public class ExchangeRateProviderResolver {
   private final Logger logger = LoggerFactory.getLogger(this.getClass());
-  public static String RATE_KEY = "factor";
+  public static final String RATE_KEY = "factor";
 
   public ExchangeRateProvider resolve(ConversionQuery conversionQuery){
     ExchangeRateProvider exchangeRateProvider = Optional.ofNullable(conversionQuery)

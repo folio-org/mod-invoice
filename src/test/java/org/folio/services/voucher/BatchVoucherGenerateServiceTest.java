@@ -66,9 +66,8 @@ public class BatchVoucherGenerateServiceTest extends ApiTestBase {
       new RestClient(ResourcePathResolver.resourcesPath(VOUCHER_NUMBER_STORAGE)),
       voucherRetrieveService, new VoucherValidator(), tenantConfigurationService);
 
-    VoucherHelper voucherHelper = new VoucherHelper(okapiHeaders, context, "en", voucherRetrieveService, voucherCommandService);
     InvoiceHelper invoiceHelper = new InvoiceHelper(okapiHeaders, context, "en", expenseClassRetrieveService,
-      voucherCommandService, voucherRetrieveService, voucherHelper, new ExchangeRateProviderResolver());
+      voucherCommandService, voucherRetrieveService, new ExchangeRateProviderResolver());
     InvoiceRetrieveService invoiceRetrieveService = new InvoiceRetrieveService(invoiceHelper);
     BatchVoucherGenerateService service = new BatchVoucherGenerateService(okapiHeaders, context, "en",
               invoiceRetrieveService, voucherRetrieveService, voucherCommandService);
@@ -89,9 +88,8 @@ public class BatchVoucherGenerateServiceTest extends ApiTestBase {
         new RestClient(ResourcePathResolver.resourcesPath(VOUCHER_NUMBER_STORAGE)),
         voucherRetrieveService, new VoucherValidator(), tenantConfigurationService);
 
-      VoucherHelper voucherHelper = new VoucherHelper(okapiHeaders, context, "en", voucherRetrieveService, voucherCommandService);
       InvoiceHelper invoiceHelper = new InvoiceHelper(okapiHeaders, context, "en", expenseClassRetrieveService,
-                         voucherCommandService, voucherRetrieveService, voucherHelper, new ExchangeRateProviderResolver());
+                         voucherCommandService, voucherRetrieveService, new ExchangeRateProviderResolver());
       InvoiceRetrieveService invoiceRetrieveService = new InvoiceRetrieveService(invoiceHelper);
       BatchVoucherGenerateService service = new BatchVoucherGenerateService(okapiHeaders, context, "en",
               invoiceRetrieveService, voucherRetrieveService, voucherCommandService);

@@ -43,7 +43,6 @@ import static org.folio.invoices.utils.ResourcePathResolver.ORDER_LINES;
 import static org.folio.invoices.utils.ResourcePathResolver.resourceByIdPath;
 import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
 import static org.folio.rest.RestVerticle.OKAPI_HEADER_PERMISSIONS;
-import static org.folio.services.voucher.VoucherCommandService.VOUCHER_NUMBER_CONFIG_NAME;
 import static org.folio.services.voucher.VoucherCommandService.VOUCHER_NUMBER_PREFIX_CONFIG_QUERY;
 
 import java.util.ArrayList;
@@ -128,7 +127,6 @@ public class InvoiceHelper extends AbstractHelper {
   private List<InvoiceLine> storedInvoiceLines;
 
   private final InvoiceLineHelper invoiceLineHelper;
-  private final VoucherHelper voucherHelper;
   private final VoucherLineHelper voucherLineHelper;
   private final ProtectionHelper protectionHelper;
   private final FinanceHelper financeHelper;
@@ -155,7 +153,6 @@ public class InvoiceHelper extends AbstractHelper {
     super(getHttpClient(okapiHeaders), okapiHeaders, ctx, lang);
     SpringContextUtil.autowireDependencies(this, Vertx.currentContext());
     this.invoiceLineHelper = new InvoiceLineHelper(getHttpClient(okapiHeaders), okapiHeaders, ctx, lang);
-    this.voucherHelper = new VoucherHelper(getHttpClient(okapiHeaders), okapiHeaders, ctx, lang);
     this.voucherLineHelper = new VoucherLineHelper(getHttpClient(okapiHeaders), okapiHeaders, ctx, lang);
     this.protectionHelper = new ProtectionHelper(httpClient, okapiHeaders, ctx, lang);
     this.financeHelper = new FinanceHelper(getHttpClient(okapiHeaders), okapiHeaders, ctx, lang);
@@ -165,7 +162,7 @@ public class InvoiceHelper extends AbstractHelper {
 
   public InvoiceHelper(Map<String, String> okapiHeaders, Context ctx, String lang, ExpenseClassRetrieveService expenseClassRetrieveService,
                         VoucherCommandService voucherCommandService, VoucherRetrieveService voucherRetrieveService,
-                            VoucherHelper voucherHelper, ExchangeRateProviderResolver exchangeRateProviderResolver) {
+                            ExchangeRateProviderResolver exchangeRateProviderResolver) {
     super(getHttpClient(okapiHeaders), okapiHeaders, ctx, lang);
     this.invoiceLineHelper = new InvoiceLineHelper(httpClient, okapiHeaders, ctx, lang);
     this.voucherLineHelper = new VoucherLineHelper(httpClient, okapiHeaders, ctx, lang);
@@ -176,7 +173,6 @@ public class InvoiceHelper extends AbstractHelper {
     this.expenseClassRetrieveService = expenseClassRetrieveService;
     this.voucherCommandService = voucherCommandService;
     this.voucherRetrieveService = voucherRetrieveService;
-    this.voucherHelper = voucherHelper;
     this.exchangeRateProviderResolver = exchangeRateProviderResolver;
   }
 
