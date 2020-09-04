@@ -13,6 +13,7 @@ import static org.folio.invoices.utils.ResourcePathResolver.VOUCHERS_STORAGE;
 import static org.folio.invoices.utils.ResourcePathResolver.VOUCHER_LINES;
 import static org.folio.invoices.utils.ResourcePathResolver.resourceByIdPath;
 import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
+import static org.folio.rest.RestConstants.OKAPI_URL;
 import static org.folio.rest.RestVerticle.OKAPI_HEADER_TENANT;
 import static org.folio.rest.impl.AbstractHelper.ID;
 import static org.folio.rest.jaxrs.model.FundDistribution.DistributionType.PERCENTAGE;
@@ -71,7 +72,7 @@ public class HelperUtils {
   public static final String INVOICE_ID = "invoiceId";
   public static final String INVOICE = "invoice";
   public static final String LANG = "lang";
-  public static final String OKAPI_URL = "X-Okapi-Url";
+  //public static final String OKAPI_URL = "X-Okapi-Url";
   public static final String QUERY_PARAM_START_WITH = "invoiceLines.id==";
   public static final String SEARCH_PARAMS = "?limit=%s&offset=%s%s&lang=%s";
   public static final String IS_DELETED_PROP = "isDeleted";

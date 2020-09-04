@@ -2,11 +2,11 @@ package org.folio.services;
 
 import static java.util.stream.Collectors.toList;
 import static org.folio.ApiTestSuite.mockPort;
-import static org.folio.invoices.utils.HelperUtils.OKAPI_URL;
 import static org.folio.invoices.utils.ResourcePathResolver.EXPENSE_CLASSES_URL;
 import static org.folio.invoices.utils.ResourcePathResolver.TENANT_CONFIGURATION_ENTRIES;
 import static org.folio.invoices.utils.ResourcePathResolver.VOUCHERS_STORAGE;
 import static org.folio.invoices.utils.ResourcePathResolver.VOUCHER_NUMBER_STORAGE;
+import static org.folio.rest.RestConstants.OKAPI_URL;
 import static org.junit.Assert.assertEquals;
 
 import java.io.IOException;
@@ -20,7 +20,6 @@ import org.folio.invoices.utils.ResourcePathResolver;
 import org.folio.rest.core.RestClient;
 import org.folio.rest.impl.ApiTestBase;
 import org.folio.rest.impl.InvoiceHelper;
-import org.folio.rest.impl.VoucherHelper;
 import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.jaxrs.model.InvoiceCollection;
 import org.folio.rest.jaxrs.model.Voucher;
