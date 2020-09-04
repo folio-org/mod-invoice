@@ -72,7 +72,6 @@ public class HelperUtils {
   public static final String INVOICE_ID = "invoiceId";
   public static final String INVOICE = "invoice";
   public static final String LANG = "lang";
-  //public static final String OKAPI_URL = "X-Okapi-Url";
   public static final String QUERY_PARAM_START_WITH = "invoiceLines.id==";
   public static final String SEARCH_PARAMS = "?limit=%s&offset=%s%s&lang=%s";
   public static final String IS_DELETED_PROP = "isDeleted";
