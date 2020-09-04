@@ -9,16 +9,15 @@ import static org.apache.commons.lang3.StringUtils.EMPTY;
 import static org.apache.commons.lang3.StringUtils.isEmpty;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICES;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_LINES;
-import static org.folio.invoices.utils.ResourcePathResolver.VOUCHERS;
+import static org.folio.invoices.utils.ResourcePathResolver.VOUCHERS_STORAGE;
 import static org.folio.invoices.utils.ResourcePathResolver.VOUCHER_LINES;
 import static org.folio.invoices.utils.ResourcePathResolver.resourceByIdPath;
 import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
+import static org.folio.rest.RestConstants.OKAPI_URL;
 import static org.folio.rest.RestVerticle.OKAPI_HEADER_TENANT;
 import static org.folio.rest.impl.AbstractHelper.ID;
 import static org.folio.rest.jaxrs.model.FundDistribution.DistributionType.PERCENTAGE;
-import static org.javamoney.moneta.convert.ExchangeRateType.ECB;
-import static org.javamoney.moneta.convert.ExchangeRateType.IDENTITY;
-import static org.javamoney.moneta.convert.ExchangeRateType.IMF;
+import static org.folio.services.exchange.ExchangeRateProviderResolver.RATE_KEY;
 
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
@@ -37,8 +36,8 @@ import java.util.stream.IntStream;
 import javax.money.CurrencyUnit;
 import javax.money.Monetary;
 import javax.money.MonetaryAmount;
-import javax.money.convert.ExchangeRateProvider;
-import javax.money.convert.MonetaryConversions;
+import javax.money.convert.ConversionQuery;
+import javax.money.convert.ConversionQueryBuilder;
 
 import org.apache.commons.collections4.map.CaseInsensitiveMap;
 import org.apache.commons.lang3.ArrayUtils;
@@ -73,7 +72,6 @@ public class HelperUtils {
   public static final String INVOICE_ID = "invoiceId";
   public static final String INVOICE = "invoice";
   public static final String LANG = "lang";
-  public static final String OKAPI_URL = "X-Okapi-Url";
   public static final String QUERY_PARAM_START_WITH = "invoiceLines.id==";
   public static final String SEARCH_PARAMS = "?limit=%s&offset=%s%s&lang=%s";
   public static final String IS_DELETED_PROP = "isDeleted";
@@ -149,12 +147,6 @@ public class HelperUtils {
                                                                  Context ctx, Map<String, String> okapiHeaders, Logger logger) {
     String endpoint = resourceByIdPath(VOUCHER_LINES, id, lang);
     return handleGetRequest(endpoint, httpClient, ctx, okapiHeaders, logger);
-  }
-
-  public static CompletableFuture<Voucher> getVoucherById(String id, String lang, HttpClientInterface httpClient, Context ctx,
-      Map<String, String> okapiHeaders, Logger logger) {
-    String endpoint = resourceByIdPath(VOUCHERS, id, lang);
-    return handleGetRequest(endpoint, httpClient, ctx, okapiHeaders, logger).thenApplyAsync(json -> json.mapTo(Voucher.class));
   }
 
   public static JsonObject verifyAndExtractBody(Response response) {
@@ -403,7 +395,7 @@ public class HelperUtils {
   public static String getAcqUnitIdsQueryParamName(String entity) {
     switch (entity) {
       case INVOICE_LINES: return INVOICES + "." + ProtectionHelper.ACQUISITIONS_UNIT_IDS;
-      case VOUCHER_LINES: return VOUCHERS+ "." + ProtectionHelper.ACQUISITIONS_UNIT_IDS;
+      case VOUCHER_LINES: return VOUCHERS_STORAGE + "." + ProtectionHelper.ACQUISITIONS_UNIT_IDS;
       default: return ProtectionHelper.ACQUISITIONS_UNIT_IDS;
     }
   }
@@ -445,15 +437,18 @@ public class HelperUtils {
     return idChunkMap;
   }
 
-  public static ExchangeRateProvider getInvoiceExchangeRateProvider() {
-    return MonetaryConversions.getExchangeRateProvider(IDENTITY, ECB, IMF);
-  }
-
   public static MonetaryAmount summarizeSubTotals(List<InvoiceLine> lines, CurrencyUnit currency, boolean byAbsoluteValue) {
     return lines.stream()
       .map(InvoiceLine::getSubTotal)
       .map(subTotal -> Money.of(byAbsoluteValue ? Math.abs(subTotal) : subTotal, currency))
       .collect(MonetaryFunctions.summarizingMonetary(currency))
       .getSum();
+  }
+
+  public static ConversionQuery buildConversionQuery(Invoice invoice, String systemCurrency) {
+    if (invoice.getExchangeRate() != null){
+      return ConversionQueryBuilder.of().setTermCurrency(systemCurrency).set(RATE_KEY, invoice.getExchangeRate()).build();
+    }
+    return ConversionQueryBuilder.of().setTermCurrency(systemCurrency).build();
   }
 }

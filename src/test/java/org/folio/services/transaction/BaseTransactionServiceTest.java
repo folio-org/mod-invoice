@@ -3,7 +3,7 @@ package org.folio.services.transaction;
 import static java.util.concurrent.CompletableFuture.completedFuture;
 import static java.util.stream.Collectors.toList;
 import static org.folio.TestMockDataConstants.MOCK_ENCUMBRANCES_LIST;
-import static org.folio.invoices.utils.HelperUtils.OKAPI_URL;
+import static org.folio.rest.RestConstants.OKAPI_URL;
 import static org.folio.rest.RestVerticle.OKAPI_HEADER_TENANT;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;

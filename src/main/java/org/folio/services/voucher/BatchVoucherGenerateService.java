@@ -46,10 +46,11 @@ public class BatchVoucherGenerateService {
   }
 
   public BatchVoucherGenerateService(Map<String, String> okapiHeaders, Context ctx, String lang
-          , InvoiceRetrieveService invoiceRetrieveService) {
+                          , InvoiceRetrieveService invoiceRetrieveService,  VoucherRetrieveService voucherRetrieveService,
+                                      VoucherCommandService voucherCommandService) {
     vendorRetrieveService = new VendorRetrieveService(okapiHeaders, ctx, lang);
     voucherLinesRetrieveService = new VoucherLinesRetrieveService(okapiHeaders, ctx, lang);
-    voucherHelper = new VoucherHelper(okapiHeaders, ctx, lang);
+    voucherHelper = new VoucherHelper(okapiHeaders, ctx, lang, voucherRetrieveService, voucherCommandService);
     batchGroupHelper = new BatchGroupHelper(okapiHeaders, ctx, lang);
     this. invoiceRetrieveService = invoiceRetrieveService;
   }

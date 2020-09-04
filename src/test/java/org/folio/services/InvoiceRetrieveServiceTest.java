@@ -2,8 +2,11 @@ package org.folio.services;
 
 import static java.util.stream.Collectors.toList;
 import static org.folio.ApiTestSuite.mockPort;
-import static org.folio.invoices.utils.HelperUtils.OKAPI_URL;
 import static org.folio.invoices.utils.ResourcePathResolver.EXPENSE_CLASSES_URL;
+import static org.folio.invoices.utils.ResourcePathResolver.TENANT_CONFIGURATION_ENTRIES;
+import static org.folio.invoices.utils.ResourcePathResolver.VOUCHERS_STORAGE;
+import static org.folio.invoices.utils.ResourcePathResolver.VOUCHER_NUMBER_STORAGE;
+import static org.folio.rest.RestConstants.OKAPI_URL;
 import static org.junit.Assert.assertEquals;
 
 import java.io.IOException;
@@ -21,7 +24,12 @@ import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.jaxrs.model.InvoiceCollection;
 import org.folio.rest.jaxrs.model.Voucher;
 import org.folio.rest.jaxrs.model.VoucherCollection;
+import org.folio.services.config.TenantConfigurationService;
+import org.folio.services.exchange.ExchangeRateProviderResolver;
 import org.folio.services.expence.ExpenseClassRetrieveService;
+import org.folio.services.validator.VoucherValidator;
+import org.folio.services.voucher.VoucherCommandService;
+import org.folio.services.voucher.VoucherRetrieveService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -48,7 +56,15 @@ public class InvoiceRetrieveServiceTest extends ApiTestBase {
   @Test
   public void positiveGetInvoicesByChunksTest() throws IOException, ExecutionException, InterruptedException {
     ExpenseClassRetrieveService expenseClassRetrieveService = new ExpenseClassRetrieveService(new RestClient(ResourcePathResolver.resourcesPath(EXPENSE_CLASSES_URL)));
-    InvoiceHelper invoiceHelper = new InvoiceHelper(okapiHeaders, context, "en", expenseClassRetrieveService);
+    VoucherRetrieveService voucherRetrieveService = new VoucherRetrieveService(new RestClient(ResourcePathResolver.resourcesPath(VOUCHERS_STORAGE)));
+    TenantConfigurationService tenantConfigurationService = new TenantConfigurationService(new RestClient(ResourcePathResolver.resourcesPath(TENANT_CONFIGURATION_ENTRIES)));
+
+    VoucherCommandService voucherCommandService = new VoucherCommandService(new RestClient(ResourcePathResolver.resourcesPath(VOUCHERS_STORAGE)),
+              new RestClient(ResourcePathResolver.resourcesPath(VOUCHER_NUMBER_STORAGE)),
+                      voucherRetrieveService, new VoucherValidator(), tenantConfigurationService);
+
+    InvoiceHelper invoiceHelper = new InvoiceHelper(okapiHeaders, context, "en", expenseClassRetrieveService,
+      voucherCommandService, voucherRetrieveService, new ExchangeRateProviderResolver());
     InvoiceRetrieveService service = new InvoiceRetrieveService(invoiceHelper);
     JsonObject vouchersList = new JsonObject(getMockData(VOUCHERS_LIST_PATH));
     List<Voucher> vouchers = vouchersList.getJsonArray("vouchers").stream()
@@ -64,7 +80,14 @@ public class InvoiceRetrieveServiceTest extends ApiTestBase {
   @Test
   public void positiveGetInvoiceMapTest() throws IOException, ExecutionException, InterruptedException {
     ExpenseClassRetrieveService expenseClassRetrieveService = new ExpenseClassRetrieveService(new RestClient(ResourcePathResolver.resourcesPath(EXPENSE_CLASSES_URL)));
-    InvoiceHelper invoiceHelper = new InvoiceHelper(okapiHeaders, context, "en", expenseClassRetrieveService);
+    VoucherRetrieveService voucherRetrieveService = new VoucherRetrieveService(new RestClient(ResourcePathResolver.resourcesPath(VOUCHERS_STORAGE)));
+    TenantConfigurationService tenantConfigurationService = new TenantConfigurationService(new RestClient(ResourcePathResolver.resourcesPath(TENANT_CONFIGURATION_ENTRIES)));
+    VoucherCommandService voucherCommandService = new VoucherCommandService(new RestClient(ResourcePathResolver.resourcesPath(VOUCHERS_STORAGE)),
+      new RestClient(ResourcePathResolver.resourcesPath(VOUCHER_NUMBER_STORAGE)),
+      voucherRetrieveService, new VoucherValidator(), tenantConfigurationService);
+
+    InvoiceHelper invoiceHelper = new InvoiceHelper(okapiHeaders, context, "en", expenseClassRetrieveService,
+      voucherCommandService, voucherRetrieveService, new ExchangeRateProviderResolver());
     InvoiceRetrieveService service = new InvoiceRetrieveService(invoiceHelper);
     JsonObject vouchersList = new JsonObject(getMockData(VOUCHERS_LIST_PATH));
     List<Voucher> vouchers = vouchersList.getJsonArray("vouchers") .stream()

@@ -1,15 +1,8 @@
 package org.folio.rest.impl;
 
-import static java.util.concurrent.CompletableFuture.completedFuture;
-import static org.folio.invoices.utils.ErrorCodes.VOUCHER_UPDATE_FAILURE;
-import static org.folio.invoices.utils.HelperUtils.getEndpointWithQuery;
-import static org.folio.invoices.utils.HelperUtils.getVoucherById;
+import static org.folio.invoices.utils.HelperUtils.collectResultsOnSuccess;
 import static org.folio.invoices.utils.HelperUtils.handleGetRequest;
-import static org.folio.invoices.utils.HelperUtils.handlePutRequest;
-import static org.folio.invoices.utils.ResourcePathResolver.VOUCHERS;
-import static org.folio.invoices.utils.ResourcePathResolver.VOUCHER_NUMBER;
 import static org.folio.invoices.utils.ResourcePathResolver.VOUCHER_NUMBER_START;
-import static org.folio.invoices.utils.ResourcePathResolver.resourceByIdPath;
 import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
 
 import java.util.Map;
@@ -17,44 +10,52 @@ import java.util.concurrent.CompletableFuture;
 
 import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.invoices.utils.HelperUtils;
+import org.folio.rest.core.models.RequestContext;
 import org.folio.rest.jaxrs.model.SequenceNumber;
 import org.folio.rest.jaxrs.model.Voucher;
 import org.folio.rest.jaxrs.model.VoucherCollection;
 import org.folio.rest.tools.client.interfaces.HttpClientInterface;
+import org.folio.services.voucher.VoucherCommandService;
+import org.folio.services.voucher.VoucherRetrieveService;
+import org.folio.spring.SpringContextUtil;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import io.vertx.core.Context;
 import io.vertx.core.http.HttpMethod;
-import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import me.escoffier.vertx.completablefuture.VertxCompletableFuture;
-import org.folio.services.validator.VoucherValidator;
 
 public class VoucherHelper extends AbstractHelper {
 
   private static final String CALLING_ENDPOINT_MSG = "Sending {} {}";
   private static final String EXCEPTION_CALLING_ENDPOINT_MSG = "Exception calling {} {}";
-  private static final String GET_VOUCHERS_BY_QUERY = resourcesPath(VOUCHERS) + SEARCH_PARAMS;
 
-  private VoucherValidator validator = new VoucherValidator();
+  @Autowired
+  private VoucherRetrieveService voucherRetrieveService;
+  @Autowired
+  private VoucherCommandService voucherCommandService;
+
 
   public VoucherHelper(HttpClientInterface httpClient, Map<String, String> okapiHeaders, Context ctx, String lang) {
     super(httpClient, okapiHeaders, ctx, lang);
+    SpringContextUtil.autowireDependencies(this, ctx);
   }
+
 
   public VoucherHelper(Map<String, String> okapiHeaders, Context ctx, String lang) {
     super(okapiHeaders, ctx, lang);
+    SpringContextUtil.autowireDependencies(this, ctx);
+  }
+
+  public VoucherHelper(Map<String, String> okapiHeaders, Context ctx, String lang,
+                          VoucherRetrieveService voucherRetrieveService, VoucherCommandService voucherCommandService) {
+    super(okapiHeaders, ctx, lang);
+    this.voucherRetrieveService = voucherRetrieveService;
+    this.voucherCommandService = voucherCommandService;
   }
 
   public CompletableFuture<Voucher> getVoucher(String id) {
-    CompletableFuture<Voucher> future = new VertxCompletableFuture<>(ctx);
-    getVoucherById(id, lang, httpClient, ctx, okapiHeaders, logger)
-      .thenAccept(future::complete)
-      .exceptionally(t -> {
-        logger.error("Failed to retrieve Voucher", t.getCause());
-        future.completeExceptionally(t);
-        return null;
-      });
-    return future;
+    return voucherRetrieveService.getVoucherById(id, new RequestContext(ctx, okapiHeaders));
   }
 
   public CompletableFuture<SequenceNumber> getVoucherNumberStartValue() {
@@ -112,58 +113,7 @@ public class VoucherHelper extends AbstractHelper {
    * @return completable future with {@link VoucherCollection} on success or an exception if processing fails
    */
   public CompletableFuture<VoucherCollection> getVouchers(int limit, int offset, String query) {
-    CompletableFuture<VoucherCollection> future = new VertxCompletableFuture<>(ctx);
-    try {
-      String queryParam = getEndpointWithQuery(query, logger);
-      String endpoint = String.format(GET_VOUCHERS_BY_QUERY, limit, offset, queryParam, lang);
-      handleGetRequest(endpoint, httpClient, ctx, okapiHeaders, logger)
-      .thenAccept(jsonVouchers -> {
-        logger.info("Successfully retrieved vouchers: " + jsonVouchers.encodePrettily());
-        future.complete(jsonVouchers.mapTo(VoucherCollection.class));
-      })
-      .exceptionally(t -> {
-        logger.error("Error getting vouchers", t);
-        future.completeExceptionally(t);
-        return null;
-      });
-    } catch (Exception e) {
-        future.completeExceptionally(e);
-    }
-    return future;
-  }
-
-  CompletableFuture<String> generateVoucherNumber() {
-    return HelperUtils.handleGetRequest(resourcesPath(VOUCHER_NUMBER), httpClient, ctx, okapiHeaders, logger)
-      .thenApply(seqNumber -> seqNumber.mapTo(SequenceNumber.class).getSequenceNumber());
-  }
-
-  CompletableFuture<Voucher> createVoucher(Voucher voucher) {
-    JsonObject voucherRecord = JsonObject.mapFrom(voucher);
-    return createRecordInStorage(voucherRecord, resourcesPath(VOUCHERS))
-      .thenApply(voucher::withId);
-  }
-
-  public CompletableFuture<Voucher> getVoucherByInvoiceId(String invoiceId) {
-    return getVouchers(1, 0, String.format(QUERY_BY_INVOICE_ID, invoiceId))
-      .thenApply(VoucherCollection::getVouchers)
-      .thenApply(vouchers -> vouchers.isEmpty() ? null : vouchers.get(0));
-  }
-
-  /**
-   * In case voucher's status is already Paid, returns completed future. Otherwise updates voucher in storage with Paid status.
-   * @param voucher voucher to update status to Paid for
-   * @return completed future on success or with {@link HttpException} if update fails
-   */
-  public CompletableFuture<Void> updateVoucherStatusToPaid(Voucher voucher) {
-    if (voucher.getStatus() == Voucher.Status.PAID) {
-      // Voucher already marked as paid
-      return completedFuture(null);
-    } else {
-      return updateVoucher(voucher.withStatus(Voucher.Status.PAID))
-        .exceptionally(fail -> {
-          throw new HttpException(500, VOUCHER_UPDATE_FAILURE.toError());
-        });
-    }
+    return voucherRetrieveService.getVouchers(limit, offset, query, new RequestContext(ctx, okapiHeaders));
   }
 
   /**
@@ -181,14 +131,6 @@ public class VoucherHelper extends AbstractHelper {
    * @return completable future holding response indicating success or error if failed
    */
   public CompletableFuture<Void> partialVoucherUpdate(String id, Voucher voucher) {
-    return getVoucher(id)
-      .thenAccept(voucherFromStorage -> validator.validateProtectedFields(voucher, voucherFromStorage))
-      .thenCompose(aVoid -> updateVoucher(voucher));
-  }
-
-
-  public CompletableFuture<Void> updateVoucher(Voucher voucher) {
-    String path = resourceByIdPath(VOUCHERS, voucher.getId(), lang);
-    return handlePutRequest(path, JsonObject.mapFrom(voucher), httpClient, ctx, okapiHeaders, logger);
+    return voucherCommandService.partialVoucherUpdate(id, voucher, new RequestContext(ctx, okapiHeaders));
   }
 }
