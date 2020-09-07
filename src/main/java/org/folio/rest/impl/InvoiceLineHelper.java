@@ -24,6 +24,7 @@ import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_LINES;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_LINE_NUMBER;
 import static org.folio.invoices.utils.ResourcePathResolver.resourceByIdPath;
 import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
+import static org.folio.services.voucher.VoucherRetrieveService.QUERY_BY_INVOICE_ID;
 
 import java.util.ArrayList;
 import java.util.Collections;

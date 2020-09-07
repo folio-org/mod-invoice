@@ -1,8 +1,8 @@
 package org.folio.rest.core;
 
 import static java.util.concurrent.CompletableFuture.completedFuture;
-import static org.folio.invoices.utils.HelperUtils.OKAPI_URL;
 import static org.folio.invoices.utils.ResourcePathResolver.FINANCE_STORAGE_TRANSACTIONS;
+import static org.folio.rest.RestConstants.OKAPI_URL;
 import static org.folio.rest.RestVerticle.OKAPI_HEADER_TENANT;
 import static org.folio.rest.impl.ApiTestBase.X_OKAPI_TOKEN;
 import static org.folio.rest.impl.ApiTestBase.X_OKAPI_USER_ID;

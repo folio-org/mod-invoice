@@ -9,20 +9,18 @@ import static javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
 import static org.folio.invoices.utils.ErrorCodes.GENERIC_ERROR_CODE;
 import static org.folio.invoices.utils.ErrorCodes.MOD_CONFIG_ERROR;
 import static org.folio.invoices.utils.HelperUtils.LANG;
-import static org.folio.invoices.utils.HelperUtils.OKAPI_URL;
 import static org.folio.invoices.utils.HelperUtils.encodeQuery;
 import static org.folio.invoices.utils.HelperUtils.getHttpClient;
 import static org.folio.invoices.utils.HelperUtils.handleGetRequest;
 import static org.folio.invoices.utils.HelperUtils.verifyAndExtractBody;
+import static org.folio.rest.RestConstants.OKAPI_URL;
 import static org.folio.rest.RestVerticle.OKAPI_USERID_HEADER;
 
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Map;
-import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 
-import javax.money.convert.ExchangeRateProvider;
 import javax.ws.rs.core.Response;
 
 import org.apache.commons.collections4.CollectionUtils;
@@ -52,13 +50,10 @@ public abstract class AbstractHelper {
   public static final String SYSTEM_CONFIG_MODULE_NAME = "ORG";
   public static final String INVOICE_CONFIG_MODULE_NAME = "INVOICE";
   public static final String CONFIG_QUERY = "module==%s and configName==%s";
-  public static final String QUERY_BY_INVOICE_ID = "invoiceId==%s";
   public static final String SEARCH_PARAMS = "?limit=%s&offset=%s%s&lang=%s";
   public static final String SYSTEM_CONFIG_QUERY = String.format(CONFIG_QUERY, SYSTEM_CONFIG_MODULE_NAME, LOCALE_SETTINGS);
 
   private static final String EXCEPTION_CALLING_ENDPOINT_MSG = "Exception calling {} {}";
-
-  private ExchangeRateProvider exchangeRateProvider;
 
   protected final HttpClientInterface httpClient;
   protected final Map<String, String> okapiHeaders;
@@ -134,7 +129,7 @@ public abstract class AbstractHelper {
    *  Retrieves systemCurrency from mod-configuration
    *  if config is empty than use {@link #DEFAULT_SYSTEM_CURRENCY}
    */
-  String getSystemCurrency() {
+  public String getSystemCurrency() {
     JsonObject configValue = getLoadedTenantConfiguration().getConfigs()
       .stream()
       .filter(this::isLocaleConfig)
@@ -262,14 +257,6 @@ public abstract class AbstractHelper {
     httpClient.closeClient();
   }
 
-  public ExchangeRateProvider getCurrentExchangeRateProvider() {
-    if (Objects.isNull(exchangeRateProvider)) {
-      exchangeRateProvider = HelperUtils.getInvoiceExchangeRateProvider();
-      logger.debug("Created ExchangeRateProvider name: {}", exchangeRateProvider.getContext().getProviderName());
-    }
-    return exchangeRateProvider;
-  }
-
   public Response buildResponseWithLocation(String endpoint, Object body) {
     closeHttpClient();
     try {
@@ -298,4 +285,6 @@ public abstract class AbstractHelper {
   protected String getCurrentUserId() {
     return okapiHeaders.get(OKAPI_USERID_HEADER);
   }
+
+
 }
