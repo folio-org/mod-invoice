@@ -49,6 +49,7 @@ import java.util.function.BiConsumer;
 import java.util.stream.Collector;
 import java.util.stream.Collectors;
 
+import java.util.stream.Stream;
 import javax.money.MonetaryAmount;
 import javax.money.convert.ConversionQuery;
 import javax.money.convert.ConversionQueryBuilder;
@@ -258,9 +259,17 @@ public class FinanceHelper extends AbstractHelper {
 
   public CompletableFuture<Void> checkEnoughMoneyInBudget(List<InvoiceLine> lines, Invoice invoice) {
 
-    List<String> fundIds = lines.stream()
+    List<String> invoiceLinesFundIds = lines.stream()
       .flatMap(invoiceLine -> invoiceLine.getFundDistributions().stream())
       .map(FundDistribution::getFundId)
+      .collect(toList());
+
+    List<String> adjustmentsFundIds = invoice.getAdjustments().stream()
+      .flatMap(adjustment -> adjustment.getFundDistributions().stream())
+      .map(FundDistribution::getFundId)
+      .collect(toList());
+
+    List<String> fundIds = Stream.concat(invoiceLinesFundIds.stream(), adjustmentsFundIds.stream())
       .distinct()
       .collect(toList());
 
@@ -324,10 +333,20 @@ public class FinanceHelper extends AbstractHelper {
     ConversionQuery conversionQuery = HelperUtils.buildConversionQuery(invoice, systemCurrency);
     ExchangeRateProvider exchangeRateProvider = exchangeRateProviderResolver.resolve(conversionQuery);
     CurrencyConversion conversion = exchangeRateProvider.getCurrencyConversion(conversionQuery);
-    return lines.stream()
+
+    List<Pair<String, MonetaryAmount>> linesPairs = lines.stream()
       .flatMap(invoiceLine -> invoiceLine.getFundDistributions().stream()
         .map(fd -> Pair.of(fd.getFundId(),
-          getFundDistributionAmount(fd, invoiceLine.getTotal(), invoice.getCurrency()).with(conversion))))
+          getFundDistributionAmount(fd, invoiceLine.getTotal(), invoice.getCurrency())
+      .with(conversion)))).collect(toList());
+
+    List<Pair<String, MonetaryAmount>> adjustmentsPairs = invoice.getAdjustments().stream()
+      .flatMap(adjustment -> adjustment.getFundDistributions().stream()
+        .map(fd -> Pair.of(fd.getFundId(),
+          getFundDistributionAmount(fd, adjustment.getValue(), invoice.getCurrency())
+            .with(conversion)))).collect(toList());
+
+    return Stream.concat(linesPairs.stream(), adjustmentsPairs.stream())
       .collect(groupingBy(Pair::getKey, sumFundAmount(systemCurrency)));
   }
 
