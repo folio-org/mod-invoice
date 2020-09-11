@@ -6,18 +6,29 @@ import org.folio.services.exchange.ExchangeRateProviderResolver;
 import org.folio.services.exchange.FinanceExchangeRateService;
 import org.folio.services.finance.CurrentFiscalYearService;
 import org.folio.services.finance.FiscalYearService;
+import org.folio.services.finance.FundService;
 import org.folio.services.finance.LedgerService;
 import org.folio.services.transaction.BaseTransactionService;
+import org.folio.services.transaction.CreditManagingService;
 import org.folio.services.transaction.EncumbranceService;
+import org.folio.services.transaction.InvoiceTransactionSummaryService;
+import org.folio.services.transaction.PaymentCreditService;
+import org.folio.services.transaction.PaymentManagingService;
+import org.folio.services.transaction.PendingPaymentManagingService;
+import org.folio.services.transaction.PendingPaymentService;
+import org.folio.services.transaction.TransactionManagingService;
+import org.folio.services.transaction.TransactionManagingServiceFactory;
 import org.folio.services.validator.VoucherValidator;
 import org.folio.services.voucher.VoucherCommandService;
 import org.folio.services.voucher.VoucherRetrieveService;
 import org.springframework.context.annotation.Bean;
 
+import java.util.Set;
+
 public class ServicesConfiguration {
   @Bean
-  BaseTransactionService transactionService(RestClient trFinanceRestClient) {
-    return new BaseTransactionService(trFinanceRestClient);
+  BaseTransactionService transactionService(RestClient trFinanceRestClient, TransactionManagingServiceFactory transactionManagingServiceFactory) {
+    return new BaseTransactionService(trFinanceRestClient, transactionManagingServiceFactory);
   }
 
   @Bean
@@ -65,12 +76,59 @@ public class ServicesConfiguration {
   }
 
   @Bean
-  CurrentFiscalYearService currentFiscalYearService(FiscalYearService fiscalYearService, LedgerService ledgerService) {
-    return new CurrentFiscalYearService(fiscalYearService, ledgerService);
+  CurrentFiscalYearService currentFiscalYearService(RestClient currentFiscalYearRestClient, FundService fundService) {
+    return new CurrentFiscalYearService(currentFiscalYearRestClient, fundService);
   }
 
   @Bean
   ExchangeRateProviderResolver exchangeRateProviderResolver() {
     return new ExchangeRateProviderResolver();
+  }
+
+  @Bean
+  FundService fundService(RestClient fundRestClient) {
+    return new FundService(fundRestClient);
+  }
+
+  @Bean
+  PendingPaymentService pendingPaymentService(BaseTransactionService baseTransactionService,
+                                              CurrentFiscalYearService currentFiscalYearService,
+                                              ExchangeRateProviderResolver exchangeRateProviderResolver,
+                                              FinanceExchangeRateService financeExchangeRateService,
+                                              InvoiceTransactionSummaryService invoiceTransactionSummaryService) {
+    return new PendingPaymentService(baseTransactionService, currentFiscalYearService, exchangeRateProviderResolver, financeExchangeRateService, invoiceTransactionSummaryService);
+  }
+
+  @Bean
+  TransactionManagingService pendingPaymentManagingService(RestClient pendingPaymentRestClient) {
+    return new PendingPaymentManagingService(pendingPaymentRestClient);
+  }
+
+  @Bean
+  TransactionManagingService paymentManagingService(RestClient paymentRestClient) {
+    return new PaymentManagingService(paymentRestClient);
+  }
+
+  @Bean
+  TransactionManagingService creditManagingService(RestClient creditRestClient) {
+    return new CreditManagingService(creditRestClient);
+  }
+
+  @Bean
+  TransactionManagingServiceFactory transactionManagingServiceFactory(Set<TransactionManagingService> transactionManagingServices) {
+    return new TransactionManagingServiceFactory(transactionManagingServices);
+  }
+
+  @Bean
+  PaymentCreditService paymentCreditService(BaseTransactionService baseTransactionService,
+                                            CurrentFiscalYearService currentFiscalYearService,
+                                            ExchangeRateProviderResolver exchangeRateProviderResolver,
+                                            FinanceExchangeRateService financeExchangeRateService) {
+    return new PaymentCreditService(baseTransactionService, currentFiscalYearService, exchangeRateProviderResolver, financeExchangeRateService);
+  }
+
+  @Bean
+  InvoiceTransactionSummaryService invoiceTransactionSummaryService(RestClient invoiceTransactionSummaryRestClient) {
+    return new InvoiceTransactionSummaryService(invoiceTransactionSummaryRestClient);
   }
 }

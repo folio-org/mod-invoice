@@ -43,6 +43,7 @@ import org.apache.commons.collections4.map.CaseInsensitiveMap;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.folio.invoices.rest.exceptions.HttpException;
+import org.folio.rest.acq.model.finance.ExchangeRate;
 import org.folio.rest.impl.ProtectionHelper;
 import org.folio.rest.jaxrs.model.Adjustment;
 import org.folio.rest.jaxrs.model.FundDistribution;
@@ -450,5 +451,15 @@ public class HelperUtils {
       return ConversionQueryBuilder.of().setTermCurrency(systemCurrency).set(RATE_KEY, invoice.getExchangeRate()).build();
     }
     return ConversionQueryBuilder.of().setTermCurrency(systemCurrency).build();
+  }
+
+  public static ConversionQuery buildConversionQuery(ExchangeRate exchangeRate) {
+
+    return ConversionQueryBuilder.of().setTermCurrency(exchangeRate.getTo()).set(RATE_KEY, exchangeRate.getExchangeRate()).build();
+
+  }
+
+  public static boolean isNotFound(Throwable t) {
+    return t instanceof HttpException && ((HttpException) t).getCode() == 404;
   }
 }

@@ -34,9 +34,13 @@ public class RestClient {
   private final String baseEndpoint;
   private final String endpointById;
 
-  public RestClient(String baseEndpoint) {
+  public RestClient(String baseEndpoint, String byIdSuffix) {
     this.baseEndpoint = baseEndpoint;
-    this.endpointById = baseEndpoint + "/%s";
+    this.endpointById = baseEndpoint + byIdSuffix;
+  }
+
+  public RestClient(String baseEndpoint) {
+    this(baseEndpoint, "/%s");
   }
 
   public <T> CompletableFuture<T> get(String cqlQuery, int offset, int limit, RequestContext requestContext, Class<T> responseType) {
