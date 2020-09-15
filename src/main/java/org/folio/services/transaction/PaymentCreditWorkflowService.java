@@ -26,32 +26,31 @@ import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import me.escoffier.vertx.completablefuture.VertxCompletableFuture;
 
-public class PaymentCreditService {
+public class PaymentCreditWorkflowService {
 
-  private static final Logger logger = LoggerFactory.getLogger(PaymentCreditService.class);
+  private static final Logger logger = LoggerFactory.getLogger(PaymentCreditWorkflowService.class);
 
   private final BaseTransactionService baseTransactionService;
   private final CurrentFiscalYearService currentFiscalYearService;
   private final ExchangeRateProviderResolver exchangeRateProviderResolver;
   private final FinanceExchangeRateService financeExchangeRateService;
 
-  public PaymentCreditService(BaseTransactionService baseTransactionService,
-                              CurrentFiscalYearService currentFiscalYearService,
-                              ExchangeRateProviderResolver exchangeRateProviderResolver,
-                              FinanceExchangeRateService financeExchangeRateService) {
+  public PaymentCreditWorkflowService(BaseTransactionService baseTransactionService,
+                                      CurrentFiscalYearService currentFiscalYearService,
+                                      ExchangeRateProviderResolver exchangeRateProviderResolver,
+                                      FinanceExchangeRateService financeExchangeRateService) {
     this.baseTransactionService = baseTransactionService;
     this.currentFiscalYearService = currentFiscalYearService;
     this.exchangeRateProviderResolver = exchangeRateProviderResolver;
     this.financeExchangeRateService = financeExchangeRateService;
   }
 
-
   /**
    * This method processes payment&credit transactions based on information from invoice (invoice lines & fund distributions)
    * @param invoice {@link Invoice} that should be processed
    * @return {@link CompletableFuture <Void>}
    */
-  public CompletableFuture<Void> handlePaymentsAndCredits(Invoice invoice, List<InvoiceLine> invoiceLines, RequestContext requestContext) {
+  public CompletableFuture<Void> handlePaymentsAndCreditsCreation(Invoice invoice, List<InvoiceLine> invoiceLines, RequestContext requestContext) {
     return isPaymentsAlreadyProcessed(invoice.getId(), requestContext).thenCompose(isProcessed -> {
       if (Boolean.TRUE.equals(isProcessed)) {
         return completedFuture(null);
@@ -68,7 +67,7 @@ public class PaymentCreditService {
    * @param invoiceId id of invoice for which payments and credits are verifying
    * @return {@link CompletableFuture<Boolean>} with true if payments or credits have already processed otherwise - with false
    */
-  public CompletableFuture<Boolean> isPaymentsAlreadyProcessed(String invoiceId, RequestContext requestContext) {
+  private CompletableFuture<Boolean> isPaymentsAlreadyProcessed(String invoiceId, RequestContext requestContext) {
     String query = String.format("sourceInvoiceId==%s and (transactionType==Payment or transactionType==Credit)", invoiceId);
     return baseTransactionService.getTransactions(query, 0, 0, requestContext)
       .thenApply(transactionCollection -> transactionCollection.getTotalRecords() > 0);

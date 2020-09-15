@@ -42,7 +42,7 @@ import org.folio.services.finance.ManualExchangeRateProviderTest;
 import org.folio.services.ftp.FTPVertxCommandLoggerTest;
 import org.folio.services.ftp.FtpUploadServiceTest;
 import org.folio.services.transaction.BaseTransactionServiceTest;
-import org.folio.services.transaction.PendingPaymentServiceTest;
+import org.folio.services.transaction.PendingPaymentWorkflowServiceTest;
 import org.folio.services.validator.InvoiceLineValidatorTest;
 import org.folio.services.voucher.BatchVoucherGenerateServiceTest;
 import org.folio.services.voucher.UploadBatchVoucherExportServiceTest;
@@ -56,8 +56,6 @@ import io.restassured.RestAssured;
 import io.vertx.core.DeploymentOptions;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
 
 @RunWith(JUnitPlatform.class)
 public class ApiTestSuite {
@@ -257,6 +255,6 @@ public class ApiTestSuite {
   }
 
   @Nested
-  class PendingPaymentServiceTestNested extends PendingPaymentServiceTest {
+  class PendingPaymentWorkflowServiceTestNested extends PendingPaymentWorkflowServiceTest {
   }
 }

@@ -6,11 +6,11 @@ import org.folio.rest.core.models.RequestContext;
 
 import java.util.concurrent.CompletableFuture;
 
-public abstract class BaseTransactionManagingService implements TransactionManagingService {
+public abstract class BaseTransactionCreateUpdateService implements TransactionCreateUpdateService {
 
   private final RestClient restClient;
 
-  protected BaseTransactionManagingService(RestClient restClient) {
+  protected BaseTransactionCreateUpdateService(RestClient restClient) {
     this.restClient = restClient;
   }
 

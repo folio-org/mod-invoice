@@ -3,9 +3,9 @@ package org.folio.services.transaction;
 import org.folio.rest.acq.model.finance.Transaction;
 import org.folio.rest.core.RestClient;
 
-public class PendingPaymentManagingService extends BaseTransactionManagingService implements TransactionManagingService {
+public class PendingPaymentCreateUpdateService extends BaseTransactionCreateUpdateService implements TransactionCreateUpdateService {
 
-  public PendingPaymentManagingService(RestClient pendingPaymentRestClient) {
+  public PendingPaymentCreateUpdateService(RestClient pendingPaymentRestClient) {
     super(pendingPaymentRestClient);
   }
 

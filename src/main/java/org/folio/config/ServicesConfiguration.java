@@ -11,14 +11,14 @@ import org.folio.services.finance.FiscalYearService;
 import org.folio.services.finance.FundService;
 import org.folio.services.finance.LedgerService;
 import org.folio.services.transaction.BaseTransactionService;
-import org.folio.services.transaction.CreditManagingService;
+import org.folio.services.transaction.CreditCreateUpdateService;
 import org.folio.services.transaction.EncumbranceService;
 import org.folio.services.transaction.InvoiceTransactionSummaryService;
-import org.folio.services.transaction.PaymentCreditService;
-import org.folio.services.transaction.PaymentManagingService;
-import org.folio.services.transaction.PendingPaymentManagingService;
-import org.folio.services.transaction.PendingPaymentService;
-import org.folio.services.transaction.TransactionManagingService;
+import org.folio.services.transaction.PaymentCreditWorkflowService;
+import org.folio.services.transaction.PaymentCreateUpdateService;
+import org.folio.services.transaction.PendingPaymentCreateUpdateService;
+import org.folio.services.transaction.PendingPaymentWorkflowService;
+import org.folio.services.transaction.TransactionCreateUpdateService;
 import org.folio.services.transaction.TransactionManagingServiceFactory;
 import org.folio.services.validator.VoucherValidator;
 import org.folio.services.voucher.VoucherCommandService;
@@ -93,41 +93,41 @@ public class ServicesConfiguration {
   }
 
   @Bean
-  PendingPaymentService pendingPaymentService(BaseTransactionService baseTransactionService,
-                                              CurrentFiscalYearService currentFiscalYearService,
-                                              ExchangeRateProviderResolver exchangeRateProviderResolver,
-                                              FinanceExchangeRateService financeExchangeRateService,
-                                              InvoiceTransactionSummaryService invoiceTransactionSummaryService,
-                                              BudgetValidationService budgetValidationService) {
-    return new PendingPaymentService(baseTransactionService, currentFiscalYearService, exchangeRateProviderResolver, financeExchangeRateService, invoiceTransactionSummaryService, budgetValidationService);
+  PendingPaymentWorkflowService pendingPaymentService(BaseTransactionService baseTransactionService,
+                                                      CurrentFiscalYearService currentFiscalYearService,
+                                                      ExchangeRateProviderResolver exchangeRateProviderResolver,
+                                                      FinanceExchangeRateService financeExchangeRateService,
+                                                      InvoiceTransactionSummaryService invoiceTransactionSummaryService,
+                                                      BudgetValidationService budgetValidationService) {
+    return new PendingPaymentWorkflowService(baseTransactionService, currentFiscalYearService, exchangeRateProviderResolver, financeExchangeRateService, invoiceTransactionSummaryService, budgetValidationService);
   }
 
   @Bean
-  TransactionManagingService pendingPaymentManagingService(RestClient pendingPaymentRestClient) {
-    return new PendingPaymentManagingService(pendingPaymentRestClient);
+  TransactionCreateUpdateService pendingPaymentManagingService(RestClient pendingPaymentRestClient) {
+    return new PendingPaymentCreateUpdateService(pendingPaymentRestClient);
   }
 
   @Bean
-  TransactionManagingService paymentManagingService(RestClient paymentRestClient) {
-    return new PaymentManagingService(paymentRestClient);
+  TransactionCreateUpdateService paymentManagingService(RestClient paymentRestClient) {
+    return new PaymentCreateUpdateService(paymentRestClient);
   }
 
   @Bean
-  TransactionManagingService creditManagingService(RestClient creditRestClient) {
-    return new CreditManagingService(creditRestClient);
+  TransactionCreateUpdateService creditManagingService(RestClient creditRestClient) {
+    return new CreditCreateUpdateService(creditRestClient);
   }
 
   @Bean
-  TransactionManagingServiceFactory transactionManagingServiceFactory(Set<TransactionManagingService> transactionManagingServices) {
-    return new TransactionManagingServiceFactory(transactionManagingServices);
+  TransactionManagingServiceFactory transactionManagingServiceFactory(Set<TransactionCreateUpdateService> transactionCreateUpdateServices) {
+    return new TransactionManagingServiceFactory(transactionCreateUpdateServices);
   }
 
   @Bean
-  PaymentCreditService paymentCreditService(BaseTransactionService baseTransactionService,
-                                            CurrentFiscalYearService currentFiscalYearService,
-                                            ExchangeRateProviderResolver exchangeRateProviderResolver,
-                                            FinanceExchangeRateService financeExchangeRateService) {
-    return new PaymentCreditService(baseTransactionService, currentFiscalYearService, exchangeRateProviderResolver, financeExchangeRateService);
+  PaymentCreditWorkflowService paymentCreditService(BaseTransactionService baseTransactionService,
+                                                    CurrentFiscalYearService currentFiscalYearService,
+                                                    ExchangeRateProviderResolver exchangeRateProviderResolver,
+                                                    FinanceExchangeRateService financeExchangeRateService) {
+    return new PaymentCreditWorkflowService(baseTransactionService, currentFiscalYearService, exchangeRateProviderResolver, financeExchangeRateService);
   }
 
   @Bean

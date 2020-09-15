@@ -6,10 +6,10 @@ import org.folio.rest.core.models.RequestContext;
 
 import java.util.concurrent.CompletableFuture;
 
-public class CreditManagingService extends BaseTransactionManagingService {
+public class PaymentCreateUpdateService extends BaseTransactionCreateUpdateService {
 
-  public CreditManagingService(RestClient creditRestClient) {
-    super(creditRestClient);
+  public PaymentCreateUpdateService(RestClient paymentRestClient) {
+    super(paymentRestClient);
   }
 
   @Override
@@ -21,6 +21,6 @@ public class CreditManagingService extends BaseTransactionManagingService {
 
   @Override
   public Transaction.TransactionType transactionType() {
-    return Transaction.TransactionType.CREDIT;
+    return Transaction.TransactionType.PAYMENT;
   }
 }

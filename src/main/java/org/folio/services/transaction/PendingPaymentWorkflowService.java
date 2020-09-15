@@ -26,9 +26,9 @@ import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import me.escoffier.vertx.completablefuture.VertxCompletableFuture;
 
-public class PendingPaymentService {
+public class PendingPaymentWorkflowService {
 
-  private static final Logger logger = LoggerFactory.getLogger(PendingPaymentService.class);
+  private static final Logger logger = LoggerFactory.getLogger(PendingPaymentWorkflowService.class);
 
   private final BaseTransactionService baseTransactionService;
   private final CurrentFiscalYearService currentFiscalYearService;
@@ -37,11 +37,11 @@ public class PendingPaymentService {
   private final InvoiceTransactionSummaryService invoiceTransactionSummaryService;
   private final BudgetValidationService budgetValidationService;
 
-  public PendingPaymentService(BaseTransactionService baseTransactionService,
-                               CurrentFiscalYearService currentFiscalYearService,
-                               ExchangeRateProviderResolver exchangeRateProviderResolver,
-                               FinanceExchangeRateService financeExchangeRateService,
-                               InvoiceTransactionSummaryService invoiceTransactionSummaryService, BudgetValidationService budgetValidationService) {
+  public PendingPaymentWorkflowService(BaseTransactionService baseTransactionService,
+                                       CurrentFiscalYearService currentFiscalYearService,
+                                       ExchangeRateProviderResolver exchangeRateProviderResolver,
+                                       FinanceExchangeRateService financeExchangeRateService,
+                                       InvoiceTransactionSummaryService invoiceTransactionSummaryService, BudgetValidationService budgetValidationService) {
     this.baseTransactionService = baseTransactionService;
     this.currentFiscalYearService = currentFiscalYearService;
     this.exchangeRateProviderResolver = exchangeRateProviderResolver;
@@ -57,6 +57,19 @@ public class PendingPaymentService {
         InvoiceTransactionSummary summary = buildInvoiceTransactionsSummary(invoice, pendingPayments.size());
         return invoiceTransactionSummaryService.createInvoiceTransactionSummary(summary, requestContext)
           .thenCompose(s -> createPendingPayments(pendingPayments, requestContext));
+      });
+  }
+
+  public CompletableFuture<Void> handlePendingPaymentsUpdate(Invoice invoice, List<InvoiceLine> invoiceLines, RequestContext requestContext) {
+    return retrievePendingPayments(invoice, requestContext)
+      .thenCompose(existingTransactions -> buildPendingPaymentTransactions(invoiceLines, invoice ,requestContext)
+        .thenCompose(newTransactions -> budgetValidationService.checkEnoughMoneyInBudget(newTransactions, existingTransactions, requestContext)
+          .thenApply(aVoid -> newTransactions))
+        .thenApply(newTransactions -> mapNewTransactionToExistingIds(newTransactions, existingTransactions)))
+      .thenCompose(transactions -> {
+        InvoiceTransactionSummary invoiceTransactionSummary = buildInvoiceTransactionsSummary(invoice, transactions.size());
+        return invoiceTransactionSummaryService.updateInvoiceTransactionSummary(invoiceTransactionSummary, requestContext)
+          .thenCompose(aVoid -> updateTransactions(transactions, requestContext));
       });
   }
 
@@ -97,19 +110,6 @@ public class PendingPaymentService {
       String fundId = holder.getFundIds().get(0);
       return currentFiscalYearService.getCurrentFiscalYearByFund(fundId, requestContext)
         .thenApply(holder::withFiscalYear);
-  }
-
-  public CompletableFuture<Void> handlePendingPaymentsUpdate(Invoice invoice, List<InvoiceLine> invoiceLines, RequestContext requestContext) {
-    return retrievePendingPayments(invoice, requestContext)
-      .thenCompose(existingTransactions -> buildPendingPaymentTransactions(invoiceLines, invoice ,requestContext)
-        .thenCompose(newTransactions -> budgetValidationService.checkEnoughMoneyInBudget(newTransactions, existingTransactions, requestContext)
-          .thenApply(aVoid -> newTransactions))
-        .thenApply(newTransactions -> mapNewTransactionToExistingIds(newTransactions, existingTransactions)))
-      .thenCompose(transactions -> {
-        InvoiceTransactionSummary invoiceTransactionSummary = buildInvoiceTransactionsSummary(invoice, transactions.size());
-        return invoiceTransactionSummaryService.updateInvoiceTransactionSummary(invoiceTransactionSummary, requestContext)
-          .thenCompose(aVoid -> updateTransactions(transactions, requestContext));
-      });
   }
 
   private CompletableFuture<Void> updateTransactions(List<Transaction> transactions, RequestContext requestContext) {

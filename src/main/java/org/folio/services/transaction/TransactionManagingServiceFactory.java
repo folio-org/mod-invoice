@@ -8,19 +8,19 @@ import java.util.Set;
 
 public class TransactionManagingServiceFactory {
 
-  private Map<Transaction.TransactionType, TransactionManagingService> strategies;
+  private Map<Transaction.TransactionType, TransactionCreateUpdateService> strategies;
 
-  public TransactionManagingServiceFactory(Set<TransactionManagingService> services) {
+  public TransactionManagingServiceFactory(Set<TransactionCreateUpdateService> services) {
     createStrategy(services);
   }
 
-  private void createStrategy(Set<TransactionManagingService> strategySet) {
+  private void createStrategy(Set<TransactionCreateUpdateService> strategySet) {
     strategies = new EnumMap<>(Transaction.TransactionType.class);
     strategySet.forEach(
       strategy -> strategies.put(strategy.transactionType(), strategy));
   }
 
-  public TransactionManagingService findStrategy(Transaction.TransactionType transactionType) {
+  public TransactionCreateUpdateService findStrategy(Transaction.TransactionType transactionType) {
     return strategies.get(transactionType);
   }
 }

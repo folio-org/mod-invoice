@@ -91,11 +91,6 @@ public class BudgetValidationService {
         .orElse(CompletableFuture.completedFuture(null)));
   }
 
-  private CompletableFuture<List<Budget>> getRestrictedBudgets(Collection<String> fundIds, RequestContext requestContext) {
-    return getRestrictedFundsIds(fundIds, requestContext)
-      .thenCompose(restrictedFundIds -> fetchBudgetsByFundIds(restrictedFundIds, requestContext));
-  }
-
   public CompletableFuture<Void> checkEnoughMoneyInBudget(List<Transaction> newTransactions, List<Transaction> existingTransactions, RequestContext requestContext) {
     Map<String, MonetaryAmount> existingFundAmountMap = existingTransactions.stream().collect(toMap(Transaction::getFromFundId, transaction ->  Money.of(transaction.getAmount(), transaction.getCurrency())));
     Map<String, MonetaryAmount> newFundAmountMap = newTransactions.stream().collect(toMap(Transaction::getFromFundId, transaction ->  Money.of(transaction.getAmount(), transaction.getCurrency())));
@@ -107,17 +102,22 @@ public class BudgetValidationService {
 
     List<String> fundIds = new ArrayList<>(fundIdAmountDiffMap.keySet());
     return getRestrictedBudgets(fundIds, requestContext)
-        .thenAccept(budgets -> {
-          List<String> failedBudgetIds = validateAndGetFailedBudgets(budgets, fundIdAmountDiffMap,
-            fiscalYearCurrency);
+      .thenAccept(budgets -> {
+        List<String> failedBudgetIds = validateAndGetFailedBudgets(budgets, fundIdAmountDiffMap,
+          fiscalYearCurrency);
 
-          if (!failedBudgetIds.isEmpty()) {
-            Parameter parameter = new Parameter()
-              .withKey(BUDGETS)
-              .withValue(failedBudgetIds.toString());
-            throw new HttpException(422, FUND_CANNOT_BE_PAID.toError().withParameters(Collections.singletonList(parameter)));
-          }
-        });
+        if (!failedBudgetIds.isEmpty()) {
+          Parameter parameter = new Parameter()
+            .withKey(BUDGETS)
+            .withValue(failedBudgetIds.toString());
+          throw new HttpException(422, FUND_CANNOT_BE_PAID.toError().withParameters(Collections.singletonList(parameter)));
+        }
+      });
+  }
+
+  private CompletableFuture<List<Budget>> getRestrictedBudgets(Collection<String> fundIds, RequestContext requestContext) {
+    return getRestrictedFundsIds(fundIds, requestContext)
+      .thenCompose(restrictedFundIds -> fetchBudgetsByFundIds(restrictedFundIds, requestContext));
   }
 
   private CompletableFuture<List<String>> getRestrictedFundsIds(Collection<String> fundIds, RequestContext requestContext) {

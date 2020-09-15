@@ -42,10 +42,10 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
-public class PendingPaymentServiceTest {
+public class PendingPaymentWorkflowServiceTest {
 
   @InjectMocks
-  private PendingPaymentService pendingPaymentService;
+  private PendingPaymentWorkflowService pendingPaymentWorkflowService;
 
   @Mock
   private BaseTransactionService baseTransactionService;
@@ -144,7 +144,7 @@ public class PendingPaymentServiceTest {
     when(baseTransactionService.updateTransaction(any(), any())).thenReturn(CompletableFuture.completedFuture(null));
     when(exchangeRateProviderResolver.resolve(any())).thenReturn(new ManualExchangeRateProvider());
 
-    pendingPaymentService.handlePendingPaymentsUpdate(invoice, Collections.singletonList(invoiceLine), requestContext);
+    pendingPaymentWorkflowService.handlePendingPaymentsUpdate(invoice, Collections.singletonList(invoiceLine), requestContext);
 
     String expectedQuery = String.format("sourceInvoiceId==%s AND transactionType==Pending payment", invoice.getId());
     verify(baseTransactionService).getTransactions(eq(expectedQuery), eq(0), eq(Integer.MAX_VALUE), eq(requestContext));

@@ -96,8 +96,8 @@ import org.folio.services.finance.BudgetValidationService;
 import org.folio.services.finance.CurrentFiscalYearService;
 import org.folio.services.finance.FundService;
 import org.folio.services.transaction.EncumbranceService;
-import org.folio.services.transaction.PaymentCreditService;
-import org.folio.services.transaction.PendingPaymentService;
+import org.folio.services.transaction.PaymentCreditWorkflowService;
+import org.folio.services.transaction.PendingPaymentWorkflowService;
 import org.folio.services.validator.InvoiceValidator;
 import org.folio.services.voucher.VoucherCommandService;
 import org.folio.services.voucher.VoucherRetrieveService;
@@ -144,9 +144,9 @@ public class InvoiceHelper extends AbstractHelper {
   @Autowired
   private ExchangeRateProviderResolver exchangeRateProviderResolver;
   @Autowired
-  private PendingPaymentService pendingPaymentService;
+  private PendingPaymentWorkflowService pendingPaymentWorkflowService;
   @Autowired
-  private PaymentCreditService paymentCreditService;
+  private PaymentCreditWorkflowService paymentCreditWorkflowService;
   @Autowired
   private BudgetValidationService budgetValidationService;
   @Autowired
@@ -334,7 +334,7 @@ public class InvoiceHelper extends AbstractHelper {
 
   private CompletableFuture<Void> handleExchangeRateChange(Invoice invoice) {
     return getInvoiceLinesWithTotals(invoice)
-      .thenCompose(invoiceLines ->pendingPaymentService.handlePendingPaymentsUpdate(invoice, invoiceLines, new RequestContext(ctx, okapiHeaders))
+      .thenCompose(invoiceLines -> pendingPaymentWorkflowService.handlePendingPaymentsUpdate(invoice, invoiceLines, new RequestContext(ctx, okapiHeaders))
         .thenCompose(aVoid -> updateVoucher(invoice, invoiceLines)));
 
   }
@@ -563,7 +563,7 @@ public class InvoiceHelper extends AbstractHelper {
           .thenCompose(v -> invoiceLineHelper.persistInvoiceLines(lines))
           .thenAccept(v -> invalidateInvoiceLinesCache(lines))
           .thenCompose(v -> budgetExpenseClassService.checkExpenseClasses(lines, invoice, new RequestContext(ctx, okapiHeaders)))
-          .thenCompose(v -> pendingPaymentService.handlePendingPaymentsCreation(lines, invoice, new RequestContext(ctx ,okapiHeaders)))
+          .thenCompose(v -> pendingPaymentWorkflowService.handlePendingPaymentsCreation(lines, invoice, new RequestContext(ctx ,okapiHeaders)))
           .thenCompose(v -> prepareVoucher(invoice))
           .thenCompose(voucher -> updateVoucherWithSystemCurrency(voucher, lines))
           .thenCompose(voucher -> updateVoucherWithExchangeRate(voucher, invoice))
@@ -858,7 +858,7 @@ public class InvoiceHelper extends AbstractHelper {
    */
   private CompletableFuture<Void> payInvoice(Invoice invoice) {
     return fetchInvoiceLinesByInvoiceId(invoice.getId())
-      .thenCompose(invoiceLines -> paymentCreditService.handlePaymentsAndCredits(invoice, invoiceLines, new RequestContext(ctx, okapiHeaders)))
+      .thenCompose(invoiceLines -> paymentCreditWorkflowService.handlePaymentsAndCreditsCreation(invoice, invoiceLines, new RequestContext(ctx, okapiHeaders)))
       .thenCompose(vVoid ->
          VertxCompletableFuture.allOf(ctx, payPoLines(invoice),
                                voucherCommandService.payInvoiceVoucher(invoice.getId(), new RequestContext(ctx, okapiHeaders)))
