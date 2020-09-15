@@ -402,6 +402,7 @@ public class MockServer {
     router.route(HttpMethod.GET, resourceByIdPath(FISCAL_YEARS)).handler(this::handleFiscalYearById);
     router.route(HttpMethod.GET, resourcesPath(FISCAL_YEARS)).handler(this::handleFiscalYear);
     router.route(HttpMethod.GET, resourceByIdPath(FUNDS)).handler(this::handleFundById);
+    router.route(HttpMethod.GET, "/finance/funds/:id/budget").handler(this::handleGetBudgetByFinanceId);
 
     router.route(HttpMethod.DELETE, resourceByIdPath(INVOICES)).handler(ctx -> handleDeleteRequest(ctx, INVOICES));
     router.route(HttpMethod.DELETE, resourceByIdPath(INVOICE_LINES)).handler(ctx -> handleDeleteRequest(ctx, INVOICE_LINES));
@@ -417,7 +418,6 @@ public class MockServer {
     router.route(HttpMethod.PUT, resourceByIdPath(VOUCHER_LINES)).handler(ctx -> handlePutGenericSubObj(ctx, VOUCHER_LINES));
     router.route(HttpMethod.PUT, resourceByIdPath(ORDER_LINES)).handler(ctx -> handlePutGenericSubObj(ctx, ResourcePathResolver.ORDER_LINES));
     router.route(HttpMethod.PUT, resourceByIdPath(BATCH_VOUCHER_EXPORT_CONFIGS)).handler(ctx -> handlePutGenericSubObj(ctx, ResourcePathResolver.BATCH_VOUCHER_EXPORT_CONFIGS));
-    router.route(HttpMethod.GET, "/finance/funds/:id/budget").handler(this::handleGetBudgetByFinanceId);
     router.route(HttpMethod.PUT, "/batch-voucher-storage/export-configurations/:id/credentials").handler(ctx -> handlePutGenericSubObj(ctx, BATCH_VOUCHER_EXPORT_CONFIGS_CREDENTIALS));
     router.route(HttpMethod.PUT, resourceByIdPath(BATCH_GROUPS)).handler(ctx -> handlePutGenericSubObj(ctx, BATCH_GROUPS));
     router.route(HttpMethod.PUT, resourceByIdPath(BATCH_VOUCHER_EXPORTS_STORAGE)).handler(ctx -> handlePutGenericSubObj(ctx, BATCH_VOUCHER_EXPORTS_STORAGE));

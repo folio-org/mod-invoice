@@ -1,10 +1,10 @@
 package org.folio.services.transaction;
 
+import java.util.concurrent.CompletableFuture;
+
 import org.folio.rest.acq.model.finance.InvoiceTransactionSummary;
 import org.folio.rest.core.RestClient;
 import org.folio.rest.core.models.RequestContext;
-
-import java.util.concurrent.CompletableFuture;
 
 public class InvoiceTransactionSummaryService {
 
@@ -16,5 +16,9 @@ public class InvoiceTransactionSummaryService {
 
   public CompletableFuture<InvoiceTransactionSummary> createInvoiceTransactionSummary(InvoiceTransactionSummary transactionSummary, RequestContext requestContext) {
     return invoiceTransactionSummaryRestClient.post(transactionSummary, requestContext, InvoiceTransactionSummary.class);
+  }
+
+  public CompletableFuture<Void> updateInvoiceTransactionSummary(InvoiceTransactionSummary invoiceTransactionSummary, RequestContext requestContext) {
+    return invoiceTransactionSummaryRestClient.put(invoiceTransactionSummary.getId(), invoiceTransactionSummary, requestContext);
   }
 }

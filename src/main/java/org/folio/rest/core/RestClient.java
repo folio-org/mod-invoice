@@ -34,9 +34,9 @@ public class RestClient {
   private final String baseEndpoint;
   private final String endpointById;
 
-  public RestClient(String baseEndpoint, String byIdSuffix) {
+  public RestClient(String baseEndpoint, String suffix) {
     this.baseEndpoint = baseEndpoint;
-    this.endpointById = baseEndpoint + byIdSuffix;
+    this.endpointById = baseEndpoint + suffix;
   }
 
   public RestClient(String baseEndpoint) {

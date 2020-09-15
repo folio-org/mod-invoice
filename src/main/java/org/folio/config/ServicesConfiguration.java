@@ -1,9 +1,11 @@
 package org.folio.config;
 
 import org.folio.rest.core.RestClient;
+import org.folio.services.finance.BudgetExpenseClassService;
 import org.folio.services.config.TenantConfigurationService;
 import org.folio.services.exchange.ExchangeRateProviderResolver;
 import org.folio.services.exchange.FinanceExchangeRateService;
+import org.folio.services.finance.BudgetValidationService;
 import org.folio.services.finance.CurrentFiscalYearService;
 import org.folio.services.finance.FiscalYearService;
 import org.folio.services.finance.FundService;
@@ -95,8 +97,9 @@ public class ServicesConfiguration {
                                               CurrentFiscalYearService currentFiscalYearService,
                                               ExchangeRateProviderResolver exchangeRateProviderResolver,
                                               FinanceExchangeRateService financeExchangeRateService,
-                                              InvoiceTransactionSummaryService invoiceTransactionSummaryService) {
-    return new PendingPaymentService(baseTransactionService, currentFiscalYearService, exchangeRateProviderResolver, financeExchangeRateService, invoiceTransactionSummaryService);
+                                              InvoiceTransactionSummaryService invoiceTransactionSummaryService,
+                                              BudgetValidationService budgetValidationService) {
+    return new PendingPaymentService(baseTransactionService, currentFiscalYearService, exchangeRateProviderResolver, financeExchangeRateService, invoiceTransactionSummaryService, budgetValidationService);
   }
 
   @Bean
@@ -130,5 +133,19 @@ public class ServicesConfiguration {
   @Bean
   InvoiceTransactionSummaryService invoiceTransactionSummaryService(RestClient invoiceTransactionSummaryRestClient) {
     return new InvoiceTransactionSummaryService(invoiceTransactionSummaryRestClient);
+  }
+
+  @Bean
+  BudgetValidationService budgetValidationService(ExchangeRateProviderResolver exchangeRateProviderResolver,
+                                                  FiscalYearService fiscalYearService,
+                                                  FundService fundService,
+                                                  LedgerService ledgerService,
+                                                  RestClient activeBudgetRestClient) {
+    return new BudgetValidationService(exchangeRateProviderResolver, fiscalYearService, fundService, ledgerService, activeBudgetRestClient);
+  }
+
+  @Bean
+  BudgetExpenseClassService budgetExpenseClassService(RestClient budgetExpenseClassRestClient) {
+    return new BudgetExpenseClassService(budgetExpenseClassRestClient);
   }
 }

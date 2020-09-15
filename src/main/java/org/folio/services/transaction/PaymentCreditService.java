@@ -2,21 +2,17 @@ package org.folio.services.transaction;
 
 import static java.util.concurrent.CompletableFuture.completedFuture;
 import static org.folio.invoices.utils.ErrorCodes.TRANSACTION_CREATION_FAILURE;
-import static org.folio.rest.impl.FinanceHelper.FUND_ID;
+import static org.folio.services.finance.BudgetExpenseClassService.FUND_ID;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 
-import javax.money.CurrencyUnit;
-import javax.money.Monetary;
-
 import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.invoices.utils.HelperUtils;
 import org.folio.models.PaymentCreditHolder;
 import org.folio.models.TransactionDataHolder;
-import org.folio.rest.acq.model.finance.ExchangeRate;
 import org.folio.rest.acq.model.finance.Transaction;
 import org.folio.rest.core.models.RequestContext;
 import org.folio.rest.jaxrs.model.Invoice;
@@ -74,7 +70,7 @@ public class PaymentCreditService {
    */
   public CompletableFuture<Boolean> isPaymentsAlreadyProcessed(String invoiceId, RequestContext requestContext) {
     String query = String.format("sourceInvoiceId==%s and (transactionType==Payment or transactionType==Credit)", invoiceId);
-    return baseTransactionService.getTransactions(query, 0, Integer.MAX_VALUE, requestContext)
+    return baseTransactionService.getTransactions(query, 0, 0, requestContext)
       .thenApply(transactionCollection -> transactionCollection.getTotalRecords() > 0);
   }
 
@@ -94,32 +90,10 @@ public class PaymentCreditService {
   private CompletionStage<TransactionDataHolder> withCurrencyConversion(TransactionDataHolder transactionDataHolder, RequestContext requestContext) {
     Invoice invoice = transactionDataHolder.getInvoice();
     String fiscalYearCurrency = transactionDataHolder.getCurrency();
-    return getExchangeRate(invoice, fiscalYearCurrency, requestContext)
+    return financeExchangeRateService.getExchangeRate(invoice, fiscalYearCurrency, requestContext)
       .thenApply(HelperUtils::buildConversionQuery)
       .thenApply(conversionQuery -> exchangeRateProviderResolver.resolve(conversionQuery).getCurrencyConversion(conversionQuery))
       .thenApply(transactionDataHolder::withCurrencyConversion);
-  }
-
-  private CompletableFuture<ExchangeRate> getExchangeRate(Invoice invoice, String fiscalYearCurrency, RequestContext requestContext) {
-    CurrencyUnit invoiceCurrency = Monetary.getCurrency(invoice.getCurrency());
-    CurrencyUnit systemCurrency = Monetary.getCurrency(fiscalYearCurrency);
-    if (invoiceCurrency.equals(systemCurrency)) {
-      invoice.setExchangeRate(1d);
-      return CompletableFuture.completedFuture(new ExchangeRate().withExchangeRate(1d)
-        .withFrom(fiscalYearCurrency)
-        .withTo(fiscalYearCurrency));
-    }
-    if (invoice.getExchangeRate() == null || invoice.getExchangeRate() == 0d) {
-      return financeExchangeRateService.getExchangeRate(invoice.getCurrency(), fiscalYearCurrency, requestContext)
-        .thenApply(exchangeRate -> {
-          invoice.setExchangeRate(exchangeRate.getExchangeRate());
-          return exchangeRate;
-        });
-    }
-
-    return CompletableFuture.completedFuture(new ExchangeRate().withExchangeRate(invoice.getExchangeRate())
-      .withFrom(invoice.getCurrency())
-      .withTo(fiscalYearCurrency));
   }
 
   private CompletionStage<Void> createTransactions(List<Transaction> transactions, RequestContext requestContext) {

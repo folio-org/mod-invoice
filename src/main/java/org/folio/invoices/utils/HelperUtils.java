@@ -22,6 +22,7 @@ import static org.folio.services.exchange.ExchangeRateProviderResolver.RATE_KEY;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -317,7 +318,7 @@ public class HelperUtils {
    * @param ids list of id's
    * @return String representing CQL query to get records by id's
    */
-  public static String convertIdsToCqlQuery(List<String> ids) {
+  public static String convertIdsToCqlQuery(Collection<String> ids) {
     return convertIdsToCqlQuery(ids, ID, true);
   }
 
@@ -328,7 +329,7 @@ public class HelperUtils {
    * @param strictMatch indicates whether strict match mode (i.e. ==) should be used or not (i.e. =)
    * @return String representing CQL query to get records by some property values
    */
-  public static String convertIdsToCqlQuery(List<String> values, String fieldName, boolean strictMatch) {
+  public static String convertIdsToCqlQuery(Collection<String> values, String fieldName, boolean strictMatch) {
     String prefix = fieldName + (strictMatch ? "==(" : "=(");
     return StreamEx.of(values).joining(" or ", prefix, ")");
   }

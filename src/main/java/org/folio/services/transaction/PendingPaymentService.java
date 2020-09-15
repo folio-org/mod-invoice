@@ -3,24 +3,23 @@ package org.folio.services.transaction;
 import static org.folio.invoices.utils.ErrorCodes.PENDING_PAYMENT_ERROR;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
-
-import javax.money.CurrencyUnit;
-import javax.money.Monetary;
 
 import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.invoices.utils.HelperUtils;
 import org.folio.models.PendingPaymentHolder;
 import org.folio.models.TransactionDataHolder;
-import org.folio.rest.acq.model.finance.ExchangeRate;
 import org.folio.rest.acq.model.finance.InvoiceTransactionSummary;
 import org.folio.rest.acq.model.finance.Transaction;
+import org.folio.rest.acq.model.finance.TransactionCollection;
 import org.folio.rest.core.models.RequestContext;
 import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.jaxrs.model.InvoiceLine;
 import org.folio.services.exchange.ExchangeRateProviderResolver;
 import org.folio.services.exchange.FinanceExchangeRateService;
+import org.folio.services.finance.BudgetValidationService;
 import org.folio.services.finance.CurrentFiscalYearService;
 
 import io.vertx.core.logging.Logger;
@@ -36,20 +35,22 @@ public class PendingPaymentService {
   private final ExchangeRateProviderResolver exchangeRateProviderResolver;
   private final FinanceExchangeRateService financeExchangeRateService;
   private final InvoiceTransactionSummaryService invoiceTransactionSummaryService;
+  private final BudgetValidationService budgetValidationService;
 
   public PendingPaymentService(BaseTransactionService baseTransactionService,
                                CurrentFiscalYearService currentFiscalYearService,
                                ExchangeRateProviderResolver exchangeRateProviderResolver,
                                FinanceExchangeRateService financeExchangeRateService,
-                               InvoiceTransactionSummaryService invoiceTransactionSummaryService) {
+                               InvoiceTransactionSummaryService invoiceTransactionSummaryService, BudgetValidationService budgetValidationService) {
     this.baseTransactionService = baseTransactionService;
     this.currentFiscalYearService = currentFiscalYearService;
     this.exchangeRateProviderResolver = exchangeRateProviderResolver;
     this.financeExchangeRateService = financeExchangeRateService;
     this.invoiceTransactionSummaryService = invoiceTransactionSummaryService;
+    this.budgetValidationService = budgetValidationService;
   }
 
-  public CompletableFuture<Void> handlePendingPayments(List<InvoiceLine> invoiceLines, Invoice invoice, RequestContext requestContext) {
+  public CompletableFuture<Void> handlePendingPaymentsCreation(List<InvoiceLine> invoiceLines, Invoice invoice, RequestContext requestContext) {
 
     return buildPendingPaymentTransactions(invoiceLines, invoice, requestContext)
       .thenCompose(pendingPayments -> {
@@ -76,7 +77,7 @@ public class PendingPaymentService {
       .toArray(CompletableFuture[]::new));
   }
 
-  public CompletableFuture<List<Transaction>> buildPendingPaymentTransactions(List<InvoiceLine> invoiceLines, Invoice invoice, RequestContext requestContext) {
+  private CompletableFuture<List<Transaction>> buildPendingPaymentTransactions(List<InvoiceLine> invoiceLines, Invoice invoice, RequestContext requestContext) {
     TransactionDataHolder holder = new PendingPaymentHolder(invoice, invoiceLines);
     return withFiscalYear(holder, requestContext)
       .thenCompose(transactionDataHolder -> withCurrencyConversion(transactionDataHolder, requestContext))
@@ -86,32 +87,10 @@ public class PendingPaymentService {
   private CompletionStage<TransactionDataHolder> withCurrencyConversion(TransactionDataHolder transactionDataHolder, RequestContext requestContext) {
     Invoice invoice = transactionDataHolder.getInvoice();
     String fiscalYearCurrency = transactionDataHolder.getCurrency();
-    return getExchangeRate(invoice, fiscalYearCurrency, requestContext)
+    return financeExchangeRateService.getExchangeRate(invoice, fiscalYearCurrency, requestContext)
       .thenApply(HelperUtils::buildConversionQuery)
       .thenApply(conversionQuery -> exchangeRateProviderResolver.resolve(conversionQuery).getCurrencyConversion(conversionQuery))
       .thenApply(transactionDataHolder::withCurrencyConversion);
-  }
-
-  private CompletableFuture<ExchangeRate> getExchangeRate(Invoice invoice, String fiscalYearCurrency, RequestContext requestContext) {
-    CurrencyUnit invoiceCurrency = Monetary.getCurrency(invoice.getCurrency());
-    CurrencyUnit systemCurrency = Monetary.getCurrency(fiscalYearCurrency);
-    if (invoiceCurrency.equals(systemCurrency)) {
-      invoice.setExchangeRate(1d);
-      return CompletableFuture.completedFuture(new ExchangeRate().withExchangeRate(1d)
-        .withFrom(fiscalYearCurrency)
-        .withTo(fiscalYearCurrency));
-    }
-    if (invoice.getExchangeRate() == null || invoice.getExchangeRate() == 0d) {
-      return financeExchangeRateService.getExchangeRate(invoice.getCurrency(), fiscalYearCurrency, requestContext)
-        .thenApply(exchangeRate -> {
-          invoice.setExchangeRate(exchangeRate.getExchangeRate());
-          return exchangeRate;
-        });
-    }
-
-    return CompletableFuture.completedFuture(new ExchangeRate().withExchangeRate(invoice.getExchangeRate())
-      .withFrom(invoice.getCurrency())
-      .withTo(fiscalYearCurrency));
   }
 
   private CompletableFuture<TransactionDataHolder> withFiscalYear(TransactionDataHolder holder, RequestContext requestContext) {
@@ -120,4 +99,42 @@ public class PendingPaymentService {
         .thenApply(holder::withFiscalYear);
   }
 
+  public CompletableFuture<Void> handlePendingPaymentsUpdate(Invoice invoice, List<InvoiceLine> invoiceLines, RequestContext requestContext) {
+    return retrievePendingPayments(invoice, requestContext)
+      .thenCompose(existingTransactions -> buildPendingPaymentTransactions(invoiceLines, invoice ,requestContext)
+        .thenCompose(newTransactions -> budgetValidationService.checkEnoughMoneyInBudget(newTransactions, existingTransactions, requestContext)
+          .thenApply(aVoid -> newTransactions))
+        .thenApply(newTransactions -> mapNewTransactionToExistingIds(newTransactions, existingTransactions)))
+      .thenCompose(transactions -> {
+        InvoiceTransactionSummary invoiceTransactionSummary = buildInvoiceTransactionsSummary(invoice, transactions.size());
+        return invoiceTransactionSummaryService.updateInvoiceTransactionSummary(invoiceTransactionSummary, requestContext)
+          .thenCompose(aVoid -> updateTransactions(transactions, requestContext));
+      });
+  }
+
+  private CompletableFuture<Void> updateTransactions(List<Transaction> transactions, RequestContext requestContext) {
+    return VertxCompletableFuture.allOf(requestContext.getContext(), transactions.stream()
+    .map(transaction -> baseTransactionService.updateTransaction(transaction, requestContext))
+    .toArray(CompletableFuture[]::new));
+  }
+
+  private List<Transaction> mapNewTransactionToExistingIds(List<Transaction> newTransactions, List<Transaction> existingTransactions) {
+    existingTransactions.forEach(existingTransaction -> newTransactions.stream()
+      .filter(newTransaction -> isSamePendingPayments(existingTransaction, newTransaction))
+      .forEach(newTransaction -> existingTransaction.setAmount(newTransaction.getAmount())));
+    return existingTransactions;
+  }
+
+  private boolean isSamePendingPayments(Transaction transaction1, Transaction transaction2) {
+    return Objects.equals(transaction1.getFromFundId(), transaction2.getFromFundId())
+      && Objects.equals(transaction1.getSourceInvoiceId(), transaction2.getSourceInvoiceId())
+      && Objects.equals(transaction1.getSourceInvoiceLineId(), transaction2.getSourceInvoiceLineId())
+      && Objects.equals(transaction1.getFiscalYearId(), transaction2.getFiscalYearId());
+  }
+
+  private CompletableFuture<List<Transaction>> retrievePendingPayments(Invoice invoice, RequestContext requestContext) {
+    String query = String.format("sourceInvoiceId==%s AND transactionType==Pending payment", invoice.getId());
+    return baseTransactionService.getTransactions(query, 0, Integer.MAX_VALUE,requestContext)
+      .thenApply(TransactionCollection::getTransactions);
+  }
 }

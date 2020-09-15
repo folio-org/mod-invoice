@@ -1,5 +1,7 @@
 package org.folio.config;
 
+import static org.folio.invoices.utils.ResourcePathResolver.BUDGET_EXPENSE_CLASSES;
+import static org.folio.invoices.utils.ResourcePathResolver.CURRENT_BUDGET;
 import static org.folio.invoices.utils.ResourcePathResolver.EXPENSE_CLASSES_URL;
 import static org.folio.invoices.utils.ResourcePathResolver.FINANCE_CREDITS;
 import static org.folio.invoices.utils.ResourcePathResolver.FINANCE_EXCHANGE_RATE;
@@ -101,5 +103,15 @@ public class RestClientsConfiguration {
   @Bean
   RestClient invoiceTransactionSummaryRestClient() {
     return new RestClient("/finance/invoice-transaction-summaries");
+  }
+
+  @Bean
+  RestClient budgetExpenseClassRestClient() {
+    return new RestClient(resourcesPath(BUDGET_EXPENSE_CLASSES));
+  }
+
+  @Bean
+  RestClient activeBudgetRestClient() {
+    return new RestClient(resourcesPath(CURRENT_BUDGET), "?status=Active");
   }
 }

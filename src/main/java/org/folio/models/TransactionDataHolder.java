@@ -64,14 +64,6 @@ public abstract class TransactionDataHolder {
     return currencyConversion;
   }
 
-  public List<FundDistribution> getFundDistributions() {
-    Stream<FundDistribution> invoiceLinesFDsStream = invoiceLines.stream()
-      .flatMap(invoiceLine -> invoiceLine.getFundDistributions().stream());
-    Stream<FundDistribution> invoiceFDsStream = invoice.getAdjustments().stream()
-      .flatMap(adjustment -> adjustment.getFundDistributions().stream());
-    return Stream.concat(invoiceFDsStream, invoiceLinesFDsStream).collect(toList());
-  }
-
   public List<Transaction> toTransactions() {
     List<Transaction> transactions = buildTransactionsFromInvoiceLines();
     transactions.addAll(buildTransactionsFromAdjustments());

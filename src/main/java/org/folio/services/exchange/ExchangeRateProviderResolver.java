@@ -4,7 +4,6 @@ import static org.javamoney.moneta.convert.ExchangeRateType.ECB;
 import static org.javamoney.moneta.convert.ExchangeRateType.IDENTITY;
 import static org.javamoney.moneta.convert.ExchangeRateType.IMF;
 
-import java.util.Objects;
 import java.util.Optional;
 
 import javax.money.convert.ConversionQuery;
@@ -19,9 +18,7 @@ public class ExchangeRateProviderResolver {
   public static final String RATE_KEY = "factor";
 
   public ExchangeRateProvider resolve(ConversionQuery conversionQuery){
-    ExchangeRateProvider exchangeRateProvider = Optional.ofNullable(conversionQuery)
-            .map(query -> query.get(RATE_KEY, Double.class))
-            .filter(Objects::nonNull)
+    ExchangeRateProvider exchangeRateProvider = Optional.ofNullable(conversionQuery.getDouble(RATE_KEY))
             .map(rate -> (ExchangeRateProvider) new ManualExchangeRateProvider())
             .orElse(MonetaryConversions.getExchangeRateProvider(IDENTITY, ECB, IMF));
     logger.debug("Created ExchangeRateProvider name: {}", exchangeRateProvider.getContext().getProviderName());

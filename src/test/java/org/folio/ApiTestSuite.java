@@ -35,12 +35,14 @@ import org.folio.rest.tools.utils.NetworkUtils;
 import org.folio.schemas.xsd.BatchVoucherSchemaXSDTest;
 import org.folio.services.InvoiceRetrieveServiceTest;
 import org.folio.services.VoucherLinesRetrieveServiceTest;
+import org.folio.services.finance.BudgetValidationServiceTest;
 import org.folio.services.finance.CurrentFiscalYearServiceTest;
 import org.folio.services.finance.ManualCurrencyConversionTest;
 import org.folio.services.finance.ManualExchangeRateProviderTest;
 import org.folio.services.ftp.FTPVertxCommandLoggerTest;
 import org.folio.services.ftp.FtpUploadServiceTest;
 import org.folio.services.transaction.BaseTransactionServiceTest;
+import org.folio.services.transaction.PendingPaymentServiceTest;
 import org.folio.services.validator.InvoiceLineValidatorTest;
 import org.folio.services.voucher.BatchVoucherGenerateServiceTest;
 import org.folio.services.voucher.UploadBatchVoucherExportServiceTest;
@@ -59,7 +61,6 @@ import io.vertx.core.logging.LoggerFactory;
 
 @RunWith(JUnitPlatform.class)
 public class ApiTestSuite {
-  private static final Logger logger = LoggerFactory.getLogger(ApiTestSuite.class);
 
   private static final int okapiPort = NetworkUtils.nextFreePort();
   public static final int mockPort = NetworkUtils.nextFreePort();
@@ -249,5 +250,13 @@ public class ApiTestSuite {
 
   @Nested
   class ManualExchangeRateProviderTestNested extends ManualExchangeRateProviderTest {
+  }
+
+  @Nested
+  class BudgetValidationServiceTestNested extends BudgetValidationServiceTest {
+  }
+
+  @Nested
+  class PendingPaymentServiceTestNested extends PendingPaymentServiceTest {
   }
 }
