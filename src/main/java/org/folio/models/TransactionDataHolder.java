@@ -88,7 +88,8 @@ public abstract class TransactionDataHolder {
       .withCurrency(getCurrency())
       .withFiscalYearId(getFiscalYear().getId())
       .withSourceInvoiceId(getInvoice().getId())
-      .withFromFundId(fundDistribution.getFundId());
+      .withFromFundId(fundDistribution.getFundId())
+      .withExpenseClassId(fundDistribution.getExpenseClassId());
   }
 
   private List<Transaction> buildTransactionsFromAdjustments() {
