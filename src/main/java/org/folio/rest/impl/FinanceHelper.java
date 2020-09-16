@@ -386,7 +386,8 @@ public class FinanceHelper extends AbstractHelper {
       .withSource(Source.INVOICE)
       .withSourceInvoiceId(invoiceLine.getInvoiceId())
       .withSourceInvoiceLineId(invoiceLine.getId())
-      .withFromFundId(fundDistribution.getFundId());
+      .withFromFundId(fundDistribution.getFundId())
+      .withExpenseClassId(fundDistribution.getExpenseClassId());
 
     return new FundDistributionTransactionHolder()
       .withTransaction(pendingPayment)
