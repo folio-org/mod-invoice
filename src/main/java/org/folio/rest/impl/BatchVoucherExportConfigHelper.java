@@ -123,7 +123,7 @@ public class BatchVoucherExportConfigHelper extends AbstractHelper {
       .thenApply(v -> {
         try {
           ExportConfig config = exportConfigFut.join();
-          return new FtpUploadService(config.getUploadURI());
+          return new FtpUploadService(ctx, config.getUploadURI());
         } catch (URISyntaxException e) {
           throw new CompletionException(e);
         }

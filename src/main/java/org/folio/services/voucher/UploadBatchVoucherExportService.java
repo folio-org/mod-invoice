@@ -5,7 +5,6 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 
-import org.apache.commons.lang3.StringUtils;
 import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.models.BatchVoucherUploadHolder;
 import org.folio.rest.impl.BatchVoucherExportConfigHelper;
@@ -57,7 +56,7 @@ public class UploadBatchVoucherExportService {
                    .thenCompose(v -> uploadBatchVoucher(uploadHolder))
                    .handle((v, throwable) -> {
                      if (throwable == null) {
-                       succUploadUpdate(uploadHolder.getBatchVoucherExport());
+                       succUploadUpdate(uploadHolder);
                      }
                      else {
                        failUploadUpdate(uploadHolder.getBatchVoucherExport(), throwable);
@@ -79,7 +78,7 @@ public class UploadBatchVoucherExportService {
       .thenCompose(v -> uploadBatchVoucher(uploadHolder))
       .handle((v, throwable) -> {
         if (throwable == null) {
-          succUploadUpdate(uploadHolder.getBatchVoucherExport());
+          succUploadUpdate(uploadHolder);
         }
         else {
           failUploadUpdate(uploadHolder.getBatchVoucherExport(), throwable);
@@ -93,7 +92,7 @@ public class UploadBatchVoucherExportService {
   public CompletableFuture<Void> uploadBatchVoucher(BatchVoucherUploadHolder uploadHolder) {
     CompletableFuture<Void> future = new CompletableFuture<>();
     try {
-      UploadService helper = new FtpUploadService(uploadHolder.getExportConfig().getUploadURI());
+      UploadService helper = new FtpUploadService(ctx, uploadHolder.getExportConfig().getUploadURI());
       helper.login(uploadHolder.getCredentials().getUsername(), uploadHolder.getCredentials().getPassword())
         .thenAccept(LOG::info)
         .thenCompose(v -> {
@@ -181,10 +180,11 @@ public class UploadBatchVoucherExportService {
     LOG.error("Exception occurs, when uploading batch voucher", t.getMessage());
   }
 
-  private void succUploadUpdate(BatchVoucherExport bvExport) {
+  private void succUploadUpdate(BatchVoucherUploadHolder uploadHolder) {
+    BatchVoucherExport bvExport = uploadHolder.getBatchVoucherExport();
     if (bvExport != null) {
       bvExport.setStatus(BatchVoucherExport.Status.UPLOADED);
-      bvExport.setMessage(StringUtils.EMPTY);
+      bvExport.setMessage(generateFileName(uploadHolder.getBatchVoucher(), uploadHolder.getFileFormat()));
       updateBatchVoucher(bvExport);
       LOG.debug("Batch voucher uploaded on FTP");
     }
