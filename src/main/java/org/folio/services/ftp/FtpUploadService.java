@@ -116,7 +116,6 @@ public class FtpUploadService implements UploadService {
     ctx.owner().executeBlocking(blockingFeature -> {
       try (InputStream is = new ByteArrayInputStream(content.getBytes())) {
         ftp.setFileType(FTP.BINARY_FILE_TYPE);
-        ftp.setPassiveNatWorkaroundStrategy(new DefaultServerResolver(ftp));
         ftp.enterLocalPassiveMode();
         changeWorkingDirectory();
         if (ftp.storeFile(filename, is)) {
