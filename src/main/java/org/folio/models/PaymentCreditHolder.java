@@ -24,7 +24,12 @@ public class PaymentCreditHolder extends TransactionDataHolder {
   Transaction buildTransaction(FundDistribution fundDistribution, InvoiceLine invoiceLine) {
     MonetaryAmount amount = getFundDistributionAmount(fundDistribution, invoiceLine.getTotal(), getInvoice().getCurrency()).with(getCurrencyConversion());
 
-    return buildBaseTransaction(fundDistribution)
+    Transaction transaction = buildBaseTransaction(fundDistribution);
+    if (amount.isNegative()) {
+      transaction.setToFundId(fundDistribution.getFundId());
+      transaction.setFromFundId(null);
+    }
+    return transaction
       .withTransactionType(amount.isPositive() ? Transaction.TransactionType.PAYMENT : Transaction.TransactionType.CREDIT)
       .withAmount(convertToDoubleWithRounding(amount.abs()))
       .withSourceInvoiceLineId(invoiceLine.getId());
@@ -34,7 +39,7 @@ public class PaymentCreditHolder extends TransactionDataHolder {
   Transaction buildTransaction(FundDistribution fundDistribution, Adjustment adjustment) {
     MonetaryAmount amount = getAdjustmentFundDistributionAmount(fundDistribution, adjustment, getInvoice()).with(getCurrencyConversion());
     Transaction transaction = buildBaseTransaction(fundDistribution);
-    if (amount.isPositive()) {
+    if (amount.isNegative()) {
       transaction.setToFundId(fundDistribution.getFundId());
       transaction.setFromFundId(null);
     }

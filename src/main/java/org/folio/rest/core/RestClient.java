@@ -172,16 +172,20 @@ public class RestClient {
           return verifyAndExtractBody(response);
         })
         .handle((body, t) -> {
-          client.closeClient();
-          if (t != null) {
-            logger.error(EXCEPTION_CALLING_ENDPOINT_MSG, t, HttpMethod.GET, endpoint);
-            future.completeExceptionally(t.getCause());
-          } else {
-            if (logger.isDebugEnabled()) {
-              logger.debug("The response body for GET {}: {}", endpoint, nonNull(body) ? body.encodePrettily() : null);
+          try {
+            client.closeClient();
+            if (t != null) {
+              logger.error(EXCEPTION_CALLING_ENDPOINT_MSG, t, HttpMethod.GET, endpoint);
+              future.completeExceptionally(t.getCause());
+            } else {
+              if (logger.isDebugEnabled()) {
+                logger.debug("The response body for GET {}: {}", endpoint, nonNull(body) ? body.encodePrettily() : null);
+              }
+              S responseEntity = body.mapTo(responseType);
+              future.complete(responseEntity);
             }
-            S responseEntity = body.mapTo(responseType);
-            future.complete(responseEntity);
+          } catch (Exception e) {
+            future.completeExceptionally(e);
           }
           return null;
         });

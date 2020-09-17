@@ -140,8 +140,9 @@ public class ServicesConfiguration {
                                                   FiscalYearService fiscalYearService,
                                                   FundService fundService,
                                                   LedgerService ledgerService,
-                                                  RestClient activeBudgetRestClient) {
-    return new BudgetValidationService(exchangeRateProviderResolver, fiscalYearService, fundService, ledgerService, activeBudgetRestClient);
+                                                  RestClient activeBudgetRestClient,
+                                                  FinanceExchangeRateService financeExchangeRateService) {
+    return new BudgetValidationService(exchangeRateProviderResolver, fiscalYearService, fundService, ledgerService, activeBudgetRestClient, financeExchangeRateService);
   }
 
   @Bean

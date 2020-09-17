@@ -20,7 +20,7 @@ public class ExchangeRateProviderResolver {
   public ExchangeRateProvider resolve(ConversionQuery conversionQuery){
     ExchangeRateProvider exchangeRateProvider = Optional.ofNullable(conversionQuery.getDouble(RATE_KEY))
             .map(rate -> (ExchangeRateProvider) new ManualExchangeRateProvider())
-            .orElse(MonetaryConversions.getExchangeRateProvider(IDENTITY, ECB, IMF));
+            .orElseGet(() -> MonetaryConversions.getExchangeRateProvider(IDENTITY, ECB, IMF));
     logger.debug("Created ExchangeRateProvider name: {}", exchangeRateProvider.getContext().getProviderName());
     return exchangeRateProvider;
   }

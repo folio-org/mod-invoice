@@ -21,6 +21,7 @@ import java.util.stream.Collectors;
 import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.invoices.utils.ErrorCodes;
 import org.folio.invoices.utils.HelperUtils;
+import org.folio.rest.acq.model.finance.CompositeFund;
 import org.folio.rest.acq.model.finance.Fund;
 import org.folio.rest.acq.model.finance.FundCollection;
 import org.folio.rest.core.RestClient;
@@ -52,7 +53,8 @@ public class FundService {
   }
 
   public CompletableFuture<Fund> getFundById(String fundId, RequestContext requestContext) {
-    return fundRestClient.getById(fundId, requestContext, Fund.class)
+    return fundRestClient.getById(fundId, requestContext, CompositeFund.class)
+      .thenApply(CompositeFund::getFund)
       .exceptionally(t -> {
         Throwable cause = t.getCause() == null ? t : t.getCause();
         if (HelperUtils.isNotFound(cause)) {

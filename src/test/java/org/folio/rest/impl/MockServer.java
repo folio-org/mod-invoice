@@ -85,6 +85,7 @@ import org.folio.rest.acq.model.finance.Budget;
 import org.folio.rest.acq.model.finance.BudgetCollection;
 import org.folio.rest.acq.model.finance.BudgetExpenseClass;
 import org.folio.rest.acq.model.finance.BudgetExpenseClassCollection;
+import org.folio.rest.acq.model.finance.CompositeFund;
 import org.folio.rest.acq.model.finance.ExchangeRate;
 import org.folio.rest.acq.model.finance.ExpenseClass;
 import org.folio.rest.acq.model.finance.ExpenseClassCollection;
@@ -440,7 +441,8 @@ public class MockServer {
         .withLedgerId(UUID.randomUUID().toString())
         .withCode("TEST")
         .withName("TEST");
-      List<Fund> funds = getMockEntries(FUNDS, Fund.class).orElse(Collections.singletonList(fund));
+      List<CompositeFund> funds = getMockEntries(FUNDS, Fund.class)
+        .map(funds1 -> funds1.stream().map(fund1 -> new CompositeFund().withFund(fund1)).collect(toList())).orElse(Collections.singletonList(new CompositeFund().withFund(fund)));
       addServerRqRsData(HttpMethod.GET, FUNDS, JsonObject.mapFrom(funds.get(0)));
       serverResponse(ctx, 200, APPLICATION_JSON, JsonObject.mapFrom(funds.get(0)).encodePrettily());
     }

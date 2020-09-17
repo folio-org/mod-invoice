@@ -12,6 +12,7 @@ import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -41,6 +42,7 @@ import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.jaxrs.model.InvoiceLine;
 import org.folio.rest.jaxrs.model.Parameter;
 import org.folio.services.exchange.ExchangeRateProviderResolver;
+import org.folio.services.exchange.FinanceExchangeRateService;
 import org.javamoney.moneta.Money;
 import org.javamoney.moneta.function.MonetaryFunctions;
 
@@ -53,16 +55,18 @@ public class BudgetValidationService {
   private final FundService fundService;
   private final LedgerService ledgerService;
   private final RestClient activeBudgetRestClient;
+  private final FinanceExchangeRateService financeExchangeRateService;
 
   public BudgetValidationService(ExchangeRateProviderResolver exchangeRateProviderResolver,
                                  FiscalYearService fiscalYearService,
                                  FundService fundService,
-                                 LedgerService ledgerService, RestClient activeBudgetRestClient) {
+                                 LedgerService ledgerService, RestClient activeBudgetRestClient, FinanceExchangeRateService financeExchangeRateService) {
     this.exchangeRateProviderResolver = exchangeRateProviderResolver;
     this.fiscalYearService = fiscalYearService;
     this.fundService = fundService;
     this.ledgerService = ledgerService;
     this.activeBudgetRestClient = activeBudgetRestClient;
+    this.financeExchangeRateService = financeExchangeRateService;
   }
 
   public CompletableFuture<Void> checkEnoughMoneyInBudget(List<InvoiceLine> lines, Invoice invoice, RequestContext requestContext) {
@@ -76,6 +80,11 @@ public class BudgetValidationService {
     return getRestrictedBudgets(fundIds, requestContext)
       .thenCompose(budgets -> Optional.ofNullable(budgets.get(0))
         .map(budget -> fiscalYearService.getFiscalYear(budget.getFiscalYearId(),requestContext)
+          .thenCompose(fiscalYear -> financeExchangeRateService.getExchangeRate(invoice, fiscalYear.getCurrency(), requestContext)
+            .thenApply(exchangeRate -> {
+              invoice.setExchangeRate(exchangeRate.getExchangeRate());
+              return fiscalYear;
+            }))
           .thenAccept(fiscalYear -> {
             Map<String, MonetaryAmount> groupedAmountByFundId = getGroupedAmountByFundId(lines, invoice, fiscalYear.getCurrency());
             List<String> failedBudgetIds = validateAndGetFailedBudgets(budgets, groupedAmountByFundId,
@@ -92,8 +101,10 @@ public class BudgetValidationService {
   }
 
   public CompletableFuture<Void> checkEnoughMoneyInBudget(List<Transaction> newTransactions, List<Transaction> existingTransactions, RequestContext requestContext) {
-    Map<String, MonetaryAmount> existingFundAmountMap = existingTransactions.stream().collect(toMap(Transaction::getFromFundId, transaction ->  Money.of(transaction.getAmount(), transaction.getCurrency())));
-    Map<String, MonetaryAmount> newFundAmountMap = newTransactions.stream().collect(toMap(Transaction::getFromFundId, transaction ->  Money.of(transaction.getAmount(), transaction.getCurrency())));
+
+    Map<String, MonetaryAmount> existingFundAmountMap = collectAmountSumByFund(existingTransactions);
+
+    Map<String, MonetaryAmount> newFundAmountMap = collectAmountSumByFund(newTransactions);
 
     Map<String, MonetaryAmount> fundIdAmountDiffMap = existingFundAmountMap.entrySet().stream()
       .collect(toMap(Map.Entry::getKey, entry -> newFundAmountMap.get(entry.getKey()).subtract(entry.getValue())));
@@ -113,6 +124,14 @@ public class BudgetValidationService {
           throw new HttpException(422, FUND_CANNOT_BE_PAID.toError().withParameters(Collections.singletonList(parameter)));
         }
       });
+  }
+
+  private HashMap<String, MonetaryAmount> collectAmountSumByFund(List<Transaction> existingTransactions) {
+    String currency = existingTransactions.get(0).getCurrency();
+    return existingTransactions.stream()
+      .collect(groupingBy(Transaction::getFromFundId, HashMap::new,
+        Collectors.mapping(transaction -> Money.of(transaction.getAmount(), transaction.getCurrency()),
+          Collectors.reducing(Money.of(0, currency), MonetaryFunctions::sum))));
   }
 
   private CompletableFuture<List<Budget>> getRestrictedBudgets(Collection<String> fundIds, RequestContext requestContext) {

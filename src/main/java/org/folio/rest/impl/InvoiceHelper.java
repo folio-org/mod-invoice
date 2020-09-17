@@ -574,7 +574,7 @@ public class InvoiceHelper extends AbstractHelper {
   private CompletableFuture<Voucher> updateVoucherWithSystemCurrency(Voucher voucher, List<InvoiceLine> lines) {
     if (!CollectionUtils.isEmpty(lines) && !CollectionUtils.isEmpty(lines.get(0).getFundDistributions())) {
       String fundId = lines.get(0).getFundDistributions().get(0).getFundId();
-      return currentFiscalYearService.getCurrentFiscalYear(fundId, new RequestContext(ctx, okapiHeaders))
+      return currentFiscalYearService.getCurrentFiscalYearByFund(fundId, new RequestContext(ctx, okapiHeaders))
         .thenApply(fiscalYear -> voucher.withSystemCurrency(fiscalYear.getCurrency()));
     }
     return CompletableFuture.completedFuture(voucher.withSystemCurrency(getSystemCurrency()));
