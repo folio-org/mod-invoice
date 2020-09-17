@@ -28,6 +28,7 @@ public class BatchVoucherPersistHelper extends AbstractHelper {
       .thenApply(JsonObject::mapFrom)
       .thenCompose(jsonInvoice -> createRecordInStorage(jsonInvoice, resourcesPath(BATCH_VOUCHER_STORAGE)))
       .thenApply(batchVoucherId -> {
+        batchVoucherExport.setMessage("Batch voucher was generated");
         batchVoucherExport.setStatus(BatchVoucherExport.Status.GENERATED);
         batchVoucherExport.setBatchVoucherId(batchVoucherId);
         return batchVoucherId;
