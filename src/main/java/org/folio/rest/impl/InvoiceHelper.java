@@ -523,7 +523,7 @@ public class InvoiceHelper extends AbstractHelper {
   }
 
   private boolean isExchangeRateChanged(Invoice invoice, Invoice invoiceFromStorage) {
-    return Objects.nonNull(invoice.getExchangeRate()) && invoice.getExchangeRate().equals(invoiceFromStorage.getExchangeRate());
+    return Objects.nonNull(invoice.getExchangeRate()) && !invoice.getExchangeRate().equals(invoiceFromStorage.getExchangeRate());
   }
 
   private void verifyTransitionOnPaidStatus(Invoice invoiceFromStorage, Invoice invoice) {
@@ -606,7 +606,7 @@ public class InvoiceHelper extends AbstractHelper {
     return invoiceLines.stream()
       .flatMap(invoiceLine -> invoiceLine.getFundDistributions()
         .stream()
-        .map(fundDistribution -> fundDistribution.withInvoiceLineId(invoiceLine.getId())
+        .map(fundDistribution -> JsonObject.mapFrom(fundDistribution).mapTo(FundDistribution.class).withInvoiceLineId(invoiceLine.getId())
           .withValue(getFundDistributionAmountWithConversion(fundDistribution, Money.of(invoiceLine.getTotal(), invoice.getCurrency()), conversion))
           .withDistributionType(FundDistribution.DistributionType.AMOUNT)
         )
@@ -623,7 +623,7 @@ public class InvoiceHelper extends AbstractHelper {
     return adjustmentsService.getNotProratedAdjustments(invoice).stream()
       .flatMap(adjustment -> adjustment.getFundDistributions()
         .stream()
-        .map(fundDistribution -> fundDistribution
+        .map(fundDistribution -> JsonObject.mapFrom(fundDistribution).mapTo(FundDistribution.class)
             .withValue(getAdjustmentFundDistributionAmount(fundDistribution, adjustment, invoice).with(conversion).getNumber().doubleValue())
             .withDistributionType(FundDistribution.DistributionType.AMOUNT)
         )
