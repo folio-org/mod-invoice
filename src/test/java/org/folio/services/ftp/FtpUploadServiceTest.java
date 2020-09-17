@@ -2,7 +2,6 @@ package org.folio.services.ftp;
 
 import static org.junit.Assert.fail;
 
-import io.vertx.core.json.JsonObject;
 import java.net.URISyntaxException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -14,7 +13,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 import org.folio.exceptions.FtpException;
-
 import org.folio.rest.jaxrs.model.BatchVoucher;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -27,6 +25,7 @@ import org.mockftpserver.fake.filesystem.UnixFakeFileSystem;
 
 import io.vertx.core.Context;
 import io.vertx.core.Vertx;
+import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 
@@ -87,7 +86,7 @@ public class FtpUploadServiceTest {
   public void testFailedConnect() throws URISyntaxException, InterruptedException, ExecutionException, TimeoutException {
     logger.info("=== Test unsuccessful login ===");
 
-    FtpUploadService helper = new FtpUploadService("ftp://localhost:1");
+    FtpUploadService helper = new FtpUploadService(context,"ftp://localhost:1");
     helper.login(username_valid, password_valid)
       .thenAccept(m -> fail("Expected a connection failure but got: " + m))
       .exceptionally(t -> {
@@ -108,7 +107,7 @@ public class FtpUploadServiceTest {
   public void testSuccessfulLogin() throws URISyntaxException, InterruptedException, ExecutionException, TimeoutException {
     logger.info("=== Test successful login ===");
 
-    FtpUploadService helper = new FtpUploadService(uri);
+    FtpUploadService helper = new FtpUploadService(context, uri);
     helper.login(username_valid, password_valid)
       .thenAccept(logger::info)
       .exceptionally(t -> {
@@ -125,7 +124,7 @@ public class FtpUploadServiceTest {
   public void testFailedLogin() throws URISyntaxException, InterruptedException, ExecutionException, TimeoutException {
     logger.info("=== Test unsuccessful login ===");
 
-    FtpUploadService helper = new FtpUploadService(uri);
+    FtpUploadService helper = new FtpUploadService(context, uri);
     helper.login(username_valid, password_invalid)
       .thenAccept(m -> fail("Expected a login failure but got: " + m))
       .exceptionally(t -> {
@@ -154,7 +153,7 @@ public class FtpUploadServiceTest {
     batchVoucher.setBatchGroup(UUID.randomUUID().toString());
     batchVoucher.setCreated(new Date());
 
-    FtpUploadService helper = new FtpUploadService(uri);
+    FtpUploadService helper = new FtpUploadService(context, uri);
     helper.login(username_valid, password_valid)
       .thenAccept(logger::info)
       .thenCompose(v -> helper.upload(context, filename, JsonObject.mapFrom(batchVoucher).encodePrettily()))
@@ -183,7 +182,7 @@ public class FtpUploadServiceTest {
     batchVoucher.setBatchGroup(UUID.randomUUID().toString());
     batchVoucher.setCreated(new Date());
 
-    FtpUploadService helper = new FtpUploadService(uri);
+    FtpUploadService helper = new FtpUploadService(context, uri);
     helper.login(username_valid, password_valid)
       .thenAccept(logger::info)
       .thenCompose(v -> helper.upload(context,"/invalid/path/"+filename, JsonObject.mapFrom(batchVoucher).encodePrettily()))
