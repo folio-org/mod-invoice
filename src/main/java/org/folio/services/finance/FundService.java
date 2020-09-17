@@ -58,7 +58,7 @@ public class FundService {
       .exceptionally(t -> {
         Throwable cause = t.getCause() == null ? t : t.getCause();
         if (HelperUtils.isNotFound(cause)) {
-          List<Parameter> parameters = Collections.singletonList(new Parameter().withValue(fundId).withKey("fundId"));
+          List<Parameter> parameters = Collections.singletonList(new Parameter().withValue(fundId).withKey("funds"));
           throw new HttpException(404, FUNDS_NOT_FOUND.toError().withParameters(parameters));
         }
         throw new CompletionException(cause);

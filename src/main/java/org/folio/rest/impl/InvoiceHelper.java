@@ -729,7 +729,9 @@ public class InvoiceHelper extends AbstractHelper {
          for (Map.Entry<String, List<FundDistribution>> fundDistrs : fundDistrsExpenseClassExtNo.entrySet()) {
            String expenseClassExtAccountNo = fundDistrs.getKey();
            FundExtNoExpenseClassExtNoPair key = new FundExtNoExpenseClassExtNoPair(fundExternalAccountNo, expenseClassExtAccountNo);
-           groupedFundDistribution.put(key, fundDistrs.getValue());
+           List<FundDistribution> fundDistributions = fundDistrs.getValue();
+           fundDistributions.forEach(fundDistribution -> fundDistribution.setCode(fund.getCode()));
+           groupedFundDistribution.put(key, fundDistributions);
          }
       }
     }
