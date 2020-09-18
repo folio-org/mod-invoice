@@ -76,6 +76,7 @@ import org.folio.rest.acq.model.finance.Transaction;
 import org.folio.rest.acq.model.finance.Transaction.Source;
 import org.folio.rest.acq.model.finance.Transaction.TransactionType;
 import org.folio.rest.acq.model.finance.TransactionCollection;
+import org.folio.rest.core.models.RequestContext;
 import org.folio.rest.jaxrs.model.Adjustment;
 import org.folio.rest.jaxrs.model.FundDistribution;
 import org.folio.rest.jaxrs.model.Invoice;
@@ -292,7 +293,7 @@ public class FinanceHelper extends AbstractHelper {
   private List<String> validateAndGetFailedBudgets(String systemCurrency, List<Budget> budgets, Map<String, Ledger> ledgers,
     Map<String, MonetaryAmount> fdMap, FiscalYear fiscalYear) {
     ConversionQuery conversionQuery = ConversionQueryBuilder.of().setTermCurrency(systemCurrency).build();
-    ExchangeRateProvider exchangeRateProvider = exchangeRateProviderResolver.resolve(conversionQuery);
+    ExchangeRateProvider exchangeRateProvider = exchangeRateProviderResolver.resolve(conversionQuery, new RequestContext(ctx, okapiHeaders));
     CurrencyConversion currencyConversion =  exchangeRateProvider.getCurrencyConversion(systemCurrency);
 
     return budgets.stream()
@@ -331,7 +332,7 @@ public class FinanceHelper extends AbstractHelper {
 
   private Map<String, MonetaryAmount> getGroupedAmountByFundId(List<InvoiceLine> lines, Invoice invoice, String systemCurrency) {
     ConversionQuery conversionQuery = HelperUtils.buildConversionQuery(invoice, systemCurrency);
-    ExchangeRateProvider exchangeRateProvider = exchangeRateProviderResolver.resolve(conversionQuery);
+    ExchangeRateProvider exchangeRateProvider = exchangeRateProviderResolver.resolve(conversionQuery, new RequestContext(ctx, okapiHeaders));
     CurrencyConversion conversion = exchangeRateProvider.getCurrencyConversion(conversionQuery);
 
     List<Pair<String, MonetaryAmount>> linesPairs = lines.stream()
@@ -359,7 +360,7 @@ public class FinanceHelper extends AbstractHelper {
   private List<FundDistributionTransactionHolder> buildBasePendingPaymentTransactions(List<InvoiceLine> invoiceLines, Invoice invoice) {
     String systemCurrency = getSystemCurrency();
     ConversionQuery conversionQuery = HelperUtils.buildConversionQuery(invoice, systemCurrency);
-    ExchangeRateProvider exchangeRateProvider = exchangeRateProviderResolver.resolve(conversionQuery);
+    ExchangeRateProvider exchangeRateProvider = exchangeRateProviderResolver.resolve(conversionQuery, new RequestContext(ctx, okapiHeaders));
     CurrencyConversion conversion =  exchangeRateProvider.getCurrencyConversion(conversionQuery);
     return invoiceLines.stream()
       .flatMap(line -> line.getFundDistributions().stream()
@@ -565,7 +566,7 @@ public class FinanceHelper extends AbstractHelper {
       MonetaryAmount initialAmount = Money.of(transaction.getAmount(), initialCurrency);
       String systemCurrency = getSystemCurrency();
       ConversionQuery conversionQuery = ConversionQueryBuilder.of().setTermCurrency(systemCurrency).build();
-      ExchangeRateProvider exchangeRateProvider = exchangeRateProviderResolver.resolve(conversionQuery);
+      ExchangeRateProvider exchangeRateProvider = exchangeRateProviderResolver.resolve(conversionQuery, new RequestContext(ctx, okapiHeaders));
       CurrencyConversion conversion =  exchangeRateProvider.getCurrencyConversion(finalCurrency);
       transaction.withFiscalYearId(fiscalYear.getId())
         .withCurrency(finalCurrency)
