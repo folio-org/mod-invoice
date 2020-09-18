@@ -85,6 +85,7 @@ import org.folio.rest.acq.model.finance.Budget;
 import org.folio.rest.acq.model.finance.BudgetCollection;
 import org.folio.rest.acq.model.finance.BudgetExpenseClass;
 import org.folio.rest.acq.model.finance.BudgetExpenseClassCollection;
+import org.folio.rest.acq.model.finance.CompositeFund;
 import org.folio.rest.acq.model.finance.ExchangeRate;
 import org.folio.rest.acq.model.finance.ExpenseClass;
 import org.folio.rest.acq.model.finance.ExpenseClassCollection;
@@ -169,7 +170,6 @@ public class MockServer {
   private static final String GET_VOUCHERS_ERROR_TENANT = "get_vouchers_error_tenant";
   private static final String GET_INVOICE_LINES_ERROR_TENANT = "get_invoice_lines_error_tenant";
   private static final String CREATE_INVOICE_TRANSACTION_SUMMARY_ERROR_TENANT = "create_invoice_transaction_summary_error_tenant";
-  private static final String POST_AWAITING_PAYMENT_ERROR_TENANT = "post_awaiting_payment_error_tenant";
   private static final String POST_PENDING_PAYMENT_ERROR_TENANT = "post_pending_payment_error_tenant";
   private static final String NON_EXIST_CONFIG_TENANT = "invoicetest";
   private static final String INVALID_PREFIX_CONFIG_TENANT = "invalid_prefix_config_tenant";
@@ -357,12 +357,11 @@ public class MockServer {
     router.route(HttpMethod.POST, resourcesPath(BATCH_VOUCHER_EXPORT_CONFIGS)).handler(ctx -> handlePostEntry(ctx, ExportConfig.class, BATCH_VOUCHER_EXPORT_CONFIGS));
     router.route(HttpMethod.POST, "/batch-voucher-storage/export-configurations/:id/credentials").handler(this::handlePostCredentials);
     router.route(HttpMethod.POST, resourcesPath(INVOICE_TRANSACTION_SUMMARIES)).handler(this::handlePostInvoiceSummary);
-    router.route(HttpMethod.POST, resourcesPath(AWAITING_PAYMENTS)).handler(this::handlePostAwaitingPayment);
     router.route(HttpMethod.POST, resourcesPath(BATCH_GROUPS)).handler(ctx -> handlePost(ctx, BatchGroup.class, BATCH_GROUPS, false));
     router.route(HttpMethod.POST, resourcesPath(FINANCE_PAYMENTS)).handler(ctx -> handlePostEntry(ctx, Transaction.class, FINANCE_PAYMENTS));
     router.route(HttpMethod.POST, resourcesPath(FINANCE_CREDITS)).handler(ctx -> handlePostEntry(ctx, Transaction.class, FINANCE_CREDITS));
     router.route(HttpMethod.POST, resourcesPath(BATCH_VOUCHER_EXPORTS_STORAGE)).handler(ctx -> handlePost(ctx, BatchVoucherExport.class, BATCH_VOUCHER_EXPORTS_STORAGE, false));
-    router.route(HttpMethod.POST, resourcesPath(FINANCE_STORAGE_TRANSACTIONS)).handler(this::handlePostPendingPayment);
+    router.route(HttpMethod.POST, resourcesPath(FINANCE_PENDING_PAYMENTS)).handler(this::handlePostPendingPayment);
 
     router.route(HttpMethod.GET, resourcesPath(INVOICES)).handler(this::handleGetInvoices);
     router.route(HttpMethod.GET, resourcesPath(INVOICE_LINES)).handler(this::handleGetInvoiceLines);
@@ -403,6 +402,8 @@ public class MockServer {
     router.route(HttpMethod.GET, resourcesPath(FINANCE_EXCHANGE_RATE)).handler(this::handleGetRateOfExchange);
     router.route(HttpMethod.GET, resourceByIdPath(FISCAL_YEARS)).handler(this::handleFiscalYearById);
     router.route(HttpMethod.GET, resourcesPath(FISCAL_YEARS)).handler(this::handleFiscalYear);
+    router.route(HttpMethod.GET, resourceByIdPath(FUNDS)).handler(this::handleFundById);
+    router.route(HttpMethod.GET, "/finance/funds/:id/budget").handler(this::handleGetBudgetByFinanceId);
 
     router.route(HttpMethod.DELETE, resourceByIdPath(INVOICES)).handler(ctx -> handleDeleteRequest(ctx, INVOICES));
     router.route(HttpMethod.DELETE, resourceByIdPath(INVOICE_LINES)).handler(ctx -> handleDeleteRequest(ctx, INVOICE_LINES));
@@ -418,12 +419,34 @@ public class MockServer {
     router.route(HttpMethod.PUT, resourceByIdPath(VOUCHER_LINES)).handler(ctx -> handlePutGenericSubObj(ctx, VOUCHER_LINES));
     router.route(HttpMethod.PUT, resourceByIdPath(ORDER_LINES)).handler(ctx -> handlePutGenericSubObj(ctx, ResourcePathResolver.ORDER_LINES));
     router.route(HttpMethod.PUT, resourceByIdPath(BATCH_VOUCHER_EXPORT_CONFIGS)).handler(ctx -> handlePutGenericSubObj(ctx, ResourcePathResolver.BATCH_VOUCHER_EXPORT_CONFIGS));
-    router.route(HttpMethod.GET, "/finance/funds/:id/budget").handler(this::handleGetBudgetByFinanceId);
     router.route(HttpMethod.PUT, "/batch-voucher-storage/export-configurations/:id/credentials").handler(ctx -> handlePutGenericSubObj(ctx, BATCH_VOUCHER_EXPORT_CONFIGS_CREDENTIALS));
     router.route(HttpMethod.PUT, resourceByIdPath(BATCH_GROUPS)).handler(ctx -> handlePutGenericSubObj(ctx, BATCH_GROUPS));
     router.route(HttpMethod.PUT, resourceByIdPath(BATCH_VOUCHER_EXPORTS_STORAGE)).handler(ctx -> handlePutGenericSubObj(ctx, BATCH_VOUCHER_EXPORTS_STORAGE));
 
     return router;
+  }
+
+  private void handleFundById(RoutingContext ctx) {
+    logger.info("handleFund got: GET " + ctx.request()
+      .path());
+    String id = ctx.request().getParam(AbstractHelper.ID);
+    logger.info("id: " + id);
+    if (ID_DOES_NOT_EXIST.equals(id)) {
+      serverResponse(ctx, 404, APPLICATION_JSON, Response.Status.NOT_FOUND.getReasonPhrase());
+    } else if (ID_FOR_INTERNAL_SERVER_ERROR.equals(id)) {
+      serverResponse(ctx, 500, APPLICATION_JSON, INTERNAL_SERVER_ERROR.getReasonPhrase());
+    } else {
+      Fund fund = new Fund()
+        .withId(UUID.randomUUID().toString())
+        .withLedgerId(UUID.randomUUID().toString())
+        .withCode("TEST")
+        .withName("TEST");
+      List<CompositeFund> funds = getMockEntries(FUNDS, Fund.class)
+        .map(funds1 -> funds1.stream().map(fund1 -> new CompositeFund().withFund(fund1)).collect(toList())).orElse(Collections.singletonList(new CompositeFund().withFund(fund)));
+      addServerRqRsData(HttpMethod.GET, FUNDS, JsonObject.mapFrom(funds.get(0)));
+      serverResponse(ctx, 200, APPLICATION_JSON, JsonObject.mapFrom(funds.get(0)).encodePrettily());
+    }
+
   }
 
   private void handleFiscalYear(RoutingContext ctx) {
@@ -550,18 +573,6 @@ public class MockServer {
     }
   }
 
-  private void handlePostAwaitingPayment(RoutingContext ctx) {
-    logger.info("handlePostAwaitingPayment got: " + ctx.request().path());
-    String tenant = ctx.request().getHeader(OKAPI_HEADER_TENANT);
-    if (POST_AWAITING_PAYMENT_ERROR_TENANT.equals(tenant)) {
-      serverResponse(ctx, 500, TEXT_PLAIN, INTERNAL_SERVER_ERROR.getReasonPhrase());
-    } else {
-      JsonObject body = ctx.getBodyAsJson();
-      addServerRqRsData(HttpMethod.POST, AWAITING_PAYMENTS, body);
-      serverResponse(ctx, 201, APPLICATION_JSON, EMPTY);
-    }
-  }
-
   private void handlePostPendingPayment(RoutingContext ctx) {
     logger.info("handlePostPendingPayment got: " + ctx.request().path());
     String tenant = ctx.request().getHeader(OKAPI_HEADER_TENANT);
@@ -569,8 +580,8 @@ public class MockServer {
       serverResponse(ctx, 500, TEXT_PLAIN, INTERNAL_SERVER_ERROR.getReasonPhrase());
     } else {
       JsonObject body = ctx.getBodyAsJson();
-      addServerRqRsData(HttpMethod.POST, FINANCE_STORAGE_TRANSACTIONS, body);
-      serverResponse(ctx, 201, APPLICATION_JSON, EMPTY);
+      addServerRqRsData(HttpMethod.POST, FINANCE_PENDING_PAYMENTS, body);
+      serverResponse(ctx, 201, APPLICATION_JSON, body.encodePrettily());
     }
   }
 

@@ -22,6 +22,7 @@ import static org.folio.services.exchange.ExchangeRateProviderResolver.RATE_KEY;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -43,6 +44,7 @@ import org.apache.commons.collections4.map.CaseInsensitiveMap;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.folio.invoices.rest.exceptions.HttpException;
+import org.folio.rest.acq.model.finance.ExchangeRate;
 import org.folio.rest.impl.ProtectionHelper;
 import org.folio.rest.jaxrs.model.Adjustment;
 import org.folio.rest.jaxrs.model.FundDistribution;
@@ -316,7 +318,7 @@ public class HelperUtils {
    * @param ids list of id's
    * @return String representing CQL query to get records by id's
    */
-  public static String convertIdsToCqlQuery(List<String> ids) {
+  public static String convertIdsToCqlQuery(Collection<String> ids) {
     return convertIdsToCqlQuery(ids, ID, true);
   }
 
@@ -327,7 +329,7 @@ public class HelperUtils {
    * @param strictMatch indicates whether strict match mode (i.e. ==) should be used or not (i.e. =)
    * @return String representing CQL query to get records by some property values
    */
-  public static String convertIdsToCqlQuery(List<String> values, String fieldName, boolean strictMatch) {
+  public static String convertIdsToCqlQuery(Collection<String> values, String fieldName, boolean strictMatch) {
     String prefix = fieldName + (strictMatch ? "==(" : "=(");
     return StreamEx.of(values).joining(" or ", prefix, ")");
   }
@@ -447,8 +449,22 @@ public class HelperUtils {
 
   public static ConversionQuery buildConversionQuery(Invoice invoice, String systemCurrency) {
     if (invoice.getExchangeRate() != null){
-      return ConversionQueryBuilder.of().setTermCurrency(systemCurrency).set(RATE_KEY, invoice.getExchangeRate()).build();
+      return ConversionQueryBuilder.of().setBaseCurrency(invoice.getCurrency())
+        .setTermCurrency(systemCurrency)
+        .set(RATE_KEY, invoice.getExchangeRate()).build();
     }
-    return ConversionQueryBuilder.of().setTermCurrency(systemCurrency).build();
+    return ConversionQueryBuilder.of().setBaseCurrency(invoice.getCurrency()).setTermCurrency(systemCurrency).build();
+  }
+
+  public static ConversionQuery buildConversionQuery(ExchangeRate exchangeRate) {
+
+    return ConversionQueryBuilder.of().setBaseCurrency(exchangeRate.getFrom())
+      .setTermCurrency(exchangeRate.getTo())
+      .set(RATE_KEY, exchangeRate.getExchangeRate()).build();
+
+  }
+
+  public static boolean isNotFound(Throwable t) {
+    return t instanceof HttpException && ((HttpException) t).getCode() == 404;
   }
 }
