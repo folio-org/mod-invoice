@@ -449,14 +449,18 @@ public class HelperUtils {
 
   public static ConversionQuery buildConversionQuery(Invoice invoice, String systemCurrency) {
     if (invoice.getExchangeRate() != null){
-      return ConversionQueryBuilder.of().setTermCurrency(systemCurrency).set(RATE_KEY, invoice.getExchangeRate()).build();
+      return ConversionQueryBuilder.of().setBaseCurrency(invoice.getCurrency())
+        .setTermCurrency(systemCurrency)
+        .set(RATE_KEY, invoice.getExchangeRate()).build();
     }
-    return ConversionQueryBuilder.of().setTermCurrency(systemCurrency).build();
+    return ConversionQueryBuilder.of().setBaseCurrency(invoice.getCurrency()).setTermCurrency(systemCurrency).build();
   }
 
   public static ConversionQuery buildConversionQuery(ExchangeRate exchangeRate) {
 
-    return ConversionQueryBuilder.of().setTermCurrency(exchangeRate.getTo()).set(RATE_KEY, exchangeRate.getExchangeRate()).build();
+    return ConversionQueryBuilder.of().setBaseCurrency(exchangeRate.getFrom())
+      .setTermCurrency(exchangeRate.getTo())
+      .set(RATE_KEY, exchangeRate.getExchangeRate()).build();
 
   }
 

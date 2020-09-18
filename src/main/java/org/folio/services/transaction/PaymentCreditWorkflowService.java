@@ -9,6 +9,9 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 
+import javax.money.convert.ConversionQuery;
+import javax.money.convert.ExchangeRateProvider;
+
 import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.invoices.utils.HelperUtils;
 import org.folio.models.PaymentCreditHolder;
@@ -19,7 +22,6 @@ import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.jaxrs.model.InvoiceLine;
 import org.folio.rest.jaxrs.model.Parameter;
 import org.folio.services.exchange.ExchangeRateProviderResolver;
-import org.folio.services.exchange.FinanceExchangeRateService;
 import org.folio.services.finance.CurrentFiscalYearService;
 
 import io.vertx.core.logging.Logger;
@@ -33,16 +35,13 @@ public class PaymentCreditWorkflowService {
   private final BaseTransactionService baseTransactionService;
   private final CurrentFiscalYearService currentFiscalYearService;
   private final ExchangeRateProviderResolver exchangeRateProviderResolver;
-  private final FinanceExchangeRateService financeExchangeRateService;
 
   public PaymentCreditWorkflowService(BaseTransactionService baseTransactionService,
                                       CurrentFiscalYearService currentFiscalYearService,
-                                      ExchangeRateProviderResolver exchangeRateProviderResolver,
-                                      FinanceExchangeRateService financeExchangeRateService) {
+                                      ExchangeRateProviderResolver exchangeRateProviderResolver) {
     this.baseTransactionService = baseTransactionService;
     this.currentFiscalYearService = currentFiscalYearService;
     this.exchangeRateProviderResolver = exchangeRateProviderResolver;
-    this.financeExchangeRateService = financeExchangeRateService;
   }
 
   /**
@@ -76,7 +75,7 @@ public class PaymentCreditWorkflowService {
   private CompletableFuture<List<Transaction>> buildTransactions(List<InvoiceLine> invoiceLines, Invoice invoice, RequestContext requestContext) {
     PaymentCreditHolder holder = new PaymentCreditHolder(invoice, invoiceLines);
     return withFiscalYear(holder, requestContext)
-      .thenCompose(transactionDataHolder -> withCurrencyConversion(transactionDataHolder, requestContext))
+      .thenApply(transactionDataHolder -> withCurrencyConversion(transactionDataHolder, requestContext))
       .thenApply(TransactionDataHolder::toTransactions);
   }
 
@@ -86,13 +85,13 @@ public class PaymentCreditWorkflowService {
       .thenApply(holder::withFiscalYear);
   }
 
-  private CompletionStage<TransactionDataHolder> withCurrencyConversion(TransactionDataHolder transactionDataHolder, RequestContext requestContext) {
+  private TransactionDataHolder withCurrencyConversion(TransactionDataHolder transactionDataHolder, RequestContext requestContext) {
     Invoice invoice = transactionDataHolder.getInvoice();
     String fiscalYearCurrency = transactionDataHolder.getCurrency();
-    return financeExchangeRateService.getExchangeRate(invoice, fiscalYearCurrency, requestContext)
-      .thenApply(HelperUtils::buildConversionQuery)
-      .thenApply(conversionQuery -> exchangeRateProviderResolver.resolve(conversionQuery).getCurrencyConversion(conversionQuery))
-      .thenApply(transactionDataHolder::withCurrencyConversion);
+      ConversionQuery conversionQuery = HelperUtils.buildConversionQuery(invoice, fiscalYearCurrency);
+      ExchangeRateProvider exchangeRateProvider = exchangeRateProviderResolver.resolve(conversionQuery, requestContext);
+      invoice.setExchangeRate(exchangeRateProvider.getExchangeRate(conversionQuery).getFactor().doubleValue());
+      return  transactionDataHolder.withCurrencyConversion(exchangeRateProvider.getCurrencyConversion(conversionQuery));
   }
 
   private CompletionStage<Void> createTransactions(List<Transaction> transactions, RequestContext requestContext) {

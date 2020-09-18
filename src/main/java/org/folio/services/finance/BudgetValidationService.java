@@ -23,6 +23,7 @@ import java.util.function.Function;
 import java.util.stream.Collector;
 import java.util.stream.Collectors;
 
+import javax.money.CurrencyUnit;
 import javax.money.MonetaryAmount;
 import javax.money.convert.ConversionQuery;
 import javax.money.convert.CurrencyConversion;
@@ -42,7 +43,6 @@ import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.jaxrs.model.InvoiceLine;
 import org.folio.rest.jaxrs.model.Parameter;
 import org.folio.services.exchange.ExchangeRateProviderResolver;
-import org.folio.services.exchange.FinanceExchangeRateService;
 import org.javamoney.moneta.Money;
 import org.javamoney.moneta.function.MonetaryFunctions;
 
@@ -55,18 +55,16 @@ public class BudgetValidationService {
   private final FundService fundService;
   private final LedgerService ledgerService;
   private final RestClient activeBudgetRestClient;
-  private final FinanceExchangeRateService financeExchangeRateService;
 
   public BudgetValidationService(ExchangeRateProviderResolver exchangeRateProviderResolver,
                                  FiscalYearService fiscalYearService,
                                  FundService fundService,
-                                 LedgerService ledgerService, RestClient activeBudgetRestClient, FinanceExchangeRateService financeExchangeRateService) {
+                                 LedgerService ledgerService, RestClient activeBudgetRestClient) {
     this.exchangeRateProviderResolver = exchangeRateProviderResolver;
     this.fiscalYearService = fiscalYearService;
     this.fundService = fundService;
     this.ledgerService = ledgerService;
     this.activeBudgetRestClient = activeBudgetRestClient;
-    this.financeExchangeRateService = financeExchangeRateService;
   }
 
   public CompletableFuture<Void> checkEnoughMoneyInBudget(List<InvoiceLine> lines, Invoice invoice, RequestContext requestContext) {
@@ -79,14 +77,14 @@ public class BudgetValidationService {
 
     return getRestrictedBudgets(fundIds, requestContext)
       .thenCompose(budgets -> Optional.ofNullable(budgets.get(0))
-        .map(budget -> fiscalYearService.getFiscalYear(budget.getFiscalYearId(),requestContext)
-          .thenCompose(fiscalYear -> financeExchangeRateService.getExchangeRate(invoice, fiscalYear.getCurrency(), requestContext)
-            .thenApply(exchangeRate -> {
-              invoice.setExchangeRate(exchangeRate.getExchangeRate());
-              return fiscalYear;
-            }))
+        .map(budget -> fiscalYearService.getFiscalYear(budget.getFiscalYearId(), requestContext)
           .thenAccept(fiscalYear -> {
-            Map<String, MonetaryAmount> groupedAmountByFundId = getGroupedAmountByFundId(lines, invoice, fiscalYear.getCurrency());
+            ConversionQuery conversionQuery = HelperUtils.buildConversionQuery(invoice, fiscalYear.getCurrency());
+            ExchangeRateProvider exchangeRateProvider = exchangeRateProviderResolver.resolve(conversionQuery, requestContext);
+            invoice.setExchangeRate(exchangeRateProvider.getExchangeRate(conversionQuery).getFactor().doubleValue());
+            CurrencyConversion conversion = exchangeRateProvider.getCurrencyConversion(conversionQuery);
+
+            Map<String, MonetaryAmount> groupedAmountByFundId = getGroupedAmountByFundId(lines, invoice, conversion);
             List<String> failedBudgetIds = validateAndGetFailedBudgets(budgets, groupedAmountByFundId,
               fiscalYear.getCurrency());
 
@@ -186,18 +184,16 @@ public class BudgetValidationService {
     return fdMoneyAmount.isGreaterThan(amountCanBeExpended);
   }
 
-  private Map<String, MonetaryAmount> getGroupedAmountByFundId(List<InvoiceLine> lines, Invoice invoice, String fyCurrency) {
-    ConversionQuery conversionQuery = HelperUtils.buildConversionQuery(invoice, fyCurrency);
-    ExchangeRateProvider exchangeRateProvider = exchangeRateProviderResolver.resolve(conversionQuery);
-    CurrencyConversion conversion = exchangeRateProvider.getCurrencyConversion(conversionQuery);
+  private Map<String, MonetaryAmount> getGroupedAmountByFundId(List<InvoiceLine> lines, Invoice invoice, CurrencyConversion conversion) {
+
     return lines.stream()
       .flatMap(invoiceLine -> invoiceLine.getFundDistributions().stream()
         .map(fd -> Pair.of(fd.getFundId(),
           getFundDistributionAmount(fd, invoiceLine.getTotal(), invoice.getCurrency()).with(conversion))))
-      .collect(groupingBy(Pair::getKey, sumFundAmount(fyCurrency)));
+      .collect(groupingBy(Pair::getKey, sumFundAmount(conversion.getCurrency())));
   }
 
-  private Collector<Pair<String, MonetaryAmount>, ?, MonetaryAmount> sumFundAmount(String currency) {
+  private Collector<Pair<String, MonetaryAmount>, ?, MonetaryAmount> sumFundAmount(CurrencyUnit currency) {
     return Collectors.mapping(Pair::getValue,
       Collectors.reducing(Money.of(0, currency), MonetaryFunctions::sum));
   }

@@ -8,6 +8,7 @@ import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toMap;
 import static me.escoffier.vertx.completablefuture.VertxCompletableFuture.completedFuture;
 import static me.escoffier.vertx.completablefuture.VertxCompletableFuture.supplyAsync;
+import static me.escoffier.vertx.completablefuture.VertxCompletableFuture.supplyBlockingAsync;
 import static org.apache.commons.lang3.StringUtils.EMPTY;
 import static org.apache.commons.lang3.StringUtils.isEmpty;
 import static org.folio.invoices.utils.AcqDesiredPermissions.ASSIGN;
@@ -58,6 +59,7 @@ import javax.money.Monetary;
 import javax.money.MonetaryAmount;
 import javax.money.convert.ConversionQuery;
 import javax.money.convert.CurrencyConversion;
+import javax.money.convert.ExchangeRate;
 import javax.money.convert.ExchangeRateProvider;
 
 import org.apache.commons.collections4.CollectionUtils;
@@ -89,7 +91,6 @@ import org.folio.rest.jaxrs.model.Voucher;
 import org.folio.rest.jaxrs.model.VoucherLine;
 import org.folio.services.adjusment.AdjustmentsService;
 import org.folio.services.exchange.ExchangeRateProviderResolver;
-import org.folio.services.exchange.FinanceExchangeRateService;
 import org.folio.services.expence.ExpenseClassRetrieveService;
 import org.folio.services.finance.BudgetExpenseClassService;
 import org.folio.services.finance.BudgetValidationService;
@@ -133,8 +134,6 @@ public class InvoiceHelper extends AbstractHelper {
   private RestClient invoiceStorageRestClient;
   @Autowired
   private EncumbranceService encumbranceService;
-  @Autowired
-  private FinanceExchangeRateService financeExchangeRateService;
   @Autowired
   private VoucherCommandService voucherCommandService;
   @Autowired
@@ -692,9 +691,13 @@ public class InvoiceHelper extends AbstractHelper {
   }
 
   private CompletableFuture<Voucher> updateVoucherWithExchangeRate(Voucher voucher, Invoice invoice) {
-      RequestContext requestContext = new RequestContext(ctx, okapiHeaders);
-      return financeExchangeRateService.getExchangeRate(invoice, voucher.getSystemCurrency(), requestContext)
-        .thenApply(exchangeRate -> voucher.withExchangeRate(exchangeRate.getExchangeRate()));
+    return supplyBlockingAsync(ctx, () -> {
+      ConversionQuery conversionQuery = HelperUtils.buildConversionQuery(invoice, voucher.getSystemCurrency());
+      ExchangeRateProvider exchangeRateProvider = exchangeRateProviderResolver.resolve(conversionQuery, new RequestContext(ctx, okapiHeaders));
+      ExchangeRate exchangeRate = exchangeRateProvider.getExchangeRate(conversionQuery);
+      invoice.setExchangeRate(exchangeRate.getFactor().doubleValue());
+      return voucher.withExchangeRate(exchangeRate.getFactor().doubleValue());
+    });
   }
 
   /**

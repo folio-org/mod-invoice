@@ -37,17 +37,17 @@ public class HelperUtilsTest {
   }
 
   @Test
-  public void testSouldBuildQueryWithoutExchangeRate(){
+  public void testShouldBuildQueryWithoutExchangeRate(){
     String systemCurrency = "USD";
-    ConversionQuery actQuery = HelperUtils.buildConversionQuery(new Invoice(), systemCurrency);
+    ConversionQuery actQuery = HelperUtils.buildConversionQuery(new Invoice().withCurrency("EUR"), systemCurrency);
     assertEquals(actQuery.getCurrency().getCurrencyCode(), systemCurrency);
     assertNull(actQuery.get(RATE_KEY, Double.class));
   }
 
   @Test
-  public void testSouldBuildQueryWithExchangeRate(){
+  public void testShouldBuildQueryWithExchangeRate(){
     String systemCurrency = "USD";
-    ConversionQuery actQuery = HelperUtils.buildConversionQuery(new Invoice().withExchangeRate(2d), systemCurrency);
+    ConversionQuery actQuery = HelperUtils.buildConversionQuery(new Invoice().withExchangeRate(2d).withCurrency("EUR"), systemCurrency);
     assertEquals(actQuery.getCurrency().getCurrencyCode(), systemCurrency);
     assertEquals(new Double(2d), actQuery.get(RATE_KEY, Double.class));
   }

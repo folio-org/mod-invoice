@@ -20,7 +20,6 @@ import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
-import org.folio.rest.acq.model.finance.ExchangeRate;
 import org.folio.rest.acq.model.finance.FiscalYear;
 import org.folio.rest.acq.model.finance.InvoiceTransactionSummary;
 import org.folio.rest.acq.model.finance.Transaction;
@@ -31,7 +30,6 @@ import org.folio.rest.jaxrs.model.FundDistribution;
 import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.jaxrs.model.InvoiceLine;
 import org.folio.services.exchange.ExchangeRateProviderResolver;
-import org.folio.services.exchange.FinanceExchangeRateService;
 import org.folio.services.exchange.ManualExchangeRateProvider;
 import org.folio.services.finance.BudgetValidationService;
 import org.folio.services.finance.CurrentFiscalYearService;
@@ -42,6 +40,8 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
+import io.vertx.core.Vertx;
+
 public class PendingPaymentWorkflowServiceTest {
 
   @InjectMocks
@@ -51,8 +51,6 @@ public class PendingPaymentWorkflowServiceTest {
   private BaseTransactionService baseTransactionService;
   @Mock
   private CurrentFiscalYearService currentFiscalYearService;
-  @Mock
-  private FinanceExchangeRateService financeExchangeRateService;
   @Mock
   private InvoiceTransactionSummaryService invoiceTransactionSummaryService;
   @Mock
@@ -74,6 +72,7 @@ public class PendingPaymentWorkflowServiceTest {
     String fundId = UUID.randomUUID().toString();
     String invoiceId = UUID.randomUUID().toString();
     String invoiceLineId = UUID.randomUUID().toString();
+    double exchangeRate = 1.3;
 
     FiscalYear fiscalYear = new FiscalYear()
       .withId(fiscalYearId)
@@ -116,33 +115,29 @@ public class PendingPaymentWorkflowServiceTest {
       .withAdjustments(Collections.singletonList(adjustment))
       .withId(invoiceId)
       .withSubTotal(50d)
+      .withExchangeRate(exchangeRate)
       .withCurrency("EUR");
 
     InvoiceLine invoiceLine = new InvoiceLine()
       .withTotal(60d)
       .withId(invoiceLineId);
 
-    FundDistribution invoceLineFundDistribution = new FundDistribution()
+    FundDistribution invoiceLineFundDistribution = new FundDistribution()
       .withDistributionType(FundDistribution.DistributionType.AMOUNT)
       .withFundId(fundId)
       .withValue(60d);
 
-    invoiceLine.getFundDistributions().add(invoceLineFundDistribution);
-
-
-    ExchangeRate exchangeRate = new ExchangeRate()
-      .withExchangeRate(1.3)
-      .withFrom(invoice.getCurrency())
-      .withTo(fiscalYear.getCurrency());
+    invoiceLine.getFundDistributions().add(invoiceLineFundDistribution);
 
     when(baseTransactionService.getTransactions(anyString(), anyInt(), anyInt(), any()))
       .thenReturn(CompletableFuture.completedFuture(existingTransactionCollection));
     when(currentFiscalYearService.getCurrentFiscalYearByFund(anyString(), any())).thenReturn(CompletableFuture.completedFuture(fiscalYear));
-    when(financeExchangeRateService.getExchangeRate(any(Invoice.class), anyString(), any())).thenReturn(CompletableFuture.completedFuture(exchangeRate));
+
     when(budgetValidationService.checkEnoughMoneyInBudget(anyList(), anyList(), any())).thenReturn(CompletableFuture.completedFuture(null));
     when(invoiceTransactionSummaryService.updateInvoiceTransactionSummary(any(), any())).thenReturn(CompletableFuture.completedFuture(null));
     when(baseTransactionService.updateTransaction(any(), any())).thenReturn(CompletableFuture.completedFuture(null));
-    when(exchangeRateProviderResolver.resolve(any())).thenReturn(new ManualExchangeRateProvider());
+    when(exchangeRateProviderResolver.resolve(any(), any())).thenReturn(new ManualExchangeRateProvider());
+    when(requestContext.getContext()).thenReturn(Vertx.vertx().getOrCreateContext());
 
     pendingPaymentWorkflowService.handlePendingPaymentsUpdate(invoice, Collections.singletonList(invoiceLine), requestContext);
 
@@ -150,8 +145,6 @@ public class PendingPaymentWorkflowServiceTest {
     verify(baseTransactionService).getTransactions(eq(expectedQuery), eq(0), eq(Integer.MAX_VALUE), eq(requestContext));
 
     verify(currentFiscalYearService).getCurrentFiscalYearByFund(eq(fundId), eq(requestContext));
-
-    verify(financeExchangeRateService).getExchangeRate(eq(invoice), eq(fiscalYear.getCurrency()), eq(requestContext));
 
     ArgumentCaptor<List<Transaction>> argumentCaptor = ArgumentCaptor.forClass(List.class);
     verify(budgetValidationService).checkEnoughMoneyInBudget(argumentCaptor.capture(), eq(existingTransactionCollection.getTransactions()), eq(requestContext));
@@ -162,7 +155,7 @@ public class PendingPaymentWorkflowServiceTest {
     Transaction newInvoiceLineTransaction = newTransactions.stream()
       .filter(transaction -> Objects.nonNull(transaction.getSourceInvoiceLineId())).findFirst().get();
 
-    double expectedInvoiceLineTransactionAmount = BigDecimal.valueOf(60).multiply(BigDecimal.valueOf(exchangeRate.getExchangeRate())).doubleValue();
+    double expectedInvoiceLineTransactionAmount = BigDecimal.valueOf(60).multiply(BigDecimal.valueOf(exchangeRate)).doubleValue();
     assertEquals(expectedInvoiceLineTransactionAmount, newInvoiceLineTransaction.getAmount());
     assertEquals(fundId, newInvoiceLineTransaction.getFromFundId());
     assertEquals(fiscalYearId, newInvoiceLineTransaction.getFiscalYearId());
@@ -171,7 +164,7 @@ public class PendingPaymentWorkflowServiceTest {
     assertEquals(Transaction.TransactionType.PENDING_PAYMENT, newInvoiceLineTransaction.getTransactionType());
     assertEquals(Transaction.Source.INVOICE, newInvoiceLineTransaction.getSource());
 
-    double expectedInvoiceTransactionAmount = BigDecimal.valueOf(30.5).multiply(BigDecimal.valueOf(exchangeRate.getExchangeRate())).doubleValue();
+    double expectedInvoiceTransactionAmount = BigDecimal.valueOf(30.5).multiply(BigDecimal.valueOf(exchangeRate)).doubleValue();
     assertEquals(expectedInvoiceTransactionAmount, newInvoiceTransaction.getAmount());
     assertEquals(fundId, newInvoiceTransaction.getFromFundId());
     assertEquals(fiscalYearId, newInvoiceTransaction.getFiscalYearId());

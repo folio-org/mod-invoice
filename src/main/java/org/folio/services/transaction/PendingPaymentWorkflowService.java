@@ -7,6 +7,9 @@ import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 
+import javax.money.convert.ConversionQuery;
+import javax.money.convert.ExchangeRateProvider;
+
 import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.invoices.utils.HelperUtils;
 import org.folio.models.PendingPaymentHolder;
@@ -18,7 +21,6 @@ import org.folio.rest.core.models.RequestContext;
 import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.jaxrs.model.InvoiceLine;
 import org.folio.services.exchange.ExchangeRateProviderResolver;
-import org.folio.services.exchange.FinanceExchangeRateService;
 import org.folio.services.finance.BudgetValidationService;
 import org.folio.services.finance.CurrentFiscalYearService;
 
@@ -33,19 +35,17 @@ public class PendingPaymentWorkflowService {
   private final BaseTransactionService baseTransactionService;
   private final CurrentFiscalYearService currentFiscalYearService;
   private final ExchangeRateProviderResolver exchangeRateProviderResolver;
-  private final FinanceExchangeRateService financeExchangeRateService;
   private final InvoiceTransactionSummaryService invoiceTransactionSummaryService;
   private final BudgetValidationService budgetValidationService;
 
   public PendingPaymentWorkflowService(BaseTransactionService baseTransactionService,
                                        CurrentFiscalYearService currentFiscalYearService,
                                        ExchangeRateProviderResolver exchangeRateProviderResolver,
-                                       FinanceExchangeRateService financeExchangeRateService,
-                                       InvoiceTransactionSummaryService invoiceTransactionSummaryService, BudgetValidationService budgetValidationService) {
+                                       InvoiceTransactionSummaryService invoiceTransactionSummaryService,
+                                       BudgetValidationService budgetValidationService) {
     this.baseTransactionService = baseTransactionService;
     this.currentFiscalYearService = currentFiscalYearService;
     this.exchangeRateProviderResolver = exchangeRateProviderResolver;
-    this.financeExchangeRateService = financeExchangeRateService;
     this.invoiceTransactionSummaryService = invoiceTransactionSummaryService;
     this.budgetValidationService = budgetValidationService;
   }
@@ -93,17 +93,18 @@ public class PendingPaymentWorkflowService {
   private CompletableFuture<List<Transaction>> buildPendingPaymentTransactions(List<InvoiceLine> invoiceLines, Invoice invoice, RequestContext requestContext) {
     TransactionDataHolder holder = new PendingPaymentHolder(invoice, invoiceLines);
     return withFiscalYear(holder, requestContext)
-      .thenCompose(transactionDataHolder -> withCurrencyConversion(transactionDataHolder, requestContext))
+      .thenApply(transactionDataHolder -> withCurrencyConversion(transactionDataHolder, requestContext))
       .thenApply(TransactionDataHolder::toTransactions);
   }
 
-  private CompletionStage<TransactionDataHolder> withCurrencyConversion(TransactionDataHolder transactionDataHolder, RequestContext requestContext) {
+  private TransactionDataHolder withCurrencyConversion(TransactionDataHolder transactionDataHolder, RequestContext requestContext) {
     Invoice invoice = transactionDataHolder.getInvoice();
     String fiscalYearCurrency = transactionDataHolder.getCurrency();
-    return financeExchangeRateService.getExchangeRate(invoice, fiscalYearCurrency, requestContext)
-      .thenApply(HelperUtils::buildConversionQuery)
-      .thenApply(conversionQuery -> exchangeRateProviderResolver.resolve(conversionQuery).getCurrencyConversion(conversionQuery))
-      .thenApply(transactionDataHolder::withCurrencyConversion);
+
+      ConversionQuery conversionQuery = HelperUtils.buildConversionQuery(invoice, fiscalYearCurrency);
+      ExchangeRateProvider exchangeRateProvider = exchangeRateProviderResolver.resolve(conversionQuery, requestContext);
+      invoice.setExchangeRate(exchangeRateProvider.getExchangeRate(conversionQuery).getFactor().doubleValue());
+      return transactionDataHolder.withCurrencyConversion(exchangeRateProvider.getCurrencyConversion(conversionQuery));
   }
 
   private CompletableFuture<TransactionDataHolder> withFiscalYear(TransactionDataHolder holder, RequestContext requestContext) {

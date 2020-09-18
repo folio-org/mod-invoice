@@ -30,12 +30,12 @@ public class PendingPaymentHolder extends TransactionDataHolder {
         .withEncumbranceId(fundDistribution.getEncumbrance())
         .withReleaseEncumbrance(invoiceLine.getReleaseEncumbrance());
     }
-
     return buildBaseTransaction(fundDistribution)
       .withTransactionType(Transaction.TransactionType.PENDING_PAYMENT)
       .withAwaitingPayment(awaitingPayment)
       .withAmount(convertToDoubleWithRounding(amount))
       .withSourceInvoiceLineId(invoiceLine.getId());
+
   }
 
   protected Transaction buildTransaction(FundDistribution fundDistribution, Adjustment adjustment) {
