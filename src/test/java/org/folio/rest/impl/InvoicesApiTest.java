@@ -106,6 +106,7 @@ import static org.hamcrest.core.IsNot.not;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
+import io.vertx.core.Vertx;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -145,6 +146,7 @@ import org.folio.rest.acq.model.finance.Ledger;
 import org.folio.rest.acq.model.finance.Transaction;
 import org.folio.rest.acq.model.orders.CompositePoLine;
 import org.folio.rest.acq.model.units.AcquisitionsUnitMembershipCollection;
+import org.folio.rest.core.models.RequestContext;
 import org.folio.rest.jaxrs.model.Adjustment;
 import org.folio.rest.jaxrs.model.Adjustment.Prorate;
 import org.folio.rest.jaxrs.model.Adjustment.Type;
@@ -1389,6 +1391,9 @@ public class InvoicesApiTest extends ApiTestBase {
     Map<String, Transaction> pendingPaymentMap = pendingPaymesCreated.stream()
       .map(entries -> entries.mapTo(Transaction.class))
       .collect(toMap((transaction)->transaction.getAwaitingPayment().getEncumbranceId(), Function.identity()));
+    ConversionQuery conversionQuery = ConversionQueryBuilder.of().setTermCurrency(DEFAULT_SYSTEM_CURRENCY).set("factor", 1.0).build();
+    ExchangeRateProvider exchangeRateProvider = new ExchangeRateProviderResolver().resolve(conversionQuery, new RequestContext(
+      Vertx.currentContext(), Collections.emptyMap()));
     ConversionQuery conversionQuery = ConversionQueryBuilder.of().setTermCurrency(SYSTEM_CURRENCY)
       .set(RATE_KEY, reqData.getExchangeRate()).build();
     ExchangeRateProvider exchangeRateProvider = new ExchangeRateProviderResolver().resolve(conversionQuery);
