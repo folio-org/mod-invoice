@@ -5,7 +5,6 @@ import static org.folio.invoices.utils.ErrorCodes.PENDING_PAYMENT_ERROR;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
 
 import javax.money.convert.ConversionQuery;
 import javax.money.convert.ExchangeRateProvider;
