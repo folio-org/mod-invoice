@@ -20,15 +20,19 @@ import java.util.concurrent.ExecutionException;
 
 import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.rest.acq.model.finance.Budget;
+import org.folio.rest.acq.model.finance.FiscalYear;
 import org.folio.rest.acq.model.finance.Fund;
 import org.folio.rest.acq.model.finance.Ledger;
 import org.folio.rest.acq.model.finance.Transaction;
 import org.folio.rest.core.RestClient;
 import org.folio.rest.core.models.RequestContext;
+import org.folio.rest.jaxrs.model.Adjustment;
 import org.folio.rest.jaxrs.model.Error;
 import org.folio.rest.jaxrs.model.FundDistribution;
 import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.jaxrs.model.InvoiceLine;
+import org.folio.services.exchange.ExchangeRateProviderResolver;
+import org.folio.services.exchange.ManualExchangeRateProvider;
 import org.hamcrest.core.IsInstanceOf;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -50,6 +54,8 @@ public class BudgetValidationServiceTest {
   private LedgerService ledgerService;
   @Mock
   private FiscalYearService fiscalYearService;
+  @Mock
+  private ExchangeRateProviderResolver exchangeRateProviderResolver;
   @Mock
   private RestClient restClient;
   @Mock
@@ -274,5 +280,89 @@ public class BudgetValidationServiceTest {
     verify(ledgerService).retrieveRestrictedLedgersByIds(eq(Collections.singletonList(ledgerId)), eq(requestContext));
     verify(fiscalYearService, never()).getFiscalYear(any(), any());
     verify(restClient, never()).getById(any(), any(), any());
+  }
+
+  @Test
+  void  shouldCountAdjustmentsFundDistributionsDuringBudgetRemainingAmountValidation() {
+
+    String fiscalYearId = UUID.randomUUID().toString();
+    String fundId = UUID.randomUUID().toString();
+    String ledgerId = UUID.randomUUID().toString();
+    String budgetId = UUID.randomUUID().toString();
+
+    FiscalYear fiscalYear = new FiscalYear()
+      .withCurrency("USD")
+      .withId(fiscalYearId);
+
+    Ledger ledger = new Ledger()
+      .withId(ledgerId)
+      .withRestrictExpenditures(true);
+
+    FundDistribution adjustmentFundDistribution = new FundDistribution()
+      .withDistributionType(FundDistribution.DistributionType.PERCENTAGE)
+      .withFundId(fundId)
+      .withValue(100d);
+
+    Adjustment adjustment = new Adjustment()
+      .withType(Adjustment.Type.AMOUNT)
+      .withProrate(Adjustment.Prorate.NOT_PRORATED)
+      .withFundDistributions(Collections.singletonList(adjustmentFundDistribution))
+      .withValue(20d);
+
+    Invoice invoice = new Invoice()
+      .withCurrency("USD")
+      .withExchangeRate(1d)
+      .withAdjustments(Collections.singletonList(adjustment));
+
+    FundDistribution fundDistribution = new FundDistribution()
+      .withDistributionType(FundDistribution.DistributionType.PERCENTAGE)
+      .withFundId(fundId)
+      .withValue(100d);
+
+    InvoiceLine invoiceLine = new InvoiceLine()
+      .withSubTotal(200d)
+      .withTotal(200d)
+      .withFundDistributions(Collections.singletonList(fundDistribution));
+
+
+    Fund fund = new Fund()
+      .withId(fundId)
+      .withLedgerId(ledgerId);
+
+    Budget budget = new Budget()
+      .withId(budgetId)
+      .withFiscalYearId(fiscalYearId)
+      .withFundId(fundId)
+      .withAllocated(260d)
+      .withAvailable(210d)
+      .withUnavailable(50d)
+      .withAwaitingPayment(50d)
+      .withAllowableExpenditure(100d);
+
+    when(fundService.getFunds(anyList(), any()))
+      .thenReturn(CompletableFuture.completedFuture(Collections.singletonList(fund)));
+    when(ledgerService.retrieveRestrictedLedgersByIds(anyList(), any()))
+      .thenReturn(CompletableFuture.completedFuture(Collections.singletonList(ledger)));
+    when(restClient.getById(anyString(), any(), any())).thenReturn(CompletableFuture.completedFuture(budget));
+    when(fiscalYearService.getFiscalYear(any(), any())).thenReturn(CompletableFuture.completedFuture(fiscalYear));
+    when(exchangeRateProviderResolver.resolve(any(), any())).thenReturn(new ManualExchangeRateProvider());
+    when(requestContext.getContext()).thenReturn(Vertx.vertx().getOrCreateContext());
+
+    CompletableFuture<Void> future = budgetValidationService.checkEnoughMoneyInBudget(Collections.singletonList(invoiceLine), invoice, requestContext);
+    ExecutionException executionException = assertThrows(ExecutionException.class, future::get);
+
+    assertThat(executionException.getCause(), IsInstanceOf.instanceOf(HttpException.class));
+
+    HttpException httpException = (HttpException) executionException.getCause();
+
+    assertEquals(422, httpException.getCode());
+    Error error = httpException.getErrors().getErrors().get(0);
+    assertEquals(FUND_CANNOT_BE_PAID.getCode(), error.getCode());
+    assertEquals(Collections.singletonList(budgetId).toString(), error.getParameters().get(0).getValue());
+
+    verify(fundService).getFunds(eq(Collections.singletonList(fundId)), eq(requestContext));
+    verify(ledgerService).retrieveRestrictedLedgersByIds(eq(Collections.singletonList(ledgerId)), eq(requestContext));
+    verify(fiscalYearService).getFiscalYear(eq(fiscalYearId), eq(requestContext));
+    verify(restClient).getById(eq(fundId),  eq(requestContext), eq(Budget.class));
   }
 }
