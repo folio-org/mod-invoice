@@ -9,6 +9,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -25,6 +26,9 @@ import org.folio.rest.acq.model.finance.Transaction;
 import org.folio.rest.core.RestClient;
 import org.folio.rest.core.models.RequestContext;
 import org.folio.rest.jaxrs.model.Error;
+import org.folio.rest.jaxrs.model.FundDistribution;
+import org.folio.rest.jaxrs.model.Invoice;
+import org.folio.rest.jaxrs.model.InvoiceLine;
 import org.hamcrest.core.IsInstanceOf;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -44,6 +48,8 @@ public class BudgetValidationServiceTest {
   private FundService fundService;
   @Mock
   private LedgerService ledgerService;
+  @Mock
+  private FiscalYearService fiscalYearService;
   @Mock
   private RestClient restClient;
   @Mock
@@ -229,5 +235,44 @@ public class BudgetValidationServiceTest {
     verify(fundService).getFunds(eq(Collections.singletonList(fundId)), eq(requestContext));
     verify(ledgerService).retrieveRestrictedLedgersByIds(eq(Collections.singletonList(ledgerId)), eq(requestContext));
     verify(restClient).getById(eq(fundId), eq(requestContext), eq(Budget.class));
+  }
+
+  @Test
+  void shouldNotRetrieveFiscalYearAndBudgetsIfRestrictedFundsNotFound() {
+
+    String fundId = UUID.randomUUID().toString();
+    String ledgerId = UUID.randomUUID().toString();
+
+    Invoice invoice = new Invoice();
+
+    FundDistribution fundDistribution = new FundDistribution()
+      .withDistributionType(FundDistribution.DistributionType.PERCENTAGE)
+      .withFundId(fundId)
+      .withValue(100d);
+
+    InvoiceLine invoiceLine = new InvoiceLine()
+      .withSubTotal(200d)
+      .withFundDistributions(Collections.singletonList(fundDistribution));
+
+
+    Fund fund = new Fund()
+      .withId(fundId)
+      .withLedgerId(ledgerId);
+
+    when(fundService.getFunds(anyList(), any()))
+      .thenReturn(CompletableFuture.completedFuture(Collections.singletonList(fund)));
+    when(ledgerService.retrieveRestrictedLedgersByIds(anyList(), any()))
+      .thenReturn(CompletableFuture.completedFuture(Collections.emptyList()));
+
+    when(requestContext.getContext()).thenReturn(Vertx.vertx().getOrCreateContext());
+
+    CompletableFuture<Void> future = budgetValidationService.checkEnoughMoneyInBudget(Collections.singletonList(invoiceLine), invoice, requestContext);
+    future.join();
+    assertFalse(future.isCompletedExceptionally());
+
+    verify(fundService).getFunds(eq(Collections.singletonList(fundId)), eq(requestContext));
+    verify(ledgerService).retrieveRestrictedLedgersByIds(eq(Collections.singletonList(ledgerId)), eq(requestContext));
+    verify(fiscalYearService, never()).getFiscalYear(any(), any());
+    verify(restClient, never()).getById(any(), any(), any());
   }
 }

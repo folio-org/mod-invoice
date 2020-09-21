@@ -16,7 +16,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.function.Function;
@@ -76,26 +75,29 @@ public class BudgetValidationService {
       .collect(toList());
 
     return getRestrictedBudgets(fundIds, requestContext)
-      .thenCompose(budgets -> Optional.ofNullable(budgets.get(0))
-        .map(budget -> fiscalYearService.getFiscalYear(budget.getFiscalYearId(), requestContext)
-          .thenAccept(fiscalYear -> {
-            ConversionQuery conversionQuery = HelperUtils.buildConversionQuery(invoice, fiscalYear.getCurrency());
-            ExchangeRateProvider exchangeRateProvider = exchangeRateProviderResolver.resolve(conversionQuery, requestContext);
-            invoice.setExchangeRate(exchangeRateProvider.getExchangeRate(conversionQuery).getFactor().doubleValue());
-            CurrencyConversion conversion = exchangeRateProvider.getCurrencyConversion(conversionQuery);
+      .thenCompose(budgets -> {
+        if (budgets.isEmpty()) {
+          return CompletableFuture.completedFuture(null);
+        }
+        return fiscalYearService.getFiscalYear(budgets.get(0).getFiscalYearId(), requestContext)
+            .thenAccept(fiscalYear -> {
+              ConversionQuery conversionQuery = HelperUtils.buildConversionQuery(invoice, fiscalYear.getCurrency());
+              ExchangeRateProvider exchangeRateProvider = exchangeRateProviderResolver.resolve(conversionQuery, requestContext);
+              invoice.setExchangeRate(exchangeRateProvider.getExchangeRate(conversionQuery).getFactor().doubleValue());
+              CurrencyConversion conversion = exchangeRateProvider.getCurrencyConversion(conversionQuery);
 
-            Map<String, MonetaryAmount> groupedAmountByFundId = getGroupedAmountByFundId(lines, invoice, conversion);
-            List<String> failedBudgetIds = validateAndGetFailedBudgets(budgets, groupedAmountByFundId,
-              fiscalYear.getCurrency());
+              Map<String, MonetaryAmount> groupedAmountByFundId = getGroupedAmountByFundId(lines, invoice, conversion);
+              List<String> failedBudgetIds = validateAndGetFailedBudgets(budgets, groupedAmountByFundId,
+                fiscalYear.getCurrency());
 
-            if (!failedBudgetIds.isEmpty()) {
-              Parameter parameter = new Parameter()
-                .withKey(BUDGETS)
-                .withValue(failedBudgetIds.toString());
-              throw new HttpException(422, FUND_CANNOT_BE_PAID.toError().withParameters(Collections.singletonList(parameter)));
-            }
-          }))
-        .orElse(CompletableFuture.completedFuture(null)));
+              if (!failedBudgetIds.isEmpty()) {
+                Parameter parameter = new Parameter()
+                  .withKey(BUDGETS)
+                  .withValue(failedBudgetIds.toString());
+                throw new HttpException(422, FUND_CANNOT_BE_PAID.toError().withParameters(Collections.singletonList(parameter)));
+              }
+            });
+      });
   }
 
   public CompletableFuture<Void> checkEnoughMoneyInBudget(List<Transaction> newTransactions, List<Transaction> existingTransactions, RequestContext requestContext) {
