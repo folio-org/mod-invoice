@@ -7,7 +7,6 @@ import static java.util.stream.Collectors.groupingBy;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toMap;
 import static me.escoffier.vertx.completablefuture.VertxCompletableFuture.completedFuture;
-import static me.escoffier.vertx.completablefuture.VertxCompletableFuture.supplyAsync;
 import static me.escoffier.vertx.completablefuture.VertxCompletableFuture.supplyBlockingAsync;
 import static org.apache.commons.lang3.StringUtils.EMPTY;
 import static org.apache.commons.lang3.StringUtils.isEmpty;
@@ -18,7 +17,6 @@ import static org.folio.invoices.utils.ErrorCodes.PO_LINE_NOT_FOUND;
 import static org.folio.invoices.utils.ErrorCodes.PO_LINE_UPDATE_FAILURE;
 import static org.folio.invoices.utils.ErrorCodes.USER_HAS_NO_ACQ_PERMISSIONS;
 import static org.folio.invoices.utils.HelperUtils.calculateAdjustmentsTotal;
-import static org.folio.invoices.utils.HelperUtils.calculateInvoiceLineTotals;
 import static org.folio.invoices.utils.HelperUtils.calculateVoucherLineAmount;
 import static org.folio.invoices.utils.HelperUtils.combineCqlExpressions;
 import static org.folio.invoices.utils.HelperUtils.convertToDoubleWithRounding;
@@ -117,9 +115,6 @@ public class InvoiceHelper extends AbstractHelper {
 
   private static final String GET_INVOICES_BY_QUERY = resourcesPath(INVOICES) + SEARCH_PARAMS;
   private static final String EMPTY_ARRAY = "[]";
-
-  // Using variable to "cache" lines for particular invoice base on assumption that the helper is stateful and new instance is used
-  private List<InvoiceLine> storedInvoiceLines;
 
   private final InvoiceLineHelper invoiceLineHelper;
   private final VoucherLineHelper voucherLineHelper;
@@ -327,15 +322,13 @@ public class InvoiceHelper extends AbstractHelper {
     logger.debug("Updating invoice...");
     return CompletableFuture.completedFuture(null).thenRun(() -> validator.validateIncomingInvoice(invoice))
       .thenCompose(aVoid -> getInvoiceRecord(invoice.getId()))
-      .thenCompose(invoiceFromStorage -> validateAndHandleInvoiceStatusTransition(invoice, invoiceFromStorage).thenApply(v -> invoiceFromStorage))
-      .thenCompose(invoiceFromStorage -> updateInvoiceRecord(invoice));
+      .thenCompose(invoiceFromStorage -> validateAndHandleInvoiceStatusTransition(invoice, invoiceFromStorage))
+      .thenCompose(aVoid -> updateInvoiceRecord(invoice));
   }
 
-  private CompletableFuture<Void> handleExchangeRateChange(Invoice invoice) {
-    return getInvoiceLinesWithTotals(invoice)
-      .thenCompose(invoiceLines -> pendingPaymentWorkflowService.handlePendingPaymentsUpdate(invoice, invoiceLines, new RequestContext(ctx, okapiHeaders))
-        .thenCompose(aVoid -> updateVoucher(invoice, invoiceLines)));
-
+  private CompletableFuture<Void> handleExchangeRateChange(Invoice invoice, List<InvoiceLine> invoiceLines) {
+    return  pendingPaymentWorkflowService.handlePendingPaymentsUpdate(invoice, invoiceLines, new RequestContext(ctx, okapiHeaders))
+        .thenCompose(aVoid -> updateVoucher(invoice, invoiceLines));
   }
 
   private CompletableFuture<Void> updateVoucher(Invoice invoice, List<InvoiceLine> invoiceLines) {
@@ -355,10 +348,23 @@ public class InvoiceHelper extends AbstractHelper {
       validator.validateInvoiceProtectedFields(invoice, invoiceFromStorage);
       verifyUserHasManagePermission(invoice.getAcqUnitIds(), invoiceFromStorage.getAcqUnitIds());
       setSystemGeneratedData(invoiceFromStorage, invoice);
-
-      return recalculateDynamicData(invoice, invoiceFromStorage)
-        .thenCompose(okRecalculated -> handleInvoiceStatusTransition(invoice, invoiceFromStorage));
+      return getInvoiceLinesWithTotals(invoice)
+        .thenCompose(invoiceLines -> {
+          List<InvoiceLine> updatedInvoiceLines = invoiceLines.stream()
+            .map(invoiceLine -> JsonObject.mapFrom(invoiceLine).mapTo(InvoiceLine.class))
+            .collect(toList());
+          recalculateDynamicData(invoice, invoiceFromStorage, updatedInvoiceLines);
+          return handleInvoiceStatusTransition(invoice, invoiceFromStorage, updatedInvoiceLines)
+            .thenAccept(aVoid -> updateInvoiceLinesStatus(invoice, updatedInvoiceLines))
+            .thenApply(aVoid -> filterUpdatedLines(invoiceLines, updatedInvoiceLines))
+            .thenCompose(invoiceLineHelper::persistInvoiceLines);
+        });
     });
+  }
+
+  private List<InvoiceLine> filterUpdatedLines(List<InvoiceLine> invoiceLines, List<InvoiceLine> updatedInvoiceLines) {
+    Map<String, InvoiceLine> idLineMap = invoiceLines.stream().collect(toMap(InvoiceLine::getId, Function.identity()));
+    return updatedInvoiceLines.stream().filter(invoiceLine -> !invoiceLine.equals(idLineMap.get(invoiceLine.getId()))).collect(toList());
   }
 
   /**
@@ -418,12 +424,24 @@ public class InvoiceHelper extends AbstractHelper {
   }
 
   /**
+   * Updates total values of the invoice and invoice lines
+   * @param invoice invoice to update totals for
+   * @param List<InvoiceLine> invoice lines to update totals for
+   * @return {code true} if adjustments total, sub total or grand total value is different to original one
+   */
+  public boolean recalculateTotals(Invoice invoice, List<InvoiceLine> lines) {
+    lines.forEach(line -> HelperUtils.calculateInvoiceLineTotals(line, invoice));
+    return recalculateInvoiceTotals(invoice, lines);
+  }
+
+  /**
    * Gets invoice lines from the storage and updates total values of the invoice
    * @param invoice invoice to update totals for
    * @return {code true} if adjustments total, sub total or grand total value is different to original one
    */
   public CompletableFuture<Boolean> recalculateTotals(Invoice invoice) {
-    return getInvoiceLinesWithTotals(invoice).thenApply(lines -> recalculateTotals(invoice, lines));
+    return getInvoiceLinesWithTotals(invoice)
+      .thenApply(invoiceLines -> recalculateTotals(invoice, invoiceLines));
   }
 
   private CompletableFuture<Void> updateWithSystemGeneratedData(Invoice invoice) {
@@ -446,7 +464,7 @@ public class InvoiceHelper extends AbstractHelper {
    * @param lines invoice lines for the invoice
    * @return {code true} if adjustments total, sub total or grand total value is different to original one
    */
-  private boolean recalculateTotals(Invoice invoice, List<InvoiceLine> lines) {
+  private boolean recalculateInvoiceTotals(Invoice invoice, List<InvoiceLine> lines) {
     // 1. Get original values
     Double total = invoice.getTotal();
     Double subTotal = invoice.getSubTotal();
@@ -460,39 +478,29 @@ public class InvoiceHelper extends AbstractHelper {
         && Objects.equals(adjustmentsTotal, invoice.getAdjustmentsTotal()));
   }
 
-  private CompletableFuture<Boolean> recalculateDynamicData(Invoice updatedInvoice, Invoice invoiceFromStorage) {
+  private boolean recalculateDynamicData(Invoice updatedInvoice, Invoice invoiceFromStorage, List<InvoiceLine> invoiceLines) {
     // If invoice was approved, the totals are already fixed and should not be recalculated
     if (isPostApproval(invoiceFromStorage)) {
-      return completedFuture(false);
+      return false;
     }
 
-    return processProratedAdjustments(updatedInvoice, invoiceFromStorage).thenCompose(ok -> recalculateTotals(updatedInvoice));
+    processProratedAdjustments(updatedInvoice, invoiceFromStorage, invoiceLines);
+    return recalculateTotals(updatedInvoice, invoiceLines);
   }
 
-  private CompletableFuture<Void> processProratedAdjustments(Invoice updatedInvoice, Invoice invoiceFromStorage) {
+  private void processProratedAdjustments(Invoice updatedInvoice, Invoice invoiceFromStorage, List<InvoiceLine> lines) {
     List<Adjustment> currentAdjustments = adjustmentsService.getProratedAdjustments(updatedInvoice);
 
     // Skip if prorated adjustments are the same in incoming invoice and from storage
     if (CollectionUtils.isEqualCollection(currentAdjustments, adjustmentsService.getProratedAdjustments(invoiceFromStorage))) {
-      return completedFuture(null);
+      return;
     }
+    adjustmentsService.processProratedAdjustments(lines, updatedInvoice);
 
-    return fetchInvoiceLinesByInvoiceId(updatedInvoice.getId()).thenCompose(lines -> {
-      if (lines.isEmpty()) {
-        return completedFuture(null);
-      }
-
-      return supplyAsync(ctx, () -> adjustmentsService.processProratedAdjustments(lines, updatedInvoice))
-        .thenCompose(invoiceLines -> VertxCompletableFuture.allOf(ctx, invoiceLines.stream()
-          .map(invoiceLine -> persistInvoiceLineUpdates(updatedInvoice, invoiceLine))
-          .toArray(CompletableFuture[]::new)));
-    });
   }
 
-  private CompletableFuture<Void> persistInvoiceLineUpdates(Invoice updatedInvoice, InvoiceLine invoiceLine) {
-    calculateInvoiceLineTotals(invoiceLine, updatedInvoice);
-    return invoiceLineHelper.updateInvoiceLineToStorage(invoiceLine)
-      .thenAccept(ok -> invalidateInvoiceLinesCache(Collections.singletonList(invoiceLine)));
+  private void updateInvoiceLinesStatus(Invoice invoice, List<InvoiceLine> invoiceLines) {
+    invoiceLines.forEach(invoiceLine -> invoiceLine.withInvoiceLineStatus(InvoiceLine.InvoiceLineStatus.fromValue(invoice.getStatus().value())));
   }
 
   private void setSystemGeneratedData(Invoice invoiceFromStorage, Invoice invoice) {
@@ -500,18 +508,18 @@ public class InvoiceHelper extends AbstractHelper {
     generateAdjustmentsIds(invoice);
   }
 
-  private CompletionStage<Void> handleInvoiceStatusTransition(Invoice invoice, Invoice invoiceFromStorage) {
+  private CompletionStage<Void> handleInvoiceStatusTransition(Invoice invoice, Invoice invoiceFromStorage, List<InvoiceLine> invoiceLines) {
     if (isTransitionToApproved(invoiceFromStorage, invoice)) {
-      return approveInvoice(invoice);
+      return approveInvoice(invoice, invoiceLines);
     } else if (isAfterApprove(invoice, invoiceFromStorage) && isExchangeRateChanged(invoice, invoiceFromStorage)) {
-      return handleExchangeRateChange(invoice);
+      return handleExchangeRateChange(invoice, invoiceLines);
     } else if (isTransitionToPaid(invoiceFromStorage, invoice)) {
       if (isExchangeRateChanged(invoice, invoiceFromStorage)) {
-        return handleExchangeRateChange(invoice)
-          .thenCompose(aVoid1 -> payInvoice(invoice));
+        return handleExchangeRateChange(invoice, invoiceLines)
+          .thenCompose(aVoid1 -> payInvoice(invoice, invoiceLines));
       }
       invoice.setExchangeRate(invoiceFromStorage.getExchangeRate());
-      return payInvoice(invoice);
+      return payInvoice(invoice, invoiceLines);
 
     }
     return CompletableFuture.completedFuture(null);
@@ -549,25 +557,22 @@ public class InvoiceHelper extends AbstractHelper {
    * @param invoice {@link Invoice}to be approved
    * @return CompletableFuture that indicates when transition is completed
    */
-  private CompletableFuture<Void> approveInvoice(Invoice invoice) {
+  private CompletableFuture<Void> approveInvoice(Invoice invoice, List<InvoiceLine> lines) {
     invoice.setApprovalDate(new Date());
     invoice.setApprovedBy(invoice.getMetadata().getUpdatedByUserId());
 
     return loadTenantConfiguration(SYSTEM_CONFIG_QUERY, VOUCHER_NUMBER_PREFIX_CONFIG_QUERY)
-      .thenCompose(ok -> getInvoiceLinesWithTotals(invoice))
-      .thenCompose(lines -> updateInvoiceLinesWithEncumbrances(lines, new RequestContext(ctx, okapiHeaders)).thenApply(v -> lines))
-      .thenCompose(lines -> {
-        validator.validateBeforeApproval(invoice, lines);
-        return budgetValidationService.checkEnoughMoneyInBudget(lines, invoice, new RequestContext(ctx, okapiHeaders))
-          .thenCompose(v -> invoiceLineHelper.persistInvoiceLines(lines))
-          .thenAccept(v -> invalidateInvoiceLinesCache(lines))
-          .thenCompose(v -> budgetExpenseClassService.checkExpenseClasses(lines, invoice, new RequestContext(ctx, okapiHeaders)))
-          .thenCompose(v -> pendingPaymentWorkflowService.handlePendingPaymentsCreation(lines, invoice, new RequestContext(ctx ,okapiHeaders)))
-          .thenCompose(v -> prepareVoucher(invoice))
-          .thenCompose(voucher -> updateVoucherWithSystemCurrency(voucher, lines))
-          .thenCompose(voucher -> updateVoucherWithExchangeRate(voucher, invoice))
-          .thenCompose(voucher -> handleVoucherWithLines(getAllFundDistributions(lines, invoice), voucher));
-      });
+      .thenCompose(ok -> updateInvoiceLinesWithEncumbrances(lines, new RequestContext(ctx, okapiHeaders)))
+      .thenCompose(v -> invoiceLineHelper.persistInvoiceLines(lines))
+      .thenAccept(aVoid -> validator.validateBeforeApproval(invoice, lines))
+      .thenCompose(aVoid -> budgetValidationService.checkEnoughMoneyInBudget(lines, invoice, new RequestContext(ctx, okapiHeaders)))
+      .thenCompose(aVoid -> budgetExpenseClassService.checkExpenseClasses(lines, invoice, new RequestContext(ctx, okapiHeaders)))
+      .thenCompose(v -> pendingPaymentWorkflowService.handlePendingPaymentsCreation(lines, invoice, new RequestContext(ctx ,okapiHeaders)))
+      .thenCompose(v -> prepareVoucher(invoice))
+      .thenCompose(voucher -> updateVoucherWithSystemCurrency(voucher, lines))
+      .thenCompose(voucher -> updateVoucherWithExchangeRate(voucher, invoice))
+      .thenCompose(voucher -> handleVoucherWithLines(getAllFundDistributions(lines, invoice), voucher));
+
   }
 
   private CompletableFuture<Voucher> updateVoucherWithSystemCurrency(Voucher voucher, List<InvoiceLine> lines) {
@@ -577,18 +582,6 @@ public class InvoiceHelper extends AbstractHelper {
         .thenApply(fiscalYear -> voucher.withSystemCurrency(fiscalYear.getCurrency()));
     }
     return CompletableFuture.completedFuture(voucher.withSystemCurrency(getSystemCurrency()));
-  }
-
-  private void invalidateInvoiceLinesCache(List<InvoiceLine> invoiceLines) {
-    if (!CollectionUtils.isEmpty(storedInvoiceLines) && !CollectionUtils.isEmpty(invoiceLines)) {
-      Map<String, List<InvoiceLine>> linesByIdMap = invoiceLines.stream().collect(groupingBy(InvoiceLine::getId));
-      for (Map.Entry<String, List<InvoiceLine>> entry : linesByIdMap.entrySet()) {
-        boolean isRemoved = storedInvoiceLines.removeIf(line -> line.getId().equals(entry.getKey()));
-        if (isRemoved) {
-          storedInvoiceLines.addAll(entry.getValue());
-        }
-      }
-    }
   }
 
   private List<FundDistribution> getAllFundDistributions(List<InvoiceLine> invoiceLines, Invoice invoice) {
@@ -861,11 +854,10 @@ public class InvoiceHelper extends AbstractHelper {
    * @param invoice Invoice to be paid
    * @return CompletableFuture that indicates when transition is completed
    */
-  private CompletableFuture<Void> payInvoice(Invoice invoice) {
-    return fetchInvoiceLinesByInvoiceId(invoice.getId())
-      .thenCompose(invoiceLines -> paymentCreditWorkflowService.handlePaymentsAndCreditsCreation(invoice, invoiceLines, new RequestContext(ctx, okapiHeaders)))
+  private CompletableFuture<Void> payInvoice(Invoice invoice, List<InvoiceLine> invoiceLines) {
+    return paymentCreditWorkflowService.handlePaymentsAndCreditsCreation(invoice, invoiceLines, new RequestContext(ctx, okapiHeaders))
       .thenCompose(vVoid ->
-         VertxCompletableFuture.allOf(ctx, payPoLines(invoice),
+         VertxCompletableFuture.allOf(ctx, payPoLines(invoiceLines),
                                voucherCommandService.payInvoiceVoucher(invoice.getId(), new RequestContext(ctx, okapiHeaders)))
       );
   }
@@ -873,27 +865,18 @@ public class InvoiceHelper extends AbstractHelper {
   /**
    * Updates payment status of the associated PO Lines.
    *
-   * @param invoice the invoice to be paid
+   * @param invoiceLines the invoice lines to be paid
    * @return CompletableFuture that indicates when transition is completed
    */
-  private CompletableFuture<Void> payPoLines(Invoice invoice) {
-    return fetchInvoiceLinesByInvoiceId(invoice.getId())
-      .thenApply(this::groupInvoiceLinesByPoLineId)
-      .thenCompose(this::fetchPoLines)
+  private CompletableFuture<Void> payPoLines(List<InvoiceLine> invoiceLines) {
+    Map<String, List<InvoiceLine>> poLineIdInvoiceLinesMap = groupInvoiceLinesByPoLineId(invoiceLines);
+    return fetchPoLines(poLineIdInvoiceLinesMap)
       .thenApply(this::updatePoLinesPaymentStatus)
       .thenCompose(this::updateCompositePoLines);
   }
 
-  private CompletableFuture<List<InvoiceLine>> fetchInvoiceLinesByInvoiceId(String invoiceId) {
-    if (storedInvoiceLines != null) {
-      return completedFuture(storedInvoiceLines);
-    }
-
-    return invoiceLineHelper.getInvoiceLinesByInvoiceId(invoiceId).thenApply(invoiceLines -> storedInvoiceLines = invoiceLines);
-  }
-
   private CompletableFuture<List<InvoiceLine>> getInvoiceLinesWithTotals(Invoice invoice) {
-    return fetchInvoiceLinesByInvoiceId(invoice.getId())
+    return invoiceLineHelper.getInvoiceLinesByInvoiceId(invoice.getId())
       .thenApply(lines -> {
         lines.forEach(line -> HelperUtils.calculateInvoiceLineTotals(line, invoice));
         return lines;
