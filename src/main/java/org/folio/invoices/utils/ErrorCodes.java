@@ -42,7 +42,6 @@ public enum ErrorCodes {
   APPROVED_OR_PAID_INVOICE_DELETE_FORBIDDEN("approvedOrPaidInvoiceDeleteForbiddenError", "Approved or paid invoice can not be deleted"),
   BUDGET_NOT_FOUND("budgetNotFoundByFundId", "Budget not found by fundId"),
   LEDGER_NOT_FOUND("ledgerNotFound", "Ledger not found"),
-  BUDGET_IS_INACTIVE("budgetIsInactive", "Budget should be active to approve invoice"),
   FUND_CANNOT_BE_PAID("fundCannotBePaid", "Fund cannot be paid due to restrictions"),
   INACTIVE_EXPENSE_CLASS("inactiveExpenseClass", "Expense class is Inactive");
 

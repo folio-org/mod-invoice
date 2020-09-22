@@ -39,6 +39,8 @@ public class BaseTransactionServiceTest extends ApiTestBase {
   private EventLoopContext ctxMock;
   @Mock
   private RestClient restClient;
+  @Mock
+  private TransactionManagingServiceFactory transactionManagingServiceFactory;
 
   private Map<String, String> okapiHeaders;
   public static final Header X_OKAPI_TENANT = new Header(OKAPI_HEADER_TENANT, "invoiceimpltest");
@@ -56,7 +58,7 @@ public class BaseTransactionServiceTest extends ApiTestBase {
   @Test
   public void testShouldSuccessRetrieveExistedTransactions() throws Exception {
     //given
-    BaseTransactionService service = spy(new BaseTransactionService(restClient));
+    BaseTransactionService service = spy(new BaseTransactionService(restClient, transactionManagingServiceFactory));
 
     JsonObject encumbranceList = new JsonObject(getMockData(MOCK_ENCUMBRANCES_LIST));
 
@@ -79,7 +81,7 @@ public class BaseTransactionServiceTest extends ApiTestBase {
   @Test
   public void testShouldSuccessRetrieveEmptyListIfIdListIsEmpty() throws Exception {
     //given
-    BaseTransactionService service = spy(new BaseTransactionService(restClient));
+    BaseTransactionService service = spy(new BaseTransactionService(restClient, transactionManagingServiceFactory));
     RequestContext requestContext = new RequestContext(ctxMock, okapiHeaders);
      //When
     List<String> transactionIds = new ArrayList<>();

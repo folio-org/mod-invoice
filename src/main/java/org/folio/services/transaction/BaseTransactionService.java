@@ -20,9 +20,11 @@ import one.util.streamex.StreamEx;
 
 public class BaseTransactionService {
   private final RestClient trFinanceRestClient;
+  private final TransactionManagingServiceFactory transactionManagingServiceFactory;
 
-  public BaseTransactionService(RestClient trFinanceRestClient) {
+  public BaseTransactionService(RestClient trFinanceRestClient, TransactionManagingServiceFactory transactionManagingServiceFactory) {
     this.trFinanceRestClient = trFinanceRestClient;
+    this.transactionManagingServiceFactory = transactionManagingServiceFactory;
   }
 
   public CompletableFuture<TransactionCollection> getTransactions(String query, int offset, int limit, RequestContext requestContext) {
@@ -47,6 +49,16 @@ public class BaseTransactionService {
   private CompletableFuture<TransactionCollection> getTransactionsChunk(List<String> transactionIds, RequestContext requestContext) {
     String query = convertIdsToCqlQuery(new ArrayList<>(transactionIds));
     return this.getTransactions(query, 0, transactionIds.size(), requestContext);
+  }
+
+  public CompletableFuture<Transaction> createTransaction(Transaction transaction, RequestContext requestContext) {
+    return transactionManagingServiceFactory.findStrategy(transaction.getTransactionType())
+      .createTransaction(transaction, requestContext);
+  }
+
+  public CompletableFuture<Void> updateTransaction(Transaction transaction, RequestContext requestContext) {
+    return transactionManagingServiceFactory.findStrategy(transaction.getTransactionType())
+      .updateTransaction(transaction, requestContext);
   }
 
 }

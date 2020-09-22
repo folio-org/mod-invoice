@@ -1,16 +1,19 @@
 package org.folio.services.transaction;
 
-import org.apache.commons.lang3.tuple.Pair;
-import org.folio.rest.acq.model.finance.Transaction;
-import org.folio.rest.acq.model.finance.TransactionCollection;
-import org.folio.rest.core.models.RequestContext;
-import java.util.List;
-import java.util.concurrent.CompletableFuture;
-import one.util.streamex.StreamEx;
 import static java.util.stream.Collectors.toList;
 import static org.folio.invoices.utils.HelperUtils.collectResultsOnSuccess;
 import static org.folio.invoices.utils.HelperUtils.convertIdsToCqlQuery;
 import static org.folio.rest.RestConstants.MAX_IDS_FOR_GET_RQ;
+
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
+
+import org.apache.commons.lang3.tuple.Pair;
+import org.folio.rest.acq.model.finance.Transaction;
+import org.folio.rest.acq.model.finance.TransactionCollection;
+import org.folio.rest.core.models.RequestContext;
+
+import one.util.streamex.StreamEx;
 
 public class EncumbranceService {
 
