@@ -1567,6 +1567,7 @@ public class InvoicesApiTest extends ApiTestBase {
 
   private void verifyTransitionToApproved(Voucher voucherCreated, List<InvoiceLine> invoiceLines, Invoice invoice, int createdVoucherLines) {
     List<JsonObject> invoiceLinesSearches = serverRqRs.get(INVOICE_LINES, HttpMethod.GET);
+    List<JsonObject> invoiceLinesUpdates = serverRqRs.get(INVOICE_LINES, HttpMethod.PUT);
     List<JsonObject> voucherLinesCreated = serverRqRs.get(VOUCHER_LINES, HttpMethod.POST);
     List<JsonObject> fundsSearches = serverRqRs.get(FUNDS, HttpMethod.GET);
     List<JsonObject> invoiceUpdates = serverRqRs.get(INVOICES, HttpMethod.PUT);
@@ -1574,13 +1575,19 @@ public class InvoicesApiTest extends ApiTestBase {
     List<JsonObject> pendingPaymentCreated = Optional.ofNullable(serverRqRs.get(FINANCE_PENDING_PAYMENTS, HttpMethod.POST)).orElse(emptyList());
 
     assertThat(invoiceLinesSearches, notNullValue());
+    assertThat(invoiceLinesUpdates, notNullValue());
     assertThat(fundsSearches, notNullValue());
     assertThat(voucherLinesCreated, notNullValue());
     assertThat(invoiceUpdates, notNullValue());
     assertThat(transactionSummariesCreated, notNullValue());
 
     assertThat(invoiceLinesSearches, hasSize(invoiceLines.size()/MAX_IDS_FOR_GET_RQ + 1));
-    List<Fund> funds = fundsSearches.get(0).mapTo(FundCollection.class).getFunds();
+    List<InvoiceLine> linesWithUpdatedStatus = invoiceLinesUpdates.stream()
+      .map(entries -> entries.mapTo(InvoiceLine.class))
+      .filter(invoiceLine -> invoiceLine.getInvoiceLineStatus() == InvoiceLine.InvoiceLineStatus.APPROVED)
+      .collect(toList());
+    assertThat(linesWithUpdatedStatus, hasSize(invoiceLines.size()));
+
     assertThat(voucherLinesCreated, hasSize(createdVoucherLines));
 
     InvoiceTransactionSummary transactionSummary = transactionSummariesCreated.get(0).mapTo(InvoiceTransactionSummary.class);
@@ -1709,6 +1716,11 @@ public class InvoicesApiTest extends ApiTestBase {
     verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, "", 204);
     assertThat(serverRqRs.get(INVOICES, HttpMethod.PUT).get(0).getString(STATUS), is(Invoice.Status.PAID.value()));
 
+    List<JsonObject> invoiceLinesUpdates = serverRqRs.get(INVOICE_LINES, HttpMethod.PUT);
+    List<InvoiceLine> invoiceLines = invoiceLinesUpdates.stream()
+      .map(entry -> entry.mapTo(InvoiceLine.class))
+      .collect(toList());
+    assertThat(invoiceLines, everyItem(hasProperty("invoiceLineStatus", is(InvoiceLine.InvoiceLineStatus.PAID))));
     validatePoLinesPaymentStatus();
     assertThatVoucherPaid();
   }
@@ -1866,6 +1878,12 @@ public class InvoicesApiTest extends ApiTestBase {
     assertThat(serverRqRs.get(ORDER_LINES, HttpMethod.PUT), hasSize(1));
     assertThat(serverRqRs.get(ORDER_LINES, HttpMethod.PUT).get(0).mapTo(CompositePoLine.class).getPaymentStatus(), equalTo(CompositePoLine.PaymentStatus.PARTIALLY_PAID));
 
+    List<JsonObject> invoiceLinesUpdates = serverRqRs.get(INVOICE_LINES, HttpMethod.PUT);
+    List<InvoiceLine> lines = invoiceLinesUpdates.stream()
+      .map(entry -> entry.mapTo(InvoiceLine.class))
+      .collect(toList());
+    assertThat(lines, everyItem(hasProperty("invoiceLineStatus", is(InvoiceLine.InvoiceLineStatus.PAID))));
+
     checkCreditsPayments(reqData, invoiceLines);
   }
 
@@ -1901,6 +1919,12 @@ public class InvoicesApiTest extends ApiTestBase {
     assertThat(getRqRsEntries(HttpMethod.GET, INVOICE_LINES).get(0).mapTo(InvoiceLineCollection.class).getTotalRecords(), equalTo(1));
     assertThat(getRqRsEntries(HttpMethod.PUT, ORDER_LINES), empty());
     assertThatVoucherPaid();
+
+    List<JsonObject> invoiceLinesUpdates = serverRqRs.get(INVOICE_LINES, HttpMethod.PUT);
+    List<InvoiceLine> lines = invoiceLinesUpdates.stream()
+      .map(entry -> entry.mapTo(InvoiceLine.class))
+      .collect(toList());
+    assertThat(lines, everyItem(hasProperty("invoiceLineStatus", is(InvoiceLine.InvoiceLineStatus.PAID))));
 
     checkCreditsPayments(reqData, Collections.singletonList(invoiceLine));
   }
@@ -2085,6 +2109,12 @@ public class InvoicesApiTest extends ApiTestBase {
       .map(entries -> entries.mapTo(CompositePoLine.class))
       .forEach(compositePoLine -> assertThat(compositePoLine.getPaymentStatus(), equalTo(CompositePoLine.PaymentStatus.FULLY_PAID)));
     assertThatVoucherPaid();
+
+    List<JsonObject> invoiceLinesUpdates = serverRqRs.get(INVOICE_LINES, HttpMethod.PUT);
+    List<InvoiceLine> lines = invoiceLinesUpdates.stream()
+      .map(entry -> entry.mapTo(InvoiceLine.class))
+      .collect(toList());
+    assertThat(lines, everyItem(hasProperty("invoiceLineStatus", is(InvoiceLine.InvoiceLineStatus.PAID))));
 
     assertThat(getRqRsEntries(HttpMethod.GET, FINANCE_TRANSACTIONS), hasSize(1));
     assertThat(getRqRsEntries(HttpMethod.POST, FINANCE_PAYMENTS), hasSize(5));
@@ -2398,6 +2428,13 @@ public class InvoicesApiTest extends ApiTestBase {
 
       assertThat(serverRqRs.row(INVOICES).get(HttpMethod.GET), hasSize(1));
       assertThat(serverRqRs.row(INVOICES).get(HttpMethod.PUT), hasSize(1));
+
+      List<JsonObject> invoiceLinesUpdates = Optional.ofNullable(serverRqRs.get(INVOICE_LINES, HttpMethod.PUT)).orElse(emptyList());
+      List<InvoiceLine> lines = invoiceLinesUpdates.stream()
+        .map(entry -> entry.mapTo(InvoiceLine.class))
+        .collect(toList());
+      assertThat(lines, everyItem(hasProperty("invoiceLineStatus", is(InvoiceLine.InvoiceLineStatus.fromValue(status.value())))));
+
       clearServiceInteractions();
     }
   }

@@ -81,19 +81,15 @@ public class AdjustmentsService {
       .collect(toList());
   }
 
-  public List<InvoiceLine> processProratedAdjustments(List<InvoiceLine> lines, Invoice invoice) {
+  public void processProratedAdjustments(List<InvoiceLine> lines, Invoice invoice) {
     List<Adjustment> proratedAdjustments = getProratedAdjustments(invoice);
 
     // Remove previously applied prorated adjustments if they are no longer available at invoice level
-    List<InvoiceLine> updatedLines = filterDeletedAdjustments(proratedAdjustments, lines);
+   filterDeletedAdjustments(proratedAdjustments, lines);
 
     // Apply prorated adjustments to each invoice line
-    updatedLines.addAll(applyProratedAdjustments(lines, invoice));
+   applyProratedAdjustments(lines, invoice);
 
-    // Return only unique invoice lines
-    return updatedLines.stream()
-      .distinct()
-      .collect(toList());
   }
 
   /**
@@ -101,15 +97,13 @@ public class AdjustmentsService {
    * @param proratedAdjustments list of prorated adjustments available at invoice level
    * @param invoiceLines list of invoice lines associated with current invoice
    */
-  List<InvoiceLine> filterDeletedAdjustments(List<Adjustment> proratedAdjustments, List<InvoiceLine> invoiceLines) {
+  void filterDeletedAdjustments(List<Adjustment> proratedAdjustments, List<InvoiceLine> invoiceLines) {
     List<String> adjIds = proratedAdjustments.stream()
       .map(Adjustment::getId)
       .collect(toList());
 
-    return invoiceLines.stream()
-      .filter(line -> line.getAdjustments()
-        .removeIf(adj -> Objects.nonNull(adj.getAdjustmentId()) && !adjIds.contains(adj.getAdjustmentId())))
-      .collect(toList());
+    invoiceLines.forEach(line -> line.getAdjustments()
+        .removeIf(adj -> Objects.nonNull(adj.getAdjustmentId()) && !adjIds.contains(adj.getAdjustmentId())));
   }
 
     /**
