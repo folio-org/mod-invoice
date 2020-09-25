@@ -15,6 +15,7 @@ public class ResourcePathResolver {
   public static final String INVOICES = "invoices";
   public static final String INVOICE_LINES = "invoiceLines";
   public static final String ORDER_LINES = "orderLines";
+  public static final String ORDER_INVOICE_RELATIONSHIP = "orderInvoiceRelationship";
   public static final String VOUCHER_LINES = "voucherLines";
   public static final String VOUCHER_NUMBER_START = "voucherNumberStart";
   public static final String VOUCHER_NUMBER_STORAGE = "voucherNumberGet";
@@ -56,6 +57,7 @@ public class ResourcePathResolver {
     apis.put(INVOICE_LINES, "/invoice-storage/invoice-lines");
     apis.put(INVOICE_LINE_NUMBER, "/invoice-storage/invoice-line-number");
     apis.put(ORDER_LINES, "/orders/order-lines");
+    apis.put(ORDER_INVOICE_RELATIONSHIP, "/orders-storage/order-invoice-relns");
     apis.put(FOLIO_INVOICE_NUMBER, "/invoice-storage/invoice-number");
     apis.put(VOUCHERS_STORAGE, "/voucher-storage/vouchers");
     apis.put(VOUCHER_LINES, "/voucher-storage/voucher-lines");

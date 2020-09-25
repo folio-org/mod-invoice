@@ -11,7 +11,10 @@ import static org.folio.invoices.utils.ResourcePathResolver.FINANCE_TRANSACTIONS
 import static org.folio.invoices.utils.ResourcePathResolver.FISCAL_YEARS;
 import static org.folio.invoices.utils.ResourcePathResolver.FUNDS;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICES;
+import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_LINES;
 import static org.folio.invoices.utils.ResourcePathResolver.LEDGERS;
+import static org.folio.invoices.utils.ResourcePathResolver.ORDER_INVOICE_RELATIONSHIP;
+import static org.folio.invoices.utils.ResourcePathResolver.ORDER_LINES;
 import static org.folio.invoices.utils.ResourcePathResolver.TENANT_CONFIGURATION_ENTRIES;
 import static org.folio.invoices.utils.ResourcePathResolver.VOUCHERS_STORAGE;
 import static org.folio.invoices.utils.ResourcePathResolver.VOUCHER_NUMBER_STORAGE;
@@ -113,5 +116,19 @@ public class RestClientsConfiguration {
   @Bean
   RestClient activeBudgetRestClient() {
     return new RestClient(resourcesPath(CURRENT_BUDGET), "?status=Active");
+  }
+
+  @Bean
+  RestClient orderLinesRestClient() {
+    return new RestClient(resourcesPath(ORDER_LINES));
+  }
+
+  @Bean
+  RestClient orderInvoiceRelationshipRestClient() {
+    return new RestClient(resourcesPath(ORDER_INVOICE_RELATIONSHIP));
+  }
+  @Bean
+  RestClient invoiceLineRestClient() {
+    return new RestClient(resourcesPath(INVOICE_LINES));
   }
 }

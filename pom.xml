@@ -231,6 +231,21 @@
             </configuration>
           </execution>
           <execution>
+            <id>orders-storage</id>
+            <goals>
+              <goal>generate</goal>
+            </goals>
+            <configuration>
+              <includes>
+                <include>order_invoice_relationship.json</include>
+                <include>order_invoice_relationship_collection.json</include>
+              </includes>
+              <sourceDirectory>${basedir}/ramls/acq-models/mod-orders-storage/schemas</sourceDirectory>
+              <targetPackage>org.folio.rest.acq.model.orders</targetPackage>
+              <generateBuilders>true</generateBuilders>
+            </configuration>
+          </execution>
+          <execution>
             <id>mod-finance</id>
             <goals>
               <goal>generate</goal>

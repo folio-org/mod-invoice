@@ -98,6 +98,7 @@ import org.folio.rest.acq.model.finance.LedgerCollection;
 import org.folio.rest.acq.model.finance.Transaction;
 import org.folio.rest.acq.model.finance.TransactionCollection;
 import org.folio.rest.acq.model.orders.CompositePoLine;
+import org.folio.rest.acq.model.orders.OrderInvoiceRelationshipCollection;
 import org.folio.rest.acq.model.units.AcquisitionsUnit;
 import org.folio.rest.acq.model.units.AcquisitionsUnitCollection;
 import org.folio.rest.acq.model.units.AcquisitionsUnitMembershipCollection;
@@ -362,6 +363,7 @@ public class MockServer {
     router.route(HttpMethod.POST, resourcesPath(FINANCE_CREDITS)).handler(ctx -> handlePostEntry(ctx, Transaction.class, FINANCE_CREDITS));
     router.route(HttpMethod.POST, resourcesPath(BATCH_VOUCHER_EXPORTS_STORAGE)).handler(ctx -> handlePost(ctx, BatchVoucherExport.class, BATCH_VOUCHER_EXPORTS_STORAGE, false));
     router.route(HttpMethod.POST, resourcesPath(FINANCE_PENDING_PAYMENTS)).handler(this::handlePostPendingPayment);
+    router.route(HttpMethod.POST, resourcesPath(ORDER_INVOICE_RELATIONSHIP)).handler(this::handlePostOrderInvoiceRelations);
 
     router.route(HttpMethod.GET, resourcesPath(INVOICES)).handler(this::handleGetInvoices);
     router.route(HttpMethod.GET, resourcesPath(INVOICE_LINES)).handler(this::handleGetInvoiceLines);
@@ -372,6 +374,7 @@ public class MockServer {
     router.route(HttpMethod.GET, resourceByIdPath(VOUCHER_LINES)).handler(this::handleGetVoucherLineById);
     router.route(HttpMethod.GET, resourceByIdPath(VOUCHERS_STORAGE)).handler(this::handleGetVoucherById);
     router.route(HttpMethod.GET, resourceByIdPath(ORDER_LINES)).handler(this::handleGetPoLineById);
+    router.route(HttpMethod.GET, resourcesPath(ORDER_INVOICE_RELATIONSHIP)).handler(this::handleGetOrderInvoiceRelations);
     router.route(HttpMethod.GET, resourcesPath(VOUCHER_NUMBER_START)).handler(this::handleGetSequence);
     router.route(HttpMethod.GET, resourcesPath(VOUCHERS_STORAGE)).handler(this::handleGetVouchers);
     router.route(HttpMethod.GET, resourcesPath(VOUCHER_LINES)).handler(this::handleGetVoucherLines);
@@ -571,6 +574,15 @@ public class MockServer {
       fiscalYear.setPeriodEnd(Date.from(Instant.now().plus(365, DAYS)));
       serverResponse(ctx, 200, APPLICATION_JSON, JsonObject.mapFrom(fiscalYear).encodePrettily());
     }
+  }
+
+  private void handlePostOrderInvoiceRelations(RoutingContext ctx) {
+    logger.info("handlePostOrderInvoiceRelations got: " + ctx.request().path());
+    String tenant = ctx.request().getHeader(OKAPI_HEADER_TENANT);
+
+    JsonObject body = ctx.getBodyAsJson();
+    addServerRqRsData(HttpMethod.POST, ORDER_INVOICE_RELATIONSHIP, body);
+    serverResponse(ctx, 201, APPLICATION_JSON, body.encodePrettily());
   }
 
   private void handlePostPendingPayment(RoutingContext ctx) {
@@ -864,6 +876,12 @@ public class MockServer {
 
     serverResponse(ctx, 201, APPLICATION_JSON, jsonObject.encodePrettily());
   }
+
+  private void handleGetOrderInvoiceRelations(RoutingContext ctx) {
+    OrderInvoiceRelationshipCollection collection = new OrderInvoiceRelationshipCollection().withTotalRecords(0);
+    serverResponse(ctx, 200, APPLICATION_JSON, JsonObject.mapFrom(collection).encode());
+  }
+
 
   private void handleGetVoucherLines(RoutingContext ctx) {
     logger.info("handleGetVoucherLines got: {}?{}", ctx.request().path(), ctx.request().query());
