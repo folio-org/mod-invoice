@@ -27,6 +27,7 @@ import org.apache.commons.collections4.CollectionUtils;
 import org.folio.invoices.events.handlers.MessageAddress;
 import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.invoices.utils.HelperUtils;
+import org.folio.rest.core.models.RequestContext;
 import org.folio.rest.jaxrs.model.Config;
 import org.folio.rest.jaxrs.model.Configs;
 import org.folio.rest.tools.client.interfaces.HttpClientInterface;
@@ -286,5 +287,8 @@ public abstract class AbstractHelper {
     return okapiHeaders.get(OKAPI_USERID_HEADER);
   }
 
+  protected RequestContext buildRequestContext() {
+    return new RequestContext(ctx, okapiHeaders);
+  }
 
 }

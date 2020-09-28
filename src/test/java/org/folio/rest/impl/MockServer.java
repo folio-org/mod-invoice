@@ -98,6 +98,8 @@ import org.folio.rest.acq.model.finance.LedgerCollection;
 import org.folio.rest.acq.model.finance.Transaction;
 import org.folio.rest.acq.model.finance.TransactionCollection;
 import org.folio.rest.acq.model.orders.CompositePoLine;
+import org.folio.rest.acq.model.orders.CompositePurchaseOrder;
+import org.folio.rest.acq.model.orders.OrderInvoiceRelationshipCollection;
 import org.folio.rest.acq.model.units.AcquisitionsUnit;
 import org.folio.rest.acq.model.units.AcquisitionsUnitCollection;
 import org.folio.rest.acq.model.units.AcquisitionsUnitMembershipCollection;
@@ -184,6 +186,7 @@ public class MockServer {
   private static final String ACQUISITIONS_UNITS_MOCK_DATA_PATH = BASE_MOCK_DATA_PATH + "acquisitionUnits";
   static final String ACQUISITIONS_UNITS_COLLECTION = ACQUISITIONS_UNITS_MOCK_DATA_PATH + "/units.json";
   static final String ACQUISITIONS_MEMBERSHIPS_COLLECTION = ACQUISITIONS_UNITS_MOCK_DATA_PATH + "/memberships.json";
+  private static final String ORDER_MOCK_DATA_PATH = BASE_MOCK_DATA_PATH + "compositeOrders/";
   private static final String PO_LINES_MOCK_DATA_PATH = BASE_MOCK_DATA_PATH + "poLines/";
   private static final String ID_PATH_PARAM = "/:" + AbstractHelper.ID;
   private static final String VALUE_PATH_PARAM = "/:value";
@@ -362,6 +365,7 @@ public class MockServer {
     router.route(HttpMethod.POST, resourcesPath(FINANCE_CREDITS)).handler(ctx -> handlePostEntry(ctx, Transaction.class, FINANCE_CREDITS));
     router.route(HttpMethod.POST, resourcesPath(BATCH_VOUCHER_EXPORTS_STORAGE)).handler(ctx -> handlePost(ctx, BatchVoucherExport.class, BATCH_VOUCHER_EXPORTS_STORAGE, false));
     router.route(HttpMethod.POST, resourcesPath(FINANCE_PENDING_PAYMENTS)).handler(this::handlePostPendingPayment);
+    router.route(HttpMethod.POST, resourcesPath(ORDER_INVOICE_RELATIONSHIP)).handler(this::handlePostOrderInvoiceRelations);
 
     router.route(HttpMethod.GET, resourcesPath(INVOICES)).handler(this::handleGetInvoices);
     router.route(HttpMethod.GET, resourcesPath(INVOICE_LINES)).handler(this::handleGetInvoiceLines);
@@ -371,7 +375,9 @@ public class MockServer {
     router.route(HttpMethod.GET, resourcesPath(INVOICE_LINE_NUMBER)).handler(this::handleGetInvoiceLineNumber);
     router.route(HttpMethod.GET, resourceByIdPath(VOUCHER_LINES)).handler(this::handleGetVoucherLineById);
     router.route(HttpMethod.GET, resourceByIdPath(VOUCHERS_STORAGE)).handler(this::handleGetVoucherById);
+    router.route(HttpMethod.GET, resourceByIdPath(COMPOSITE_ORDER)).handler(this::handleGetOrderById);
     router.route(HttpMethod.GET, resourceByIdPath(ORDER_LINES)).handler(this::handleGetPoLineById);
+    router.route(HttpMethod.GET, resourcesPath(ORDER_INVOICE_RELATIONSHIP)).handler(this::handleGetOrderInvoiceRelations);
     router.route(HttpMethod.GET, resourcesPath(VOUCHER_NUMBER_START)).handler(this::handleGetSequence);
     router.route(HttpMethod.GET, resourcesPath(VOUCHERS_STORAGE)).handler(this::handleGetVouchers);
     router.route(HttpMethod.GET, resourcesPath(VOUCHER_LINES)).handler(this::handleGetVoucherLines);
@@ -571,6 +577,15 @@ public class MockServer {
       fiscalYear.setPeriodEnd(Date.from(Instant.now().plus(365, DAYS)));
       serverResponse(ctx, 200, APPLICATION_JSON, JsonObject.mapFrom(fiscalYear).encodePrettily());
     }
+  }
+
+  private void handlePostOrderInvoiceRelations(RoutingContext ctx) {
+    logger.info("handlePostOrderInvoiceRelations got: " + ctx.request().path());
+    String tenant = ctx.request().getHeader(OKAPI_HEADER_TENANT);
+
+    JsonObject body = ctx.getBodyAsJson();
+    addServerRqRsData(HttpMethod.POST, ORDER_INVOICE_RELATIONSHIP, body);
+    serverResponse(ctx, 201, APPLICATION_JSON, body.encodePrettily());
   }
 
   private void handlePostPendingPayment(RoutingContext ctx) {
@@ -864,6 +879,12 @@ public class MockServer {
 
     serverResponse(ctx, 201, APPLICATION_JSON, jsonObject.encodePrettily());
   }
+
+  private void handleGetOrderInvoiceRelations(RoutingContext ctx) {
+    OrderInvoiceRelationshipCollection collection = new OrderInvoiceRelationshipCollection().withTotalRecords(0);
+    serverResponse(ctx, 200, APPLICATION_JSON, JsonObject.mapFrom(collection).encode());
+  }
+
 
   private void handleGetVoucherLines(RoutingContext ctx) {
     logger.info("handleGetVoucherLines got: {}?{}", ctx.request().path(), ctx.request().query());
@@ -1170,6 +1191,35 @@ public class MockServer {
       serverResponse(ctx, 500, APPLICATION_JSON, Response.Status.INTERNAL_SERVER_ERROR.getReasonPhrase());
     } else {
       ctx.response().setStatusCode(204).end();
+    }
+  }
+
+  private void handleGetOrderById(RoutingContext ctx) {
+    logger.info("got: " + ctx.request().path());
+    String id = ctx.request().getParam(AbstractHelper.ID);
+    logger.info("id: " + id);
+
+    addServerRqRsData(HttpMethod.GET, COMPOSITE_ORDER, new JsonObject().put(AbstractHelper.ID, id));
+
+    Supplier<JsonObject> getFromFile = () -> {
+      String filePath = String.format(MOCK_DATA_PATH_PATTERN, ORDER_MOCK_DATA_PATH, id);
+      try {
+        return new JsonObject(getMockData(filePath));
+      } catch (IOException e) {
+        return null;
+      }
+    };
+
+    JsonObject order = getMockEntry(COMPOSITE_ORDER, id).orElseGet(getFromFile);
+    if (order == null) {
+      ctx.response().setStatusCode(404).end(id);
+    } else {
+      // validate content against schema
+      CompositePurchaseOrder orderSchema = order.mapTo(CompositePurchaseOrder.class);
+      orderSchema.setId(id);
+      order = JsonObject.mapFrom(orderSchema);
+
+      serverResponse(ctx, 200, APPLICATION_JSON, order.encodePrettily());
     }
   }
 

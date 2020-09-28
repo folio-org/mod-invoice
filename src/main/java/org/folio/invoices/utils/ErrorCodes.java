@@ -43,7 +43,9 @@ public enum ErrorCodes {
   BUDGET_NOT_FOUND("budgetNotFoundByFundId", "Budget not found by fundId"),
   LEDGER_NOT_FOUND("ledgerNotFound", "Ledger not found"),
   FUND_CANNOT_BE_PAID("fundCannotBePaid", "Fund cannot be paid due to restrictions"),
-  INACTIVE_EXPENSE_CLASS("inactiveExpenseClass", "Expense class is Inactive");
+  INACTIVE_EXPENSE_CLASS("inactiveExpenseClass", "Expense class is Inactive"),
+  ORDER_INVOICE_RELATION_CREATE_FAILED("orderInvoiceRelationCreateFailed", "Create of order invoice relation has been failed"),
+  INVOICE_LINE_NOT_FOUND("invoiceLineNotFound", "Invoice line not found");
 
   private final String code;
   private final String description;

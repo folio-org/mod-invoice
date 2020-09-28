@@ -3,6 +3,7 @@ package org.folio.rest.impl;
 import static java.util.stream.Collectors.toList;
 import static org.apache.commons.lang3.StringUtils.isEmpty;
 import static org.folio.invoices.utils.ErrorCodes.CANNOT_DELETE_INVOICE_LINE;
+import static org.folio.invoices.utils.ErrorCodes.ORDER_INVOICE_RELATION_CREATE_FAILED;
 import static org.folio.invoices.utils.ErrorCodes.PROHIBITED_INVOICE_LINE_CREATION;
 import static org.folio.invoices.utils.HelperUtils.INVOICE;
 import static org.folio.invoices.utils.HelperUtils.INVOICE_ID;
@@ -26,6 +27,7 @@ import static org.folio.invoices.utils.ResourcePathResolver.resourceByIdPath;
 import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
 import static org.folio.services.voucher.VoucherRetrieveService.QUERY_BY_INVOICE_ID;
 
+import io.vertx.core.Vertx;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -38,7 +40,6 @@ import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.invoices.utils.InvoiceRestrictionsUtil;
 import org.folio.invoices.utils.ProtectedOperationType;
 import org.folio.rest.core.RestClient;
-import org.folio.rest.core.models.RequestContext;
 import org.folio.rest.jaxrs.model.Adjustment;
 import org.folio.rest.jaxrs.model.Error;
 import org.folio.rest.jaxrs.model.Invoice;
@@ -48,11 +49,14 @@ import org.folio.rest.jaxrs.model.Parameter;
 import org.folio.rest.jaxrs.model.SequenceNumber;
 import org.folio.rest.tools.client.interfaces.HttpClientInterface;
 import org.folio.services.adjusment.AdjustmentsService;
+import org.folio.services.order.OrderService;
 import org.folio.services.validator.InvoiceLineValidator;
 
 import io.vertx.core.Context;
 import io.vertx.core.json.JsonObject;
 import me.escoffier.vertx.completablefuture.VertxCompletableFuture;
+import org.folio.spring.SpringContextUtil;
+import org.springframework.beans.factory.annotation.Autowired;
 
 public class InvoiceLineHelper extends AbstractHelper {
 
@@ -65,8 +69,12 @@ public class InvoiceLineHelper extends AbstractHelper {
   private InvoiceLineValidator validator;
   private RestClient restClient;
 
+  @Autowired
+  private OrderService orderService;
+
   public InvoiceLineHelper(Map<String, String> okapiHeaders, Context ctx, String lang) {
     this(getHttpClient(okapiHeaders), okapiHeaders, ctx, lang);
+    SpringContextUtil.autowireDependencies(this, Vertx.currentContext());
   }
 
   public InvoiceLineHelper(HttpClientInterface httpClient, Map<String, String> okapiHeaders, Context ctx, String lang) {
@@ -258,7 +266,14 @@ public class InvoiceLineHelper extends AbstractHelper {
       .thenCompose(invoice -> protectionHelper.isOperationRestricted(invoice.getAcqUnitIds(), DELETE)
         .thenApply(vVoid -> invoice))
       .thenCompose(InvoiceRestrictionsUtil::checkIfInvoiceDeletionPermitted)
-      .thenCompose(invoice -> handleDeleteRequest(resourceByIdPath(INVOICE_LINES, lineId, lang), httpClient, ctx, okapiHeaders, logger)
+      .thenCompose(invoice -> orderService.deleteOrderInvoiceRelationIfLastInvoice(lineId, buildRequestContext())
+        .exceptionally(throwable -> {
+          logger.error("Can't delete Order Invoice relation for lineId: ", lineId);
+          List<Parameter> parameters = Collections.singletonList(new Parameter().withKey("lineId").withValue(lineId));
+          Error error = CANNOT_DELETE_INVOICE_LINE.toError().withParameters(parameters);
+          throw new HttpException(404, error);
+        })
+        .thenCompose(v -> handleDeleteRequest(resourceByIdPath(INVOICE_LINES, lineId, lang), httpClient, ctx, okapiHeaders, logger))
         .thenRun(() -> updateInvoiceAndLinesAsync(invoice)));
   }
 
@@ -293,7 +308,12 @@ public class InvoiceLineHelper extends AbstractHelper {
       .thenApply(this::checkIfInvoiceLineCreationAllowed)
       .thenCompose(invoice -> protectionHelper.isOperationRestricted(invoice.getAcqUnitIds(), ProtectedOperationType.CREATE)
         .thenApply(v -> invoice))
-      .thenCompose(invoice -> createInvoiceLine(invoiceLine, invoice));
+      .thenCompose(invoice -> createInvoiceLine(invoiceLine, invoice)
+        .thenCompose(line -> orderService.createInvoiceOrderRelation(line, buildRequestContext())
+          .exceptionally(throwable -> {
+            throw new HttpException(500, ORDER_INVOICE_RELATION_CREATE_FAILED.toError());
+          })
+          .thenApply(v -> line)));
   }
 
   private Invoice checkIfInvoiceLineCreationAllowed(Invoice invoice) {
@@ -324,7 +344,7 @@ public class InvoiceLineHelper extends AbstractHelper {
       // First the prorated adjustments should be applied. In case there is any, it might require to update other lines
       .thenCompose(ok -> applyProratedAdjustments(invoiceLine, invoice).thenCompose(affectedLines -> {
         calculateInvoiceLineTotals(invoiceLine, invoice);
-        return restClient.post(invoiceLine, new RequestContext(ctx, okapiHeaders), InvoiceLine.class)
+        return restClient.post(invoiceLine, buildRequestContext(), InvoiceLine.class)
                          .thenApply(createdInvoiceLine -> {
                             updateInvoiceAndAffectedLinesAsync(invoice, affectedLines);
                             return invoiceLine.withId(createdInvoiceLine.getId());
