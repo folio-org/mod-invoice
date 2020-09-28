@@ -150,8 +150,8 @@ public class ServicesConfiguration {
   }
 
   @Bean
-  OrderService orderService(RestClient orderLinesRestClient, RestClient orderInvoiceRelationshipRestClient, InvoiceLineService invoiceLineService) {
-    return new OrderService(orderLinesRestClient, orderInvoiceRelationshipRestClient, invoiceLineService);
+  OrderService orderService(RestClient orderRestClient, RestClient orderLinesRestClient, RestClient orderInvoiceRelationshipRestClient, InvoiceLineService invoiceLineService) {
+    return new OrderService(orderRestClient, orderLinesRestClient, orderInvoiceRelationshipRestClient, invoiceLineService);
   }
 
   @Bean

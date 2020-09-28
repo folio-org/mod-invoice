@@ -1,6 +1,7 @@
 package org.folio.config;
 
 import static org.folio.invoices.utils.ResourcePathResolver.BUDGET_EXPENSE_CLASSES;
+import static org.folio.invoices.utils.ResourcePathResolver.COMPOSITE_ORDER;
 import static org.folio.invoices.utils.ResourcePathResolver.CURRENT_BUDGET;
 import static org.folio.invoices.utils.ResourcePathResolver.EXPENSE_CLASSES_URL;
 import static org.folio.invoices.utils.ResourcePathResolver.FINANCE_CREDITS;
@@ -116,6 +117,11 @@ public class RestClientsConfiguration {
   @Bean
   RestClient activeBudgetRestClient() {
     return new RestClient(resourcesPath(CURRENT_BUDGET), "?status=Active");
+  }
+
+  @Bean
+  RestClient orderRestClient() {
+    return new RestClient(resourcesPath(COMPOSITE_ORDER));
   }
 
   @Bean

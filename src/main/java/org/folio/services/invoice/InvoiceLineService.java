@@ -1,5 +1,6 @@
 package org.folio.services.invoice;
 
+import static java.util.stream.Collectors.toList;
 import static org.folio.invoices.utils.ErrorCodes.INVOICE_LINE_NOT_FOUND;
 
 import java.util.Collections;
@@ -14,16 +15,12 @@ import org.folio.rest.jaxrs.model.Parameter;
 
 public class InvoiceLineService {
 
+  private static final String INVOICE_ID_QUERY =  "invoiceId==%s";
+
   final RestClient invoiceLineRestClient;
 
   public InvoiceLineService(RestClient invoiceLineRestClient) {
     this.invoiceLineRestClient = invoiceLineRestClient;
-  }
-
-  public CompletableFuture<Boolean> isInvoiceLineIsLastForOrder(InvoiceLine invoiceLine, RequestContext requestContext) {
-    String query = String.format("poLineId==%s and invoiceId==%s", invoiceLine.getPoLineId(), invoiceLine.getInvoiceId());
-    return invoiceLineRestClient.get(query,0 , 100, requestContext, InvoiceLineCollection.class)
-      .thenApply(line -> line.getTotalRecords() == 1);
   }
 
   public CompletableFuture<InvoiceLine> getInvoiceLineById(String invoiceLineId, RequestContext requestContext) {
@@ -32,5 +29,16 @@ public class InvoiceLineService {
         List<Parameter> parameters = Collections.singletonList(new Parameter().withKey("invoiceLineId").withValue(invoiceLineId));
         throw new HttpException(404, INVOICE_LINE_NOT_FOUND.toError().withParameters(parameters));
       });
+  }
+
+  public CompletableFuture<InvoiceLineCollection> getInvoiceLinesByInvoiceId(String invoiceId, RequestContext requestContext) {
+    String query = String.format(INVOICE_ID_QUERY, invoiceId);
+    return invoiceLineRestClient.get(query, 0, 100, requestContext, InvoiceLineCollection.class);
+  }
+
+  public CompletableFuture<List<InvoiceLine>> getInvoiceLinesRelatedForOrder(List<String> orderPoLineIds, String invoiceId, RequestContext requestContext) {
+    return getInvoiceLinesByInvoiceId(invoiceId, requestContext)
+      .thenApply(invoiceLines -> invoiceLines.getInvoiceLines().stream()
+        .filter(invoiceLine -> orderPoLineIds.contains(invoiceLine.getPoLineId())).collect(toList()));
   }
 }

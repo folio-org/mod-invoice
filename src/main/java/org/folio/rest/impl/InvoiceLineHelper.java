@@ -267,6 +267,12 @@ public class InvoiceLineHelper extends AbstractHelper {
         .thenApply(vVoid -> invoice))
       .thenCompose(InvoiceRestrictionsUtil::checkIfInvoiceDeletionPermitted)
       .thenCompose(invoice -> orderService.deleteOrderInvoiceRelationIfLastInvoiceByInvoiceLineId(lineId, buildRequestContext())
+        .exceptionally(throwable -> {
+          logger.error("Can't delete Order Invoice relation for lineId: ", lineId);
+          List<Parameter> parameters = Collections.singletonList(new Parameter().withKey("lineId").withValue(lineId));
+          Error error = CANNOT_DELETE_INVOICE_LINE.toError().withParameters(parameters);
+          throw new HttpException(404, error);
+        })
         .thenCompose(v -> handleDeleteRequest(resourceByIdPath(INVOICE_LINES, lineId, lang), httpClient, ctx, okapiHeaders, logger))
         .thenRun(() -> updateInvoiceAndLinesAsync(invoice)));
   }
