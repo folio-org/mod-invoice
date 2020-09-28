@@ -357,7 +357,7 @@ public class InvoiceHelper extends AbstractHelper {
           return handleInvoiceStatusTransition(invoice, invoiceFromStorage, updatedInvoiceLines)
             .thenAccept(aVoid -> updateInvoiceLinesStatus(invoice, updatedInvoiceLines))
             .thenApply(aVoid -> filterUpdatedLines(invoiceLines, updatedInvoiceLines))
-            .thenCompose(invoiceLineHelper::persistInvoiceLines);
+            .thenCompose(lines -> invoiceLineHelper.persistInvoiceLines(lines));
         });
     });
   }
