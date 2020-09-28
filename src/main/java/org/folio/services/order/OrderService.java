@@ -36,15 +36,15 @@ public class OrderService {
   }
 
   public CompletableFuture<List<CompositePoLine>> getOrderPoLines(String orderId, RequestContext requestContext) {
-    return getOrderById(orderId, requestContext)
+    return getOrder(orderId, requestContext)
       .thenApply(CompositePurchaseOrder::getCompositePoLines);
   }
 
-  private CompletableFuture<CompositePurchaseOrder> getOrderById(String orderId, RequestContext requestContext) {
+  private CompletableFuture<CompositePurchaseOrder> getOrder(String orderId, RequestContext requestContext) {
     return orderRestClient.getById(orderId, requestContext, CompositePurchaseOrder.class);
   }
 
-  public CompletableFuture<CompositePoLine> getPoLineById(String poLineId, RequestContext requestContext) {
+  public CompletableFuture<CompositePoLine> getPoLine(String poLineId, RequestContext requestContext) {
     return orderLinesRestClient.getById(poLineId, requestContext, CompositePoLine.class)
       .exceptionally(throwable -> {
         List<Parameter> parameters = Collections.singletonList(new Parameter().withKey("poLineId").withValue(poLineId));
@@ -54,7 +54,7 @@ public class OrderService {
 
   public CompletableFuture<Void> createInvoiceOrderRelation(InvoiceLine invoiceLine, RequestContext requestContext) {
     if (invoiceLine.getPoLineId() == null) return CompletableFuture.completedFuture(null);
-    return getPoLineById(invoiceLine.getPoLineId(), requestContext)
+    return getPoLine(invoiceLine.getPoLineId(), requestContext)
       .thenCompose(poLine -> getOrderInvoiceRelationship(poLine.getPurchaseOrderId(), invoiceLine.getInvoiceId(), requestContext)
         .thenCompose(relationships -> {
           if (relationships.getTotalRecords() == 0) {
@@ -77,19 +77,19 @@ public class OrderService {
     return orderInvoiceRelationshipRestClient.post(relationship, requestContext, OrderInvoiceRelationship.class);
   }
 
-  public CompletableFuture<Void> deleteOrderInvoiceRelationshipById(String id, RequestContext requestContext) {
+  public CompletableFuture<Void> deleteOrderInvoiceRelationship(String id, RequestContext requestContext) {
     return orderInvoiceRelationshipRestClient.delete(id, requestContext);
   }
 
-  public CompletableFuture<Void> deleteOrderInvoiceRelationshipByInvoiceIdAndOrderId(String invoiceId, String poLineId, RequestContext requestContext) {
-    return getPoLineById(poLineId, requestContext)
+  public CompletableFuture<Void> deleteOrderInvoiceRelationship(String invoiceId, String poLineId, RequestContext requestContext) {
+    return getPoLine(poLineId, requestContext)
       .thenCompose(poLine -> getOrderInvoiceRelationship(poLine.getPurchaseOrderId(), invoiceId, requestContext)
         .thenApply(relation -> relation.getOrderInvoiceRelationships().get(0).getId())
-        .thenCompose(id -> deleteOrderInvoiceRelationshipById(id, requestContext)));
+        .thenCompose(id -> deleteOrderInvoiceRelationship(id, requestContext)));
   }
 
-  public CompletableFuture<Boolean> isInvoiceLineIsLastForOrder(InvoiceLine invoiceLine, RequestContext requestContext) {
-    return getPoLineById(invoiceLine.getPoLineId(), requestContext)
+  public CompletableFuture<Boolean> isInvoiceLineLastForOrder(InvoiceLine invoiceLine, RequestContext requestContext) {
+    return getPoLine(invoiceLine.getPoLineId(), requestContext)
       .thenApply(CompositePoLine::getPurchaseOrderId)
       .thenCompose(orderId -> getOrderPoLines(orderId, requestContext)
         .thenApply(compositePoLines -> compositePoLines.stream()
@@ -98,13 +98,13 @@ public class OrderService {
       .thenApply(invoiceLines -> invoiceLines.size() == 1);
   }
 
-  public CompletableFuture<Void> deleteOrderInvoiceRelationIfLastInvoiceByInvoiceLineId(String invoiceLineId, RequestContext requestContext) {
-    return invoiceLineService.getInvoiceLineById(invoiceLineId, requestContext)
+  public CompletableFuture<Void> deleteOrderInvoiceRelationIfLastInvoice(String invoiceLineId, RequestContext requestContext) {
+    return invoiceLineService.getInvoiceLine(invoiceLineId, requestContext)
       .thenCompose(invoiceLine -> {
         if (invoiceLine.getPoLineId() == null) return CompletableFuture.completedFuture(null);
-        return isInvoiceLineIsLastForOrder(invoiceLine, requestContext)
+        return isInvoiceLineLastForOrder(invoiceLine, requestContext)
           .thenCompose(isLastOrder -> isLastOrder
-            ? deleteOrderInvoiceRelationshipByInvoiceIdAndOrderId(invoiceLine.getInvoiceId(), invoiceLine.getPoLineId(), requestContext)
+            ? deleteOrderInvoiceRelationship(invoiceLine.getInvoiceId(), invoiceLine.getPoLineId(), requestContext)
             : CompletableFuture.completedFuture(null));
       });
   }

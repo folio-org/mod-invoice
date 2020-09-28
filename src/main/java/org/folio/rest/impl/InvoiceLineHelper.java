@@ -266,7 +266,7 @@ public class InvoiceLineHelper extends AbstractHelper {
       .thenCompose(invoice -> protectionHelper.isOperationRestricted(invoice.getAcqUnitIds(), DELETE)
         .thenApply(vVoid -> invoice))
       .thenCompose(InvoiceRestrictionsUtil::checkIfInvoiceDeletionPermitted)
-      .thenCompose(invoice -> orderService.deleteOrderInvoiceRelationIfLastInvoiceByInvoiceLineId(lineId, buildRequestContext())
+      .thenCompose(invoice -> orderService.deleteOrderInvoiceRelationIfLastInvoice(lineId, buildRequestContext())
         .exceptionally(throwable -> {
           logger.error("Can't delete Order Invoice relation for lineId: ", lineId);
           List<Parameter> parameters = Collections.singletonList(new Parameter().withKey("lineId").withValue(lineId));

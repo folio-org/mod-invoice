@@ -23,7 +23,7 @@ public class InvoiceLineService {
     this.invoiceLineRestClient = invoiceLineRestClient;
   }
 
-  public CompletableFuture<InvoiceLine> getInvoiceLineById(String invoiceLineId, RequestContext requestContext) {
+  public CompletableFuture<InvoiceLine> getInvoiceLine(String invoiceLineId, RequestContext requestContext) {
     return invoiceLineRestClient.getById(invoiceLineId, requestContext, InvoiceLine.class)
       .exceptionally(throwable -> {
         List<Parameter> parameters = Collections.singletonList(new Parameter().withKey("invoiceLineId").withValue(invoiceLineId));
@@ -31,13 +31,13 @@ public class InvoiceLineService {
       });
   }
 
-  public CompletableFuture<InvoiceLineCollection> getInvoiceLinesByInvoiceId(String invoiceId, RequestContext requestContext) {
+  public CompletableFuture<InvoiceLineCollection> getInvoiceLines(String invoiceId, RequestContext requestContext) {
     String query = String.format(INVOICE_ID_QUERY, invoiceId);
     return invoiceLineRestClient.get(query, 0, 100, requestContext, InvoiceLineCollection.class);
   }
 
   public CompletableFuture<List<InvoiceLine>> getInvoiceLinesRelatedForOrder(List<String> orderPoLineIds, String invoiceId, RequestContext requestContext) {
-    return getInvoiceLinesByInvoiceId(invoiceId, requestContext)
+    return getInvoiceLines(invoiceId, requestContext)
       .thenApply(invoiceLines -> invoiceLines.getInvoiceLines().stream()
         .filter(invoiceLine -> orderPoLineIds.contains(invoiceLine.getPoLineId())).collect(toList()));
   }
