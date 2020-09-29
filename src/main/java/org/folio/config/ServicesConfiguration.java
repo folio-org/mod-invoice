@@ -10,6 +10,8 @@ import org.folio.services.finance.CurrentFiscalYearService;
 import org.folio.services.finance.FiscalYearService;
 import org.folio.services.finance.FundService;
 import org.folio.services.finance.LedgerService;
+import org.folio.services.invoice.InvoiceLineService;
+import org.folio.services.order.OrderService;
 import org.folio.services.transaction.BaseTransactionService;
 import org.folio.services.transaction.CreditCreateUpdateService;
 import org.folio.services.transaction.EncumbranceService;
@@ -145,5 +147,15 @@ public class ServicesConfiguration {
   @Bean
   BudgetExpenseClassService budgetExpenseClassService(RestClient budgetExpenseClassRestClient) {
     return new BudgetExpenseClassService(budgetExpenseClassRestClient);
+  }
+
+  @Bean
+  OrderService orderService(RestClient orderRestClient, RestClient orderLinesRestClient, RestClient orderInvoiceRelationshipRestClient, InvoiceLineService invoiceLineService) {
+    return new OrderService(orderRestClient, orderLinesRestClient, orderInvoiceRelationshipRestClient, invoiceLineService);
+  }
+
+  @Bean
+  InvoiceLineService invoiceLineService(RestClient invoiceLineRestClient) {
+    return new InvoiceLineService(invoiceLineRestClient);
   }
 }
