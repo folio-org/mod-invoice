@@ -726,7 +726,7 @@ public class InvoiceHelper extends AbstractHelper {
            String expenseClassExtAccountNo = fundDistrs.getKey();
            FundExtNoExpenseClassExtNoPair key = new FundExtNoExpenseClassExtNoPair(fundExternalAccountNo, expenseClassExtAccountNo);
            List<FundDistribution> fundDistributions = fundDistrs.getValue();
-           fundDistributions.forEach(fundDistribution -> fundDistribution.setCode(fund.getCode()));
+           updateFundDistributionsWithExpenseClassCode(fund, fundDistributions);
            groupedFundDistribution.put(key, fundDistributions);
          }
       }
@@ -746,11 +746,30 @@ public class InvoiceHelper extends AbstractHelper {
     return expenseClassRetrieveService.getExpenseClasses(expenseClassIds, new RequestContext(ctx, okapiHeaders))
                                .thenApply(expenseClasses -> expenseClasses.stream().collect(toMap(ExpenseClass::getId, Function.identity())))
                                .thenApply(expenseClassByIds ->
-                                 fundDistrs.stream().collect(
-                                   groupingBy(FundDistribution::getFundId,
+                                 fundDistrs.stream()
+                                   .map(fd -> updateWithExpenseClassCode(fd, expenseClassByIds))
+                                   .collect(groupingBy(FundDistribution::getFundId,
                                      groupingBy(getExpenseClassExtNo(expenseClassByIds)))
                                  )
                                );
+  }
+
+  private FundDistribution updateWithExpenseClassCode(FundDistribution fundDistribution, Map<String, ExpenseClass> expenseClassByIds) {
+    if (fundDistribution.getExpenseClassId() != null && !expenseClassByIds.isEmpty()) {
+      String expenseClassName = expenseClassByIds.get(fundDistribution.getExpenseClassId()).getCode();
+      fundDistribution.setCode(expenseClassName);
+    } else {
+      fundDistribution.setCode("");
+    }
+    return fundDistribution;
+  }
+
+  private void updateFundDistributionsWithExpenseClassCode(Fund fund, List<FundDistribution> fundDistributions) {
+    fundDistributions.forEach(fundDistribution -> {
+      String fundCode = isEmpty(fundDistribution.getCode()) ? fund.getCode() : fund.getCode() + "-" + fundDistribution.getCode();
+      fundDistribution
+        .setCode(fundCode);
+    });
   }
 
   private Function<FundDistribution, String> getExpenseClassExtNo(Map<String, ExpenseClass> expenseClassByIds) {
