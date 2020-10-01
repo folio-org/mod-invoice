@@ -747,18 +747,19 @@ public class InvoiceHelper extends AbstractHelper {
                                .thenApply(expenseClasses -> expenseClasses.stream().collect(toMap(ExpenseClass::getId, Function.identity())))
                                .thenApply(expenseClassByIds ->
                                  fundDistrs.stream()
-                                   .map(fd -> {
-                                     if (fd.getExpenseClassId() != null && !expenseClassByIds.isEmpty()) {
-                                       String expenseClassName = expenseClassByIds.get(fd.getExpenseClassId()).getCode();
-                                       fd.setCode(expenseClassName);
-                                     }
-                                     return fd;
-                                   })
-                                   .collect(
-                                   groupingBy(FundDistribution::getFundId,
+                                   .map(fd -> updateWithExpenseClassCode(fd, expenseClassByIds))
+                                   .collect(groupingBy(FundDistribution::getFundId,
                                      groupingBy(getExpenseClassExtNo(expenseClassByIds)))
                                  )
                                );
+  }
+
+  private FundDistribution updateWithExpenseClassCode(FundDistribution fundDistribution, Map<String, ExpenseClass> expenseClassByIds) {
+    if (fundDistribution.getExpenseClassId() != null && !expenseClassByIds.isEmpty()) {
+      String expenseClassName = expenseClassByIds.get(fundDistribution.getExpenseClassId()).getCode();
+      fundDistribution.setCode(expenseClassName);
+    }
+    return fundDistribution;
   }
 
   private Function<FundDistribution, String> getExpenseClassExtNo(Map<String, ExpenseClass> expenseClassByIds) {
