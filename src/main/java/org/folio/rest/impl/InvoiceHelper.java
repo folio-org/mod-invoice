@@ -726,7 +726,7 @@ public class InvoiceHelper extends AbstractHelper {
            String expenseClassExtAccountNo = fundDistrs.getKey();
            FundExtNoExpenseClassExtNoPair key = new FundExtNoExpenseClassExtNoPair(fundExternalAccountNo, expenseClassExtAccountNo);
            List<FundDistribution> fundDistributions = fundDistrs.getValue();
-           fundDistributions.forEach(fundDistribution -> fundDistribution.setCode(fund.getCode()));
+           fundDistributions.forEach(fundDistribution -> fundDistribution.setCode(fund.getCode() + "-" + fundDistribution.getCode()));
            groupedFundDistribution.put(key, fundDistributions);
          }
       }
@@ -746,7 +746,14 @@ public class InvoiceHelper extends AbstractHelper {
     return expenseClassRetrieveService.getExpenseClasses(expenseClassIds, new RequestContext(ctx, okapiHeaders))
                                .thenApply(expenseClasses -> expenseClasses.stream().collect(toMap(ExpenseClass::getId, Function.identity())))
                                .thenApply(expenseClassByIds ->
-                                 fundDistrs.stream().collect(
+                                 fundDistrs.stream()
+                                   .peek(fd -> {
+                                     if (fd.getExpenseClassId() != null && !expenseClassByIds.isEmpty()) {
+                                       String expenseClassName = expenseClassByIds.get(fd.getExpenseClassId()).getCode();
+                                       fd.setCode(expenseClassName);
+                                     }
+                                   })
+                                   .collect(
                                    groupingBy(FundDistribution::getFundId,
                                      groupingBy(getExpenseClassExtNo(expenseClassByIds)))
                                  )
