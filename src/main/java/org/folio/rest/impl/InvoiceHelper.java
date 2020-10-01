@@ -726,7 +726,7 @@ public class InvoiceHelper extends AbstractHelper {
            String expenseClassExtAccountNo = fundDistrs.getKey();
            FundExtNoExpenseClassExtNoPair key = new FundExtNoExpenseClassExtNoPair(fundExternalAccountNo, expenseClassExtAccountNo);
            List<FundDistribution> fundDistributions = fundDistrs.getValue();
-           fundDistributions.forEach(fundDistribution -> fundDistribution.setCode(fund.getCode() + "-" + fundDistribution.getCode()));
+           updateFundDistributionsWithExpenseClassCode(fund, fundDistributions);
            groupedFundDistribution.put(key, fundDistributions);
          }
       }
@@ -758,8 +758,18 @@ public class InvoiceHelper extends AbstractHelper {
     if (fundDistribution.getExpenseClassId() != null && !expenseClassByIds.isEmpty()) {
       String expenseClassName = expenseClassByIds.get(fundDistribution.getExpenseClassId()).getCode();
       fundDistribution.setCode(expenseClassName);
+    } else {
+      fundDistribution.setCode("");
     }
     return fundDistribution;
+  }
+
+  private void updateFundDistributionsWithExpenseClassCode(Fund fund, List<FundDistribution> fundDistributions) {
+    fundDistributions.forEach(fundDistribution -> {
+      String fundCode = isEmpty(fundDistribution.getCode()) ? fund.getCode() : fund.getCode() + "-" + fundDistribution.getCode();
+      fundDistribution
+        .setCode(fundCode);
+    });
   }
 
   private Function<FundDistribution, String> getExpenseClassExtNo(Map<String, ExpenseClass> expenseClassByIds) {
