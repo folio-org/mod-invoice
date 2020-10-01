@@ -747,11 +747,12 @@ public class InvoiceHelper extends AbstractHelper {
                                .thenApply(expenseClasses -> expenseClasses.stream().collect(toMap(ExpenseClass::getId, Function.identity())))
                                .thenApply(expenseClassByIds ->
                                  fundDistrs.stream()
-                                   .peek(fd -> {
+                                   .map(fd -> {
                                      if (fd.getExpenseClassId() != null && !expenseClassByIds.isEmpty()) {
                                        String expenseClassName = expenseClassByIds.get(fd.getExpenseClassId()).getCode();
                                        fd.setCode(expenseClassName);
                                      }
+                                     return fd;
                                    })
                                    .collect(
                                    groupingBy(FundDistribution::getFundId,
