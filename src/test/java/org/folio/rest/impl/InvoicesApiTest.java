@@ -130,6 +130,7 @@ import javax.money.convert.CurrencyConversion;
 import javax.money.convert.ExchangeRateProvider;
 
 import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.reflect.FieldUtils;
 import org.apache.http.HttpStatus;
 import org.folio.invoices.utils.InvoiceProtectedFields;
@@ -2592,6 +2593,12 @@ public class InvoicesApiTest extends ApiTestBase {
       .mapToInt(adjustment -> adjustment.getFundDistributions()
         .size()).sum() - adjustmentPaymentsCount;
 
+    int invoiceLineEncumbranceReferenceNumber = (int) invoiceLines.stream()
+            .flatMap(invoiceLine -> invoiceLine.getFundDistributions().stream())
+            .filter(fundDistribution -> StringUtils.isNotEmpty(fundDistribution.getEncumbrance()))
+            .count();
+
+
 
     assertThat(getRqRsEntries(HttpMethod.GET, FINANCE_TRANSACTIONS), hasSize(1));
     assertThat(getRqRsEntries(HttpMethod.GET, FUNDS), hasSize(1));
@@ -2608,6 +2615,11 @@ public class InvoicesApiTest extends ApiTestBase {
     List<Transaction> transactions = Stream.concat(getRqRsEntries(HttpMethod.POST, FINANCE_PAYMENTS).stream(), getRqRsEntries(HttpMethod.POST, FINANCE_CREDITS).stream())
       .map(entry -> entry.mapTo(Transaction.class)).collect(Collectors.toList());
 
+    int transactionEncumbranceReferenceNumber = (int) transactions.stream()
+            .filter(transaction -> StringUtils.isNotEmpty(transaction.getPaymentEncumbranceId()))
+            .count();
+
+    assertEquals(invoiceLineEncumbranceReferenceNumber, transactionEncumbranceReferenceNumber);
     assertThat(transactions, allOf(
       Every.everyItem(HasPropertyWithValue.hasProperty("sourceInvoiceId", is(invoice.getId()))),
       Every.everyItem(HasProperty.hasProperty("sourceInvoiceLineId")),

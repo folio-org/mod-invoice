@@ -32,6 +32,7 @@ public class PaymentCreditHolder extends TransactionDataHolder {
     return transaction
       .withTransactionType(amount.isPositive() ? Transaction.TransactionType.PAYMENT : Transaction.TransactionType.CREDIT)
       .withAmount(convertToDoubleWithRounding(amount.abs()))
+      .withPaymentEncumbranceId(fundDistribution.getEncumbrance())
       .withSourceInvoiceLineId(invoiceLine.getId());
   }
 
