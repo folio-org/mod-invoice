@@ -716,7 +716,7 @@
       "displayName": "All documents perms",
       "description": "All permissions for the documents",
       "subPermissions": [
-        "invoice.invoices.dcuments.collection.get",
+        "invoice.invoices.documents.collection.get",
         "invoice.invoices.documents.item.post",
         "invoice.invoices.documents.item.get",
         "invoice.invoices.documents.item.delete"
