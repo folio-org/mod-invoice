@@ -1,4 +1,56 @@
-## 4.1.0 - Unreleased
+## 4.2.0 - Unreleased
+
+## 4.1.0 - Released
+
+The focus of this release was to improve invoice Approval and Payment, prorated adjustments special cases processing, bug fixing
+
+[Full Changelog](https://github.com/folio-org/mod-invoice/compare/v4.0.3...v4.1.0)
+
+### Stories
+* [MODINVOICE-203](https://issues.folio.org/browse/MODINVOICE-203)	Update transition to Approve considering the expense classes "Code"
+* [MODINVOICE-202](https://issues.folio.org/browse/MODINVOICE-202)	Change direct usage of Monetary API to Finance module API	
+* [MODINVOICE-199](https://issues.folio.org/browse/MODINVOICE-199)	Invoice line status is not updated	
+* [MODINVOICE-190](https://issues.folio.org/browse/MODINVOICE-190)	mod-invoice: Update RMB		
+* [MODINVOICE-186](https://issues.folio.org/browse/MODINVOICE-186)	Migrate mod-invoice to JDK 11		
+* [MODINVOICE-181](https://issues.folio.org/browse/MODINVOICE-181)	Update Pending payments when exchange rate is edited	
+* [MODINVOICE-176](https://issues.folio.org/browse/MODINVOICE-176)	Prevent the creation of a transaction for an inactive expense class	
+* [MODINVOICE-174](https://issues.folio.org/browse/MODINVOICE-174)	Update transition to Approve considering the expense classes	
+* [MODINVOICE-169](https://issues.folio.org/browse/MODINVOICE-169)	Block deletion of invoices and invoices lines for paid or approved invoice	
+* [MODINVOICE-148](https://issues.folio.org/browse/MODINVOICE-148)	Related invoices not displaying on PO	
+* [MODINVOICE-123](https://issues.folio.org/browse/MODINVOICE-123)	Update Voucher and voucherLInes when exchange rate is edited	
+* [MODINVOICE-114](https://issues.folio.org/browse/MODINVOICE-114)	Check remaining amount expendable upon invoice approval	
+* [MODINVOICE-105](https://issues.folio.org/browse/MODINVOICE-105)	Prorated Adjustments - prorating percentage adjustments	
+* [MODINVOICE-59](https://issues.folio.org/browse/MODINVOICE-59)	Prorated adjustments part 2 - validation/special cases	
+
+### Bug Fixes
+* [MODINVOICE-204](https://issues.folio.org/browse/MODINVOICE-204)	Encumbrance not linked to payments and credits upon invoice payment	
+* [MODINVOICE-198](https://issues.folio.org/browse/MODINVOICE-198)	Expense class not added to Pending payment	
+* [MODINVOICE-193](https://issues.folio.org/browse/MODINVOICE-193)	Invoice loading stuck on Bugfest	
+* [MODINVOICE-192](https://issues.folio.org/browse/MODINVOICE-192)	Cannot approve invoice when ledger's fiscalYearOne not equal to current
+* [MODINVOICE-188](https://issues.folio.org/browse/MODINVOICE-188)	Adjustments fund distributions should counted during calculation of budget available amount for invoice approval
+* [MODINVOICE-180](https://issues.folio.org/browse/MODINVOICE-180)	Check remaining amount expendable for active budgets only	
+
+
+## 4.0.3 - Released
+
+The focus of this release was to fix issue of stuck loading of invoices after an attempt to upload batch voucher on FTP
+
+[Full Changelog](https://github.com/folio-org/mod-invoice/compare/v4.0.2...v4.0.3)
+
+### Bug Fixes
+* [MODINVOICE-193](https://issues.folio.org/browse/MODINVOICE-193) - Invoice loading stuck on Bugfest
+
+
+## 4.0.2 - Released
+
+The focus of this release was to fix pending payment creation and fix batch voucher export
+
+[Full Changelog](https://github.com/folio-org/mod-invoice/compare/v4.0.1...v4.0.2)
+
+### Bug Fixes
+* [MODINVOICE-191](https://issues.folio.org/browse/MODINVOICE-191) - Batch voucher export returns an error with message "Batch voucher not found" for xml format
+* [MODINVOICE-182](https://issues.folio.org/browse/MODINVOICE-182) - Link to encumbrance missed
+
 
 ## 4.0.1 - Released
 
