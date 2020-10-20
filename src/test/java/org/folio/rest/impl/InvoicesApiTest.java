@@ -19,7 +19,6 @@ import static org.folio.invoices.utils.ErrorCodes.FUNDS_NOT_FOUND;
 import static org.folio.invoices.utils.ErrorCodes.FUND_CANNOT_BE_PAID;
 import static org.folio.invoices.utils.ErrorCodes.FUND_DISTRIBUTIONS_NOT_PRESENT;
 import static org.folio.invoices.utils.ErrorCodes.GENERIC_ERROR_CODE;
-import static org.folio.invoices.utils.ErrorCodes.INACTIVE_EXPENSE_CLASS;
 import static org.folio.invoices.utils.ErrorCodes.INVALID_INVOICE_TRANSITION_ON_PAID_STATUS;
 import static org.folio.invoices.utils.ErrorCodes.INVOICE_TOTAL_REQUIRED;
 import static org.folio.invoices.utils.ErrorCodes.LINE_FUND_DISTRIBUTIONS_SUMMARY_MISMATCH;
@@ -165,7 +164,6 @@ import org.hamcrest.beans.HasProperty;
 import org.hamcrest.beans.HasPropertyWithValue;
 import org.hamcrest.core.Every;
 import org.javamoney.moneta.Money;
-import org.junit.Assert;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
@@ -182,7 +180,7 @@ public class InvoicesApiTest extends ApiTestBase {
   private static final Logger logger = LoggerFactory.getLogger(InvoicesApiTest.class);
 
   public static final String INVOICE_PATH = "/invoice/invoices";
-	static final String INVOICE_ID_PATH = INVOICE_PATH+ "/%s";
+  static final String INVOICE_ID_PATH = INVOICE_PATH+ "/%s";
   private static final String INVOICE_ID_WITH_LANG_PATH = INVOICE_ID_PATH + "?lang=%s";
   private static final String INVOICE_PATH_BAD = "/invoice/bad";
   private static final String INVOICE_NUMBER_PATH = "/invoice/invoice-number";
@@ -212,10 +210,9 @@ public class InvoicesApiTest extends ApiTestBase {
   public static final String EXISTING_LEDGER_ID = "a3ec5552-c4a4-4a15-a57c-0046db536369";
   public static final String EXPENSE_CLASSES_MOCK_DATA_PATH = BASE_MOCK_DATA_PATH + "expense-classes/";
   public static final String EXPENSE_CLASSES_LIST_PATH = EXPENSE_CLASSES_MOCK_DATA_PATH + "expense-classes.json";
-  public static final String INACTIVE_EXPENSE_CLASS_ID = "6e6ed3c9-d959-4c91-a436-6076fb373816";
 
   @Test
-  public void testGetInvoicingInvoices() {
+  void testGetInvoicingInvoices() {
     logger.info("=== Test Get Invoices by without query - get 200 by successful retrieval of invoices ===");
 
     final InvoiceCollection resp = verifySuccessGet(INVOICE_PATH, InvoiceCollection.class, X_OKAPI_PROTECTED_READ_TENANT);
@@ -534,7 +531,8 @@ public class InvoicesApiTest extends ApiTestBase {
           .add(BigDecimal.valueOf(invoiceLine.getAdjustmentsTotal()))
           .divide(BigDecimal.valueOf(invoiceLine.getFundDistributions().size()), 2, RoundingMode.HALF_EVEN).doubleValue();
         invoiceLine.getFundDistributions()
-          .forEach(fundDistribution -> fundDistribution.withDistributionType(AMOUNT).withCode(null)
+          .forEach(fundDistribution -> fundDistribution.withDistributionType(AMOUNT)
+            .withCode(null)
             .setValue(fundDistrValue));
         addMockEntry(INVOICE_LINES, JsonObject.mapFrom(invoiceLine));
       });
@@ -558,38 +556,6 @@ public class InvoicesApiTest extends ApiTestBase {
     verifyTransitionToApproved(voucherCreated, invoiceLines, updatedInvoice, 5);
     verifyVoucherLineWithExpenseClasses(2L);
     checkVoucherAcqUnitIdsList(voucherCreated, reqData);
-  }
-
-  @Test
-  void testTransitionFromOpenToApprovedWithInactiveExpenseClassError() {
-    logger.info("=== Test transition invoice to Approved with inactive expense class error ===");
-
-    List<InvoiceLine> invoiceLines = getMockAsJson(INVOICE_LINES_LIST_PATH).mapTo(InvoiceLineCollection.class).getInvoiceLines();
-    Invoice reqData = getMockAsJson(OPEN_INVOICE_SAMPLE_PATH).mapTo(Invoice.class);
-    String id = reqData.getId();
-    invoiceLines
-      .forEach(invoiceLine -> {
-        invoiceLine.setId(UUID.randomUUID().toString());
-        invoiceLine.setInvoiceId(id);
-        double fundDistrValue = BigDecimal.valueOf(invoiceLine.getSubTotal())
-          .add(BigDecimal.valueOf(invoiceLine.getAdjustmentsTotal()))
-          .divide(BigDecimal.valueOf(invoiceLine.getFundDistributions().size()), 2, RoundingMode.HALF_EVEN).doubleValue();
-        invoiceLine.getFundDistributions()
-          .forEach(fundDistribution -> fundDistribution.withDistributionType(AMOUNT).withCode(null)
-            .withValue(fundDistrValue)
-            .setExpenseClassId(INACTIVE_EXPENSE_CLASS_ID)
-          );
-        addMockEntry(INVOICE_LINES, JsonObject.mapFrom(invoiceLine));
-      });
-
-    reqData.setStatus(Invoice.Status.APPROVED);
-
-    String jsonBody = JsonObject.mapFrom(reqData).encode();
-    Headers headers = prepareHeaders(X_OKAPI_URL, X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID);
-    Errors errors = verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, headers, "", 400).as(Errors.class);
-
-    assertEquals(INACTIVE_EXPENSE_CLASS.getCode(), errors.getErrors().get(0).getCode());
-
   }
 
   @Test
@@ -2639,6 +2605,6 @@ public class InvoicesApiTest extends ApiTestBase {
       ).collect(toList());
 
     long actFundDistrCount = expVoucherLines.stream().mapToLong(voucherLine -> voucherLine.getFundDistributions().size()).sum();
-    Assert.assertThat(actFundDistrCount, equalTo(fundDistributionCount));
+    assertThat(actFundDistrCount, equalTo(fundDistributionCount));
   }
 }
