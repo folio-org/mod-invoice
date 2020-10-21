@@ -148,9 +148,10 @@ public class ServicesConfiguration {
   @Bean
   BudgetExpenseClassService budgetExpenseClassService(RestClient budgetExpenseClassRestClient,
                                                       FundService fundService,
-                                                      ExpenseClassRetrieveService expenseClassRetrieveService) {
+                                                      ExpenseClassRetrieveService expenseClassRetrieveService,
+                                                      RestClient activeBudgetRestClient) {
 
-    return new BudgetExpenseClassService(budgetExpenseClassRestClient, fundService, expenseClassRetrieveService);
+    return new BudgetExpenseClassService(budgetExpenseClassRestClient, fundService, expenseClassRetrieveService, activeBudgetRestClient);
   }
 
   @Bean

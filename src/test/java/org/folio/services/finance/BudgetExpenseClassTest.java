@@ -22,6 +22,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 
 import org.folio.invoices.rest.exceptions.HttpException;
+import org.folio.rest.acq.model.finance.Budget;
 import org.folio.rest.acq.model.finance.BudgetExpenseClass;
 import org.folio.rest.acq.model.finance.BudgetExpenseClassCollection;
 import org.folio.rest.acq.model.finance.ExpenseClass;
@@ -46,7 +47,6 @@ import io.vertx.core.Vertx;
 
 public class BudgetExpenseClassTest {
 
-    @InjectMocks
     private BudgetExpenseClassService budgetExpenseClassService;
 
     @Mock
@@ -59,11 +59,18 @@ public class BudgetExpenseClassTest {
     private ExpenseClassRetrieveService expenseClassRetrieveService;
 
     @Mock
+    private RestClient activeBudgetRestClient;
+
+    @Mock
     private RequestContext requestContext;
 
     @BeforeEach
     public void initMocks() {
-        MockitoAnnotations.initMocks(this);
+        MockitoAnnotations.openMocks(this);
+        budgetExpenseClassService = new BudgetExpenseClassService(budgetExpenseClassRestClient,
+                fundService,
+                expenseClassRetrieveService,
+                activeBudgetRestClient);
     }
 
     @Test
@@ -101,6 +108,9 @@ public class BudgetExpenseClassTest {
 
         Fund inactiveExpenseClassFund = new Fund().withCode("inactive fund");
         ExpenseClass inactiveExpenseClass = new ExpenseClass().withName("inactive class");
+
+        when(activeBudgetRestClient.getById(anyString(), any(), any()))
+                .thenReturn(CompletableFuture.completedFuture(new Budget().withId(UUID.randomUUID().toString())));
 
         when(budgetExpenseClassRestClient.get(contains(inactiveExpenseClassId), anyInt(), anyInt(), ArgumentMatchers.any(), ArgumentMatchers.any()))
                 .thenReturn(CompletableFuture.completedFuture(new BudgetExpenseClassCollection()
@@ -164,6 +174,9 @@ public class BudgetExpenseClassTest {
 
         Fund noExpenseClassFund = new Fund().withCode("no expense class fund");
         ExpenseClass notAssignedExpenseClass = new ExpenseClass().withName("not assigned class");
+
+        when(activeBudgetRestClient.getById(anyString(), any(), any()))
+                .thenReturn(CompletableFuture.completedFuture(new Budget().withId(UUID.randomUUID().toString())));
 
         when(budgetExpenseClassRestClient.get(contains(notAssignedExpenseClassId), anyInt(), anyInt(), ArgumentMatchers.any(), ArgumentMatchers.any()))
                 .thenReturn(CompletableFuture.completedFuture(new BudgetExpenseClassCollection()

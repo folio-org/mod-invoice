@@ -11,6 +11,7 @@ import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 
 import org.folio.invoices.rest.exceptions.HttpException;
+import org.folio.rest.acq.model.finance.Budget;
 import org.folio.rest.acq.model.finance.BudgetExpenseClass;
 import org.folio.rest.acq.model.finance.BudgetExpenseClassCollection;
 import org.folio.rest.core.RestClient;
@@ -29,11 +30,13 @@ public class BudgetExpenseClassService {
   private final RestClient budgetExpenseClassRestClient;
   private final FundService fundService;
   private final ExpenseClassRetrieveService expenseClassRetrieveService;
+  private final RestClient activeBudgetRestClient;
 
-  public BudgetExpenseClassService(RestClient budgetExpenseClassRestClient, FundService fundService, ExpenseClassRetrieveService expenseClassRetrieveService) {
+  public BudgetExpenseClassService(RestClient budgetExpenseClassRestClient, FundService fundService, ExpenseClassRetrieveService expenseClassRetrieveService, RestClient activeBudgetRestClient) {
     this.budgetExpenseClassRestClient = budgetExpenseClassRestClient;
     this.fundService = fundService;
     this.expenseClassRetrieveService = expenseClassRetrieveService;
+    this.activeBudgetRestClient = activeBudgetRestClient;
   }
 
   public CompletableFuture<Void> checkExpenseClasses(List<InvoiceLine> invoiceLines, Invoice invoice, RequestContext requestContext) {
@@ -46,10 +49,13 @@ public class BudgetExpenseClassService {
   }
 
   private CompletableFuture<Void> checkExpenseClass(FundDistribution fundDistribution, RequestContext requestContext) {
-    String query = String.format("budget.fundId==%s and expenseClassId==%s", fundDistribution.getFundId(), fundDistribution.getExpenseClassId());
-    return budgetExpenseClassRestClient.get(query, 0, 1, requestContext, BudgetExpenseClassCollection.class)
+    return activeBudgetRestClient.getById(fundDistribution.getFundId(), requestContext, Budget.class)
+      .thenCompose(budget -> {
+        String query = String.format("budgetId==%s and expenseClassId==%s", budget.getId(), fundDistribution.getExpenseClassId());
+        return budgetExpenseClassRestClient.get(query, 0, 1, requestContext, BudgetExpenseClassCollection.class);
+      })
       .thenCompose(budgetExpenseClasses -> checkExpenseClassAssignedToBudget(fundDistribution, budgetExpenseClasses, requestContext)
-              .thenCompose(aVoid -> checkExpenseClassActive(fundDistribution, budgetExpenseClasses, requestContext)));
+        .thenCompose(aVoid -> checkExpenseClassActive(fundDistribution, budgetExpenseClasses, requestContext)));
   }
 
   private CompletableFuture<Void> checkExpenseClassAssignedToBudget(FundDistribution fundDistribution,
