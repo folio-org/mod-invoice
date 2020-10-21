@@ -46,7 +46,8 @@ public enum ErrorCodes {
   INACTIVE_EXPENSE_CLASS("inactiveExpenseClass", "Expense class is Inactive"),
   ORDER_INVOICE_RELATION_CREATE_FAILED("orderInvoiceRelationCreateFailed", "Create of order invoice relation has been failed"),
   INVOICE_LINE_NOT_FOUND("invoiceLineNotFound", "Invoice line not found"),
-  BUDGET_EXPENSE_CLASS_NOT_FOUND("budgetExpenseClassNotFound", "Given expense class not assigned to the budget");
+  BUDGET_EXPENSE_CLASS_NOT_FOUND("budgetExpenseClassNotFound", "Given expense class not assigned to the budget"),
+  EXPENSE_CLASS_NOT_FOUND("expenseClassNotFound", "Expense class record is not found");
 
   private final String code;
   private final String description;
