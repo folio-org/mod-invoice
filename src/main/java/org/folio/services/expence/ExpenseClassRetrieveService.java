@@ -1,7 +1,7 @@
 package org.folio.services.expence;
 
 import static java.util.stream.Collectors.toList;
-import static org.folio.invoices.utils.ErrorCodes.FUNDS_NOT_FOUND;
+import static org.folio.invoices.utils.ErrorCodes.EXPENSE_CLASS_NOT_FOUND;
 import static org.folio.invoices.utils.HelperUtils.collectResultsOnSuccess;
 import static org.folio.invoices.utils.HelperUtils.convertIdsToCqlQuery;
 import static org.folio.rest.RestConstants.MAX_IDS_FOR_GET_RQ;
@@ -18,9 +18,9 @@ import org.folio.rest.acq.model.finance.ExpenseClass;
 import org.folio.rest.acq.model.finance.ExpenseClassCollection;
 import org.folio.rest.core.RestClient;
 import org.folio.rest.core.models.RequestContext;
+import org.folio.rest.jaxrs.model.Parameter;
 
 import one.util.streamex.StreamEx;
-import org.folio.rest.jaxrs.model.Parameter;
 
 public class ExpenseClassRetrieveService {
   private final RestClient restClient;
@@ -51,7 +51,7 @@ public class ExpenseClassRetrieveService {
               Throwable cause = t.getCause() == null ? t : t.getCause();
               if (HelperUtils.isNotFound(cause)) {
                 List<Parameter> parameters = Collections.singletonList(new Parameter().withValue(id).withKey("expenseClass"));
-                throw new HttpException(404, FUNDS_NOT_FOUND.toError().withParameters(parameters));
+                  cause = new HttpException(404, EXPENSE_CLASS_NOT_FOUND.toError().withParameters(parameters));
               }
               throw new CompletionException(cause);
             });

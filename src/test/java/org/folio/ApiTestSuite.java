@@ -35,6 +35,7 @@ import org.folio.rest.tools.utils.NetworkUtils;
 import org.folio.schemas.xsd.BatchVoucherSchemaXSDTest;
 import org.folio.services.InvoiceRetrieveServiceTest;
 import org.folio.services.VoucherLinesRetrieveServiceTest;
+import org.folio.services.expense.ExpenseClassRetrieveServiceTest;
 import org.folio.services.finance.BudgetExpenseClassTest;
 import org.folio.services.finance.BudgetValidationServiceTest;
 import org.folio.services.finance.CurrentFiscalYearServiceTest;
@@ -258,7 +259,13 @@ public class ApiTestSuite {
   @Nested
   class PendingPaymentWorkflowServiceTestNested extends PendingPaymentWorkflowServiceTest {
   }
+
   @Nested
   class BudgetExpenseClassTestNested extends BudgetExpenseClassTest {
+  }
+
+  @Nested
+  class ExpenseClassRetrieveServiceTestNested extends ExpenseClassRetrieveServiceTest {
+
   }
 }
