@@ -83,7 +83,6 @@ import org.folio.rest.acq.model.VoucherLine;
 import org.folio.rest.acq.model.VoucherLineCollection;
 import org.folio.rest.acq.model.finance.Budget;
 import org.folio.rest.acq.model.finance.BudgetCollection;
-import org.folio.rest.acq.model.finance.BudgetExpenseClass;
 import org.folio.rest.acq.model.finance.BudgetExpenseClassCollection;
 import org.folio.rest.acq.model.finance.CompositeFund;
 import org.folio.rest.acq.model.finance.ExchangeRate;
@@ -1460,7 +1459,6 @@ public class MockServer {
         budgetExpenseClasses.withBudgetExpenseClasses(getFromFile.get().getBudgetExpenseClasses()
           .stream()
           .filter(bec -> bec.getExpenseClassId().equals(expenseClassId))
-          .filter(bec -> bec.getStatus() == BudgetExpenseClass.Status.INACTIVE)
           .collect(toList()));
         budgetExpenseClasses.withTotalRecords(budgetExpenseClasses.getBudgetExpenseClasses().size());
 
