@@ -2,13 +2,15 @@ package org.folio.services.finance;
 
 import static org.folio.invoices.utils.ErrorCodes.BUDGET_EXPENSE_CLASS_NOT_FOUND;
 import static org.folio.invoices.utils.ErrorCodes.INACTIVE_EXPENSE_CLASS;
-import static org.folio.services.finance.BudgetExpenseClassService.EXPENSE_CLASS_ID;
-import static org.folio.services.finance.BudgetExpenseClassService.FUND_ID;
+import static org.folio.services.finance.BudgetExpenseClassService.EXPENSE_CLASS_NAME;
+import static org.folio.services.finance.BudgetExpenseClassService.FUND_CODE;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.instanceOf;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.Mockito.when;
 
@@ -20,8 +22,11 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 
 import org.folio.invoices.rest.exceptions.HttpException;
+import org.folio.rest.acq.model.finance.Budget;
 import org.folio.rest.acq.model.finance.BudgetExpenseClass;
 import org.folio.rest.acq.model.finance.BudgetExpenseClassCollection;
+import org.folio.rest.acq.model.finance.ExpenseClass;
+import org.folio.rest.acq.model.finance.Fund;
 import org.folio.rest.core.RestClient;
 import org.folio.rest.core.models.RequestContext;
 import org.folio.rest.jaxrs.model.Adjustment;
@@ -30,6 +35,7 @@ import org.folio.rest.jaxrs.model.Errors;
 import org.folio.rest.jaxrs.model.FundDistribution;
 import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.jaxrs.model.InvoiceLine;
+import org.folio.services.expence.ExpenseClassRetrieveService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentMatchers;
@@ -41,18 +47,30 @@ import io.vertx.core.Vertx;
 
 public class BudgetExpenseClassTest {
 
-    @InjectMocks
     private BudgetExpenseClassService budgetExpenseClassService;
 
     @Mock
     private RestClient budgetExpenseClassRestClient;
 
     @Mock
+    private FundService fundService;
+
+    @Mock
+    private ExpenseClassRetrieveService expenseClassRetrieveService;
+
+    @Mock
+    private RestClient activeBudgetRestClient;
+
+    @Mock
     private RequestContext requestContext;
 
     @BeforeEach
     public void initMocks() {
-        MockitoAnnotations.initMocks(this);
+        MockitoAnnotations.openMocks(this);
+        budgetExpenseClassService = new BudgetExpenseClassService(budgetExpenseClassRestClient,
+                fundService,
+                expenseClassRetrieveService,
+                activeBudgetRestClient);
     }
 
     @Test
@@ -88,6 +106,12 @@ public class BudgetExpenseClassTest {
                 .withStatus(BudgetExpenseClass.Status.INACTIVE)
                 .withId(UUID.randomUUID().toString());
 
+        Fund inactiveExpenseClassFund = new Fund().withCode("inactive fund");
+        ExpenseClass inactiveExpenseClass = new ExpenseClass().withName("inactive class");
+
+        when(activeBudgetRestClient.getById(anyString(), any(), any()))
+                .thenReturn(CompletableFuture.completedFuture(new Budget().withId(UUID.randomUUID().toString())));
+
         when(budgetExpenseClassRestClient.get(contains(inactiveExpenseClassId), anyInt(), anyInt(), ArgumentMatchers.any(), ArgumentMatchers.any()))
                 .thenReturn(CompletableFuture.completedFuture(new BudgetExpenseClassCollection()
                         .withBudgetExpenseClasses(Collections.singletonList(inactive)).withTotalRecords(1)));
@@ -96,6 +120,9 @@ public class BudgetExpenseClassTest {
                 .thenReturn(CompletableFuture.completedFuture(new BudgetExpenseClassCollection()
                         .withBudgetExpenseClasses(Collections.singletonList(active)).withTotalRecords(1)));
         when(requestContext.getContext()).thenReturn(Vertx.vertx().getOrCreateContext());
+
+        when(fundService.getFundById(anyString(), any())).thenReturn(CompletableFuture.completedFuture(inactiveExpenseClassFund));
+        when(expenseClassRetrieveService.getExpenseClassById(anyString(), any())).thenReturn(CompletableFuture.completedFuture(inactiveExpenseClass));
 
         CompletableFuture<Void> future = budgetExpenseClassService.checkExpenseClasses(invoiceLines, invoice, requestContext);
 
@@ -110,10 +137,10 @@ public class BudgetExpenseClassTest {
 
         Error error = errors.getErrors().get(0);
         assertEquals(INACTIVE_EXPENSE_CLASS.getCode(), error.getCode());
-        String expenseClassIdFromError = error.getParameters().stream().filter(parameter -> parameter.getKey().equals(EXPENSE_CLASS_ID)).findFirst().get().getValue();
-        assertEquals(inactiveExpenseClassId, expenseClassIdFromError);
-        String fundIdFromError = error.getParameters().stream().filter(parameter -> parameter.getKey().equals(FUND_ID)).findFirst().get().getValue();
-        assertEquals(fundDistributionWithInactiveExpenseClass.getFundId(), fundIdFromError);
+        String expenseClassNameFromError = error.getParameters().stream().filter(parameter -> parameter.getKey().equals(EXPENSE_CLASS_NAME)).findFirst().get().getValue();
+        assertEquals(inactiveExpenseClass.getName(), expenseClassNameFromError);
+        String fundCodeFromError = error.getParameters().stream().filter(parameter -> parameter.getKey().equals(FUND_CODE)).findFirst().get().getValue();
+        assertEquals(inactiveExpenseClassFund.getCode(), fundCodeFromError);
     }
 
     @Test
@@ -145,6 +172,12 @@ public class BudgetExpenseClassTest {
                 .withStatus(BudgetExpenseClass.Status.ACTIVE)
                 .withId(UUID.randomUUID().toString());
 
+        Fund noExpenseClassFund = new Fund().withCode("no expense class fund");
+        ExpenseClass notAssignedExpenseClass = new ExpenseClass().withName("not assigned class");
+
+        when(activeBudgetRestClient.getById(anyString(), any(), any()))
+                .thenReturn(CompletableFuture.completedFuture(new Budget().withId(UUID.randomUUID().toString())));
+
         when(budgetExpenseClassRestClient.get(contains(notAssignedExpenseClassId), anyInt(), anyInt(), ArgumentMatchers.any(), ArgumentMatchers.any()))
                 .thenReturn(CompletableFuture.completedFuture(new BudgetExpenseClassCollection()
                         .withTotalRecords(0)));
@@ -153,6 +186,9 @@ public class BudgetExpenseClassTest {
                 .thenReturn(CompletableFuture.completedFuture(new BudgetExpenseClassCollection()
                         .withBudgetExpenseClasses(Collections.singletonList(active)).withTotalRecords(1)));
         when(requestContext.getContext()).thenReturn(Vertx.vertx().getOrCreateContext());
+
+        when(fundService.getFundById(anyString(), any())).thenReturn(CompletableFuture.completedFuture(noExpenseClassFund));
+        when(expenseClassRetrieveService.getExpenseClassById(anyString(), any())).thenReturn(CompletableFuture.completedFuture(notAssignedExpenseClass));
 
         CompletableFuture<Void> future = budgetExpenseClassService.checkExpenseClasses(invoiceLines, invoice, requestContext);
 
@@ -167,10 +203,10 @@ public class BudgetExpenseClassTest {
 
         Error error = errors.getErrors().get(0);
         assertEquals(BUDGET_EXPENSE_CLASS_NOT_FOUND.getCode(), error.getCode());
-        String expenseClassIdFromError = error.getParameters().stream().filter(parameter -> parameter.getKey().equals(EXPENSE_CLASS_ID)).findFirst().get().getValue();
-        assertEquals(notAssignedExpenseClassId, expenseClassIdFromError);
-        String fundIdFromError = error.getParameters().stream().filter(parameter -> parameter.getKey().equals(FUND_ID)).findFirst().get().getValue();
-        assertEquals(fundDistributionWithNotAssignedExpenseClass.getFundId(), fundIdFromError);
+        String expenseClassNameFromError = error.getParameters().stream().filter(parameter -> parameter.getKey().equals(EXPENSE_CLASS_NAME)).findFirst().get().getValue();
+        assertEquals(notAssignedExpenseClass.getName(), expenseClassNameFromError);
+        String fundCodeFromError = error.getParameters().stream().filter(parameter -> parameter.getKey().equals(FUND_CODE)).findFirst().get().getValue();
+        assertEquals(noExpenseClassFund.getCode(), fundCodeFromError);
     }
 
 }

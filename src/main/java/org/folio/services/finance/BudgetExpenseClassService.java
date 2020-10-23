@@ -11,6 +11,7 @@ import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 
 import org.folio.invoices.rest.exceptions.HttpException;
+import org.folio.rest.acq.model.finance.Budget;
 import org.folio.rest.acq.model.finance.BudgetExpenseClass;
 import org.folio.rest.acq.model.finance.BudgetExpenseClassCollection;
 import org.folio.rest.core.RestClient;
@@ -19,16 +20,23 @@ import org.folio.rest.jaxrs.model.FundDistribution;
 import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.jaxrs.model.InvoiceLine;
 import org.folio.rest.jaxrs.model.Parameter;
+import org.folio.services.expence.ExpenseClassRetrieveService;
 
 public class BudgetExpenseClassService {
 
-  public static final String FUND_ID = "fundId";
-  public static final String EXPENSE_CLASS_ID = "expenseClassId";
+  public static final String FUND_CODE = "fundCode";
+  public static final String EXPENSE_CLASS_NAME = "expenseClassName";
 
   private final RestClient budgetExpenseClassRestClient;
+  private final FundService fundService;
+  private final ExpenseClassRetrieveService expenseClassRetrieveService;
+  private final RestClient activeBudgetRestClient;
 
-  public BudgetExpenseClassService(RestClient budgetExpenseClassRestClient) {
+  public BudgetExpenseClassService(RestClient budgetExpenseClassRestClient, FundService fundService, ExpenseClassRetrieveService expenseClassRetrieveService, RestClient activeBudgetRestClient) {
     this.budgetExpenseClassRestClient = budgetExpenseClassRestClient;
+    this.fundService = fundService;
+    this.expenseClassRetrieveService = expenseClassRetrieveService;
+    this.activeBudgetRestClient = activeBudgetRestClient;
   }
 
   public CompletableFuture<Void> checkExpenseClasses(List<InvoiceLine> invoiceLines, Invoice invoice, RequestContext requestContext) {
@@ -41,26 +49,39 @@ public class BudgetExpenseClassService {
   }
 
   private CompletableFuture<Void> checkExpenseClass(FundDistribution fundDistribution, RequestContext requestContext) {
-    String query = String.format("budget.fundId==%s and expenseClassId==%s", fundDistribution.getFundId(), fundDistribution.getExpenseClassId());
-    return budgetExpenseClassRestClient.get(query, 0, 1, requestContext, BudgetExpenseClassCollection.class)
-      .thenAccept(budgetExpenseClasses -> {
-        checkExpenseClassAssignedToBudget(fundDistribution, budgetExpenseClasses);
-        checkExpenseClassActive(fundDistribution, budgetExpenseClasses);
-      });
+    return activeBudgetRestClient.getById(fundDistribution.getFundId(), requestContext, Budget.class)
+      .thenCompose(budget -> {
+        String query = String.format("budgetId==%s and expenseClassId==%s", budget.getId(), fundDistribution.getExpenseClassId());
+        return budgetExpenseClassRestClient.get(query, 0, 1, requestContext, BudgetExpenseClassCollection.class);
+      })
+      .thenCompose(budgetExpenseClasses -> checkExpenseClassAssignedToBudget(fundDistribution, budgetExpenseClasses, requestContext)
+        .thenCompose(aVoid -> checkExpenseClassActive(fundDistribution, budgetExpenseClasses, requestContext)));
   }
 
-  private void checkExpenseClassAssignedToBudget(FundDistribution fundDistribution, BudgetExpenseClassCollection budgetExpenseClasses) {
+  private CompletableFuture<Void> checkExpenseClassAssignedToBudget(FundDistribution fundDistribution,
+                                                                    BudgetExpenseClassCollection budgetExpenseClasses,
+                                                                    RequestContext requestContext) {
     if (budgetExpenseClasses.getTotalRecords() == 0) {
-      throw new HttpException(400, BUDGET_EXPENSE_CLASS_NOT_FOUND.toError()
-        .withParameters(getFundIdExpenseClassIdParameters(fundDistribution)));
+      return getFundIdExpenseClassIdParameters(fundDistribution, requestContext)
+              .thenAccept(parameters -> {
+                throw new HttpException(400, BUDGET_EXPENSE_CLASS_NOT_FOUND.toError()
+                        .withParameters(parameters));
+              });
     }
+    return CompletableFuture.completedFuture(null);
   }
 
-  private void checkExpenseClassActive(FundDistribution fundDistribution, BudgetExpenseClassCollection budgetExpenseClasses) {
+  private CompletableFuture<Void> checkExpenseClassActive(FundDistribution fundDistribution,
+                                                          BudgetExpenseClassCollection budgetExpenseClasses,
+                                                          RequestContext requestContext) {
     if (isInactive(budgetExpenseClasses)) {
-      throw new HttpException(400, INACTIVE_EXPENSE_CLASS.toError()
-        .withParameters(getFundIdExpenseClassIdParameters(fundDistribution)));
+      return getFundIdExpenseClassIdParameters(fundDistribution, requestContext)
+              .thenAccept(parameters -> {
+                throw new HttpException(400, INACTIVE_EXPENSE_CLASS.toError()
+                        .withParameters(parameters));
+              });
     }
+    return CompletableFuture.completedFuture(null);
   }
 
   private boolean isInactive(BudgetExpenseClassCollection budgetExpenseClasses) {
@@ -69,11 +90,13 @@ public class BudgetExpenseClassService {
             .anyMatch(budgetExpenseClass -> budgetExpenseClass.getStatus() == BudgetExpenseClass.Status.INACTIVE);
   }
 
-  private List<Parameter> getFundIdExpenseClassIdParameters(FundDistribution fundDistribution) {
-    return Arrays.asList(
-            new Parameter().withKey(FUND_ID).withValue(fundDistribution.getFundId()),
-            new Parameter().withKey(EXPENSE_CLASS_ID).withValue(fundDistribution.getExpenseClassId())
-    );
+  private CompletableFuture<List<Parameter>> getFundIdExpenseClassIdParameters(FundDistribution fundDistribution, RequestContext requestContext) {
+    return fundService.getFundById(fundDistribution.getFundId(), requestContext)
+            .thenCompose(fund -> expenseClassRetrieveService.getExpenseClassById(fundDistribution.getExpenseClassId(), requestContext)
+            .thenApply(expenseClass -> Arrays.asList(
+                    new Parameter().withKey(FUND_CODE).withValue(fund.getCode()),
+                    new Parameter().withKey(EXPENSE_CLASS_NAME).withValue(expenseClass.getName())
+            )));
   }
 
   private List<FundDistribution> getFundDistributionsWithExpenseClasses(List<InvoiceLine> invoiceLines, Invoice invoice) {

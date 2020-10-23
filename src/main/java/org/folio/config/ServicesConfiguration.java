@@ -1,6 +1,7 @@
 package org.folio.config;
 
 import org.folio.rest.core.RestClient;
+import org.folio.services.expence.ExpenseClassRetrieveService;
 import org.folio.services.finance.BudgetExpenseClassService;
 import org.folio.services.config.TenantConfigurationService;
 import org.folio.services.exchange.ExchangeRateProviderResolver;
@@ -145,8 +146,12 @@ public class ServicesConfiguration {
   }
 
   @Bean
-  BudgetExpenseClassService budgetExpenseClassService(RestClient budgetExpenseClassRestClient) {
-    return new BudgetExpenseClassService(budgetExpenseClassRestClient);
+  BudgetExpenseClassService budgetExpenseClassService(RestClient budgetExpenseClassRestClient,
+                                                      FundService fundService,
+                                                      ExpenseClassRetrieveService expenseClassRetrieveService,
+                                                      RestClient activeBudgetRestClient) {
+
+    return new BudgetExpenseClassService(budgetExpenseClassRestClient, fundService, expenseClassRetrieveService, activeBudgetRestClient);
   }
 
   @Bean

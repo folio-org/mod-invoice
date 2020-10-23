@@ -2,7 +2,6 @@ package org.folio.services.transaction;
 
 import static java.util.concurrent.CompletableFuture.completedFuture;
 import static org.folio.invoices.utils.ErrorCodes.TRANSACTION_CREATION_FAILURE;
-import static org.folio.services.finance.BudgetExpenseClassService.FUND_ID;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -31,6 +30,8 @@ import me.escoffier.vertx.completablefuture.VertxCompletableFuture;
 public class PaymentCreditWorkflowService {
 
   private static final Logger logger = LoggerFactory.getLogger(PaymentCreditWorkflowService.class);
+
+  public static final String FUND_ID = "fundId";
 
   private final BaseTransactionService baseTransactionService;
   private final CurrentFiscalYearService currentFiscalYearService;
