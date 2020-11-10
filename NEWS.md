@@ -1,5 +1,15 @@
 ## 4.2.0 - Unreleased
 
+## 4.1.1 - Released
+
+The focus of this release was to fix issue with logging and return an error for expense class
+
+[Full Changelog](https://github.com/folio-org/mod-invoice/compare/v4.1.0...v4.1.1)
+
+### Bug Fixes
+* [MODINVOICE-207](https://issues.folio.org/browse/MODINVOICE-207) - No logging in honeysuckle version
+* [MODINVOICE-205](https://issues.folio.org/browse/MODINVOICE-205) - Error must be returned in case of budget expense class mismatch
+
 ## 4.1.0 - Released
 
 The focus of this release was to improve invoice Approval and Payment, prorated adjustments special cases processing, bug fixing
