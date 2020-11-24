@@ -1010,9 +1010,7 @@ public class InvoiceHelper extends AbstractHelper {
     }
 
     // 3. Total
-    if (Boolean.FALSE.equals(invoice.getLockTotal())) {
-      invoice.setTotal(convertToDoubleWithRounding(subTotal.add(adjustmentsTotal)));
-    }
+    invoice.setTotal(convertToDoubleWithRounding(subTotal.add(adjustmentsTotal)));
     invoice.setAdjustmentsTotal(convertToDoubleWithRounding(adjustmentsTotal));
     invoice.setSubTotal(convertToDoubleWithRounding(subTotal));
   }

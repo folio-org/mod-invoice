@@ -4,7 +4,7 @@
   "provides": [
     {
       "id": "invoice",
-      "version": "5.6",
+      "version": "6.0",
       "handlers": [
         {
           "methods": ["GET"],

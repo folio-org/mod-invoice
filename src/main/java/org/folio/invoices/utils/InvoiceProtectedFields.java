@@ -21,8 +21,6 @@ public enum InvoiceProtectedFields {
   VOUCHER_NUMBER("voucherNumber"),
   PAYMENT_ID("paymentId"),
   PO_NUMBERS("poNumbers"),
-  SUB_TOTAL("subTotal"),
-  TOTAL("total"),
   VENDOR_ID("vendorId");
 
   InvoiceProtectedFields(String field) {
