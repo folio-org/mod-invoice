@@ -353,7 +353,8 @@ public class InvoiceHelper extends AbstractHelper {
           List<InvoiceLine> updatedInvoiceLines = invoiceLines.stream()
             .map(invoiceLine -> JsonObject.mapFrom(invoiceLine).mapTo(InvoiceLine.class))
             .collect(toList());
-          recalculateDynamicData(invoice, invoiceFromStorage, updatedInvoiceLines);
+          recalculateAdjustmentData(invoice, invoiceFromStorage, updatedInvoiceLines);
+          recalculateTotals(invoice, updatedInvoiceLines);
           return handleInvoiceStatusTransition(invoice, invoiceFromStorage, updatedInvoiceLines)
             .thenAccept(aVoid -> updateInvoiceLinesStatus(invoice, updatedInvoiceLines))
             .thenApply(aVoid -> filterUpdatedLines(invoiceLines, updatedInvoiceLines))
@@ -486,6 +487,13 @@ public class InvoiceHelper extends AbstractHelper {
 
     processProratedAdjustments(updatedInvoice, invoiceFromStorage, invoiceLines);
     return recalculateTotals(updatedInvoice, invoiceLines);
+  }
+
+  private void recalculateAdjustmentData(Invoice updatedInvoice, Invoice invoiceFromStorage, List<InvoiceLine> invoiceLines) {
+    // If invoice was approved, the totals are already fixed and should not be recalculated
+    if (!isPostApproval(invoiceFromStorage)) {
+      processProratedAdjustments(updatedInvoice, invoiceFromStorage, invoiceLines);
+    }
   }
 
   private void processProratedAdjustments(Invoice updatedInvoice, Invoice invoiceFromStorage, List<InvoiceLine> lines) {
