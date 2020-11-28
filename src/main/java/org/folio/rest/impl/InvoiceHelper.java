@@ -18,6 +18,7 @@ import static org.folio.invoices.utils.ErrorCodes.PO_LINE_UPDATE_FAILURE;
 import static org.folio.invoices.utils.ErrorCodes.USER_HAS_NO_ACQ_PERMISSIONS;
 import static org.folio.invoices.utils.HelperUtils.calculateAdjustmentsTotal;
 import static org.folio.invoices.utils.HelperUtils.calculateVoucherLineAmount;
+import static org.folio.invoices.utils.HelperUtils.collectResultsOnSuccess;
 import static org.folio.invoices.utils.HelperUtils.combineCqlExpressions;
 import static org.folio.invoices.utils.HelperUtils.convertToDoubleWithRounding;
 import static org.folio.invoices.utils.HelperUtils.getAdjustmentFundDistributionAmount;
@@ -267,10 +268,11 @@ public class InvoiceHelper extends AbstractHelper {
     try {
       buildGetInvoicesPath(limit, offset, query)
         .thenCompose(endpoint -> getInvoicesFromStorage(endpoint, httpClient, ctx, okapiHeaders, logger))
-        .thenAccept(jsonInvoices -> {
-          logger.info("Successfully retrieved invoices: " + jsonInvoices);
-          future.complete(jsonInvoices);
-        })
+        .thenCompose(invoiceCollection -> updateInvoicesTotals(invoiceCollection)
+                                                .thenAccept(v -> {
+                                                  logger.info("Successfully retrieved invoices: " + invoiceCollection);
+                                                  future.complete(invoiceCollection);
+                                                }))
         .exceptionally(t -> {
           logger.error("Error getting invoices", t);
           future.completeExceptionally(t);
@@ -280,6 +282,25 @@ public class InvoiceHelper extends AbstractHelper {
         future.completeExceptionally(e);
     }
     return future;
+  }
+
+  private CompletableFuture<Void> updateInvoicesTotals(InvoiceCollection invoiceCollection) {
+    if (CollectionUtils.isEmpty(invoiceCollection.getInvoices())) {
+      return CompletableFuture.completedFuture(null);
+    }
+    List<CompletableFuture<Void>> invoiceListFutures = new ArrayList<>(invoiceCollection.getInvoices().size());
+    invoiceCollection.getInvoices().forEach(invoice -> {
+      invoiceListFutures.add(
+            getInvoiceLinesWithTotals(invoice).thenAccept(invoiceLines -> {
+              List<InvoiceLine> updatedInvoiceLines = invoiceLines.stream()
+                                                              .map(invoiceLine -> JsonObject.mapFrom(invoiceLine).mapTo(InvoiceLine.class))
+                                                              .collect(toList());
+              recalculateTotals(invoice, updatedInvoiceLines);
+            })
+      );
+    });
+    return collectResultsOnSuccess(invoiceListFutures)
+             .thenAccept(results -> logger.debug("Invoice totals updated : " + results.size()));
   }
 
   private CompletableFuture<String> buildGetInvoicesPath(int limit, int offset, String query) {
