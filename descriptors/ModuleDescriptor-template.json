@@ -12,6 +12,7 @@
           "permissionsRequired": ["invoice.invoices.collection.get"],
           "modulePermissions": [
             "invoice-storage.invoices.collection.get",
+            "invoice-storage.invoice-lines.collection.get",
             "acquisitions-units.units.collection.get",
             "acquisitions-units.memberships.collection.get"
           ]
