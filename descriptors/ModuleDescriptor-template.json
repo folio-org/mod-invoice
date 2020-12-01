@@ -4,7 +4,7 @@
   "provides": [
     {
       "id": "invoice",
-      "version": "5.6",
+      "version": "6.0",
       "handlers": [
         {
           "methods": ["GET"],
@@ -12,6 +12,7 @@
           "permissionsRequired": ["invoice.invoices.collection.get"],
           "modulePermissions": [
             "invoice-storage.invoices.collection.get",
+            "invoice-storage.invoice-lines.collection.get",
             "acquisitions-units.units.collection.get",
             "acquisitions-units.memberships.collection.get"
           ]
@@ -499,7 +500,7 @@
     },
     {
       "id": "invoice-storage.invoices",
-      "version": "4.1"
+      "version": "5.0"
     },
     {
       "id": "invoice-storage.invoice-lines",

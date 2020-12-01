@@ -352,8 +352,7 @@ public class InvoicesApiTest extends ApiTestBase {
     Invoice invoice = new JsonObject(getMockData(APPROVED_INVOICE_SAMPLE_PATH)).mapTo(Invoice.class);
     invoice.setStatus(Invoice.Status.OPEN);
     invoice.setId(id);
-    invoice.setLockTotal(true);
-    invoice.setTotal(15d);
+    invoice.setLockTotal(15d);
 
     addMockEntry(INVOICES, JsonObject.mapFrom(invoice));
 
@@ -363,7 +362,7 @@ public class InvoicesApiTest extends ApiTestBase {
     /* The invoice has 2 not prorated adjustments one with fixed amount and another with percentage type */
     assertThat(resp.getAdjustmentsTotal(), equalTo(5.06d));
     assertThat(resp.getSubTotal(), equalTo(0d));
-    assertThat(resp.getTotal(), equalTo(15d));
+    assertThat(resp.getTotal(), equalTo(5.06d));
 
     // Verify that expected number of external calls made
     assertThat(getInvoiceRetrievals(), hasSize(1));
@@ -384,7 +383,6 @@ public class InvoicesApiTest extends ApiTestBase {
     invoice.setAdjustmentsTotal(5d);
     invoice.setSubTotal(10d);
     invoice.setTotal(15d);
-    invoice.setLockTotal(false);
 
     addMockEntry(INVOICES, JsonObject.mapFrom(invoice));
 
@@ -2091,24 +2089,6 @@ public class InvoicesApiTest extends ApiTestBase {
   }
 
   @Test
-  void testUpdateInvoiceWithLockedTotalButWithoutTotal() throws IOException {
-    logger.info("=== Test validation updating invoice without total which is locked ===");
-
-    // ===  Preparing invoice for test  ===
-    Invoice invoice = new JsonObject(getMockData(APPROVED_INVOICE_SAMPLE_PATH)).mapTo(Invoice.class);
-    invoice.setLockTotal(true);
-    invoice.setTotal(null);
-
-    // ===  Run test  ===
-    Errors errors = verifyPut(String.format(INVOICE_ID_PATH, invoice.getId()), JsonObject.mapFrom(invoice), APPLICATION_JSON, 422)
-      .as(Errors.class);
-
-    assertThat(errors.getErrors(), hasSize(1));
-    assertThat(errors.getErrors().get(0).getCode(), equalTo(INVOICE_TOTAL_REQUIRED.getCode()));
-    assertThat(serverRqRs.size(), equalTo(0));
-  }
-
-  @Test
   void testUpdateNotExistentInvoice() throws IOException {
     logger.info("=== Test update non existent invoice===");
 
@@ -2163,22 +2143,22 @@ public class InvoicesApiTest extends ApiTestBase {
   }
 
   @Test
-  void testCreateInvoiceWithLockedTotalAndTwoAdjustments() throws IOException {
+  void testCreateInvoiceWithLockedTotalAndTwoAdjustmentsAndNoInvoiceLinesProvided() throws IOException {
     logger.info("=== Test create invoice with locked total and 2 adjustments ===");
 
     // ===  Preparing invoice for test  ===
     Invoice invoice = new JsonObject(getMockData(APPROVED_INVOICE_SAMPLE_PATH)).mapTo(Invoice.class);
-    invoice.setLockTotal(true);
-    invoice.setTotal(15d);
+    invoice.setLockTotal(15d);
 
     // ===  Run test  ===
     final Invoice resp = verifyPostResponse(INVOICE_PATH, JsonObject.mapFrom(invoice), prepareHeaders(X_OKAPI_TENANT),
         APPLICATION_JSON, 201).as(Invoice.class);
 
     /* The invoice has 2 not prorated adjustments one with fixed amount and another with percentage type */
+    assertThat(resp.getLockTotal(), equalTo(15d));
     assertThat(resp.getAdjustmentsTotal(), equalTo(5.06d));
     assertThat(resp.getSubTotal(), equalTo(0d));
-    assertThat(resp.getTotal(), equalTo(15d));
+    assertThat(resp.getTotal(), equalTo(5.06d));
 
     // Verify that expected number of external calls made
     assertThat(serverRqRs.cellSet(), hasSize(2));
@@ -2216,23 +2196,23 @@ public class InvoicesApiTest extends ApiTestBase {
   }
 
   @Test
-  void testCreateInvoiceWithLockedTotalAndTwoProratedAdjustments() throws IOException {
+  void testCreateInvoiceWithLockedTotalAndTwoProratedAdjustmentsAndWithoutInvoiceLines() throws IOException {
     logger.info("=== Test create invoice with locked total and 2 prorated adjustments ===");
 
     // ===  Preparing invoice for test  ===
     Invoice invoice = new JsonObject(getMockData(APPROVED_INVOICE_SAMPLE_PATH)).mapTo(Invoice.class);
     invoice.getAdjustments().forEach(adj -> adj.setProrate(Adjustment.Prorate.BY_AMOUNT));
-    invoice.setLockTotal(true);
-    invoice.setTotal(15d);
+    invoice.setLockTotal(15d);
 
     // ===  Run test  ===
     final Invoice resp = verifyPostResponse(INVOICE_PATH, JsonObject.mapFrom(invoice), prepareHeaders(X_OKAPI_TENANT),
       APPLICATION_JSON, 201).as(Invoice.class);
 
     /* The invoice has 2 not prorated adjustments one with fixed amount and another with percentage type */
+    assertThat(resp.getLockTotal(), equalTo(15d));
     assertThat(resp.getAdjustmentsTotal(), equalTo(5.06d));
     assertThat(resp.getSubTotal(), equalTo(0d));
-    assertThat(resp.getTotal(), equalTo(15d));
+    assertThat(resp.getTotal(), equalTo(5.06d));
 
     // Verify that expected number of external calls made
     assertThat(serverRqRs.cellSet(), hasSize(2));
@@ -2247,7 +2227,7 @@ public class InvoicesApiTest extends ApiTestBase {
 
     // ===  Preparing invoice for test  ===
     Invoice invoice = new JsonObject(getMockData(APPROVED_INVOICE_SAMPLE_PATH)).mapTo(Invoice.class);
-    invoice.setLockTotal(false);
+//    invoice.setLockTotal(false);
     invoice.setAdjustments(null);
     invoice.setTotal(null);
 
@@ -2291,24 +2271,6 @@ public class InvoicesApiTest extends ApiTestBase {
 
     verifyPostResponse(INVOICE_PATH, body, prepareHeaders(INVOICE_NUMBER_ERROR_X_OKAPI_TENANT), APPLICATION_JSON, 500);
 
-  }
-
-  @Test
-  void testCreateInvoiceWithLockedTotalButWithoutTotal() throws IOException {
-    logger.info("=== Test validation on creating Invoice without total which is locked ===");
-
-    // ===  Preparing invoice for test  ===
-    Invoice invoice = new JsonObject(getMockData(APPROVED_INVOICE_SAMPLE_PATH)).mapTo(Invoice.class);
-    invoice.setLockTotal(true);
-    invoice.setTotal(null);
-
-    // ===  Run test  ===
-    Errors errors = verifyPostResponse(INVOICE_PATH, JsonObject.mapFrom(invoice), prepareHeaders(X_OKAPI_TENANT), APPLICATION_JSON, 422)
-      .as(Errors.class);
-
-    assertThat(errors.getErrors(), hasSize(1));
-    assertThat(errors.getErrors().get(0).getCode(), equalTo(INVOICE_TOTAL_REQUIRED.getCode()));
-    assertThat(serverRqRs.size(), equalTo(0));
   }
 
   @Test
@@ -2444,7 +2406,7 @@ public class InvoicesApiTest extends ApiTestBase {
     allProtectedFieldsModification.put(InvoiceProtectedFields.CURRENCY, "TUGRIK");
     allProtectedFieldsModification.put(InvoiceProtectedFields.FOLIO_INVOICE_NO, "some_folio_inv_num");
     allProtectedFieldsModification.put(InvoiceProtectedFields.INVOICE_DATE, new Date(System.currentTimeMillis()));
-    allProtectedFieldsModification.put(InvoiceProtectedFields.LOCK_TOTAL, true);
+    allProtectedFieldsModification.put(InvoiceProtectedFields.LOCK_TOTAL, 15d);
     allProtectedFieldsModification.put(InvoiceProtectedFields.PAYMENT_TERMS, "Payment now");
     allProtectedFieldsModification.put(InvoiceProtectedFields.SOURCE, Invoice.Source.EDI);
     allProtectedFieldsModification.put(InvoiceProtectedFields.VOUCHER_NUMBER, "some_voucher_number");
@@ -2456,36 +2418,6 @@ public class InvoicesApiTest extends ApiTestBase {
     allProtectedFieldsModification.put(InvoiceProtectedFields.PO_NUMBERS, poNumbers);
 
     checkPreventInvoiceModificationRule(invoice, allProtectedFieldsModification);
-
-    // Check number of requests
-    assertThat(serverRqRs.row(INVOICES).get(HttpMethod.GET), hasSize(1));
-    // PUT request wasn't processed
-    assertThat(serverRqRs.row(INVOICES).get(HttpMethod.PUT), nullValue());
-  }
-
-  @Test
-  void testUpdateInvoiceTotalValidation() throws IOException {
-    logger.info("=== Test update invoice with locked total changing total value ===");
-
-    Invoice invoice = new JsonObject(getMockData(APPROVED_INVOICE_SAMPLE_PATH)).mapTo(Invoice.class);
-    invoice.setLockTotal(true);
-    invoice.setTotal(15d);
-
-    // Set record state which is returned from storage
-    addMockEntry(INVOICES, JsonObject.mapFrom(invoice));
-
-    // Set another total
-    invoice.setTotal(10d);
-
-    String url = String.format(INVOICE_ID_PATH, invoice.getId());
-    Errors errors = verifyPut(url, JsonObject.mapFrom(invoice), "", HttpStatus.SC_BAD_REQUEST).as(Errors.class);
-
-    assertThat(errors.getErrors(), hasSize(1));
-
-    Error error = errors.getErrors().get(0);
-    assertThat(error.getCode(), equalTo(PROHIBITED_FIELD_CHANGING.getCode()));
-    Object[] failedFieldNames = getModifiedProtectedFields(error);
-    assertThat(failedFieldNames, arrayContaining(TOTAL));
 
     // Check number of requests
     assertThat(serverRqRs.row(INVOICES).get(HttpMethod.GET), hasSize(1));
