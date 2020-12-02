@@ -45,12 +45,6 @@ public class InvoiceValidator extends BaseValidator {
   public void validateInvoiceProtectedFields(Invoice invoice, Invoice invoiceFromStorage) {
     if(isPostApproval(invoiceFromStorage)) {
       Set<String> fields = findChangedProtectedFields(invoice, invoiceFromStorage, InvoiceProtectedFields.getFieldNames());
-
-      // "total" depends on value of "lockTotal": if value is true, total is required; if false, read-only (system calculated)
-      if (Boolean.TRUE.equals(invoiceFromStorage.getLockTotal())
-        && !Objects.equals(invoice.getTotal(), invoiceFromStorage.getTotal())) {
-        fields.add(TOTAL);
-      }
       verifyThatProtectedFieldsUnchanged(fields);
     }
   }
