@@ -6,8 +6,8 @@ import static org.folio.invoices.utils.ErrorCodes.ADJUSTMENT_FUND_DISTRIBUTIONS_
 import static org.folio.invoices.utils.ErrorCodes.ADJUSTMENT_IDS_NOT_UNIQUE;
 import static org.folio.invoices.utils.ErrorCodes.FUND_DISTRIBUTIONS_NOT_PRESENT;
 import static org.folio.invoices.utils.ErrorCodes.INCOMPATIBLE_INVOICE_FIELDS_ON_STATUS_TRANSITION;
-import static org.folio.invoices.utils.ErrorCodes.INVOICE_TOTAL_REQUIRED;
 import static org.folio.invoices.utils.ErrorCodes.LINE_FUND_DISTRIBUTIONS_SUMMARY_MISMATCH;
+import static org.folio.invoices.utils.ErrorCodes.LOCK_AND_CALCULATED_TOTAL_MISMATCH;
 import static org.folio.invoices.utils.HelperUtils.getFundDistributionAmount;
 import static org.folio.invoices.utils.HelperUtils.isPostApproval;
 
@@ -60,9 +60,6 @@ public class InvoiceValidator extends BaseValidator {
     Errors errors = new Errors();
     List<Error> errorList = errors.getErrors();
 
-    if (Boolean.TRUE.equals(invoice.getLockTotal()) && Objects.isNull(invoice.getTotal())) {
-      errorList.add(INVOICE_TOTAL_REQUIRED.toError());
-    }
     if (!isPostApproval(invoice) && (invoice.getApprovalDate() != null || invoice.getApprovedBy() != null)) {
       errorList.add(INCOMPATIBLE_INVOICE_FIELDS_ON_STATUS_TRANSITION.toError());
     }
@@ -71,6 +68,13 @@ public class InvoiceValidator extends BaseValidator {
     }
     if (CollectionUtils.isNotEmpty(errorList)) {
       throw new HttpException(422, errors, "Invoice validation error");
+    }
+  }
+
+  public void validateInvoiceTotals(Invoice invoice) {
+    if (invoice.getLockTotal() != null && invoice.getTotal() != null
+      && Double.compare(invoice.getLockTotal(), invoice.getTotal()) != 0) {
+      throw new HttpException(400, LOCK_AND_CALCULATED_TOTAL_MISMATCH);
     }
   }
 
@@ -84,6 +88,7 @@ public class InvoiceValidator extends BaseValidator {
 
   public void validateBeforeApproval(Invoice invoice, List<InvoiceLine> lines) {
     checkVendorHasAccountingCode(invoice);
+    validateInvoiceTotals(invoice);
     verifyInvoiceLineNotEmpty(lines);
     validateInvoiceLineFundDistributions(lines, Monetary.getCurrency(invoice.getCurrency()));
     validateInvoiceAdjustmentsDistributions(adjustmentsService.getNotProratedAdjustments(invoice) , Monetary.getCurrency(invoice.getCurrency()));

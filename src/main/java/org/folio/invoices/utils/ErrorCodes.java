@@ -47,7 +47,8 @@ public enum ErrorCodes {
   ORDER_INVOICE_RELATION_CREATE_FAILED("orderInvoiceRelationCreateFailed", "Create of order invoice relation has been failed"),
   INVOICE_LINE_NOT_FOUND("invoiceLineNotFound", "Invoice line not found"),
   BUDGET_EXPENSE_CLASS_NOT_FOUND("budgetExpenseClassNotFound", "Given expense class not assigned to the budget"),
-  EXPENSE_CLASS_NOT_FOUND("expenseClassNotFound", "Expense class record is not found");
+  EXPENSE_CLASS_NOT_FOUND("expenseClassNotFound", "Expense class record is not found"),
+  LOCK_AND_CALCULATED_TOTAL_MISMATCH("lockCalculatedTotalsMismatch", "Lock total and calculated total mismatch");
 
   private final String code;
   private final String description;

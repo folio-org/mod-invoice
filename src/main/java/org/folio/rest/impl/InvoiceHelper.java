@@ -13,6 +13,7 @@ import static org.apache.commons.lang3.StringUtils.isEmpty;
 import static org.folio.invoices.utils.AcqDesiredPermissions.ASSIGN;
 import static org.folio.invoices.utils.AcqDesiredPermissions.MANAGE;
 import static org.folio.invoices.utils.ErrorCodes.INVALID_INVOICE_TRANSITION_ON_PAID_STATUS;
+import static org.folio.invoices.utils.ErrorCodes.LOCK_AND_CALCULATED_TOTAL_MISMATCH;
 import static org.folio.invoices.utils.ErrorCodes.PO_LINE_NOT_FOUND;
 import static org.folio.invoices.utils.ErrorCodes.PO_LINE_UPDATE_FAILURE;
 import static org.folio.invoices.utils.ErrorCodes.USER_HAS_NO_ACQ_PERMISSIONS;
