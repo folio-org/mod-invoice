@@ -20,7 +20,6 @@ public enum ErrorCodes {
   LINE_FUND_DISTRIBUTIONS_SUMMARY_MISMATCH("lineFundDistributionsSummaryMismatch", "Fund distributions summary should be 100 % or equal to subtotal for every associated invoice lines"),
   ADJUSTMENT_FUND_DISTRIBUTIONS_SUMMARY_MISMATCH("adjustmentFundDistributionsSummaryMismatch", "Fund distributions summary should be 100 % or equal to subtotal for every non-prorated adjustment"),
   VOUCHER_UPDATE_FAILURE("voucherUpdateFailure", "Voucher record cannot be updated"),
-  INVOICE_TOTAL_REQUIRED("invoiceTotalRequired", "The total amount is expected when lockTotal is true"),
   MOD_CONFIG_ERROR("configNotAvailable", "The mod-configuration is not available"),
   PROHIBITED_FIELD_CHANGING("protectedFieldChanging", "Field can't be modified"),
   FUNDS_NOT_FOUND("fundsNotFound", "Fund records are not found"),
@@ -47,7 +46,8 @@ public enum ErrorCodes {
   ORDER_INVOICE_RELATION_CREATE_FAILED("orderInvoiceRelationCreateFailed", "Create of order invoice relation has been failed"),
   INVOICE_LINE_NOT_FOUND("invoiceLineNotFound", "Invoice line not found"),
   BUDGET_EXPENSE_CLASS_NOT_FOUND("budgetExpenseClassNotFound", "Given expense class not assigned to the budget"),
-  EXPENSE_CLASS_NOT_FOUND("expenseClassNotFound", "Expense class record is not found");
+  EXPENSE_CLASS_NOT_FOUND("expenseClassNotFound", "Expense class record is not found"),
+  LOCK_AND_CALCULATED_TOTAL_MISMATCH("lockCalculatedTotalsMismatch", "Lock total and calculated total mismatch");
 
   private final String code;
   private final String description;
