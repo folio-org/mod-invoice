@@ -483,13 +483,8 @@ public class InvoiceHelper extends AbstractHelper {
    * @return {code true} if adjustments total, sub total or grand total value is different to original one
    */
   private boolean recalculateInvoiceTotals(Invoice invoice, List<InvoiceLine> lines) {
-    // 1. Get original values
     Double adjustmentsTotal = invoice.getAdjustmentsTotal();
-
-    // 2. Recalculate totals
     calculateTotals(invoice, lines);
-
-    // 3. Compare if anything has changed
     return Objects.equals(adjustmentsTotal, invoice.getAdjustmentsTotal());
   }
 

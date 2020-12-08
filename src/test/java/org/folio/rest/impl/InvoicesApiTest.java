@@ -303,7 +303,7 @@ public class InvoicesApiTest extends ApiTestBase {
   }
 
   @Test
-  void testGetInvoicingInvoicesById() {
+  void testShouldAlwaysRecalculateTotalAndSubTotalWhenGetInvoicingInvoicesById() {
     logger.info("=== Test Get Invoice By Id ===");
 
     final Invoice resp = verifySuccessGet(String.format(INVOICE_ID_PATH, APPROVED_INVOICE_ID), Invoice.class);
@@ -313,7 +313,7 @@ public class InvoicesApiTest extends ApiTestBase {
 
     // Verify that expected number of external calls made
     assertThat(getInvoiceRetrievals(), hasSize(1));
-    assertThat(getInvoiceLineSearches(), empty());
+    assertThat(getInvoiceLineSearches(), hasSize(1));
     verifyInvoiceUpdateCalls(0);
   }
 
@@ -322,10 +322,6 @@ public class InvoicesApiTest extends ApiTestBase {
     logger.info("=== Test Get Invoice By Id - invoice totals are outdated ===");
     Invoice invoice = getMockAsJson(APPROVED_INVOICE_SAMPLE_PATH).mapTo(Invoice.class);
     invoice.setStatus(Invoice.Status.OPEN);
-    invoice.setAdjustmentsTotal(5.05d);
-    invoice.setSubTotal(10.10d);
-    invoice.setTotal(15.15d);
-
     addMockEntry(INVOICES, invoice);
 
     final Invoice resp = verifySuccessGet(String.format(INVOICE_ID_PATH, invoice.getId()), Invoice.class);
@@ -338,7 +334,7 @@ public class InvoicesApiTest extends ApiTestBase {
     // Verify that expected number of external calls made
     assertThat(getInvoiceRetrievals(), hasSize(1));
     assertThat(getInvoiceLineSearches(), hasSize(1));
-    verifyInvoiceUpdateCalls(1);
+    verifyInvoiceUpdateCalls(0);
   }
 
   @Test
@@ -365,7 +361,7 @@ public class InvoicesApiTest extends ApiTestBase {
     // Verify that expected number of external calls made
     assertThat(getInvoiceRetrievals(), hasSize(1));
     assertThat(getInvoiceLineSearches(), hasSize(1));
-    verifyInvoiceUpdateCalls(1);
+    verifyInvoiceUpdateCalls(0);
   }
 
   @Test
@@ -378,9 +374,20 @@ public class InvoicesApiTest extends ApiTestBase {
     invoice.setId(id);
     invoice.getAdjustments().forEach(adj -> adj.setProrate(Adjustment.Prorate.BY_LINE));
     // Setting totals to verify that they are re-calculated
-    invoice.setAdjustmentsTotal(5d);
-    invoice.setSubTotal(10d);
-    invoice.setTotal(15d);
+    Adjustment adjustment1 = new Adjustment()
+      .withProrate(Prorate.NOT_PRORATED)
+      .withDescription("Description")
+      .withType(Type.AMOUNT)
+      .withValue(50d)
+      .withRelationToTotal(Adjustment.RelationToTotal.IN_ADDITION_TO);
+
+    FundDistribution fundDistribution1 = new FundDistribution()
+      .withDistributionType(AMOUNT)
+      .withValue(50d)
+      .withFundId(EXISTING_FUND_ID);
+
+    adjustment1.getFundDistributions().add(fundDistribution1);
+    invoice.getAdjustments().add(adjustment1);
 
     addMockEntry(INVOICES, JsonObject.mapFrom(invoice));
 
@@ -391,14 +398,14 @@ public class InvoicesApiTest extends ApiTestBase {
     assertThat(resp.getId(), equalTo(id));
 
     /* The invoice has 2 not prorated adjustments one with fixed amount and another with percentage type */
-    assertThat(resp.getAdjustmentsTotal(), equalTo(0d));
+    assertThat(resp.getAdjustmentsTotal(), equalTo(50d));
     assertThat(resp.getSubTotal(), equalTo(0d));
-    assertThat(resp.getTotal(), equalTo(0d));
+    assertThat(resp.getTotal(), equalTo(50d));
 
     // Verify that expected number of external calls made
     assertThat(getInvoiceRetrievals(), hasSize(1));
     assertThat(getInvoiceLineSearches(), hasSize(1));
-    verifyInvoiceUpdateCalls(1);
+    verifyInvoiceUpdateCalls(0);
   }
 
   @Test
