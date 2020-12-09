@@ -224,14 +224,7 @@ public class InvoiceHelper extends AbstractHelper {
     getInvoiceRecord(id)
       .thenCompose(invoice -> protectionHelper.isOperationRestricted(invoice.getAcqUnitIds(), ProtectedOperationType.READ)
         .thenApply(aVoid -> invoice))
-      .thenCompose(invoice -> {
-        return recalculateTotals(invoice).thenApply(isOutOfSync -> {
-          if (Boolean.TRUE.equals(isOutOfSync)) {
-            updateOutOfSyncInvoice(invoice);
-          }
-          return invoice;
-        });
-      })
+      .thenCompose(invoice -> recalculateTotals(invoice).thenApply(b -> invoice))
       .thenAccept(future::complete)
       .exceptionally(t -> {
         logger.error("Failed to get an Invoice by id={}", t.getCause(), id);
