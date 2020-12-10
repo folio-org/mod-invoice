@@ -224,19 +224,7 @@ public class InvoiceHelper extends AbstractHelper {
     getInvoiceRecord(id)
       .thenCompose(invoice -> protectionHelper.isOperationRestricted(invoice.getAcqUnitIds(), ProtectedOperationType.READ)
         .thenApply(aVoid -> invoice))
-      .thenCompose(invoice -> {
-        // If invoice was approved already, the totals are fixed at this point and should not be recalculated
-        if (isPostApproval(invoice)) {
-          return completedFuture(invoice);
-        }
-
-        return recalculateTotals(invoice).thenApply(isOutOfSync -> {
-          if (Boolean.TRUE.equals(isOutOfSync)) {
-            updateOutOfSyncInvoice(invoice);
-          }
-          return invoice;
-        });
-      })
+      .thenCompose(invoice -> recalculateTotals(invoice).thenApply(b -> invoice))
       .thenAccept(future::complete)
       .exceptionally(t -> {
         logger.error("Failed to get an Invoice by id={}", t.getCause(), id);
@@ -488,17 +476,9 @@ public class InvoiceHelper extends AbstractHelper {
    * @return {code true} if adjustments total, sub total or grand total value is different to original one
    */
   private boolean recalculateInvoiceTotals(Invoice invoice, List<InvoiceLine> lines) {
-    // 1. Get original values
-    Double total = invoice.getTotal();
-    Double subTotal = invoice.getSubTotal();
     Double adjustmentsTotal = invoice.getAdjustmentsTotal();
-
-    // 2. Recalculate totals
     calculateTotals(invoice, lines);
-
-    // 3. Compare if anything has changed
-    return !(Objects.equals(total, invoice.getTotal()) && Objects.equals(subTotal, invoice.getSubTotal())
-        && Objects.equals(adjustmentsTotal, invoice.getAdjustmentsTotal()));
+    return Objects.equals(adjustmentsTotal, invoice.getAdjustmentsTotal());
   }
 
   private boolean recalculateDynamicData(Invoice updatedInvoice, Invoice invoiceFromStorage, List<InvoiceLine> invoiceLines) {
