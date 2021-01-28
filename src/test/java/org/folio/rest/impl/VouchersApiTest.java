@@ -1,19 +1,16 @@
 package org.folio.rest.impl;
 
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
-import static javax.ws.rs.core.MediaType.TEXT_HTML;
 import static javax.ws.rs.core.MediaType.TEXT_PLAIN;
 import static org.folio.invoices.utils.HelperUtils.INVOICE_ID;
 import static org.folio.rest.impl.MockServer.ERROR_X_OKAPI_TENANT;
-import static org.hamcrest.Matchers.isEmptyOrNullString;
-import static org.hamcrest.Matchers.not;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertThat;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
 
+import org.assertj.core.api.Assertions;
 import org.folio.rest.jaxrs.model.Errors;
 import org.folio.rest.jaxrs.model.SequenceNumber;
 import org.folio.rest.jaxrs.model.Voucher;
@@ -145,7 +142,7 @@ public class VouchersApiTest extends ApiTestBase {
     logger.info("=== Test Get Voucher number start value - success ===");
 
     SequenceNumber number = verifyGet(VOUCHER_NUMBER_START_PATH, APPLICATION_JSON, 200).as(SequenceNumber.class);
-    assertThat(number.getSequenceNumber(), not(isEmptyOrNullString()));
+    Assertions.assertThat(number.getSequenceNumber()).isNotBlank();
   }
 
   @Test

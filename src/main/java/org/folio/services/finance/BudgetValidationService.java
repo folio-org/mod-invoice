@@ -179,18 +179,15 @@ public class BudgetValidationService {
   private boolean isRemainingAmountExceed(Map<String, MonetaryAmount> fdMap, String fyCurrency, Budget budget) {
     String fundId = budget.getFundId();
 
-    //[remaining amount we can expend] = (allocated * allowableExpenditure) - (allocated - (unavailable + available)) - (awaitingPayment + expended)
-    Money allocated = Money.of(budget.getAllocated(), fyCurrency);
+    // [remaining amount we can expend] = (totalFunding * allowableExpenditure) - unavailable
+    // where unavailable = awaitingPayment  + encumbered + expenditure
+    Money totalFundings = Money.of(budget.getTotalFunding(), fyCurrency);
     BigDecimal allowableExpenditures = BigDecimal.valueOf(budget.getAllowableExpenditure()).movePointLeft(2);
     Money unavailable = Money.of(budget.getUnavailable(), fyCurrency);
     Money available = Money.of(budget.getAvailable(), fyCurrency);
 
-    Money awaitingPayment = Money.of(budget.getAwaitingPayment(), fyCurrency);
-    Money expended = Money.of(budget.getExpenditures(), fyCurrency);
-
-    MonetaryAmount amountCanBeExpended = allocated.multiply(allowableExpenditures)
-      .subtract(allocated.subtract(unavailable.add(available)))
-      .subtract(awaitingPayment.add(expended));
+    MonetaryAmount amountCanBeExpended = totalFundings.multiply(allowableExpenditures)
+      .subtract(unavailable.add(available));
 
     MonetaryAmount fdMoneyAmount = fdMap.get(fundId);
     return fdMoneyAmount.isGreaterThan(amountCanBeExpended);
