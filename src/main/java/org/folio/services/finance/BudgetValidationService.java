@@ -184,10 +184,8 @@ public class BudgetValidationService {
     Money totalFundings = Money.of(budget.getTotalFunding(), fyCurrency);
     BigDecimal allowableExpenditures = BigDecimal.valueOf(budget.getAllowableExpenditure()).movePointLeft(2);
     Money unavailable = Money.of(budget.getUnavailable(), fyCurrency);
-    Money available = Money.of(budget.getAvailable(), fyCurrency);
 
-    MonetaryAmount amountCanBeExpended = totalFundings.multiply(allowableExpenditures)
-      .subtract(unavailable.add(available));
+    MonetaryAmount amountCanBeExpended = totalFundings.multiply(allowableExpenditures).subtract(unavailable);
 
     MonetaryAmount fdMoneyAmount = fdMap.get(fundId);
     return fdMoneyAmount.isGreaterThan(amountCanBeExpended);
