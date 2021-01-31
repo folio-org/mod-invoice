@@ -1,8 +1,8 @@
 package org.folio.invoices.util;
 
 import static org.folio.services.exchange.ExchangeRateProviderResolver.RATE_KEY;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -10,11 +10,11 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
+import javax.money.convert.ConversionQuery;
+
 import org.folio.invoices.utils.HelperUtils;
 import org.folio.rest.jaxrs.model.Invoice;
 import org.junit.jupiter.api.Test;
-import javax.money.convert.ConversionQuery;
-import javax.money.convert.ConversionQueryBuilder;
 
 public class HelperUtilsTest {
   @Test
@@ -49,6 +49,6 @@ public class HelperUtilsTest {
     String systemCurrency = "USD";
     ConversionQuery actQuery = HelperUtils.buildConversionQuery(new Invoice().withExchangeRate(2d).withCurrency("EUR"), systemCurrency);
     assertEquals(actQuery.getCurrency().getCurrencyCode(), systemCurrency);
-    assertEquals(new Double(2d), actQuery.get(RATE_KEY, Double.class));
+    assertEquals(Double.valueOf(2d), actQuery.get(RATE_KEY, Double.class));
   }
 }
