@@ -23,13 +23,13 @@ import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.eventbus.Message;
 import io.vertx.core.json.JsonObject;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
-import me.escoffier.vertx.completablefuture.VertxCompletableFuture;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.folio.completablefuture.FolioVertxCompletableFuture;
 
 @Component("invoiceSummaryHandler")
 public class InvoiceSummary implements Handler<Message<JsonObject>> {
-  protected final Logger logger = LoggerFactory.getLogger(this.getClass());
+  protected final Logger logger = LogManager.getLogger(this.getClass());
   private final Context ctx;
 
   @Autowired
@@ -76,7 +76,7 @@ public class InvoiceSummary implements Handler<Message<JsonObject>> {
 
   private CompletableFuture<Invoice> getInvoiceRecord(InvoiceHelper helper, JsonObject body) {
     if (body.containsKey(INVOICE)) {
-      return VertxCompletableFuture.supplyAsync(ctx, () -> body.getJsonObject(INVOICE).mapTo(Invoice.class));
+      return FolioVertxCompletableFuture.supplyAsync(ctx, () -> body.getJsonObject(INVOICE).mapTo(Invoice.class));
     } else {
       return helper.getInvoiceRecord(body.getString(INVOICE_ID));
     }

@@ -30,7 +30,7 @@ import org.folio.rest.jaxrs.model.Error;
 import org.folio.rest.tools.client.interfaces.HttpClientInterface;
 
 import io.vertx.core.Context;
-import me.escoffier.vertx.completablefuture.VertxCompletableFuture;
+import org.folio.completablefuture.FolioVertxCompletableFuture;
 import one.util.streamex.StreamEx;
 
 public class ProtectionHelper extends AbstractHelper {
@@ -164,7 +164,7 @@ public class ProtectionHelper extends AbstractHelper {
   }
 
   CompletableFuture<AcquisitionsUnitCollection> getAcquisitionsUnits(String query, int offset, int limit) {
-    CompletableFuture<AcquisitionsUnitCollection> future = new VertxCompletableFuture<>(ctx);
+    CompletableFuture<AcquisitionsUnitCollection> future = new FolioVertxCompletableFuture<>(ctx);
 
     try {
       String endpoint = String.format(ProtectionHelper.GET_UNITS_BY_QUERY, limit, offset, getEndpointWithQuery(query, logger), lang);
@@ -202,7 +202,7 @@ public class ProtectionHelper extends AbstractHelper {
   }
 
   CompletableFuture<AcquisitionsUnitMembershipCollection> getAcquisitionsUnitsMemberships(String query, int offset, int limit) {
-    CompletableFuture<AcquisitionsUnitMembershipCollection> future = new VertxCompletableFuture<>(ctx);
+    CompletableFuture<AcquisitionsUnitMembershipCollection> future = new FolioVertxCompletableFuture<>(ctx);
     try {
       String endpoint = String.format(ProtectionHelper.GET_UNITS_MEMBERSHIPS_BY_QUERY, limit, offset, getEndpointWithQuery(query, logger), lang);
       handleGetRequest(endpoint, httpClient, ctx, okapiHeaders, logger)

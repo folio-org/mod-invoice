@@ -4,8 +4,8 @@ import io.vertx.core.AsyncResult;
 import io.vertx.core.Context;
 import io.vertx.core.Handler;
 import io.vertx.core.json.JsonObject;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -35,7 +35,7 @@ import static org.folio.rest.RestVerticle.STREAM_COMPLETE;
 
 public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
 
-  private static final Logger logger = LoggerFactory.getLogger(InvoicesImpl.class);
+  private static final Logger logger = LogManager.getLogger(InvoicesImpl.class);
   private static final String NOT_SUPPORTED = "Not supported"; // To overcome sonarcloud warning
   private static final String INVOICE_LOCATION_PREFIX = "/invoice/invoices/%s";
   private static final String INVOICE_LINE_LOCATION_PREFIX = "/invoice/invoice-lines/%s";
@@ -96,7 +96,7 @@ public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
     invoiceHelper.updateInvoice(invoice)
       .thenAccept(ok -> asyncResultHandler.handle(succeededFuture(invoiceHelper.buildNoContentResponse())))
       .exceptionally(t -> {
-        logger.error("Failed to update invoice with id={}", t, invoice.getId());
+        logger.error("Failed to update invoice with id={}", invoice.getId(), t);
         return handleErrorResponse(asyncResultHandler, invoiceHelper, t);
       });
 

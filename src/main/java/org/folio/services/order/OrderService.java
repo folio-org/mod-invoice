@@ -103,7 +103,7 @@ public class OrderService {
       .thenCompose(invoiceLine -> {
         if (invoiceLine.getPoLineId() == null) return CompletableFuture.completedFuture(null);
         return isInvoiceLineLastForOrder(invoiceLine, requestContext)
-          .thenCompose(isLastOrder -> isLastOrder
+          .thenCompose(isLastOrder -> Boolean.TRUE.equals(isLastOrder)
             ? deleteOrderInvoiceRelationship(invoiceLine.getInvoiceId(), invoiceLine.getPoLineId(), requestContext)
             : CompletableFuture.completedFuture(null));
       });

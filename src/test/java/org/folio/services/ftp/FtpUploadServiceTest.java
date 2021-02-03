@@ -26,16 +26,12 @@ import org.mockftpserver.fake.filesystem.UnixFakeFileSystem;
 import io.vertx.core.Context;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 
 public class FtpUploadServiceTest {
 
-  static {
-    System.setProperty(LoggerFactory.LOGGER_DELEGATE_FACTORY_CLASS_NAME, "io.vertx.core.logging.Log4j2LogDelegateFactory");
-  }
-
-  private static final Logger logger = LoggerFactory.getLogger(FtpUploadServiceTest.class);
+  private static final Logger logger = LogManager.getLogger(FtpUploadServiceTest.class);
 
   private static FakeFtpServer fakeFtpServer;
 

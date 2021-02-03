@@ -14,14 +14,14 @@ import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.jackson.DatabindCodec;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 
 /**
  * The class initializes vertx context adding spring context
  */
 public class InitAPIs implements InitAPI {
-  private final Logger logger = LoggerFactory.getLogger(InitAPIs.class);
+  private final Logger logger = LogManager.getLogger(InitAPIs.class);
 
   @Override
   public void init(Vertx vertx, Context context, Handler<AsyncResult<Boolean>> resultHandler) {

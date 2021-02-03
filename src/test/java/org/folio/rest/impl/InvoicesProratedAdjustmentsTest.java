@@ -40,12 +40,12 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 
 public class InvoicesProratedAdjustmentsTest extends ApiTestBase {
 
-  private static final Logger logger = LoggerFactory.getLogger(InvoicesProratedAdjustmentsTest.class);
+  private static final Logger logger = LogManager.getLogger(InvoicesProratedAdjustmentsTest.class);
 
   @ParameterizedTest
   @CsvSource({

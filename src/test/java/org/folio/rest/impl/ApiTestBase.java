@@ -62,8 +62,8 @@ import io.restassured.response.Response;
 import io.vertx.core.Handler;
 import io.vertx.core.eventbus.Message;
 import io.vertx.core.json.JsonObject;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 
 public class ApiTestBase {
 
@@ -96,11 +96,7 @@ public class ApiTestBase {
 
   public static final String MIN_INVOICE_ID = UUID.randomUUID().toString();
 
-  static {
-    System.setProperty(LoggerFactory.LOGGER_DELEGATE_FACTORY_CLASS_NAME, "io.vertx.core.logging.Log4j2LogDelegateFactory");
-  }
-
-  private static final Logger logger = LoggerFactory.getLogger(ApiTestBase.class);
+  private static final Logger logger = LogManager.getLogger(ApiTestBase.class);
 
 
   private static boolean runningOnOwn;

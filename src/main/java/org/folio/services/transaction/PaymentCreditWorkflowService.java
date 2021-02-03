@@ -23,13 +23,13 @@ import org.folio.rest.jaxrs.model.Parameter;
 import org.folio.services.exchange.ExchangeRateProviderResolver;
 import org.folio.services.finance.CurrentFiscalYearService;
 
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
-import me.escoffier.vertx.completablefuture.VertxCompletableFuture;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.folio.completablefuture.FolioVertxCompletableFuture;
 
 public class PaymentCreditWorkflowService {
 
-  private static final Logger logger = LoggerFactory.getLogger(PaymentCreditWorkflowService.class);
+  private static final Logger logger = LogManager.getLogger(PaymentCreditWorkflowService.class);
 
   public static final String FUND_ID = "fundId";
 
@@ -96,10 +96,10 @@ public class PaymentCreditWorkflowService {
   }
 
   private CompletionStage<Void> createTransactions(List<Transaction> transactions, RequestContext requestContext) {
-    return VertxCompletableFuture.allOf(requestContext.getContext(), transactions.stream()
+    return FolioVertxCompletableFuture.allOf(requestContext.getContext(), transactions.stream()
       .map(tr -> baseTransactionService.createTransaction(tr, requestContext)
       .exceptionally(t -> {
-        logger.error("Failed to create transaction for invoice with id - {}", t, tr.getSourceInvoiceId());
+        logger.error("Failed to create transaction for invoice with id - {}", tr.getSourceInvoiceId(), t);
         List<Parameter> parameters = new ArrayList<>();
         parameters.add(new Parameter().withKey("invoiceLineId").withValue(tr.getSourceInvoiceLineId()));
         parameters.add(new Parameter().withKey(FUND_ID)

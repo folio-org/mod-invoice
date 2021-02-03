@@ -15,12 +15,12 @@ import io.vertx.core.AsyncResult;
 import io.vertx.core.Context;
 import io.vertx.core.Handler;
 import io.vertx.core.json.JsonObject;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 
 public class VouchersImpl implements org.folio.rest.jaxrs.resource.Voucher {
 
-  private static final Logger logger = LoggerFactory.getLogger(VouchersImpl.class);
+  private static final Logger logger = LogManager.getLogger(VouchersImpl.class);
 
   private Void handleErrorResponse(Handler<AsyncResult<Response>> asyncResultHandler, AbstractHelper helper,
                                    Throwable t) {
@@ -118,7 +118,7 @@ public class VouchersImpl implements org.folio.rest.jaxrs.resource.Voucher {
     vouchersHelper.getVouchers(limit, offset, query)
       .thenAccept(vouchers -> {
         if (logger.isInfoEnabled()) {
-          logger.info("Successfully retrieved vouchers: " + JsonObject.mapFrom(vouchers)
+          logger.info("Successfully retrieved vouchers: {}", JsonObject.mapFrom(vouchers)
             .encodePrettily());
         }
         asyncResultHandler.handle(succeededFuture(vouchersHelper.buildOkResponse(vouchers)));

@@ -17,7 +17,7 @@ import org.folio.rest.jaxrs.model.InvoiceDocument;
 
 import io.vertx.core.Context;
 import io.vertx.core.json.JsonObject;
-import me.escoffier.vertx.completablefuture.VertxCompletableFuture;
+import org.folio.completablefuture.FolioVertxCompletableFuture;
 
 class DocumentHelper extends AbstractHelper {
   private static final String GET_DOCUMENTS_BY_QUERY = resourcesPath(INVOICE_DOCUMENTS) + SEARCH_PARAMS;
@@ -36,14 +36,14 @@ class DocumentHelper extends AbstractHelper {
   }
 
   CompletableFuture<DocumentCollection> getDocumentsByInvoiceId(String invoiceId, int limit, int offset, String query) {
-    CompletableFuture<DocumentCollection> future = new VertxCompletableFuture<>(ctx);
+    CompletableFuture<DocumentCollection> future = new FolioVertxCompletableFuture<>(ctx);
     String queryParam = getEndpointWithQuery(query, logger);
     String endpoint = String.format(GET_DOCUMENTS_BY_QUERY, invoiceId, limit, offset, queryParam, lang);
 
     handleGetRequest(endpoint, httpClient, ctx, okapiHeaders, logger)
-      .thenCompose(documents -> VertxCompletableFuture.supplyBlockingAsync(ctx, () -> {
+      .thenCompose(documents -> FolioVertxCompletableFuture.supplyBlockingAsync(ctx, () -> {
         if (logger.isInfoEnabled()) {
-          logger.info("Successfully retrieved documents", documents.encodePrettily());
+          logger.info("Successfully retrieved documents: {}", documents.encodePrettily());
         }
         return documents.mapTo(DocumentCollection.class);
       }))
@@ -64,7 +64,7 @@ class DocumentHelper extends AbstractHelper {
     String endpoint = resourceByParentIdAndIdPath(INVOICE_DOCUMENTS, invoiceId, documentId, lang);
     return handleGetRequest(endpoint, httpClient, ctx, okapiHeaders, logger).thenApply(jsonDocument -> {
       if (logger.isInfoEnabled()) {
-        logger.info("Successfully retrieved document by id: " + jsonDocument.encodePrettily());
+        logger.info("Successfully retrieved document by id: {}", jsonDocument.encodePrettily());
       }
       return jsonDocument.mapTo(InvoiceDocument.class);
     });

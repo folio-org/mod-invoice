@@ -19,7 +19,7 @@ import org.folio.rest.jaxrs.model.jaxb.BatchVoucherType;
 
 import io.vertx.core.Context;
 import io.vertx.core.json.JsonObject;
-import me.escoffier.vertx.completablefuture.VertxCompletableFuture;
+import org.folio.completablefuture.FolioVertxCompletableFuture;
 
 public class BatchVoucherHelper extends AbstractHelper {
   private static final String HEADER_ERROR_MSG = "Accept header must be [\"application/xml\",\"application/json\"]";
@@ -39,7 +39,7 @@ public class BatchVoucherHelper extends AbstractHelper {
    * @return completable future with {@link BatchVoucher} on success or an exception if processing fails
    */
   public CompletableFuture<BatchVoucher> getBatchVoucherById(String id) {
-    CompletableFuture<BatchVoucher> future = new VertxCompletableFuture<>(ctx);
+    CompletableFuture<BatchVoucher> future = new FolioVertxCompletableFuture<>(ctx);
     String endpoint = resourceByIdPath(BATCH_VOUCHER_STORAGE, id, lang);
     handleGetRequest(endpoint, httpClient, ctx, okapiHeaders, logger)
       .thenApplyAsync(jsonObject -> jsonObject.mapTo(BatchVoucher.class))

@@ -23,7 +23,7 @@ import org.folio.services.ftp.FtpUploadService;
 
 import io.vertx.core.Context;
 import io.vertx.core.json.JsonObject;
-import me.escoffier.vertx.completablefuture.VertxCompletableFuture;
+import org.folio.completablefuture.FolioVertxCompletableFuture;
 
 public class BatchVoucherExportConfigHelper extends AbstractHelper {
 
@@ -44,16 +44,16 @@ public class BatchVoucherExportConfigHelper extends AbstractHelper {
   }
 
   public CompletableFuture<ExportConfig> getExportConfig(String id) {
-    CompletableFuture<ExportConfig> future = new VertxCompletableFuture<>(ctx);
+    CompletableFuture<ExportConfig> future = new FolioVertxCompletableFuture<>(ctx);
 
     try {
       handleGetRequest(resourceByIdPath(BATCH_VOUCHER_EXPORT_CONFIGS, id, lang), httpClient, ctx, okapiHeaders, logger)
         .thenAccept(jsonExportConfig -> {
-          logger.info("Successfully retrieved batch voucher export configuration: " + jsonExportConfig.encodePrettily());
+          logger.info("Successfully retrieved batch voucher export configuration: {} ", jsonExportConfig.encodePrettily());
           future.complete(jsonExportConfig.mapTo(ExportConfig.class));
         })
         .exceptionally(t -> {
-          logger.error("Error getting batch voucher export configuration by id ", id);
+          logger.error("Error getting batch voucher export configuration by id {}", id, t);
           future.completeExceptionally(t);
           return null;
         });
@@ -65,16 +65,16 @@ public class BatchVoucherExportConfigHelper extends AbstractHelper {
   }
 
   public CompletableFuture<Credentials> getExportConfigCredentials(String id) {
-    CompletableFuture<Credentials> future = new VertxCompletableFuture<>(ctx);
+    CompletableFuture<Credentials> future = new FolioVertxCompletableFuture<>(ctx);
 
     try {
       handleGetRequest(String.format(resourcesPath(BATCH_VOUCHER_EXPORT_CONFIGS_CREDENTIALS), id), httpClient, ctx, okapiHeaders, logger)
         .thenAccept(jsonCredentials -> {
-          logger.info("Successfully retrieved batch voucher export configuration credentials: " + jsonCredentials.encodePrettily());
+          logger.info("Successfully retrieved batch voucher export configuration credentials: {}", jsonCredentials.encodePrettily());
           future.complete(jsonCredentials.mapTo(Credentials.class));
         })
         .exceptionally(t -> {
-          logger.error("Error getting batch voucher export configuration credentials by id ", id);
+          logger.error("Error getting batch voucher export configuration credentials by id {}", id, t);
           future.completeExceptionally(t);
           return null;
         });
@@ -112,7 +112,7 @@ public class BatchVoucherExportConfigHelper extends AbstractHelper {
     String queryParam = getEndpointWithQuery(query, logger);
     String endpoint = String.format(GET_EXPORT_CONFIGS_BY_QUERY, limit, offset, queryParam, lang);
     return handleGetRequest(endpoint, httpClient, ctx, okapiHeaders, logger)
-      .thenCompose(json -> VertxCompletableFuture.supplyBlockingAsync(ctx, () -> json.mapTo(ExportConfigCollection.class)));
+      .thenCompose(json -> FolioVertxCompletableFuture.supplyBlockingAsync(ctx, () -> json.mapTo(ExportConfigCollection.class)));
   }
 
   public CompletableFuture<String> testUploadUri(String id) {

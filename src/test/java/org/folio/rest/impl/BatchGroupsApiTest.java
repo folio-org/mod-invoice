@@ -18,12 +18,12 @@ import org.junit.jupiter.api.Test;
 
 import io.restassured.response.Response;
 import io.vertx.core.json.JsonObject;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 
 public class BatchGroupsApiTest extends ApiTestBase {
 
-  private static final Logger logger = LoggerFactory.getLogger(BatchGroupsApiTest.class);
+  private static final Logger logger = LogManager.getLogger(BatchGroupsApiTest.class);
 
   public static final String BATCH_GROUPS_PATH = "/batch-groups";
   public static final String BATCH_GROUPS_ID_PATH = BATCH_GROUPS_PATH + "/%s";

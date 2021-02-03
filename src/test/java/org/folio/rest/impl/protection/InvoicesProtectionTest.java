@@ -34,12 +34,12 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import io.restassured.http.Headers;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 
 public class InvoicesProtectionTest extends ProtectedEntityTestBase {
 
-  private static final Logger logger = LoggerFactory.getLogger(InvoicesProtectionTest.class);
+  private static final Logger logger = LogManager.getLogger(InvoicesProtectionTest.class);
 
   @ParameterizedTest
   @ValueSource(strings = {

@@ -54,7 +54,7 @@ import org.folio.services.validator.InvoiceLineValidator;
 
 import io.vertx.core.Context;
 import io.vertx.core.json.JsonObject;
-import me.escoffier.vertx.completablefuture.VertxCompletableFuture;
+import org.folio.completablefuture.FolioVertxCompletableFuture;
 import org.folio.spring.SpringContextUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 
@@ -108,20 +108,20 @@ public class InvoiceLineHelper extends AbstractHelper {
 
   CompletableFuture<InvoiceLineCollection> getInvoiceLineCollection(String endpoint) {
     return handleGetRequest(endpoint, httpClient, ctx, okapiHeaders, logger)
-      .thenCompose(json -> VertxCompletableFuture.supplyBlockingAsync(ctx, () -> json.mapTo(InvoiceLineCollection.class)));
+      .thenCompose(json -> FolioVertxCompletableFuture.supplyBlockingAsync(ctx, () -> json.mapTo(InvoiceLineCollection.class)));
   }
 
   public CompletableFuture<InvoiceLine> getInvoiceLine(String id) {
-    CompletableFuture<InvoiceLine> future = new VertxCompletableFuture<>(ctx);
+    CompletableFuture<InvoiceLine> future = new FolioVertxCompletableFuture<>(ctx);
 
     try {
       handleGetRequest(resourceByIdPath(INVOICE_LINES, id, lang), httpClient, ctx, okapiHeaders, logger)
         .thenAccept(jsonInvoiceLine -> {
-          logger.info("Successfully retrieved invoice line: " + jsonInvoiceLine.encodePrettily());
+          logger.info("Successfully retrieved invoice line: {}", jsonInvoiceLine.encodePrettily());
           future.complete(jsonInvoiceLine.mapTo(InvoiceLine.class));
         })
         .exceptionally(t -> {
-          logger.error("Error getting invoice line by id ", id);
+          logger.error("Error getting invoice line by id {}", id);
           future.completeExceptionally(t);
           return null;
         });
@@ -133,7 +133,7 @@ public class InvoiceLineHelper extends AbstractHelper {
   }
 
   private void updateOutOfSyncInvoiceLine(InvoiceLine invoiceLine, Invoice invoice) {
-    VertxCompletableFuture.runAsync(ctx, () -> {
+    FolioVertxCompletableFuture.runAsync(ctx, () -> {
       logger.info("Invoice line with id={} is out of date in storage and going to be updated", invoiceLine.getId());
       InvoiceLineHelper helper = new InvoiceLineHelper(okapiHeaders, ctx, lang);
       helper.updateInvoiceLineToStorage(invoiceLine)
@@ -193,7 +193,7 @@ public class InvoiceLineHelper extends AbstractHelper {
    * @return completable future with {@link InvoiceLine} on success or an exception if processing fails
    */
   public CompletableFuture<InvoiceLine> getInvoiceLinePersistTotal(String id) {
-    CompletableFuture<InvoiceLine> future = new VertxCompletableFuture<>(ctx);
+    CompletableFuture<InvoiceLine> future = new FolioVertxCompletableFuture<>(ctx);
 
     // GET invoice-line from storage
     getInvoiceLine(id)
@@ -206,7 +206,7 @@ public class InvoiceLineHelper extends AbstractHelper {
       }))
       .thenAccept(future::complete)
       .exceptionally(t -> {
-        logger.error("Failed to get an Invoice Line by id={}", t.getCause(), id);
+        logger.error("Failed to get an Invoice Line by id={}", id, t.getCause());
         future.completeExceptionally(t);
         return null;
       });
@@ -268,7 +268,7 @@ public class InvoiceLineHelper extends AbstractHelper {
       .thenCompose(InvoiceRestrictionsUtil::checkIfInvoiceDeletionPermitted)
       .thenCompose(invoice -> orderService.deleteOrderInvoiceRelationIfLastInvoice(lineId, buildRequestContext())
         .exceptionally(throwable -> {
-          logger.error("Can't delete Order Invoice relation for lineId: ", lineId);
+          logger.error("Can't delete Order Invoice relation for lineId: {}", lineId, throwable);
           List<Parameter> parameters = Collections.singletonList(new Parameter().withKey("lineId").withValue(lineId));
           Error error = CANNOT_DELETE_INVOICE_LINE.toError().withParameters(parameters);
           throw new HttpException(404, error);
@@ -420,7 +420,7 @@ public class InvoiceLineHelper extends AbstractHelper {
   }
 
   private void updateInvoiceAndAffectedLinesAsync(Invoice invoice, List<InvoiceLine> lines) {
-    VertxCompletableFuture.runAsync(ctx, () -> {
+    FolioVertxCompletableFuture.runAsync(ctx, () -> {
       InvoiceLineHelper helper = new InvoiceLineHelper(okapiHeaders, ctx, lang);
       helper.persistInvoiceLines(invoice, lines).handle((ok, fail) -> {
         if (fail == null) {
@@ -433,7 +433,7 @@ public class InvoiceLineHelper extends AbstractHelper {
   }
 
   private CompletableFuture<Void> persistInvoiceLines(Invoice invoice, List<InvoiceLine> lines) {
-    return VertxCompletableFuture.allOf(ctx, lines.stream()
+    return FolioVertxCompletableFuture.allOf(ctx, lines.stream()
       .map(invoiceLine -> {
         calculateInvoiceLineTotals(invoiceLine, invoice);
         return this.updateInvoiceLineToStorage(invoiceLine);
@@ -442,18 +442,18 @@ public class InvoiceLineHelper extends AbstractHelper {
   }
 
   public CompletableFuture<Void> persistInvoiceLines(List<InvoiceLine> lines) {
-    return VertxCompletableFuture.allOf(ctx, lines.stream()
+    return FolioVertxCompletableFuture.allOf(ctx, lines.stream()
       .map(this::updateInvoiceLineToStorage)
       .toArray(CompletableFuture[]::new));
   }
 
   private void updateInvoiceAsync(Invoice invoice) {
-    VertxCompletableFuture.runAsync(ctx,
+    FolioVertxCompletableFuture.runAsync(ctx,
       () -> sendEvent(MessageAddress.INVOICE_TOTALS, new JsonObject().put(INVOICE, JsonObject.mapFrom(invoice))));
   }
 
   private void updateInvoiceAndLinesAsync(Invoice invoice) {
-    VertxCompletableFuture.runAsync(ctx, () -> {
+    FolioVertxCompletableFuture.runAsync(ctx, () -> {
       InvoiceLineHelper helper = new InvoiceLineHelper(okapiHeaders, ctx, lang);
       helper.updateInvoiceAndLines(invoice)
         .handle((ok, fail) -> {
