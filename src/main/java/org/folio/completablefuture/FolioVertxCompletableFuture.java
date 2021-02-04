@@ -1,6 +1,5 @@
 package org.folio.completablefuture;
 
-
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
@@ -68,22 +67,6 @@ public class FolioVertxCompletableFuture<T> extends CompletableFuture<T> impleme
     }
 
     // ============= Factory methods (from) =============
-
-    /**
-     * Creates a new {@link FolioVertxCompletableFuture} from the given {@link Vertx} instance and given
-     * {@link CompletableFuture}. The returned future uses the current Vert.x context, or creates a new one.
-     * <p>
-     * The created {@link FolioVertxCompletableFuture} is completed successfully or not when the given completable future
-     * completes successfully or not.
-     *
-     * @param vertx  the Vert.x instance
-     * @param future the future
-     * @param <T>    the type of the result
-     * @return the new {@link FolioVertxCompletableFuture}
-     */
-    public static <T> FolioVertxCompletableFuture<T> from(Vertx vertx, CompletableFuture<T> future) {
-        return from(vertx.getOrCreateContext(), future);
-    }
 
      /**
      * Creates a {@link FolioVertxCompletableFuture} from the given {@link Context} and {@link CompletableFuture}.
@@ -175,11 +158,11 @@ public class FolioVertxCompletableFuture<T> extends CompletableFuture<T> impleme
         Objects.requireNonNull(supplier);
         FolioVertxCompletableFuture<T> future = new FolioVertxCompletableFuture<>(context);
         context.<T>executeBlocking(
-                fut -> {
+                promise -> {
                     try {
-                        fut.complete(supplier.get());
+                        promise.complete(supplier.get());
                     } catch (Exception e) {
-                        fut.fail(e);
+                        promise.fail(e);
                     }
                 },
                 ar -> {
