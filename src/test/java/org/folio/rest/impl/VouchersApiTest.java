@@ -19,12 +19,12 @@ import org.junit.jupiter.api.Test;
 
 import io.restassured.response.Response;
 import io.vertx.core.json.JsonObject;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 
 public class VouchersApiTest extends ApiTestBase {
 
-  private static final Logger logger = LoggerFactory.getLogger(VouchersApiTest.class);
+  private static final Logger logger = LogManager.getLogger(VouchersApiTest.class);
 
   static final String VOUCHER_MOCK_DATA_PATH = BASE_MOCK_DATA_PATH + "vouchers/";
 

@@ -1,7 +1,7 @@
 package org.folio.services.finance;
 
 import static java.util.stream.Collectors.toList;
-import static me.escoffier.vertx.completablefuture.VertxCompletableFuture.allOf;
+import static org.folio.completablefuture.FolioVertxCompletableFuture.allOf;
 import static org.folio.invoices.utils.ErrorCodes.BUDGET_EXPENSE_CLASS_NOT_FOUND;
 import static org.folio.invoices.utils.ErrorCodes.INACTIVE_EXPENSE_CLASS;
 

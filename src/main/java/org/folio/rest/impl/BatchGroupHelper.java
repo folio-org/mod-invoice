@@ -18,8 +18,8 @@ import org.folio.rest.tools.client.interfaces.HttpClientInterface;
 
 import io.vertx.core.Context;
 import io.vertx.core.json.JsonObject;
-import io.vertx.core.logging.Logger;
-import me.escoffier.vertx.completablefuture.VertxCompletableFuture;
+import org.apache.logging.log4j.Logger;
+import org.folio.completablefuture.FolioVertxCompletableFuture;
 
 public class BatchGroupHelper extends AbstractHelper {
 
@@ -49,13 +49,13 @@ public class BatchGroupHelper extends AbstractHelper {
    * @return completable future with {@link BatchGroupCollection} on success or an exception if processing fails
    */
   public CompletableFuture<BatchGroupCollection> getBatchGroups(int limit, int offset, String query) {
-    CompletableFuture<BatchGroupCollection> future = new VertxCompletableFuture<>(ctx);
+    CompletableFuture<BatchGroupCollection> future = new FolioVertxCompletableFuture<>(ctx);
     try {
       String queryParam = getEndpointWithQuery(query, logger);
       String endpoint = String.format(GET_BATCH_GROUPS_BY_QUERY, limit, offset, queryParam, lang);
       handleGetRequest(endpoint, httpClient, ctx, okapiHeaders, logger)
         .thenAccept(jsonVouchers -> {
-          logger.info("Successfully retrieved batch groups: " + jsonVouchers.encodePrettily());
+          logger.info("Successfully retrieved batch groups: {} ", jsonVouchers.encodePrettily());
           future.complete(jsonVouchers.mapTo(BatchGroupCollection.class));
         })
         .exceptionally(t -> {
@@ -76,7 +76,7 @@ public class BatchGroupHelper extends AbstractHelper {
    * @return completable future with {@link BatchGroup} on success or an exception if processing fails
    */
   public CompletableFuture<BatchGroup> getBatchGroup(String id) {
-    CompletableFuture<BatchGroup> future = new VertxCompletableFuture<>(ctx);
+    CompletableFuture<BatchGroup> future = new FolioVertxCompletableFuture<>(ctx);
     getBatchGroupById(id, lang, httpClient, ctx, okapiHeaders, logger)
       .thenAccept(future::complete)
       .exceptionally(t -> {

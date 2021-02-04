@@ -16,14 +16,14 @@ import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.eventbus.Message;
 import io.vertx.core.eventbus.MessageConsumer;
 import io.vertx.core.json.JsonObject;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 
 /**
  * The class initializes event bus handlers
  */
 public class InitEventBus implements PostDeployVerticle {
-  private final Logger logger = LoggerFactory.getLogger(InitEventBus.class);
+  private final Logger logger = LogManager.getLogger(InitEventBus.class);
 
   @Autowired
   @Qualifier("invoiceSummaryHandler")

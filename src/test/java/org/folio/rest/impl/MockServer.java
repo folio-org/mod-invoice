@@ -134,8 +134,8 @@ import io.vertx.core.http.HttpHeaders;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.core.http.HttpServer;
 import io.vertx.core.json.JsonObject;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
 import io.vertx.ext.web.handler.BodyHandler;
@@ -143,7 +143,7 @@ import one.util.streamex.StreamEx;
 
 public class MockServer {
 
-  private static final Logger logger = LoggerFactory.getLogger(MockServer.class);
+  private static final Logger logger = LogManager.getLogger(MockServer.class);
   private static final String MOCK_DATA_PATH_PATTERN = "%s%s.json";
   private static final String FUNDS_MOCK_DATA_PATH = BASE_MOCK_DATA_PATH + "fundRecords/";
   private static final String VOUCHER_ID = "voucherId";
@@ -1265,15 +1265,15 @@ public class MockServer {
   }
 
   public static void addMockEntry(String objName, Object data) {
-    addServerRqRsData(HttpMethod.OTHER, objName, data instanceof JsonObject ? (JsonObject) data : JsonObject.mapFrom(data));
+    addServerRqRsData(HttpMethod.SEARCH, objName, data instanceof JsonObject ? (JsonObject) data : JsonObject.mapFrom(data));
   }
 
   private Optional<JsonObject> getMockEntry(String objName, String id) {
-    return getRqRsEntries(HttpMethod.OTHER, objName).stream().filter(obj -> id.equals(obj.getString(AbstractHelper.ID))).findAny();
+    return getRqRsEntries(HttpMethod.SEARCH, objName).stream().filter(obj -> id.equals(obj.getString(AbstractHelper.ID))).findAny();
   }
 
   private <T> Optional<List<T>> getMockEntries(String objName, Class<T> tClass) {
-    List<T> entryList = getRqRsEntries(HttpMethod.OTHER, objName).stream().map(entries -> entries.mapTo(tClass)).collect(toList());
+    List<T> entryList = getRqRsEntries(HttpMethod.SEARCH, objName).stream().map(entries -> entries.mapTo(tClass)).collect(toList());
     return Optional.ofNullable(entryList.isEmpty() ? null : entryList);
   }
 

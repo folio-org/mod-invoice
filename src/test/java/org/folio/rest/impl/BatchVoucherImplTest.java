@@ -10,12 +10,12 @@ import org.junit.jupiter.api.Test;
 
 import io.restassured.http.Headers;
 import io.restassured.response.Response;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 
 public class BatchVoucherImplTest extends ApiTestBase {
 
-  private static final Logger logger = LoggerFactory.getLogger(BatchVoucherImplTest.class);
+  private static final Logger logger = LogManager.getLogger(BatchVoucherImplTest.class);
 
   public static final String BATCH_VOUCHER_PATH = "/batch-voucher/batch-vouchers";
   public static final String BATCH_VOUCHER_ID_PATH = BATCH_VOUCHER_PATH + "/%s";

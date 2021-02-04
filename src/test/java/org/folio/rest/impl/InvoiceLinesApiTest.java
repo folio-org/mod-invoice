@@ -61,13 +61,13 @@ import org.junit.jupiter.api.Test;
 import io.restassured.response.Response;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.core.json.JsonObject;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 
 
 public class InvoiceLinesApiTest extends ApiTestBase {
 
-  private static final Logger logger = LoggerFactory.getLogger(InvoiceLinesApiTest.class);
+  private static final Logger logger = LogManager.getLogger(InvoiceLinesApiTest.class);
 
   static final String INVOICE_LINES_MOCK_DATA_PATH = BASE_MOCK_DATA_PATH + "invoiceLines/";
   static final String INVOICE_LINES_LIST_PATH = INVOICE_LINES_MOCK_DATA_PATH + "invoice_lines.json";

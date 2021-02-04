@@ -16,12 +16,12 @@ import org.junit.jupiter.api.Test;
 
 import io.vertx.core.http.HttpMethod;
 import io.vertx.core.json.JsonObject;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 
 public class BatchVoucherExportConfigTest extends ApiTestBase {
 
-  private static final Logger logger = LoggerFactory.getLogger(BatchVoucherExportConfigTest.class);
+  private static final Logger logger = LogManager.getLogger(BatchVoucherExportConfigTest.class);
   private static final String BATCH_VOUCHER_EXPORT_CONFIGS_ENDPOINT = "/batch-voucher/export-configurations";
 
   static final String EXPORT_CONFIG_ID = "089b333c-503f-4627-895d-26eaab1e392e";

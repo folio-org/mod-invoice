@@ -19,8 +19,8 @@ import org.folio.rest.tools.client.interfaces.HttpClientInterface;
 
 import io.vertx.core.Context;
 import io.vertx.core.json.JsonObject;
-import io.vertx.core.logging.Logger;
-import me.escoffier.vertx.completablefuture.VertxCompletableFuture;
+import org.apache.logging.log4j.Logger;
+import org.folio.completablefuture.FolioVertxCompletableFuture;
 
 public class BatchVoucherExportsHelper extends AbstractHelper {
   private static final String GET_BATCH_VOUCHER_EXPORTS_BY_QUERY = resourcesPath(BATCH_VOUCHER_EXPORTS_STORAGE) + SEARCH_PARAMS;
@@ -40,7 +40,7 @@ public class BatchVoucherExportsHelper extends AbstractHelper {
   public CompletableFuture<BatchVoucherExportCollection> getBatchVoucherExports(int limit, int offset, String query) {
     String queryParam = getEndpointWithQuery(query, logger);
     String endpoint = String.format(GET_BATCH_VOUCHER_EXPORTS_BY_QUERY, limit, offset, queryParam, lang);
-    return handleGetRequest(endpoint, httpClient, ctx, okapiHeaders, logger).thenCompose(jsonVouchers -> VertxCompletableFuture
+    return handleGetRequest(endpoint, httpClient, ctx, okapiHeaders, logger).thenCompose(jsonVouchers -> FolioVertxCompletableFuture
       .supplyBlockingAsync(ctx, () -> jsonVouchers.mapTo(BatchVoucherExportCollection.class)));
   }
 
@@ -51,7 +51,7 @@ public class BatchVoucherExportsHelper extends AbstractHelper {
    * @return completable future with {@link BatchVoucherExport} on success or an exception if processing fails
    */
   public CompletableFuture<BatchVoucherExport> getBatchVoucherExportById(String id) {
-    CompletableFuture<BatchVoucherExport> future = new VertxCompletableFuture<>(ctx);
+    CompletableFuture<BatchVoucherExport> future = new FolioVertxCompletableFuture<>(ctx);
     getBatchVoucherExportById(id, lang, httpClient, ctx, okapiHeaders, logger)
       .thenAccept(future::complete)
       .exceptionally(t -> {
@@ -93,7 +93,7 @@ public class BatchVoucherExportsHelper extends AbstractHelper {
   }
 
   private void persistBatchVoucher(BatchVoucherExport batchVoucherExport) {
-    VertxCompletableFuture.runAsync(ctx,
+    FolioVertxCompletableFuture.runAsync(ctx,
       () -> sendEvent(MessageAddress.BATCH_VOUCHER_PERSIST_TOPIC
               , new JsonObject().put(BATCH_VOUCHER_EXPORT, JsonObject.mapFrom(batchVoucherExport))));
   }

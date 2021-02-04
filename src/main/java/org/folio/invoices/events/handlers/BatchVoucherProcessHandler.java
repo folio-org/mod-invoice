@@ -22,13 +22,13 @@ import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.eventbus.Message;
 import io.vertx.core.json.JsonObject;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
-import me.escoffier.vertx.completablefuture.VertxCompletableFuture;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.folio.completablefuture.FolioVertxCompletableFuture;
 
 @Component("batchVoucherProcessHandler")
 public class BatchVoucherProcessHandler implements Handler<Message<JsonObject>> {
-  protected final Logger logger = LoggerFactory.getLogger(this.getClass());
+  protected final Logger logger = LogManager.getLogger(this.getClass());
   private final Context ctx;
 
   @Autowired
@@ -67,7 +67,7 @@ public class BatchVoucherProcessHandler implements Handler<Message<JsonObject>> 
   }
 
   private CompletableFuture<BatchVoucherExport> getBatchVoucherExportBody(JsonObject body) {
-     return VertxCompletableFuture.supplyAsync(ctx,
+     return FolioVertxCompletableFuture.supplyAsync(ctx,
        () -> body.getJsonObject(BATCH_VOUCHER_EXPORT).mapTo(BatchVoucherExport.class));
   }
 }

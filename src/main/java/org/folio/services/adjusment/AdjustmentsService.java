@@ -27,12 +27,12 @@ import org.folio.rest.jaxrs.model.InvoiceLine;
 import org.javamoney.moneta.Money;
 
 import io.vertx.core.json.JsonObject;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 import org.javamoney.moneta.function.MonetaryOperators;
 
 public class AdjustmentsService {
-  private final Logger logger = LoggerFactory.getLogger(this.getClass());
+  private final Logger logger = LogManager.getLogger(this.getClass());
   public static final Predicate<Adjustment> NOT_PRORATED_ADJUSTMENTS_PREDICATE = adj -> adj.getProrate() == NOT_PRORATED;
   public static final Predicate<Adjustment> PRORATED_ADJUSTMENTS_PREDICATE = NOT_PRORATED_ADJUSTMENTS_PREDICATE.negate();
   public static final Predicate<Adjustment> INVOICE_LINE_PRORATED_ADJUSTMENT_PREDICATE = adjustment -> isNotEmpty(adjustment.getAdjustmentId());

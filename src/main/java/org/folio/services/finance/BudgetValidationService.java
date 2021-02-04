@@ -46,7 +46,7 @@ import org.folio.services.exchange.ExchangeRateProviderResolver;
 import org.javamoney.moneta.Money;
 import org.javamoney.moneta.function.MonetaryFunctions;
 
-import me.escoffier.vertx.completablefuture.VertxCompletableFuture;
+import org.folio.completablefuture.FolioVertxCompletableFuture;
 
 public class BudgetValidationService {
 
@@ -221,7 +221,7 @@ public class BudgetValidationService {
       .map(fundId -> getActiveBudgetByFundId(fundId, requestContext))
       .collect(toList());
 
-    return VertxCompletableFuture.allOf(requestContext.getContext(), futureList.toArray(new CompletableFuture[0]))
+    return FolioVertxCompletableFuture.allOf(requestContext.getContext(), futureList.toArray(new CompletableFuture[0]))
       .thenApply(v -> futureList.stream().map(CompletableFuture::join).collect(Collectors.toList()));
   }
 

@@ -14,12 +14,12 @@ import io.vertx.core.AsyncResult;
 import io.vertx.core.Context;
 import io.vertx.core.Handler;
 import io.vertx.core.json.JsonObject;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 
 public class BatchGroupsImpl implements BatchGroups {
 
-  private static final Logger logger = LoggerFactory.getLogger(BatchGroupsImpl.class);
+  private static final Logger logger = LogManager.getLogger(BatchGroupsImpl.class);
   private static final String BATCH_GROUP_LOCATION_PREFIX = "/batch-groups/%s";
 
   @Validate
@@ -71,7 +71,7 @@ public class BatchGroupsImpl implements BatchGroups {
     helper.updateBatchGroupRecord(batchGroup)
       .thenAccept(ok -> asyncResultHandler.handle(succeededFuture(helper.buildNoContentResponse())))
       .exceptionally(ex -> {
-        logger.error("Failed to update batch group with id={}", ex, batchGroup.getId());
+        logger.error("Failed to update batch group with id={}", batchGroup.getId(), ex);
         return handleErrorResponse(asyncResultHandler, helper, ex);
       });
   }

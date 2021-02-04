@@ -34,11 +34,11 @@ import io.vertx.core.eventbus.DeliveryOptions;
 import io.vertx.core.eventbus.Message;
 import io.vertx.core.eventbus.ReplyException;
 import io.vertx.core.json.JsonObject;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 
 public class InvoiceSummaryTest extends ApiTestBase {
-  private static final Logger logger = LoggerFactory.getLogger(InvoiceSummaryTest.class);
+  private static final Logger logger = LogManager.getLogger(InvoiceSummaryTest.class);
 
   private static final String TEST_ADDRESS = "testAddress";
 

@@ -22,11 +22,11 @@ import org.folio.exceptions.ClassInitializationException;
 import org.folio.rest.jaxrs.model.jaxb.BatchVoucherType;
 import org.xml.sax.SAXException;
 
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 
 public final class XMLConverter {
-  private static final Logger LOG = LoggerFactory.getLogger(XMLConverter.class);
+  private static final Logger LOG = LogManager.getLogger(XMLConverter.class);
   private JAXBContextWrapper jaxbContextWrapper;
   private final JAXBRootElementNameResolver rootElementNameResolver;
   private final Class<?>[] rootClassNames = new Class<?>[] { BatchVoucherType.class };
