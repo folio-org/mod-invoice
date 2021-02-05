@@ -4,7 +4,13 @@
   "poLineId": "2bafc9e1-9dd3-4ede-9f23-c4a03f8bb2d5",
   "invoiceLineNumber": "123invoicenumber45-2",
   "invoiceLineStatus": "Open",
-  "vendorRefNo": "1",
+  "referenceNumbers": [
+            {
+              "refNumber": "123456-78",
+              "refNumberType": "Vendor title number",
+              "vendorDetailsSource": "InvoiceLine"
+            }
+          ],
   "productId": "9780764354113",
   "productIdType": "8261054f-be78-422d-bd51-4ed9f33c3422",
   "comment": "Sample invoice line",
