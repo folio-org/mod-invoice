@@ -843,11 +843,17 @@ public class InvoiceHelper extends AbstractHelper {
    * @param invoice Invoice to be paid
    * @return CompletableFuture that indicates when transition is completed
    */
-  private CompletableFuture<Void> payInvoice(Invoice invoice, List<InvoiceLine> invoiceLines) {
+
+  @VisibleForTesting
+  CompletableFuture<Void> payInvoice(Invoice invoice, List<InvoiceLine> invoiceLines) {
+
+    //  Set payment date, when the invoice is being paid.
+    invoice.setPaymentDate(invoice.getMetadata().getUpdatedDate());
+
     return paymentCreditWorkflowService.handlePaymentsAndCreditsCreation(invoice, invoiceLines, new RequestContext(ctx, okapiHeaders))
       .thenCompose(vVoid ->
-         VertxCompletableFuture.allOf(ctx, payPoLines(invoiceLines),
-                               voucherCommandService.payInvoiceVoucher(invoice.getId(), new RequestContext(ctx, okapiHeaders)))
+        VertxCompletableFuture.allOf(ctx, payPoLines(invoiceLines),
+          voucherCommandService.payInvoiceVoucher(invoice.getId(), new RequestContext(ctx, okapiHeaders)))
       );
   }
 
