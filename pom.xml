@@ -16,8 +16,8 @@
   <properties>
     <aspectj.version>1.9.6</aspectj.version>
     <jsonschema_paths>acq-models/mod-invoice-storage/schemas,raml-util/schemas,acq-models/common/schemas/</jsonschema_paths>
-    <raml-module-builder.version>31.1.0</raml-module-builder.version>
-    <vertx.version>3.9.2</vertx.version>
+    <raml-module-builder.version>32.1.0</raml-module-builder.version>
+    <vertx.version>4.0.0</vertx.version>
     <junit.version>4.13.1</junit.version>
     <rest-assured.version>4.3.0</rest-assured.version>
     <generated_sources_dir>${project.build.directory}/generated-sources</generated_sources_dir>
@@ -46,6 +46,12 @@
       <groupId>org.folio</groupId>
       <artifactId>domain-models-api-interfaces</artifactId>
       <version>${raml-module-builder.version}</version>
+      <exclusions>
+        <exclusion>
+          <groupId>javax.xml.stream</groupId>
+          <artifactId>stax-api</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
     <dependency>
       <groupId>org.folio</groupId>
@@ -56,11 +62,6 @@
       <groupId>one.util</groupId>
       <artifactId>streamex</artifactId>
       <version>0.7.2</version>
-    </dependency>
-    <dependency>
-      <groupId>me.escoffier.vertx</groupId>
-      <artifactId>vertx-completable-future</artifactId>
-      <version>0.1.2</version>
     </dependency>
     <dependency>
       <groupId>io.vertx</groupId>
@@ -368,7 +369,7 @@
         <version>1.12.6</version>
         <configuration>
           <verbose>true</verbose>
-          <complianceLevel>1.8</complianceLevel>
+          <complianceLevel>11</complianceLevel>
           <includes>
             <include>**/impl/*.java</include>
             <include>**/*.aj</include>

@@ -11,7 +11,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
-import io.vertx.core.logging.Logger;
+import org.apache.logging.log4j.Logger;
 
 public class FTPVertxCommandLoggerTest {
   Logger log = mock(Logger.class);

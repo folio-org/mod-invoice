@@ -4,7 +4,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.OutputStream;
 import java.io.PrintStream;
 import org.apache.commons.net.PrintCommandListener;
-import io.vertx.core.logging.Logger;
+import org.apache.logging.log4j.Logger;
 
 public class FTPVertxCommandLogger extends OutputStream {
 

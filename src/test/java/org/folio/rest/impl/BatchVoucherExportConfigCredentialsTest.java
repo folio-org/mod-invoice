@@ -14,12 +14,12 @@ import org.junit.jupiter.api.Test;
 
 import io.vertx.core.http.HttpMethod;
 import io.vertx.core.json.JsonObject;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 
 public class BatchVoucherExportConfigCredentialsTest extends ApiTestBase {
 
-  private static final Logger logger = LoggerFactory.getLogger(BatchVoucherExportConfigCredentialsTest.class);
+  private static final Logger logger = LogManager.getLogger(BatchVoucherExportConfigCredentialsTest.class);
 
   static final String CREDENTIALS_ID = "574f0791-beca-4470-8037-050660cfb73a";
   static final String BAD_CREDENTIALS_ID = "badf0791-beca-4470-8037-050660cfb73a";

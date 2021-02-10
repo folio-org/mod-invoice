@@ -23,13 +23,13 @@ import org.folio.services.exchange.ExchangeRateProviderResolver;
 import org.folio.services.finance.BudgetValidationService;
 import org.folio.services.finance.CurrentFiscalYearService;
 
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
-import me.escoffier.vertx.completablefuture.VertxCompletableFuture;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.folio.completablefuture.FolioVertxCompletableFuture;
 
 public class PendingPaymentWorkflowService {
 
-  private static final Logger logger = LoggerFactory.getLogger(PendingPaymentWorkflowService.class);
+  private static final Logger logger = LogManager.getLogger(PendingPaymentWorkflowService.class);
 
   private final BaseTransactionService baseTransactionService;
   private final CurrentFiscalYearService currentFiscalYearService;
@@ -80,10 +80,10 @@ public class PendingPaymentWorkflowService {
   }
 
   private CompletableFuture<Void> createPendingPayments(List<Transaction> pendingPayments, RequestContext requestContext) {
-    return VertxCompletableFuture.allOf(requestContext.getContext(), pendingPayments.stream()
+    return FolioVertxCompletableFuture.allOf(requestContext.getContext(), pendingPayments.stream()
       .map(pendingPayment -> baseTransactionService.createTransaction(pendingPayment, requestContext)
         .exceptionally(t -> {
-          logger.error("Failed to create pending payment with id {}", t, pendingPayment.getId());
+          logger.error("Failed to create pending payment with id {}", pendingPayment.getId(), t);
           throw new HttpException(400, PENDING_PAYMENT_ERROR.toError());
         }))
       .toArray(CompletableFuture[]::new));
@@ -113,7 +113,7 @@ public class PendingPaymentWorkflowService {
   }
 
   private CompletableFuture<Void> updateTransactions(List<Transaction> transactions, RequestContext requestContext) {
-    return VertxCompletableFuture.allOf(requestContext.getContext(), transactions.stream()
+    return FolioVertxCompletableFuture.allOf(requestContext.getContext(), transactions.stream()
     .map(transaction -> baseTransactionService.updateTransaction(transaction, requestContext))
     .toArray(CompletableFuture[]::new));
   }

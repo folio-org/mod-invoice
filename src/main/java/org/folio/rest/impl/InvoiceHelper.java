@@ -6,8 +6,8 @@ import static java.util.concurrent.CompletableFuture.allOf;
 import static java.util.stream.Collectors.groupingBy;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toMap;
-import static me.escoffier.vertx.completablefuture.VertxCompletableFuture.completedFuture;
-import static me.escoffier.vertx.completablefuture.VertxCompletableFuture.supplyBlockingAsync;
+import static org.folio.completablefuture.FolioVertxCompletableFuture.completedFuture;
+import static org.folio.completablefuture.FolioVertxCompletableFuture.supplyBlockingAsync;
 import static org.apache.commons.lang3.StringUtils.EMPTY;
 import static org.apache.commons.lang3.StringUtils.isEmpty;
 import static org.folio.invoices.utils.AcqDesiredPermissions.ASSIGN;
@@ -61,6 +61,7 @@ import javax.money.convert.CurrencyConversion;
 import javax.money.convert.ExchangeRate;
 import javax.money.convert.ExchangeRateProvider;
 
+import com.google.common.annotations.VisibleForTesting;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.collections4.ListUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -106,13 +107,11 @@ import org.javamoney.moneta.Money;
 import org.javamoney.moneta.function.MonetaryFunctions;
 import org.springframework.beans.factory.annotation.Autowired;
 
-import com.google.common.annotations.VisibleForTesting;
-
 import io.vertx.core.Context;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
-import me.escoffier.vertx.completablefuture.VertxCompletableFuture;
+import org.folio.completablefuture.FolioVertxCompletableFuture;
 
 public class InvoiceHelper extends AbstractHelper {
 
@@ -122,8 +121,8 @@ public class InvoiceHelper extends AbstractHelper {
   private final InvoiceLineHelper invoiceLineHelper;
   private final VoucherLineHelper voucherLineHelper;
   private final ProtectionHelper protectionHelper;
-  private final AdjustmentsService adjustmentsService;
-  private final InvoiceValidator validator;
+  private AdjustmentsService adjustmentsService;
+  private InvoiceValidator validator;
   @Autowired
   private BudgetExpenseClassService budgetExpenseClassService;
   @Autowired
@@ -193,7 +192,7 @@ public class InvoiceHelper extends AbstractHelper {
       return completedFuture(null);
     }
 
-    return VertxCompletableFuture.runAsync(ctx, () -> verifyUserHasAssignPermission(acqUnitIds))
+    return FolioVertxCompletableFuture.runAsync(ctx, () -> verifyUserHasAssignPermission(acqUnitIds))
       .thenCompose(ok -> protectionHelper.verifyIfUnitsAreActive(acqUnitIds))
       .thenCompose(ok -> protectionHelper.isOperationRestricted(acqUnitIds, ProtectedOperationType.CREATE));
   }
@@ -221,14 +220,14 @@ public class InvoiceHelper extends AbstractHelper {
    * @return completable future with {@link Invoice} on success or an exception if processing fails
    */
   public CompletableFuture<Invoice> getInvoice(String id) {
-    CompletableFuture<Invoice> future = new VertxCompletableFuture<>(ctx);
+    CompletableFuture<Invoice> future = new FolioVertxCompletableFuture<>(ctx);
     getInvoiceRecord(id)
       .thenCompose(invoice -> protectionHelper.isOperationRestricted(invoice.getAcqUnitIds(), ProtectedOperationType.READ)
         .thenApply(aVoid -> invoice))
       .thenCompose(invoice -> recalculateTotals(invoice).thenApply(b -> invoice))
       .thenAccept(future::complete)
       .exceptionally(t -> {
-        logger.error("Failed to get an Invoice by id={}", t.getCause(), id);
+        logger.error("Failed to get an Invoice by id={}", id, t.getCause());
         future.completeExceptionally(t);
         return null;
       });
@@ -254,13 +253,13 @@ public class InvoiceHelper extends AbstractHelper {
    * @return completable future with {@link InvoiceCollection} on success or an exception if processing fails
    */
   public CompletableFuture<InvoiceCollection> getInvoices(int limit, int offset, String query) {
-    CompletableFuture<InvoiceCollection> future = new VertxCompletableFuture<>(ctx);
+    CompletableFuture<InvoiceCollection> future = new FolioVertxCompletableFuture<>(ctx);
     try {
       buildGetInvoicesPath(limit, offset, query)
         .thenCompose(endpoint -> getInvoicesFromStorage(endpoint, httpClient, ctx, okapiHeaders, logger))
         .thenCompose(invoiceCollection -> updateInvoicesTotals(invoiceCollection)
                                                 .thenAccept(v -> {
-                                                  logger.info("Successfully retrieved invoices: " + invoiceCollection);
+                                                  logger.info("Successfully retrieved invoices: {}", invoiceCollection);
                                                   future.complete(invoiceCollection);
                                                 }))
         .exceptionally(t -> {
@@ -279,18 +278,16 @@ public class InvoiceHelper extends AbstractHelper {
       return CompletableFuture.completedFuture(null);
     }
     List<CompletableFuture<Void>> invoiceListFutures = new ArrayList<>(invoiceCollection.getInvoices().size());
-    invoiceCollection.getInvoices().forEach(invoice -> {
-      invoiceListFutures.add(
-            getInvoiceLinesWithTotals(invoice).thenAccept(invoiceLines -> {
-              List<InvoiceLine> updatedInvoiceLines = invoiceLines.stream()
-                                                              .map(invoiceLine -> JsonObject.mapFrom(invoiceLine).mapTo(InvoiceLine.class))
-                                                              .collect(toList());
-              recalculateTotals(invoice, updatedInvoiceLines);
-            })
-      );
-    });
+    invoiceCollection.getInvoices().forEach(invoice -> invoiceListFutures.add(
+          getInvoiceLinesWithTotals(invoice).thenAccept(invoiceLines -> {
+            List<InvoiceLine> updatedInvoiceLines = invoiceLines.stream()
+                                                            .map(invoiceLine -> JsonObject.mapFrom(invoiceLine).mapTo(InvoiceLine.class))
+                                                            .collect(toList());
+            recalculateTotals(invoice, updatedInvoiceLines);
+          })
+    ));
     return collectResultsOnSuccess(invoiceListFutures)
-             .thenAccept(results -> logger.debug("Invoice totals updated : " + results.size()));
+             .thenAccept(results -> logger.debug("Invoice totals updated : {}", results.size()));
   }
 
   private CompletableFuture<String> buildGetInvoicesPath(int limit, int offset, String query) {
@@ -389,7 +386,7 @@ public class InvoiceHelper extends AbstractHelper {
     List<String> updatedAcqUnitIds = updatedInvoice.getAcqUnitIds();
     List<String> currentAcqUnitIds = persistedInvoice.getAcqUnitIds();
 
-    return VertxCompletableFuture.runAsync(ctx, () -> verifyUserHasManagePermission(updatedAcqUnitIds, currentAcqUnitIds))
+    return FolioVertxCompletableFuture.runAsync(ctx, () -> verifyUserHasManagePermission(updatedAcqUnitIds, currentAcqUnitIds))
       // Check that all newly assigned units are active/exist
       .thenCompose(ok -> protectionHelper.verifyIfUnitsAreActive(ListUtils.subtract(updatedAcqUnitIds, currentAcqUnitIds)))
       // The check should be done against currently assigned (persisted in storage) units
@@ -415,24 +412,6 @@ public class InvoiceHelper extends AbstractHelper {
 
   private boolean isManagePermissionRequired(Set<String> newAcqUnits, Set<String> acqUnitsFromStorage) {
     return !CollectionUtils.isEqualCollection(newAcqUnits, acqUnitsFromStorage);
-  }
-
-  /**
-   * Updates invoice in the storage without blocking main flow (i.e. async call)
-   * @param invoice invoice which needs updates in storage
-   */
-  private void updateOutOfSyncInvoice(Invoice invoice) {
-    logger.info("Invoice totals are out of sync in the storage");
-    VertxCompletableFuture.runAsync(ctx, () -> {
-      // Create new instance of the helper to initiate new http client because current one might be closed in the middle of work
-      InvoiceHelper helper = new InvoiceHelper(okapiHeaders, ctx, lang);
-      helper.updateInvoiceRecord(invoice)
-        .handle((ok, fail) -> {
-          // the http client  needs to closed regardless of the result
-          helper.closeHttpClient();
-          return null;
-        });
-    });
   }
 
   /**
@@ -480,16 +459,6 @@ public class InvoiceHelper extends AbstractHelper {
     Double adjustmentsTotal = invoice.getAdjustmentsTotal();
     calculateTotals(invoice, lines);
     return Objects.equals(adjustmentsTotal, invoice.getAdjustmentsTotal());
-  }
-
-  private boolean recalculateDynamicData(Invoice updatedInvoice, Invoice invoiceFromStorage, List<InvoiceLine> invoiceLines) {
-    // If invoice was approved, the totals are already fixed and should not be recalculated
-    if (isPostApproval(invoiceFromStorage)) {
-      return false;
-    }
-
-    processProratedAdjustments(updatedInvoice, invoiceFromStorage, invoiceLines);
-    return recalculateTotals(updatedInvoice, invoiceLines);
   }
 
   private void recalculateAdjustmentData(Invoice updatedInvoice, Invoice invoiceFromStorage, List<InvoiceLine> invoiceLines) {
@@ -893,8 +862,8 @@ public class InvoiceHelper extends AbstractHelper {
 
     return paymentCreditWorkflowService.handlePaymentsAndCreditsCreation(invoice, invoiceLines, new RequestContext(ctx, okapiHeaders))
       .thenCompose(vVoid ->
-        VertxCompletableFuture.allOf(ctx, payPoLines(invoiceLines),
-          voucherCommandService.payInvoiceVoucher(invoice.getId(), new RequestContext(ctx, okapiHeaders)))
+         FolioVertxCompletableFuture.allOf(ctx, payPoLines(invoiceLines),
+                               voucherCommandService.payInvoiceVoucher(invoice.getId(), new RequestContext(ctx, okapiHeaders)))
       );
   }
 

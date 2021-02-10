@@ -12,15 +12,15 @@ import org.folio.rest.core.models.RequestContext;
 
 public class FinanceExchangeRateService {
   private static final String ROE_QUERY_PARAMS = ResourcePathResolver.resourcesPath(FINANCE_EXCHANGE_RATE) + "?from=%s&to=%s";
-  private final RestClient exchangeRateRestClient;
+  private final RestClient restClient;
 
-  public FinanceExchangeRateService(RestClient exchangeRateRestClient) {
-    this.exchangeRateRestClient = exchangeRateRestClient;
+  public FinanceExchangeRateService(RestClient restClient) {
+    this.restClient = restClient;
   }
 
   public CompletableFuture<ExchangeRate> getExchangeRate(String from, String to, RequestContext requestContext) {
     String roeQuery = String.format(ROE_QUERY_PARAMS, from, to);
-    return exchangeRateRestClient.get(roeQuery, requestContext, ExchangeRate.class);
+    return restClient.get(roeQuery, requestContext, ExchangeRate.class);
   }
 
 }

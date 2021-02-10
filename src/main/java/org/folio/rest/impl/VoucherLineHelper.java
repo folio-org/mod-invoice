@@ -19,7 +19,7 @@ import org.folio.rest.tools.client.interfaces.HttpClientInterface;
 
 import io.vertx.core.Context;
 import io.vertx.core.json.JsonObject;
-import me.escoffier.vertx.completablefuture.VertxCompletableFuture;
+import org.folio.completablefuture.FolioVertxCompletableFuture;
 
 public class VoucherLineHelper extends AbstractHelper {
   private static final String GET_VOUCHER_LINE_BY_QUERY = resourcesPath(VOUCHER_LINES) + SEARCH_PARAMS;
@@ -38,11 +38,11 @@ public class VoucherLineHelper extends AbstractHelper {
   }
 
   public CompletableFuture<VoucherLine> getVoucherLine(String id) {
-    CompletableFuture<VoucherLine> future = new VertxCompletableFuture<>(ctx);
+    CompletableFuture<VoucherLine> future = new FolioVertxCompletableFuture<>(ctx);
     try {
       getVoucherLineById(id, lang, httpClient, ctx, okapiHeaders, logger)
         .thenAccept(jsonVoucherLine -> {
-          logger.info("Successfully retrieved voucher line: " + jsonVoucherLine.encodePrettily());
+          logger.info("Successfully retrieved voucher line: {}", jsonVoucherLine.encodePrettily());
           future.complete(jsonVoucherLine.mapTo(VoucherLine.class));
         })
         .exceptionally(t -> {
@@ -65,13 +65,13 @@ public class VoucherLineHelper extends AbstractHelper {
    * @return completable future with {@link VoucherLineCollection} on success or an exception if processing fails
    */
   public CompletableFuture<VoucherLineCollection> getVoucherLines(int limit, int offset, String query) {
-    CompletableFuture<VoucherLineCollection> future = new VertxCompletableFuture<>(ctx);
+    CompletableFuture<VoucherLineCollection> future = new FolioVertxCompletableFuture<>(ctx);
     try {
       String queryParam = getEndpointWithQuery(query, logger);
       String endpoint = String.format(GET_VOUCHER_LINE_BY_QUERY, limit, offset, queryParam, lang);
       handleGetRequest(endpoint, httpClient, ctx, okapiHeaders, logger)
         .thenAccept(jsonVoucherLines -> {
-          logger.info("Successfully retrieved voucher lines: " + jsonVoucherLines.encodePrettily());
+          logger.info("Successfully retrieved voucher lines: {}", jsonVoucherLines.encodePrettily());
           future.complete(jsonVoucherLines.mapTo(VoucherLineCollection.class));
         })
         .exceptionally(t -> {

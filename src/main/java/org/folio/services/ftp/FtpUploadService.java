@@ -17,12 +17,12 @@ import org.folio.exceptions.FtpException;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Context;
 import io.vertx.core.Handler;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 
 public class FtpUploadService implements UploadService {
 
-  private static final Logger logger = LoggerFactory.getLogger(FtpUploadService.class);
+  private static final Logger logger = LogManager.getLogger(FtpUploadService.class);
   public static final String DEFAULT_WORKING_DIR = "/files/invoices";
 
   private final FTPClient ftp;

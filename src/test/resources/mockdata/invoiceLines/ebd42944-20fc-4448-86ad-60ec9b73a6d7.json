@@ -3,7 +3,13 @@
   "description": "Some description",
   "invoiceLineNumber": "123invoicenumber45-1",
   "invoiceLineStatus": "Open",
-  "vendorRefNo": "1",
+  "referenceNumbers": [
+            {
+              "refNumber": "123456-78",
+              "refNumberType": "Vendor title number",
+              "vendorDetailsSource": "InvoiceLine"
+            }
+          ],
   "poLineId": "0610be6d-0ddd-494b-b867-19f63d8b5d6d",
   "productId": "9780764354113",
   "productIdType": "8261054f-be78-422d-bd51-4ed9f33c3422",

@@ -1,6 +1,5 @@
 package org.folio.rest.impl;
 
-import static org.folio.invoices.utils.HelperUtils.collectResultsOnSuccess;
 import static org.folio.invoices.utils.HelperUtils.handleGetRequest;
 import static org.folio.invoices.utils.ResourcePathResolver.VOUCHER_NUMBER_START;
 import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
@@ -22,8 +21,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 
 import io.vertx.core.Context;
 import io.vertx.core.http.HttpMethod;
-import io.vertx.core.logging.Logger;
-import me.escoffier.vertx.completablefuture.VertxCompletableFuture;
+import org.apache.logging.log4j.Logger;
+import org.folio.completablefuture.FolioVertxCompletableFuture;
 
 public class VoucherHelper extends AbstractHelper {
 
@@ -84,7 +83,7 @@ public class VoucherHelper extends AbstractHelper {
    */
   public CompletableFuture<Void> handlePostStartValueRequest(String url, HttpClientInterface httpClient, Context ctx,
       Map<String, String> okapiHeaders, Logger logger) {
-    CompletableFuture<Void> future = new VertxCompletableFuture<>(ctx);
+    CompletableFuture<Void> future = new FolioVertxCompletableFuture<>(ctx);
 
     logger.info(CALLING_ENDPOINT_MSG, HttpMethod.POST, url);
 

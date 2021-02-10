@@ -29,12 +29,12 @@ import org.hamcrest.Matchers;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 
 public class InvoiceLinesProratedAdjustmentsTest extends ApiTestBase {
 
-  private static final Logger logger = LoggerFactory.getLogger(InvoiceLinesProratedAdjustmentsTest.class);
+  private static final Logger logger = LogManager.getLogger(InvoiceLinesProratedAdjustmentsTest.class);
 
   @ParameterizedTest
   @CsvSource({

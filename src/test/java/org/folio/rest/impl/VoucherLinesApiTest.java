@@ -12,12 +12,12 @@ import org.junit.jupiter.api.Test;
 
 import io.restassured.response.Response;
 import io.vertx.core.json.JsonObject;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 
 public class VoucherLinesApiTest extends ApiTestBase {
 
-  private static final Logger logger = LoggerFactory.getLogger(VoucherLinesApiTest.class);
+  private static final Logger logger = LogManager.getLogger(VoucherLinesApiTest.class);
 
   static final String VOUCHER_LINES_MOCK_DATA_PATH = BASE_MOCK_DATA_PATH + "voucherLines/";
   static final String VALID_VOUCHER_LINE_UUID = "6d615cfd-38b6-4182-8178-8e6ffee7c01e";

@@ -24,6 +24,8 @@ import java.util.concurrent.CompletableFuture;
 import javax.ws.rs.core.Response;
 
 import org.apache.commons.collections4.CollectionUtils;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.folio.invoices.events.handlers.MessageAddress;
 import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.invoices.utils.HelperUtils;
@@ -36,12 +38,10 @@ import io.vertx.core.Context;
 import io.vertx.core.eventbus.DeliveryOptions;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.core.json.JsonObject;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
-import me.escoffier.vertx.completablefuture.VertxCompletableFuture;
+import org.folio.completablefuture.FolioVertxCompletableFuture;
 
 public abstract class AbstractHelper {
-  protected final Logger logger = LoggerFactory.getLogger(this.getClass());
+  protected final Logger logger = LogManager.getLogger(this.getClass());
 
   public static final String ID = "id";
   public static final String ERROR_CAUSE = "cause";
@@ -81,7 +81,7 @@ public abstract class AbstractHelper {
    */
   private CompletableFuture<Configs> getConfigurationsEntries(String ... searchCriteria) {
 
-    CompletableFuture<Configs> future = new VertxCompletableFuture<>();
+    CompletableFuture<Configs> future = new FolioVertxCompletableFuture<>(ctx);
     try {
       String query = buildSearchingQuery(searchCriteria);
       String endpoint = String.format("/configurations/entries?query=%s&limit=%d&lang=%s", encodeQuery(query, logger), 100, lang);
@@ -146,7 +146,7 @@ public abstract class AbstractHelper {
   }
 
   protected CompletableFuture<String> createRecordInStorage(JsonObject recordData, String endpoint) {
-    CompletableFuture<String> future = new VertxCompletableFuture<>(ctx);
+    CompletableFuture<String> future = new FolioVertxCompletableFuture<>(ctx);
     try {
       if (logger.isDebugEnabled()) {
         logger.debug("Sending 'POST {}' with body: {}", endpoint, recordData.encodePrettily());
@@ -160,7 +160,7 @@ public abstract class AbstractHelper {
         })
         .exceptionally(throwable -> {
           future.completeExceptionally(throwable);
-          logger.error("'POST {}' request failed. Request body: {}", throwable, endpoint, recordData.encodePrettily());
+          logger.error("'POST {}' request failed. Request body: {}", endpoint, recordData.encodePrettily(), throwable);
           return null;
         });
     } catch (Exception e) {
@@ -170,7 +170,7 @@ public abstract class AbstractHelper {
   }
 
   public CompletableFuture<Void> postRecorderWithoutResponseBody(JsonObject recordData, String endpoint) {
-    CompletableFuture<Void> future = new VertxCompletableFuture<>(ctx);
+    CompletableFuture<Void> future = new FolioVertxCompletableFuture<>(ctx);
     try {
       httpClient.request(HttpMethod.POST, recordData.toBuffer(), endpoint, okapiHeaders)
         .thenAccept(HelperUtils::verifyResponse)

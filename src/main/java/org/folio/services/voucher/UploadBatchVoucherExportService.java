@@ -17,11 +17,11 @@ import org.folio.services.ftp.UploadService;
 
 import io.vertx.core.Context;
 import io.vertx.core.json.JsonObject;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 
 public class UploadBatchVoucherExportService {
-  private static final Logger LOG = LoggerFactory.getLogger(UploadBatchVoucherExportService.class);
+  private static final Logger LOG = LogManager.getLogger(UploadBatchVoucherExportService.class);
   public static final String DATE_TIME_DELIMITER = "T";
   public static final String DELIMITER = "_";
   private final Context ctx;
@@ -177,7 +177,7 @@ public class UploadBatchVoucherExportService {
       bvExport.setMessage(t.getCause().getMessage());
       updateBatchVoucher(bvExport);
     }
-    LOG.error("Exception occurs, when uploading batch voucher", t.getMessage());
+    LOG.error("Exception occurs, when uploading batch voucher", t);
   }
 
   private void succUploadUpdate(BatchVoucherUploadHolder uploadHolder) {

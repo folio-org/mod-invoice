@@ -4,7 +4,7 @@ import static java.util.Objects.nonNull;
 import static java.util.stream.Collectors.toList;
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 import static javax.ws.rs.core.MediaType.TEXT_PLAIN;
-import static me.escoffier.vertx.completablefuture.VertxCompletableFuture.allOf;
+import static org.folio.completablefuture.FolioVertxCompletableFuture.allOf;
 import static org.apache.commons.lang3.StringUtils.EMPTY;
 import static org.apache.commons.lang3.StringUtils.isEmpty;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICES;
@@ -65,8 +65,8 @@ import io.vertx.core.Context;
 import io.vertx.core.eventbus.Message;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.core.json.JsonObject;
-import io.vertx.core.logging.Logger;
-import me.escoffier.vertx.completablefuture.VertxCompletableFuture;
+import org.apache.logging.log4j.Logger;
+import org.folio.completablefuture.FolioVertxCompletableFuture;
 import one.util.streamex.StreamEx;
 
 public class HelperUtils {
@@ -108,18 +108,18 @@ public class HelperUtils {
     String queryParam = getEndpointWithQuery(query, logger);
     String endpoint = String.format(getInvoiceByQuery, Integer.MAX_VALUE, 0, queryParam, lang);
     return getInvoicesFromStorage(endpoint, httpClient, ctx, okapiHeaders, logger).thenCompose(invoiceCollection -> {
-      logger.info("Successfully retrieved invoices: " + invoiceCollection);
+      logger.info("Successfully retrieved invoices: {}", invoiceCollection);
       return CompletableFuture.completedFuture(invoiceCollection);
     });
   }
 
   public static CompletableFuture<InvoiceCollection> getInvoicesFromStorage(String endpoint, HttpClientInterface httpClient,
       Context ctx, Map<String, String> okapiHeaders, Logger logger) {
-    CompletableFuture<InvoiceCollection> future = new VertxCompletableFuture<>(ctx);
+    CompletableFuture<InvoiceCollection> future = new FolioVertxCompletableFuture<>(ctx);
 
     try {
       handleGetRequest(endpoint, httpClient, ctx, okapiHeaders, logger).thenAccept(jsonInvoices -> {
-        logger.info("Successfully retrieved invoices: " + jsonInvoices.encodePrettily());
+        logger.info("Successfully retrieved invoices: {}", jsonInvoices.encodePrettily());
         future.complete(jsonInvoices.mapTo(InvoiceCollection.class));
       })
         .exceptionally(t -> {
@@ -139,7 +139,7 @@ public class HelperUtils {
     return handleGetRequest(endpoint, httpClient, ctx, okapiHeaders, logger)
       .thenApply(jsonInvoice -> {
         if (logger.isInfoEnabled()) {
-          logger.info("Successfully retrieved invoice by id: " + jsonInvoice.encodePrettily());
+          logger.info("Successfully retrieved invoice by id: {}", jsonInvoice.encodePrettily());
         }
         return jsonInvoice.mapTo(Invoice.class);
       });
@@ -172,7 +172,7 @@ public class HelperUtils {
     try {
       return URLEncoder.encode(query, StandardCharsets.UTF_8.toString());
     } catch (UnsupportedEncodingException e) {
-      logger.error("Error happened while attempting to encode '{}'", e, query);
+      logger.error("Error happened while attempting to encode '{}'", query, e);
       throw new CompletionException(e);
     }
   }
@@ -202,7 +202,7 @@ public class HelperUtils {
 
   public static CompletableFuture<JsonObject> handleGetRequest(String endpoint, HttpClientInterface
     httpClient, Context ctx, Map<String, String> okapiHeaders, Logger logger) {
-    CompletableFuture<JsonObject> future = new VertxCompletableFuture<>(ctx);
+    CompletableFuture<JsonObject> future = new FolioVertxCompletableFuture<>(ctx);
     try {
       logger.debug(CALLING_ENDPOINT_MSG, HttpMethod.GET, endpoint);
       httpClient
@@ -238,7 +238,7 @@ public class HelperUtils {
   public static CompletableFuture<Void> handlePutRequest(String endpoint, JsonObject recordData,
       HttpClientInterface httpClient,
       Context ctx, Map<String, String> okapiHeaders, Logger logger) {
-    CompletableFuture<Void> future = new VertxCompletableFuture<>(ctx);
+    CompletableFuture<Void> future = new FolioVertxCompletableFuture<>(ctx);
     try {
       if (logger.isDebugEnabled()) {
         logger.debug("Sending 'PUT {}' with body: {}", endpoint, recordData.encodePrettily());
@@ -252,7 +252,7 @@ public class HelperUtils {
         })
         .exceptionally(e -> {
           future.completeExceptionally(e);
-          logger.error("'PUT {}' request failed. Request body: {}", e, endpoint, recordData.encodePrettily());
+          logger.error("'PUT {}' request failed. Request body: {}", endpoint, recordData.encodePrettily(), e);
           return null;
         });
     } catch (Exception e) {
@@ -264,7 +264,7 @@ public class HelperUtils {
 
   public static CompletableFuture<Void> handleDeleteRequest(String url, HttpClientInterface httpClient, Context ctx,
       Map<String, String> okapiHeaders, Logger logger) {
-    CompletableFuture<Void> future = new VertxCompletableFuture<>(ctx);
+    CompletableFuture<Void> future = new FolioVertxCompletableFuture<>(ctx);
 
     logger.debug(CALLING_ENDPOINT_MSG, HttpMethod.DELETE, url);
 

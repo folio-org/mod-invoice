@@ -21,13 +21,13 @@ import org.folio.rest.tools.utils.TenantTool;
 
 import io.vertx.core.http.HttpMethod;
 import io.vertx.core.json.JsonObject;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
-import me.escoffier.vertx.completablefuture.VertxCompletableFuture;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.folio.completablefuture.FolioVertxCompletableFuture;
 
 public class RestClient {
 
-  private static final Logger logger = LoggerFactory.getLogger(RestClient.class);
+  private static final Logger logger = LogManager.getLogger(RestClient.class);
   private static final String CALLING_ENDPOINT_MSG = "Sending {} {}";
   private static final String EXCEPTION_CALLING_ENDPOINT_MSG = "Exception calling {} {}";
 
@@ -54,7 +54,7 @@ public class RestClient {
   }
 
   public <T> CompletableFuture<T> post(T entity, RequestContext requestContext, Class<T> responseType) {
-    CompletableFuture<T> future = new VertxCompletableFuture<>(requestContext.getContext());
+    CompletableFuture<T> future = new FolioVertxCompletableFuture<>(requestContext.getContext());
     String endpoint = baseEndpoint;
     JsonObject recordData = JsonObject.mapFrom(entity);
 
@@ -70,7 +70,7 @@ public class RestClient {
         .handle((body, t) -> {
           client.closeClient();
           if (t != null) {
-            logger.error("'POST {}' request failed. Request body: {}", t.getCause(), endpoint, recordData.encodePrettily());
+            logger.error("'POST {}' request failed. Request body: {}", endpoint, recordData.encodePrettily(), t.getCause());
             future.completeExceptionally(t.getCause());
           } else {
             T responseEntity = body.mapTo(responseType);
@@ -82,7 +82,7 @@ public class RestClient {
           return null;
         });
     } catch (Exception e) {
-      logger.error("'POST {}' request failed. Request body: {}", e, endpoint, recordData.encodePrettily());
+      logger.error("'POST {}' request failed. Request body: {}", endpoint, recordData.encodePrettily(), e);
       client.closeClient();
       future.completeExceptionally(e);
     }
@@ -91,7 +91,7 @@ public class RestClient {
   }
 
   public <T> CompletableFuture<Void> put(String id, T entity, RequestContext requestContext) {
-    CompletableFuture<Void> future = new VertxCompletableFuture<>(requestContext.getContext());
+    CompletableFuture<Void> future = new FolioVertxCompletableFuture<>(requestContext.getContext());
     String endpoint = String.format(endpointById, id);
     JsonObject recordData = JsonObject.mapFrom(entity);
 
@@ -109,14 +109,14 @@ public class RestClient {
           client.closeClient();
           if (t != null) {
             future.completeExceptionally(t.getCause());
-            logger.error("'PUT {}' request failed. Request body: {}", t.getCause(), endpoint, recordData.encodePrettily());
+            logger.error("'PUT {}' request failed. Request body: {}", endpoint, recordData.encodePrettily(), t.getCause());
           } else {
             future.complete(null);
           }
           return null;
         });
     } catch (Exception e) {
-      logger.error("'PUT {}' request failed. Request body: {}", e, endpoint, recordData.encodePrettily());
+      logger.error("'PUT {}' request failed. Request body: {}", endpoint, recordData.encodePrettily(), e);
       client.closeClient();
       future.completeExceptionally(e);
     }
@@ -125,7 +125,7 @@ public class RestClient {
   }
 
   public CompletableFuture<Void> delete(String id, RequestContext requestContext) {
-    CompletableFuture<Void> future = new VertxCompletableFuture<>(requestContext.getContext());
+    CompletableFuture<Void> future = new FolioVertxCompletableFuture<>(requestContext.getContext());
     String endpoint = String.format(endpointById, id);
     if (logger.isDebugEnabled()) {
       logger.debug(CALLING_ENDPOINT_MSG, HttpMethod.DELETE, endpoint);
@@ -156,7 +156,7 @@ public class RestClient {
   }
 
   public <S> CompletableFuture<S> get(String endpoint, RequestContext requestContext, Class<S> responseType) {
-    CompletableFuture<S> future = new VertxCompletableFuture<>(requestContext.getContext());
+    CompletableFuture<S> future = new FolioVertxCompletableFuture<>(requestContext.getContext());
     HttpClientInterface client = getHttpClient(requestContext.getHeaders());
     if (logger.isDebugEnabled()) {
       logger.debug("Calling GET {}", endpoint);

@@ -170,12 +170,12 @@ import io.restassured.response.Response;
 import io.vertx.core.Vertx;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.core.json.JsonObject;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 
 public class InvoicesApiTest extends ApiTestBase {
 
-  private static final Logger logger = LoggerFactory.getLogger(InvoicesApiTest.class);
+  private static final Logger logger = LogManager.getLogger(InvoicesApiTest.class);
 
   public static final String INVOICE_PATH = "/invoice/invoices";
   static final String INVOICE_ID_PATH = INVOICE_PATH+ "/%s";
@@ -900,7 +900,7 @@ public class InvoicesApiTest extends ApiTestBase {
     invoice.setStatus(Invoice.Status.PAID);
     MockServer.addMockEntry(INVOICES, invoice);
 
-    Invoice reqData = getRqRsEntries(HttpMethod.OTHER, INVOICES).get(0)
+    Invoice reqData = getRqRsEntries(HttpMethod.SEARCH, INVOICES).get(0)
       .mapTo(Invoice.class);
 
     List<InvoiceLine> invoiceLines = getMockAsJson(INVOICE_LINES_LIST_PATH).mapTo(InvoiceLineCollection.class)
