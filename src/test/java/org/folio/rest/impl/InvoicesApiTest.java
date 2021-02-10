@@ -1823,6 +1823,18 @@ public class InvoicesApiTest extends ApiTestBase {
     assertThat(invoiceLines, everyItem(hasProperty("invoiceLineStatus", is(InvoiceLine.InvoiceLineStatus.PAID))));
     validatePoLinesPaymentStatus();
     assertThatVoucherPaid();
+
+    //  Check that the invoice has updated paid date (equals to the one from the metadata).
+    logger.info("Test that the invoice has updated paid date on pay transition.");
+
+    var invoices = serverRqRs.get(INVOICES, HttpMethod.PUT)
+      .stream()
+      .map(entry -> entry.mapTo(Invoice.class))
+      .collect(toList());
+
+    var expectedPaymentDate = invoices.get(0).getMetadata().getUpdatedDate();
+
+    assertThat(invoices, everyItem(hasProperty("paymentDate", is(expectedPaymentDate))));
   }
 
   @Test
