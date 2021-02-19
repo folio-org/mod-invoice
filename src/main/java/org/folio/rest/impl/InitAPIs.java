@@ -10,12 +10,17 @@ import com.fasterxml.jackson.databind.SerializationConfig;
 
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Context;
+import io.vertx.core.DeploymentOptions;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
+import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.jackson.DatabindCodec;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
+
+import org.folio.verticles.DataImportConsumerVerticle;
+import org.springframework.beans.factory.annotation.Value;
 
 /**
  * The class initializes vertx context adding spring context
@@ -23,9 +28,12 @@ import org.apache.logging.log4j.LogManager;
 public class InitAPIs implements InitAPI {
   private final Logger logger = LogManager.getLogger(InitAPIs.class);
 
+  @Value("${mod.invoice.kafka.DataImportConsumerVerticle.instancesNumber:1}")
+  private int dataImportConsumerVerticleNumber;
+
   @Override
   public void init(Vertx vertx, Context context, Handler<AsyncResult<Boolean>> resultHandler) {
-    vertx.executeBlocking(
+    vertx.<String>executeBlocking(
       handler -> {
         SerializationConfig serializationConfig = ObjectMapperTool.getMapper().getSerializationConfig();
         DeserializationConfig deserializationConfig = ObjectMapperTool.getMapper().getDeserializationConfig();
@@ -36,7 +44,10 @@ public class InitAPIs implements InitAPI {
         DatabindCodec.prettyMapper().setConfig(deserializationConfig);
 
         SpringContextUtil.init(vertx, context, ApplicationConfig.class);
-        handler.complete();
+        SpringContextUtil.autowireDependencies(this, context);
+
+        deployDataImportConsumerVerticle(vertx)
+          .onComplete(ar -> handler.handle(ar));
       },
       result -> {
         if (result.succeeded()) {
@@ -46,5 +57,17 @@ public class InitAPIs implements InitAPI {
           resultHandler.handle(Future.failedFuture(result.cause()));
         }
       });
+  }
+
+  private Future<String> deployDataImportConsumerVerticle(Vertx vertx) {
+    Promise<String> promise = Promise.promise();
+    // todo: fix it
+    DataImportConsumerVerticle.setSpringGlobalContext(vertx.getOrCreateContext().get("springContext"));
+
+    DeploymentOptions deploymentOptions = new DeploymentOptions()
+      .setInstances(dataImportConsumerVerticleNumber)
+      .setWorker(true);
+    vertx.deployVerticle(DataImportConsumerVerticle.class.getName(), deploymentOptions, promise);
+    return promise.future();
   }
 }
