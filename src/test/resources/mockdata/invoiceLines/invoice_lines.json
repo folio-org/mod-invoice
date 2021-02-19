@@ -4,7 +4,7 @@
       "id": "e0d08448-343b-118a-8c2f-4fb50248d672",
       "description": "Some description",
       "poLineId": "2bafc9e1-9dd3-4ede-9f23-c4a03f8bb2d5",
-      "invoiceLineNumber": "123invoicenumber45-1",
+      "invoiceLineNumber": "1",
       "invoiceLineStatus": "Open",
       "referenceNumbers": [
             {
@@ -61,7 +61,7 @@
       "id": "b418897b-0e40-4f31-896b-9c9adc979a88",
       "description": "Some description 2",
       "poLineId": "2bafc9e1-9dd3-4ede-9f23-c4a03f8bb2d5",
-      "invoiceLineNumber": "123invoicenumber45-2",
+      "invoiceLineNumber": "2",
       "invoiceLineStatus": "Open",
       "referenceNumbers": [
             {
@@ -110,7 +110,7 @@
       "id": "b981e3e2-cd26-1ce2-a6cd-159eaefb351d",
       "description": "Some description 3",
       "poLineId": "0009662b-8b80-4001-b704-ca10971f175d",
-      "invoiceLineNumber": "123invoicenumber45-3",
+      "invoiceLineNumber": "3",
       "invoiceLineStatus": "Open",
       "referenceNumbers": [
             {
@@ -166,7 +166,7 @@
       "id": "2730aea8-4f8e-48de-a228-39df977477a1",
       "description": "Some description 2",
       "poLineId": "5a34ae0e-5a11-4337-be95-1a20cfdc3161",
-      "invoiceLineNumber": "123invoicenumber45-2",
+      "invoiceLineNumber": "2",
       "invoiceLineStatus": "Open",
       "referenceNumbers": [
             {
@@ -234,7 +234,7 @@
       "adjustmentsTotal": 7.02,
       "description": "Some description",
       "poLineId": "0610be6d-0ddd-494b-b867-19f63d8b5d6d",
-      "invoiceLineNumber": "1invoiceadj-1",
+      "invoiceLineNumber": "1",
       "invoiceLineStatus": "Open",
       "referenceNumbers": [
             {

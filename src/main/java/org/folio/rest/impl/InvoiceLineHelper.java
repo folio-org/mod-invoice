@@ -354,23 +354,7 @@ public class InvoiceLineHelper extends AbstractHelper {
 
   private CompletableFuture<String> generateLineNumber(Invoice invoice) {
     return handleGetRequest(getInvoiceLineNumberEndpoint(invoice.getId()), httpClient, ctx, okapiHeaders, logger)
-      .thenApply(sequenceNumberJson -> {
-        SequenceNumber sequenceNumber = sequenceNumberJson.mapTo(SequenceNumber.class);
-        return buildInvoiceLineNumber(invoice.getFolioInvoiceNo(), sequenceNumber.getSequenceNumber());
-      });
-  }
-
-  /**
-   * Builds {@link InvoiceLine#invoiceLineNumber} based on the invoice number and sequence number added separated by a hyphen.
-   * {@link InvoiceLineHelper#sortByInvoiceLineNumber(List)} relies on the format of the built
-   * {@link InvoiceLine#invoiceLineNumber}.
-   *
-   * @param folioInvoiceNumber string representation of {@link Invoice#folioInvoiceNo}
-   * @param sequence           number of liner for associated invoice
-   * @return string representing the {@link InvoiceLine#invoiceLineNumber}
-   */
-  private String buildInvoiceLineNumber(String folioInvoiceNumber, String sequence) {
-    return folioInvoiceNumber + HYPHEN_SEPARATOR + sequence;
+      .thenApply(sequenceNumberJson -> sequenceNumberJson.mapTo(SequenceNumber.class).getSequenceNumber());
   }
 
   private String getInvoiceLineNumberEndpoint(String id) {
