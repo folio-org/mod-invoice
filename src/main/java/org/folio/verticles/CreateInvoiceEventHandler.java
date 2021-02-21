@@ -105,7 +105,7 @@ public class CreateInvoiceEventHandler implements EventHandler {
   private Map<String, String> getOkapiHeaders(DataImportEventPayload dataImportEventPayload) {
     return Map.of(RestVerticle.OKAPI_HEADER_TENANT, dataImportEventPayload.getTenant(),
       RestVerticle.OKAPI_HEADER_TOKEN, dataImportEventPayload.getToken(),
-      RestConstants.OKAPI_URL, dataImportEventPayload.getToken());
+      RestConstants.OKAPI_URL, dataImportEventPayload.getOkapiUrl());
   }
 
   private void prepareEventPayloadForMapping(DataImportEventPayload dataImportEventPayload) {
