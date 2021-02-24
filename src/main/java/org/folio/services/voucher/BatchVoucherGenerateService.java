@@ -10,10 +10,12 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 
+import io.vertx.core.Vertx;
 import org.folio.exceptions.BatchVoucherGenerationException;
 import org.folio.rest.acq.model.FundDistribution;
 import org.folio.rest.acq.model.Organization;
 import org.folio.rest.acq.model.VoucherLine;
+import org.folio.rest.core.models.RequestContext;
 import org.folio.rest.impl.BatchGroupHelper;
 import org.folio.rest.impl.VoucherHelper;
 import org.folio.rest.jaxrs.model.BatchVoucher;
@@ -29,18 +31,21 @@ import org.folio.services.VoucherLinesRetrieveService;
 
 import io.vertx.core.Context;
 import io.vertx.core.json.JsonObject;
+import org.folio.spring.SpringContextUtil;
+import org.springframework.beans.factory.annotation.Autowired;
 
 public class BatchVoucherGenerateService {
   private final VoucherHelper voucherHelper;
   private final BatchGroupHelper batchGroupHelper;
-  private final InvoiceRetrieveService invoiceRetrieveService;
+  @Autowired
+  private InvoiceRetrieveService invoiceRetrieveService;
   private final VoucherLinesRetrieveService voucherLinesRetrieveService;
   private final VendorRetrieveService vendorRetrieveService;
 
   public BatchVoucherGenerateService(Map<String, String> okapiHeaders, Context ctx, String lang) {
+    SpringContextUtil.autowireDependencies(this, Vertx.currentContext());
     vendorRetrieveService = new VendorRetrieveService(okapiHeaders, ctx, lang);
     voucherLinesRetrieveService = new VoucherLinesRetrieveService(okapiHeaders, ctx, lang);
-    invoiceRetrieveService = new InvoiceRetrieveService(okapiHeaders, ctx, lang);
     voucherHelper = new VoucherHelper(okapiHeaders, ctx, lang);
     batchGroupHelper = new BatchGroupHelper(okapiHeaders, ctx, lang);
   }
@@ -55,14 +60,14 @@ public class BatchVoucherGenerateService {
     this. invoiceRetrieveService = invoiceRetrieveService;
   }
 
-  public CompletableFuture<BatchVoucher> generateBatchVoucher(BatchVoucherExport batchVoucherExport) {
+  public CompletableFuture<BatchVoucher> generateBatchVoucher(BatchVoucherExport batchVoucherExport, RequestContext requestContext) {
     CompletableFuture<BatchVoucher> future = new CompletableFuture<>();
     String voucherCQL = buildBatchVoucherQuery(batchVoucherExport);
     voucherHelper.getVouchers(Integer.MAX_VALUE, 0, voucherCQL)
       .thenCompose(vouchers -> {
         if (!vouchers.getVouchers().isEmpty()) {
           CompletableFuture<Map<String, List<VoucherLine>>> voucherLines = voucherLinesRetrieveService.getVoucherLinesMap(vouchers);
-          CompletableFuture<Map<String, Invoice>> invoices = invoiceRetrieveService.getInvoiceMap(vouchers);
+          CompletableFuture<Map<String, Invoice>> invoices = invoiceRetrieveService.getInvoiceMap(vouchers, requestContext);
           return allOf(voucherLines, invoices)
             .thenCompose(v -> buildBatchVoucher(batchVoucherExport, vouchers, voucherLines.join(), invoices.join()))
             .thenAccept(batchVoucher -> {

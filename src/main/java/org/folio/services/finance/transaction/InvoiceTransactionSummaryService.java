@@ -1,4 +1,4 @@
-package org.folio.services.transaction;
+package org.folio.services.finance.transaction;
 
 import java.util.concurrent.CompletableFuture;
 

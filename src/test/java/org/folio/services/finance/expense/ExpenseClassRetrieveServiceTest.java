@@ -1,4 +1,4 @@
-package org.folio.services.expense;
+package org.folio.services.finance.expense;
 
 import static org.folio.invoices.utils.ErrorCodes.EXPENSE_CLASS_NOT_FOUND;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -20,7 +20,7 @@ import org.folio.rest.core.RestClient;
 import org.folio.rest.core.models.RequestContext;
 import org.folio.rest.jaxrs.model.Error;
 import org.folio.rest.jaxrs.model.Errors;
-import org.folio.services.expence.ExpenseClassRetrieveService;
+import org.folio.services.finance.expence.ExpenseClassRetrieveService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;

@@ -8,7 +8,7 @@ import org.folio.rest.acq.model.orders.CompositePoLine;
 import org.folio.rest.core.RestClient;
 import org.folio.services.config.TenantConfigurationService;
 import org.folio.services.exchange.ExchangeRateProviderResolver;
-import org.folio.services.expence.ExpenseClassRetrieveService;
+import org.folio.services.finance.expence.ExpenseClassRetrieveService;
 import org.folio.services.validator.VoucherValidator;
 import org.folio.services.voucher.VoucherCommandService;
 import org.folio.services.voucher.VoucherRetrieveService;

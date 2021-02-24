@@ -12,29 +12,24 @@ import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import org.folio.rest.impl.InvoiceHelper;
+import org.folio.rest.core.models.RequestContext;
 import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.jaxrs.model.InvoiceCollection;
 import org.folio.rest.jaxrs.model.Voucher;
 import org.folio.rest.jaxrs.model.VoucherCollection;
-
-import io.vertx.core.Context;
+import org.folio.services.invoice.InvoiceService;
 
 public class InvoiceRetrieveService {
   static final int MAX_IDS_FOR_GET_RQ = 15;
-  private final InvoiceHelper invoiceHelper;
+  private final InvoiceService invoiceService;
 
-  public InvoiceRetrieveService(Map<String, String> okapiHeaders, Context ctx, String lang) {
-    this.invoiceHelper = new InvoiceHelper(okapiHeaders, ctx, lang);
+  public InvoiceRetrieveService(InvoiceService invoiceService) {
+    this.invoiceService = invoiceService;
   }
 
-  public InvoiceRetrieveService(InvoiceHelper invoiceHelper) {
-    this.invoiceHelper = invoiceHelper;
-  }
-
-  public CompletableFuture<Map<String, Invoice>> getInvoiceMap(VoucherCollection voucherCollection) {
+  public CompletableFuture<Map<String, Invoice>> getInvoiceMap(VoucherCollection voucherCollection, RequestContext requestContext) {
     CompletableFuture<Map<String, Invoice>> future = new CompletableFuture<>();
-    getInvoicesByChunks(voucherCollection.getVouchers())
+    getInvoicesByChunks(voucherCollection.getVouchers(), requestContext)
       .thenApply(invoiceCollections ->
         invoiceCollections.stream()
           .map(InvoiceCollection::getInvoices)
@@ -42,20 +37,18 @@ public class InvoiceRetrieveService {
           .flatMap(List::stream)
           .collect(Collectors.toList()))
       .thenAccept(invoices -> future.complete(invoices.stream().collect(toMap(Invoice::getId, Function.identity()))))
-      .thenAccept(v -> invoiceHelper.closeHttpClient())
       .exceptionally(t -> {
         future.completeExceptionally(t);
-        invoiceHelper.closeHttpClient();
         return null;
       });
     return future;
   }
 
-  public CompletableFuture<List<InvoiceCollection>> getInvoicesByChunks(List<Voucher> vouchers) {
+  public CompletableFuture<List<InvoiceCollection>> getInvoicesByChunks(List<Voucher> vouchers, RequestContext requestContext) {
     List<CompletableFuture<InvoiceCollection>> invoiceFutureList = buildIdsChunks(vouchers, MAX_IDS_FOR_GET_RQ).values()
       .stream()
       .map(this::buildInvoiceListQuery)
-      .map(query -> invoiceHelper.getInvoices(MAX_IDS_FOR_GET_RQ, 0, query))
+      .map(query -> invoiceService.getInvoices(query, 0, MAX_IDS_FOR_GET_RQ, requestContext))
       .collect(Collectors.toList());
 
     return collectResultsOnSuccess(invoiceFutureList);

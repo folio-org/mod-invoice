@@ -1,4 +1,4 @@
-package org.folio.services.transaction;
+package org.folio.services.finance.transaction;
 
 import static java.util.stream.Collectors.toList;
 import static org.folio.invoices.utils.HelperUtils.collectResultsOnSuccess;

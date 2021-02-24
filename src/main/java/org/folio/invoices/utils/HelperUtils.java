@@ -302,6 +302,15 @@ public class HelperUtils {
     return Money.of(adjustment.getValue(), subTotal.getCurrency());
   }
 
+  public static double calculateAdjustment(Adjustment adjustment, Invoice invoice) {
+    MonetaryAmount subTotal = Money.of(invoice.getSubTotal(), invoice.getCurrency());
+    if (adjustment.getType().equals(Adjustment.Type.PERCENTAGE)) {
+      // The adjustment amount is calculated by absolute value of subTotal i.e. sign of the percent value defines resulted sign
+      return convertToDoubleWithRounding(subTotal.abs().with(MonetaryOperators.percent(adjustment.getValue())));
+    }
+    return convertToDoubleWithRounding(Money.of(adjustment.getValue(), subTotal.getCurrency()));
+  }
+
   public static double convertToDoubleWithRounding(MonetaryAmount amount) {
     return amount.with(MonetaryOperators.rounding())
       .getNumber()
