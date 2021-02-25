@@ -2,6 +2,7 @@ package org.folio;
 
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toMap;
+import static java.util.stream.Collectors.toSet;
 
 import java.util.List;
 import java.util.Objects;
@@ -92,9 +93,9 @@ public class InvoiceWorkflowDataHolderBuilder {
     public CompletableFuture<List<InvoiceWorkflowDataHolder>> withLedgers(List<InvoiceWorkflowDataHolder> holders, RequestContext requestContext) {
         List<String> ledgerIds = holders.stream().map(InvoiceWorkflowDataHolder::getLedgerId).distinct().collect(toList());
         return ledgerService.retrieveRestrictedLedgersByIds(ledgerIds, requestContext)
-                .thenApply(ledgers -> ledgers.stream().collect(toMap(Ledger::getId, Function.identity())))
-                .thenApply(idLedgerMap -> holders.stream()
-                        .map(holder -> holder.withRestrictExpenditures(idLedgerMap.get(holder.getLedgerId()).getRestrictExpenditures()))
+                .thenApply(ledgers -> ledgers.stream().map(Ledger::getId).collect(toSet()))
+                .thenApply(ids -> holders.stream()
+                        .map(holder -> holder.withRestrictExpenditures(ids.contains(holder.getLedgerId())))
                         .collect(toList()));
     }
 
