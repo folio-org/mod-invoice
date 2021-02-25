@@ -72,10 +72,10 @@ public class CreateInvoiceEventHandler implements EventHandler {
         return CompletableFuture.failedFuture(new EventProcessingException(PAYLOAD_HAS_NO_DATA_MSG));
       }
 
+      Map<String, String> okapiHeaders = getOkapiHeaders(dataImportEventPayload);
+
       Map<Integer, String> invoiceLineNoToPoLineNo = new HashMap<>();
       Map<Integer, String> invoiceLineNoToRefNo = new HashMap<>();
-
-      Map<String, String> okapiHeaders = getOkapiHeaders(dataImportEventPayload);
 
       getAssociatedPoLinesByPoLineNumber(invoiceLineNoToPoLineNo, okapiHeaders)
         .thenCompose(associatedPoLineMap -> {
@@ -91,6 +91,7 @@ public class CreateInvoiceEventHandler implements EventHandler {
         .thenAccept(invLineNoToPoLine -> ensureAdditionalData(dataImportEventPayload, invLineNoToPoLine))
         .thenAccept(v -> prepareEventPayloadForMapping(dataImportEventPayload))
         .thenAccept(v -> MappingManager.map(dataImportEventPayload))
+        .thenAccept(v -> prepareMappingResult(dataImportEventPayload))
         .thenCompose(v -> saveInvoice(dataImportEventPayload, okapiHeaders))
         .thenCompose(savedInvoice -> saveInvoiceLines(savedInvoice.getId(), dataImportEventPayload, okapiHeaders))
         .whenComplete((savedInvoiceLines, throwable) -> {
@@ -108,6 +109,13 @@ public class CreateInvoiceEventHandler implements EventHandler {
       future.completeExceptionally(e);
     }
     return future;
+  }
+
+  private void prepareMappingResult(DataImportEventPayload dataImportEventPayload) {
+    JsonObject mappingResult = new JsonObject(dataImportEventPayload.getContext().get(INVOICE.value()));
+    JsonObject invoiceJson = mappingResult.getJsonObject(INVOICE_FIELD);
+    dataImportEventPayload.getContext().put(INVOICE_LINES_KEY, invoiceJson.remove(INVOICE_LINES_FIELD).toString());
+    dataImportEventPayload.getContext().put(INVOICE.value(), invoiceJson.encode());
   }
 
   private CompletableFuture<Map<Integer, PoLine>> getAssociatedPoLinesByPoLineNumber(Map<Integer, String> invoiceLineNoToPoLineNo, Map<String, String> okapiHeaders) {
@@ -151,10 +159,9 @@ public class CreateInvoiceEventHandler implements EventHandler {
   }
 
   private CompletableFuture<Invoice> saveInvoice(DataImportEventPayload dataImportEventPayload, Map<String, String> okapiHeaders) {
-    JsonObject mappingResult = new JsonObject(dataImportEventPayload.getContext().get(INVOICE.value()));
-    JsonObject invoiceJson = mappingResult.getJsonObject(INVOICE_FIELD);
+    JsonObject invoiceJson = new JsonObject(dataImportEventPayload.getContext().get(INVOICE.value()));
+    InvoiceHelper invoiceHelper = new InvoiceHelper(okapiHeaders, Vertx.currentContext(), null);
 
-    InvoiceHelper invoiceHelper = new InvoiceHelper(okapiHeaders, Vertx.currentContext(), DEFAULT_LANG);
     return invoiceHelper.createInvoice(invoiceJson.mapTo(Invoice.class)).thenApply(invoice -> {
       dataImportEventPayload.getContext().put(INVOICE.value(), Json.encode(invoice));
       return invoice;
@@ -164,8 +171,7 @@ public class CreateInvoiceEventHandler implements EventHandler {
   private CompletableFuture<List<InvoiceLine>> saveInvoiceLines(String invoiceId, DataImportEventPayload dataImportEventPayload, Map<String, String> okapiHeaders) {
     ArrayList<CompletableFuture<InvoiceLine>> futures = new ArrayList<>();
 
-    JsonObject mappingResult = new JsonObject(dataImportEventPayload.getContext().get(INVOICE.value()));
-    JsonArray invoiceLinesJson = mappingResult.getJsonArray(INVOICE_LINES_FIELD);
+    JsonArray invoiceLinesJson = new JsonArray(dataImportEventPayload.getContext().get(INVOICE_LINES_KEY));
     List<InvoiceLine> invoiceLines = invoiceLinesJson.stream()
       .map(JsonObject.class::cast)
       .map(json -> json.mapTo(InvoiceLine.class))
