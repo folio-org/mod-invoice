@@ -1,4 +1,4 @@
-package org.folio.verticles;
+package org.folio.dataimport.handlers.actions;
 
 import io.vertx.core.Vertx;
 import io.vertx.core.json.Json;
@@ -13,7 +13,6 @@ import org.folio.processing.exceptions.EventProcessingException;
 import org.folio.processing.mapping.MappingManager;
 import org.folio.rest.RestConstants;
 import org.folio.rest.RestVerticle;
-import org.folio.rest.core.RestClient;
 import org.folio.rest.impl.InvoiceHelper;
 import org.folio.rest.impl.InvoiceLineHelper;
 import org.folio.rest.jaxrs.model.EntityType;

@@ -1,4 +1,4 @@
-package org.folio.verticles.dataimport;
+package org.folio.dataimport;
 
 import org.folio.processing.mapping.mapper.writer.Writer;
 import org.folio.processing.mapping.mapper.writer.WriterFactory;

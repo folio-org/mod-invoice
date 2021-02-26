@@ -1,4 +1,4 @@
-package org.folio.verticles;
+package org.folio.dataimport.handlers.events;
 
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
@@ -14,7 +14,8 @@ import org.folio.processing.events.utils.ZIPArchiver;
 import org.folio.processing.mapping.MappingManager;
 import org.folio.processing.mapping.mapper.reader.record.edifact.EdifactReaderFactory;
 import org.folio.rest.jaxrs.model.Event;
-import org.folio.verticles.dataimport.InvoiceWriterFactory;
+import org.folio.dataimport.handlers.actions.CreateInvoiceEventHandler;
+import org.folio.dataimport.InvoiceWriterFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
