@@ -19,13 +19,14 @@ import org.springframework.context.annotation.Scope;
 import org.springframework.context.support.AbstractApplicationContext;
 import org.springframework.stereotype.Component;
 
+import static org.folio.DataImportEventTypes.DI_EDIFACT_RECORD_CREATED;
+
 @Component
 @Scope(ConfigurableBeanFactory.SCOPE_PROTOTYPE)
 public class DataImportConsumerVerticle extends AbstractVerticle {
 
   private static final Logger LOGGER = LogManager.getLogger(DataImportConsumerVerticle.class);
   private static final GlobalLoadSensor GLOBAL_LOAD_SENSOR = new GlobalLoadSensor();
-  public static final String EDIFACT_RECORD_CREATED_EVENT = "DI_EDIFACT_RECORD_CREATED";
 
   @Value("${mod.invoice.kafka.DataImportConsumer.loadLimit:5}")
   private int loadLimit;
@@ -53,7 +54,7 @@ public class DataImportConsumerVerticle extends AbstractVerticle {
     EventManager.registerKafkaEventPublisher(kafkaConfig, vertx, maxDistributionNumber);
 
     SubscriptionDefinition subscriptionDefinition = KafkaTopicNameHelper.createSubscriptionDefinition(kafkaConfig.getEnvId(),
-      KafkaTopicNameHelper.getDefaultNameSpace(), EDIFACT_RECORD_CREATED_EVENT);
+      KafkaTopicNameHelper.getDefaultNameSpace(), DI_EDIFACT_RECORD_CREATED.value());
 
     consumerWrapper = KafkaConsumerWrapper.<String, String>builder()
       .context(context)

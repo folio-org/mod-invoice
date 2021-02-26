@@ -31,6 +31,7 @@ import static org.folio.ActionProfile.Action.CREATE;
 import static org.folio.ApiTestSuite.KAFKA_ENV_VALUE;
 import static org.folio.ApiTestSuite.kafkaCluster;
 import static org.folio.DataImportEventTypes.DI_COMPLETED;
+import static org.folio.DataImportEventTypes.DI_EDIFACT_RECORD_CREATED;
 import static org.folio.DataImportEventTypes.DI_ERROR;
 import static org.folio.kafka.KafkaTopicNameHelper.getDefaultNameSpace;
 import static org.folio.rest.jaxrs.model.EntityType.EDIFACT_INVOICE;
@@ -38,7 +39,6 @@ import static org.folio.rest.jaxrs.model.EntityType.INVOICE;
 import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.ACTION_PROFILE;
 import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.JOB_PROFILE;
 import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.MAPPING_PROFILE;
-import static org.folio.verticles.DataImportConsumerVerticle.EDIFACT_RECORD_CREATED_EVENT;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
@@ -96,7 +96,7 @@ public class DataImportConsumerVerticleTest extends ApiTestBase {
     EventManager.registerEventHandler(mockedEventHandler);
 
     DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
-      .withEventType(EDIFACT_RECORD_CREATED_EVENT)
+      .withEventType(DI_EDIFACT_RECORD_CREATED.value())
       .withTenant(TENANT_ID)
       .withOkapiUrl(OKAPI_URL)
       .withToken(TOKEN)
@@ -128,7 +128,7 @@ public class DataImportConsumerVerticleTest extends ApiTestBase {
     EventManager.registerEventHandler(mockedEventHandler);
 
     DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
-      .withEventType(EDIFACT_RECORD_CREATED_EVENT)
+      .withEventType(DI_EDIFACT_RECORD_CREATED.value())
       .withTenant(TENANT_ID)
       .withOkapiUrl(OKAPI_URL)
       .withToken(TOKEN)

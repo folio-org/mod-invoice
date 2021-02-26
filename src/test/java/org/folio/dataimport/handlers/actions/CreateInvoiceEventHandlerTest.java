@@ -17,7 +17,6 @@ import org.folio.kafka.KafkaTopicNameHelper;
 import org.folio.processing.events.services.handler.EventHandler;
 import org.folio.processing.events.utils.ZIPArchiver;
 import org.folio.rest.impl.ApiTestBase;
-import org.folio.rest.impl.MockServer;
 import org.folio.rest.jaxrs.model.Event;
 import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.jaxrs.model.InvoiceLineCollection;
@@ -25,7 +24,6 @@ import org.folio.rest.jaxrs.model.MappingDetail;
 import org.folio.rest.jaxrs.model.MappingRule;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
 import org.folio.rest.jaxrs.model.RepeatableSubfieldMapping;
-import org.folio.dataimport.handlers.actions.CreateInvoiceEventHandler;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -41,7 +39,10 @@ import static org.folio.ActionProfile.Action.CREATE;
 import static org.folio.ApiTestSuite.KAFKA_ENV_VALUE;
 import static org.folio.ApiTestSuite.kafkaCluster;
 import static org.folio.DataImportEventTypes.DI_COMPLETED;
+import static org.folio.DataImportEventTypes.DI_EDIFACT_RECORD_CREATED;
 import static org.folio.DataImportEventTypes.DI_ERROR;
+import static org.folio.DataImportEventTypes.DI_INVOICE_CREATED;
+import static org.folio.dataimport.handlers.actions.CreateInvoiceEventHandler.INVOICE_LINES_KEY;
 import static org.folio.kafka.KafkaTopicNameHelper.getDefaultNameSpace;
 import static org.folio.rest.impl.MockServer.DI_POST_INVOICE_LINES_SUCCESS_TENANT;
 import static org.folio.rest.impl.MockServer.ERROR_TENANT;
@@ -50,9 +51,6 @@ import static org.folio.rest.jaxrs.model.EntityType.INVOICE;
 import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.ACTION_PROFILE;
 import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.JOB_PROFILE;
 import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.MAPPING_PROFILE;
-import static org.folio.dataimport.handlers.actions.CreateInvoiceEventHandler.DI_INVOICE_CREATED_EVENT;
-import static org.folio.dataimport.handlers.actions.CreateInvoiceEventHandler.INVOICE_LINES_KEY;
-import static org.folio.verticles.DataImportConsumerVerticle.EDIFACT_RECORD_CREATED_EVENT;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
@@ -121,7 +119,7 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
     payloadContext.put(EDIFACT_INVOICE.value(), Json.encode(record));
 
     DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
-      .withEventType(EDIFACT_RECORD_CREATED_EVENT)
+      .withEventType(DI_EDIFACT_RECORD_CREATED.value())
       .withTenant(DI_POST_INVOICE_LINES_SUCCESS_TENANT)
       .withOkapiUrl(OKAPI_URL)
       .withToken(TOKEN)
@@ -145,7 +143,7 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
 
     Event obtainedEvent = Json.decodeValue(observedValues.get(0), Event.class);
     DataImportEventPayload eventPayload = Json.decodeValue(ZIPArchiver.unzip(obtainedEvent.getEventPayload()), DataImportEventPayload.class);
-    assertEquals(DI_INVOICE_CREATED_EVENT, eventPayload.getEventsChain().get(eventPayload.getEventsChain().size() -1));
+    assertEquals(DI_INVOICE_CREATED.value(), eventPayload.getEventsChain().get(eventPayload.getEventsChain().size() -1));
 
     assertNotNull(eventPayload.getContext().get(INVOICE.value()));
     Invoice createdInvoice = Json.decodeValue(eventPayload.getContext().get(INVOICE.value()), Invoice.class);
@@ -164,7 +162,7 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
   public void shouldPublishDiErrorEventWhenHasNoSourceRecord() throws IOException, InterruptedException {
     // given
     DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
-      .withEventType(EDIFACT_RECORD_CREATED_EVENT)
+      .withEventType(DI_EDIFACT_RECORD_CREATED.value())
       .withTenant(TENANT_ID)
       .withOkapiUrl(OKAPI_URL)
       .withToken(TOKEN)
@@ -188,14 +186,14 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
 
     Event publishedEvent = Json.decodeValue(observedValues.get(0), Event.class);
     DataImportEventPayload eventPayload = Json.decodeValue(ZIPArchiver.unzip(publishedEvent.getEventPayload()), DataImportEventPayload.class);
-    assertEquals(DI_INVOICE_CREATED_EVENT, eventPayload.getEventsChain().get(eventPayload.getEventsChain().size() -1));
+    assertEquals(DI_INVOICE_CREATED.value(), eventPayload.getEventsChain().get(eventPayload.getEventsChain().size() -1));
   }
 
   @Test
   public void shouldPublishDiErrorEventWhenPostInvoiceToStorageFailed() throws IOException, InterruptedException {
     // given
     DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
-      .withEventType(EDIFACT_RECORD_CREATED_EVENT)
+      .withEventType(DI_EDIFACT_RECORD_CREATED.value())
       .withTenant(ERROR_TENANT)
       .withOkapiUrl(OKAPI_URL)
       .withToken(TOKEN)
@@ -219,14 +217,14 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
 
     Event publishedEvent = Json.decodeValue(observedValues.get(0), Event.class);
     DataImportEventPayload eventPayload = Json.decodeValue(ZIPArchiver.unzip(publishedEvent.getEventPayload()), DataImportEventPayload.class);
-    assertEquals(DI_INVOICE_CREATED_EVENT, eventPayload.getEventsChain().get(eventPayload.getEventsChain().size() -1));
+    assertEquals(DI_INVOICE_CREATED.value(), eventPayload.getEventsChain().get(eventPayload.getEventsChain().size() -1));
   }
 
   @Test
   public void shouldReturnTrueWhenHandlerIsEligibleForActionProfile() {
     // given
     DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
-      .withEventType(EDIFACT_RECORD_CREATED_EVENT)
+      .withEventType(DI_EDIFACT_RECORD_CREATED.value())
       .withProfileSnapshot(profileSnapshotWrapper)
       .withCurrentNode(profileSnapshotWrapper.getChildSnapshotWrappers().get(0));
 
@@ -253,7 +251,7 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
       .withContent(actionProfile);
 
     DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
-      .withEventType(EDIFACT_RECORD_CREATED_EVENT)
+      .withEventType(DI_EDIFACT_RECORD_CREATED.value())
       .withProfileSnapshot(profileSnapshotWrapper)
       .withCurrentNode(profileSnapshotWrapper);
 

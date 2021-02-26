@@ -8,6 +8,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.ActionProfile;
 import org.folio.DataImportEventPayload;
+import org.folio.DataImportEventTypes;
 import org.folio.processing.events.services.handler.EventHandler;
 import org.folio.processing.exceptions.EventProcessingException;
 import org.folio.processing.mapping.MappingManager;
@@ -30,6 +31,7 @@ import java.util.stream.Collectors;
 import static org.apache.commons.lang3.StringUtils.isBlank;
 import static org.folio.ActionProfile.Action.CREATE;
 import static org.folio.ActionProfile.FolioRecord.INVOICE;
+import static org.folio.DataImportEventTypes.DI_INVOICE_CREATED;
 import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.ACTION_PROFILE;
 
 public class CreateInvoiceEventHandler implements EventHandler {
@@ -38,14 +40,13 @@ public class CreateInvoiceEventHandler implements EventHandler {
   private static final String PAYLOAD_HAS_NO_DATA_MSG = "Failed to handle event payload, cause event payload context does not contain EDIFACT data";
 
   public static final String INVOICE_LINES_KEY = "INVOICE_LINES";
-  public static final String DI_INVOICE_CREATED_EVENT = "DI_INVOICE_CREATED";
   private static final String INVOICE_FIELD = "invoice";
   private static final String INVOICE_LINES_FIELD = "invoiceLines";
 
   @Override
   public CompletableFuture<DataImportEventPayload> handle(DataImportEventPayload dataImportEventPayload) {
     CompletableFuture<DataImportEventPayload> future = new CompletableFuture<>();
-    dataImportEventPayload.setEventType(DI_INVOICE_CREATED_EVENT);
+    dataImportEventPayload.setEventType(DI_INVOICE_CREATED.value());
     try {
       HashMap<String, String> payloadContext = dataImportEventPayload.getContext();
       if (payloadContext == null || isBlank(payloadContext.get(EntityType.EDIFACT_INVOICE.value()))) {
