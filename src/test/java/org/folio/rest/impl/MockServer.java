@@ -160,7 +160,7 @@ public class MockServer {
   private static final String INVOICE_NUMBER_ERROR_TENANT = "po_number_error_tenant";
   private static final String INVOICE_LINE_NUMBER_ERROR_TENANT = "invoice_line_number_error_tenant";
   private static final String VOUCHER_NUMBER_ERROR_TENANT = "voucher_number_error_tenant";
-  private static final String ERROR_TENANT = "error_tenant";
+  public static final String ERROR_TENANT = "error_tenant";
   private static final String ERROR_CONFIG_TENANT = "error_config_tenant";
   private static final String DELETE_VOUCHER_LINES_ERROR_TENANT = "get_voucher_lines_error_tenant";
   private static final String GET_VOUCHER_LINES_ERROR_TENANT = "get_voucher_lines_error_tenant";
@@ -176,6 +176,7 @@ public class MockServer {
   private static final String INVALID_PREFIX_CONFIG_TENANT = "invalid_prefix_config_tenant";
   public static final String PREFIX_CONFIG_WITHOUT_VALUE_TENANT = "prefix_without_value_config_tenant";
   public static final String PREFIX_CONFIG_WITH_NON_EXISTING_VALUE_TENANT = "prefix_with_non_existing_value_config_tenant";
+  public static final String DI_POST_INVOICE_LINES_SUCCESS_TENANT = "di_post_invoice_invoice_lines_success_tenant";
 
   private static final String INVOICE_LINES_COLLECTION = BASE_MOCK_DATA_PATH + "invoiceLines/invoice_lines.json";
   private static final String BUDGET_EXPENSE_CLASS_COLLECTION = BASE_MOCK_DATA_PATH + "budget-expense-classes/budgetExpenseClasses.json";
@@ -1020,9 +1021,16 @@ public class MockServer {
   private void handleGetInvoiceById(RoutingContext ctx) {
     logger.info("handleGetInvoiceById got: GET " + ctx.request().path());
     String id = ctx.request().getParam(AbstractHelper.ID);
+    String tenant = ctx.request().getHeader(OKAPI_HEADER_TENANT);
     logger.info("id: " + id);
     if (ID_FOR_INTERNAL_SERVER_ERROR.equals(id)) {
       serverResponse(ctx, 500, APPLICATION_JSON, Response.Status.INTERNAL_SERVER_ERROR.getReasonPhrase());
+    } else if (DI_POST_INVOICE_LINES_SUCCESS_TENANT.equals(tenant)) {
+      getInvoiceCreations().stream()
+        .filter(invoice -> invoice.getString("id").equals(id))
+        .findFirst()
+        .ifPresentOrElse(invoice -> serverResponse(ctx, 200, APPLICATION_JSON, invoice.encodePrettily()),
+          () -> ctx.response().setStatusCode(404).end(id));
     } else {
       JsonObject invoice = getMockEntry(INVOICES, id).orElseGet(getJsonObjectFromFile(INVOICE_MOCK_DATA_PATH, id));
       if (invoice == null) {
