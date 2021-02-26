@@ -28,7 +28,6 @@ public class DataImportKafkaHandler implements AsyncRecordHandler<String, String
 
   private final Logger LOGGER = LogManager.getLogger(DataImportKafkaHandler.class);
 
-  @Autowired
   public DataImportKafkaHandler() {
     MappingManager.registerReaderFactory(new EdifactReaderFactory());
     MappingManager.registerWriterFactory(new InvoiceWriterFactory());

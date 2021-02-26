@@ -21,6 +21,7 @@ import org.apache.logging.log4j.LogManager;
 
 import org.folio.verticles.DataImportConsumerVerticle;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.support.AbstractApplicationContext;
 
 /**
  * The class initializes vertx context adding spring context
@@ -61,13 +62,12 @@ public class InitAPIs implements InitAPI {
 
   private Future<String> deployDataImportConsumerVerticle(Vertx vertx) {
     Promise<String> promise = Promise.promise();
-    // todo: fix it
-    DataImportConsumerVerticle.setSpringGlobalContext(vertx.getOrCreateContext().get("springContext"));
+    AbstractApplicationContext springContext = vertx.getOrCreateContext().get("springContext");
 
     DeploymentOptions deploymentOptions = new DeploymentOptions()
       .setInstances(dataImportConsumerVerticleNumber)
       .setWorker(true);
-    vertx.deployVerticle(DataImportConsumerVerticle.class.getName(), deploymentOptions, promise);
+    vertx.deployVerticle(() -> springContext.getBean(DataImportConsumerVerticle.class), deploymentOptions, promise);
     return promise.future();
   }
 }
