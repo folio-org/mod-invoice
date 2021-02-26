@@ -162,6 +162,7 @@
       <version>3.4.6</version>
       <scope>test</scope>
     </dependency>
+
     <dependency>
       <groupId>net.mguenther.kafka</groupId>
       <artifactId>kafka-junit</artifactId>
@@ -179,6 +180,10 @@
         <exclusion>
           <groupId>net.sf.jopt-simple</groupId>
           <artifactId>jopt-simple</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>com.fasterxml.jackson.module</groupId>
+          <artifactId>jackson-module-scala_2.13</artifactId>
         </exclusion>
       </exclusions>
     </dependency>
