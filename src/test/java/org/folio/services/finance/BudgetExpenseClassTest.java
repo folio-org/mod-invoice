@@ -2,18 +2,17 @@ package org.folio.services.finance;
 
 import static org.folio.invoices.utils.ErrorCodes.BUDGET_EXPENSE_CLASS_NOT_FOUND;
 import static org.folio.invoices.utils.ErrorCodes.INACTIVE_EXPENSE_CLASS;
-import static org.folio.services.finance.BudgetExpenseClassService.EXPENSE_CLASS_NAME;
-import static org.folio.services.finance.BudgetExpenseClassService.FUND_CODE;
+import static org.folio.services.finance.budget.BudgetExpenseClassService.EXPENSE_CLASS_NAME;
+import static org.folio.services.finance.budget.BudgetExpenseClassService.FUND_CODE;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.instanceOf;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.Mockito.when;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -22,6 +21,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 
 import org.folio.invoices.rest.exceptions.HttpException;
+import org.folio.models.InvoiceWorkflowDataHolder;
 import org.folio.rest.acq.model.finance.Budget;
 import org.folio.rest.acq.model.finance.BudgetExpenseClass;
 import org.folio.rest.acq.model.finance.BudgetExpenseClassCollection;
@@ -35,11 +35,10 @@ import org.folio.rest.jaxrs.model.Errors;
 import org.folio.rest.jaxrs.model.FundDistribution;
 import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.jaxrs.model.InvoiceLine;
-import org.folio.services.expence.ExpenseClassRetrieveService;
+import org.folio.services.finance.budget.BudgetExpenseClassService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentMatchers;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
@@ -53,24 +52,12 @@ public class BudgetExpenseClassTest {
     private RestClient budgetExpenseClassRestClient;
 
     @Mock
-    private FundService fundService;
-
-    @Mock
-    private ExpenseClassRetrieveService expenseClassRetrieveService;
-
-    @Mock
-    private RestClient activeBudgetRestClient;
-
-    @Mock
     private RequestContext requestContext;
 
     @BeforeEach
     public void initMocks() {
         MockitoAnnotations.openMocks(this);
-        budgetExpenseClassService = new BudgetExpenseClassService(budgetExpenseClassRestClient,
-                fundService,
-                expenseClassRetrieveService,
-                activeBudgetRestClient);
+        budgetExpenseClassService = new BudgetExpenseClassService(budgetExpenseClassRestClient);
     }
 
     @Test
@@ -109,8 +96,33 @@ public class BudgetExpenseClassTest {
         Fund inactiveExpenseClassFund = new Fund().withCode("inactive fund");
         ExpenseClass inactiveExpenseClass = new ExpenseClass().withName("inactive class");
 
-        when(activeBudgetRestClient.getById(anyString(), any(), any()))
-                .thenReturn(CompletableFuture.completedFuture(new Budget().withId(UUID.randomUUID().toString())));
+        List<InvoiceWorkflowDataHolder> holders = new ArrayList<>();
+        InvoiceWorkflowDataHolder holder1 = new InvoiceWorkflowDataHolder()
+                .withInvoice(invoice)
+                .withInvoiceLine(invoiceLine)
+                .withFundDistribution(fundDistributionWithInactiveExpenseClass)
+                .withExpenseClass(inactiveExpenseClass)
+                .withBudget(new Budget().withFundId(UUID.randomUUID().toString()))
+                .withFund(inactiveExpenseClassFund);
+
+        InvoiceWorkflowDataHolder holder2 = new InvoiceWorkflowDataHolder()
+                .withInvoice(invoice)
+                .withInvoiceLine(invoiceLine)
+                .withBudget(new Budget().withFundId(UUID.randomUUID().toString()))
+                .withFundDistribution(fundDistributionWithoutExpenseClass);
+
+        InvoiceWorkflowDataHolder holder3 = new InvoiceWorkflowDataHolder()
+                .withInvoice(invoice)
+                .withAdjustment(adjustment)
+                .withFundDistribution(fundDistributionWithActiveExpenseClass)
+                .withBudget(new Budget().withFundId(UUID.randomUUID().toString()))
+                .withExpenseClass(new ExpenseClass().withId(activeExpenseClassId));
+
+        holders.add(holder1);
+        holders.add(holder2);
+        holders.add(holder3);
+
+
 
         when(budgetExpenseClassRestClient.get(contains(inactiveExpenseClassId), anyInt(), anyInt(), ArgumentMatchers.any(), ArgumentMatchers.any()))
                 .thenReturn(CompletableFuture.completedFuture(new BudgetExpenseClassCollection()
@@ -121,10 +133,7 @@ public class BudgetExpenseClassTest {
                         .withBudgetExpenseClasses(Collections.singletonList(active)).withTotalRecords(1)));
         when(requestContext.getContext()).thenReturn(Vertx.vertx().getOrCreateContext());
 
-        when(fundService.getFundById(anyString(), any())).thenReturn(CompletableFuture.completedFuture(inactiveExpenseClassFund));
-        when(expenseClassRetrieveService.getExpenseClassById(anyString(), any())).thenReturn(CompletableFuture.completedFuture(inactiveExpenseClass));
-
-        CompletableFuture<Void> future = budgetExpenseClassService.checkExpenseClasses(invoiceLines, invoice, requestContext);
+        CompletableFuture<List<InvoiceWorkflowDataHolder>> future = budgetExpenseClassService.checkExpenseClasses(holders, requestContext);
 
         ExecutionException executionException = assertThrows(ExecutionException.class, future::get);
 
@@ -175,8 +184,31 @@ public class BudgetExpenseClassTest {
         Fund noExpenseClassFund = new Fund().withCode("no expense class fund");
         ExpenseClass notAssignedExpenseClass = new ExpenseClass().withName("not assigned class");
 
-        when(activeBudgetRestClient.getById(anyString(), any(), any()))
-                .thenReturn(CompletableFuture.completedFuture(new Budget().withId(UUID.randomUUID().toString())));
+        List<InvoiceWorkflowDataHolder> holders = new ArrayList<>();
+        InvoiceWorkflowDataHolder holder1 = new InvoiceWorkflowDataHolder()
+                .withInvoice(invoice)
+                .withInvoiceLine(invoiceLine)
+                .withFundDistribution(fundDistributionWithActiveExpenseClass)
+                .withBudget(new Budget().withFundId(UUID.randomUUID().toString()))
+                .withExpenseClass(new ExpenseClass().withId(activeExpenseClassId));
+
+        InvoiceWorkflowDataHolder holder2 = new InvoiceWorkflowDataHolder()
+                .withInvoice(invoice)
+                .withInvoiceLine(invoiceLine)
+                .withBudget(new Budget().withFundId(UUID.randomUUID().toString()))
+                .withFundDistribution(fundDistributionWithoutExpenseClass);
+
+        InvoiceWorkflowDataHolder holder3 = new InvoiceWorkflowDataHolder()
+                .withInvoice(invoice)
+                .withAdjustment(adjustment)
+                .withFundDistribution(fundDistributionWithNotAssignedExpenseClass)
+                .withExpenseClass(notAssignedExpenseClass)
+                .withBudget(new Budget().withFundId(UUID.randomUUID().toString()))
+                .withFund(noExpenseClassFund);
+
+        holders.add(holder1);
+        holders.add(holder2);
+        holders.add(holder3);
 
         when(budgetExpenseClassRestClient.get(contains(notAssignedExpenseClassId), anyInt(), anyInt(), ArgumentMatchers.any(), ArgumentMatchers.any()))
                 .thenReturn(CompletableFuture.completedFuture(new BudgetExpenseClassCollection()
@@ -187,10 +219,8 @@ public class BudgetExpenseClassTest {
                         .withBudgetExpenseClasses(Collections.singletonList(active)).withTotalRecords(1)));
         when(requestContext.getContext()).thenReturn(Vertx.vertx().getOrCreateContext());
 
-        when(fundService.getFundById(anyString(), any())).thenReturn(CompletableFuture.completedFuture(noExpenseClassFund));
-        when(expenseClassRetrieveService.getExpenseClassById(anyString(), any())).thenReturn(CompletableFuture.completedFuture(notAssignedExpenseClass));
 
-        CompletableFuture<Void> future = budgetExpenseClassService.checkExpenseClasses(invoiceLines, invoice, requestContext);
+        CompletableFuture<List<InvoiceWorkflowDataHolder>> future = budgetExpenseClassService.checkExpenseClasses(holders, requestContext);
 
         ExecutionException executionException = assertThrows(ExecutionException.class, future::get);
 

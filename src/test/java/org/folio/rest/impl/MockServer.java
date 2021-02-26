@@ -6,6 +6,7 @@ import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 import static javax.ws.rs.core.MediaType.APPLICATION_XML;
 import static javax.ws.rs.core.MediaType.TEXT_PLAIN;
 import static javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
+import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static org.apache.commons.lang3.StringUtils.EMPTY;
 import static org.folio.invoices.utils.HelperUtils.ALL_UNITS_CQL;
 import static org.folio.invoices.utils.HelperUtils.INVOICE_ID;
@@ -43,6 +44,7 @@ import static org.folio.rest.impl.InvoicesApiTest.EXISTING_LEDGER_ID;
 import static org.folio.rest.impl.InvoicesApiTest.EXISTING_VENDOR_INV_NO;
 import static org.folio.rest.impl.InvoicesApiTest.EXPENSE_CLASSES_LIST_PATH;
 import static org.folio.rest.impl.InvoicesApiTest.EXPENSE_CLASSES_MOCK_DATA_PATH;
+import static org.folio.rest.impl.InvoicesApiTest.FUND_ID_WITH_NOT_ACTIVE_BUDGET;
 import static org.folio.rest.impl.InvoicesApiTest.INVOICE_MOCK_DATA_PATH;
 import static org.folio.rest.impl.ProtectionHelper.ACQUISITIONS_UNIT_ID;
 import static org.folio.rest.impl.VoucherLinesApiTest.VOUCHER_LINES_MOCK_DATA_PATH;
@@ -409,7 +411,7 @@ public class MockServer {
     router.route(HttpMethod.GET, resourceByIdPath(FISCAL_YEARS)).handler(this::handleFiscalYearById);
     router.route(HttpMethod.GET, resourcesPath(FISCAL_YEARS)).handler(this::handleFiscalYear);
     router.route(HttpMethod.GET, resourceByIdPath(FUNDS)).handler(this::handleFundById);
-    router.route(HttpMethod.GET, "/finance/funds/:id/budget").handler(this::handleGetBudgetByFinanceId);
+    router.route(HttpMethod.GET, "/finance/funds/:id/budget").handler(this::handleGetBudgetByFundId);
 
     router.route(HttpMethod.DELETE, resourceByIdPath(INVOICES)).handler(ctx -> handleDeleteRequest(ctx, INVOICES));
     router.route(HttpMethod.DELETE, resourceByIdPath(INVOICE_LINES)).handler(ctx -> handleDeleteRequest(ctx, INVOICE_LINES));
@@ -814,13 +816,17 @@ public class MockServer {
     }
   }
 
-  private void handleGetBudgetByFinanceId(RoutingContext ctx) {
+  private void handleGetBudgetByFundId(RoutingContext ctx) {
     logger.info("handleGetInvoiceDocumentById got: GET " + ctx.request().path());
     String fundId = ctx.request().getParam("id");
 
     JsonObject collection = getBudgetsByFundIds(Collections.singletonList(fundId));
     BudgetCollection budgetCollection = collection.mapTo(BudgetCollection.class);
-    if (budgetCollection.getTotalRecords() > 0) {
+    if (fundId.equals(FUND_ID_WITH_NOT_ACTIVE_BUDGET)) {
+      ctx.response()
+              .setStatusCode(404)
+              .end();
+    } else if (budgetCollection.getTotalRecords() > 0) {
       Budget budget = budgetCollection.getBudgets().get(0);
       JsonObject budgetJson = JsonObject.mapFrom(budget);
       addServerRqRsData(HttpMethod.GET, CURRENT_BUDGET, budgetJson);

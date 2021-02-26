@@ -1,4 +1,4 @@
-package org.folio.services.transaction;
+package org.folio.services.finance.transaction;
 
 import org.folio.rest.acq.model.finance.Transaction;
 import org.folio.rest.core.RestClient;

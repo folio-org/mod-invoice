@@ -6,6 +6,7 @@ import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
+import org.folio.rest.core.models.RequestContext;
 import org.folio.rest.jaxrs.model.BatchVoucherExport;
 import org.folio.services.voucher.BatchVoucherGenerateService;
 
@@ -24,7 +25,7 @@ public class BatchVoucherPersistHelper extends AbstractHelper {
 
   public CompletableFuture<String> persistBatchVoucher(BatchVoucherExport batchVoucherExport) {
     CompletableFuture<String> future = new CompletableFuture<>();
-    batchVoucherGenerateService.generateBatchVoucher(batchVoucherExport)
+    batchVoucherGenerateService.generateBatchVoucher(batchVoucherExport, new RequestContext(ctx, okapiHeaders))
       .thenApply(JsonObject::mapFrom)
       .thenCompose(jsonInvoice -> createRecordInStorage(jsonInvoice, resourcesPath(BATCH_VOUCHER_STORAGE)))
       .thenApply(batchVoucherId -> {

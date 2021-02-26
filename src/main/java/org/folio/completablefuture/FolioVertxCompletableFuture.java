@@ -176,6 +176,35 @@ public class FolioVertxCompletableFuture<T> extends CompletableFuture<T> impleme
         return future;
     }
 
+    /**
+     * Returns a new CompletableFuture that is asynchronously completed by a action running in the worker thread pool of
+     * Vert.x
+     * <p>
+     * This method is different from {@link CompletableFuture#runAsync(Runnable)} as it does not use a fork join
+     * executor, but the worker thread pool.
+     *
+     * @param context  the Vert.x context
+     * @param runnable the action, when its execution completes, it completes the returned CompletableFuture. If the
+     *                 execution throws an exception, the returned CompletableFuture is completed exceptionally.
+     * @return the new CompletableFuture
+     */
+    public static FolioVertxCompletableFuture<Void> runBlockingAsync(Context context, Runnable runnable) {
+        Objects.requireNonNull(runnable);
+        FolioVertxCompletableFuture<Void> future = new FolioVertxCompletableFuture<>(Objects.requireNonNull(context));
+        context.executeBlocking(
+                fut -> {
+                    try {
+                        runnable.run();
+                        future.complete(null);
+                    } catch (Exception e) {
+                        future.completeExceptionally(e);
+                    }
+                },
+                null
+        );
+        return future;
+    }
+
     // ============= Parallel composition methods =============
 
     /**
@@ -206,48 +235,48 @@ public class FolioVertxCompletableFuture<T> extends CompletableFuture<T> impleme
     // ============= Composite Future implementation =============
 
     @Override
-    public <U> FolioVertxCompletableFuture<U> thenApply(Function<? super T, ? extends U> fn) {
+    public <U> CompletableFuture<U> thenApply(Function<? super T, ? extends U> fn) {
         return new FolioVertxCompletableFuture<>(context, super.thenApply(fn));
     }
 
     @Override
-    public FolioVertxCompletableFuture<Void> thenRun(Runnable action) {
+    public CompletableFuture<Void> thenRun(Runnable action) {
         return new FolioVertxCompletableFuture<>(context, super.thenRun(action));
     }
 
     @Override
-    public <U, V> FolioVertxCompletableFuture<V> thenCombine(CompletionStage<? extends U> other, BiFunction<? super T, ? super U, ? extends V> fn) {
+    public <U, V> CompletableFuture<V> thenCombine(CompletionStage<? extends U> other, BiFunction<? super T, ? super U, ? extends V> fn) {
         return new FolioVertxCompletableFuture<>(context, super.thenCombine(other, fn));
     }
 
     @Override
-    public <U> FolioVertxCompletableFuture<U> thenCompose(Function<? super T, ? extends CompletionStage<U>> fn) {
+    public <U> CompletableFuture<U> thenCompose(Function<? super T, ? extends CompletionStage<U>> fn) {
         return new FolioVertxCompletableFuture<>(context, super.thenCompose(fn));
     }
 
     @Override
-    public FolioVertxCompletableFuture<T> whenComplete(BiConsumer<? super T, ? super Throwable> action) {
+    public CompletableFuture<T> whenComplete(BiConsumer<? super T, ? super Throwable> action) {
         return new FolioVertxCompletableFuture<>(context, super.whenComplete(action));
     }
 
     @Override
-    public <U> FolioVertxCompletableFuture<U> handle(BiFunction<? super T, Throwable, ? extends U> fn) {
+    public <U> CompletableFuture<U> handle(BiFunction<? super T, Throwable, ? extends U> fn) {
         return new FolioVertxCompletableFuture<>(context, super.handle(fn));
     }
 
     @Override
-    public <U> FolioVertxCompletableFuture<U> thenApplyAsync(Function<? super T, ? extends U> fn) {
+    public <U> CompletableFuture<U> thenApplyAsync(Function<? super T, ? extends U> fn) {
         return new FolioVertxCompletableFuture<>(context, super.thenApplyAsync(fn, executor));
     }
 
     @Override
-    public FolioVertxCompletableFuture<Void> thenAccept(Consumer<? super T> action) {
+    public CompletableFuture<Void> thenAccept(Consumer<? super T> action) {
         return new FolioVertxCompletableFuture<>(context, super.thenAccept(action));
     }
 
 
     @Override
-    public FolioVertxCompletableFuture<T> toCompletableFuture() {
+    public CompletableFuture<T> toCompletableFuture() {
         return this;
     }
 

@@ -35,17 +35,17 @@ import org.folio.rest.tools.utils.NetworkUtils;
 import org.folio.schemas.xsd.BatchVoucherSchemaXSDTest;
 import org.folio.services.InvoiceRetrieveServiceTest;
 import org.folio.services.VoucherLinesRetrieveServiceTest;
-import org.folio.services.expense.ExpenseClassRetrieveServiceTest;
+import org.folio.services.finance.expense.ExpenseClassRetrieveServiceTest;
 import org.folio.services.finance.BudgetExpenseClassTest;
-import org.folio.services.finance.BudgetValidationServiceTest;
+import org.folio.services.validator.FundAvailabilityHolderValidatorTest;
 import org.folio.services.finance.CurrentFiscalYearServiceTest;
 import org.folio.services.finance.ManualCurrencyConversionTest;
 import org.folio.services.finance.ManualExchangeRateProviderTest;
 import org.folio.services.ftp.FTPVertxCommandLoggerTest;
 import org.folio.services.ftp.FtpUploadServiceTest;
-import org.folio.services.transaction.BaseTransactionServiceTest;
-import org.folio.services.transaction.PendingPaymentWorkflowServiceTest;
-import org.folio.services.validator.InvoiceLineValidatorTest;
+import org.folio.services.finance.transaction.BaseTransactionServiceTest;
+import org.folio.services.finance.transaction.PendingPaymentWorkflowServiceTest;
+import org.folio.services.validator.InvoiceLineHolderValidatorTest;
 import org.folio.services.voucher.BatchVoucherGenerateServiceTest;
 import org.folio.services.voucher.UploadBatchVoucherExportServiceTest;
 import org.folio.verticles.DataImportConsumerVerticleTest;
@@ -248,7 +248,7 @@ public class ApiTestSuite {
   }
 
   @Nested
-  class InvoiceLineValidatorTestNested extends InvoiceLineValidatorTest {
+  class InvoiceLineHolderValidatorTestNested extends InvoiceLineHolderValidatorTest {
   }
 
   @Nested
@@ -272,7 +272,7 @@ public class ApiTestSuite {
   }
 
   @Nested
-  class BudgetValidationServiceTestNested extends BudgetValidationServiceTest {
+  class FundAvailabilityHolderValidatorTestNested extends FundAvailabilityHolderValidatorTest {
   }
 
   @Nested
