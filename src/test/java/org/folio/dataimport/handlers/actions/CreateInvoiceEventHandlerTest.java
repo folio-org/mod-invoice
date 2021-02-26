@@ -17,6 +17,7 @@ import org.folio.kafka.KafkaTopicNameHelper;
 import org.folio.processing.events.services.handler.EventHandler;
 import org.folio.processing.events.utils.ZIPArchiver;
 import org.folio.rest.impl.ApiTestBase;
+import org.folio.rest.impl.MockServer;
 import org.folio.rest.jaxrs.model.Event;
 import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.jaxrs.model.InvoiceLineCollection;
@@ -43,6 +44,7 @@ import static org.folio.DataImportEventTypes.DI_COMPLETED;
 import static org.folio.DataImportEventTypes.DI_ERROR;
 import static org.folio.kafka.KafkaTopicNameHelper.getDefaultNameSpace;
 import static org.folio.rest.impl.MockServer.DI_POST_INVOICE_LINES_SUCCESS_TENANT;
+import static org.folio.rest.impl.MockServer.ERROR_TENANT;
 import static org.folio.rest.jaxrs.model.EntityType.EDIFACT_INVOICE;
 import static org.folio.rest.jaxrs.model.EntityType.INVOICE;
 import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.ACTION_PROFILE;
@@ -180,9 +182,44 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
 
     // then
     String topicToObserve = KafkaTopicNameHelper.formatTopicName(KAFKA_ENV_VALUE, getDefaultNameSpace(), TENANT_ID, DI_ERROR.value());
-    kafkaCluster.observeValues(ObserveKeyValues.on(topicToObserve, 1)
+    List<String> observedValues = kafkaCluster.observeValues(ObserveKeyValues.on(topicToObserve, 1)
       .observeFor(30, TimeUnit.SECONDS)
       .build());
+
+    Event publishedEvent = Json.decodeValue(observedValues.get(0), Event.class);
+    DataImportEventPayload eventPayload = Json.decodeValue(ZIPArchiver.unzip(publishedEvent.getEventPayload()), DataImportEventPayload.class);
+    assertEquals(DI_INVOICE_CREATED_EVENT, eventPayload.getEventsChain().get(eventPayload.getEventsChain().size() -1));
+  }
+
+  @Test
+  public void shouldPublishDiErrorEventWhenPostInvoiceToStorageFailed() throws IOException, InterruptedException {
+    // given
+    DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
+      .withEventType(EDIFACT_RECORD_CREATED_EVENT)
+      .withTenant(ERROR_TENANT)
+      .withOkapiUrl(OKAPI_URL)
+      .withToken(TOKEN)
+      .withContext(new HashMap<>())
+      .withProfileSnapshot(profileSnapshotWrapper);
+
+    String topic = KafkaTopicNameHelper.formatTopicName(KAFKA_ENV_VALUE, getDefaultNameSpace(), ERROR_TENANT, dataImportEventPayload.getEventType());
+    Event event = new Event().withEventPayload(ZIPArchiver.zip(Json.encode(dataImportEventPayload)));
+    KeyValue<String, String> kafkaRecord = new KeyValue<>("test-key", Json.encode(event));
+    SendKeyValues<String, String> request = SendKeyValues.to(topic, Collections.singletonList(kafkaRecord))
+      .useDefaults();
+
+    // when
+    kafkaCluster.send(request);
+
+    // then
+    String topicToObserve = KafkaTopicNameHelper.formatTopicName(KAFKA_ENV_VALUE, getDefaultNameSpace(), ERROR_TENANT, DI_ERROR.value());
+    List<String> observedValues = kafkaCluster.observeValues(ObserveKeyValues.on(topicToObserve, 1)
+      .observeFor(30, TimeUnit.SECONDS)
+      .build());
+
+    Event publishedEvent = Json.decodeValue(observedValues.get(0), Event.class);
+    DataImportEventPayload eventPayload = Json.decodeValue(ZIPArchiver.unzip(publishedEvent.getEventPayload()), DataImportEventPayload.class);
+    assertEquals(DI_INVOICE_CREATED_EVENT, eventPayload.getEventsChain().get(eventPayload.getEventsChain().size() -1));
   }
 
   @Test
