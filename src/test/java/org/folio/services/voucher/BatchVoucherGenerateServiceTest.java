@@ -1,7 +1,7 @@
 package org.folio.services.voucher;
 
 import static org.folio.ApiTestSuite.mockPort;
-import static org.folio.invoices.utils.ResourcePathResolver.EXPENSE_CLASSES_URL;
+import static org.folio.invoices.utils.ResourcePathResolver.INVOICES;
 import static org.folio.invoices.utils.ResourcePathResolver.TENANT_CONFIGURATION_ENTRIES;
 import static org.folio.invoices.utils.ResourcePathResolver.VOUCHERS_STORAGE;
 import static org.folio.invoices.utils.ResourcePathResolver.VOUCHER_NUMBER_STORAGE;
@@ -17,14 +17,14 @@ import java.util.concurrent.ExecutionException;
 import org.folio.invoices.utils.ResourcePathResolver;
 import org.folio.rest.RestConstants;
 import org.folio.rest.core.RestClient;
+import org.folio.rest.core.models.RequestContext;
 import org.folio.rest.impl.ApiTestBase;
-import org.folio.rest.impl.InvoiceHelper;
 import org.folio.rest.jaxrs.model.BatchVoucher;
 import org.folio.rest.jaxrs.model.BatchVoucherExport;
 import org.folio.services.InvoiceRetrieveService;
 import org.folio.services.config.TenantConfigurationService;
-import org.folio.services.exchange.ExchangeRateProviderResolver;
-import org.folio.services.expence.ExpenseClassRetrieveService;
+import org.folio.services.invoice.BaseInvoiceService;
+import org.folio.services.invoice.InvoiceService;
 import org.folio.services.validator.VoucherValidator;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
@@ -56,7 +56,6 @@ public class BatchVoucherGenerateServiceTest extends ApiTestBase {
 
   @Test
   public void positiveGenerateBatchVoucherTest() throws IOException, ExecutionException, InterruptedException {
-    ExpenseClassRetrieveService expenseClassRetrieveService = new ExpenseClassRetrieveService(new RestClient(ResourcePathResolver.resourcesPath(EXPENSE_CLASSES_URL)));
     RestClient restClientVoucherStorage = new RestClient(ResourcePathResolver.resourcesPath(VOUCHERS_STORAGE));
     VoucherRetrieveService voucherRetrieveService = new VoucherRetrieveService(restClientVoucherStorage);
     TenantConfigurationService tenantConfigurationService = new TenantConfigurationService(new RestClient(ResourcePathResolver.resourcesPath(TENANT_CONFIGURATION_ENTRIES)));
@@ -64,14 +63,13 @@ public class BatchVoucherGenerateServiceTest extends ApiTestBase {
       new RestClient(ResourcePathResolver.resourcesPath(VOUCHER_NUMBER_STORAGE)),
       voucherRetrieveService, new VoucherValidator(), tenantConfigurationService);
 
-    InvoiceHelper invoiceHelper = new InvoiceHelper(okapiHeaders, context, "en", expenseClassRetrieveService,
-      voucherCommandService, voucherRetrieveService, new ExchangeRateProviderResolver());
-    InvoiceRetrieveService invoiceRetrieveService = new InvoiceRetrieveService(invoiceHelper);
+    InvoiceService invoiceService = new BaseInvoiceService(new RestClient(ResourcePathResolver.resourcesPath(INVOICES)));
+    InvoiceRetrieveService invoiceRetrieveService = new InvoiceRetrieveService(invoiceService);
     BatchVoucherGenerateService service = new BatchVoucherGenerateService(okapiHeaders, context, "en",
               invoiceRetrieveService, voucherRetrieveService, voucherCommandService);
     BatchVoucherExport batchVoucherExport = new JsonObject(getMockData(BATCH_VOUCHER_EXPORT_SAMPLE_PATH)).mapTo(BatchVoucherExport.class);
 
-    CompletableFuture<BatchVoucher> future = service.generateBatchVoucher(batchVoucherExport);
+    CompletableFuture<BatchVoucher> future = service.generateBatchVoucher(batchVoucherExport, new RequestContext(context, okapiHeaders));
     BatchVoucher batchVoucher = future.get();
     assertNotNull(batchVoucher);
   }
@@ -79,20 +77,18 @@ public class BatchVoucherGenerateServiceTest extends ApiTestBase {
   @Test
   public void negativeGetBatchVoucherIfVouchersIsAbsentTest() {
     Assertions.assertThrows(CompletionException.class, () -> {
-      ExpenseClassRetrieveService expenseClassRetrieveService = new ExpenseClassRetrieveService(new RestClient(ResourcePathResolver.resourcesPath(EXPENSE_CLASSES_URL)));
       VoucherRetrieveService voucherRetrieveService = new VoucherRetrieveService(new RestClient(ResourcePathResolver.resourcesPath(VOUCHERS_STORAGE)));
       TenantConfigurationService tenantConfigurationService = new TenantConfigurationService(new RestClient(ResourcePathResolver.resourcesPath(TENANT_CONFIGURATION_ENTRIES)));
       VoucherCommandService voucherCommandService = new VoucherCommandService(new RestClient(ResourcePathResolver.resourcesPath(VOUCHERS_STORAGE)),
         new RestClient(ResourcePathResolver.resourcesPath(VOUCHER_NUMBER_STORAGE)),
         voucherRetrieveService, new VoucherValidator(), tenantConfigurationService);
 
-      InvoiceHelper invoiceHelper = new InvoiceHelper(okapiHeaders, context, "en", expenseClassRetrieveService,
-                         voucherCommandService, voucherRetrieveService, new ExchangeRateProviderResolver());
-      InvoiceRetrieveService invoiceRetrieveService = new InvoiceRetrieveService(invoiceHelper);
+      InvoiceService invoiceService = new BaseInvoiceService(new RestClient(ResourcePathResolver.resourcesPath(INVOICES)));
+      InvoiceRetrieveService invoiceRetrieveService = new InvoiceRetrieveService(invoiceService);
       BatchVoucherGenerateService service = new BatchVoucherGenerateService(okapiHeaders, context, "en",
               invoiceRetrieveService, voucherRetrieveService, voucherCommandService);
       BatchVoucherExport batchVoucherExport = new BatchVoucherExport();
-      CompletableFuture<BatchVoucher> future = service.generateBatchVoucher(batchVoucherExport);
+      CompletableFuture<BatchVoucher> future = service.generateBatchVoucher(batchVoucherExport, new RequestContext(context, okapiHeaders));
       future.join();
     });
   }

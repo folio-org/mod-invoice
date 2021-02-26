@@ -1,4 +1,4 @@
-package org.folio.services.expence;
+package org.folio.services.finance.expence;
 
 import static java.util.stream.Collectors.toList;
 import static org.folio.invoices.utils.ErrorCodes.EXPENSE_CLASS_NOT_FOUND;

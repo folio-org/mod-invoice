@@ -1,4 +1,4 @@
-package org.folio.services.finance;
+package org.folio.services.finance.fiscalyear;
 
 import static org.folio.invoices.utils.ErrorCodes.CURRENT_FISCAL_YEAR_NOT_FOUND;
 import static org.folio.invoices.utils.HelperUtils.isNotFound;
@@ -13,6 +13,7 @@ import org.folio.rest.acq.model.finance.FiscalYear;
 import org.folio.rest.core.RestClient;
 import org.folio.rest.core.models.RequestContext;
 import org.folio.rest.jaxrs.model.Parameter;
+import org.folio.services.finance.FundService;
 
 public class CurrentFiscalYearService {
 

@@ -73,7 +73,7 @@ public class FundService {
     if (fundIds.size() != existingFunds.size()) {
       List<String> idsNotFound = collectFundIdsThatWasNotFound(existingFunds, fundIds);
       if (isNotEmpty(idsNotFound)) {
-        throw new HttpException(500, buildFundError(idsNotFound, FUNDS_NOT_FOUND));
+        throw new HttpException(404, buildFundError(idsNotFound, FUNDS_NOT_FOUND));
       }
     }
     return existingFunds;
@@ -95,7 +95,8 @@ public class FundService {
   }
 
   private Error buildFundError(List<String> fundIds, ErrorCodes errorCode) {
-    Parameter parameter = new Parameter().withKey("fundIds").withValue(fundIds.toString());
+    String fundIdsString = String.join(", ", fundIds);
+    Parameter parameter = new Parameter().withKey("fundIds").withValue(fundIdsString);
     return errorCode.toError().withParameters(Collections.singletonList(parameter));
   }
 
