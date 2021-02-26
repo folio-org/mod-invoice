@@ -8,6 +8,7 @@ import net.mguenther.kafka.junit.EmbeddedKafkaCluster;
 import org.folio.converters.BatchVoucherModelConverterTest;
 import org.folio.converters.BatchedVoucherLinesModelConverterTest;
 import org.folio.converters.BatchedVoucherModelConverterTest;
+import org.folio.dataimport.handlers.actions.CreateInvoiceEventHandlerTest;
 import org.folio.invoices.events.handlers.InvoiceSummaryTest;
 import org.folio.invoices.util.HelperUtilsTest;
 import org.folio.jaxb.DefaultJAXBRootElementNameResolverTest;
@@ -289,5 +290,9 @@ public class ApiTestSuite {
 
   @Nested
   class DataImportConsumerVerticleTestNested extends DataImportConsumerVerticleTest {
+  }
+
+  @Nested
+  class CreateInvoiceEventHandlerTestNested extends CreateInvoiceEventHandlerTest {
   }
 }
