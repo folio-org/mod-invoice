@@ -1,4 +1,4 @@
-package org.folio.services.finance;
+package org.folio.services.finance.fiscalyear;
 
 import java.util.concurrent.CompletableFuture;
 

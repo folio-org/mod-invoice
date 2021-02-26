@@ -1,4 +1,4 @@
-package org.folio.services.transaction;
+package org.folio.services.finance.transaction;
 
 import org.folio.rest.acq.model.finance.Transaction;
 import org.folio.rest.core.RestClient;
@@ -6,10 +6,10 @@ import org.folio.rest.core.models.RequestContext;
 
 import java.util.concurrent.CompletableFuture;
 
-public class PaymentCreateUpdateService extends BaseTransactionCreateUpdateService {
+public class CreditCreateUpdateService extends BaseTransactionCreateUpdateService {
 
-  public PaymentCreateUpdateService(RestClient paymentRestClient) {
-    super(paymentRestClient);
+  public CreditCreateUpdateService(RestClient creditRestClient) {
+    super(creditRestClient);
   }
 
   @Override
@@ -21,6 +21,6 @@ public class PaymentCreateUpdateService extends BaseTransactionCreateUpdateServi
 
   @Override
   public Transaction.TransactionType transactionType() {
-    return Transaction.TransactionType.PAYMENT;
+    return Transaction.TransactionType.CREDIT;
   }
 }

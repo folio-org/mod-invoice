@@ -1,34 +1,39 @@
 package org.folio.config;
 
+import java.util.Set;
+
+import org.folio.InvoiceWorkflowDataHolderBuilder;
 import org.folio.rest.core.RestClient;
-import org.folio.services.expence.ExpenseClassRetrieveService;
-import org.folio.services.finance.BudgetExpenseClassService;
+import org.folio.services.InvoiceRetrieveService;
 import org.folio.services.config.TenantConfigurationService;
 import org.folio.services.exchange.ExchangeRateProviderResolver;
 import org.folio.services.exchange.FinanceExchangeRateService;
-import org.folio.services.finance.BudgetValidationService;
-import org.folio.services.finance.CurrentFiscalYearService;
-import org.folio.services.finance.FiscalYearService;
 import org.folio.services.finance.FundService;
 import org.folio.services.finance.LedgerService;
+import org.folio.services.finance.budget.BudgetExpenseClassService;
+import org.folio.services.finance.budget.BudgetService;
+import org.folio.services.validator.FundAvailabilityHolderValidator;
+import org.folio.services.finance.expence.ExpenseClassRetrieveService;
+import org.folio.services.finance.fiscalyear.CurrentFiscalYearService;
+import org.folio.services.finance.fiscalyear.FiscalYearService;
+import org.folio.services.finance.transaction.BaseTransactionService;
+import org.folio.services.finance.transaction.CreditCreateUpdateService;
+import org.folio.services.finance.transaction.EncumbranceService;
+import org.folio.services.finance.transaction.InvoiceTransactionSummaryService;
+import org.folio.services.finance.transaction.PaymentCreateUpdateService;
+import org.folio.services.finance.transaction.PaymentCreditWorkflowService;
+import org.folio.services.finance.transaction.PendingPaymentCreateUpdateService;
+import org.folio.services.finance.transaction.PendingPaymentWorkflowService;
+import org.folio.services.finance.transaction.TransactionCreateUpdateService;
+import org.folio.services.finance.transaction.TransactionManagingServiceFactory;
+import org.folio.services.invoice.BaseInvoiceService;
 import org.folio.services.invoice.InvoiceLineService;
+import org.folio.services.invoice.InvoiceService;
 import org.folio.services.order.OrderService;
-import org.folio.services.transaction.BaseTransactionService;
-import org.folio.services.transaction.CreditCreateUpdateService;
-import org.folio.services.transaction.EncumbranceService;
-import org.folio.services.transaction.InvoiceTransactionSummaryService;
-import org.folio.services.transaction.PaymentCreditWorkflowService;
-import org.folio.services.transaction.PaymentCreateUpdateService;
-import org.folio.services.transaction.PendingPaymentCreateUpdateService;
-import org.folio.services.transaction.PendingPaymentWorkflowService;
-import org.folio.services.transaction.TransactionCreateUpdateService;
-import org.folio.services.transaction.TransactionManagingServiceFactory;
 import org.folio.services.validator.VoucherValidator;
 import org.folio.services.voucher.VoucherCommandService;
 import org.folio.services.voucher.VoucherRetrieveService;
 import org.springframework.context.annotation.Bean;
-
-import java.util.Set;
 
 public class ServicesConfiguration {
   @Bean
@@ -97,11 +102,9 @@ public class ServicesConfiguration {
 
   @Bean
   PendingPaymentWorkflowService pendingPaymentService(BaseTransactionService baseTransactionService,
-                                                      CurrentFiscalYearService currentFiscalYearService,
-                                                      ExchangeRateProviderResolver exchangeRateProviderResolver,
                                                       InvoiceTransactionSummaryService invoiceTransactionSummaryService,
-                                                      BudgetValidationService budgetValidationService) {
-    return new PendingPaymentWorkflowService(baseTransactionService, currentFiscalYearService, exchangeRateProviderResolver, invoiceTransactionSummaryService, budgetValidationService);
+                                                      FundAvailabilityHolderValidator fundAvailabilityValidator) {
+    return new PendingPaymentWorkflowService(baseTransactionService, invoiceTransactionSummaryService, fundAvailabilityValidator);
   }
 
   @Bean
@@ -125,10 +128,8 @@ public class ServicesConfiguration {
   }
 
   @Bean
-  PaymentCreditWorkflowService paymentCreditService(BaseTransactionService baseTransactionService,
-                                                    CurrentFiscalYearService currentFiscalYearService,
-                                                    ExchangeRateProviderResolver exchangeRateProviderResolver) {
-    return new PaymentCreditWorkflowService(baseTransactionService, currentFiscalYearService, exchangeRateProviderResolver);
+  PaymentCreditWorkflowService paymentCreditService(BaseTransactionService baseTransactionService) {
+    return new PaymentCreditWorkflowService(baseTransactionService);
   }
 
   @Bean
@@ -137,21 +138,14 @@ public class ServicesConfiguration {
   }
 
   @Bean
-  BudgetValidationService budgetValidationService(ExchangeRateProviderResolver exchangeRateProviderResolver,
-                                                  FiscalYearService fiscalYearService,
-                                                  FundService fundService,
-                                                  LedgerService ledgerService,
-                                                  RestClient activeBudgetRestClient) {
-    return new BudgetValidationService(exchangeRateProviderResolver, fiscalYearService, fundService, ledgerService, activeBudgetRestClient);
+  FundAvailabilityHolderValidator budgetValidationService() {
+    return new FundAvailabilityHolderValidator();
   }
 
   @Bean
-  BudgetExpenseClassService budgetExpenseClassService(RestClient budgetExpenseClassRestClient,
-                                                      FundService fundService,
-                                                      ExpenseClassRetrieveService expenseClassRetrieveService,
-                                                      RestClient activeBudgetRestClient) {
+  BudgetExpenseClassService budgetExpenseClassService(RestClient budgetExpenseClassRestClient) {
 
-    return new BudgetExpenseClassService(budgetExpenseClassRestClient, fundService, expenseClassRetrieveService, activeBudgetRestClient);
+    return new BudgetExpenseClassService(budgetExpenseClassRestClient);
   }
 
   @Bean
@@ -163,4 +157,31 @@ public class ServicesConfiguration {
   InvoiceLineService invoiceLineService(RestClient invoiceLineRestClient) {
     return new InvoiceLineService(invoiceLineRestClient);
   }
+
+  @Bean
+  InvoiceService invoiceService(RestClient invoiceStorageRestClient) {
+    return new BaseInvoiceService(invoiceStorageRestClient);
+  }
+
+  @Bean
+  InvoiceWorkflowDataHolderBuilder holderBuilder(ExchangeRateProviderResolver exchangeRateProviderResolver,
+                                                 FiscalYearService fiscalYearService,
+                                                 FundService fundService,
+                                                 LedgerService ledgerService,
+                                                 BaseTransactionService baseTransactionService,
+                                                 BudgetService budgetService,
+                                                 ExpenseClassRetrieveService expenseClassRetrieveService) {
+    return new InvoiceWorkflowDataHolderBuilder(exchangeRateProviderResolver, fiscalYearService, fundService, ledgerService, baseTransactionService, budgetService, expenseClassRetrieveService);
+  }
+
+  @Bean
+  BudgetService budgetService(RestClient activeBudgetRestClient) {
+    return new BudgetService(activeBudgetRestClient);
+  }
+
+  @Bean
+  InvoiceRetrieveService invoiceRetrieveService(InvoiceService invoiceService) {
+    return new InvoiceRetrieveService(invoiceService);
+  }
+
 }

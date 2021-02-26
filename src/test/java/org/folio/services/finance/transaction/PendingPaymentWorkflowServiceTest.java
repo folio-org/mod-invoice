@@ -1,38 +1,38 @@
-package org.folio.services.transaction;
+package org.folio.services.finance.transaction;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasSize;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyList;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
+import javax.money.MonetaryAmount;
+
+import org.folio.models.InvoiceWorkflowDataHolder;
 import org.folio.rest.acq.model.finance.FiscalYear;
 import org.folio.rest.acq.model.finance.InvoiceTransactionSummary;
 import org.folio.rest.acq.model.finance.Transaction;
-import org.folio.rest.acq.model.finance.TransactionCollection;
 import org.folio.rest.core.models.RequestContext;
 import org.folio.rest.jaxrs.model.Adjustment;
 import org.folio.rest.jaxrs.model.FundDistribution;
 import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.jaxrs.model.InvoiceLine;
-import org.folio.services.exchange.ExchangeRateProviderResolver;
-import org.folio.services.exchange.ManualExchangeRateProvider;
-import org.folio.services.finance.BudgetValidationService;
-import org.folio.services.finance.CurrentFiscalYearService;
+import org.folio.services.exchange.ManualCurrencyConversion;
+import org.folio.services.validator.FundAvailabilityHolderValidator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -50,15 +50,15 @@ public class PendingPaymentWorkflowServiceTest {
   @Mock
   private BaseTransactionService baseTransactionService;
   @Mock
-  private CurrentFiscalYearService currentFiscalYearService;
-  @Mock
   private InvoiceTransactionSummaryService invoiceTransactionSummaryService;
   @Mock
-  private BudgetValidationService budgetValidationService;
+  private FundAvailabilityHolderValidator fundAvailabilityValidator;
   @Mock
   private RequestContext requestContext;
   @Mock
-  private ExchangeRateProviderResolver exchangeRateProviderResolver;
+  private ManualCurrencyConversion conversion;
+
+
 
   @BeforeEach
   public void initMocks() {
@@ -95,10 +95,6 @@ public class PendingPaymentWorkflowServiceTest {
       .withSourceInvoiceId(invoiceId)
       .withAmount(10d);
 
-    TransactionCollection existingTransactionCollection = new TransactionCollection()
-      .withTotalRecords(1);
-    existingTransactionCollection.getTransactions().add(existingInvoiceLineTransaction);
-    existingTransactionCollection.getTransactions().add(existingInvoiceTransaction);
 
     FundDistribution invoiceFundDistribution = new FundDistribution()
         .withDistributionType(FundDistribution.DistributionType.AMOUNT)
@@ -129,30 +125,49 @@ public class PendingPaymentWorkflowServiceTest {
 
     invoiceLine.getFundDistributions().add(invoiceLineFundDistribution);
 
-    when(baseTransactionService.getTransactions(anyString(), anyInt(), anyInt(), any()))
-      .thenReturn(CompletableFuture.completedFuture(existingTransactionCollection));
-    when(currentFiscalYearService.getCurrentFiscalYearByFund(anyString(), any())).thenReturn(CompletableFuture.completedFuture(fiscalYear));
+    List<InvoiceWorkflowDataHolder> holders = new ArrayList<>();
 
-    when(budgetValidationService.checkEnoughMoneyInBudget(anyList(), anyList(), any())).thenReturn(CompletableFuture.completedFuture(null));
+    InvoiceWorkflowDataHolder holder1 = new InvoiceWorkflowDataHolder()
+            .withInvoice(invoice)
+            .withInvoiceLine(invoiceLine)
+            .withFundDistribution(invoiceLineFundDistribution)
+            .withFiscalYear(fiscalYear)
+            .withExistingTransaction(existingInvoiceLineTransaction)
+            .withConversion(conversion);
+
+    InvoiceWorkflowDataHolder holder2 = new InvoiceWorkflowDataHolder()
+            .withInvoice(invoice)
+            .withAdjustment(adjustment)
+            .withFundDistribution(invoiceFundDistribution)
+            .withFiscalYear(fiscalYear)
+            .withExistingTransaction(existingInvoiceTransaction)
+            .withConversion(conversion);
+
+    holders.add(holder1);
+    holders.add(holder2);
+
+
+    doNothing().when(fundAvailabilityValidator).validate(anyList());
     when(invoiceTransactionSummaryService.updateInvoiceTransactionSummary(any(), any())).thenReturn(CompletableFuture.completedFuture(null));
     when(baseTransactionService.updateTransaction(any(), any())).thenReturn(CompletableFuture.completedFuture(null));
-    when(exchangeRateProviderResolver.resolve(any(), any())).thenReturn(new ManualExchangeRateProvider());
+    when(conversion.apply(any(MonetaryAmount.class))).thenAnswer(invocation -> {
+      MonetaryAmount amount = invocation.getArgument(0);
+      return amount.multiply(exchangeRate);
+    });
+
     when(requestContext.getContext()).thenReturn(Vertx.vertx().getOrCreateContext());
 
-    pendingPaymentWorkflowService.handlePendingPaymentsUpdate(invoice, Collections.singletonList(invoiceLine), requestContext);
+    pendingPaymentWorkflowService.handlePendingPaymentsUpdate(holders, requestContext);
 
-    String expectedQuery = String.format("sourceInvoiceId==%s AND transactionType==Pending payment", invoice.getId());
-    verify(baseTransactionService).getTransactions(eq(expectedQuery), eq(0), eq(Integer.MAX_VALUE), eq(requestContext));
 
-    verify(currentFiscalYearService).getCurrentFiscalYearByFund(eq(fundId), eq(requestContext));
-
-    ArgumentCaptor<List<Transaction>> argumentCaptor = ArgumentCaptor.forClass(List.class);
-    verify(budgetValidationService).checkEnoughMoneyInBudget(argumentCaptor.capture(), eq(existingTransactionCollection.getTransactions()), eq(requestContext));
+    ArgumentCaptor<List<InvoiceWorkflowDataHolder>> argumentCaptor = ArgumentCaptor.forClass(List.class);
+    verify(fundAvailabilityValidator).validate(argumentCaptor.capture());
     assertThat(argumentCaptor.getValue(), hasSize(2));
-    List<Transaction> newTransactions = argumentCaptor.getValue();
-    Transaction newInvoiceTransaction = newTransactions.stream()
+    List<InvoiceWorkflowDataHolder> holdersWithNewTransactions = argumentCaptor.getValue();
+    Transaction newInvoiceTransaction = holdersWithNewTransactions.stream()
+            .map(InvoiceWorkflowDataHolder::getNewTransaction)
       .filter(transaction -> Objects.isNull(transaction.getSourceInvoiceLineId())).findFirst().get();
-    Transaction newInvoiceLineTransaction = newTransactions.stream()
+    Transaction newInvoiceLineTransaction = holdersWithNewTransactions.stream().map(InvoiceWorkflowDataHolder::getNewTransaction)
       .filter(transaction -> Objects.nonNull(transaction.getSourceInvoiceLineId())).findFirst().get();
 
     double expectedInvoiceLineTransactionAmount = BigDecimal.valueOf(60).multiply(BigDecimal.valueOf(exchangeRate)).doubleValue();

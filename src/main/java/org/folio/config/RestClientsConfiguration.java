@@ -22,7 +22,7 @@ import static org.folio.invoices.utils.ResourcePathResolver.VOUCHER_NUMBER_STORA
 import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
 
 import org.folio.rest.core.RestClient;
-import org.folio.services.expence.ExpenseClassRetrieveService;
+import org.folio.services.finance.expence.ExpenseClassRetrieveService;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 

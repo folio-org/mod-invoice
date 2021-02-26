@@ -1,4 +1,4 @@
-package org.folio.services.transaction;
+package org.folio.services.finance.transaction;
 
 import static java.util.concurrent.CompletableFuture.completedFuture;
 import static java.util.stream.Collectors.toList;

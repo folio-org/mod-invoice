@@ -19,7 +19,7 @@ import org.folio.rest.jaxrs.model.InvoiceLine;
 import org.folio.rest.jaxrs.model.Parameter;
 import org.junit.jupiter.api.Test;
 
-public class InvoiceLineValidatorTest {
+public class InvoiceLineHolderValidatorTest {
 
   private InvoiceLineValidator invoiceLineValidator = new InvoiceLineValidator();
 
