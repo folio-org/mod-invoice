@@ -955,6 +955,10 @@
       {
         "name": "KAFKA_PORT",
         "value": "9092"
+      },
+      {
+        "name": "dataimport.consumer.verticle.mandatory",
+        "value": "false"
       }
     ]
   }
