@@ -1,13 +1,14 @@
 package org.folio;
 
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
-
+import io.restassured.RestAssured;
+import io.vertx.core.DeploymentOptions;
+import io.vertx.core.Vertx;
+import io.vertx.core.json.JsonObject;
+import net.mguenther.kafka.junit.EmbeddedKafkaCluster;
 import org.folio.converters.BatchVoucherModelConverterTest;
 import org.folio.converters.BatchedVoucherLinesModelConverterTest;
 import org.folio.converters.BatchedVoucherModelConverterTest;
+import org.folio.dataimport.handlers.actions.CreateInvoiceEventHandlerTest;
 import org.folio.invoices.events.handlers.InvoiceSummaryTest;
 import org.folio.invoices.util.HelperUtilsTest;
 import org.folio.jaxb.DefaultJAXBRootElementNameResolverTest;
@@ -48,22 +49,32 @@ import org.folio.services.finance.transaction.PendingPaymentWorkflowServiceTest;
 import org.folio.services.validator.InvoiceLineHolderValidatorTest;
 import org.folio.services.voucher.BatchVoucherGenerateServiceTest;
 import org.folio.services.voucher.UploadBatchVoucherExportServiceTest;
+import org.folio.verticles.DataImportConsumerVerticleTest;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Nested;
 import org.junit.platform.runner.JUnitPlatform;
 import org.junit.runner.RunWith;
 
-import io.restassured.RestAssured;
-import io.vertx.core.DeploymentOptions;
-import io.vertx.core.Vertx;
-import io.vertx.core.json.JsonObject;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+
+import static net.mguenther.kafka.junit.EmbeddedKafkaClusterConfig.useDefaults;
 
 @RunWith(JUnitPlatform.class)
 public class ApiTestSuite {
 
   private static final int okapiPort = NetworkUtils.nextFreePort();
   public static final int mockPort = NetworkUtils.nextFreePort();
+  public static final String KAFKA_ENV_VALUE = "test-env";
+  private static final String KAFKA_HOST = "KAFKA_HOST";
+  private static final String KAFKA_PORT = "KAFKA_PORT";
+  private static final String KAFKA_ENV = "ENV";
+  private static final String OKAPI_URL_KEY = "OKAPI_URL";
+
+  public static EmbeddedKafkaCluster kafkaCluster;
   private static MockServer mockServer;
   private static Vertx vertx;
   private static boolean initialised;
@@ -80,6 +91,14 @@ public class ApiTestSuite {
     RestAssured.baseURI = "http://localhost:" + okapiPort;
     RestAssured.port = okapiPort;
     RestAssured.enableLoggingOfRequestAndResponseIfValidationFails();
+
+    kafkaCluster = EmbeddedKafkaCluster.provisionWith(useDefaults());
+    kafkaCluster.start();
+    String[] hostAndPort = kafkaCluster.getBrokerList().split(":");
+    System.setProperty(KAFKA_HOST, hostAndPort[0]);
+    System.setProperty(KAFKA_PORT, hostAndPort[1]);
+    System.setProperty(KAFKA_ENV, KAFKA_ENV_VALUE);
+    System.setProperty(OKAPI_URL_KEY, "http://localhost:" + mockPort);
 
     final JsonObject conf = new JsonObject();
     conf.put("http.port", okapiPort);
@@ -99,6 +118,7 @@ public class ApiTestSuite {
 
   @AfterAll
   public static void after() {
+    kafkaCluster.stop();
     mockServer.close();
     vertx.close();
     initialised = false;
@@ -266,6 +286,13 @@ public class ApiTestSuite {
 
   @Nested
   class ExpenseClassRetrieveServiceTestNested extends ExpenseClassRetrieveServiceTest {
+  }
 
+  @Nested
+  class DataImportConsumerVerticleTestNested extends DataImportConsumerVerticleTest {
+  }
+
+  @Nested
+  class CreateInvoiceEventHandlerTestNested extends CreateInvoiceEventHandlerTest {
   }
 }

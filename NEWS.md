@@ -1,4 +1,5 @@
 ## 4.2.0 - Unreleased
+* [MODINVOICE-227](https://issues.folio.org/browse/MODINVOICE-227)	Implement action profile handler for invoice creation
 
 ## 4.1.2 - Released
 The primary focus of this release was to fix Adding certain prefix and suffixes prevents user from being able to save

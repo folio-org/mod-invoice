@@ -299,7 +299,7 @@ public class InvoiceLineHelper extends AbstractHelper {
    * @param invoiceLine {@link InvoiceLine} to be created
    * @return completable future which might hold {@link InvoiceLine} on success, {@code null} if validation fails or an exception if any issue happens
    */
-  CompletableFuture<InvoiceLine> createInvoiceLine(InvoiceLine invoiceLine) {
+  public CompletableFuture<InvoiceLine> createInvoiceLine(InvoiceLine invoiceLine) {
     return getInvoice(invoiceLine)
       .thenApply(invoice -> {
         validator.validateLineAdjustmentsOnCreate(invoiceLine, invoice);
