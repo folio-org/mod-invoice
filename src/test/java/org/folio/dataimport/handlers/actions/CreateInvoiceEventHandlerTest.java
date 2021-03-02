@@ -16,6 +16,7 @@ import org.folio.Record;
 import org.folio.kafka.KafkaTopicNameHelper;
 import org.folio.processing.events.services.handler.EventHandler;
 import org.folio.processing.events.utils.ZIPArchiver;
+import org.folio.rest.core.RestClient;
 import org.folio.rest.impl.ApiTestBase;
 import org.folio.rest.jaxrs.model.Event;
 import org.folio.rest.jaxrs.model.Invoice;
@@ -43,6 +44,8 @@ import static org.folio.DataImportEventTypes.DI_EDIFACT_RECORD_CREATED;
 import static org.folio.DataImportEventTypes.DI_ERROR;
 import static org.folio.DataImportEventTypes.DI_INVOICE_CREATED;
 import static org.folio.dataimport.handlers.actions.CreateInvoiceEventHandler.INVOICE_LINES_KEY;
+import static org.folio.invoices.utils.ResourcePathResolver.ORDER_LINES;
+import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
 import static org.folio.kafka.KafkaTopicNameHelper.getDefaultNameSpace;
 import static org.folio.rest.impl.MockServer.DI_POST_INVOICE_LINES_SUCCESS_TENANT;
 import static org.folio.rest.impl.MockServer.ERROR_TENANT;
@@ -109,7 +112,7 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
             .withContentType(MAPPING_PROFILE)
             .withContent(JsonObject.mapFrom(mappingProfile).getMap())))));
 
-  private EventHandler createInvoiceHandler = new CreateInvoiceEventHandler();
+  private EventHandler createInvoiceHandler = new CreateInvoiceEventHandler(new RestClient(resourcesPath(ORDER_LINES)));
 
   @Test
   public void shouldCreateInvoiceAndPublishDiCompletedEvent() throws IOException, InterruptedException {
