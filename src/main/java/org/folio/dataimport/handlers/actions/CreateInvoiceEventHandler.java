@@ -130,10 +130,10 @@ public class CreateInvoiceEventHandler implements EventHandler {
     return getAssociatedPoLinesByPoLineNumber(invoiceLineNoToPoLineNo, okapiHeaders)
       .thenCompose(associatedPoLineMap -> {
         if (associatedPoLineMap.size() < invoiceLinesAmount) {
-          Map<Integer, String> refNumbersForSearch = CollectionUtils.subtract(invoiceLineNoToRefNo.keySet(), invoiceLineNoToPoLineNo.keySet()).stream()
+          Map<Integer, String> invoiceLineNoToRefNoForSearch = CollectionUtils.subtract(invoiceLineNoToRefNo.keySet(), associatedPoLineMap.keySet()).stream()
             .collect(Collectors.toMap(invLineNo -> invLineNo, invLineNo -> invoiceLineNoToRefNo.get(invLineNo)));
 
-          return getAssociatedPoLinesByRefNumber(refNumbersForSearch, okapiHeaders)
+          return getAssociatedPoLinesByRefNumber(invoiceLineNoToRefNoForSearch, okapiHeaders)
             .thenApply(poLinesMap -> {
               associatedPoLineMap.putAll(poLinesMap);
               return associatedPoLineMap;
