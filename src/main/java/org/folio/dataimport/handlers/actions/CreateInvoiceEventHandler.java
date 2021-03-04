@@ -4,7 +4,6 @@ import io.vertx.core.Vertx;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
-import org.apache.commons.collections15.CollectionUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.ActionProfile;
@@ -13,13 +12,12 @@ import org.folio.EdifactParsedContent;
 import org.folio.MappingProfile;
 import org.folio.ParsedRecord;
 import org.folio.Record;
-import org.folio.dataimport.EdifactParsedRecordUtil;
 import org.folio.processing.events.services.handler.EventHandler;
 import org.folio.processing.exceptions.EventProcessingException;
 import org.folio.processing.mapping.MappingManager;
+import org.folio.processing.mapping.util.EdifactParsedRecordUtil;
 import org.folio.rest.RestConstants;
 import org.folio.rest.RestVerticle;
-import org.folio.rest.acq.model.Edi;
 import org.folio.rest.acq.model.orders.PoLine;
 import org.folio.rest.acq.model.orders.PoLineCollection;
 import org.folio.rest.core.RestClient;
@@ -119,21 +117,19 @@ public class CreateInvoiceEventHandler implements EventHandler {
 
     Optional<String> poLineNoExpressionOptional = getPoLineNoMappingExpression(eventPayload);
     Map<Integer, String> invoiceLineNoToPoLineNo = poLineNoExpressionOptional
-      .map(expression -> EdifactParsedRecordUtil.getInvoiceLinesSegmentsValue(parsedRecord, expression))
+      .map(expression -> EdifactParsedRecordUtil.getInvoiceLinesSegmentsValues(parsedRecord, expression))
       .orElse(Collections.emptyMap());
 
     Optional<String> poLineRefNumberExpression = getPoLineRefNumberMappingExpression(eventPayload);
     Map<Integer, String> invoiceLineNoToRefNo = poLineRefNumberExpression
-      .map(expression -> EdifactParsedRecordUtil.getInvoiceLinesSegmentsValue(parsedRecord, expression))
+      .map(expression -> EdifactParsedRecordUtil.getInvoiceLinesSegmentsValues(parsedRecord, expression))
       .orElse(Collections.emptyMap());
 
     return getAssociatedPoLinesByPoLineNumber(invoiceLineNoToPoLineNo, okapiHeaders)
       .thenCompose(associatedPoLineMap -> {
         if (associatedPoLineMap.size() < invoiceLinesAmount) {
-          Map<Integer, String> invoiceLineNoToRefNoForSearch = CollectionUtils.subtract(invoiceLineNoToRefNo.keySet(), associatedPoLineMap.keySet()).stream()
-            .collect(Collectors.toMap(invLineNo -> invLineNo, invLineNo -> invoiceLineNoToRefNo.get(invLineNo)));
-
-          return getAssociatedPoLinesByRefNumber(invoiceLineNoToRefNoForSearch, okapiHeaders)
+          associatedPoLineMap.keySet().forEach(invoiceLineNoToRefNo::remove);
+          return getAssociatedPoLinesByRefNumber(invoiceLineNoToRefNo, okapiHeaders)
             .thenApply(poLinesMap -> {
               associatedPoLineMap.putAll(poLinesMap);
               return associatedPoLineMap;
@@ -219,10 +215,11 @@ public class CreateInvoiceEventHandler implements EventHandler {
   }
 
   private CompletableFuture<Invoice> saveInvoice(DataImportEventPayload dataImportEventPayload, Map<String, String> okapiHeaders) {
-    JsonObject invoiceJson = new JsonObject(dataImportEventPayload.getContext().get(INVOICE.value()));
+    Invoice invoiceToSave = Json.decodeValue(dataImportEventPayload.getContext().get(INVOICE.value()), Invoice.class);
+    invoiceToSave.setSource(Invoice.Source.EDI);
     InvoiceHelper invoiceHelper = new InvoiceHelper(okapiHeaders, Vertx.currentContext(), null);
 
-    return invoiceHelper.createInvoice(invoiceJson.mapTo(Invoice.class)).thenApply(invoice -> {
+    return invoiceHelper.createInvoice(invoiceToSave).thenApply(invoice -> {
       dataImportEventPayload.getContext().put(INVOICE.value(), Json.encode(invoice));
       return invoice;
     });

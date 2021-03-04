@@ -153,6 +153,7 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
     assertNotNull(createdInvoice.getVendorInvoiceNo());
     assertNotNull(createdInvoice.getCurrency());
     assertEquals("Open", createdInvoice.getStatus().value());
+    assertEquals(Invoice.Source.EDI, createdInvoice.getSource());
 
     assertNotNull(eventPayload.getContext().get(INVOICE_LINES_KEY));
     InvoiceLineCollection createdInvoiceLines = Json.decodeValue(eventPayload.getContext().get(INVOICE_LINES_KEY), InvoiceLineCollection.class);
