@@ -649,6 +649,8 @@ public class InvoiceHelper extends AbstractHelper {
     voucher.setExportToAccounting(invoice.getExportToAccounting());
     voucher.setAccountingCode(invoice.getAccountingCode());
     voucher.setBatchGroupId(invoice.getBatchGroupId());
+    voucher.setEnclosureNeeded(invoice.getEnclosureNeeded());
+    voucher.setAccountNo(invoice.getAccountNo());
 
     voucher.setType(Voucher.Type.VOUCHER);
     voucher.setStatus(Voucher.Status.AWAITING_PAYMENT);
