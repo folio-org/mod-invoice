@@ -196,12 +196,16 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
   @Test
   public void shouldPublishDiErrorEventWhenPostInvoiceToStorageFailed() throws IOException, InterruptedException {
     // given
+    Record record = new Record().withParsedRecord(new ParsedRecord().withContent(EDIFACT_PARSED_CONTENT));
+    HashMap<String, String> payloadContext = new HashMap<>();
+    payloadContext.put(EDIFACT_INVOICE.value(), Json.encode(record));
+
     DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
       .withEventType(DI_EDIFACT_RECORD_CREATED.value())
       .withTenant(ERROR_TENANT)
       .withOkapiUrl(OKAPI_URL)
       .withToken(TOKEN)
-      .withContext(new HashMap<>())
+      .withContext(payloadContext)
       .withProfileSnapshot(profileSnapshotWrapper);
 
     String topic = KafkaTopicNameHelper.formatTopicName(KAFKA_ENV_VALUE, getDefaultNameSpace(), ERROR_TENANT, dataImportEventPayload.getEventType());
