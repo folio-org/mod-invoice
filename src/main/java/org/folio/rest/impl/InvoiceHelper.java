@@ -721,7 +721,8 @@ public class InvoiceHelper extends AbstractHelper {
            FundExtNoExpenseClassExtNoPair key = new FundExtNoExpenseClassExtNoPair(fundExternalAccountNo, expenseClassExtAccountNo);
            List<FundDistribution> fundDistributions = fundDistrs.getValue();
            updateFundDistributionsWithExpenseClassCode(fund, fundDistributions);
-           groupedFundDistribution.put(key, fundDistributions);
+           Optional.ofNullable(groupedFundDistribution.get(key)).ifPresentOrElse(
+             (value) -> value.addAll(fundDistributions), () -> groupedFundDistribution.put(key, fundDistributions));
          }
       }
     }
