@@ -88,6 +88,7 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
   private static final String TOKEN = "test-token";
   private static final String PO_LINE_ID_1 = "00000000-0000-0000-0000-000000000001";
   private static final String PO_LINE_ID_3 = "00000000-0000-0000-0000-000000000003";
+  private static final String GROUP_ID = "test-consumers-group";
 
   private JobProfile jobProfile = new JobProfile()
     .withId(UUID.randomUUID().toString())
@@ -239,6 +240,7 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
     String topicToObserve = KafkaTopicNameHelper.formatTopicName(KAFKA_ENV_VALUE, getDefaultNameSpace(), DI_POST_INVOICE_LINES_SUCCESS_TENANT, DI_COMPLETED.value());
 
     List<String> observedValues  = kafkaCluster.observeValues(ObserveKeyValues.on(topicToObserve, 1)
+      .with(ConsumerConfig.GROUP_ID_CONFIG, GROUP_ID)
       .observeFor(30, TimeUnit.SECONDS)
       .build());
 
@@ -297,6 +299,7 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
     // then
     String topicToObserve = KafkaTopicNameHelper.formatTopicName(KAFKA_ENV_VALUE, getDefaultNameSpace(), DI_POST_INVOICE_LINES_SUCCESS_TENANT, DI_COMPLETED.value());
     List<String> observedValues  = kafkaCluster.observeValues(ObserveKeyValues.on(topicToObserve, 1)
+      .with(ConsumerConfig.GROUP_ID_CONFIG, GROUP_ID)
       .observeFor(30, TimeUnit.SECONDS)
       .build());
 
@@ -359,6 +362,7 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
     // then
     String topicToObserve = KafkaTopicNameHelper.formatTopicName(KAFKA_ENV_VALUE, getDefaultNameSpace(), DI_POST_INVOICE_LINES_SUCCESS_TENANT, DI_COMPLETED.value());
     List<String> observedValues  = kafkaCluster.observeValues(ObserveKeyValues.on(topicToObserve, 1)
+      .with(ConsumerConfig.GROUP_ID_CONFIG, GROUP_ID)
       .observeFor(30, TimeUnit.SECONDS)
       .build());
 
@@ -429,6 +433,7 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
     // then
     String topicToObserve = KafkaTopicNameHelper.formatTopicName(KAFKA_ENV_VALUE, getDefaultNameSpace(), DI_POST_INVOICE_LINES_SUCCESS_TENANT, DI_COMPLETED.value());
     List<String> observedValues  = kafkaCluster.observeValues(ObserveKeyValues.on(topicToObserve, 1)
+      .with(ConsumerConfig.GROUP_ID_CONFIG, GROUP_ID)
       .observeFor(30, TimeUnit.SECONDS)
       .build());
 
@@ -490,6 +495,7 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
     // then
     String topicToObserve = KafkaTopicNameHelper.formatTopicName(KAFKA_ENV_VALUE, getDefaultNameSpace(), DI_POST_INVOICE_LINES_SUCCESS_TENANT, DI_COMPLETED.value());
     List<String> observedValues  = kafkaCluster.observeValues(ObserveKeyValues.on(topicToObserve, 1)
+      .with(ConsumerConfig.GROUP_ID_CONFIG, GROUP_ID)
       .observeFor(30, TimeUnit.SECONDS)
       .build());
 
@@ -534,6 +540,7 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
     // then
     String topicToObserve = KafkaTopicNameHelper.formatTopicName(KAFKA_ENV_VALUE, getDefaultNameSpace(), TENANT_ID, DI_ERROR.value());
     List<String> observedValues = kafkaCluster.observeValues(ObserveKeyValues.on(topicToObserve, 1)
+      .with(ConsumerConfig.GROUP_ID_CONFIG, GROUP_ID)
       .observeFor(30, TimeUnit.SECONDS)
       .build());
 
@@ -569,6 +576,7 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
     // then
     String topicToObserve = KafkaTopicNameHelper.formatTopicName(KAFKA_ENV_VALUE, getDefaultNameSpace(), ERROR_TENANT, DI_ERROR.value());
     List<String> observedValues = kafkaCluster.observeValues(ObserveKeyValues.on(topicToObserve, 1)
+      .with(ConsumerConfig.GROUP_ID_CONFIG, GROUP_ID)
       .observeFor(30, TimeUnit.SECONDS)
       .build());
 
