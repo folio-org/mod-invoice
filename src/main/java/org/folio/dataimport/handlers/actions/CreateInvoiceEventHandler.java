@@ -150,16 +150,15 @@ public class CreateInvoiceEventHandler implements EventHandler {
       .map(expression -> EdifactParsedRecordUtil.getInvoiceLinesSegmentsValues(parsedRecord, expression))
       .orElse(Collections.emptyMap());
 
-    Optional<String> poLineRefNumberExpression = getPoLineRefNumberMappingExpression(eventPayload);
-    Map<Integer, String> invoiceLineNoToRefNo = poLineRefNumberExpression
-      .map(expression -> EdifactParsedRecordUtil.getInvoiceLinesSegmentsValues(parsedRecord, expression))
-      .orElse(Collections.emptyMap());
+    List<String> ReferenceNumberExpressions = getPoLineRefNumberMappingExpressions(eventPayload);
+    Map<Integer, List<String>> invoiceLineNoToRefNo2 = ReferenceNumberExpressions.isEmpty()
+      ? Collections.emptyMap() : retrieveInvoiceLinesReferenceNumbers(parsedRecord, ReferenceNumberExpressions);
 
     return getAssociatedPoLinesByPoLineNumber(invoiceLineNoToPoLineNo, okapiHeaders)
       .thenCompose(associatedPoLineMap -> {
         if (associatedPoLineMap.size() < invoiceLinesAmount) {
-          associatedPoLineMap.keySet().forEach(invoiceLineNoToRefNo::remove);
-          return getAssociatedPoLinesByRefNumber(invoiceLineNoToRefNo, okapiHeaders)
+          associatedPoLineMap.keySet().forEach(invoiceLineNoToRefNo2::remove);
+          return getAssociatedPoLinesByRefNumbers(invoiceLineNoToRefNo2, okapiHeaders)
             .thenApply(poLinesMap -> {
               associatedPoLineMap.putAll(poLinesMap);
               return associatedPoLineMap;
@@ -188,7 +187,7 @@ public class CreateInvoiceEventHandler implements EventHandler {
       .findFirst();
   }
 
-  private Optional<String> getPoLineRefNumberMappingExpression(DataImportEventPayload dataImportEventPayload) {
+  private List<String> getPoLineRefNumberMappingExpressions(DataImportEventPayload dataImportEventPayload) {
     MappingProfile mappingProfile = JsonObject.mapFrom(dataImportEventPayload.getCurrentNode().getChildSnapshotWrappers().get(0).getContent()).mapTo(MappingProfile.class);
     return mappingProfile.getMappingDetails().getMappingFields().stream()
       .filter(mappingRule -> INVOICE_LINES_RULE_NAME.equals(mappingRule.getName()) && !mappingRule.getSubfields().isEmpty())
@@ -199,7 +198,26 @@ public class CreateInvoiceEventHandler implements EventHandler {
       .map(mappingRule -> SEGMENT_QUERY_PATTERN.matcher(mappingRule.getValue()))
       .filter(mappingExpressionMatcher -> mappingExpressionMatcher.find())
       .map(matcher -> matcher.group(1))
-      .findFirst();
+      .collect(Collectors.toList());
+  }
+
+  private Map<Integer, List<String>> retrieveInvoiceLinesReferenceNumbers(ParsedRecord parsedRecord, List<String> referenceNumberExpressions) {
+    Map<Integer, List<String>> invoiceLinesToRefNumbers = new HashMap<>();
+
+    for (String expression : referenceNumberExpressions) {
+      Map<Integer, String> segmentsValues = EdifactParsedRecordUtil.getInvoiceLinesSegmentsValues(parsedRecord, expression);
+
+      segmentsValues.forEach((invLineNumber, segmentData) -> {
+        if (invoiceLinesToRefNumbers.get(invLineNumber) == null) {
+          List<String> referenceNumberList = new ArrayList<>();
+          referenceNumberList.add(segmentData);
+          invoiceLinesToRefNumbers.put(invLineNumber, referenceNumberList);
+        } else {
+          invoiceLinesToRefNumbers.get(invLineNumber).add(segmentData);
+        }
+      });
+    }
+    return invoiceLinesToRefNumbers;
   }
 
   private CompletableFuture<Map<Integer, PoLine>> getAssociatedPoLinesByPoLineNumber(Map<Integer, String> invoiceLineNoToPoLineNo, Map<String, String> okapiHeaders) {
@@ -217,14 +235,14 @@ public class CreateInvoiceEventHandler implements EventHandler {
       .thenApply(v -> invoiceLineNoToPoLine);
   }
 
-  private CompletableFuture<Map<Integer, PoLine>> getAssociatedPoLinesByRefNumber(Map<Integer, String> invoiceLineNoToRefNo, Map<String, String> okapiHeaders) {
-    if (invoiceLineNoToRefNo.isEmpty()) {
+  private CompletableFuture<Map<Integer, PoLine>> getAssociatedPoLinesByRefNumbers(Map<Integer, List<String>> invoiceLineNoToRefNumbers, Map<String, String> okapiHeaders) {
+    if (invoiceLineNoToRefNumbers.isEmpty()) {
       return CompletableFuture.completedFuture(new HashMap<>());
     }
 
     Map<Integer, CompletableFuture<PoLineCollection>> poLinesFutures = new HashMap<>();
-    invoiceLineNoToRefNo.forEach((invoiceLineNumber, refNumber) -> {
-      String cqlGetPoLinesByRefNo = prepareQueryGetPoLinesByRefNumber(List.of(refNumber));
+    invoiceLineNoToRefNumbers.forEach((invoiceLineNumber, refNumberList) -> {
+      String cqlGetPoLinesByRefNo = prepareQueryGetPoLinesByRefNumber(refNumberList);
       poLinesFutures.put(invoiceLineNumber, orderLinesRestClient.get(cqlGetPoLinesByRefNo, 0, Integer.MAX_VALUE, new RequestContext(Vertx.currentContext(), okapiHeaders), PoLineCollection.class));
     });
 
