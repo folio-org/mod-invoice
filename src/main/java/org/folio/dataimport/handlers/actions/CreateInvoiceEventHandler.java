@@ -94,7 +94,8 @@ public class CreateInvoiceEventHandler implements EventHandler {
         .thenAccept(v -> MappingManager.map(dataImportEventPayload))
         .thenAccept(v -> prepareMappingResult(dataImportEventPayload))
         .thenCompose(v -> saveInvoice(dataImportEventPayload, okapiHeaders))
-        .thenCompose(savedInvoice -> saveInvoiceLines(savedInvoice.getId(), dataImportEventPayload, poLinesFuture.join(), okapiHeaders))
+        .thenApply(savedInvoice -> prepareInvoiceLinesToSave(savedInvoice.getId(), dataImportEventPayload, poLinesFuture.join()))
+        .thenCompose(preparedInvoiceLines -> saveInvoiceLines(preparedInvoiceLines, okapiHeaders))
         .whenComplete((savedInvoiceLines, throwable) -> {
           if (throwable == null) {
             List<InvoiceLine> invoiceLines = savedInvoiceLines.stream().map(Pair::getLeft).collect(Collectors.toList());
@@ -275,17 +276,31 @@ public class CreateInvoiceEventHandler implements EventHandler {
     });
   }
 
-  private CompletableFuture<List<Pair<InvoiceLine, String>>> saveInvoiceLines(String invoiceId, DataImportEventPayload dataImportEventPayload, Map<Integer, PoLine> associatedPoLines, Map<String, String> okapiHeaders) {
-    ArrayList<CompletableFuture<InvoiceLine>> futures = new ArrayList<>();
-
-    JsonArray invoiceLinesJson = new JsonArray(dataImportEventPayload.getContext().get(INVOICE_LINES_KEY));
-    List<InvoiceLine> invoiceLines = invoiceLinesJson.stream()
+  private List<InvoiceLine> prepareInvoiceLinesToSave(String invoiceId, DataImportEventPayload dataImportEventPayload, Map<Integer, PoLine> associatedPoLines) {
+    List<InvoiceLine> invoiceLines = new JsonArray(dataImportEventPayload.getContext().get(INVOICE_LINES_KEY))
+      .stream()
       .map(JsonObject.class::cast)
       .map(json -> json.mapTo(InvoiceLine.class))
       .peek(invoiceLine -> invoiceLine.setInvoiceId(invoiceId))
       .collect(Collectors.toList());
 
     linkInvoiceLinesToPoLines(invoiceLines, associatedPoLines);
+    return invoiceLines;
+  }
+
+  private void linkInvoiceLinesToPoLines(List<InvoiceLine> invoiceLines, Map<Integer, PoLine> associatedPoLines) {
+    for (int i = 0; i < invoiceLines.size(); i++) {
+      if (associatedPoLines.get(i + 1) != null) {
+        invoiceLines.get(i).setPoLineId(associatedPoLines.get(i + 1).getId());
+      } else {
+        invoiceLines.get(i).setPoLineId(null);
+      }
+    }
+  }
+
+  private CompletableFuture<List<Pair<InvoiceLine, String>>> saveInvoiceLines(List<InvoiceLine> invoiceLines, Map<String, String> okapiHeaders) {
+    ArrayList<CompletableFuture<InvoiceLine>> futures = new ArrayList<>();
+
     InvoiceLineHelper helper = new InvoiceLineHelper(okapiHeaders, Vertx.currentContext(), null);
     invoiceLines.forEach(invoiceLine -> futures.add(helper.createInvoiceLine(invoiceLine)));
 
@@ -304,16 +319,6 @@ public class CreateInvoiceEventHandler implements EventHandler {
       }
       return savingResults;
     });
-  }
-
-  private void linkInvoiceLinesToPoLines(List<InvoiceLine> invoiceLines, Map<Integer, PoLine> associatedPoLines) {
-    for (int i = 0; i < invoiceLines.size(); i++) {
-      if (associatedPoLines.get(i + 1) != null) {
-        invoiceLines.get(i).setPoLineId(associatedPoLines.get(i + 1).getId());
-      } else {
-        invoiceLines.get(i).setPoLineId(null);
-      }
-    }
   }
 
   private List<InvoiceLine> mapInvoiceLinesArrayToList(JsonArray invoiceLinesArray) {

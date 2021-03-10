@@ -86,8 +86,8 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
   private static final String OKAPI_URL = "http://localhost:" + ApiTestSuite.mockPort;
   private static final String TENANT_ID = "diku";
   private static final String TOKEN = "test-token";
-  private static final String PO_LINE_ID_1 = "00000000-0000-0000-0000-000000000001";
-  private static final String PO_LINE_ID_3 = "00000000-0000-0000-0000-000000000003";
+  private static final String PO_LINE_ID_1 = "0000edd1-b463-41ba-bf64-1b1d9f9d0001";
+  private static final String PO_LINE_ID_3 = "0000edd1-b463-41ba-bf64-1b1d9f9d0003";
   private static final String GROUP_ID = "test-consumers-group";
   public static final String ERROR_MSG_KEY = "ERROR";
 
@@ -182,8 +182,6 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
               new MappingRule().withPath("invoice.invoiceLines[].subTotal")
                 .withValue("MOA+203[2]"))))))));
 
-  private ProfileSnapshotWrapper profileSnapshotWrapper;
-
   private EventHandler createInvoiceHandler = new CreateInvoiceEventHandler(new RestClient(resourcesPath(ORDER_LINES)));
   private RestClient mockOrderLinesRestClient;
 
@@ -193,24 +191,6 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
     mockOrderLinesRestClient = Mockito.mock(RestClient.class);
     EventManager.clearEventHandlers();
     EventManager.registerEventHandler(new CreateInvoiceEventHandler(mockOrderLinesRestClient));
-
-    profileSnapshotWrapper = new ProfileSnapshotWrapper()
-      .withId(UUID.randomUUID().toString())
-      .withProfileId(jobProfile.getId())
-      .withContentType(JOB_PROFILE)
-      .withContent(JsonObject.mapFrom(jobProfile).getMap())
-      .withChildSnapshotWrappers(Collections.singletonList(
-        new ProfileSnapshotWrapper()
-          .withId(UUID.randomUUID().toString())
-          .withProfileId(actionProfile.getId())
-          .withContentType(ACTION_PROFILE)
-          .withContent(JsonObject.mapFrom(actionProfile).getMap())
-          .withChildSnapshotWrappers(Collections.singletonList(
-            new ProfileSnapshotWrapper()
-              .withId(UUID.randomUUID().toString())
-              .withProfileId(mappingProfile.getId())
-              .withContentType(MAPPING_PROFILE)
-              .withContent(JsonObject.mapFrom(mappingProfile).getMap())))));
   }
 
   @Test
@@ -219,6 +199,8 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
     Record record = new Record().withParsedRecord(new ParsedRecord().withContent(EDIFACT_PARSED_CONTENT));
     HashMap<String, String> payloadContext = new HashMap<>();
     payloadContext.put(EDIFACT_INVOICE.value(), Json.encode(record));
+
+    ProfileSnapshotWrapper profileSnapshotWrapper = buildProfileSnapshotWrapper(jobProfile, actionProfile, mappingProfile);
 
     DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
       .withEventType(DI_EDIFACT_RECORD_CREATED.value())
@@ -278,7 +260,7 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
     HashMap<String, String> payloadContext = new HashMap<>();
     payloadContext.put(EDIFACT_INVOICE.value(), Json.encode(record));
 
-    setMappingProfileToProfileSnapshotWrapper(profileSnapshotWrapper, mappingProfileWithPoLineSyntax);
+    ProfileSnapshotWrapper profileSnapshotWrapper = buildProfileSnapshotWrapper(jobProfile, actionProfile, mappingProfileWithPoLineSyntax);
 
     DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
       .withEventType(DI_EDIFACT_RECORD_CREATED.value())
@@ -286,7 +268,7 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
       .withOkapiUrl(OKAPI_URL)
       .withToken(TOKEN)
       .withContext(payloadContext)
-      .withProfileSnapshot(this.profileSnapshotWrapper);
+      .withProfileSnapshot(profileSnapshotWrapper);
 
     String topic = KafkaTopicNameHelper.formatTopicName(KAFKA_ENV_VALUE, getDefaultNameSpace(), DI_POST_INVOICE_LINES_SUCCESS_TENANT, dataImportEventPayload.getEventType());
     Event event = new Event().withEventPayload(ZIPArchiver.zip(Json.encode(dataImportEventPayload)));
@@ -337,7 +319,7 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
       .thenReturn(CompletableFuture.completedFuture(new PoLineCollection()))
       .thenReturn(CompletableFuture.completedFuture(new PoLineCollection().withPoLines(List.of(poLine3))));
 
-    setMappingProfileToProfileSnapshotWrapper(profileSnapshotWrapper, mappingProfileWithPoLineSyntax);
+    ProfileSnapshotWrapper profileSnapshotWrapper = buildProfileSnapshotWrapper(jobProfile, actionProfile, mappingProfileWithPoLineSyntax);
 
     Record record = new Record().withParsedRecord(new ParsedRecord().withContent(EDIFACT_PARSED_CONTENT));
     HashMap<String, String> payloadContext = new HashMap<>();
@@ -349,7 +331,7 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
       .withOkapiUrl(OKAPI_URL)
       .withToken(TOKEN)
       .withContext(payloadContext)
-      .withProfileSnapshot(this.profileSnapshotWrapper);
+      .withProfileSnapshot(profileSnapshotWrapper);
 
     String topic = KafkaTopicNameHelper.formatTopicName(KAFKA_ENV_VALUE, getDefaultNameSpace(), DI_POST_INVOICE_LINES_SUCCESS_TENANT, dataImportEventPayload.getEventType());
     Event event = new Event().withEventPayload(ZIPArchiver.zip(Json.encode(dataImportEventPayload)));
@@ -408,7 +390,7 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
     when(mockOrderLinesRestClient.get(anyString(), eq(0), eq(MAX_VALUE), any(RequestContext.class), eq(PoLineCollection.class)))
       .thenReturn(CompletableFuture.completedFuture(poLineCollection));
 
-    setMappingProfileToProfileSnapshotWrapper(profileSnapshotWrapper, mappingProfileWithPoLineFundDistribution);
+    ProfileSnapshotWrapper profileSnapshotWrapper = buildProfileSnapshotWrapper(jobProfile, actionProfile, mappingProfileWithPoLineFundDistribution);
 
     Record record = new Record().withParsedRecord(new ParsedRecord().withContent(EDIFACT_PARSED_CONTENT));
     HashMap<String, String> payloadContext = new HashMap<>();
@@ -420,7 +402,7 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
       .withOkapiUrl(OKAPI_URL)
       .withToken(TOKEN)
       .withContext(payloadContext)
-      .withProfileSnapshot(this.profileSnapshotWrapper);
+      .withProfileSnapshot(profileSnapshotWrapper);
 
     String topic = KafkaTopicNameHelper.formatTopicName(KAFKA_ENV_VALUE, getDefaultNameSpace(), DI_POST_INVOICE_LINES_SUCCESS_TENANT, dataImportEventPayload.getEventType());
     Event event = new Event().withEventPayload(ZIPArchiver.zip(Json.encode(dataImportEventPayload)));
@@ -470,7 +452,7 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
       .thenReturn(CompletableFuture.completedFuture(new PoLineCollection()))
       .thenReturn(CompletableFuture.completedFuture(new PoLineCollection().withPoLines(List.of(poLine1, poLine3))));
 
-    setMappingProfileToProfileSnapshotWrapper(profileSnapshotWrapper, mappingProfileWithPoLineSyntax);
+    ProfileSnapshotWrapper profileSnapshotWrapper = buildProfileSnapshotWrapper(jobProfile, actionProfile, mappingProfileWithPoLineSyntax);
 
     Record record = new Record().withParsedRecord(new ParsedRecord().withContent(EDIFACT_PARSED_CONTENT));
     HashMap<String, String> payloadContext = new HashMap<>();
@@ -482,7 +464,7 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
       .withOkapiUrl(OKAPI_URL)
       .withToken(TOKEN)
       .withContext(payloadContext)
-      .withProfileSnapshot(this.profileSnapshotWrapper);
+      .withProfileSnapshot(profileSnapshotWrapper);
 
     String topic = KafkaTopicNameHelper.formatTopicName(KAFKA_ENV_VALUE, getDefaultNameSpace(), DI_POST_INVOICE_LINES_SUCCESS_TENANT, dataImportEventPayload.getEventType());
     Event event = new Event().withEventPayload(ZIPArchiver.zip(Json.encode(dataImportEventPayload)));
@@ -521,6 +503,8 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
   @Test
   public void shouldPublishDiErrorEventWhenHasNoSourceRecord() throws IOException, InterruptedException {
     // given
+    ProfileSnapshotWrapper profileSnapshotWrapper = buildProfileSnapshotWrapper(jobProfile, actionProfile, mappingProfile);
+
     DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
       .withEventType(DI_EDIFACT_RECORD_CREATED.value())
       .withTenant(TENANT_ID)
@@ -554,6 +538,7 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
   @Test
   public void shouldPublishDiErrorEventWhenPostInvoiceToStorageFailed() throws IOException, InterruptedException {
     // given
+    ProfileSnapshotWrapper profileSnapshotWrapper = buildProfileSnapshotWrapper(jobProfile, actionProfile, mappingProfile);
     Record record = new Record().withParsedRecord(new ParsedRecord().withContent(EDIFACT_PARSED_CONTENT));
     HashMap<String, String> payloadContext = new HashMap<>();
     payloadContext.put(EDIFACT_INVOICE.value(), Json.encode(record));
@@ -597,6 +582,7 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
   @Test
   public void shouldReturnTrueWhenHandlerIsEligibleForActionProfile() {
     // given
+    ProfileSnapshotWrapper profileSnapshotWrapper = buildProfileSnapshotWrapper(jobProfile, actionProfile, mappingProfile);
     DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
       .withEventType(DI_EDIFACT_RECORD_CREATED.value())
       .withProfileSnapshot(profileSnapshotWrapper)
@@ -636,14 +622,24 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
     Assertions.assertFalse(isEligible);
   }
 
-  private void setMappingProfileToProfileSnapshotWrapper(ProfileSnapshotWrapper profileSnapshotWrapper, MappingProfile mappingProfile) {
-    ProfileSnapshotWrapper mappingProfileWrapper = new ProfileSnapshotWrapper()
+  private ProfileSnapshotWrapper buildProfileSnapshotWrapper(JobProfile jobProfile, ActionProfile actionProfile, MappingProfile mappingProfile) {
+    return new ProfileSnapshotWrapper()
       .withId(UUID.randomUUID().toString())
-      .withProfileId(mappingProfile.getId())
-      .withContentType(MAPPING_PROFILE)
-      .withContent(JsonObject.mapFrom(mappingProfile).getMap());
-
-    profileSnapshotWrapper.getChildSnapshotWrappers().get(0).setChildSnapshotWrappers(List.of((mappingProfileWrapper)));
+      .withProfileId(jobProfile.getId())
+      .withContentType(JOB_PROFILE)
+      .withContent(JsonObject.mapFrom(jobProfile).getMap())
+      .withChildSnapshotWrappers(Collections.singletonList(
+        new ProfileSnapshotWrapper()
+          .withId(UUID.randomUUID().toString())
+          .withProfileId(actionProfile.getId())
+          .withContentType(ACTION_PROFILE)
+          .withContent(JsonObject.mapFrom(actionProfile).getMap())
+          .withChildSnapshotWrappers(Collections.singletonList(
+            new ProfileSnapshotWrapper()
+              .withId(UUID.randomUUID().toString())
+              .withProfileId(mappingProfile.getId())
+              .withContentType(MAPPING_PROFILE)
+              .withContent(JsonObject.mapFrom(mappingProfile).getMap())))));
   }
 
 }

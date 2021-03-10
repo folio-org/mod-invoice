@@ -1,0 +1,34 @@
+{
+  "id": "0000edd1-b463-41ba-bf64-1b1d9f9d0001",
+  "checkinItems": false,
+  "alerts": [],
+  "claims": [],
+  "collection": false,
+  "contributors": [],
+  "fundDistribution": [
+    {
+      "code": "USHIST",
+      "fundId": "63157e96-0693-426d-b0df-948bacdfdb08",
+      "distributionType": "percentage",
+      "value": 80.0,
+      "encumbrance": "eb506834-6c70-4239-8d1a-6414a5b08ac3"
+    }
+  ],
+  "isPackage": false,
+  "locations": [],
+  "paymentStatus": "Pending",
+  "poLineNumber": "010170-01",
+  "receiptStatus": "Pending",
+  "reportingCodes": [],
+  "rush": false,
+  "titleOrPackage": "polTitle-1",
+  "vendorDetail": {
+    "instructions": "ABCDEFG",
+    "referenceNumbers": [
+      {
+        "refNumber": "C6546362",
+        "refNumberType": "Vendor title number"
+      }
+    ]
+  }
+}
