@@ -16,7 +16,7 @@ import org.folio.Record;
 import org.folio.processing.events.services.handler.EventHandler;
 import org.folio.processing.exceptions.EventProcessingException;
 import org.folio.processing.mapping.MappingManager;
-import org.folio.processing.mapping.util.EdifactParsedRecordUtil;
+import org.folio.processing.mapping.mapper.reader.record.edifact.EdifactRecordReader;
 import org.folio.rest.RestConstants;
 import org.folio.rest.RestVerticle;
 import org.folio.rest.acq.model.orders.PoLine;
@@ -38,7 +38,6 @@ import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import static java.lang.String.format;
 import static org.apache.commons.lang3.StringUtils.isBlank;
@@ -99,24 +98,19 @@ public class CreateInvoiceEventHandler implements EventHandler {
         .whenComplete((savedInvoiceLines, throwable) -> {
           if (throwable == null) {
             List<InvoiceLine> invoiceLines = savedInvoiceLines.stream().map(Pair::getLeft).collect(Collectors.toList());
-            InvoiceLineCollection invoiceLineCollection = new InvoiceLineCollection().withInvoiceLines(invoiceLines).withTotalRecords(savedInvoiceLines.size());
+            InvoiceLineCollection invoiceLineCollection = new InvoiceLineCollection().withInvoiceLines(invoiceLines).withTotalRecords(invoiceLines.size());
             dataImportEventPayload.getContext().put(INVOICE_LINES_KEY, Json.encode(invoiceLineCollection));
             Map<Integer, String> invoiceLinesErrors = prepareInvoiceLinesErrors(savedInvoiceLines);
             if (!invoiceLinesErrors.isEmpty()) {
               dataImportEventPayload.getContext().put(INVOICE_LINES_ERRORS_KEY, Json.encode(invoiceLinesErrors));
-              future.completeExceptionally(new EventProcessingException("Error during invoice creation"));
+              future.completeExceptionally(new EventProcessingException("Error during invoice lines creation"));
               return;
             }
             future.complete(dataImportEventPayload);
           } else {
-            List<InvoiceLine> invoiceLines = new JsonArray(dataImportEventPayload.getContext().get(INVOICE_LINES_KEY)).stream()
-              .map(JsonObject.class::cast)
-              .map(json -> json.mapTo(InvoiceLine.class))
-              .collect(Collectors.toList());
-
-            Map<Integer, String> invoiceLinesErrors = Stream.iterate(1, i -> i <= invoiceLines.size(), i -> ++i)
-              .collect(Collectors.toMap(i -> i, i -> throwable.getMessage()));
-            dataImportEventPayload.getContext().put(INVOICE_LINES_ERRORS_KEY, Json.encode(invoiceLinesErrors));
+            List<InvoiceLine> invoiceLines = mapInvoiceLinesArrayToList(new JsonArray(dataImportEventPayload.getContext().get(INVOICE_LINES_KEY)));
+            InvoiceLineCollection invoiceLineCollection = new InvoiceLineCollection().withInvoiceLines(invoiceLines).withTotalRecords(invoiceLines.size());
+            dataImportEventPayload.getContext().put(INVOICE_LINES_KEY, Json.encode(invoiceLineCollection));
             LOGGER.error("Error during invoice creation", throwable);
             future.completeExceptionally(throwable);
           }
@@ -147,7 +141,7 @@ public class CreateInvoiceEventHandler implements EventHandler {
 
     Optional<String> poLineNoExpressionOptional = getPoLineNoMappingExpression(eventPayload);
     Map<Integer, String> invoiceLineNoToPoLineNo = poLineNoExpressionOptional
-      .map(expression -> EdifactParsedRecordUtil.getInvoiceLinesSegmentsValues(parsedRecord, expression))
+      .map(expression -> EdifactRecordReader.getInvoiceLinesSegmentsValues(parsedRecord, expression))
       .orElse(Collections.emptyMap());
 
     List<String> ReferenceNumberExpressions = getPoLineRefNumberMappingExpressions(eventPayload);
@@ -158,11 +152,10 @@ public class CreateInvoiceEventHandler implements EventHandler {
       .thenCompose(associatedPoLineMap -> {
         if (associatedPoLineMap.size() < invoiceLinesAmount) {
           associatedPoLineMap.keySet().forEach(invoiceLineNoToRefNo2::remove);
-          return getAssociatedPoLinesByRefNumbers(invoiceLineNoToRefNo2, okapiHeaders)
-            .thenApply(poLinesMap -> {
-              associatedPoLineMap.putAll(poLinesMap);
-              return associatedPoLineMap;
-            });
+          return getAssociatedPoLinesByRefNumbers(invoiceLineNoToRefNo2, okapiHeaders).thenApply(poLinesMap -> {
+            associatedPoLineMap.putAll(poLinesMap);
+            return associatedPoLineMap;
+          });
         }
         return CompletableFuture.completedFuture(associatedPoLineMap);
       });
@@ -205,7 +198,7 @@ public class CreateInvoiceEventHandler implements EventHandler {
     Map<Integer, List<String>> invoiceLinesToRefNumbers = new HashMap<>();
 
     for (String expression : referenceNumberExpressions) {
-      Map<Integer, String> segmentsValues = EdifactParsedRecordUtil.getInvoiceLinesSegmentsValues(parsedRecord, expression);
+      Map<Integer, String> segmentsValues = EdifactRecordReader.getInvoiceLinesSegmentsValues(parsedRecord, expression);
 
       segmentsValues.forEach((invLineNumber, segmentData) -> {
         if (invoiceLinesToRefNumbers.get(invLineNumber) == null) {
@@ -227,8 +220,7 @@ public class CreateInvoiceEventHandler implements EventHandler {
     }
 
     String preparedCql = prepareQueryGetPoLinesByNumber(List.copyOf(invoiceLineNoToPoLineNo.values()));
-
-    return orderLinesRestClient.get(preparedCql, 0, Integer.MAX_VALUE, new RequestContext(Vertx.currentContext() , okapiHeaders), PoLineCollection.class)
+    return orderLinesRestClient.get(preparedCql, 0, Integer.MAX_VALUE, new RequestContext(Vertx.currentContext(), okapiHeaders), PoLineCollection.class)
       .thenApply(poLineCollection -> poLineCollection.getPoLines().stream().collect(Collectors.toMap(PoLine::getPoLineNumber, poLine -> poLine)))
       .thenAccept(poLineNumberToPoLine -> invoiceLineNoToPoLineNo
         .forEach((key, value) -> poLineNumberToPoLine.computeIfPresent(value, (polNo, poLine) -> invoiceLineNoToPoLine.put(key, poLine))))
@@ -301,7 +293,11 @@ public class CreateInvoiceEventHandler implements EventHandler {
     return CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).handle((v, throwable) -> {
       for (int i = 0; i < futures.size(); i++) {
         InvoiceLine mappedInvoiceLine = invoiceLines.get(i);
+        int invLineNumber = i + 1;
         futures.get(i).whenComplete((savedInvLine, e) -> {
+          if (e != null) {
+            LOGGER.error("Error to create invoice line with number {}", invLineNumber, e);
+          }
           Pair<InvoiceLine, String> invoiceLineToMsg = e == null ? Pair.of(savedInvLine, null) : Pair.of(mappedInvoiceLine, e.getMessage());
           savingResults.add(invoiceLineToMsg);
         });
@@ -318,6 +314,13 @@ public class CreateInvoiceEventHandler implements EventHandler {
         invoiceLines.get(i).setPoLineId(null);
       }
     }
+  }
+
+  private List<InvoiceLine> mapInvoiceLinesArrayToList(JsonArray invoiceLinesArray) {
+    return invoiceLinesArray.stream()
+      .map(JsonObject.class::cast)
+      .map(json -> json.mapTo(InvoiceLine.class))
+      .collect(Collectors.toList());
   }
 
   private Map<String, String> getOkapiHeaders(DataImportEventPayload dataImportEventPayload) {
@@ -343,9 +346,9 @@ public class CreateInvoiceEventHandler implements EventHandler {
     for (Map.Entry<Integer, PoLine> pair : invoiceLineNoToPoLine.entrySet()) {
       // put poLine id because invoice line schema expects "poLineId" instead of poLine number
       // https://github.com/folio-org/acq-models/blob/master/mod-invoice-storage/schemas/invoice_line.json
-      dataImportEventPayload.getContext().put(format(POL_NUMBER_KEY, pair.getKey() -1), pair.getValue().getId());
-      dataImportEventPayload.getContext().put(format(POL_TITLE_KEY, pair.getKey() -1), pair.getValue().getTitleOrPackage());
-      dataImportEventPayload.getContext().put(format(POL_FUND_DISTRIBUTIONS_KEY, pair.getKey() -1), Json.encode(pair.getValue().getFundDistribution()));
+      dataImportEventPayload.getContext().put(format(POL_NUMBER_KEY, pair.getKey() - 1), pair.getValue().getId());
+      dataImportEventPayload.getContext().put(format(POL_TITLE_KEY, pair.getKey() - 1), pair.getValue().getTitleOrPackage());
+      dataImportEventPayload.getContext().put(format(POL_FUND_DISTRIBUTIONS_KEY, pair.getKey() - 1), Json.encode(pair.getValue().getFundDistribution()));
     }
   }
 

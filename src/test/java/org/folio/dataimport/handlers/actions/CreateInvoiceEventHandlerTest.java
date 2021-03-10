@@ -89,6 +89,7 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
   private static final String PO_LINE_ID_1 = "00000000-0000-0000-0000-000000000001";
   private static final String PO_LINE_ID_3 = "00000000-0000-0000-0000-000000000003";
   private static final String GROUP_ID = "test-consumers-group";
+  public static final String ERROR_MSG_KEY = "ERROR";
 
   private JobProfile jobProfile = new JobProfile()
     .withId(UUID.randomUUID().toString())
@@ -466,7 +467,7 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
     PoLine poLine3 = Json.decodeValue(getMockData(String.format(MOCK_DATA_PATH_PATTERN, PO_LINES_MOCK_DATA_PATH, PO_LINE_ID_3)), PoLine.class);
 
     when(mockOrderLinesRestClient.get(anyString(), eq(0), eq(MAX_VALUE), any(RequestContext.class), eq(PoLineCollection.class)))
-      .thenReturn(CompletableFuture.completedFuture(new PoLineCollection())) // call by polNumbers
+      .thenReturn(CompletableFuture.completedFuture(new PoLineCollection()))
       .thenReturn(CompletableFuture.completedFuture(new PoLineCollection().withPoLines(List.of(poLine1, poLine3))));
 
     setMappingProfileToProfileSnapshotWrapper(profileSnapshotWrapper, mappingProfileWithPoLineSyntax);
@@ -546,6 +547,7 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
 
     Event publishedEvent = Json.decodeValue(observedValues.get(0), Event.class);
     DataImportEventPayload eventPayload = Json.decodeValue(ZIPArchiver.unzip(publishedEvent.getEventPayload()), DataImportEventPayload.class);
+    assertEquals(DI_ERROR.value(), eventPayload.getEventType());
     assertEquals(DI_INVOICE_CREATED.value(), eventPayload.getEventsChain().get(eventPayload.getEventsChain().size() -1));
   }
 
@@ -583,6 +585,13 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
     Event publishedEvent = Json.decodeValue(observedValues.get(0), Event.class);
     DataImportEventPayload eventPayload = Json.decodeValue(ZIPArchiver.unzip(publishedEvent.getEventPayload()), DataImportEventPayload.class);
     assertEquals(DI_INVOICE_CREATED.value(), eventPayload.getEventsChain().get(eventPayload.getEventsChain().size() -1));
+    assertNotNull(eventPayload.getContext().get(ERROR_MSG_KEY));
+    assertNotNull(eventPayload.getContext().get(INVOICE.value()));
+    assertNotNull(eventPayload.getContext().get(INVOICE_LINES_KEY));
+
+    InvoiceLineCollection invoiceLineCollection = Json.decodeValue(eventPayload.getContext().get(INVOICE_LINES_KEY), InvoiceLineCollection.class);
+    assertEquals(3, invoiceLineCollection.getTotalRecords());
+    assertEquals(3, invoiceLineCollection.getInvoiceLines().size());
   }
 
   @Test
