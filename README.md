@@ -17,6 +17,13 @@ extra permission `invoices.acquisitions-units-assignments.assign` to create an i
 NOTE: Only in case an acquisition units list has to be changed for the Invoice, it is required that user should have an
 extra permission `invoices.acquisitions-units-assignments.manage` to update an invoice.
 
+### Integration
+
+#### Data import Kafka consumer
+
+In order to fail the module start-up when data import Kafka consumer creation is failed the one should set 
+`dataimport.consumer.verticle.mandatory` variable to `true`.
+
 ### Issue tracker
 
 See project [MODINVOICE](https://issues.folio.org/browse/MODINVOICE)

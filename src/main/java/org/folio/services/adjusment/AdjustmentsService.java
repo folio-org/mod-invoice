@@ -20,7 +20,6 @@ import javax.money.CurrencyUnit;
 import javax.money.Monetary;
 import javax.money.MonetaryAmount;
 
-import org.folio.rest.impl.InvoiceLineHelper;
 import org.folio.rest.jaxrs.model.Adjustment;
 import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.jaxrs.model.InvoiceLine;
@@ -107,14 +106,18 @@ public class AdjustmentsService {
   }
 
     /**
-     * Splits {@link InvoiceLine#invoiceLineNumber} into invoice number and integer suffix by hyphen and sort lines by suffix casted
-     * to integer. {@link InvoiceLineHelper#buildInvoiceLineNumber} must ensure that{@link InvoiceLine#invoiceLineNumber} will have the
-     * correct format when creating the line.
+     * Removes the invoice number from invoiceLineNumber if needed, and sorts lines
+     * on the line number as an integer.
      *
      * @param lines to be sorted
      */
     private void sortByInvoiceLineNumber(List<InvoiceLine> lines) {
-      lines.sort(Comparator.comparing(invoiceLine -> Integer.parseInt(invoiceLine.getInvoiceLineNumber().split(HYPHEN_SEPARATOR)[1])));
+      lines.sort(Comparator.comparing(invoiceLine -> {
+        String lineNumber = invoiceLine.getInvoiceLineNumber();
+        if (lineNumber.contains(HYPHEN_SEPARATOR)) // only needed until MODINVOSTO-75 is done
+          lineNumber = lineNumber.split(HYPHEN_SEPARATOR)[1];
+        return Integer.parseInt(lineNumber);
+      }));
     }
 
   /**

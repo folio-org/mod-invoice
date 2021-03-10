@@ -267,14 +267,14 @@ public class InvoiceLinesApiTest extends ApiTestBase {
       .as(InvoiceLine.class);
 
     String invoiceId = respData.getId();
-    String InvoiceLineNo = respData.getInvoiceLineNumber();
+    String invoiceLineNo = respData.getInvoiceLineNumber();
 
     // MODINVOICE-86 Verify total is calculated upon invoice-line creation
     Double expectedTotal = 2.42d;
     assertThat(respData.getTotal(), equalTo(expectedTotal));
 
     assertThat(invoiceId, notNullValue());
-    assertThat(InvoiceLineNo, notNullValue());
+    assertThat(invoiceLineNo, is("1"));
     assertThat(MockServer.serverRqRs.get(INVOICE_LINE_NUMBER, HttpMethod.GET), hasSize(1));
 
     compareRecordWithSentToStorage(respData);

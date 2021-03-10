@@ -32,6 +32,9 @@ public class InitAPIs implements InitAPI {
   @Value("${mod.invoice.kafka.DataImportConsumerVerticle.instancesNumber:1}")
   private int dataImportConsumerVerticleNumber;
 
+  @Value("${dataimport.consumer.verticle.mandatory:false}")
+  private boolean isConsumerVerticleMandatory;
+
   @Override
   public void init(Vertx vertx, Context context, Handler<AsyncResult<Boolean>> resultHandler) {
     vertx.executeBlocking(
@@ -47,10 +50,13 @@ public class InitAPIs implements InitAPI {
         SpringContextUtil.init(vertx, context, ApplicationConfig.class);
         SpringContextUtil.autowireDependencies(this, context);
 
-        deployDataImportConsumerVerticle(vertx)
-          .onSuccess(ar -> logger.info("DataImportConsumerVerticle verticles was successfully started"))
-          .onFailure(e -> logger.error("DataImportConsumerVerticle verticles was not successfully started", e))
-          .onComplete(ar -> handler.complete());
+        deployDataImportConsumerVerticle(vertx).onComplete(ar -> {
+          if (ar.failed() && isConsumerVerticleMandatory) {
+            handler.fail(ar.cause());
+          } else {
+            handler.complete();
+          }
+        });
       },
       result -> {
         if (result.succeeded()) {
@@ -70,6 +76,9 @@ public class InitAPIs implements InitAPI {
       .setInstances(dataImportConsumerVerticleNumber)
       .setWorker(true);
     vertx.deployVerticle(() -> springContext.getBean(DataImportConsumerVerticle.class), deploymentOptions, promise);
-    return promise.future();
+
+    return promise.future()
+      .onSuccess(ar -> logger.info("DataImportConsumerVerticle verticles was successfully started"))
+      .onFailure(e -> logger.error("DataImportConsumerVerticle verticles was not successfully started", e));
   }
 }
