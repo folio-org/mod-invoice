@@ -3,7 +3,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>org.folio</groupId>
   <artifactId>mod-invoice</artifactId>
-  <version>4.1.3-SNAPSHOT</version>
+  <version>4.1.3</version>
   <packaging>jar</packaging>
 
   <licenses>
@@ -629,7 +629,7 @@
     <url>https://github.com/folio-org/mod-invoice</url>
     <connection>scm:git:git://github.com/folio-org/mod-invoice</connection>
     <developerConnection>scm:git:git@github.com:folio-org/mod-invoice.git</developerConnection>
-    <tag>HEAD</tag>
+    <tag>v4.1.3</tag>
   </scm>
 
   <repositories>
