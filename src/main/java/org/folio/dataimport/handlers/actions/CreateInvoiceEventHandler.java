@@ -362,7 +362,6 @@ public class CreateInvoiceEventHandler implements EventHandler {
       if (poLine.getFundDistribution() != null) {
         dataImportEventPayload.getContext().put(format(POL_FUND_DISTRIBUTIONS_KEY, pair.getKey() - 1), Json.encode(poLine.getFundDistribution()));
       }
-
       if (isNotEmpty(poLine.getFundDistribution()) && verifyAllFundsHaveSameExpenseClass(poLine.getFundDistribution())) {
         dataImportEventPayload.getContext().put(format(POL_EXPENSE_CLASS_KEY, pair.getKey() - 1), poLine.getFundDistribution().get(0).getExpenseClassId());
       }
