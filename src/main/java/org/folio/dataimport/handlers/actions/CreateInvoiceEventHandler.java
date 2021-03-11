@@ -19,6 +19,7 @@ import org.folio.processing.mapping.MappingManager;
 import org.folio.processing.mapping.mapper.reader.record.edifact.EdifactRecordReader;
 import org.folio.rest.RestConstants;
 import org.folio.rest.RestVerticle;
+import org.folio.rest.acq.model.orders.FundDistribution;
 import org.folio.rest.acq.model.orders.PoLine;
 import org.folio.rest.acq.model.orders.PoLineCollection;
 import org.folio.rest.core.RestClient;
@@ -34,12 +35,14 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import static java.lang.String.format;
+import static org.apache.commons.collections4.CollectionUtils.isNotEmpty;
 import static org.apache.commons.lang3.StringUtils.isBlank;
 import static org.folio.ActionProfile.Action.CREATE;
 import static org.folio.ActionProfile.FolioRecord.INVOICE;
@@ -65,6 +68,7 @@ public class CreateInvoiceEventHandler implements EventHandler {
   private static final String REFERENCE_NUMBERS_RULE_NAME = "referenceNumbers";
   private static final String REF_NUMBER_RULE_NAME = "refNumber";
   private static final String POL_NUMBER_KEY = "POL_NUMBER_%s";
+  private static final String POL_EXPENSE_CLASS_KEY = "POL_EXPENSE_CLASS_%s";
   private static final String POL_FUND_DISTRIBUTIONS_KEY = "POL_FUND_DISTRIBUTIONS_%s";
   private static final Pattern SEGMENT_QUERY_PATTERN = Pattern.compile("([A-Z]{3}((\\+|<)\\w*)(\\2*\\w*)*(\\?\\w+)?\\[[1-9](-[1-9])?\\])");
 
@@ -349,12 +353,25 @@ public class CreateInvoiceEventHandler implements EventHandler {
 
   private void ensureAdditionalData(DataImportEventPayload dataImportEventPayload, Map<Integer, PoLine> invoiceLineNoToPoLine) {
     for (Map.Entry<Integer, PoLine> pair : invoiceLineNoToPoLine.entrySet()) {
+      PoLine poLine = pair.getValue();
       // put poLine id because invoice line schema expects "poLineId" instead of poLine number
       // https://github.com/folio-org/acq-models/blob/master/mod-invoice-storage/schemas/invoice_line.json
-      dataImportEventPayload.getContext().put(format(POL_NUMBER_KEY, pair.getKey() - 1), pair.getValue().getId());
-      dataImportEventPayload.getContext().put(format(POL_TITLE_KEY, pair.getKey() - 1), pair.getValue().getTitleOrPackage());
-      dataImportEventPayload.getContext().put(format(POL_FUND_DISTRIBUTIONS_KEY, pair.getKey() - 1), Json.encode(pair.getValue().getFundDistribution()));
+      dataImportEventPayload.getContext().put(format(POL_NUMBER_KEY, pair.getKey() - 1), poLine.getId());
+      dataImportEventPayload.getContext().put(format(POL_TITLE_KEY, pair.getKey() - 1), poLine.getTitleOrPackage());
+
+      if (poLine.getFundDistribution() != null) {
+        dataImportEventPayload.getContext().put(format(POL_FUND_DISTRIBUTIONS_KEY, pair.getKey() - 1), Json.encode(poLine.getFundDistribution()));
+      }
+
+      if (isNotEmpty(poLine.getFundDistribution()) && verifyAllFundsHaveSameExpenseClass(poLine.getFundDistribution())) {
+        dataImportEventPayload.getContext().put(format(POL_EXPENSE_CLASS_KEY, pair.getKey() - 1), poLine.getFundDistribution().get(0).getExpenseClassId());
+      }
     }
+  }
+
+  private boolean verifyAllFundsHaveSameExpenseClass(List<FundDistribution> fundDistributionList) {
+    return fundDistributionList.stream()
+      .allMatch(fundDistribution -> Objects.equals(fundDistributionList.get(0).getExpenseClassId(), fundDistribution.getExpenseClassId()));
   }
 
   @Override
