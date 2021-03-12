@@ -48,6 +48,7 @@ import static org.folio.ActionProfile.Action.CREATE;
 import static org.folio.ActionProfile.FolioRecord.INVOICE;
 import static org.folio.DataImportEventTypes.DI_INVOICE_CREATED;
 import static org.folio.rest.jaxrs.model.EntityType.EDIFACT_INVOICE;
+import static org.folio.rest.jaxrs.model.InvoiceLine.InvoiceLineStatus.OPEN;
 import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.ACTION_PROFILE;
 
 public class CreateInvoiceEventHandler implements EventHandler {
@@ -71,6 +72,7 @@ public class CreateInvoiceEventHandler implements EventHandler {
   private static final String POL_EXPENSE_CLASS_KEY = "POL_EXPENSE_CLASS_%s";
   private static final String POL_FUND_DISTRIBUTIONS_KEY = "POL_FUND_DISTRIBUTIONS_%s";
   private static final Pattern SEGMENT_QUERY_PATTERN = Pattern.compile("([A-Z]{3}((\\+|<)\\w*)(\\2*\\w*)*(\\?\\w+)?\\[[1-9](-[1-9])?\\])");
+  private static final String DEFAULT_LANG = "en";
 
   private final RestClient orderLinesRestClient;
 
@@ -276,7 +278,7 @@ public class CreateInvoiceEventHandler implements EventHandler {
         dataImportEventPayload.getContext().put(INVOICE.value(), Json.encode(invoice));
         return;
       }
-      LOGGER.error("Error during creation invoice in the storage");
+      LOGGER.error("Error during creation invoice in the storage", throwable);
     });
   }
 
@@ -285,7 +287,7 @@ public class CreateInvoiceEventHandler implements EventHandler {
       .stream()
       .map(JsonObject.class::cast)
       .map(json -> json.mapTo(InvoiceLine.class))
-      .peek(invoiceLine -> invoiceLine.setInvoiceId(invoiceId))
+      .peek(invoiceLine -> invoiceLine.withInvoiceId(invoiceId).withInvoiceLineStatus(OPEN))
       .collect(Collectors.toList());
 
     linkInvoiceLinesToPoLines(invoiceLines, associatedPoLines);
@@ -305,7 +307,7 @@ public class CreateInvoiceEventHandler implements EventHandler {
   private CompletableFuture<List<Pair<InvoiceLine, String>>> saveInvoiceLines(List<InvoiceLine> invoiceLines, Map<String, String> okapiHeaders) {
     ArrayList<CompletableFuture<InvoiceLine>> futures = new ArrayList<>();
 
-    InvoiceLineHelper helper = new InvoiceLineHelper(okapiHeaders, Vertx.currentContext(), null);
+    InvoiceLineHelper helper = new InvoiceLineHelper(okapiHeaders, Vertx.currentContext(), DEFAULT_LANG);
     invoiceLines.forEach(invoiceLine -> futures.add(helper.createInvoiceLine(invoiceLine)));
 
     List<Pair<InvoiceLine, String>> savingResults = new ArrayList<>();

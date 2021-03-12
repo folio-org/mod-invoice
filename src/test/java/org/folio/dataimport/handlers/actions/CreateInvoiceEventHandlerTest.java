@@ -26,6 +26,8 @@ import org.folio.rest.core.models.RequestContext;
 import org.folio.rest.impl.ApiTestBase;
 import org.folio.rest.jaxrs.model.Event;
 import org.folio.rest.jaxrs.model.Invoice;
+import org.folio.rest.jaxrs.model.InvoiceLine;
+import org.folio.rest.jaxrs.model.InvoiceLine.InvoiceLineStatus;
 import org.folio.rest.jaxrs.model.InvoiceLineCollection;
 import org.folio.rest.jaxrs.model.MappingDetail;
 import org.folio.rest.jaxrs.model.MappingRule;
@@ -66,8 +68,10 @@ import static org.folio.rest.jaxrs.model.EntityType.INVOICE;
 import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.ACTION_PROFILE;
 import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.JOB_PROFILE;
 import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.MAPPING_PROFILE;
+import static org.hamcrest.CoreMatchers.everyItem;
 import static org.hamcrest.CoreMatchers.hasItem;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.allOf;
 import static org.hamcrest.Matchers.hasProperty;
 import static org.hamcrest.Matchers.is;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -278,7 +282,10 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
     InvoiceLineCollection createdInvoiceLines = Json.decodeValue(eventPayload.getContext().get(INVOICE_LINES_KEY), InvoiceLineCollection.class);
     assertEquals(3, createdInvoiceLines.getTotalRecords());
     assertEquals(3, createdInvoiceLines.getInvoiceLines().size());
-    createdInvoiceLines.getInvoiceLines().forEach(invLine -> assertEquals(createdInvoice.getId(), invLine.getInvoiceId()));
+    createdInvoiceLines.getInvoiceLines().forEach(invLine -> {
+      assertEquals(createdInvoice.getId(), invLine.getInvoiceId());
+      assertEquals(InvoiceLineStatus.OPEN, invLine.getInvoiceLineStatus());
+    });
   }
 
   @Test
