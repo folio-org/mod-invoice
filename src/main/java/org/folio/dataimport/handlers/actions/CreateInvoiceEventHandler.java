@@ -115,9 +115,7 @@ public class CreateInvoiceEventHandler implements EventHandler {
             }
             future.complete(dataImportEventPayload);
           } else {
-            List<InvoiceLine> invoiceLines = mapInvoiceLinesArrayToList(new JsonArray(dataImportEventPayload.getContext().get(INVOICE_LINES_KEY)));
-            InvoiceLineCollection invoiceLineCollection = new InvoiceLineCollection().withInvoiceLines(invoiceLines).withTotalRecords(invoiceLines.size());
-            dataImportEventPayload.getContext().put(INVOICE_LINES_KEY, Json.encode(invoiceLineCollection));
+            preparePayloadWithMappedInvoiceLines(dataImportEventPayload);
             LOGGER.error("Error during invoice creation", throwable);
             future.completeExceptionally(throwable);
           }
@@ -373,6 +371,14 @@ public class CreateInvoiceEventHandler implements EventHandler {
   private boolean verifyAllFundsHaveSameExpenseClass(List<FundDistribution> fundDistributionList) {
     return fundDistributionList.stream()
       .allMatch(fundDistribution -> Objects.equals(fundDistributionList.get(0).getExpenseClassId(), fundDistribution.getExpenseClassId()));
+  }
+
+  private void preparePayloadWithMappedInvoiceLines(DataImportEventPayload dataImportEventPayload) {
+    if (dataImportEventPayload.getContext().get(INVOICE_LINES_KEY) != null) {
+      List<InvoiceLine> invoiceLines = mapInvoiceLinesArrayToList(new JsonArray(dataImportEventPayload.getContext().get(INVOICE_LINES_KEY)));
+      InvoiceLineCollection invoiceLineCollection = new InvoiceLineCollection().withInvoiceLines(invoiceLines).withTotalRecords(invoiceLines.size());
+      dataImportEventPayload.getContext().put(INVOICE_LINES_KEY, Json.encode(invoiceLineCollection));
+    }
   }
 
   @Override

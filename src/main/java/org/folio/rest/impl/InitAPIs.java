@@ -78,7 +78,7 @@ public class InitAPIs implements InitAPI {
     vertx.deployVerticle(() -> springContext.getBean(DataImportConsumerVerticle.class), deploymentOptions, promise);
 
     return promise.future()
-      .onSuccess(ar -> logger.info("DataImportConsumerVerticle verticles was successfully started"))
-      .onFailure(e -> logger.error("DataImportConsumerVerticle verticles was not successfully started", e));
+      .onSuccess(ar -> logger.info("DataImportConsumerVerticle verticle was successfully started"))
+      .onFailure(e -> logger.error("DataImportConsumerVerticle verticle was not successfully started", e));
   }
 }
