@@ -146,7 +146,7 @@ import one.util.streamex.StreamEx;
 public class MockServer {
 
   private static final Logger logger = LogManager.getLogger(MockServer.class);
-  private static final String MOCK_DATA_PATH_PATTERN = "%s%s.json";
+  public static final String MOCK_DATA_PATH_PATTERN = "%s%s.json";
   private static final String FUNDS_MOCK_DATA_PATH = BASE_MOCK_DATA_PATH + "fundRecords/";
   private static final String VOUCHER_ID = "voucherId";
   private static final String EXPENSE_CLASS_ID = "expenseClassId";
@@ -189,7 +189,7 @@ public class MockServer {
   static final String ACQUISITIONS_UNITS_COLLECTION = ACQUISITIONS_UNITS_MOCK_DATA_PATH + "/units.json";
   static final String ACQUISITIONS_MEMBERSHIPS_COLLECTION = ACQUISITIONS_UNITS_MOCK_DATA_PATH + "/memberships.json";
   private static final String ORDER_MOCK_DATA_PATH = BASE_MOCK_DATA_PATH + "compositeOrders/";
-  private static final String PO_LINES_MOCK_DATA_PATH = BASE_MOCK_DATA_PATH + "poLines/";
+  public static final String PO_LINES_MOCK_DATA_PATH = BASE_MOCK_DATA_PATH + "poLines/";
   private static final String ID_PATH_PARAM = "/:" + AbstractHelper.ID;
   private static final String VALUE_PATH_PARAM = "/:value";
   private static final String TOTAL_RECORDS = "totalRecords";

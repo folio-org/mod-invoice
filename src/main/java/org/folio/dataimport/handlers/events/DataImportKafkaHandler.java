@@ -13,10 +13,12 @@ import org.folio.processing.events.EventManager;
 import org.folio.processing.events.utils.ZIPArchiver;
 import org.folio.processing.mapping.MappingManager;
 import org.folio.processing.mapping.mapper.reader.record.edifact.EdifactReaderFactory;
+import org.folio.rest.core.RestClient;
 import org.folio.rest.jaxrs.model.Event;
 import org.folio.dataimport.handlers.actions.CreateInvoiceEventHandler;
 import org.folio.dataimport.InvoiceWriterFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
@@ -28,10 +30,11 @@ public class DataImportKafkaHandler implements AsyncRecordHandler<String, String
 
   private final Logger LOGGER = LogManager.getLogger(DataImportKafkaHandler.class);
 
-  public DataImportKafkaHandler() {
+  @Autowired
+  public DataImportKafkaHandler(@Qualifier("orderLinesRestClient") RestClient orderLinesRestClient) {
     MappingManager.registerReaderFactory(new EdifactReaderFactory());
     MappingManager.registerWriterFactory(new InvoiceWriterFactory());
-    EventManager.registerEventHandler(new CreateInvoiceEventHandler());
+    EventManager.registerEventHandler(new CreateInvoiceEventHandler(orderLinesRestClient));
   }
 
   @Override
