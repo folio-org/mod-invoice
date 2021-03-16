@@ -305,8 +305,12 @@ public class CreateInvoiceEventHandler implements EventHandler {
   private CompletableFuture<List<Pair<InvoiceLine, String>>> saveInvoiceLines(List<InvoiceLine> invoiceLines, Map<String, String> okapiHeaders) {
     ArrayList<CompletableFuture<InvoiceLine>> futures = new ArrayList<>();
 
+    CompletableFuture<InvoiceLine> future = CompletableFuture.completedFuture(null);
     InvoiceLineHelper helper = new InvoiceLineHelper(okapiHeaders, Vertx.currentContext(), DEFAULT_LANG);
-    invoiceLines.forEach(invoiceLine -> futures.add(helper.createInvoiceLine(invoiceLine)));
+    for (InvoiceLine invoiceLine : invoiceLines) {
+      future = future.thenCompose(v -> helper.createInvoiceLine(invoiceLine));
+      futures.add(future);
+    }
 
     List<Pair<InvoiceLine, String>> savingResults = new ArrayList<>();
     return CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).handle((v, throwable) -> {
