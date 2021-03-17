@@ -8,7 +8,6 @@ Also integration with EDIFACT format was done.
 [Full Changelog](https://github.com/folio-org/mod-invoice/compare/v4.1.3...v5.0.0)
 
 ### Technical tasks
-* [MODINVOICE-219](https://issues.folio.org/browse/MODINVOICE-219) - Add personal data disclosure form
 * [MODINVOICE-218](https://issues.folio.org/browse/MODINVOICE-218) - mod-invoice: Update RMB
 
 ### Stories
