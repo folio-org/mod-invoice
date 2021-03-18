@@ -1,7 +1,37 @@
-## 4.2.0 - Unreleased
-* [MODINVOICE-227](https://issues.folio.org/browse/MODINVOICE-227)	Implement action profile handler for invoice creation
-* [MODINVOICE-231](https://issues.folio.org/browse/MODINVOICE-231)	Logic for Invoice line data from Purchase Order Line
+## 5.1.0 - Unreleased
 
+## 5.0.0 - Released
+
+The focus of this release was to update RMB, major changes in the display of lock total now this is a number. 
+Also integration with EDIFACT format was done. 
+
+[Full Changelog](https://github.com/folio-org/mod-invoice/compare/v4.1.3...v5.0.0)
+
+### Technical tasks
+* [MODINVOICE-218](https://issues.folio.org/browse/MODINVOICE-218) - mod-invoice: Update RMB
+
+### Stories
+* [MODINVOICE-235](https://issues.folio.org/browse/MODINVOICE-235) - Populate "enclosureNeeded" and "accountNo" in the voucher from invoice
+* [MODINVOICE-231](https://issues.folio.org/browse/MODINVOICE-231) - Logic for Invoice line data from Purchase Order Line
+* [MODINVOICE-227](https://issues.folio.org/browse/MODINVOICE-227) - Implement action profile handler for invoice creation
+* [MODINVOICE-224](https://issues.folio.org/browse/MODINVOICE-224) - Do not update payment status of Ongoing poLines
+* [MODINVOICE-223](https://issues.folio.org/browse/MODINVOICE-223) - Populate paymentDate when invoice is paid
+* [MODINVOICE-222](https://issues.folio.org/browse/MODINVOICE-222) - Ensure that Allowable Encumbrance and Allowable Expenditure restrictions are based on "Total Funding"
+* [MODINVOICE-214](https://issues.folio.org/browse/MODINVOICE-214) - Support ability to display lock and calculated totals
+* [MODINVOICE-213](https://issues.folio.org/browse/MODINVOICE-213) - Lock total must equal Calculated total to approve invoice
+* [MODINVOICE-135](https://issues.folio.org/browse/MODINVOICE-135) - Remove invoice number from the invoice line number
+
+### Bug Fixes
+* [MODINVOICE-239](https://issues.folio.org/browse/MODINVOICE-239) - Voucher amount incorrect
+
+## 4.1.3 - Released
+The primary focus of this release was to fix splitting funds in voucher line, where funds with identical external account numbers
+
+[Full Changelog](https://github.com/folio-org/mod-invoice/compare/v4.1.2...v4.1.3)
+
+  ### Bug Fixes
+ * [MODINVOICE-239](https://issues.folio.org/browse/MODINVOICE-239) - Voucher amount incorrect
+ 
 ## 4.1.2 - Released
 The primary focus of this release was to fix Adding certain prefix and suffixes prevents user from being able to save
 
