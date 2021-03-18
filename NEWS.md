@@ -23,7 +23,6 @@ Also integration with EDIFACT format was done.
 
 ### Bug Fixes
 * [MODINVOICE-239](https://issues.folio.org/browse/MODINVOICE-239) - Voucher amount incorrect
-* [MODINVOICE-217](https://issues.folio.org/browse/MODINVOICE-217) - Folio testing build fails due to incompatible invoice-storage.invoices dependency
 
 ## 4.1.3 - Released
 The primary focus of this release was to fix splitting funds in voucher line, where funds with identical external account numbers
