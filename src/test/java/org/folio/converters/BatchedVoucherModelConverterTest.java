@@ -42,6 +42,7 @@ public class BatchedVoucherModelConverterTest {
 
     assertEquals(batchedVoucher.getVoucherNumber(), batchedVoucherType.getVoucherNumber());
     assertEquals(batchedVoucher.getAccountingCode(), batchedVoucherType.getAccountingCode());
+    assertEquals(batchedVoucher.getAccountNo(), batchedVoucherType.getAccountNo());
     assertEquals(BigDecimal.valueOf(batchedVoucher.getAmount()), batchedVoucherType.getAmount());
 
     assertEquals(batchedVoucher.getDisbursementNumber(), batchedVoucherType.getDisbursementNumber());
@@ -51,14 +52,14 @@ public class BatchedVoucherModelConverterTest {
     assertEquals(BigDecimal.valueOf(batchedVoucher.getExchangeRate()), batchedVoucherType.getExchangeRate());
     assertEquals(batchedVoucher.getInvoiceCurrency(), batchedVoucherType.getInvoiceCurrency());
     assertEquals(batchedVoucher.getSystemCurrency(), batchedVoucherType.getSystemCurrency());
-    assertEquals(PaymentAccountType.fromValue(batchedVoucher.getType()
-      .toString()), batchedVoucherType.getType());
+    assertEquals(PaymentAccountType.fromValue(batchedVoucher.getType().toString()), batchedVoucherType.getType());
 
     assertEquals(batchedVoucher.getVendorInvoiceNo(), batchedVoucherType.getVendorInvoiceNo());
     assertEquals(batchedVoucher.getVendorName(), batchedVoucherType.getVendorName());
     assertEquals(convertOldJavaDate(batchedVoucher.getVoucherDate()), batchedVoucherType.getVoucherDate());
     assertEquals(batchedVoucher.getInvoiceNote(), batchedVoucherType.getInvoiceNote());
     assertEquals(batchedVoucher.getStatus().toString(), batchedVoucherType.getStatus());
+    assertEquals(batchedVoucher.getEnclosureNeeded(), batchedVoucherType.isEnclosureNeeded());
     assertEquals(batchedVoucher.getBatchedVoucherLines().size(), batchedVoucherType.getBatchedVoucherLines().getBatchedVoucherLine().size());
   }
 

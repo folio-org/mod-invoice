@@ -28,6 +28,11 @@
           </xs:documentation>
         </xs:annotation>
       </xs:element>
+      <xs:element name="accountNo" type="xs:string" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>The unique number of the organization account</xs:documentation>
+        </xs:annotation>
+      </xs:element>
       <xs:element name="amount" type="xs:decimal">
         <xs:annotation>
           <xs:documentation>The amount that is actually paid</xs:documentation>
