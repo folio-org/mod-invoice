@@ -2,6 +2,7 @@ package org.folio.converters;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import org.folio.jaxb.JAXBUtil;
@@ -23,6 +24,7 @@ public class BatchedVoucherModelConverter implements Converter<BatchedVoucher, B
     BatchedVoucherType batchedVoucherType = new BatchedVoucherType();
     batchedVoucherType.setVoucherNumber(batchedVoucher.getVoucherNumber());
     batchedVoucherType.setAccountingCode(batchedVoucher.getAccountingCode());
+    Optional.ofNullable(batchedVoucher.getAccountNo()).ifPresent(batchedVoucherType::setAccountNo);
     batchedVoucherType.setAmount(BigDecimal.valueOf(batchedVoucher.getAmount()));
 
     batchedVoucherType.setDisbursementNumber(batchedVoucher.getDisbursementNumber());
@@ -30,8 +32,8 @@ public class BatchedVoucherModelConverter implements Converter<BatchedVoucher, B
       batchedVoucherType.setDisbursementDate(JAXBUtil.convertOldJavaDate(batchedVoucher.getDisbursementDate()));
     }
     batchedVoucherType.setDisbursementAmount(BigDecimal.valueOf(batchedVoucher.getAmount()));
-
-    batchedVoucherType.setEnclosureNeeded(batchedVoucher.getEnclosureNeeded());
+    Optional.ofNullable(batchedVoucher.getEnclosureNeeded())
+      .ifPresentOrElse(batchedVoucherType::setEnclosureNeeded, () -> batchedVoucherType.setEnclosureNeeded(false));
     batchedVoucherType.setExchangeRate(BigDecimal.valueOf(batchedVoucher.getExchangeRate()));
     batchedVoucherType.setInvoiceCurrency(batchedVoucher.getInvoiceCurrency());
     batchedVoucherType.setFolioInvoiceNo(batchedVoucher.getFolioInvoiceNo());

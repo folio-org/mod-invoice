@@ -7,11 +7,12 @@
   "batchedVouchers": [
     {
       "accountingCode": "0206",
+      "accountNo": "111111-74837",
       "amount": 23.45,
       "disbursementNumber": "EFT546789",
       "disbursementDate": "2019-12-06T00:01:04.000+0000",
       "disbursementAmount": 23.45,
-      "enclosureNeeded": false,
+      "enclosureNeeded": true,
       "exchangeRate": 1,
       "folioInvoiceNo": "123invoicenumber45",
       "invoiceCurrency": "USD",
