@@ -48,8 +48,8 @@ public class BatchVoucherProcessHandler implements Handler<Message<JsonObject>> 
 
     getBatchVoucherExportBody(body)
       .thenCompose(bvExport -> manager.persistBatchVoucher(bvExport)
-                                      .thenAccept(bvExport::withBatchVoucherId))
-                              //        .thenCompose(id -> uploadService.uploadBatchVoucherExport(bvExport)))
+                                      .thenAccept(bvExport::withBatchVoucherId)
+                                      .thenCompose(id -> uploadService.uploadBatchVoucherExport(bvExport)))
       .handle((ok, fail) -> {
         // Sending reply message just in case some logic requires it
         if (fail == null) {
