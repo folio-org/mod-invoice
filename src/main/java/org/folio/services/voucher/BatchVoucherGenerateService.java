@@ -8,6 +8,7 @@ import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
 import io.vertx.core.Vertx;
@@ -117,7 +118,9 @@ public class BatchVoucherGenerateService {
     batchedVoucher.setInvoiceCurrency(voucher.getInvoiceCurrency());
     batchedVoucher.setExchangeRate(voucher.getExchangeRate());
     batchedVoucher.setStatus(BatchedVoucher.Status.fromValue(voucher.getStatus().value()));
-    batchedVoucher.setEnclosureNeeded(false);
+    Optional.ofNullable(voucher.getEnclosureNeeded())
+            .ifPresentOrElse(batchedVoucher::setEnclosureNeeded, () -> batchedVoucher.setEnclosureNeeded(false));
+    Optional.ofNullable(voucher.getAccountNo()).ifPresent(batchedVoucher::setAccountNo);
     Invoice invoice = mapInvoices.get(voucher.getInvoiceId());
     batchedVoucher.setFolioInvoiceNo(invoice.getFolioInvoiceNo());
     batchedVoucher.setVendorInvoiceNo(invoice.getVendorInvoiceNo());
