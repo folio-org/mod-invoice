@@ -4,32 +4,41 @@ import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toMap;
 import static org.folio.invoices.utils.HelperUtils.buildIdsChunks;
 import static org.folio.invoices.utils.HelperUtils.collectResultsOnSuccess;
+import static org.folio.invoices.utils.HelperUtils.convertIdsToCqlQuery;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import org.folio.rest.acq.model.Organization;
 import org.folio.rest.acq.model.OrganizationCollection;
-import org.folio.rest.impl.VendorHelper;
+import org.folio.rest.core.RestClient;
+import org.folio.rest.core.models.RequestContext;
+import org.folio.rest.core.models.RequestEntry;
 import org.folio.rest.jaxrs.model.Invoice;
 
-import io.vertx.core.Context;
-
 public class VendorRetrieveService {
-  static final int MAX_IDS_FOR_GET_RQ = 15;
-  private final VendorHelper vendorHelper;
 
-  public VendorRetrieveService(Map<String, String> okapiHeaders, Context ctx, String lang) {
-    this.vendorHelper = new VendorHelper(okapiHeaders, ctx, lang);
+  private static final String ORGANIZATIONS_STORAGE_VENDORS = "/organizations-storage/organizations";
+  private static final String ORGANIZATIONS_STORAGE_VENDOR = ORGANIZATIONS_STORAGE_VENDORS + "/{id}";
+
+  private final RestClient restClient;
+
+  public VendorRetrieveService(RestClient restClient) {
+    this.restClient = restClient;
   }
 
-  public CompletableFuture<Map<String, Organization>> getVendorsMap(List<Invoice> invoices) {
+  static final int MAX_IDS_FOR_GET_RQ = 15;
+
+
+  public CompletableFuture<Map<String, Organization>> getVendorsMap(List<Invoice> invoices, RequestContext requestContext) {
     CompletableFuture<Map<String, Organization>> future = new CompletableFuture<>();
-    getVendorsByChunks(invoices, MAX_IDS_FOR_GET_RQ)
+    getVendorsByChunks(invoices, requestContext)
       .thenApply(organizationCollections ->
         organizationCollections.stream()
           .map(OrganizationCollection::getOrganizations)
@@ -37,20 +46,18 @@ public class VendorRetrieveService {
           .flatMap(List::stream)
           .collect(Collectors.toList()))
       .thenAccept(organizations -> future.complete(organizations.stream().collect(toMap(Organization::getId, Function.identity()))))
-      .thenAccept(v -> vendorHelper.closeHttpClient())
       .exceptionally(t -> {
         future.completeExceptionally(t);
-        vendorHelper.closeHttpClient();
         return null;
       });
     return future;
   }
 
-  public CompletableFuture<List<OrganizationCollection>> getVendorsByChunks(List<Invoice> invoices, int maxRecordsPerGet) {
-    List<CompletableFuture<OrganizationCollection>> invoiceFutureList = buildIdsChunks(invoices, maxRecordsPerGet).values()
+  public CompletableFuture<List<OrganizationCollection>> getVendorsByChunks(List<Invoice> invoices,  RequestContext requestContext) {
+    List<CompletableFuture<OrganizationCollection>> invoiceFutureList = buildIdsChunks(invoices, MAX_IDS_FOR_GET_RQ).values()
       .stream()
       .map(this::getVendorIds)
-      .map(vendorHelper::getVendors)
+      .map(ids -> getVendors(ids, requestContext))
       .collect(Collectors.toList());
 
     return collectResultsOnSuccess(invoiceFutureList);
@@ -60,5 +67,26 @@ public class VendorRetrieveService {
     return invoices.stream()
       .map(Invoice::getVendorId)
       .collect(Collectors.toSet());
+  }
+
+  /**
+   * Retrieves set of access providers
+   *
+   * @param vendorIds - {@link Set<String>} of access providers id
+   * @return CompletableFuture with {@link List<Organization>} of vendors
+   */
+  public CompletableFuture<OrganizationCollection> getVendors(Set<String> vendorIds, RequestContext requestContext) {
+    String query = convertIdsToCqlQuery(new ArrayList<>(vendorIds));
+    RequestEntry requestEntry = new RequestEntry(ORGANIZATIONS_STORAGE_VENDORS)
+        .withQuery(query)
+        .withLimit(vendorIds.size())
+        .withOffset(0);
+    return restClient.get(requestEntry, requestContext, OrganizationCollection.class);
+  }
+
+  public CompletionStage<Organization> getVendor(String vendorId, RequestContext requestContext) {
+    RequestEntry requestEntry = new RequestEntry(ORGANIZATIONS_STORAGE_VENDOR)
+        .withId(vendorId);
+    return restClient.get(requestEntry, requestContext, Organization.class);
   }
 }

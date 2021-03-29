@@ -7,6 +7,8 @@ import static org.folio.invoices.utils.ErrorCodes.EXTERNAL_ACCOUNT_NUMBER_IS_MIS
 import static org.folio.invoices.utils.ErrorCodes.FUNDS_NOT_FOUND;
 import static org.folio.invoices.utils.HelperUtils.collectResultsOnSuccess;
 import static org.folio.invoices.utils.HelperUtils.convertIdsToCqlQuery;
+import static org.folio.invoices.utils.ResourcePathResolver.FUNDS;
+import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
 import static org.folio.rest.RestConstants.MAX_IDS_FOR_GET_RQ;
 
 import java.util.ArrayList;
@@ -26,15 +28,19 @@ import org.folio.rest.acq.model.finance.Fund;
 import org.folio.rest.acq.model.finance.FundCollection;
 import org.folio.rest.core.RestClient;
 import org.folio.rest.core.models.RequestContext;
+import org.folio.rest.core.models.RequestEntry;
 import org.folio.rest.jaxrs.model.Error;
 import org.folio.rest.jaxrs.model.Parameter;
 
 public class FundService {
 
-   private final RestClient fundRestClient;
+  private static final String FUNDS_ENDPOINT = resourcesPath(FUNDS);
+  private static final String FUNDS_BY_ID_ENDPOINT = FUNDS_ENDPOINT + "/{id}";
 
-  public FundService(RestClient fundRestClient) {
-    this.fundRestClient = fundRestClient;
+   private final RestClient restClient;
+
+  public FundService(RestClient restClient) {
+    this.restClient = restClient;
   }
 
   public CompletableFuture<List<Fund>> getFunds(Collection<String> fundIds, RequestContext requestContext) {
@@ -48,12 +54,17 @@ public class FundService {
 
   private CompletableFuture<List<Fund>> getFundsByIds(Collection<String> ids, RequestContext requestContext) {
     String query = convertIdsToCqlQuery(ids);
-    return fundRestClient.get(query, 0, MAX_IDS_FOR_GET_RQ, requestContext, FundCollection.class)
+    RequestEntry requestEntry = new RequestEntry(FUNDS_ENDPOINT)
+        .withQuery(query)
+        .withOffset(0)
+        .withLimit(MAX_IDS_FOR_GET_RQ);
+    return restClient.get(requestEntry, requestContext, FundCollection.class)
       .thenApply(fundCollection -> verifyThatAllFundsFound(fundCollection.getFunds(), ids));
   }
 
   public CompletableFuture<Fund> getFundById(String fundId, RequestContext requestContext) {
-    return fundRestClient.getById(fundId, requestContext, CompositeFund.class)
+    RequestEntry requestEntry = new RequestEntry(FUNDS_BY_ID_ENDPOINT).withId(fundId);
+    return restClient.get(requestEntry, requestContext, CompositeFund.class)
       .thenApply(CompositeFund::getFund)
       .exceptionally(t -> {
         Throwable cause = t.getCause() == null ? t : t.getCause();

@@ -1,8 +1,12 @@
 package org.folio.rest.impl;
 
-import io.vertx.core.Context;
-import io.vertx.core.Vertx;
-import org.folio.invoices.utils.ResourcePathResolver;
+import static org.folio.ApiTestSuite.mockPort;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.util.HashMap;
+import java.util.Map;
+
 import org.folio.rest.RestConstants;
 import org.folio.rest.acq.model.orders.CompositePoLine;
 import org.folio.rest.core.RestClient;
@@ -11,18 +15,14 @@ import org.folio.services.exchange.ExchangeRateProviderResolver;
 import org.folio.services.finance.expence.ExpenseClassRetrieveService;
 import org.folio.services.validator.VoucherValidator;
 import org.folio.services.voucher.VoucherCommandService;
+import org.folio.services.voucher.VoucherNumberService;
 import org.folio.services.voucher.VoucherRetrieveService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-import java.util.HashMap;
-import java.util.Map;
-
-import static org.folio.ApiTestSuite.mockPort;
-import static org.folio.invoices.utils.ResourcePathResolver.*;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import io.vertx.core.Context;
+import io.vertx.core.Vertx;
 
 @DisplayName("InvoiceHelper should :")
 class InvoiceHelperTest extends ApiTestBase {
@@ -33,14 +33,14 @@ class InvoiceHelperTest extends ApiTestBase {
   private Context context;
   private Map<String, String> okapiHeaders;
 
-  ExpenseClassRetrieveService expenseClassRetrieveService = new ExpenseClassRetrieveService(new RestClient(ResourcePathResolver.resourcesPath(EXPENSE_CLASSES_URL)));
-  RestClient restClientVoucherStorage = new RestClient(ResourcePathResolver.resourcesPath(VOUCHERS_STORAGE));
-  VoucherRetrieveService voucherRetrieveService = new VoucherRetrieveService(restClientVoucherStorage);
-  TenantConfigurationService tenantConfigurationService = new TenantConfigurationService(new RestClient(ResourcePathResolver.resourcesPath(TENANT_CONFIGURATION_ENTRIES)));
+  RestClient restClient = new RestClient();
+  ExpenseClassRetrieveService expenseClassRetrieveService = new ExpenseClassRetrieveService(restClient);
+  VoucherRetrieveService voucherRetrieveService = new VoucherRetrieveService(restClient);
+  TenantConfigurationService tenantConfigurationService = new TenantConfigurationService(restClient);
 
-  VoucherCommandService voucherCommandService = new VoucherCommandService(restClientVoucherStorage,
-    new RestClient(ResourcePathResolver.resourcesPath(VOUCHER_NUMBER_STORAGE)),
-    voucherRetrieveService, new VoucherValidator(), tenantConfigurationService);
+  VoucherCommandService voucherCommandService = new VoucherCommandService(restClient,
+                                                                          new VoucherNumberService(restClient),
+                                                                          voucherRetrieveService, new VoucherValidator(), tenantConfigurationService);
 
   @BeforeEach
   public void setUp() {
