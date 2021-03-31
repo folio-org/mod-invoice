@@ -68,7 +68,7 @@ public class BaseTransactionService {
   }
 
   public CompletableFuture<Transaction> createTransaction(Transaction transaction, RequestContext requestContext) {
-    return Optional.ofNullable(getByIdEndpoint(transaction))
+    return Optional.ofNullable(getEndpoint(transaction))
         .map(RequestEntry::new)
         .map(requestEntry -> restClient.post(requestEntry, transaction, requestContext, Transaction.class))
         .orElseGet(this::unsupportedOperation);

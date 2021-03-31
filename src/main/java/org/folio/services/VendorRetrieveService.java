@@ -15,6 +15,8 @@ import java.util.concurrent.CompletionStage;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.folio.rest.acq.model.Organization;
 import org.folio.rest.acq.model.OrganizationCollection;
 import org.folio.rest.core.RestClient;
@@ -23,6 +25,8 @@ import org.folio.rest.core.models.RequestEntry;
 import org.folio.rest.jaxrs.model.Invoice;
 
 public class VendorRetrieveService {
+
+  private static final Logger logger = LogManager.getLogger();
 
   private static final String ORGANIZATIONS_STORAGE_VENDORS = "/organizations-storage/organizations";
   private static final String ORGANIZATIONS_STORAGE_VENDOR = ORGANIZATIONS_STORAGE_VENDORS + "/{id}";
@@ -87,6 +91,10 @@ public class VendorRetrieveService {
   public CompletionStage<Organization> getVendor(String vendorId, RequestContext requestContext) {
     RequestEntry requestEntry = new RequestEntry(ORGANIZATIONS_STORAGE_VENDOR)
         .withId(vendorId);
-    return restClient.get(requestEntry, requestContext, Organization.class);
+    return restClient.get(requestEntry, requestContext, Organization.class)
+        .exceptionally(throwable -> {
+          logger.error("Failed to retrieve organization with id {}", vendorId, throwable);
+          return null;
+        });
   }
 }

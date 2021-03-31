@@ -1,5 +1,7 @@
 package org.folio.rest.impl;
 
+import java.util.Collection;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
 import org.folio.invoices.rest.exceptions.HttpException;
@@ -28,12 +30,18 @@ public class VoucherService {
 
   public CompletableFuture<Voucher> getVoucher(String id, RequestContext requestContext) {
     return voucherRetrieveService.getVoucherById(id, requestContext)
-        .thenCompose(voucher -> vendorRetrieveService.getVendor(voucher.getVendorId(), requestContext)
-        .thenApply(organization -> populateVendorAddress(voucher, organization)));
+        .thenCompose(voucher -> Optional.ofNullable(voucher.getVendorId())
+            .map(vendorId ->  vendorRetrieveService.getVendor(voucher.getVendorId(), requestContext)
+                .thenApply(organization -> populateVendorAddress(voucher, organization)))
+            .orElseGet(() -> CompletableFuture.completedFuture(voucher)));
   }
 
   private Voucher populateVendorAddress(Voucher voucher, Organization organization) {
-    organization.getAddresses().stream().filter(Address::getIsPrimary)
+    Optional.ofNullable(organization)
+        .map(Organization::getAddresses)
+        .stream()
+        .flatMap(Collection::stream)
+        .filter(Address::getIsPrimary)
         .findFirst()
         .ifPresent(address -> voucher.setVendorAddress(addressToVendorAddress(address)));
     return voucher;
