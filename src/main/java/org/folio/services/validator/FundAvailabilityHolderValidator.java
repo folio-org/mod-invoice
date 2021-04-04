@@ -55,22 +55,22 @@ public class FundAvailabilityHolderValidator implements HolderValidator {
 
   private MonetaryAmount calculateTotalExpendedAmount(List<InvoiceWorkflowDataHolder> dataHolders) {
     CurrencyUnit currency = Monetary.getCurrency(dataHolders.get(0)
-      .getTenantCurrency());
+      .getFyCurrency());
     return dataHolders.stream()
       .map(holder -> {
         MonetaryAmount newTransactionAmount = Money.of(holder.getNewTransaction()
-          .getAmount(), holder.getTenantCurrency());
+          .getAmount(), holder.getFyCurrency());
 
         MonetaryAmount existingTransactionAmount = Optional.ofNullable(holder.getExistingTransaction())
           .map(transaction -> Money.of(transaction.getAmount(), transaction.getCurrency()))
-          .orElseGet(() -> Money.zero(Monetary.getCurrency(holder.getTenantCurrency())));
+          .orElseGet(() -> Money.zero(Monetary.getCurrency(holder.getFyCurrency())));
 
         return newTransactionAmount.subtract(existingTransactionAmount);
       })
       .reduce(MonetaryFunctions::sum)
       .orElseGet(() -> Money.zero(currency));
   }
-    
+
   private boolean isRemainingAmountExceed(Budget budget, MonetaryAmount newExpendedAmount, MonetaryAmount totalExpendedAmount) {
     // [remaining amount we can expend] = (totalFunding * allowableExpenditure) - unavailable
     // where unavailable = awaitingPayment + encumbered + expenditure
@@ -90,17 +90,17 @@ public class FundAvailabilityHolderValidator implements HolderValidator {
   }
 
   private MonetaryAmount calculateNewExpendedAmount(List<InvoiceWorkflowDataHolder> dataHolders) {
-    CurrencyUnit currency = Monetary.getCurrency(dataHolders.get(0).getTenantCurrency());
+    CurrencyUnit currency = Monetary.getCurrency(dataHolders.get(0).getFyCurrency());
     return dataHolders.stream()
       .map(holder -> {
-          MonetaryAmount newTransactionAmount = Money.of(holder.getNewTransaction().getAmount(), holder.getTenantCurrency());
+          MonetaryAmount newTransactionAmount = Money.of(holder.getNewTransaction().getAmount(), holder.getFyCurrency());
 
           MonetaryAmount existingTransactionAmount = Optional.ofNullable(holder.getExistingTransaction())
                   .map(transaction -> Money.of(transaction.getAmount(), transaction.getCurrency()))
-                  .orElseGet(() -> Money.zero(Monetary.getCurrency(holder.getTenantCurrency())));
+                  .orElseGet(() -> Money.zero(Monetary.getCurrency(holder.getFyCurrency())));
           MonetaryAmount encumbranceAmount = Optional.ofNullable(holder.getEncumbrance())
                   .map(transaction -> Money.of(transaction.getAmount(), transaction.getCurrency()))
-                  .orElseGet(() -> Money.zero(Monetary.getCurrency(holder.getTenantCurrency())));
+                  .orElseGet(() -> Money.zero(Monetary.getCurrency(holder.getFyCurrency())));
 
           MonetaryAmount transactionAmountDif = newTransactionAmount.subtract(existingTransactionAmount);
           MonetaryAmount newExpendedAmount = transactionAmountDif;
@@ -115,5 +115,5 @@ public class FundAvailabilityHolderValidator implements HolderValidator {
       .reduce(MonetaryFunctions::sum)
       .orElseGet(() -> Money.zero(currency));
   }
-  
+
 }

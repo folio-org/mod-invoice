@@ -7,12 +7,12 @@
       "invoiceLineNumber": "1",
       "invoiceLineStatus": "Open",
       "referenceNumbers": [
-            {
-              "refNumber": "123456-78",
-              "refNumberType": "Vendor title number",
-              "vendorDetailsSource": "InvoiceLine"
-            }
-          ],
+        {
+          "refNumber": "123456-78",
+          "refNumberType": "Vendor title number",
+          "vendorDetailsSource": "InvoiceLine"
+        }
+      ],
       "productId": "9780764354113",
       "productIdType": "8261054f-be78-422d-bd51-4ed9f33c3422",
       "comment": "Sample invoice line",
@@ -28,7 +28,7 @@
           "code": "USHIST",
           "encumbrance": "388c0f7b-9fff-451c-b300-6509e443bef5",
           "fundId": "1d1574f1-9196-4a57-8d1f-3b2e4309eb81",
-          "expenseClassId" : "6e6ed3c9-d959-4c91-a436-6076fb373816",
+          "expenseClassId": "6e6ed3c9-d959-4c91-a436-6076fb373816",
           "distributionType": "percentage",
           "value": 50
         },
@@ -50,8 +50,8 @@
           "relationToTotal": "In addition to"
         }
       ],
-      "adjustmentsTotal" : 0.22,
-      "total" : 2.00,
+      "adjustmentsTotal": 0.22,
+      "total": 2.00,
       "metadata": {
         "createdDate": "2018-07-19T00:00:00.000+0000",
         "createdByUserId": "28d1057c-d137-11e8-a8d5-f2801f1b9fd1"
@@ -64,12 +64,12 @@
       "invoiceLineNumber": "2",
       "invoiceLineStatus": "Open",
       "referenceNumbers": [
-            {
-              "refNumber": "123456-78",
-              "refNumberType": "Vendor title number",
-              "vendorDetailsSource": "InvoiceLine"
-            }
-          ],
+        {
+          "refNumber": "123456-78",
+          "refNumberType": "Vendor title number",
+          "vendorDetailsSource": "InvoiceLine"
+        }
+      ],
       "productId": "9780764354113",
       "productIdType": "8261054f-be78-422d-bd51-4ed9f33c3422",
       "comment": "Sample invoice line",
@@ -99,8 +99,8 @@
           "relationToTotal": "In addition to"
         }
       ],
-      "adjustmentsTotal" : 0.42,
-      "total" : 4.62,
+      "adjustmentsTotal": 0.42,
+      "total": 4.62,
       "metadata": {
         "createdDate": "2018-07-19T11:03:47.000+0000",
         "createdByUserId": "28d1057c-d137-11e8-a8d5-f2801f1b9fd1"
@@ -113,12 +113,12 @@
       "invoiceLineNumber": "3",
       "invoiceLineStatus": "Open",
       "referenceNumbers": [
-            {
-              "refNumber": "123456-78",
-              "refNumberType": "Vendor title number",
-              "vendorDetailsSource": "InvoiceLine"
-            }
-          ],
+        {
+          "refNumber": "123456-78",
+          "refNumberType": "Vendor title number",
+          "vendorDetailsSource": "InvoiceLine"
+        }
+      ],
       "productId": "9780764354113",
       "productIdType": "8261054f-be78-422d-bd51-4ed9f33c3422",
       "comment": "Sample invoice line",
@@ -155,8 +155,8 @@
           "relationToTotal": "In addition to"
         }
       ],
-      "adjustmentsTotal" : 1.1,
-      "total" : 5.3,
+      "adjustmentsTotal": 1.1,
+      "total": 5.3,
       "metadata": {
         "createdDate": "2018-07-19T11:03:47.000+0000",
         "createdByUserId": "28d1057c-d137-11e8-a8d5-f2801f1b9fd1"
@@ -169,12 +169,12 @@
       "invoiceLineNumber": "2",
       "invoiceLineStatus": "Open",
       "referenceNumbers": [
-            {
-              "refNumber": "123456-78",
-              "refNumberType": "Vendor title number",
-              "vendorDetailsSource": "InvoiceLine"
-            }
-          ],
+        {
+          "refNumber": "123456-78",
+          "refNumberType": "Vendor title number",
+          "vendorDetailsSource": "InvoiceLine"
+        }
+      ],
       "productId": "9780764354113",
       "productIdType": "8261054f-be78-422d-bd51-4ed9f33c3422",
       "comment": "Sample invoice line",
@@ -204,8 +204,8 @@
           "relationToTotal": "In addition to"
         }
       ],
-      "adjustmentsTotal" : 0.42,
-      "total" : 4.62,
+      "adjustmentsTotal": 0.42,
+      "total": 4.62,
       "metadata": {
         "createdDate": "2018-07-19T11:03:47.000+0000",
         "createdByUserId": "28d1057c-d137-11e8-a8d5-f2801f1b9fd1"
@@ -237,12 +237,12 @@
       "invoiceLineNumber": "1",
       "invoiceLineStatus": "Open",
       "referenceNumbers": [
-            {
-              "refNumber": "123456-78",
-              "refNumberType": "Vendor title number",
-              "vendorDetailsSource": "InvoiceLine"
-            }
-          ],
+        {
+          "refNumber": "123456-78",
+          "refNumberType": "Vendor title number",
+          "vendorDetailsSource": "InvoiceLine"
+        }
+      ],
       "productId": "9780764354113",
       "productIdType": "8261054f-be78-422d-bd51-4ed9f33c3422",
       "comment": "Sample invoice line",
@@ -258,12 +258,12 @@
           "code": "USHIST",
           "encumbrance": "1c8fc9f4-d2cc-4bd1-aa9a-cb02291cbe65",
           "fundId": "1d1574f1-9196-4a57-8d1f-3b2e4309eb81",
-          "expenseClassId" : "6e6ed3c9-d959-4c91-a436-6076fb373816",
+          "expenseClassId": "6e6ed3c9-d959-4c91-a436-6076fb373816",
           "distributionType": "percentage",
           "value": 100
         }
       ],
-      "total" : 27.04,
+      "total": 27.04,
       "metadata": {
         "createdDate": "2018-07-19T00:00:00.000+0000",
         "createdByUserId": "28d1057c-d137-11e8-a8d5-f2801f1b9fd1"

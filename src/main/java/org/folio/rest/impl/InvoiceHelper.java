@@ -120,8 +120,8 @@ public class InvoiceHelper extends AbstractHelper {
   private final InvoiceLineHelper invoiceLineHelper;
   private final VoucherLineHelper voucherLineHelper;
   private final ProtectionHelper protectionHelper;
-  private AdjustmentsService adjustmentsService;
-  private InvoiceValidator validator;
+  private final AdjustmentsService adjustmentsService;
+  private final InvoiceValidator validator;
   @Autowired
   private BudgetExpenseClassService budgetExpenseClassService;
   @Autowired
@@ -1046,8 +1046,9 @@ public class InvoiceHelper extends AbstractHelper {
     return fundDistributions.stream().anyMatch(fund -> Objects.isNull(fund.getEncumbrance()));
   }
 
-  private void updateFundDistributionsWithEncumbrances(List<InvoiceLine> invoiceLines
-                              , Map<Pair<String, String>, List<Transaction>> encumbrByPoLineAndFundIdMap) {
+  private void updateFundDistributionsWithEncumbrances(List<InvoiceLine> invoiceLines,
+      Map<Pair<String, String>, List<Transaction>> encumbrByPoLineAndFundIdMap) {
+
     List<Map<Pair<String, String>, List<FundDistribution>>> fundDistrByPoLineAndFundIdMap = invoiceLines.stream()
       .map(line -> line.getFundDistributions().stream().collect(groupingBy(fund -> Pair.of(line.getPoLineId(), fund.getFundId()))))
       .collect(toList());
