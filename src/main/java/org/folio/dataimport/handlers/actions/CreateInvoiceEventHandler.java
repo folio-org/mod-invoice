@@ -24,6 +24,7 @@ import org.folio.rest.acq.model.orders.PoLine;
 import org.folio.rest.acq.model.orders.PoLineCollection;
 import org.folio.rest.core.RestClient;
 import org.folio.rest.core.models.RequestContext;
+import org.folio.rest.core.models.RequestEntry;
 import org.folio.rest.impl.InvoiceHelper;
 import org.folio.rest.impl.InvoiceLineHelper;
 import org.folio.rest.jaxrs.model.Invoice;
@@ -47,6 +48,8 @@ import static org.apache.commons.lang3.StringUtils.isBlank;
 import static org.folio.ActionProfile.Action.CREATE;
 import static org.folio.ActionProfile.FolioRecord.INVOICE;
 import static org.folio.DataImportEventTypes.DI_INVOICE_CREATED;
+import static org.folio.invoices.utils.ResourcePathResolver.ORDER_LINES;
+import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
 import static org.folio.rest.jaxrs.model.EntityType.EDIFACT_INVOICE;
 import static org.folio.rest.jaxrs.model.InvoiceLine.InvoiceLineStatus.OPEN;
 import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.ACTION_PROFILE;
@@ -74,10 +77,10 @@ public class CreateInvoiceEventHandler implements EventHandler {
   private static final Pattern SEGMENT_QUERY_PATTERN = Pattern.compile("([A-Z]{3}((\\+|<)\\w*)(\\2*\\w*)*(\\?\\w+)?\\[[1-9](-[1-9])?\\])");
   private static final String DEFAULT_LANG = "en";
 
-  private final RestClient orderLinesRestClient;
+  private final RestClient restClient;
 
-  public CreateInvoiceEventHandler(RestClient orderLinesRestClient) {
-    this.orderLinesRestClient = orderLinesRestClient;
+  public CreateInvoiceEventHandler(RestClient restClient) {
+    this.restClient = restClient;
   }
 
   @Override
@@ -225,7 +228,11 @@ public class CreateInvoiceEventHandler implements EventHandler {
     }
 
     String preparedCql = prepareQueryGetPoLinesByNumber(List.copyOf(invoiceLineNoToPoLineNo.values()));
-    return orderLinesRestClient.get(preparedCql, 0, Integer.MAX_VALUE, new RequestContext(Vertx.currentContext(), okapiHeaders), PoLineCollection.class)
+    RequestEntry requestEntry = new RequestEntry(resourcesPath(ORDER_LINES))
+        .withQuery(preparedCql)
+        .withOffset(0)
+        .withLimit(Integer.MAX_VALUE);
+    return restClient.get(requestEntry, new RequestContext(Vertx.currentContext(), okapiHeaders), PoLineCollection.class)
       .thenApply(poLineCollection -> poLineCollection.getPoLines().stream().collect(Collectors.toMap(PoLine::getPoLineNumber, poLine -> poLine)))
       .thenAccept(poLineNumberToPoLine -> invoiceLineNoToPoLineNo
         .forEach((key, value) -> poLineNumberToPoLine.computeIfPresent(value, (polNo, poLine) -> invoiceLineNoToPoLine.put(key, poLine))))
@@ -240,7 +247,12 @@ public class CreateInvoiceEventHandler implements EventHandler {
     Map<Integer, CompletableFuture<PoLineCollection>> poLinesFutures = new HashMap<>();
     invoiceLineNoToRefNumbers.forEach((invoiceLineNumber, refNumberList) -> {
       String cqlGetPoLinesByRefNo = prepareQueryGetPoLinesByRefNumber(refNumberList);
-      poLinesFutures.put(invoiceLineNumber, orderLinesRestClient.get(cqlGetPoLinesByRefNo, 0, Integer.MAX_VALUE, new RequestContext(Vertx.currentContext(), okapiHeaders), PoLineCollection.class));
+      RequestEntry requestEntry = new RequestEntry(resourcesPath(ORDER_LINES))
+          .withQuery(cqlGetPoLinesByRefNo)
+          .withOffset(0)
+          .withLimit(Integer.MAX_VALUE);
+      poLinesFutures.put(invoiceLineNumber, restClient
+          .get(requestEntry, new RequestContext(Vertx.currentContext(), okapiHeaders), PoLineCollection.class));
     });
 
     return CompletableFuture.allOf(poLinesFutures.values().toArray(new CompletableFuture[0]))

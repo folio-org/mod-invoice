@@ -225,7 +225,8 @@
           "permissionsRequired": ["voucher.vouchers.item.get"],
           "modulePermissions": [
             "voucher-storage.vouchers.item.get",
-            "finance.exchange-rate.item.get"
+            "finance.exchange-rate.item.get",
+            "organizations-storage.organizations.item.get"
           ]
         },
         {
