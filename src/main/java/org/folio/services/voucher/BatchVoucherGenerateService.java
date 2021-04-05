@@ -12,7 +12,9 @@ import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
 import io.vertx.core.Vertx;
+import org.folio.converters.AddressConverter;
 import org.folio.exceptions.BatchVoucherGenerationException;
+import org.folio.rest.acq.model.Address;
 import org.folio.rest.acq.model.FundDistribution;
 import org.folio.rest.acq.model.Organization;
 import org.folio.rest.acq.model.VoucherLine;
@@ -44,6 +46,8 @@ public class BatchVoucherGenerateService {
   private final VoucherLinesRetrieveService voucherLinesRetrieveService;
   @Autowired
   private VendorRetrieveService vendorRetrieveService;
+  @Autowired
+  private AddressConverter addressConverter;
 
   public BatchVoucherGenerateService(Map<String, String> okapiHeaders, Context ctx, String lang) {
     SpringContextUtil.autowireDependencies(this, Vertx.currentContext());
@@ -128,6 +132,14 @@ public class BatchVoucherGenerateService {
     Organization organization = vendorsMap.get(invoice.getVendorId());
     batchedVoucher.setInvoiceNote(invoice.getNote());
     batchedVoucher.setVendorName(organization.getName());
+    List<Address> addresses = organization.getAddresses();
+    if (addresses != null && !addresses.isEmpty()) {
+      Address primaryAddress = addresses.stream()
+        .filter(a -> a.getIsPrimary() != null && a.getIsPrimary())
+        .findFirst()
+        .orElse(addresses.get(0));
+      batchedVoucher.setVendorAddress(addressConverter.convert(primaryAddress));
+    }
     if (Objects.nonNull(voucher.getDisbursementNumber())) {
       batchedVoucher.setDisbursementNumber(voucher.getDisbursementNumber());
       batchedVoucher.setDisbursementDate(voucher.getDisbursementDate());

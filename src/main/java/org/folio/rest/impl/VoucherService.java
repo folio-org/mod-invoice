@@ -4,22 +4,25 @@ import java.util.Collection;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
+import org.folio.converters.AddressConverter;
 import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.rest.acq.model.Address;
 import org.folio.rest.acq.model.Organization;
 import org.folio.rest.core.models.RequestContext;
-import org.folio.rest.jaxrs.model.VendorAddress;
 import org.folio.rest.jaxrs.model.Voucher;
 import org.folio.rest.jaxrs.model.VoucherCollection;
 import org.folio.services.VendorRetrieveService;
 import org.folio.services.voucher.VoucherCommandService;
 import org.folio.services.voucher.VoucherRetrieveService;
+import org.springframework.beans.factory.annotation.Autowired;
 
 public class VoucherService {
 
   private final VoucherRetrieveService voucherRetrieveService;
   private final VoucherCommandService voucherCommandService;
   private final VendorRetrieveService vendorRetrieveService;
+  @Autowired
+  private AddressConverter addressConverter;
 
   public VoucherService(VoucherRetrieveService voucherRetrieveService, VoucherCommandService voucherCommandService,
                         VendorRetrieveService vendorRetrieveService) {
@@ -43,18 +46,8 @@ public class VoucherService {
         .flatMap(Collection::stream)
         .filter(Address::getIsPrimary)
         .findFirst()
-        .ifPresent(address -> voucher.setVendorAddress(addressToVendorAddress(address)));
+        .ifPresent(address -> voucher.setVendorAddress(addressConverter.convert(address)));
     return voucher;
-  }
-
-  private VendorAddress addressToVendorAddress(Address address) {
-    return new VendorAddress()
-        .withAddressLine1(address.getAddressLine1())
-        .withAddressLine2(address.getAddressLine2())
-        .withCity(address.getCity())
-        .withStateRegion(address.getStateRegion())
-        .withCountry(address.getCountry())
-        .withZipCode(address.getZipCode());
   }
 
   /**
