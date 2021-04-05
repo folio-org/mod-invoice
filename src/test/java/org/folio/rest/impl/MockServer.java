@@ -404,6 +404,7 @@ public class MockServer {
     router.route(HttpMethod.GET, resourcesPath(BATCH_VOUCHER_EXPORTS_STORAGE)).handler(this::handleGetBatchVoucherExports);
     router.route(HttpMethod.GET, resourceByIdPath(BATCH_VOUCHER_EXPORTS_STORAGE)).handler(this::handleGetBatchVoucherExportsById);
     router.get("/organizations-storage/organizations").handler(this::handleGetAccessProviders);
+    router.get("/organizations-storage/organizations/:id").handler(this::handleGetVendorById);
     router.route(HttpMethod.GET, resourceByIdPath(EXPENSE_CLASSES_URL)).handler(this::handleExpenseClassesById);
     router.route(HttpMethod.GET, resourcesPath(EXPENSE_CLASSES_URL)).handler(this::handleExpenseClasses);
     router.route(HttpMethod.GET, resourcesPath(BUDGET_EXPENSE_CLASSES)).handler(this::handleGetBudgetExpenseClass);
@@ -1865,6 +1866,20 @@ public class MockServer {
       } else {
         serverResponse(ctx, HttpStatus.HTTP_NOT_FOUND.toInt(), APPLICATION_JSON, "vendor not found");
       }
+    }
+  }
+
+  private void handleGetVendorById(RoutingContext ctx) {
+    logger.info("handleGetVendorById got: " + ctx.request().path());
+    JsonObject body;
+
+    try {
+      body = new JsonObject(ApiTestBase.getMockData(ORGANIZATIONS_MOCK_DATA_PATH + "vendor_with_address.json"));
+      serverResponse(ctx, HttpStatus.HTTP_OK.toInt(), APPLICATION_JSON, body.encodePrettily());
+    } catch(IOException e) {
+      ctx.response()
+          .setStatusCode(HttpStatus.HTTP_NOT_FOUND.toInt())
+          .end();
     }
   }
 

@@ -12,16 +12,19 @@ import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.rest.acq.model.finance.FiscalYear;
 import org.folio.rest.core.RestClient;
 import org.folio.rest.core.models.RequestContext;
+import org.folio.rest.core.models.RequestEntry;
 import org.folio.rest.jaxrs.model.Parameter;
 import org.folio.services.finance.FundService;
 
 public class CurrentFiscalYearService {
 
-  private final RestClient currentFiscalYearRestClient;
+  private static final String CURRENT_FISCAL_YEAR_ENDPOINT = "/finance/ledgers/{id}/current-fiscal-year";
+
+  private final RestClient restClient;
   private final FundService fundService;
 
-  public CurrentFiscalYearService(RestClient currentFiscalYearRestClient, FundService fundService) {
-    this.currentFiscalYearRestClient = currentFiscalYearRestClient;
+  public CurrentFiscalYearService(RestClient restClient, FundService fundService) {
+    this.restClient = restClient;
     this.fundService = fundService;
   }
 
@@ -31,7 +34,9 @@ public class CurrentFiscalYearService {
   }
 
   public CompletableFuture<FiscalYear> getCurrentFiscalYear(String ledgerId, RequestContext requestContext) {
-    return currentFiscalYearRestClient.getById(ledgerId, requestContext, FiscalYear.class)
+    RequestEntry requestEntry = new RequestEntry(CURRENT_FISCAL_YEAR_ENDPOINT)
+        .withId(ledgerId);
+    return restClient.get(requestEntry, requestContext, FiscalYear.class)
       .exceptionally(t -> {
         Throwable cause = t.getCause() == null ? t : t.getCause();
         if (isNotFound(cause)) {

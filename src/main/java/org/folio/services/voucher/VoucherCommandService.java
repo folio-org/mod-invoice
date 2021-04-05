@@ -6,7 +6,7 @@ import static org.apache.commons.lang3.StringUtils.isAlpha;
 import static org.folio.invoices.utils.ErrorCodes.VOUCHER_NOT_FOUND;
 import static org.folio.invoices.utils.ErrorCodes.VOUCHER_NUMBER_PREFIX_NOT_ALPHA;
 import static org.folio.invoices.utils.ErrorCodes.VOUCHER_UPDATE_FAILURE;
-import static org.folio.invoices.utils.ResourcePathResolver.VOUCHER_NUMBER_STORAGE;
+import static org.folio.invoices.utils.ResourcePathResolver.VOUCHERS_STORAGE;
 import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
 import static org.folio.rest.impl.AbstractHelper.CONFIG_QUERY;
 import static org.folio.rest.impl.AbstractHelper.INVOICE_CONFIG_MODULE_NAME;
@@ -19,6 +19,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.rest.core.RestClient;
 import org.folio.rest.core.models.RequestContext;
+import org.folio.rest.core.models.RequestEntry;
 import org.folio.rest.jaxrs.model.Config;
 import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.jaxrs.model.SequenceNumber;
@@ -29,22 +30,26 @@ import org.folio.services.validator.VoucherValidator;
 import io.vertx.core.json.JsonObject;
 
 public class VoucherCommandService {
+
+  private static final String VOUCHER_ENDPOINT = resourcesPath(VOUCHERS_STORAGE);
+  private static final String VOUCHER_BY_ID_ENDPOINT = resourcesPath(VOUCHERS_STORAGE) + "/{id}";
+
   public static final String VOUCHER_NUMBER_CONFIG_NAME = "voucherNumber";
   public static final String VOUCHER_NUMBER_PREFIX_CONFIG = "voucherNumberPrefix";
   public static final String VOUCHER_NUMBER_PREFIX_CONFIG_QUERY = String.format(CONFIG_QUERY, INVOICE_CONFIG_MODULE_NAME, VOUCHER_NUMBER_CONFIG_NAME);
 
 
-  private final RestClient voucherStorageRestClient;
-  private final RestClient voucherNumberStorageRestClient;
+  private final RestClient restClient;
+  private final VoucherNumberService voucherNumberService;
   private final VoucherRetrieveService voucherRetrieveService;
   private final VoucherValidator voucherValidator;
   private final TenantConfigurationService tenantConfigurationService;
 
-  public VoucherCommandService(RestClient voucherStorageRestClient, RestClient voucherNumberStorageRestClient,
+  public VoucherCommandService(RestClient restClient, VoucherNumberService voucherNumberService,
                                VoucherRetrieveService voucherRetrieveService,
                                VoucherValidator voucherValidator, TenantConfigurationService tenantConfigurationService) {
-    this.voucherStorageRestClient = voucherStorageRestClient;
-    this.voucherNumberStorageRestClient = voucherNumberStorageRestClient;
+    this.restClient = restClient;
+    this.voucherNumberService = voucherNumberService;
     this.voucherRetrieveService = voucherRetrieveService;
     this.voucherValidator = voucherValidator;
     this.tenantConfigurationService = tenantConfigurationService;
@@ -59,7 +64,8 @@ public class VoucherCommandService {
 
 
   public CompletableFuture<Void> updateVoucher(String voucherId, Voucher voucher, RequestContext requestContext) {
-    return voucherStorageRestClient.put(voucherId, voucher, requestContext);
+    RequestEntry requestEntry = new RequestEntry(VOUCHER_BY_ID_ENDPOINT).withId(voucherId);
+    return restClient.put(requestEntry, voucher, requestContext);
   }
 
   /**
@@ -75,7 +81,8 @@ public class VoucherCommandService {
   }
 
   public CompletableFuture<Voucher> createVoucher(Voucher voucher, RequestContext requestContext) {
-    return voucherStorageRestClient.post(voucher, requestContext, Voucher.class)
+    RequestEntry requestEntry = new RequestEntry(VOUCHER_ENDPOINT);
+    return restClient.post(requestEntry, voucher, requestContext, Voucher.class)
                                    .thenApply(voucherP -> voucher.withId(voucherP.getId()));
   }
 
@@ -93,7 +100,7 @@ public class VoucherCommandService {
   }
 
   public CompletableFuture<String> generateVoucherNumber(RequestContext requestContext) {
-    return voucherNumberStorageRestClient.get(resourcesPath(VOUCHER_NUMBER_STORAGE), requestContext, SequenceNumber.class)
+    return voucherNumberService.getNextNumber(requestContext)
                                          .thenApply(SequenceNumber::getSequenceNumber);
   }
 

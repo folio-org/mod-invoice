@@ -14,7 +14,6 @@ import static org.folio.invoices.utils.ErrorCodes.ACCOUNTING_CODE_NOT_PRESENT;
 import static org.folio.invoices.utils.ErrorCodes.ADJUSTMENT_FUND_DISTRIBUTIONS_NOT_PRESENT;
 import static org.folio.invoices.utils.ErrorCodes.ADJUSTMENT_FUND_DISTRIBUTIONS_SUMMARY_MISMATCH;
 import static org.folio.invoices.utils.ErrorCodes.BUDGET_NOT_FOUND;
-import static org.folio.invoices.utils.ErrorCodes.CURRENT_FISCAL_YEAR_NOT_FOUND;
 import static org.folio.invoices.utils.ErrorCodes.EXTERNAL_ACCOUNT_NUMBER_IS_MISSING;
 import static org.folio.invoices.utils.ErrorCodes.FUNDS_NOT_FOUND;
 import static org.folio.invoices.utils.ErrorCodes.FUND_CANNOT_BE_PAID;
@@ -38,7 +37,6 @@ import static org.folio.invoices.utils.HelperUtils.convertToDoubleWithRounding;
 import static org.folio.invoices.utils.HelperUtils.getAdjustmentFundDistributionAmount;
 import static org.folio.invoices.utils.HelperUtils.getFundDistributionAmount;
 import static org.folio.invoices.utils.HelperUtils.getNoAcqUnitCQL;
-import static org.folio.invoices.utils.ResourcePathResolver.AWAITING_PAYMENTS;
 import static org.folio.invoices.utils.ResourcePathResolver.BUDGETS;
 import static org.folio.invoices.utils.ResourcePathResolver.FINANCE_CREDITS;
 import static org.folio.invoices.utils.ResourcePathResolver.FINANCE_PAYMENTS;
@@ -55,6 +53,7 @@ import static org.folio.invoices.utils.ResourcePathResolver.VOUCHERS_STORAGE;
 import static org.folio.invoices.utils.ResourcePathResolver.VOUCHER_LINES;
 import static org.folio.invoices.utils.ResourcePathResolver.VOUCHER_NUMBER_STORAGE;
 import static org.folio.rest.RestConstants.MAX_IDS_FOR_GET_RQ;
+import static org.folio.rest.impl.AbstractHelper.DEFAULT_SYSTEM_CURRENCY;
 import static org.folio.rest.impl.InvoiceLinesApiTest.INVOICE_LINES_LIST_PATH;
 import static org.folio.rest.impl.InvoiceLinesApiTest.INVOICE_LINE_WITH_APPROVED_INVOICE_SAMPLE_PATH;
 import static org.folio.rest.impl.InvoicesImpl.PROTECTED_AND_MODIFIED_FIELDS;
@@ -80,7 +79,6 @@ import static org.folio.rest.impl.MockServer.getQueryParams;
 import static org.folio.rest.impl.MockServer.getRqRsEntries;
 import static org.folio.rest.impl.MockServer.serverRqRs;
 import static org.folio.rest.impl.ProtectionHelper.ACQUISITIONS_UNIT_IDS;
-import static org.folio.rest.impl.VoucherHelper.DEFAULT_SYSTEM_CURRENCY;
 import static org.folio.rest.impl.VouchersApiTest.VOUCHERS_LIST_PATH;
 import static org.folio.rest.jaxrs.model.FundDistribution.DistributionType.AMOUNT;
 import static org.folio.services.exchange.ExchangeRateProviderResolver.RATE_KEY;
@@ -131,6 +129,8 @@ import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.reflect.FieldUtils;
 import org.apache.http.HttpStatus;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.folio.invoices.utils.InvoiceProtectedFields;
 import org.folio.rest.acq.model.VoucherLineCollection;
 import org.folio.rest.acq.model.finance.Budget;
@@ -171,8 +171,6 @@ import io.restassured.response.Response;
 import io.vertx.core.Vertx;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.core.json.JsonObject;
-import org.apache.logging.log4j.Logger;
-import org.apache.logging.log4j.LogManager;
 
 public class InvoicesApiTest extends ApiTestBase {
 
@@ -1418,11 +1416,9 @@ public class InvoicesApiTest extends ApiTestBase {
     verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, headers, "", 204);
 
     List<JsonObject> invoiceSummariesCreated = serverRqRs.get(INVOICE_TRANSACTION_SUMMARIES, HttpMethod.POST);
-    List<JsonObject> awaitingPaymentsCreated = serverRqRs.get(AWAITING_PAYMENTS, HttpMethod.POST);
     List<JsonObject> pendingPaymentsCreated = serverRqRs.get(FINANCE_PENDING_PAYMENTS, HttpMethod.POST);
 
     assertThat(invoiceSummariesCreated, hasSize(1));
-    assertThat(awaitingPaymentsCreated, nullValue());
 
     InvoiceTransactionSummary transactionSummary = invoiceSummariesCreated.get(0).mapTo(InvoiceTransactionSummary.class);
 
