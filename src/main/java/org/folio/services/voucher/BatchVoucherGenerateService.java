@@ -58,12 +58,14 @@ public class BatchVoucherGenerateService {
   public BatchVoucherGenerateService(Map<String, String> okapiHeaders, Context ctx, String lang,
                                      VendorRetrieveService vendorRetrieveService,
                                      InvoiceRetrieveService invoiceRetrieveService,
-                                     VoucherService voucherService) {
+                                     VoucherService voucherService,
+                                     AddressConverter addressConverter) {
     voucherLinesRetrieveService = new VoucherLinesRetrieveService(okapiHeaders, ctx, lang);
     batchGroupHelper = new BatchGroupHelper(okapiHeaders, ctx, lang);
     this.vendorRetrieveService = vendorRetrieveService;
     this.voucherService = voucherService;
-    this. invoiceRetrieveService = invoiceRetrieveService;
+    this.invoiceRetrieveService = invoiceRetrieveService;
+    this.addressConverter = addressConverter;
   }
 
   public CompletableFuture<BatchVoucher> generateBatchVoucher(BatchVoucherExport batchVoucherExport, RequestContext requestContext) {
