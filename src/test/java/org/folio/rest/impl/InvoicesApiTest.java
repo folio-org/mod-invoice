@@ -328,8 +328,8 @@ public class InvoicesApiTest extends ApiTestBase {
 
     /* The invoice has 2 not prorated adjustments, 3 related invoice lines and each one has adjustment */
     assertThat(resp.getAdjustmentsTotal(), equalTo(7.17d));
-    assertThat(resp.getSubTotal(), equalTo(10.6d));
-    assertThat(resp.getTotal(), equalTo(17.77d));
+    assertThat(resp.getSubTotal(), equalTo(10.62d));
+    assertThat(resp.getTotal(), equalTo(17.79d));
 
     // Verify that expected number of external calls made
     assertThat(getInvoiceRetrievals(), hasSize(1));
@@ -530,13 +530,28 @@ public class InvoicesApiTest extends ApiTestBase {
       .forEach(invoiceLine -> {
         invoiceLine.setId(UUID.randomUUID().toString());
         invoiceLine.setInvoiceId(id);
-        double fundDistrValue = BigDecimal.valueOf(invoiceLine.getSubTotal())
-          .add(BigDecimal.valueOf(invoiceLine.getAdjustmentsTotal()))
-          .divide(BigDecimal.valueOf(invoiceLine.getFundDistributions().size()), 2, RoundingMode.HALF_EVEN).doubleValue();
+
+        // prepare fund distributions
+        BigDecimal total = BigDecimal.valueOf(invoiceLine.getSubTotal())
+          .add(BigDecimal.valueOf(invoiceLine.getAdjustmentsTotal()));
+        double fundDistrValue = total
+          .divide(BigDecimal.valueOf(invoiceLine.getFundDistributions().size()), 2, RoundingMode.HALF_EVEN)
+          .doubleValue();
         invoiceLine.getFundDistributions()
           .forEach(fundDistribution -> fundDistribution.withDistributionType(AMOUNT)
             .withCode(null)
             .setValue(fundDistrValue));
+        var invoiceLineSum = invoiceLine.getFundDistributions()
+          .stream()
+          .map(FundDistribution::getValue)
+          .map(BigDecimal::valueOf)
+          .reduce(BigDecimal::add)
+          .get();
+
+        var reminder = total.subtract(invoiceLineSum);
+        var fd1Value = BigDecimal.valueOf(invoiceLine.getFundDistributions().get(0).getValue());
+        invoiceLine.getFundDistributions().get(0).setValue(fd1Value.add(reminder).doubleValue());
+
         addMockEntry(INVOICE_LINES, JsonObject.mapFrom(invoiceLine));
       });
 
