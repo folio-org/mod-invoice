@@ -31,10 +31,10 @@ public class DataImportKafkaHandler implements AsyncRecordHandler<String, String
   private final Logger LOGGER = LogManager.getLogger(DataImportKafkaHandler.class);
 
   @Autowired
-  public DataImportKafkaHandler(@Qualifier("orderLinesRestClient") RestClient orderLinesRestClient) {
+  public DataImportKafkaHandler(RestClient restClient) {
     MappingManager.registerReaderFactory(new EdifactReaderFactory());
     MappingManager.registerWriterFactory(new InvoiceWriterFactory());
-    EventManager.registerEventHandler(new CreateInvoiceEventHandler(orderLinesRestClient));
+    EventManager.registerEventHandler(new CreateInvoiceEventHandler(restClient));
   }
 
   @Override

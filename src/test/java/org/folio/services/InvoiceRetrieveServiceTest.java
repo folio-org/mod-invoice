@@ -49,7 +49,7 @@ public class InvoiceRetrieveServiceTest extends ApiTestBase {
   @Test
   public void positiveGetInvoicesByChunksTest() throws IOException, ExecutionException, InterruptedException {
 
-    InvoiceService invoiceService = new BaseInvoiceService(new RestClient(ResourcePathResolver.resourcesPath(INVOICES)));
+    InvoiceService invoiceService = new BaseInvoiceService(new RestClient());
     InvoiceRetrieveService service = new InvoiceRetrieveService(invoiceService);
     JsonObject vouchersList = new JsonObject(getMockData(VOUCHERS_LIST_PATH));
     List<Voucher> vouchers = vouchersList.getJsonArray("vouchers").stream()
@@ -64,7 +64,7 @@ public class InvoiceRetrieveServiceTest extends ApiTestBase {
 
   @Test
   public void positiveGetInvoiceMapTest() throws IOException, ExecutionException, InterruptedException {
-        InvoiceService invoiceService = new BaseInvoiceService(new RestClient(ResourcePathResolver.resourcesPath(INVOICES)));
+        InvoiceService invoiceService = new BaseInvoiceService(new RestClient());
     InvoiceRetrieveService service = new InvoiceRetrieveService(invoiceService);
     JsonObject vouchersList = new JsonObject(getMockData(VOUCHERS_LIST_PATH));
     List<Voucher> vouchers = vouchersList.getJsonArray("vouchers") .stream()

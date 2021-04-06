@@ -26,9 +26,9 @@ import javax.ws.rs.core.Response;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.folio.completablefuture.FolioVertxCompletableFuture;
 import org.folio.invoices.events.handlers.MessageAddress;
 import org.folio.invoices.rest.exceptions.HttpException;
-import org.folio.invoices.utils.HelperUtils;
 import org.folio.rest.core.models.RequestContext;
 import org.folio.rest.jaxrs.model.Config;
 import org.folio.rest.jaxrs.model.Configs;
@@ -38,7 +38,6 @@ import io.vertx.core.Context;
 import io.vertx.core.eventbus.DeliveryOptions;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.core.json.JsonObject;
-import org.folio.completablefuture.FolioVertxCompletableFuture;
 
 public abstract class AbstractHelper {
   protected final Logger logger = LogManager.getLogger(this.getClass());
@@ -53,8 +52,6 @@ public abstract class AbstractHelper {
   public static final String CONFIG_QUERY = "module==%s and configName==%s";
   public static final String SEARCH_PARAMS = "?limit=%s&offset=%s%s&lang=%s";
   public static final String SYSTEM_CONFIG_QUERY = String.format(CONFIG_QUERY, SYSTEM_CONFIG_MODULE_NAME, LOCALE_SETTINGS);
-
-  private static final String EXCEPTION_CALLING_ENDPOINT_MSG = "Exception calling {} {}";
 
   protected final HttpClientInterface httpClient;
   protected final Map<String, String> okapiHeaders;
@@ -164,24 +161,6 @@ public abstract class AbstractHelper {
           return null;
         });
     } catch (Exception e) {
-      future.completeExceptionally(e);
-    }
-    return future;
-  }
-
-  public CompletableFuture<Void> postRecorderWithoutResponseBody(JsonObject recordData, String endpoint) {
-    CompletableFuture<Void> future = new FolioVertxCompletableFuture<>(ctx);
-    try {
-      httpClient.request(HttpMethod.POST, recordData.toBuffer(), endpoint, okapiHeaders)
-        .thenAccept(HelperUtils::verifyResponse)
-        .thenApply(future::complete)
-        .exceptionally(t -> {
-          logger.error(EXCEPTION_CALLING_ENDPOINT_MSG, t, HttpMethod.POST, endpoint);
-          future.completeExceptionally(t);
-          return null;
-        });
-    } catch (Exception e) {
-      logger.error(EXCEPTION_CALLING_ENDPOINT_MSG, e, HttpMethod.POST, endpoint);
       future.completeExceptionally(e);
     }
     return future;

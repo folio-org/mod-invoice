@@ -651,7 +651,7 @@ public class InvoiceHelper extends AbstractHelper {
     voucher.setBatchGroupId(invoice.getBatchGroupId());
     voucher.setEnclosureNeeded(invoice.getEnclosureNeeded());
     voucher.setAccountNo(invoice.getAccountNo());
-
+    voucher.setVendorId(invoice.getVendorId());
     voucher.setType(Voucher.Type.VOUCHER);
     voucher.setStatus(Voucher.Status.AWAITING_PAYMENT);
 
@@ -722,7 +722,7 @@ public class InvoiceHelper extends AbstractHelper {
            List<FundDistribution> fundDistributions = fundDistrs.getValue();
            updateFundDistributionsWithExpenseClassCode(fund, fundDistributions);
            Optional.ofNullable(groupedFundDistribution.get(key)).ifPresentOrElse(
-             (value) -> value.addAll(fundDistributions), () -> groupedFundDistribution.put(key, fundDistributions));
+             value -> value.addAll(fundDistributions), () -> groupedFundDistribution.put(key, fundDistributions));
          }
       }
     }

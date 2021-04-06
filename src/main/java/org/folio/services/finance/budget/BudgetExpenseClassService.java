@@ -3,6 +3,8 @@ package org.folio.services.finance.budget;
 import static org.folio.completablefuture.FolioVertxCompletableFuture.allOf;
 import static org.folio.invoices.utils.ErrorCodes.BUDGET_EXPENSE_CLASS_NOT_FOUND;
 import static org.folio.invoices.utils.ErrorCodes.INACTIVE_EXPENSE_CLASS;
+import static org.folio.invoices.utils.ResourcePathResolver.BUDGET_EXPENSE_CLASSES;
+import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
 
 import java.util.Arrays;
 import java.util.List;
@@ -18,18 +20,21 @@ import org.folio.rest.acq.model.finance.ExpenseClass;
 import org.folio.rest.acq.model.finance.Fund;
 import org.folio.rest.core.RestClient;
 import org.folio.rest.core.models.RequestContext;
+import org.folio.rest.core.models.RequestEntry;
 import org.folio.rest.jaxrs.model.FundDistribution;
 import org.folio.rest.jaxrs.model.Parameter;
 
 public class BudgetExpenseClassService {
 
+  private static final String BUDGET_EXPENSE_CLASS_ENDPOINT = resourcesPath(BUDGET_EXPENSE_CLASSES);
+
   public static final String FUND_CODE = "fundCode";
   public static final String EXPENSE_CLASS_NAME = "expenseClassName";
 
-  private final RestClient budgetExpenseClassRestClient;
+  private final RestClient restClient;
 
-  public BudgetExpenseClassService(RestClient budgetExpenseClassRestClient) {
-    this.budgetExpenseClassRestClient = budgetExpenseClassRestClient;
+  public BudgetExpenseClassService(RestClient restClient) {
+    this.restClient = restClient;
   }
 
   public CompletableFuture<List<InvoiceWorkflowDataHolder>> checkExpenseClasses(List<InvoiceWorkflowDataHolder> holders, RequestContext requestContext) {
@@ -45,7 +50,11 @@ public class BudgetExpenseClassService {
     Budget budget = holder.getBudget();
     FundDistribution fundDistribution = holder.getFundDistribution();
     String query = String.format("budgetId==%s and expenseClassId==%s", budget.getId(), fundDistribution.getExpenseClassId());
-    return budgetExpenseClassRestClient.get(query, 0, 1, requestContext, BudgetExpenseClassCollection.class)
+    RequestEntry requestEntry = new RequestEntry(BUDGET_EXPENSE_CLASS_ENDPOINT)
+        .withQuery(query)
+        .withOffset(0)
+        .withLimit(1);
+    return restClient.get(requestEntry, requestContext, BudgetExpenseClassCollection.class)
       .thenAccept(budgetExpenseClasses -> {
         checkExpenseClassAssignedToBudget(holder, budgetExpenseClasses);
         checkExpenseClassActive(holder, budgetExpenseClasses);
@@ -54,7 +63,7 @@ public class BudgetExpenseClassService {
 
   private void checkExpenseClassAssignedToBudget(InvoiceWorkflowDataHolder holder,
       BudgetExpenseClassCollection budgetExpenseClasses) {
-    if (budgetExpenseClasses.getTotalRecords() == 0) {
+    if (budgetExpenseClasses.getBudgetExpenseClasses().isEmpty()) {
       throw new HttpException(400, BUDGET_EXPENSE_CLASS_NOT_FOUND.toError()
         .withParameters(getFundIdExpenseClassIdParameters(holder)));
     }

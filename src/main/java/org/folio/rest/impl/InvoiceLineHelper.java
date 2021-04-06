@@ -40,6 +40,7 @@ import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.invoices.utils.InvoiceRestrictionsUtil;
 import org.folio.invoices.utils.ProtectedOperationType;
 import org.folio.rest.core.RestClient;
+import org.folio.rest.core.models.RequestEntry;
 import org.folio.rest.jaxrs.model.Adjustment;
 import org.folio.rest.jaxrs.model.Error;
 import org.folio.rest.jaxrs.model.Invoice;
@@ -82,7 +83,7 @@ public class InvoiceLineHelper extends AbstractHelper {
     this.protectionHelper = new ProtectionHelper(httpClient, okapiHeaders, ctx, lang);
     this.adjustmentsService = new AdjustmentsService();
     this.validator = new InvoiceLineValidator();
-    this.restClient = new RestClient(resourcesPath(INVOICE_LINES));
+    this.restClient = new RestClient();
   }
 
   public CompletableFuture<InvoiceLineCollection> getInvoiceLines(int limit, int offset, String query) {
@@ -344,7 +345,8 @@ public class InvoiceLineHelper extends AbstractHelper {
       // First the prorated adjustments should be applied. In case there is any, it might require to update other lines
       .thenCompose(ok -> applyProratedAdjustments(invoiceLine, invoice).thenCompose(affectedLines -> {
         calculateInvoiceLineTotals(invoiceLine, invoice);
-        return restClient.post(invoiceLine, buildRequestContext(), InvoiceLine.class)
+        RequestEntry requestEntry = new RequestEntry(resourcesPath(INVOICE_LINES));
+        return restClient.post(requestEntry, invoiceLine, buildRequestContext(), InvoiceLine.class)
                          .thenApply(createdInvoiceLine -> {
                             updateInvoiceAndAffectedLinesAsync(invoice, affectedLines);
                             return invoiceLine.withId(createdInvoiceLine.getId());
