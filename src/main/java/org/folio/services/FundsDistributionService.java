@@ -38,7 +38,7 @@ public class FundsDistributionService {
         .findFirst()
         .get();
 
-      MonetaryAmount expectedTotal = Money.of(invoiceLine.getSubTotal(), invoiceCurrency)
+      MonetaryAmount expectedTotal = Money.of(invoiceLine.getTotal(), invoiceCurrency)
         .with(conversion)
         .with(getDefaultRounding());
       MonetaryAmount calculatedTotal = invoiceWorkflowDataHolder.stream()

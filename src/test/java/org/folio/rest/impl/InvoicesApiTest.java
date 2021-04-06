@@ -567,24 +567,25 @@ public class InvoicesApiTest extends ApiTestBase {
     logger.info("=== Test transition invoice to Approved with odd number of pennies ===");
 
     InvoiceLine invoiceLine = getMockAsJson(INVOICE_LINES_LIST_PATH).mapTo(InvoiceLineCollection.class).getInvoiceLines().get(0);
-    Invoice reqData = getMockAsJson(OPEN_INVOICE_SAMPLE_PATH).mapTo(Invoice.class);
-    String id = reqData.getId();
+    Invoice invoice = getMockAsJson(OPEN_INVOICE_SAMPLE_PATH).mapTo(Invoice.class);
+    invoice.getAdjustments().clear();
+    invoice.getAdjustments().add(createAdjustment(Prorate.BY_LINE, Type.AMOUNT, 4d));
+    String id = invoice.getId();
 
     invoiceLine.setId(UUID.randomUUID().toString());
     invoiceLine.setInvoiceId(id);
 
     List<FundDistribution> fundDistrList = new ArrayList<>();
-    invoiceLine.setSubTotal(2.23d);
-    invoiceLine.setAdjustments(new ArrayList<>());
+    invoiceLine.setSubTotal(2.21d);
     fundDistrList.add(new FundDistribution().withFundId("1d1574f1-9196-4a57-8d1f-3b2e4309eb81").withDistributionType(PERCENTAGE).withValue(50d));
     fundDistrList.add(new FundDistribution().withFundId("55f48dc6-efa7-4cfe-bc7c-4786efe493e3").withDistributionType(PERCENTAGE).withValue(50d));
 
     invoiceLine.setFundDistributions(fundDistrList);
     addMockEntry(INVOICE_LINES, JsonObject.mapFrom(invoiceLine));
 
-    reqData.setStatus(Invoice.Status.APPROVED);
+    invoice.setStatus(Invoice.Status.APPROVED);
 
-    String jsonBody = JsonObject.mapFrom(reqData).encode();
+    String jsonBody = JsonObject.mapFrom(invoice).encode();
     Headers headers = prepareHeaders(X_OKAPI_URL, X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID);
     verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, headers, "", 204);
 
@@ -599,9 +600,8 @@ public class InvoicesApiTest extends ApiTestBase {
     assertThat(voucherCreated.getVoucherNumber(), equalTo(TEST_PREFIX + VOUCHER_NUMBER_VALUE));
     assertThat(voucherCreated.getSystemCurrency(), equalTo(DEFAULT_SYSTEM_CURRENCY));
     verifyTransitionToApproved(voucherCreated, Collections.singletonList(invoiceLine), updatedInvoice, 2);
-    checkVoucherAcqUnitIdsList(voucherCreated, reqData);
+    checkVoucherAcqUnitIdsList(voucherCreated, invoice);
 
-    List<JsonObject> jsonObjects = serverRqRs.get(FINANCE_TRANSACTIONS, HttpMethod.POST);
     List<Transaction> pendingPayments = serverRqRs.get(FINANCE_PENDING_PAYMENTS, HttpMethod.POST)
       .stream()
       .map(transaction -> transaction.mapTo(Transaction.class))
@@ -612,7 +612,9 @@ public class InvoicesApiTest extends ApiTestBase {
       .get()
       .getNumber()
       .doubleValue();
-    assertEquals(invoiceLine.getSubTotal(), transactionsAmount);
+
+    InvoiceLine invLineWithRecalculatedTotals = serverRqRs.get(INVOICE_LINES, HttpMethod.PUT).get(0).mapTo(InvoiceLine.class);
+    assertEquals(invLineWithRecalculatedTotals.getTotal(), transactionsAmount);
   }
 
   @Test
@@ -1889,6 +1891,40 @@ public class InvoicesApiTest extends ApiTestBase {
     var expectedPaymentDate = invoices.get(0).getMetadata().getUpdatedDate();
 
     assertThat(invoices, everyItem(hasProperty("paymentDate", is(expectedPaymentDate))));
+    var payments = getRqRsEntries(HttpMethod.POST, FINANCE_PAYMENTS).stream()
+      .map(json -> json.mapTo(Transaction.class))
+      .collect(toList());
+
+    invoiceLines.forEach(invLine -> {
+      var sumPaymentsByLine = payments.stream()
+        .filter(tr -> tr.getSourceInvoiceLineId() != null)
+        .filter(tr -> tr.getSourceInvoiceLineId().equals(invLine.getId()))
+        .map(tr -> Money.of(tr.getAmount(), tr.getCurrency()))
+        .reduce(Money::add)
+        .get()
+        .getNumber()
+        .doubleValue();
+
+      assertEquals(invLine.getTotal(), sumPaymentsByLine);
+    });
+
+    invoiceLines.forEach(invLine -> {
+      var sumPaymentsByNonProratedAdjs = payments.stream()
+        .filter(tr -> tr.getSourceInvoiceLineId() == null)
+        .map(tr -> Money.of(tr.getAmount(), tr.getCurrency()))
+        .reduce(Money::add)
+        .get()
+        .getNumber()
+        .doubleValue();
+      var invNonProratedAdjs = invoices.get(0).getAdjustments().stream()
+        .map(adj -> Money.of(adj.getValue(), invoices.get(0).getCurrency()))
+        .reduce(Money::add)
+        .get()
+        .getNumber()
+        .doubleValue();
+      assertEquals(invNonProratedAdjs, sumPaymentsByNonProratedAdjs);
+    });
+
   }
 
   @Test
