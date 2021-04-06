@@ -40,8 +40,7 @@ public class BudgetExpenseClassService {
   public CompletableFuture<List<InvoiceWorkflowDataHolder>> checkExpenseClasses(List<InvoiceWorkflowDataHolder> holders, RequestContext requestContext) {
 
     return allOf(requestContext.getContext(), holders.stream()
-      .filter(holder -> Objects.nonNull(holder.getFundDistribution()
-        .getExpenseClassId()))
+      .filter(holder -> Objects.nonNull(holder.getFundDistribution().getExpenseClassId()))
       .map(holder -> checkExpenseClass(holder, requestContext))
       .toArray(CompletableFuture[]::new)).thenApply(aVoid -> holders);
 

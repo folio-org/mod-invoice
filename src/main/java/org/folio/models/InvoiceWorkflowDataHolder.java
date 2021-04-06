@@ -135,7 +135,7 @@ public class InvoiceWorkflowDataHolder {
         return expenseClass;
     }
 
-    public String getTenantCurrency() {
+    public String getFyCurrency() {
         return fiscalYear.getCurrency();
     }
 
