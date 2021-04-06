@@ -138,16 +138,22 @@ public class InvoiceWorkflowDataHolderBuilder {
                         .collect(toList()));
     }
 
-    public CompletableFuture<List<InvoiceWorkflowDataHolder>> withExchangeRate(List<InvoiceWorkflowDataHolder> holders, RequestContext requestContext) {
-        return holders.stream().findFirst().map(holder -> FolioVertxCompletableFuture.supplyBlockingAsync(requestContext.getContext(), () -> {
-            Invoice  invoice = holder.getInvoice();
-            FiscalYear fiscalYear = holder.getFiscalYear();
-            ConversionQuery conversionQuery = HelperUtils.buildConversionQuery(invoice, fiscalYear.getCurrency());
-            ExchangeRateProvider exchangeRateProvider = exchangeRateProviderResolver.resolve(conversionQuery, requestContext);
-            invoice.setExchangeRate(exchangeRateProvider.getExchangeRate(conversionQuery).getFactor().doubleValue());
-            return exchangeRateProvider.getCurrencyConversion(conversionQuery);
-        }).thenApply(conversion -> holders.stream().map(h -> h.withConversion(conversion)).collect(toList())))
-                .orElseGet(() -> CompletableFuture.completedFuture(holders));
+    public CompletableFuture<List<InvoiceWorkflowDataHolder>> withExchangeRate(List<InvoiceWorkflowDataHolder> holders,
+        RequestContext requestContext) {
+      return holders.stream()
+        .findFirst()
+        .map(holder -> FolioVertxCompletableFuture.supplyBlockingAsync(requestContext.getContext(), () -> {
+          Invoice invoice = holder.getInvoice();
+          FiscalYear fiscalYear = holder.getFiscalYear();
+          ConversionQuery conversionQuery = HelperUtils.buildConversionQuery(invoice, fiscalYear.getCurrency());
+          ExchangeRateProvider exchangeRateProvider = exchangeRateProviderResolver.resolve(conversionQuery, requestContext);
+          invoice.setExchangeRate(exchangeRateProvider.getExchangeRate(conversionQuery).getFactor().doubleValue());
+          return exchangeRateProvider.getCurrencyConversion(conversionQuery);
+        })
+          .thenApply(conversion -> holders.stream()
+            .map(h -> h.withConversion(conversion))
+            .collect(toList())))
+        .orElseGet(() -> CompletableFuture.completedFuture(holders));
 
     }
 
@@ -169,7 +175,7 @@ public class InvoiceWorkflowDataHolderBuilder {
         return transactions.stream()
                 .filter(transaction -> isTransactionRefersToHolder(transaction, holder))
                 .findFirst()
-                .orElseGet(() -> new Transaction().withAmount(0d).withCurrency(holder.getTenantCurrency()));
+                .orElseGet(() -> new Transaction().withAmount(0d).withCurrency(holder.getFyCurrency()));
     }
 
     private boolean isTransactionRefersToHolder(Transaction transaction, InvoiceWorkflowDataHolder holder) {
