@@ -14,21 +14,20 @@ import org.folio.rest.jaxrs.model.VoucherCollection;
 import org.folio.services.VendorRetrieveService;
 import org.folio.services.voucher.VoucherCommandService;
 import org.folio.services.voucher.VoucherRetrieveService;
-import org.springframework.beans.factory.annotation.Autowired;
 
 public class VoucherService {
 
   private final VoucherRetrieveService voucherRetrieveService;
   private final VoucherCommandService voucherCommandService;
   private final VendorRetrieveService vendorRetrieveService;
-  @Autowired
-  private AddressConverter addressConverter;
+  private final AddressConverter addressConverter;
 
   public VoucherService(VoucherRetrieveService voucherRetrieveService, VoucherCommandService voucherCommandService,
-                        VendorRetrieveService vendorRetrieveService) {
+                        VendorRetrieveService vendorRetrieveService, AddressConverter addressConverter) {
     this.voucherRetrieveService = voucherRetrieveService;
     this.voucherCommandService = voucherCommandService;
     this.vendorRetrieveService = vendorRetrieveService;
+    this.addressConverter = addressConverter;
   }
 
   public CompletableFuture<Voucher> getVoucher(String id, RequestContext requestContext) {

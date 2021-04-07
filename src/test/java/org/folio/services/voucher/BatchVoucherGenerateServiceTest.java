@@ -61,12 +61,13 @@ public class BatchVoucherGenerateServiceTest extends ApiTestBase {
       new VoucherNumberService(new RestClient()),
       voucherRetrieveService, new VoucherValidator(), tenantConfigurationService);
     VendorRetrieveService vendorRetrieveService = new VendorRetrieveService(restClient);
-    VoucherService voucherService = new VoucherService(voucherRetrieveService, voucherCommandService, vendorRetrieveService);
+    AddressConverter addressConverter = AddressConverter.getInstance();
+    VoucherService voucherService = new VoucherService(voucherRetrieveService, voucherCommandService,
+      vendorRetrieveService, addressConverter);
 
 
     InvoiceService invoiceService = new BaseInvoiceService(new RestClient());
     InvoiceRetrieveService invoiceRetrieveService = new InvoiceRetrieveService(invoiceService);
-    AddressConverter addressConverter = AddressConverter.getInstance();
     BatchVoucherGenerateService service = new BatchVoucherGenerateService(okapiHeaders, context, "en", vendorRetrieveService,
               invoiceRetrieveService, voucherService, addressConverter);
     BatchVoucherExport batchVoucherExport = new JsonObject(getMockData(BATCH_VOUCHER_EXPORT_SAMPLE_PATH)).mapTo(BatchVoucherExport.class);
@@ -86,10 +87,11 @@ public class BatchVoucherGenerateServiceTest extends ApiTestBase {
         new VoucherNumberService(restClient),
         voucherRetrieveService, new VoucherValidator(), tenantConfigurationService);
       VendorRetrieveService vendorRetrieveService = new VendorRetrieveService(restClient);
-      VoucherService voucherService = new VoucherService(voucherRetrieveService, voucherCommandService, vendorRetrieveService);
+      AddressConverter addressConverter = AddressConverter.getInstance();
+      VoucherService voucherService = new VoucherService(voucherRetrieveService, voucherCommandService,
+        vendorRetrieveService, addressConverter);
       InvoiceService invoiceService = new BaseInvoiceService(restClient);
       InvoiceRetrieveService invoiceRetrieveService = new InvoiceRetrieveService(invoiceService);
-      AddressConverter addressConverter = AddressConverter.getInstance();
 
       BatchVoucherGenerateService service = new BatchVoucherGenerateService(okapiHeaders, context, "en", vendorRetrieveService,
               invoiceRetrieveService, voucherService, addressConverter);

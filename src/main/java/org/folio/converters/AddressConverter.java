@@ -3,9 +3,7 @@ package org.folio.converters;
 import org.folio.rest.acq.model.Address;
 import org.folio.rest.jaxrs.model.VendorAddress;
 import org.springframework.core.convert.converter.Converter;
-import org.springframework.stereotype.Service;
 
-@Service
 public class AddressConverter implements Converter<Address, VendorAddress> {
 
   private static class SingletonHolder {

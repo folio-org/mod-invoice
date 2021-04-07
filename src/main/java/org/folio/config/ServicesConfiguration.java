@@ -1,6 +1,7 @@
 package org.folio.config;
 
 import org.folio.InvoiceWorkflowDataHolderBuilder;
+import org.folio.converters.AddressConverter;
 import org.folio.rest.core.RestClient;
 import org.folio.rest.impl.VoucherService;
 import org.folio.services.InvoiceRetrieveService;
@@ -162,8 +163,10 @@ public class ServicesConfiguration {
   }
 
   @Bean
-  VoucherService voucherService(VoucherRetrieveService voucherRetrieveService, VoucherCommandService voucherCommandService, VendorRetrieveService vendorRetrieveService) {
-    return new VoucherService(voucherRetrieveService, voucherCommandService, vendorRetrieveService);
+  VoucherService voucherService(VoucherRetrieveService voucherRetrieveService,
+      VoucherCommandService voucherCommandService, VendorRetrieveService vendorRetrieveService,
+      AddressConverter addressConverter) {
+    return new VoucherService(voucherRetrieveService, voucherCommandService, vendorRetrieveService, addressConverter);
   }
 
   @Bean
@@ -179,5 +182,10 @@ public class ServicesConfiguration {
   @Bean
   VendorRetrieveService vendorRetrieveService(RestClient restClient) {
     return new VendorRetrieveService(restClient);
+  }
+
+  @Bean
+  AddressConverter addressConverter() {
+    return AddressConverter.getInstance();
   }
 }
