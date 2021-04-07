@@ -81,6 +81,7 @@ import static org.folio.rest.impl.MockServer.serverRqRs;
 import static org.folio.rest.impl.ProtectionHelper.ACQUISITIONS_UNIT_IDS;
 import static org.folio.rest.impl.VouchersApiTest.VOUCHERS_LIST_PATH;
 import static org.folio.rest.jaxrs.model.FundDistribution.DistributionType.AMOUNT;
+import static org.folio.rest.jaxrs.model.FundDistribution.DistributionType.PERCENTAGE;
 import static org.folio.services.exchange.ExchangeRateProviderResolver.RATE_KEY;
 import static org.folio.services.validator.InvoiceValidator.NO_INVOICE_LINES_ERROR_MSG;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -97,8 +98,8 @@ import static org.hamcrest.Matchers.nullValue;
 import static org.hamcrest.core.Is.is;
 import static org.hamcrest.core.IsEqual.equalTo;
 import static org.hamcrest.core.IsNot.not;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
 import java.math.BigDecimal;
@@ -327,8 +328,8 @@ public class InvoicesApiTest extends ApiTestBase {
 
     /* The invoice has 2 not prorated adjustments, 3 related invoice lines and each one has adjustment */
     assertThat(resp.getAdjustmentsTotal(), equalTo(7.17d));
-    assertThat(resp.getSubTotal(), equalTo(10.6d));
-    assertThat(resp.getTotal(), equalTo(17.77d));
+    assertThat(resp.getSubTotal(), equalTo(10.62d));
+    assertThat(resp.getTotal(), equalTo(17.79d));
 
     // Verify that expected number of external calls made
     assertThat(getInvoiceRetrievals(), hasSize(1));
@@ -529,13 +530,28 @@ public class InvoicesApiTest extends ApiTestBase {
       .forEach(invoiceLine -> {
         invoiceLine.setId(UUID.randomUUID().toString());
         invoiceLine.setInvoiceId(id);
-        double fundDistrValue = BigDecimal.valueOf(invoiceLine.getSubTotal())
-          .add(BigDecimal.valueOf(invoiceLine.getAdjustmentsTotal()))
-          .divide(BigDecimal.valueOf(invoiceLine.getFundDistributions().size()), 2, RoundingMode.HALF_EVEN).doubleValue();
+
+        // prepare fund distributions
+        BigDecimal total = BigDecimal.valueOf(invoiceLine.getSubTotal())
+          .add(BigDecimal.valueOf(invoiceLine.getAdjustmentsTotal()));
+        double fundDistrValue = total
+          .divide(BigDecimal.valueOf(invoiceLine.getFundDistributions().size()), 2, RoundingMode.HALF_EVEN)
+          .doubleValue();
         invoiceLine.getFundDistributions()
           .forEach(fundDistribution -> fundDistribution.withDistributionType(AMOUNT)
             .withCode(null)
             .setValue(fundDistrValue));
+        var invoiceLineSum = invoiceLine.getFundDistributions()
+          .stream()
+          .map(FundDistribution::getValue)
+          .map(BigDecimal::valueOf)
+          .reduce(BigDecimal::add)
+          .get();
+
+        var reminder = total.subtract(invoiceLineSum);
+        var fd1Value = BigDecimal.valueOf(invoiceLine.getFundDistributions().get(0).getValue());
+        invoiceLine.getFundDistributions().get(0).setValue(fd1Value.add(reminder).doubleValue());
+
         addMockEntry(INVOICE_LINES, JsonObject.mapFrom(invoiceLine));
       });
 
@@ -558,6 +574,61 @@ public class InvoicesApiTest extends ApiTestBase {
     verifyTransitionToApproved(voucherCreated, invoiceLines, updatedInvoice, 5);
     verifyVoucherLineWithExpenseClasses(2L);
     checkVoucherAcqUnitIdsList(voucherCreated, reqData);
+  }
+
+  @Test
+  void testInvoiceTransitionApprovedWithOddNumberOfPennies() {
+    logger.info("=== Test transition invoice to Approved with odd number of pennies ===");
+
+    InvoiceLine invoiceLine = getMockAsJson(INVOICE_LINES_LIST_PATH).mapTo(InvoiceLineCollection.class).getInvoiceLines().get(0);
+    Invoice invoice = getMockAsJson(OPEN_INVOICE_SAMPLE_PATH).mapTo(Invoice.class);
+    invoice.getAdjustments().clear();
+    invoice.getAdjustments().add(createAdjustment(Prorate.BY_LINE, Type.AMOUNT, 4d));
+    String id = invoice.getId();
+
+    invoiceLine.setId(UUID.randomUUID().toString());
+    invoiceLine.setInvoiceId(id);
+
+    List<FundDistribution> fundDistrList = new ArrayList<>();
+    invoiceLine.setSubTotal(2.21d);
+    fundDistrList.add(new FundDistribution().withFundId("1d1574f1-9196-4a57-8d1f-3b2e4309eb81").withDistributionType(PERCENTAGE).withValue(50d));
+    fundDistrList.add(new FundDistribution().withFundId("55f48dc6-efa7-4cfe-bc7c-4786efe493e3").withDistributionType(PERCENTAGE).withValue(50d));
+
+    invoiceLine.setFundDistributions(fundDistrList);
+    addMockEntry(INVOICE_LINES, JsonObject.mapFrom(invoiceLine));
+
+    invoice.setStatus(Invoice.Status.APPROVED);
+
+    String jsonBody = JsonObject.mapFrom(invoice).encode();
+    Headers headers = prepareHeaders(X_OKAPI_URL, X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID);
+    verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, headers, "", 204);
+
+    // Verify that expected number of external calls made
+    assertThat(getInvoiceRetrievals(), hasSize(1));
+    assertThat(getInvoiceLineSearches(), hasSize(1));
+    Invoice updatedInvoice = serverRqRs.get(INVOICES, HttpMethod.PUT).get(0).mapTo(Invoice.class);
+    List<JsonObject> vouchersCreated = serverRqRs.get(VOUCHERS_STORAGE, HttpMethod.POST);
+    assertThat(vouchersCreated, notNullValue());
+    assertThat(vouchersCreated, hasSize(1));
+    Voucher voucherCreated = vouchersCreated.get(0).mapTo(Voucher.class);
+    assertThat(voucherCreated.getVoucherNumber(), equalTo(TEST_PREFIX + VOUCHER_NUMBER_VALUE));
+    assertThat(voucherCreated.getSystemCurrency(), equalTo(DEFAULT_SYSTEM_CURRENCY));
+    verifyTransitionToApproved(voucherCreated, Collections.singletonList(invoiceLine), updatedInvoice, 2);
+    checkVoucherAcqUnitIdsList(voucherCreated, invoice);
+
+    List<Transaction> pendingPayments = serverRqRs.get(FINANCE_PENDING_PAYMENTS, HttpMethod.POST)
+      .stream()
+      .map(transaction -> transaction.mapTo(Transaction.class))
+      .collect(toList());
+    Double transactionsAmount = pendingPayments.stream()
+      .map(tr -> Money.of(tr.getAmount(), tr.getCurrency()))
+      .reduce(Money::add)
+      .get()
+      .getNumber()
+      .doubleValue();
+
+    InvoiceLine invLineWithRecalculatedTotals = serverRqRs.get(INVOICE_LINES, HttpMethod.PUT).get(0).mapTo(InvoiceLine.class);
+    assertEquals(invLineWithRecalculatedTotals.getTotal(), transactionsAmount);
   }
 
   @Test
@@ -1832,6 +1903,40 @@ public class InvoicesApiTest extends ApiTestBase {
     var expectedPaymentDate = invoices.get(0).getMetadata().getUpdatedDate();
 
     assertThat(invoices, everyItem(hasProperty("paymentDate", is(expectedPaymentDate))));
+    var payments = getRqRsEntries(HttpMethod.POST, FINANCE_PAYMENTS).stream()
+      .map(json -> json.mapTo(Transaction.class))
+      .collect(toList());
+
+    invoiceLines.forEach(invLine -> {
+      var sumPaymentsByLine = payments.stream()
+        .filter(tr -> tr.getSourceInvoiceLineId() != null)
+        .filter(tr -> tr.getSourceInvoiceLineId().equals(invLine.getId()))
+        .map(tr -> Money.of(tr.getAmount(), tr.getCurrency()))
+        .reduce(Money::add)
+        .get()
+        .getNumber()
+        .doubleValue();
+
+      assertEquals(invLine.getTotal(), sumPaymentsByLine);
+    });
+
+    invoiceLines.forEach(invLine -> {
+      var sumPaymentsByNonProratedAdjs = payments.stream()
+        .filter(tr -> tr.getSourceInvoiceLineId() == null)
+        .map(tr -> Money.of(tr.getAmount(), tr.getCurrency()))
+        .reduce(Money::add)
+        .get()
+        .getNumber()
+        .doubleValue();
+      var invNonProratedAdjs = invoices.get(0).getAdjustments().stream()
+        .map(adj -> Money.of(adj.getValue(), invoices.get(0).getCurrency()))
+        .reduce(Money::add)
+        .get()
+        .getNumber()
+        .doubleValue();
+      assertEquals(invNonProratedAdjs, sumPaymentsByNonProratedAdjs);
+    });
+
   }
 
   @Test
@@ -2623,7 +2728,7 @@ public class InvoicesApiTest extends ApiTestBase {
   }
 
   private void checkVoucherAcqUnitIdsList(Voucher voucherCreated, Invoice invoice) {
-    assertTrue("acqUnitId lists are equal", CollectionUtils.isEqualCollection(voucherCreated.getAcqUnitIds(), invoice.getAcqUnitIds()));
+    assertTrue(CollectionUtils.isEqualCollection(voucherCreated.getAcqUnitIds(), invoice.getAcqUnitIds()), "acqUnitId lists are equal");
   }
 
   private void checkCreditsPayments(Invoice invoice, List<InvoiceLine> invoiceLines) {

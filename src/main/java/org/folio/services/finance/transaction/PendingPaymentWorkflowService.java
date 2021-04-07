@@ -4,6 +4,7 @@ import static java.util.stream.Collectors.toList;
 import static org.folio.invoices.utils.ErrorCodes.PENDING_PAYMENT_ERROR;
 import static org.folio.invoices.utils.HelperUtils.convertToDoubleWithRounding;
 import static org.folio.invoices.utils.HelperUtils.getFundDistributionAmount;
+import static org.folio.services.FundsDistributionService.distributeFunds;
 
 import java.util.List;
 import java.util.Optional;
@@ -81,8 +82,10 @@ public class PendingPaymentWorkflowService {
   }
 
   private List<InvoiceWorkflowDataHolder> withNewPendingPayments(List<InvoiceWorkflowDataHolder> dataHolders) {
-
-    return dataHolders.stream().map(holder -> holder.withNewTransaction(buildTransaction(holder))).collect(toList());
+    List<InvoiceWorkflowDataHolder> invoiceWorkflowDataHolders = dataHolders.stream()
+      .map(holder -> holder.withNewTransaction(buildTransaction(holder)))
+      .collect(toList());
+    return distributeFunds(invoiceWorkflowDataHolders);
   }
 
   private CompletableFuture<Void> updateTransactions(List<InvoiceWorkflowDataHolder> holders, RequestContext requestContext) {
@@ -117,11 +120,9 @@ public class PendingPaymentWorkflowService {
 
     return new Transaction()
             .withSource(Transaction.Source.INVOICE)
-            .withCurrency(holder.getTenantCurrency())
-            .withFiscalYearId(holder.getFiscalYear()
-                    .getId())
-            .withSourceInvoiceId(holder.getInvoice()
-                    .getId())
+            .withCurrency(holder.getFyCurrency())
+            .withFiscalYearId(holder.getFiscalYear().getId())
+            .withSourceInvoiceId(holder.getInvoice().getId())
             .withFromFundId(holder.getFundId())
             .withExpenseClassId(holder.getExpenseClassId());
   }
