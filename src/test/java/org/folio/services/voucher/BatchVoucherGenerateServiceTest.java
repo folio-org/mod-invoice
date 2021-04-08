@@ -10,6 +10,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.ExecutionException;
 
+import org.folio.converters.AddressConverter;
 import org.folio.rest.RestConstants;
 import org.folio.rest.core.RestClient;
 import org.folio.rest.core.models.RequestContext;
@@ -60,13 +61,15 @@ public class BatchVoucherGenerateServiceTest extends ApiTestBase {
       new VoucherNumberService(new RestClient()),
       voucherRetrieveService, new VoucherValidator(), tenantConfigurationService);
     VendorRetrieveService vendorRetrieveService = new VendorRetrieveService(restClient);
-    VoucherService voucherService = new VoucherService(voucherRetrieveService, voucherCommandService, vendorRetrieveService);
+    AddressConverter addressConverter = AddressConverter.getInstance();
+    VoucherService voucherService = new VoucherService(voucherRetrieveService, voucherCommandService,
+      vendorRetrieveService, addressConverter);
 
 
     InvoiceService invoiceService = new BaseInvoiceService(new RestClient());
     InvoiceRetrieveService invoiceRetrieveService = new InvoiceRetrieveService(invoiceService);
     BatchVoucherGenerateService service = new BatchVoucherGenerateService(okapiHeaders, context, "en", vendorRetrieveService,
-              invoiceRetrieveService, voucherService);
+              invoiceRetrieveService, voucherService, addressConverter);
     BatchVoucherExport batchVoucherExport = new JsonObject(getMockData(BATCH_VOUCHER_EXPORT_SAMPLE_PATH)).mapTo(BatchVoucherExport.class);
 
     CompletableFuture<BatchVoucher> future = service.generateBatchVoucher(batchVoucherExport, new RequestContext(context, okapiHeaders));
@@ -84,12 +87,14 @@ public class BatchVoucherGenerateServiceTest extends ApiTestBase {
         new VoucherNumberService(restClient),
         voucherRetrieveService, new VoucherValidator(), tenantConfigurationService);
       VendorRetrieveService vendorRetrieveService = new VendorRetrieveService(restClient);
-      VoucherService voucherService = new VoucherService(voucherRetrieveService, voucherCommandService, vendorRetrieveService);
+      AddressConverter addressConverter = AddressConverter.getInstance();
+      VoucherService voucherService = new VoucherService(voucherRetrieveService, voucherCommandService,
+        vendorRetrieveService, addressConverter);
       InvoiceService invoiceService = new BaseInvoiceService(restClient);
       InvoiceRetrieveService invoiceRetrieveService = new InvoiceRetrieveService(invoiceService);
 
       BatchVoucherGenerateService service = new BatchVoucherGenerateService(okapiHeaders, context, "en", vendorRetrieveService,
-              invoiceRetrieveService, voucherService);
+              invoiceRetrieveService, voucherService, addressConverter);
       BatchVoucherExport batchVoucherExport = new BatchVoucherExport();
       CompletableFuture<BatchVoucher> future = service.generateBatchVoucher(batchVoucherExport, new RequestContext(context, okapiHeaders));
       future.join();
