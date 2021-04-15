@@ -3,6 +3,7 @@ package org.folio.services.voucher;
 import static java.util.concurrent.CompletableFuture.completedFuture;
 import static org.apache.commons.lang3.StringUtils.EMPTY;
 import static org.apache.commons.lang3.StringUtils.isAlpha;
+import static org.folio.completablefuture.FolioVertxCompletableFuture.supplyBlockingAsync;
 import static org.folio.invoices.utils.ErrorCodes.VOUCHER_NOT_FOUND;
 import static org.folio.invoices.utils.ErrorCodes.VOUCHER_NUMBER_PREFIX_NOT_ALPHA;
 import static org.folio.invoices.utils.ErrorCodes.VOUCHER_UPDATE_FAILURE;
@@ -15,8 +16,13 @@ import static org.folio.rest.impl.AbstractHelper.SYSTEM_CONFIG_QUERY;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
+import javax.money.convert.ConversionQuery;
+import javax.money.convert.ExchangeRate;
+import javax.money.convert.ExchangeRateProvider;
+
 import org.apache.commons.lang3.StringUtils;
 import org.folio.invoices.rest.exceptions.HttpException;
+import org.folio.invoices.utils.HelperUtils;
 import org.folio.rest.core.RestClient;
 import org.folio.rest.core.models.RequestContext;
 import org.folio.rest.core.models.RequestEntry;
@@ -24,7 +30,8 @@ import org.folio.rest.jaxrs.model.Config;
 import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.jaxrs.model.SequenceNumber;
 import org.folio.rest.jaxrs.model.Voucher;
-import org.folio.services.config.TenantConfigurationService;
+import org.folio.services.configuration.ConfigurationService;
+import org.folio.services.exchange.ExchangeRateProviderResolver;
 import org.folio.services.validator.VoucherValidator;
 
 import io.vertx.core.json.JsonObject;
@@ -43,16 +50,20 @@ public class VoucherCommandService {
   private final VoucherNumberService voucherNumberService;
   private final VoucherRetrieveService voucherRetrieveService;
   private final VoucherValidator voucherValidator;
-  private final TenantConfigurationService tenantConfigurationService;
+  private final ConfigurationService configurationService;
+  private final ExchangeRateProviderResolver exchangeRateProviderResolver;
 
   public VoucherCommandService(RestClient restClient, VoucherNumberService voucherNumberService,
                                VoucherRetrieveService voucherRetrieveService,
-                               VoucherValidator voucherValidator, TenantConfigurationService tenantConfigurationService) {
+                               VoucherValidator voucherValidator, ConfigurationService configurationService,
+                               ExchangeRateProviderResolver exchangeRateProviderResolver
+  ) {
     this.restClient = restClient;
     this.voucherNumberService = voucherNumberService;
     this.voucherRetrieveService = voucherRetrieveService;
     this.voucherValidator = voucherValidator;
-    this.tenantConfigurationService = tenantConfigurationService;
+    this.configurationService = configurationService;
+    this.exchangeRateProviderResolver = exchangeRateProviderResolver;
   }
 
 
@@ -123,7 +134,7 @@ public class VoucherCommandService {
   }
 
   private CompletableFuture<String> getVoucherNumberPrefix(RequestContext requestContext) {
-    return tenantConfigurationService.getConfigurationsEntries(requestContext, SYSTEM_CONFIG_QUERY, VOUCHER_NUMBER_PREFIX_CONFIG_QUERY)
+    return configurationService.getConfigurationsEntries(requestContext, SYSTEM_CONFIG_QUERY, VOUCHER_NUMBER_PREFIX_CONFIG_QUERY)
             .thenApply(configs ->
                configs.getConfigs().stream()
                     .filter(this::isVoucherNumberPrefixConfig)
@@ -155,6 +166,16 @@ public class VoucherCommandService {
           throw new HttpException(500, VOUCHER_UPDATE_FAILURE.toError());
         });
     }
+  }
+
+  public CompletableFuture<Voucher> updateVoucherWithExchangeRate(Voucher voucher, Invoice invoice, RequestContext requestContext) {
+    return supplyBlockingAsync(requestContext.getContext(), () -> {
+      ConversionQuery conversionQuery = HelperUtils.buildConversionQuery(invoice, voucher.getSystemCurrency());
+      ExchangeRateProvider exchangeRateProvider = exchangeRateProviderResolver.resolve(conversionQuery, requestContext);
+      ExchangeRate exchangeRate = exchangeRateProvider.getExchangeRate(conversionQuery);
+      invoice.setExchangeRate(exchangeRate.getFactor().doubleValue());
+      return voucher.withExchangeRate(exchangeRate.getFactor().doubleValue());
+    });
   }
 
 }

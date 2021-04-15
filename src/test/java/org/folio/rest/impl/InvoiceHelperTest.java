@@ -10,7 +10,7 @@ import java.util.Map;
 import org.folio.rest.RestConstants;
 import org.folio.rest.acq.model.orders.CompositePoLine;
 import org.folio.rest.core.RestClient;
-import org.folio.services.config.TenantConfigurationService;
+import org.folio.services.configuration.ConfigurationService;
 import org.folio.services.exchange.ExchangeRateProviderResolver;
 import org.folio.services.finance.expence.ExpenseClassRetrieveService;
 import org.folio.services.validator.VoucherValidator;
@@ -36,11 +36,12 @@ class InvoiceHelperTest extends ApiTestBase {
   RestClient restClient = new RestClient();
   ExpenseClassRetrieveService expenseClassRetrieveService = new ExpenseClassRetrieveService(restClient);
   VoucherRetrieveService voucherRetrieveService = new VoucherRetrieveService(restClient);
-  TenantConfigurationService tenantConfigurationService = new TenantConfigurationService(restClient);
+  ConfigurationService configurationService = new ConfigurationService(restClient);
 
   VoucherCommandService voucherCommandService = new VoucherCommandService(restClient,
                                                                           new VoucherNumberService(restClient),
-                                                                          voucherRetrieveService, new VoucherValidator(), tenantConfigurationService);
+                                                                          voucherRetrieveService, new VoucherValidator(),
+                                                                          configurationService, new ExchangeRateProviderResolver());
 
   @BeforeEach
   public void setUp() {

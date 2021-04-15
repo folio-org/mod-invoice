@@ -88,7 +88,7 @@ public class VendorRetrieveService {
     return restClient.get(requestEntry, requestContext, OrganizationCollection.class);
   }
 
-  public CompletionStage<Organization> getVendor(String vendorId, RequestContext requestContext) {
+  public CompletableFuture<Organization> getVendor(String vendorId, RequestContext requestContext) {
     RequestEntry requestEntry = new RequestEntry(ORGANIZATIONS_STORAGE_VENDOR)
         .withId(vendorId);
     return restClient.get(requestEntry, requestContext, Organization.class)
