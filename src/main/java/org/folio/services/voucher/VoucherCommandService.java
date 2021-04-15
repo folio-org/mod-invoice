@@ -13,6 +13,7 @@ import static org.folio.rest.impl.AbstractHelper.CONFIG_QUERY;
 import static org.folio.rest.impl.AbstractHelper.INVOICE_CONFIG_MODULE_NAME;
 import static org.folio.rest.impl.AbstractHelper.SYSTEM_CONFIG_QUERY;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
@@ -28,6 +29,7 @@ import org.folio.rest.core.models.RequestContext;
 import org.folio.rest.core.models.RequestEntry;
 import org.folio.rest.jaxrs.model.Config;
 import org.folio.rest.jaxrs.model.Invoice;
+import org.folio.rest.jaxrs.model.InvoiceLine;
 import org.folio.rest.jaxrs.model.SequenceNumber;
 import org.folio.rest.jaxrs.model.Voucher;
 import org.folio.services.configuration.ConfigurationService;
@@ -127,6 +129,16 @@ public class VoucherCommandService {
     return INVOICE_CONFIG_MODULE_NAME.equals(config.getModule()) && VOUCHER_NUMBER_CONFIG_NAME.equals(config.getConfigName());
   }
 
+  public CompletableFuture<Voucher> updateVoucherWithExchangeRate(Voucher voucher, Invoice invoice, RequestContext requestContext) {
+    return supplyBlockingAsync(requestContext.getContext(), () -> {
+      ConversionQuery conversionQuery = HelperUtils.buildConversionQuery(invoice, voucher.getSystemCurrency());
+      ExchangeRateProvider exchangeRateProvider = exchangeRateProviderResolver.resolve(conversionQuery, requestContext);
+      ExchangeRate exchangeRate = exchangeRateProvider.getExchangeRate(conversionQuery);
+      invoice.setExchangeRate(exchangeRate.getFactor().doubleValue());
+      return voucher.withExchangeRate(exchangeRate.getFactor().doubleValue());
+    });
+  }
+
   private void validateVoucherNumberPrefix(String prefix) {
     if (StringUtils.isNotEmpty(prefix) && !isAlpha(prefix)) {
       throw new HttpException(500, VOUCHER_NUMBER_PREFIX_NOT_ALPHA);
@@ -166,16 +178,6 @@ public class VoucherCommandService {
           throw new HttpException(500, VOUCHER_UPDATE_FAILURE.toError());
         });
     }
-  }
-
-  public CompletableFuture<Voucher> updateVoucherWithExchangeRate(Voucher voucher, Invoice invoice, RequestContext requestContext) {
-    return supplyBlockingAsync(requestContext.getContext(), () -> {
-      ConversionQuery conversionQuery = HelperUtils.buildConversionQuery(invoice, voucher.getSystemCurrency());
-      ExchangeRateProvider exchangeRateProvider = exchangeRateProviderResolver.resolve(conversionQuery, requestContext);
-      ExchangeRate exchangeRate = exchangeRateProvider.getExchangeRate(conversionQuery);
-      invoice.setExchangeRate(exchangeRate.getFactor().doubleValue());
-      return voucher.withExchangeRate(exchangeRate.getFactor().doubleValue());
-    });
   }
 
 }
