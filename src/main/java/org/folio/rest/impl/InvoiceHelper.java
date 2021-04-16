@@ -9,21 +9,13 @@ import static java.util.stream.Collectors.toMap;
 import static org.apache.commons.lang3.StringUtils.EMPTY;
 import static org.apache.commons.lang3.StringUtils.isEmpty;
 import static org.folio.completablefuture.FolioVertxCompletableFuture.completedFuture;
-import static org.folio.invoices.utils.AcqDesiredPermissions.ASSIGN;
-import static org.folio.invoices.utils.AcqDesiredPermissions.MANAGE;
-import static org.folio.invoices.utils.ErrorCodes.ACCOUNTING_CODE_NOT_PRESENT;
 import static org.folio.invoices.utils.ErrorCodes.INVALID_INVOICE_TRANSITION_ON_PAID_STATUS;
 import static org.folio.invoices.utils.ErrorCodes.ORG_IS_NOT_VENDOR;
 import static org.folio.invoices.utils.ErrorCodes.ORG_NOT_FOUND;
 import static org.folio.invoices.utils.ErrorCodes.PO_LINE_NOT_FOUND;
 import static org.folio.invoices.utils.ErrorCodes.PO_LINE_UPDATE_FAILURE;
-import static org.folio.invoices.utils.ErrorCodes.USER_HAS_NO_ACQ_PERMISSIONS;
-import static org.folio.invoices.utils.ErrorCodes.VOUCHER_NOT_FOUND;
-import static org.folio.invoices.utils.HelperUtils.calculateAdjustmentsTotal;
 import static org.folio.invoices.utils.HelperUtils.calculateVoucherLineAmount;
-import static org.folio.invoices.utils.HelperUtils.collectResultsOnSuccess;
 import static org.folio.invoices.utils.HelperUtils.combineCqlExpressions;
-import static org.folio.invoices.utils.HelperUtils.convertToDoubleWithRounding;
 import static org.folio.invoices.utils.HelperUtils.getAdjustmentFundDistributionAmount;
 import static org.folio.invoices.utils.HelperUtils.getFundDistributionAmount;
 import static org.folio.invoices.utils.HelperUtils.getHttpClient;
@@ -36,26 +28,22 @@ import static org.folio.invoices.utils.ResourcePathResolver.INVOICES;
 import static org.folio.invoices.utils.ResourcePathResolver.ORDER_LINES;
 import static org.folio.invoices.utils.ResourcePathResolver.resourceByIdPath;
 import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
-import static org.folio.rest.RestVerticle.OKAPI_HEADER_PERMISSIONS;
 import static org.folio.services.voucher.VoucherCommandService.VOUCHER_NUMBER_PREFIX_CONFIG_QUERY;
+import static org.folio.utils.UserPermissionsUtil.verifyUserHasAssignPermission;
+import static org.folio.utils.UserPermissionsUtil.verifyUserHasManagePermission;
 
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import javax.money.CurrencyUnit;
-import javax.money.Monetary;
 import javax.money.MonetaryAmount;
 import javax.money.convert.ConversionQuery;
 import javax.money.convert.CurrencyConversion;
@@ -65,11 +53,9 @@ import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.collections4.ListUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
-import org.folio.HttpStatus;
 import org.folio.InvoiceWorkflowDataHolderBuilder;
 import org.folio.completablefuture.FolioVertxCompletableFuture;
 import org.folio.invoices.rest.exceptions.HttpException;
-import org.folio.invoices.utils.AcqDesiredPermissions;
 import org.folio.invoices.utils.HelperUtils;
 import org.folio.invoices.utils.InvoiceRestrictionsUtil;
 import org.folio.invoices.utils.ProtectedOperationType;
@@ -87,7 +73,6 @@ import org.folio.rest.jaxrs.model.FundDistribution;
 import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.jaxrs.model.InvoiceCollection;
 import org.folio.rest.jaxrs.model.InvoiceLine;
-import org.folio.rest.jaxrs.model.InvoiceLineCollection;
 import org.folio.rest.jaxrs.model.Parameter;
 import org.folio.rest.jaxrs.model.SequenceNumber;
 import org.folio.rest.jaxrs.model.Voucher;
@@ -110,20 +95,15 @@ import org.folio.services.voucher.VoucherCommandService;
 import org.folio.services.voucher.VoucherRetrieveService;
 import org.folio.spring.SpringContextUtil;
 import org.javamoney.moneta.Money;
-import org.javamoney.moneta.function.MonetaryFunctions;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import com.google.common.annotations.VisibleForTesting;
 
 import io.vertx.core.Context;
 import io.vertx.core.Vertx;
-import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 
 public class InvoiceHelper extends AbstractHelper {
-
-  private static final String EMPTY_ARRAY = "[]";
-
   private final VoucherLineHelper voucherLineHelper;
   private final ProtectionHelper protectionHelper;
   private final AdjustmentsService adjustmentsService;
@@ -168,20 +148,6 @@ public class InvoiceHelper extends AbstractHelper {
     this.validator = new InvoiceValidator();
   }
 
-  public InvoiceHelper(Map<String, String> okapiHeaders, Context ctx, String lang, ExpenseClassRetrieveService expenseClassRetrieveService,
-                        VoucherCommandService voucherCommandService, VoucherRetrieveService voucherRetrieveService,
-                            ExchangeRateProviderResolver exchangeRateProviderResolver) {
-    super(getHttpClient(okapiHeaders), okapiHeaders, ctx, lang);
-    this.voucherLineHelper = new VoucherLineHelper(httpClient, okapiHeaders, ctx, lang);
-    this.protectionHelper = new ProtectionHelper(httpClient, okapiHeaders, ctx, lang);
-    this.adjustmentsService = new AdjustmentsService();
-    this.validator = new InvoiceValidator();
-    this.expenseClassRetrieveService = expenseClassRetrieveService;
-    this.voucherCommandService = voucherCommandService;
-    this.voucherRetrieveService = voucherRetrieveService;
-    this.exchangeRateProviderResolver = exchangeRateProviderResolver;
-  }
-
   public CompletableFuture<Invoice> createInvoice(Invoice invoice) {
     return CompletableFuture.completedFuture(null).thenRun(() -> validator.validateIncomingInvoice(invoice))
       .thenCompose(aVoid -> validateAcqUnitsOnCreate(invoice.getAcqUnitIds()))
@@ -201,26 +167,11 @@ public class InvoiceHelper extends AbstractHelper {
       return completedFuture(null);
     }
 
-    return FolioVertxCompletableFuture.runAsync(ctx, () -> verifyUserHasAssignPermission(acqUnitIds))
+    return FolioVertxCompletableFuture.runAsync(ctx, () -> verifyUserHasAssignPermission(acqUnitIds, okapiHeaders))
       .thenCompose(ok -> protectionHelper.verifyIfUnitsAreActive(acqUnitIds))
       .thenCompose(ok -> protectionHelper.isOperationRestricted(acqUnitIds, ProtectedOperationType.CREATE));
   }
 
-  private void verifyUserHasAssignPermission(List<String> acqUnitIds) {
-    if (CollectionUtils.isNotEmpty(acqUnitIds) && isUserDoesNotHaveDesiredPermission(ASSIGN)){
-      throw new HttpException(HttpStatus.HTTP_FORBIDDEN.toInt(), USER_HAS_NO_ACQ_PERMISSIONS);
-    }
-  }
-
-   private boolean isUserDoesNotHaveDesiredPermission(AcqDesiredPermissions acqPerm) {
-    return !getProvidedPermissions().contains(acqPerm.getPermission());
-  }
-
-   private List<String> getProvidedPermissions() {
-    return new JsonArray(okapiHeaders.getOrDefault(OKAPI_HEADER_PERMISSIONS, EMPTY_ARRAY)).stream().
-      map(Object::toString)
-      .collect(Collectors.toList());
-  }
 
   /**
    * Gets invoice by id and calculates totals
@@ -350,7 +301,7 @@ public class InvoiceHelper extends AbstractHelper {
     return validateAcqUnitsOnUpdate(invoice, invoiceFromStorage)
     .thenCompose(ok -> {
       validator.validateInvoiceProtectedFields(invoice, invoiceFromStorage);
-      verifyUserHasManagePermission(invoice.getAcqUnitIds(), invoiceFromStorage.getAcqUnitIds());
+      verifyUserHasManagePermission(invoice.getAcqUnitIds(), invoiceFromStorage.getAcqUnitIds(), okapiHeaders);
       setSystemGeneratedData(invoiceFromStorage, invoice);
       return invoiceLineService.getInvoiceLinesWithTotals(invoice, new RequestContext(ctx, okapiHeaders))
         .thenCompose(invoiceLines -> {
@@ -382,32 +333,11 @@ public class InvoiceHelper extends AbstractHelper {
     List<String> updatedAcqUnitIds = updatedInvoice.getAcqUnitIds();
     List<String> currentAcqUnitIds = persistedInvoice.getAcqUnitIds();
 
-    return FolioVertxCompletableFuture.runAsync(ctx, () -> verifyUserHasManagePermission(updatedAcqUnitIds, currentAcqUnitIds))
+    return FolioVertxCompletableFuture.runAsync(ctx, () -> verifyUserHasManagePermission(updatedAcqUnitIds, currentAcqUnitIds, okapiHeaders))
       // Check that all newly assigned units are active/exist
       .thenCompose(ok -> protectionHelper.verifyIfUnitsAreActive(ListUtils.subtract(updatedAcqUnitIds, currentAcqUnitIds)))
       // The check should be done against currently assigned (persisted in storage) units
       .thenCompose(protectedOperationTypes -> protectionHelper.isOperationRestricted(currentAcqUnitIds, UPDATE));
-  }
-
-  /**
-   * The method checks if list of acquisition units to which the invoice is assigned is changed, if yes, then check that if the user
-   * has desired permission to manage acquisition units assignments
-   *
-   * @throws HttpException if user does not have manage permission
-   * @param newAcqUnitIds     list of acquisition units coming from request
-   * @param currentAcqUnitIds list of acquisition units from storage
-   */
-  private void verifyUserHasManagePermission(List<String> newAcqUnitIds, List<String> currentAcqUnitIds) {
-    Set<String> newAcqUnits = new HashSet<>(CollectionUtils.emptyIfNull(newAcqUnitIds));
-    Set<String> acqUnitsFromStorage = new HashSet<>(CollectionUtils.emptyIfNull(currentAcqUnitIds));
-
-    if (isManagePermissionRequired(newAcqUnits, acqUnitsFromStorage) && isUserDoesNotHaveDesiredPermission(MANAGE)) {
-      throw new HttpException(HttpStatus.HTTP_FORBIDDEN.toInt(), USER_HAS_NO_ACQ_PERMISSIONS);
-    }
-  }
-
-  private boolean isManagePermissionRequired(Set<String> newAcqUnits, Set<String> acqUnitsFromStorage) {
-    return !CollectionUtils.isEqualCollection(newAcqUnits, acqUnitsFromStorage);
   }
 
   private CompletableFuture<Void> updateWithSystemGeneratedData(Invoice invoice) {

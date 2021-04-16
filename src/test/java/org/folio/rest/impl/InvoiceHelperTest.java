@@ -57,8 +57,7 @@ class InvoiceHelperTest extends ApiTestBase {
   @Test
   @DisplayName("not decide to update status of POLines with ONGOING status")
   void shouldReturnFalseWhenCompositeCheckingForUpdatePoLinePaymentStatusIsOngoing() {
-    InvoiceHelper invoiceHelper = new InvoiceHelper(okapiHeaders, context, "en", expenseClassRetrieveService,
-      voucherCommandService, voucherRetrieveService, new ExchangeRateProviderResolver());
+    InvoiceHelper invoiceHelper = new InvoiceHelper(okapiHeaders, context, "en");
 
     CompositePoLine ongoingCompositePoLine = getMockAsJson(String.format("%s%s.json", PO_LINE_MOCK_DATA_PATH, EXISTING_PO_LINE_ID))
       .mapTo(CompositePoLine.class)
@@ -79,8 +78,7 @@ class InvoiceHelperTest extends ApiTestBase {
   @Test
   @DisplayName("decide to update status of POLines with different statuses")
   void shouldReturnTrueWhenCompositeCheckingForUpdatePoLinePaymentStatusIsDifferentValues() {
-    InvoiceHelper invoiceHelper = new InvoiceHelper(okapiHeaders, context, "en", expenseClassRetrieveService,
-      voucherCommandService, voucherRetrieveService, new ExchangeRateProviderResolver());
+    InvoiceHelper invoiceHelper = new InvoiceHelper(okapiHeaders, context, "en");
 
     CompositePoLine ongoingCompositePoLine = getMockAsJson(String.format("%s%s.json", PO_LINE_MOCK_DATA_PATH, EXISTING_PO_LINE_ID))
       .mapTo(CompositePoLine.class)
