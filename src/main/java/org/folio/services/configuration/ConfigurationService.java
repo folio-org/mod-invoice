@@ -16,7 +16,7 @@ import org.folio.rest.jaxrs.model.Configs;
 import io.vertx.core.json.JsonObject;
 
 public class ConfigurationService {
-  private static final Logger logger = LogManager.getLogger();
+  private static final Logger logger = LogManager.getLogger(ConfigurationService.class);
 
   private static final String CONFIG_QUERY = "module==%s";
   private static final String CONFIGURATION_ENDPOINT = resourcesPath(TENANT_CONFIGURATION_ENTRIES);
@@ -44,7 +44,7 @@ public class ConfigurationService {
     RequestEntry requestEntry = new RequestEntry(CONFIGURATION_ENDPOINT)
         .withQuery(query)
         .withOffset(0)
-        .withLimit(100);
+        .withLimit(Integer.MAX_VALUE);
     return restClient.get(requestEntry, requestContext, Configs.class);
   }
 
@@ -53,7 +53,7 @@ public class ConfigurationService {
     RequestEntry requestEntry = new RequestEntry(CONFIGURATION_ENDPOINT)
       .withQuery(query)
       .withOffset(0)
-      .withLimit(100);
+      .withLimit(Integer.MAX_VALUE);
 
     logger.info("GET request: {}", query);
     return restClient.get(requestEntry, requestContext, Configs.class)

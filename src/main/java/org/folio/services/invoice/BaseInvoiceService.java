@@ -34,7 +34,7 @@ import org.javamoney.moneta.function.MonetaryFunctions;
 import io.vertx.core.json.JsonObject;
 
 public class BaseInvoiceService implements InvoiceService {
-    private static final Logger logger = LogManager.getLogger();
+    private static final Logger logger = LogManager.getLogger(BaseInvoiceService.class);
     private static final String INVOICE_ENDPOINT = resourcesPath(INVOICES);
     private static final String INVOICE_BY_ID_ENDPOINT = INVOICE_ENDPOINT + "/{id}";
 

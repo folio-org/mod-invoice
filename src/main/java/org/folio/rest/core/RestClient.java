@@ -26,7 +26,7 @@ import io.vertx.core.json.JsonObject;
 
 public class RestClient {
 
-  private static final Logger logger = LogManager.getLogger();
+  private static final Logger logger = LogManager.getLogger(RestClient.class);
   private static final String CALLING_ENDPOINT_MSG = "Sending {} {}";
   private static final String EXCEPTION_CALLING_ENDPOINT_MSG = "Exception calling %s %s - %s";
 
