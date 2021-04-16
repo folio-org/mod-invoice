@@ -26,7 +26,8 @@
             "invoice-storage.invoices.item.post",
             "invoice-storage.invoice-number.get",
             "acquisitions-units.units.collection.get",
-            "acquisitions-units.memberships.collection.get"
+            "acquisitions-units.memberships.collection.get",
+            "organizations-storage.organizations.item.get"
           ]
         },
         {
@@ -83,7 +84,8 @@
             "finance-storage.budget-expense-classes.collection.get",
             "finance.exchange-rate.item.get",
             "finance.fiscal-years.item.get",
-            "finance.fiscal-years.collection.get"
+            "finance.fiscal-years.collection.get",
+            "organizations-storage.organizations.item.get"
           ]
         },
         {
