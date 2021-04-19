@@ -96,8 +96,8 @@ public class FundsDistributionService {
     return holders;
   }
 
-  private static MonetaryAmount getDistributionAmount(FundDistribution fundDistribution, MonetaryAmount total,
-    CurrencyUnit currency, CurrencyConversion conversion) {
+  public static MonetaryAmount getDistributionAmount(FundDistribution fundDistribution, MonetaryAmount total, CurrencyUnit currency,
+    CurrencyConversion conversion) {
     if (fundDistribution.getDistributionType() == FundDistribution.DistributionType.AMOUNT) {
       return Money.of(fundDistribution.getValue(), currency)
         .with(conversion)
@@ -107,7 +107,7 @@ public class FundsDistributionService {
       .with(getDefaultRounding());
   }
 
-  private static MonetaryAmount getSmallestUnit(MonetaryAmount expectedAdjustmentValue, int remainderSignum) {
+  public static MonetaryAmount getSmallestUnit(MonetaryAmount expectedAdjustmentValue, int remainderSignum) {
     CurrencyUnit currencyUnit = expectedAdjustmentValue.getCurrency();
     int decimalPlaces = currencyUnit.getDefaultFractionDigits();
     int smallestUnitSignum = expectedAdjustmentValue.signum() * remainderSignum;

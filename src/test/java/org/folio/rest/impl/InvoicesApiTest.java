@@ -66,6 +66,7 @@ import static org.folio.rest.impl.MockServer.INVOICE_NUMBER_ERROR_X_OKAPI_TENANT
 import static org.folio.rest.impl.MockServer.NON_EXIST_CONFIG_X_OKAPI_TENANT;
 import static org.folio.rest.impl.MockServer.PREFIX_CONFIG_WITHOUT_VALUE_X_OKAPI_TENANT;
 import static org.folio.rest.impl.MockServer.PREFIX_CONFIG_WITH_NON_EXISTING_VALUE_X_OKAPI_TENANT;
+import static org.folio.rest.impl.MockServer.SYSTEM_CURRENCY;
 import static org.folio.rest.impl.MockServer.TEST_PREFIX;
 import static org.folio.rest.impl.MockServer.addMockEntry;
 import static org.folio.rest.impl.MockServer.getAcqMembershipsSearches;
@@ -580,17 +581,26 @@ public class InvoicesApiTest extends ApiTestBase {
   void testInvoiceTransitionApprovedWithOddNumberOfPennies() {
     logger.info("=== Test transition invoice to Approved with odd number of pennies ===");
 
+   // addMockEntry(INVOICE_LINES, getMockAsJson(FYS).mapTo(InvoiceLineCollection.class).getInvoiceLines().get(0);
+
     InvoiceLine invoiceLine = getMockAsJson(INVOICE_LINES_LIST_PATH).mapTo(InvoiceLineCollection.class).getInvoiceLines().get(0);
     Invoice invoice = getMockAsJson(OPEN_INVOICE_SAMPLE_PATH).mapTo(Invoice.class);
     invoice.getAdjustments().clear();
-    invoice.getAdjustments().add(createAdjustment(Prorate.BY_LINE, Type.AMOUNT, 4d));
+    //invoice.getAdjustments().add(createAdjustment(Prorate.BY_LINE, Type.AMOUNT, 4d));
     String id = invoice.getId();
 
     invoiceLine.setId(UUID.randomUUID().toString());
     invoiceLine.setInvoiceId(id);
 
+    var conversionFactor = 3d;
+
+    invoice.setExchangeRate(conversionFactor);
+
     List<FundDistribution> fundDistrList = new ArrayList<>();
-    invoiceLine.setSubTotal(2.21d);
+
+    invoiceLine.setSubTotal(20.01d);
+    invoiceLine.getAdjustments().clear();
+
     fundDistrList.add(new FundDistribution().withFundId("1d1574f1-9196-4a57-8d1f-3b2e4309eb81").withDistributionType(PERCENTAGE).withValue(50d));
     fundDistrList.add(new FundDistribution().withFundId("55f48dc6-efa7-4cfe-bc7c-4786efe493e3").withDistributionType(PERCENTAGE).withValue(50d));
 
@@ -629,6 +639,27 @@ public class InvoicesApiTest extends ApiTestBase {
 
     InvoiceLine invLineWithRecalculatedTotals = serverRqRs.get(INVOICE_LINES, HttpMethod.PUT).get(0).mapTo(InvoiceLine.class);
     assertEquals(invLineWithRecalculatedTotals.getTotal(), transactionsAmount);
+
+    // check voucher totals
+    Voucher voucher = serverRqRs.get(VOUCHERS_STORAGE, HttpMethod.POST)
+      .stream()
+      .map(transaction -> transaction.mapTo(Voucher.class))
+      .collect(toList())
+      .get(0);
+
+    List<VoucherLine> voucherLines = serverRqRs.get(VOUCHER_LINES, HttpMethod.POST)
+      .stream()
+      .map(transaction -> transaction.mapTo(VoucherLine.class))
+      .collect(toList());
+    Double voucherLinesTotal = voucherLines.stream()
+      .map(vLine -> BigDecimal.valueOf(vLine.getAmount()))
+      .reduce(BigDecimal::add)
+      .get()
+      .doubleValue();
+
+    var expectedVoucherAmount = Money.of(invLineWithRecalculatedTotals.getTotal(), invoice.getCurrency()).multiply(conversionFactor).getNumber().doubleValue();
+    assertEquals(expectedVoucherAmount, voucher.getAmount());
+    assertEquals(expectedVoucherAmount, voucherLinesTotal);
   }
 
   @Test

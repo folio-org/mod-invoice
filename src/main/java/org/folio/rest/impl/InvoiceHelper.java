@@ -6,6 +6,7 @@ import static java.util.concurrent.CompletableFuture.allOf;
 import static java.util.stream.Collectors.groupingBy;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toMap;
+import static javax.money.Monetary.getDefaultRounding;
 import static org.apache.commons.lang3.StringUtils.EMPTY;
 import static org.apache.commons.lang3.StringUtils.isEmpty;
 import static org.folio.completablefuture.FolioVertxCompletableFuture.completedFuture;
@@ -37,6 +38,7 @@ import static org.folio.rest.RestVerticle.OKAPI_HEADER_PERMISSIONS;
 import static org.folio.services.voucher.VoucherCommandService.VOUCHER_NUMBER_PREFIX_CONFIG_QUERY;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
@@ -417,7 +419,7 @@ public class InvoiceHelper extends AbstractHelper {
   /**
    * Updates total values of the invoice and invoice lines
    * @param invoice invoice to update totals for
-   * @param List<InvoiceLine> invoice lines to update totals for
+   * @param lines List<InvoiceLine> invoice lines to update totals for
    * @return {code true} if adjustments total, sub total or grand total value is different to original one
    */
   public boolean recalculateTotals(Invoice invoice, List<InvoiceLine> lines) {
@@ -586,20 +588,59 @@ public class InvoiceHelper extends AbstractHelper {
     return fundDistributions;
   }
 
-  private List<FundDistribution> getInvoiceLineFundDistributions(List<InvoiceLine> invoiceLines, Invoice invoice, CurrencyConversion conversion) {
-    return invoiceLines.stream()
-      .flatMap(invoiceLine -> invoiceLine.getFundDistributions()
-        .stream()
-        .map(fundDistribution -> JsonObject.mapFrom(fundDistribution).mapTo(FundDistribution.class).withInvoiceLineId(invoiceLine.getId())
-          .withValue(getFundDistributionAmountWithConversion(fundDistribution, Money.of(invoiceLine.getTotal(), invoice.getCurrency()), conversion))
-          .withDistributionType(FundDistribution.DistributionType.AMOUNT)
-        )
-      )
-      .collect(toList());
+  private List<FundDistribution> getInvoiceLineFundDistributions(List<InvoiceLine> invoiceLines, Invoice invoice,
+      CurrencyConversion conversion) {
+    Map<InvoiceLine, List<FundDistribution>> fdsByLine = invoiceLines.stream()
+      .collect(toMap(Function.identity(), InvoiceLine::getFundDistributions));
+
+    return fdsByLine.entrySet()
+      .stream()
+      .map(invoiceLine -> {
+        var invoiceLineTotalWithConversion = Money.of(invoiceLine.getKey().getTotal(), invoice.getCurrency()).with(conversion);
+
+        List<FundDistribution> fds = invoiceLine.getValue()
+          .stream()
+          .map(fD -> JsonObject.mapFrom(fD)
+            .mapTo(FundDistribution.class)
+            .withInvoiceLineId(fD.getInvoiceLineId())
+            .withDistributionType(FundDistribution.DistributionType.AMOUNT)
+            .withValue(getFundDistributionAmountWithConversion(fD, invoiceLineTotalWithConversion, conversion)))
+          .collect(toList());
+
+        return getRedistributedFunds(fds, invoiceLineTotalWithConversion, conversion);
+
+      })
+      .flatMap(Collection::stream)
+      .collect(Collectors.toList());
+  }
+
+  private List<FundDistribution> getRedistributedFunds(List<FundDistribution> fds, MonetaryAmount expectedTotal, CurrencyConversion conversion) {
+    MonetaryAmount actualDistributedAmount = fds.stream()
+      .map(FundDistribution::getValue)
+      .map(amount -> Money.of(amount, conversion.getCurrency()))
+      .reduce(Money::add)
+      .orElseGet(() -> Money.of(0d, conversion.getCurrency()));
+
+    MonetaryAmount remainedAmount = expectedTotal.subtract(actualDistributedAmount);
+
+    if (remainedAmount.isNegative()) {
+      FundDistribution fdForUpdate = fds.get(fds.size() - 1);
+      // Subtract from the last fd
+      var currentFdAmount = Money.of(fdForUpdate.getValue(), conversion.getCurrency());
+      var updatedFdAmount = currentFdAmount.subtract(remainedAmount.abs());
+      fdForUpdate.setValue(updatedFdAmount.getNumber().doubleValue());
+    } else if (remainedAmount.isPositive()) {
+      FundDistribution fdForUpdate = fds.get(0);
+      // add to the first fd
+      var currentFdAmount = Money.of(fdForUpdate.getValue(), conversion.getCurrency());
+      var updatedFdAmount = currentFdAmount.add(remainedAmount);
+      fdForUpdate.setValue(updatedFdAmount.getNumber().doubleValue());
+    }
+    return fds;
   }
 
   private double getFundDistributionAmountWithConversion(FundDistribution fundDistribution, MonetaryAmount totalAmount, CurrencyConversion conversion) {
-    MonetaryAmount amount = getFundDistributionAmount(fundDistribution, totalAmount).with(conversion);
+    MonetaryAmount amount = getFundDistributionAmount(fundDistribution, totalAmount).with(conversion).with(getDefaultRounding());
     return amount.getNumber().doubleValue();
   }
 
