@@ -116,7 +116,7 @@ public class BaseInvoiceService implements InvoiceService {
   /**
    * Updates total values of the invoice and invoice lines
    * @param invoice invoice to update totals for
-   * @param List<InvoiceLine> invoice lines to update totals for
+   * @param lines List<InvoiceLine> invoice lines to update totals for
    * @return {code true} if adjustments total, sub total or grand total value is different to original one
    */
   @Override
