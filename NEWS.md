@@ -1,5 +1,21 @@
 ## 5.1.0 - Unreleased
 
+## 5.0.1 - Released
+
+The focus of this release was to fix invoice calculation issues, extend voucher and batch voucher schemas with the new fields
+
+[Full Changelog](https://github.com/folio-org/mod-invoice/compare/v5.0.0...v5.0.1)
+
+### Stories
+* [MODINVOICE-241](https://issues.folio.org/browse/MODINVOICE-241) - Populate Vendor primary address on GET /voucher/vouchers/id
+* [MODINVOICE-240](https://issues.folio.org/browse/MODINVOICE-240) - Include vendor organization address in voucher export for each batched voucher
+* [MODINVOICE-234](https://issues.folio.org/browse/MODINVOICE-234) - Update export batch voucher logic for supporting "enclosureNeeded" and "accountNo"
+
+### Bug Fixes
+* [MODINVOICE-245](https://issues.folio.org/browse/MODINVOICE-245) - Incorrect split funds with an odd number of pennies for vouchers
+* [MODINVOICE-232](https://issues.folio.org/browse/MODINVOICE-232) - Cannot split funds on an Invoice with an odd number of pennies as the cost
+
+
 ## 5.0.0 - Released
 
 The focus of this release was to update RMB, major changes in the display of lock total now this is a number. 
