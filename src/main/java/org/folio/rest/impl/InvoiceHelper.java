@@ -599,7 +599,7 @@ public class InvoiceHelper extends AbstractHelper {
         var invoiceLineTotalWithConversion = Money.of(invoiceLine.getKey().getTotal(), invoice.getCurrency()).with(conversion);
 
         List<FundDistribution> fds = invoiceLine.getValue()
-          .stream()
+          .stream().sequential()
           .map(fD -> JsonObject.mapFrom(fD)
             .mapTo(FundDistribution.class)
             .withInvoiceLineId(fD.getInvoiceLineId())
@@ -624,14 +624,14 @@ public class InvoiceHelper extends AbstractHelper {
     MonetaryAmount remainedAmount = expectedTotal.subtract(actualDistributedAmount);
 
     if (remainedAmount.isNegative()) {
-      FundDistribution fdForUpdate = fds.get(fds.size() - 1);
-      // Subtract from the last fd
+      FundDistribution fdForUpdate = fds.get(0);
+      // Subtract from the first fd
       var currentFdAmount = Money.of(fdForUpdate.getValue(), conversion.getCurrency());
       var updatedFdAmount = currentFdAmount.subtract(remainedAmount.abs());
       fdForUpdate.setValue(updatedFdAmount.getNumber().doubleValue());
     } else if (remainedAmount.isPositive()) {
-      FundDistribution fdForUpdate = fds.get(0);
-      // add to the first fd
+      // add to the last fd
+      FundDistribution fdForUpdate = fds.get(fds.size() - 1);
       var currentFdAmount = Money.of(fdForUpdate.getValue(), conversion.getCurrency());
       var updatedFdAmount = currentFdAmount.add(remainedAmount);
       fdForUpdate.setValue(updatedFdAmount.getNumber().doubleValue());
