@@ -581,12 +581,10 @@ public class InvoicesApiTest extends ApiTestBase {
   void testInvoiceTransitionApprovedWithOddNumberOfPennies() {
     logger.info("=== Test transition invoice to Approved with odd number of pennies ===");
 
-   // addMockEntry(INVOICE_LINES, getMockAsJson(FYS).mapTo(InvoiceLineCollection.class).getInvoiceLines().get(0);
-
     InvoiceLine invoiceLine = getMockAsJson(INVOICE_LINES_LIST_PATH).mapTo(InvoiceLineCollection.class).getInvoiceLines().get(0);
     Invoice invoice = getMockAsJson(OPEN_INVOICE_SAMPLE_PATH).mapTo(Invoice.class);
     invoice.getAdjustments().clear();
-    //invoice.getAdjustments().add(createAdjustment(Prorate.BY_LINE, Type.AMOUNT, 4d));
+    invoice.getAdjustments().add(createAdjustment(Prorate.BY_LINE, Type.AMOUNT, 4d));
     String id = invoice.getId();
 
     invoiceLine.setId(UUID.randomUUID().toString());
