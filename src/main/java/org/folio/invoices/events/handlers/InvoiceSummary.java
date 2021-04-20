@@ -12,14 +12,9 @@ import java.util.concurrent.CompletableFuture;
 
 import javax.ws.rs.core.Response;
 
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-import org.folio.completablefuture.FolioVertxCompletableFuture;
 import org.folio.invoices.rest.exceptions.HttpException;
-import org.folio.rest.core.models.RequestContext;
 import org.folio.rest.impl.InvoiceHelper;
 import org.folio.rest.jaxrs.model.Invoice;
-import org.folio.services.invoice.InvoiceService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -28,18 +23,18 @@ import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.eventbus.Message;
 import io.vertx.core.json.JsonObject;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.folio.completablefuture.FolioVertxCompletableFuture;
 
 @Component("invoiceSummaryHandler")
 public class InvoiceSummary implements Handler<Message<JsonObject>> {
   protected final Logger logger = LogManager.getLogger(this.getClass());
   private final Context ctx;
 
-  private final InvoiceService invoiceService;
-
   @Autowired
-  public InvoiceSummary(Vertx vertx, InvoiceService invoiceService) {
+  public InvoiceSummary(Vertx vertx) {
     ctx = vertx.getOrCreateContext();
-    this.invoiceService = invoiceService;
   }
 
   @Override
@@ -52,7 +47,7 @@ public class InvoiceSummary implements Handler<Message<JsonObject>> {
     InvoiceHelper helper = new InvoiceHelper(okapiHeaders, ctx, body.getString(LANG));
 
     getInvoiceRecord(helper, body)
-      .thenCompose(invoice -> invoiceService.recalculateTotals(invoice, new RequestContext(ctx, okapiHeaders))
+      .thenCompose(invoice -> helper.recalculateTotals(invoice)
         .thenCompose(isOutOfSync -> {
           if (Boolean.TRUE.equals(isOutOfSync)) {
             logger.debug("The invoice with id={} is out of sync in storage and requires updates", invoice.getId());

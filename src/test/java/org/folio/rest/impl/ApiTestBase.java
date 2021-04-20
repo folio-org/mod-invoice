@@ -44,14 +44,10 @@ import org.awaitility.core.ConditionEvaluationLogger;
 import org.folio.ApiTestSuite;
 import org.folio.invoices.events.handlers.MessageAddress;
 import org.folio.invoices.utils.HelperUtils;
-import org.folio.rest.core.RestClient;
 import org.folio.rest.jaxrs.model.Adjustment;
 import org.folio.rest.jaxrs.model.BatchVoucher;
 import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.jaxrs.model.InvoiceLine;
-import org.folio.services.invoice.BaseInvoiceService;
-import org.folio.services.invoice.InvoiceLineService;
-import org.folio.services.invoice.InvoiceService;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -122,16 +118,6 @@ public class ApiTestBase {
         logger.info("New message sent to {} address: {}", message.address(), message.body());
         eventMessages.add(message);
       };
-    }
-
-    @Bean
-    InvoiceLineService invoiceLineService(RestClient restClient) {
-      return new InvoiceLineService(restClient);
-    }
-
-    @Bean
-    InvoiceService invoiceService(RestClient restClient, InvoiceLineService invoiceLineService) {
-      return new BaseInvoiceService(restClient, invoiceLineService);
     }
   }
 

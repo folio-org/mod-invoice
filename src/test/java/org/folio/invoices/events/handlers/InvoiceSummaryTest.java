@@ -24,8 +24,6 @@ import javax.ws.rs.core.Response;
 import org.folio.rest.impl.ApiTestBase;
 import org.folio.rest.impl.MockServer;
 import org.folio.rest.jaxrs.model.Invoice;
-import org.folio.services.invoice.InvoiceLineService;
-import org.folio.services.invoice.InvoiceService;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
@@ -38,7 +36,6 @@ import io.vertx.core.eventbus.ReplyException;
 import io.vertx.core.json.JsonObject;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
-import org.springframework.beans.factory.annotation.Autowired;
 
 public class InvoiceSummaryTest extends ApiTestBase {
   private static final Logger logger = LogManager.getLogger(InvoiceSummaryTest.class);
@@ -47,16 +44,13 @@ public class InvoiceSummaryTest extends ApiTestBase {
 
   private static Vertx vertx;
 
-  @Autowired
-  static InvoiceService invoiceService;
-
   @BeforeAll
   public static void before() throws InterruptedException, ExecutionException, TimeoutException {
     ApiTestBase.before();
 
     vertx = Vertx.vertx();
     vertx.eventBus()
-      .consumer(TEST_ADDRESS, new InvoiceSummary(vertx, invoiceService));
+      .consumer(TEST_ADDRESS, new InvoiceSummary(vertx));
   }
 
   @Test

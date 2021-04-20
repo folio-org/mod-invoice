@@ -10,7 +10,7 @@ import java.util.Map;
 import org.folio.rest.RestConstants;
 import org.folio.rest.acq.model.orders.CompositePoLine;
 import org.folio.rest.core.RestClient;
-import org.folio.services.configuration.ConfigurationService;
+import org.folio.services.config.TenantConfigurationService;
 import org.folio.services.exchange.ExchangeRateProviderResolver;
 import org.folio.services.finance.expence.ExpenseClassRetrieveService;
 import org.folio.services.validator.VoucherValidator;
@@ -36,12 +36,11 @@ class InvoiceHelperTest extends ApiTestBase {
   RestClient restClient = new RestClient();
   ExpenseClassRetrieveService expenseClassRetrieveService = new ExpenseClassRetrieveService(restClient);
   VoucherRetrieveService voucherRetrieveService = new VoucherRetrieveService(restClient);
-  ConfigurationService configurationService = new ConfigurationService(restClient);
+  TenantConfigurationService tenantConfigurationService = new TenantConfigurationService(restClient);
 
   VoucherCommandService voucherCommandService = new VoucherCommandService(restClient,
                                                                           new VoucherNumberService(restClient),
-                                                                          voucherRetrieveService, new VoucherValidator(),
-                                                                          configurationService, new ExchangeRateProviderResolver());
+                                                                          voucherRetrieveService, new VoucherValidator(), tenantConfigurationService);
 
   @BeforeEach
   public void setUp() {
@@ -57,7 +56,8 @@ class InvoiceHelperTest extends ApiTestBase {
   @Test
   @DisplayName("not decide to update status of POLines with ONGOING status")
   void shouldReturnFalseWhenCompositeCheckingForUpdatePoLinePaymentStatusIsOngoing() {
-    InvoiceHelper invoiceHelper = new InvoiceHelper(okapiHeaders, context, "en");
+    InvoiceHelper invoiceHelper = new InvoiceHelper(okapiHeaders, context, "en", expenseClassRetrieveService,
+      voucherCommandService, voucherRetrieveService, new ExchangeRateProviderResolver());
 
     CompositePoLine ongoingCompositePoLine = getMockAsJson(String.format("%s%s.json", PO_LINE_MOCK_DATA_PATH, EXISTING_PO_LINE_ID))
       .mapTo(CompositePoLine.class)
@@ -78,7 +78,8 @@ class InvoiceHelperTest extends ApiTestBase {
   @Test
   @DisplayName("decide to update status of POLines with different statuses")
   void shouldReturnTrueWhenCompositeCheckingForUpdatePoLinePaymentStatusIsDifferentValues() {
-    InvoiceHelper invoiceHelper = new InvoiceHelper(okapiHeaders, context, "en");
+    InvoiceHelper invoiceHelper = new InvoiceHelper(okapiHeaders, context, "en", expenseClassRetrieveService,
+      voucherCommandService, voucherRetrieveService, new ExchangeRateProviderResolver());
 
     CompositePoLine ongoingCompositePoLine = getMockAsJson(String.format("%s%s.json", PO_LINE_MOCK_DATA_PATH, EXISTING_PO_LINE_ID))
       .mapTo(CompositePoLine.class)

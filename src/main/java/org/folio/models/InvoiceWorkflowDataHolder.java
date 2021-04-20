@@ -1,6 +1,5 @@
 package org.folio.models;
 
-import org.folio.rest.acq.model.Organization;
 import org.folio.rest.acq.model.finance.Budget;
 import org.folio.rest.acq.model.finance.ExpenseClass;
 import org.folio.rest.acq.model.finance.FiscalYear;
@@ -31,7 +30,6 @@ public class InvoiceWorkflowDataHolder {
     private Transaction newTransaction;
     private Transaction existingTransaction;
     private CurrencyConversion conversion;
-    private Organization organization;
 
     public String getLedgerId() {
         return fund.getLedgerId();
@@ -179,13 +177,4 @@ public class InvoiceWorkflowDataHolder {
         this.conversion = conversion;
         return this;
     }
-
-  public InvoiceWorkflowDataHolder withOrganization(Organization organization) {
-    this.organization = organization;
-    return this;
-  }
-
-  public Organization getOrganization() {
-    return organization;
-  }
 }
