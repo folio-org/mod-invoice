@@ -1,5 +1,15 @@
 ## 5.1.0 - Unreleased
 
+## 5.0.2 - Released
+
+The focus of this release was to fix populating fields of the voucher lines
+
+[Full Changelog](https://github.com/folio-org/mod-invoice/compare/v5.0.1...v5.0.2)
+
+### Bug Fixes
+* [MODINVOICE-246](https://issues.folio.org/browse/MODINVOICE-246) - Voucher line reference to the invoice line is empty
+
+
 ## 5.0.1 - Released
 
 The focus of this release was to fix invoice calculation issues, extend voucher and batch voucher schemas with the new fields
