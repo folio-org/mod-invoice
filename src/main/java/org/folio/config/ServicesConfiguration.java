@@ -6,7 +6,7 @@ import org.folio.rest.core.RestClient;
 import org.folio.rest.impl.VoucherService;
 import org.folio.services.InvoiceRetrieveService;
 import org.folio.services.VendorRetrieveService;
-import org.folio.services.config.TenantConfigurationService;
+import org.folio.services.configuration.ConfigurationService;
 import org.folio.services.exchange.ExchangeRateProviderResolver;
 import org.folio.services.exchange.FinanceExchangeRateService;
 import org.folio.services.finance.FundService;
@@ -63,14 +63,14 @@ public class ServicesConfiguration {
                                               VoucherNumberService voucherNumberService,
                                               VoucherRetrieveService voucherRetrieveService,
                                               VoucherValidator voucherValidator,
-                                              TenantConfigurationService tenantConfigurationService) {
+                                              ConfigurationService configurationService, ExchangeRateProviderResolver exchangeRateProviderResolver) {
     return new VoucherCommandService(restClient, voucherNumberService,
-      voucherRetrieveService, voucherValidator, tenantConfigurationService);
+      voucherRetrieveService, voucherValidator, configurationService, exchangeRateProviderResolver);
   }
 
   @Bean
-  TenantConfigurationService tenantConfigurationService(RestClient restClient) {
-    return new TenantConfigurationService(restClient);
+  ConfigurationService tenantConfigurationService(RestClient restClient) {
+    return new ConfigurationService(restClient);
   }
 
   @Bean
@@ -137,8 +137,8 @@ public class ServicesConfiguration {
   }
 
   @Bean
-  InvoiceService invoiceService(RestClient restClient) {
-    return new BaseInvoiceService(restClient);
+  InvoiceService invoiceService(RestClient restClient, InvoiceLineService invoiceLineService) {
+    return new BaseInvoiceService(restClient, invoiceLineService);
   }
 
   @Bean

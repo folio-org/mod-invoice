@@ -1,17 +1,13 @@
 package org.folio.rest.impl;
 
-import static java.util.concurrent.CompletableFuture.completedFuture;
 import static javax.ws.rs.core.HttpHeaders.CONTENT_TYPE;
 import static javax.ws.rs.core.HttpHeaders.LOCATION;
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 import static javax.ws.rs.core.Response.Status.CREATED;
 import static javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
 import static org.folio.invoices.utils.ErrorCodes.GENERIC_ERROR_CODE;
-import static org.folio.invoices.utils.ErrorCodes.MOD_CONFIG_ERROR;
 import static org.folio.invoices.utils.HelperUtils.LANG;
-import static org.folio.invoices.utils.HelperUtils.encodeQuery;
 import static org.folio.invoices.utils.HelperUtils.getHttpClient;
-import static org.folio.invoices.utils.HelperUtils.handleGetRequest;
 import static org.folio.invoices.utils.HelperUtils.verifyAndExtractBody;
 import static org.folio.rest.RestConstants.OKAPI_URL;
 import static org.folio.rest.RestVerticle.OKAPI_USERID_HEADER;
@@ -23,15 +19,12 @@ import java.util.concurrent.CompletableFuture;
 
 import javax.ws.rs.core.Response;
 
-import org.apache.commons.collections4.CollectionUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.completablefuture.FolioVertxCompletableFuture;
 import org.folio.invoices.events.handlers.MessageAddress;
 import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.rest.core.models.RequestContext;
-import org.folio.rest.jaxrs.model.Config;
-import org.folio.rest.jaxrs.model.Configs;
 import org.folio.rest.tools.client.interfaces.HttpClientInterface;
 
 import io.vertx.core.Context;
@@ -57,8 +50,6 @@ public abstract class AbstractHelper {
   protected final Map<String, String> okapiHeaders;
   protected final Context ctx;
   protected final String lang;
-  private Configs tenantConfiguration = new Configs().withTotalRecords(0);
-
 
   public AbstractHelper(HttpClientInterface httpClient, Map<String, String> okapiHeaders, Context ctx, String lang) {
     this.httpClient = httpClient;
@@ -69,77 +60,6 @@ public abstract class AbstractHelper {
 
   public AbstractHelper(Map<String, String> okapiHeaders, Context ctx, String lang) {
     this(getHttpClient(okapiHeaders), okapiHeaders, ctx, lang);
-  }
-
-  /**
-   * Retrieve configuration by moduleName and configName from mod-configuration.
-   * @param searchCriteria name of the module for which the configuration is to be retrieved
-   * @return CompletableFuture with Configs
-   */
-  private CompletableFuture<Configs> getConfigurationsEntries(String ... searchCriteria) {
-
-    CompletableFuture<Configs> future = new FolioVertxCompletableFuture<>(ctx);
-    try {
-      String query = buildSearchingQuery(searchCriteria);
-      String endpoint = String.format("/configurations/entries?query=%s&limit=%d&lang=%s", encodeQuery(query, logger), 100, lang);
-      handleGetRequest(endpoint, httpClient, ctx, okapiHeaders, logger)
-        .thenAccept(entries -> {
-          if (logger.isDebugEnabled()) {
-            logger.debug("The response from mod-configuration: {}", entries.encodePrettily());
-          }
-          Configs configs = entries.mapTo(Configs.class);
-          future.complete(configs);
-        })
-        .exceptionally(t -> {
-          logger.error("Error happened while getting configs", t);
-          future.completeExceptionally(new HttpException(500, MOD_CONFIG_ERROR));
-          return null;
-        });
-
-    } catch (Exception e) {
-      logger.error("Error happened while getting configs", e);
-      future.completeExceptionally(new HttpException(500, MOD_CONFIG_ERROR));
-    }
-    return future;
-  }
-
-  private String buildSearchingQuery(String[] searchCriteria) {
-    return "(" + String.join(") OR (", searchCriteria) + ")";
-  }
-
-  public CompletableFuture<Void> loadTenantConfiguration(String ... searchCriteria) {
-    if (isConfigEmpty()) {
-      return getConfigurationsEntries(searchCriteria)
-        .thenAccept(config -> this.tenantConfiguration = config);
-    }
-    return completedFuture(null);
-  }
-
-  private boolean isConfigEmpty() {
-    return CollectionUtils.isEmpty(this.tenantConfiguration.getConfigs());
-  }
-
-  public Configs getLoadedTenantConfiguration() {
-    return this.tenantConfiguration;
-  }
-
-  /**
-   *  Retrieves systemCurrency from mod-configuration
-   *  if config is empty than use {@link #DEFAULT_SYSTEM_CURRENCY}
-   */
-  public String getSystemCurrency() {
-    JsonObject configValue = getLoadedTenantConfiguration().getConfigs()
-      .stream()
-      .filter(this::isLocaleConfig)
-      .map(config -> new JsonObject(config.getValue()))
-      .findFirst()
-      .orElseGet(JsonObject::new);
-
-    return configValue.getString(SYSTEM_CURRENCY_PROPERTY_NAME, DEFAULT_SYSTEM_CURRENCY);
-  }
-
-  private boolean isLocaleConfig(Config config) {
-    return SYSTEM_CONFIG_MODULE_NAME.equals(config.getModule()) && LOCALE_SETTINGS.equals(config.getConfigName());
   }
 
   protected CompletableFuture<String> createRecordInStorage(JsonObject recordData, String endpoint) {

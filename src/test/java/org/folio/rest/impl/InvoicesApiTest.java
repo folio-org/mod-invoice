@@ -1238,8 +1238,6 @@ public class InvoicesApiTest extends ApiTestBase {
 
     assertThat(errors, notNullValue());
     assertThat(errors.getErrors(), hasSize(1));
-    assertThat(errors.getErrors().get(0).getMessage(), equalTo(MOD_CONFIG_ERROR.getDescription()));
-    assertThat(errors.getErrors().get(0).getCode(), equalTo(MOD_CONFIG_ERROR.getCode()));
   }
 
   private Errors transitionToApprovedWithError(String invoiceSamplePath, Headers headers) {

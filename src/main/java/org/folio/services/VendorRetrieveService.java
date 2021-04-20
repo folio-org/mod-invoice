@@ -11,7 +11,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -26,7 +25,7 @@ import org.folio.rest.jaxrs.model.Invoice;
 
 public class VendorRetrieveService {
 
-  private static final Logger logger = LogManager.getLogger();
+  private static final Logger logger = LogManager.getLogger(VendorRetrieveService.class);
 
   private static final String ORGANIZATIONS_STORAGE_VENDORS = "/organizations-storage/organizations";
   private static final String ORGANIZATIONS_STORAGE_VENDOR = ORGANIZATIONS_STORAGE_VENDORS + "/{id}";
@@ -88,7 +87,7 @@ public class VendorRetrieveService {
     return restClient.get(requestEntry, requestContext, OrganizationCollection.class);
   }
 
-  public CompletionStage<Organization> getVendor(String vendorId, RequestContext requestContext) {
+  public CompletableFuture<Organization> getVendor(String vendorId, RequestContext requestContext) {
     RequestEntry requestEntry = new RequestEntry(ORGANIZATIONS_STORAGE_VENDOR)
         .withId(vendorId);
     return restClient.get(requestEntry, requestContext, Organization.class)

@@ -20,8 +20,10 @@ import org.folio.rest.jaxrs.model.BatchVoucher;
 import org.folio.rest.jaxrs.model.BatchVoucherExport;
 import org.folio.services.InvoiceRetrieveService;
 import org.folio.services.VendorRetrieveService;
-import org.folio.services.config.TenantConfigurationService;
+import org.folio.services.configuration.ConfigurationService;
+import org.folio.services.exchange.ExchangeRateProviderResolver;
 import org.folio.services.invoice.BaseInvoiceService;
+import org.folio.services.invoice.InvoiceLineService;
 import org.folio.services.invoice.InvoiceService;
 import org.folio.services.validator.VoucherValidator;
 import org.junit.jupiter.api.Assertions;
@@ -56,17 +58,17 @@ public class BatchVoucherGenerateServiceTest extends ApiTestBase {
   public void positiveGenerateBatchVoucherTest() throws IOException, ExecutionException, InterruptedException {
     RestClient restClient = new RestClient();
     VoucherRetrieveService voucherRetrieveService = new VoucherRetrieveService(restClient);
-    TenantConfigurationService tenantConfigurationService = new TenantConfigurationService(new RestClient());
+    ConfigurationService configurationService = new ConfigurationService(new RestClient());
     VoucherCommandService voucherCommandService = new VoucherCommandService(restClient,
       new VoucherNumberService(new RestClient()),
-      voucherRetrieveService, new VoucherValidator(), tenantConfigurationService);
+      voucherRetrieveService, new VoucherValidator(), configurationService, new ExchangeRateProviderResolver());
     VendorRetrieveService vendorRetrieveService = new VendorRetrieveService(restClient);
     AddressConverter addressConverter = AddressConverter.getInstance();
     VoucherService voucherService = new VoucherService(voucherRetrieveService, voucherCommandService,
       vendorRetrieveService, addressConverter);
 
 
-    InvoiceService invoiceService = new BaseInvoiceService(new RestClient());
+    InvoiceService invoiceService = new BaseInvoiceService(new RestClient(), new InvoiceLineService(new RestClient()));
     InvoiceRetrieveService invoiceRetrieveService = new InvoiceRetrieveService(invoiceService);
     BatchVoucherGenerateService service = new BatchVoucherGenerateService(okapiHeaders, context, "en", vendorRetrieveService,
               invoiceRetrieveService, voucherService, addressConverter);
@@ -82,15 +84,15 @@ public class BatchVoucherGenerateServiceTest extends ApiTestBase {
     Assertions.assertThrows(CompletionException.class, () -> {
       RestClient restClient = new RestClient();
       VoucherRetrieveService voucherRetrieveService = new VoucherRetrieveService(restClient);
-      TenantConfigurationService tenantConfigurationService = new TenantConfigurationService(restClient);
+      ConfigurationService configurationService = new ConfigurationService(restClient);
       VoucherCommandService voucherCommandService = new VoucherCommandService(restClient,
         new VoucherNumberService(restClient),
-        voucherRetrieveService, new VoucherValidator(), tenantConfigurationService);
+        voucherRetrieveService, new VoucherValidator(), configurationService, new ExchangeRateProviderResolver());
       VendorRetrieveService vendorRetrieveService = new VendorRetrieveService(restClient);
       AddressConverter addressConverter = AddressConverter.getInstance();
       VoucherService voucherService = new VoucherService(voucherRetrieveService, voucherCommandService,
         vendorRetrieveService, addressConverter);
-      InvoiceService invoiceService = new BaseInvoiceService(restClient);
+      InvoiceService invoiceService = new BaseInvoiceService(restClient, new InvoiceLineService(new RestClient()));
       InvoiceRetrieveService invoiceRetrieveService = new InvoiceRetrieveService(invoiceService);
 
       BatchVoucherGenerateService service = new BatchVoucherGenerateService(okapiHeaders, context, "en", vendorRetrieveService,
