@@ -512,7 +512,7 @@ public class InvoiceHelper extends AbstractHelper {
           .map(fD -> JsonObject.mapFrom(fD)
             .mapTo(FundDistribution.class)
             .withInvoiceLineId(invoiceLine.getKey().getId())
-          .withDistributionType(FundDistribution.DistributionType.AMOUNT)
+            .withDistributionType(FundDistribution.DistributionType.AMOUNT)
             .withValue(getFundDistributionAmountWithConversion(fD, invoiceLineTotalWithConversion, conversion)))
       .collect(toList());
 
