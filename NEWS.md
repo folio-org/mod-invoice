@@ -4,7 +4,7 @@
 
 The focus of this release was to fix populating fields of the voucher lines
 
-[Full Changelog](https://github.com/folio-org/mod-invoice/compare/v5.0.2...v5.0.1)
+[Full Changelog](https://github.com/folio-org/mod-invoice/compare/v5.0.3...v5.0.2)
 
 ### Stories
 * [MODINVOICE-241](https://issues.folio.org/browse/MODINVOICE-241) - Populate Vendor primary address on GET /voucher/vouchers/id
