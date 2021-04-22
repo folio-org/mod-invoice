@@ -23,6 +23,14 @@
       "voucherDate": "2019-12-06T00:00:00.000+0000",
       "voucherNumber": "1023",
       "vendorName": "GOBI",
+      "vendorAddress": {
+        "addressLine1": "10 Estes Street",
+        "city": "Ipswich",
+        "stateRegion": "MA",
+        "zipCode": "01938",
+        "country": "USA"
+
+      },
       "vendorInvoiceNo": "YK75851",
       "batchedVoucherLines": [
         {

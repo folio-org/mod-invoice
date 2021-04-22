@@ -34,6 +34,13 @@
       <vendorName>GOBI</vendorName>
       <voucherDate>2019-12-06T00:00:00Z</voucherDate>
       <voucherNumber>1023</voucherNumber>
+      <vendorAddress>
+        <addressLine1>10 Estes Street</addressLine1>
+        <city>Ipswich</city>
+        <stateRegion>MA</stateRegion>
+        <zipCode>01938</zipCode>
+        <country>USA</country>
+      </vendorAddress>
     </batchedVoucher>
   </batchedVouchers>
   <totalRecords>1</totalRecords>
