@@ -1,5 +1,19 @@
 ## 5.1.0 - Unreleased
 
+## 5.0.3 - Released
+
+The focus of this release was to fix populating fields of the voucher lines
+
+[Full Changelog](https://github.com/folio-org/mod-invoice/compare/v5.0.3...v5.0.2)
+
+### Stories
+* [MODINVOICE-241](https://issues.folio.org/browse/MODINVOICE-241) - Populate Vendor primary address on GET /voucher/vouchers/id
+* [MODINVOICE-240](https://issues.folio.org/browse/MODINVOICE-240) - Include vendor organization address in voucher export for each batched voucher
+
+### Bug Fixes
+* [MODINVOICE-249](https://issues.folio.org/browse/MODINVOICE-249) - The relation between the order and the invoice is not deleted if the invoice is last online
+
+
 ## 5.0.2 - Released
 
 The focus of this release was to fix populating fields of the voucher lines
@@ -17,8 +31,6 @@ The focus of this release was to fix invoice calculation issues, extend voucher 
 [Full Changelog](https://github.com/folio-org/mod-invoice/compare/v5.0.0...v5.0.1)
 
 ### Stories
-* [MODINVOICE-241](https://issues.folio.org/browse/MODINVOICE-241) - Populate Vendor primary address on GET /voucher/vouchers/id
-* [MODINVOICE-240](https://issues.folio.org/browse/MODINVOICE-240) - Include vendor organization address in voucher export for each batched voucher
 * [MODINVOICE-234](https://issues.folio.org/browse/MODINVOICE-234) - Update export batch voucher logic for supporting "enclosureNeeded" and "accountNo"
 
 ### Bug Fixes
