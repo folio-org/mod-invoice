@@ -30,6 +30,7 @@ public class OrderService {
   private static final String ORDER_LINES_ENDPOINT = resourcesPath(ORDER_LINES);
   private static final String ORDER_LINES_BY_ID_ENDPOINT = ORDER_LINES_ENDPOINT + "/{id}";
   private static final String ORDER_INVOICE_RELATIONSHIPS_ENDPOINT = resourcesPath(ORDER_INVOICE_RELATIONSHIP);
+  private static final String ORDER_INVOICE_RELATIONSHIPS_BY_ID_ENDPOINT = ORDER_INVOICE_RELATIONSHIPS_ENDPOINT + "/{id}";
 
   private final RestClient restClient;
 
@@ -90,7 +91,7 @@ public class OrderService {
   }
 
   public CompletableFuture<Void> deleteOrderInvoiceRelationship(String id, RequestContext requestContext) {
-    RequestEntry requestEntry = new RequestEntry(ORDER_INVOICE_RELATIONSHIPS_ENDPOINT).withId(id);
+    RequestEntry requestEntry = new RequestEntry(ORDER_INVOICE_RELATIONSHIPS_BY_ID_ENDPOINT).withId(id);
     return restClient.delete(requestEntry, requestContext);
   }
 
