@@ -8,10 +8,12 @@ import org.folio.invoices.utils.ResourcePathResolver;
 import org.folio.rest.acq.model.finance.ExchangeRate;
 import org.folio.rest.core.RestClient;
 import org.folio.rest.core.models.RequestContext;
-
+import org.folio.rest.core.models.RequestEntry;
 
 public class FinanceExchangeRateService {
-  private static final String ROE_QUERY_PARAMS = ResourcePathResolver.resourcesPath(FINANCE_EXCHANGE_RATE) + "?from=%s&to=%s";
+
+  private static final String EXCHANGE_RATE_ENDPOINT = ResourcePathResolver.resourcesPath(FINANCE_EXCHANGE_RATE);
+
   private final RestClient restClient;
 
   public FinanceExchangeRateService(RestClient restClient) {
@@ -19,8 +21,10 @@ public class FinanceExchangeRateService {
   }
 
   public CompletableFuture<ExchangeRate> getExchangeRate(String from, String to, RequestContext requestContext) {
-    String roeQuery = String.format(ROE_QUERY_PARAMS, from, to);
-    return restClient.get(roeQuery, requestContext, ExchangeRate.class);
+    RequestEntry requestEntry = new RequestEntry(EXCHANGE_RATE_ENDPOINT)
+        .withQueryParameter("from", from)
+        .withQueryParameter("to", to);
+    return restClient.get(requestEntry, requestContext, ExchangeRate.class);
   }
 
 }

@@ -232,7 +232,7 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
         .withValue("test-invalid-expression")
         .withEnabled("true"))));
 
-  private EventHandler createInvoiceHandler = new CreateInvoiceEventHandler(new RestClient(resourcesPath(ORDER_LINES)));
+  private EventHandler createInvoiceHandler = new CreateInvoiceEventHandler(new RestClient());
   private RestClient mockOrderLinesRestClient;
 
   @BeforeEach
@@ -306,7 +306,7 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
     PoLine poLine3 = Json.decodeValue(getMockData(String.format(MOCK_DATA_PATH_PATTERN, PO_LINES_MOCK_DATA_PATH, PO_LINE_ID_3)), PoLine.class);
     PoLineCollection poLineCollection = new PoLineCollection().withPoLines(List.of(poLine1, poLine3));
 
-    when(mockOrderLinesRestClient.get(anyString(), eq(0), eq(MAX_VALUE), any(RequestContext.class), eq(PoLineCollection.class)))
+    when(mockOrderLinesRestClient.get(any(), any(RequestContext.class), eq(PoLineCollection.class)))
       .thenReturn(CompletableFuture.completedFuture(poLineCollection));
 
     Record record = new Record().withParsedRecord(new ParsedRecord().withContent(EDIFACT_PARSED_CONTENT));
@@ -366,7 +366,7 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
     PoLine poLine1 = Json.decodeValue(getMockData(String.format(MOCK_DATA_PATH_PATTERN, PO_LINES_MOCK_DATA_PATH, PO_LINE_ID_1)), PoLine.class);
     PoLine poLine3 = Json.decodeValue(getMockData(String.format(MOCK_DATA_PATH_PATTERN, PO_LINES_MOCK_DATA_PATH, PO_LINE_ID_3)), PoLine.class);
 
-    when(mockOrderLinesRestClient.get(anyString(), eq(0), eq(MAX_VALUE), any(RequestContext.class), eq(PoLineCollection.class)))
+    when(mockOrderLinesRestClient.get(any(), any(RequestContext.class), eq(PoLineCollection.class)))
       .thenReturn(CompletableFuture.completedFuture(new PoLineCollection()))
       .thenReturn(CompletableFuture.completedFuture(new PoLineCollection().withPoLines(List.of(poLine1))))
       .thenReturn(CompletableFuture.completedFuture(new PoLineCollection()))
@@ -440,7 +440,7 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
     PoLine poLine3 = Json.decodeValue(getMockData(String.format(MOCK_DATA_PATH_PATTERN, PO_LINES_MOCK_DATA_PATH, PO_LINE_ID_3)), PoLine.class);
     PoLineCollection poLineCollection = new PoLineCollection().withPoLines(List.of(poLine1, poLine3));
 
-    when(mockOrderLinesRestClient.get(anyString(), eq(0), eq(MAX_VALUE), any(RequestContext.class), eq(PoLineCollection.class)))
+    when(mockOrderLinesRestClient.get(any(), any(RequestContext.class), eq(PoLineCollection.class)))
       .thenReturn(CompletableFuture.completedFuture(poLineCollection));
 
     ProfileSnapshotWrapper profileSnapshotWrapper = buildProfileSnapshotWrapper(jobProfile, actionProfile, mappingProfileWithPoLineFundDistribution);
@@ -502,7 +502,7 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
     PoLine poLine1 = Json.decodeValue(getMockData(String.format(MOCK_DATA_PATH_PATTERN, PO_LINES_MOCK_DATA_PATH, PO_LINE_ID_1)), PoLine.class);
     PoLine poLine3 = Json.decodeValue(getMockData(String.format(MOCK_DATA_PATH_PATTERN, PO_LINES_MOCK_DATA_PATH, PO_LINE_ID_3)), PoLine.class);
 
-    when(mockOrderLinesRestClient.get(anyString(), eq(0), eq(MAX_VALUE), any(RequestContext.class), eq(PoLineCollection.class)))
+    when(mockOrderLinesRestClient.get(any(), any(RequestContext.class), eq(PoLineCollection.class)))
       .thenReturn(CompletableFuture.completedFuture(new PoLineCollection()))
       .thenReturn(CompletableFuture.completedFuture(new PoLineCollection().withPoLines(List.of(poLine1, poLine3))));
 
@@ -560,7 +560,7 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
     PoLine poLine3 = Json.decodeValue(getMockData(String.format(MOCK_DATA_PATH_PATTERN, PO_LINES_MOCK_DATA_PATH, PO_LINE_ID_3)), PoLine.class);
     PoLineCollection poLineCollection = new PoLineCollection().withPoLines(List.of(poLine3));
 
-    when(mockOrderLinesRestClient.get(anyString(), eq(0), eq(MAX_VALUE), any(RequestContext.class), eq(PoLineCollection.class)))
+    when(mockOrderLinesRestClient.get(any(), any(RequestContext.class), eq(PoLineCollection.class)))
       .thenReturn(CompletableFuture.completedFuture(poLineCollection))
       .thenReturn(CompletableFuture.completedFuture(new PoLineCollection()));
 

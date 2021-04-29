@@ -23,6 +23,7 @@ import org.folio.rest.acq.model.finance.Transaction;
 import org.folio.rest.acq.model.finance.TransactionCollection;
 import org.folio.rest.core.RestClient;
 import org.folio.rest.core.models.RequestContext;
+import org.folio.rest.core.models.RequestEntry;
 import org.folio.rest.impl.ApiTestBase;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -39,8 +40,6 @@ public class BaseTransactionServiceTest extends ApiTestBase {
   private EventLoopContext ctxMock;
   @Mock
   private RestClient restClient;
-  @Mock
-  private TransactionManagingServiceFactory transactionManagingServiceFactory;
 
   private Map<String, String> okapiHeaders;
   public static final Header X_OKAPI_TENANT = new Header(OKAPI_HEADER_TENANT, "invoiceimpltest");
@@ -58,7 +57,7 @@ public class BaseTransactionServiceTest extends ApiTestBase {
   @Test
   public void testShouldSuccessRetrieveExistedTransactions() throws Exception {
     //given
-    BaseTransactionService service = spy(new BaseTransactionService(restClient, transactionManagingServiceFactory));
+    BaseTransactionService service = spy(new BaseTransactionService(restClient));
 
     JsonObject encumbranceList = new JsonObject(getMockData(MOCK_ENCUMBRANCES_LIST));
 
@@ -67,7 +66,7 @@ public class BaseTransactionServiceTest extends ApiTestBase {
     TransactionCollection trCollection = new TransactionCollection().withTransactions(encumbrances);
 
     RequestContext requestContext = new RequestContext(ctxMock, okapiHeaders);
-    doReturn(completedFuture(trCollection)).when(restClient).get(any(String.class), eq(0), eq(1), any(RequestContext.class), eq(TransactionCollection.class));
+    doReturn(completedFuture(trCollection)).when(restClient).get(any(RequestEntry.class), any(RequestContext.class), eq(TransactionCollection.class));
     //When
 
     List<String> transactionIds = encumbrances.stream().map(Transaction::getId).collect(toList());
@@ -75,19 +74,19 @@ public class BaseTransactionServiceTest extends ApiTestBase {
     //Then
     assertThat(actEncumbrances, hasSize(1));
     assertThat(actEncumbrances.get(0).getId(), equalTo(encumbrances.get(0).getId()));
-    verify(restClient).get(any(String.class), eq(0), eq(1), any(RequestContext.class), eq(TransactionCollection.class));
+    verify(restClient).get(any(RequestEntry.class), any(RequestContext.class), eq(TransactionCollection.class));
   }
 
   @Test
   public void testShouldSuccessRetrieveEmptyListIfIdListIsEmpty() throws Exception {
     //given
-    BaseTransactionService service = spy(new BaseTransactionService(restClient, transactionManagingServiceFactory));
+    BaseTransactionService service = spy(new BaseTransactionService(restClient));
     RequestContext requestContext = new RequestContext(ctxMock, okapiHeaders);
      //When
     List<String> transactionIds = new ArrayList<>();
     List<Transaction> actEncumbrances = service.getTransactions(transactionIds, requestContext).join();
     //Then
     assertThat(actEncumbrances, hasSize(0));
-    verify(restClient, new Times(0)).get(any(String.class), eq(0), eq(0), any(RequestContext.class), eq(TransactionCollection.class));
+    verify(restClient, new Times(0)).get(any(RequestEntry.class), any(RequestContext.class), eq(TransactionCollection.class));
   }
 }

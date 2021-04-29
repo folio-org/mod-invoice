@@ -218,12 +218,12 @@ public class HelperUtils {
           future.complete(body);
         })
         .exceptionally(t -> {
-          logger.error(EXCEPTION_CALLING_ENDPOINT_MSG, t, HttpMethod.GET, endpoint);
+          logger.error(EXCEPTION_CALLING_ENDPOINT_MSG, HttpMethod.GET, endpoint, t);
           future.completeExceptionally(t);
           return null;
         });
     } catch (Exception e) {
-        logger.error(EXCEPTION_CALLING_ENDPOINT_MSG, e, HttpMethod.GET, endpoint);
+        logger.error(EXCEPTION_CALLING_ENDPOINT_MSG, HttpMethod.GET, endpoint, e);
         future.completeExceptionally(e);
     }
     return future;
@@ -273,12 +273,12 @@ public class HelperUtils {
         .thenAccept(HelperUtils::verifyResponse)
         .thenApply(future::complete)
         .exceptionally(t -> {
-          logger.error(EXCEPTION_CALLING_ENDPOINT_MSG, t, HttpMethod.DELETE, url);
+          logger.error(EXCEPTION_CALLING_ENDPOINT_MSG, HttpMethod.DELETE, url, t);
           future.completeExceptionally(t);
           return null;
         });
     } catch (Exception e) {
-      logger.error(EXCEPTION_CALLING_ENDPOINT_MSG, e, HttpMethod.DELETE, url);
+      logger.error(EXCEPTION_CALLING_ENDPOINT_MSG, HttpMethod.DELETE, url, e);
       future.completeExceptionally(e);
     }
 

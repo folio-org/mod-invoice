@@ -1,13 +1,37 @@
 {
   "organizations": [
-     {
+    {
       "id": "168f8a63-d612-406e-813f-c7527f241ac3",
       "name": "Jean Simmons",
       "code": "SJEAN",
       "description": "Individual donor to library archives",
       "status": "Active",
       "language": "en-us",
-      "isVendor": true
+      "isVendor": true,
+      "addresses": [
+        {
+          "id": "158f8a63-d612-406e-813f-c7527f241a12",
+          "addressLine1": "9 Estes Street",
+          "addressLine2": "",
+          "city": "Ipswich",
+          "stateRegion": "MA",
+          "zipCode": "01937",
+          "country": "USA",
+          "language": "en",
+          "isPrimary": false
+        },
+        {
+          "id": "158f8a63-d612-406e-813f-c7527f241a13",
+          "addressLine1": "10 Estes Street",
+          "addressLine2": "22",
+          "city": "Ipswich",
+          "stateRegion": "MA",
+          "zipCode": "01938",
+          "country": "USA",
+          "language": "en",
+          "isPrimary": true
+        }
+      ]
     }
   ],
   "totalRecords": 1

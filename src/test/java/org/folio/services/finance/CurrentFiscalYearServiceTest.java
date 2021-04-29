@@ -6,6 +6,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.instanceOf;
 import static org.junit.Assert.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doReturn;
 
 import java.time.LocalDate;
@@ -57,7 +58,7 @@ public class CurrentFiscalYearServiceTest {
 
     FiscalYear fiscalYear = new FiscalYear().withId(fiscalYearId).withPeriodStart(startDate).withPeriodEnd(endDate);
 
-    doReturn(completedFuture(fiscalYear)).when(currentFiscalYearRestClient).getById(ledgerId, requestContextMock, FiscalYear.class);
+    doReturn(completedFuture(fiscalYear)).when(currentFiscalYearRestClient).get(any(), any(), any());
 
     //When
     FiscalYear currentFiscalYear = currentFiscalYearService.getCurrentFiscalYear(ledgerId, requestContextMock).join();
@@ -82,7 +83,7 @@ public class CurrentFiscalYearServiceTest {
     FiscalYear fiscalYear = new FiscalYear().withId(fiscalYearId).withPeriodStart(startDate).withPeriodEnd(endDate);
 
     doReturn(completedFuture(fund)).when(fundService).getFundById(fundId, requestContextMock);
-    doReturn(completedFuture(fiscalYear)).when(currentFiscalYearRestClient).getById(ledgerId, requestContextMock, FiscalYear.class);
+    doReturn(completedFuture(fiscalYear)).when(currentFiscalYearRestClient).get(any(), any(), any());
     //When
     FiscalYear currentFiscalYear = currentFiscalYearService.getCurrentFiscalYearByFund(fundId, requestContextMock).join();
     //Then
