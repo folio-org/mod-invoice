@@ -19,6 +19,13 @@ extra permission `invoices.acquisitions-units-assignments.manage` to update an i
 
 ### Integration
 
+
+#### Data import Kafka consumer
+
+In order to fail the module start-up when data import Kafka consumer creation is failed the one should set 
+`dataimport.consumer.verticle.mandatory` variable to `true`.
+
+
 ## Interaction with Kafka
 
 
@@ -31,14 +38,8 @@ After setup, it is good to check logs in all related modules for errors. Data im
 * "*mod.invoice.kafka.DataImportConsumerVerticle.maxDistributionNumbe*r": 100
 * "_dataimport.consumer.verticle.mandatory_": false       (should be set to true in order to fail the module at start-up if data import Kafka consumer creation failed)
 
-####Note
+#### Note
 **These variables are relevant for the **Iris** release. Module version: 5.0.0 (5.0.1, 5.0.2, 5.0.3).**
-
-
-#### Data import Kafka consumer
-
-In order to fail the module start-up when data import Kafka consumer creation is failed the one should set 
-`dataimport.consumer.verticle.mandatory` variable to `true`.
 
 ### Issue tracker
 
