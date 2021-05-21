@@ -30,6 +30,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 
+import org.apache.commons.lang3.StringUtils;
 import org.folio.invoices.events.handlers.MessageAddress;
 import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.invoices.utils.InvoiceRestrictionsUtil;
@@ -235,7 +236,7 @@ public class InvoiceLineHelper extends AbstractHelper {
           .thenCompose(ok -> {
 
             //  Create/update the relationship in case ids don't match
-            if (invoiceLine.getId() != invoiceLineFromStorage.getId()) {
+            if (!StringUtils.equals(invoiceLine.getPoLineId(), invoiceLineFromStorage.getPoLineId())) {
               return getPoLine(invoiceLine.getPoLineId(), requestContext).thenCompose(
                 poLine -> getOrderInvoiceRelationship(poLine.getPurchaseOrderId(), invoiceLine.getInvoiceId(), requestContext)
                   .thenCompose(relationships -> {
