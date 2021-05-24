@@ -21,7 +21,9 @@ import org.folio.rest.core.models.RequestEntry;
 import org.folio.rest.jaxrs.model.InvoiceLine;
 import org.folio.rest.jaxrs.model.Parameter;
 import org.folio.services.invoice.InvoiceLineService;
+import org.springframework.stereotype.Service;
 
+@Service
 public class OrderService {
 
   private static final String ORDER_INVOICE_RELATIONSHIP_QUERY = "purchaseOrderId==%s and invoiceId==%s";

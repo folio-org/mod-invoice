@@ -35,9 +35,7 @@ import org.folio.invoices.events.handlers.MessageAddress;
 import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.invoices.utils.InvoiceRestrictionsUtil;
 import org.folio.invoices.utils.ProtectedOperationType;
-import org.folio.rest.acq.model.orders.CompositePoLine;
 import org.folio.rest.acq.model.orders.OrderInvoiceRelationship;
-import org.folio.rest.acq.model.orders.OrderInvoiceRelationshipCollection;
 import org.folio.rest.core.RestClient;
 import org.folio.rest.core.models.RequestContext;
 import org.folio.rest.core.models.RequestEntry;
@@ -61,17 +59,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 
 public class InvoiceLineHelper extends AbstractHelper {
 
-  private static final String ORDER_INVOICE_RELATIONSHIP_QUERY = "purchaseOrderId==%s and invoiceId==%s";
   private static final String INVOICE_LINE_NUMBER_ENDPOINT = resourcesPath(INVOICE_LINE_NUMBER) + "?" + INVOICE_ID + "=";
   public static final String GET_INVOICE_LINES_BY_QUERY = resourcesPath(INVOICE_LINES) + SEARCH_PARAMS;
   public static final String HYPHEN_SEPARATOR = "-";
-  private static final String ORDER_INVOICE_RELATIONSHIPS_ENDPOINT = resourcesPath(ORDER_INVOICE_RELATIONSHIP);
-  private static final String ORDER_LINES_ENDPOINT = resourcesPath(ORDER_LINES);
-  private static final String ORDER_LINES_BY_ID_ENDPOINT = ORDER_LINES_ENDPOINT + "/{id}";
 
   private final ProtectionHelper protectionHelper;
-  private AdjustmentsService adjustmentsService;
-  private InvoiceLineValidator validator;
+  private final AdjustmentsService adjustmentsService;
+  private final InvoiceLineValidator validator;
   private RestClient restClient;
 
   @Autowired
@@ -236,50 +230,30 @@ public class InvoiceLineHelper extends AbstractHelper {
           .thenCompose(ok -> {
 
             //  Create/update the relationship in case ids don't match
-            if (!StringUtils.equals(invoiceLine.getPoLineId(), invoiceLineFromStorage.getPoLineId())) {
-              return getPoLine(invoiceLine.getPoLineId(), requestContext).thenCompose(
-                poLine -> getOrderInvoiceRelationship(poLine.getPurchaseOrderId(), invoiceLine.getInvoiceId(), requestContext)
-                  .thenCompose(relationships -> {
-                    if (relationships.getTotalRecords() == 0) {
-                      return createOrderInvoiceRelationship(
-                          new OrderInvoiceRelationship().withInvoiceId(invoiceLine.getInvoiceId())
-                            .withPurchaseOrderId(poLine.getPurchaseOrderId()),
-                          requestContext).thenCompose(v -> CompletableFuture.completedFuture(null));
-                    }
-                    return CompletableFuture.completedFuture(null);
-                  }));
-            }
-
-            //  Don't create/update the relationship in case ids match
-            return CompletableFuture.completedFuture(null);
+            return updateOrderInvoiceRelationship(invoiceLine, invoiceLineFromStorage, requestContext);
           });
       }));
   }
 
-  public CompletableFuture<CompositePoLine> getPoLine(String poLineId, RequestContext requestContext) {
-    RequestEntry requestEntry = new RequestEntry(ORDER_LINES_BY_ID_ENDPOINT).withId(poLineId);
-    return restClient.get(requestEntry, requestContext, CompositePoLine.class)
-      .exceptionally(throwable -> {
-        List<Parameter> parameters = Collections.singletonList(new Parameter().withKey("poLineId")
-          .withValue(poLineId));
-        throw new HttpException(404, PO_LINE_NOT_FOUND.toError()
-          .withParameters(parameters));
-      });
-  }
+  private CompletableFuture<Void> updateOrderInvoiceRelationship(InvoiceLine invoiceLine, InvoiceLine invoiceLineFromStorage, RequestContext requestContext) {
+    if (!StringUtils.equals(invoiceLine.getPoLineId(), invoiceLineFromStorage.getPoLineId())) {
+      return orderService.getPoLine(invoiceLine.getPoLineId(), requestContext).thenCompose(
+        poLine -> orderService.getOrderInvoiceRelationship(poLine.getPurchaseOrderId(), invoiceLine.getInvoiceId(), requestContext)
+          .thenCompose(relationships -> {
+            if (relationships.getTotalRecords() == 0) {
 
-  public CompletableFuture<OrderInvoiceRelationshipCollection> getOrderInvoiceRelationship(String orderId, String invoiceId,
-      RequestContext requestContext) {
-    String query = String.format(ORDER_INVOICE_RELATIONSHIP_QUERY, orderId, invoiceId);
-    RequestEntry requestEntry = new RequestEntry(ORDER_INVOICE_RELATIONSHIPS_ENDPOINT).withQuery(query)
-      .withOffset(0)
-      .withLimit(100);
-    return restClient.get(requestEntry, requestContext, OrderInvoiceRelationshipCollection.class);
-  }
+              OrderInvoiceRelationship orderInvoiceRelationship = new OrderInvoiceRelationship();
+              orderInvoiceRelationship.withInvoiceId(invoiceLine.getInvoiceId()).withPurchaseOrderId(poLine.getPurchaseOrderId());
 
-  public CompletableFuture<OrderInvoiceRelationship> createOrderInvoiceRelationship(OrderInvoiceRelationship relationship,
-      RequestContext requestContext) {
-    RequestEntry requestEntry = new RequestEntry(ORDER_INVOICE_RELATIONSHIPS_ENDPOINT);
-    return restClient.post(requestEntry, relationship, requestContext, OrderInvoiceRelationship.class);
+              return orderService.createOrderInvoiceRelationship(orderInvoiceRelationship, requestContext)
+                                 .thenCompose(v -> CompletableFuture.completedFuture(null));
+            }
+            return CompletableFuture.completedFuture(null);
+          }));
+    }
+
+    //  Don't create/update the relationship in case ids match
+    return CompletableFuture.completedFuture(null);
   }
 
   private CompletableFuture<Void> applyAdjustmentsAndUpdateLine(InvoiceLine invoiceLine, InvoiceLine invoiceLineFromStorage,
