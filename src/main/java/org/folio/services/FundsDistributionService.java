@@ -3,26 +3,19 @@ package org.folio.services;
 import static javax.money.Monetary.getDefaultRounding;
 
 import java.util.List;
-import java.util.ListIterator;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
-
 import javax.money.CurrencyUnit;
 import javax.money.Monetary;
 import javax.money.MonetaryAmount;
 import javax.money.convert.CurrencyConversion;
-
 import org.folio.models.InvoiceWorkflowDataHolder;
-import org.folio.rest.acq.model.finance.Encumbrance;
-import org.folio.rest.jaxrs.model.InvoiceLine;
 import org.folio.rest.acq.model.finance.Transaction;
-
-import org.folio.rest.jaxrs.model.FundDistribution;
+import org.folio.rest.acq.model.finance.Transaction.TransactionType;
+import org.folio.rest.jaxrs.model.InvoiceLine;
 import org.javamoney.moneta.Money;
-import org.javamoney.moneta.function.MonetaryFunctions;
-import org.javamoney.moneta.function.MonetaryOperators;
 
 public class FundsDistributionService {
 
@@ -41,89 +34,34 @@ public class FundsDistributionService {
       MonetaryAmount expectedTotal = Money.of(invoiceLine.getTotal(), invoiceCurrency)
         .with(conversion)
         .with(getDefaultRounding());
+
       MonetaryAmount calculatedTotal = invoiceWorkflowDataHolder.stream()
-        .map(InvoiceWorkflowDataHolder::getFundDistribution)
-        .map(fundDistribution -> getDistributionAmount(fundDistribution, expectedTotal, invoiceCurrency, conversion))
-        .reduce((money, money2) -> Money.from(MonetaryFunctions.sum(money, money2)))
-        .orElseGet(() -> Money.zero(invoiceCurrency));
+        .map(h -> h.getNewTransaction().getAmount())
+        .map(aDouble -> Money.of(aDouble, conversion.getCurrency()))
+        .reduce(Money::add)
+        .orElse(Money.zero(conversion.getCurrency()));
 
-      MonetaryAmount remainder = expectedTotal.abs()
-        .subtract(calculatedTotal.abs());
-      int remainderSignum = remainder.signum();
-      MonetaryAmount smallestUnit = getSmallestUnit(expectedTotal, remainderSignum);
+      int calculatedTotalSignum = calculatedTotal.signum();
 
-      for (ListIterator<InvoiceWorkflowDataHolder> iterator = getIterator(invoiceWorkflowDataHolder,
-          remainderSignum); isIteratorHasNext(iterator, remainderSignum);) {
+      final MonetaryAmount remainder = expectedTotal.abs().subtract(calculatedTotal.abs());
 
-        final InvoiceWorkflowDataHolder holder = iteratorNext(iterator, remainderSignum);
-        CurrencyUnit fyCurrency = Monetary.getCurrency(holder.getFyCurrency());
-        MonetaryAmount initialAmount = getDistributionAmount(holder.getFundDistribution(), expectedTotal, invoiceCurrency,
-          conversion);
+      Optional<Transaction> resultTransaction = Optional.of(invoiceWorkflowDataHolder)
+        .map(holder -> {
+          if (remainder.isNegative()) {
+            return holder.get(0);
+          } else if (remainder.isPositive()) {
+            return holder.get(holder.size() - 1);
+          }
+          return null;
+        })
+        .map(InvoiceWorkflowDataHolder::getNewTransaction);
 
-        if (!remainder.isZero()) {
-          initialAmount = initialAmount.add(smallestUnit);
-          remainder = remainder.abs()
-            .subtract(smallestUnit.abs())
-            .multiply(remainderSignum);
-        }
-
-        MonetaryAmount expended = Optional.of(holder)
-          .map(InvoiceWorkflowDataHolder::getNewTransaction)
-          .map(Transaction::getEncumbrance)
-          .map(Encumbrance::getAmountExpended)
-          .map(aDouble -> Money.of(aDouble, fyCurrency))
-          .orElse(Money.zero(fyCurrency));
-
-        MonetaryAmount awaitingPayment = Optional.of(holder)
-          .map(InvoiceWorkflowDataHolder::getNewTransaction)
-          .map(Transaction::getEncumbrance)
-          .map(Encumbrance::getAmountAwaitingPayment)
-          .map(aDouble -> Money.of(aDouble, fyCurrency))
-          .orElse(Money.zero(fyCurrency));
-
-        MonetaryAmount amount = MonetaryFunctions.max()
-          .apply(initialAmount.subtract(expended)
-            .subtract(awaitingPayment), Money.zero(fyCurrency));
-
-        holder.getNewTransaction().setAmount(amount.getNumber().doubleValue());
-        if (holder.getNewTransaction().getTransactionType() == Transaction.TransactionType.ENCUMBRANCE) {
-          holder.getNewTransaction()
-            .getEncumbrance()
-            .setInitialAmountEncumbered(initialAmount.getNumber().doubleValue());
-        }
-      }
+      resultTransaction
+        .ifPresent(tr -> {
+          MonetaryAmount resultReminder = tr.getTransactionType().equals(TransactionType.CREDIT) ? remainder : remainder.multiply(calculatedTotalSignum);
+          tr.setAmount(Money.of(tr.getAmount(), conversion.getCurrency()).add(resultReminder).getNumber().doubleValue());
+        });
     });
     return holders;
-  }
-
-  public static MonetaryAmount getDistributionAmount(FundDistribution fundDistribution, MonetaryAmount total, CurrencyUnit currency,
-    CurrencyConversion conversion) {
-    if (fundDistribution.getDistributionType() == FundDistribution.DistributionType.AMOUNT) {
-      return Money.of(fundDistribution.getValue(), currency)
-        .with(conversion)
-        .with(getDefaultRounding());
-    }
-    return total.with(MonetaryOperators.percent(fundDistribution.getValue()))
-      .with(getDefaultRounding());
-  }
-
-  public static MonetaryAmount getSmallestUnit(MonetaryAmount expectedAdjustmentValue, int remainderSignum) {
-    CurrencyUnit currencyUnit = expectedAdjustmentValue.getCurrency();
-    int decimalPlaces = currencyUnit.getDefaultFractionDigits();
-    int smallestUnitSignum = expectedAdjustmentValue.signum() * remainderSignum;
-    return Money.of(1 / Math.pow(10, decimalPlaces), currencyUnit)
-      .multiply(smallestUnitSignum);
-  }
-
-  private static ListIterator<InvoiceWorkflowDataHolder> getIterator(List<InvoiceWorkflowDataHolder> holders, int remainder) {
-    return remainder > 0 ? holders.listIterator(holders.size()) : holders.listIterator();
-  }
-
-  private static boolean isIteratorHasNext(ListIterator<InvoiceWorkflowDataHolder> iterator, int remainder) {
-    return remainder > 0 ? iterator.hasPrevious() : iterator.hasNext();
-  }
-
-  private static InvoiceWorkflowDataHolder iteratorNext(ListIterator<InvoiceWorkflowDataHolder> iterator, int remainder) {
-    return remainder > 0 ? iterator.previous() : iterator.next();
   }
 }

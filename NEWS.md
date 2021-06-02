@@ -1,4 +1,12 @@
 ## 5.1.0 - Unreleased
+## 5.0.4 - Released
+
+The focus of this release was to fix issue with credit transactions
+
+[Full Changelog](https://github.com/folio-org/mod-invoice/compare/v5.0.3...v5.0.4)
+
+### Bug Fixes
+* [MODINVOICE-255](https://issues.folio.org/browse/MODINVOICE-255) - Credit transaction is given value of $0 
 
 ## 5.0.3 - Released
 
