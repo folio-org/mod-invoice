@@ -22,6 +22,7 @@ import org.folio.rest.jaxrs.model.VoucherCollection;
 import org.folio.services.invoice.BaseInvoiceService;
 import org.folio.services.invoice.InvoiceLineService;
 import org.folio.services.invoice.InvoiceService;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -62,7 +63,7 @@ public class InvoiceRetrieveServiceTest extends ApiTestBase {
     vouchers.remove(1);
     CompletableFuture<List<InvoiceCollection>> future = service.getInvoicesByChunks(vouchers, new RequestContext(context, okapiHeaders));
     List<InvoiceCollection> lineCollections = future.get();
-    assertEquals(3, lineCollections.get(0).getInvoices().size());
+    Assertions.assertEquals(3, lineCollections.get(0).getInvoices().size());
   }
 
   @Test
@@ -80,6 +81,6 @@ public class InvoiceRetrieveServiceTest extends ApiTestBase {
 
     CompletableFuture<Map<String, Invoice>> future = service.getInvoiceMap(voucherCollection, new RequestContext(context, okapiHeaders));
     Map<String, Invoice> lineMap = future.get();
-    assertEquals(3, lineMap.values().size());
+    Assertions.assertEquals(3, lineMap.values().size());
   }
 }

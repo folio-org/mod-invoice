@@ -13,6 +13,7 @@ import java.nio.file.Paths;
 import org.folio.rest.jaxrs.model.BatchVoucher;
 import org.folio.rest.jaxrs.model.BatchedVoucherLine;
 import org.folio.rest.jaxrs.model.jaxb.BatchedVoucherLineType;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -38,8 +39,8 @@ public class BatchedVoucherLinesModelConverterTest {
       json.getBatchedVouchers().get(0).getBatchedVoucherLines().get(0);
     BatchedVoucherLineType batchedVoucherLineType = converter.convert(batchedVoucherLine);
 
-    assertEquals(BigDecimal.valueOf(batchedVoucherLine.getAmount()), batchedVoucherLineType.getAmount());
-    assertEquals(batchedVoucherLineType.getExternalAccountNumber(), batchedVoucherLineType.getExternalAccountNumber());
+    Assertions.assertEquals(BigDecimal.valueOf(batchedVoucherLine.getAmount()), batchedVoucherLineType.getAmount());
+    Assertions.assertEquals(batchedVoucherLineType.getExternalAccountNumber(), batchedVoucherLineType.getExternalAccountNumber());
     assertThat(batchedVoucherLineType.getFundCodes().getFundCode(), is(batchedVoucherLine.getFundCodes()));
   }
 }

@@ -12,6 +12,7 @@ import java.io.IOException;
 import org.folio.rest.jaxrs.model.ExportConfig;
 import org.folio.rest.jaxrs.model.ExportConfig.Format;
 import org.folio.rest.jaxrs.model.ExportConfigCollection;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 import io.vertx.core.http.HttpMethod;
@@ -52,7 +53,7 @@ public class BatchVoucherExportConfigTest extends ApiTestBase {
 
     final ExportConfig exportConfig = verifySuccessGet(BATCH_VOUCHER_EXPORT_CONFIG_ENDPOINT_WITH_ID, ExportConfig.class);
     assertThat(MockServer.serverRqRs.get(BATCH_VOUCHER_EXPORT_CONFIGS, HttpMethod.GET), hasSize(1));
-    assertEquals(EXPORT_CONFIG_ID, exportConfig.getId());
+    Assertions.assertEquals(EXPORT_CONFIG_ID, exportConfig.getId());
   }
 
   @Test
@@ -61,7 +62,7 @@ public class BatchVoucherExportConfigTest extends ApiTestBase {
 
     final ExportConfigCollection resp = verifySuccessGet(BATCH_VOUCHER_EXPORT_CONFIGS_ENDPOINT, ExportConfigCollection.class);
 
-    assertEquals(2, resp.getTotalRecords().intValue());
+    Assertions.assertEquals(2, resp.getTotalRecords().intValue());
   }
 
   @Test

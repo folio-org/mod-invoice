@@ -1,6 +1,7 @@
 package org.folio.rest.impl;
 
 import static io.vertx.core.http.HttpHeaders.CONTENT_TYPE;
+import static javax.ws.rs.core.MediaType.TEXT_HTML;
 import static javax.ws.rs.core.MediaType.TEXT_PLAIN;
 import static org.apache.commons.io.FileUtils.ONE_MB;
 import static org.folio.invoices.utils.ErrorCodes.DOCUMENT_IS_TOO_LARGE;
@@ -31,7 +32,6 @@ import io.restassured.RestAssured;
 import io.vertx.core.MultiMap;
 import io.vertx.core.Vertx;
 import io.vertx.core.buffer.Buffer;
-import io.vertx.core.http.HttpClientResponse;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.core.http.impl.headers.HeadersMultiMap;
 import io.vertx.core.json.JsonObject;
@@ -135,8 +135,7 @@ public class DocumentsApiTest extends ApiTestBase {
 
     JsonObject jsonBody = new JsonObject(getMockData(INVOICE_DOCUMENT_SAMPLE_PATH));
     String id = jsonBody.getJsonObject("documentMetadata").getString("id");
-    String response = verifyPut(String.format(DOCUMENT_ENDPOINT_WITH_ID, id), jsonBody, TEXT_PLAIN, 400).body().asString();
-    assertTrue(response.contains("API resource does not support this HTTP method"));
+    verifyPut(String.format(DOCUMENT_ENDPOINT_WITH_ID, id), jsonBody, "", 405);
   }
 
   @Test

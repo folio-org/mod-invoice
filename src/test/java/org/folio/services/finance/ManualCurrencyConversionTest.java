@@ -17,6 +17,7 @@ import org.folio.services.exchange.ManualExchangeRateProvider;
 import org.javamoney.moneta.Money;
 import org.javamoney.moneta.convert.ExchangeRateBuilder;
 import org.javamoney.moneta.spi.DefaultNumberValue;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
@@ -37,9 +38,9 @@ public class ManualCurrencyConversionTest {
     //When
     ExchangeRate exchangeRate = manualCurrencyConversion.getExchangeRate(monetaryAmount);
     //Then
-    assertEquals(systemCurrency, exchangeRate.getBaseCurrency().getCurrencyCode());
-    assertEquals(toCurrency, exchangeRate.getCurrency().getCurrencyCode());
-    assertEquals(new DefaultNumberValue(2d).doubleValue(), exchangeRate.getFactor().doubleValue(), 0);
+    Assertions.assertEquals(systemCurrency, exchangeRate.getBaseCurrency().getCurrencyCode());
+    Assertions.assertEquals(toCurrency, exchangeRate.getCurrency().getCurrencyCode());
+    Assertions.assertEquals(new DefaultNumberValue(2d).doubleValue(), exchangeRate.getFactor().doubleValue(), 0);
   }
 
   @Test
@@ -54,7 +55,7 @@ public class ManualCurrencyConversionTest {
     //When
     ExchangeRateProvider provider = manualCurrencyConversion.getExchangeRateProvider();
     //Then
-    assertNotNull(provider);
+    Assertions.assertNotNull(provider);
   }
 
 

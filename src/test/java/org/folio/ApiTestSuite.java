@@ -288,11 +288,11 @@ public class ApiTestSuite {
   class ExpenseClassRetrieveServiceTestNested extends ExpenseClassRetrieveServiceTest {
   }
 
-  @Nested
+/*  @Nested
   class DataImportConsumerVerticleTestNested extends DataImportConsumerVerticleTest {
   }
 
   @Nested
   class CreateInvoiceEventHandlerTestNested extends CreateInvoiceEventHandlerTest {
-  }
+  }*/
 }

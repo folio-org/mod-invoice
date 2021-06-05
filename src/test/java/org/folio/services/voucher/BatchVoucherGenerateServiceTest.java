@@ -76,7 +76,7 @@ public class BatchVoucherGenerateServiceTest extends ApiTestBase {
 
     CompletableFuture<BatchVoucher> future = service.generateBatchVoucher(batchVoucherExport, new RequestContext(context, okapiHeaders));
     BatchVoucher batchVoucher = future.get();
-    assertNotNull(batchVoucher);
+    Assertions.assertNotNull(batchVoucher);
   }
 
   @Test

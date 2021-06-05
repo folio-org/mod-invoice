@@ -15,6 +15,7 @@ import java.util.concurrent.TimeoutException;
 import org.folio.exceptions.FtpException;
 import org.folio.rest.jaxrs.model.BatchVoucher;
 import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.mockftpserver.fake.FakeFtpServer;
@@ -84,7 +85,7 @@ public class FtpUploadServiceTest {
 
     FtpUploadService helper = new FtpUploadService(context,"ftp://localhost:1");
     helper.login(username_valid, password_valid)
-      .thenAccept(m -> fail("Expected a connection failure but got: " + m))
+      .thenAccept(m -> Assertions.fail("Expected a connection failure but got: " + m))
       .exceptionally(t -> {
         String message;
         if (t.getCause() instanceof FtpException) {
@@ -108,7 +109,7 @@ public class FtpUploadServiceTest {
       .thenAccept(logger::info)
       .exceptionally(t -> {
         logger.error(t);
-        fail(t.getMessage());
+        Assertions.fail(t.getMessage());
         return null;
       })
       .whenComplete((i, t) -> helper.logout()
@@ -122,7 +123,7 @@ public class FtpUploadServiceTest {
 
     FtpUploadService helper = new FtpUploadService(context, uri);
     helper.login(username_valid, password_invalid)
-      .thenAccept(m -> fail("Expected a login failure but got: " + m))
+      .thenAccept(m -> Assertions.fail("Expected a login failure but got: " + m))
       .exceptionally(t -> {
         String message;
         if (t.getCause() instanceof FtpException) {
@@ -156,7 +157,7 @@ public class FtpUploadServiceTest {
       .thenAccept(logger::info)
       .exceptionally(t -> {
         logger.error(t);
-        fail(t.getMessage());
+        Assertions.fail(t.getMessage());
         return null;
       })
       .whenComplete((i, t) -> helper.logout()
@@ -182,7 +183,7 @@ public class FtpUploadServiceTest {
     helper.login(username_valid, password_valid)
       .thenAccept(logger::info)
       .thenCompose(v -> helper.upload(context,"/invalid/path/"+filename, JsonObject.mapFrom(batchVoucher).encodePrettily()))
-      .thenAccept(m -> fail("Expected upload failure but got " + m))
+      .thenAccept(m -> Assertions.fail("Expected upload failure but got " + m))
       .exceptionally(t -> {
         logger.info(t);
         return null;

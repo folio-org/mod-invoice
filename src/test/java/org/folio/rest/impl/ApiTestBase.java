@@ -53,6 +53,7 @@ import org.folio.services.invoice.BaseInvoiceService;
 import org.folio.services.invoice.InvoiceLineService;
 import org.folio.services.invoice.InvoiceService;
 import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.springframework.context.annotation.Bean;
@@ -184,7 +185,7 @@ public class ApiTestBase {
       return new JsonObject(getMockData(fullPath));
     } catch (IOException e) {
       logger.error("Failed to load mock data: {}", fullPath, e);
-      fail(e.getMessage());
+      Assertions.fail(e.getMessage());
     }
     return new JsonObject();
   }
@@ -404,7 +405,7 @@ public class ApiTestBase {
       if (sampleField instanceof JsonObject) {
         testAllFieldsExists((JsonObject) sampleField, (JsonObject) extracted.getValue(fieldName));
       } else {
-        assertEquals(sampleObject.getValue(fieldName).toString(), extracted.getValue(fieldName).toString());
+        Assertions.assertEquals(sampleObject.getValue(fieldName).toString(), extracted.getValue(fieldName).toString());
       }
     }
   }

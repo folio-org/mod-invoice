@@ -12,6 +12,7 @@ import javax.money.convert.ExchangeRateProvider;
 import org.folio.services.exchange.ManualExchangeRateProvider;
 import org.javamoney.moneta.convert.ExchangeRateBuilder;
 import org.javamoney.moneta.spi.DefaultNumberValue;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 public class ManualExchangeRateProviderTest {
@@ -27,9 +28,9 @@ public class ManualExchangeRateProviderTest {
     //When
     ExchangeRate exchangeRate = exchangeRateProvider.getExchangeRate(actQuery);
     //Then
-    assertEquals(systemCurrency, exchangeRate.getBaseCurrency().getCurrencyCode());
-    assertEquals(toCurrency, exchangeRate.getCurrency().getCurrencyCode());
-    assertEquals(new DefaultNumberValue(2d).doubleValue(), exchangeRate.getFactor().doubleValue(), 0);
+    Assertions.assertEquals(systemCurrency, exchangeRate.getBaseCurrency().getCurrencyCode());
+    Assertions.assertEquals(toCurrency, exchangeRate.getCurrency().getCurrencyCode());
+    Assertions.assertEquals(new DefaultNumberValue(2d).doubleValue(), exchangeRate.getFactor().doubleValue(), 0);
   }
 
   private ExchangeRate buildExchangeRate(ConversionQuery conversionQuery) {

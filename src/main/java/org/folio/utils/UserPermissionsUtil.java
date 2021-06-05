@@ -3,7 +3,6 @@ package org.folio.utils;
 import static org.folio.invoices.utils.AcqDesiredPermissions.ASSIGN;
 import static org.folio.invoices.utils.AcqDesiredPermissions.MANAGE;
 import static org.folio.invoices.utils.ErrorCodes.USER_HAS_NO_ACQ_PERMISSIONS;
-import static org.folio.rest.RestVerticle.OKAPI_HEADER_PERMISSIONS;
 
 import java.util.HashSet;
 import java.util.List;
@@ -19,6 +18,8 @@ import org.folio.invoices.utils.AcqDesiredPermissions;
 import io.vertx.core.json.JsonArray;
 
 public final class UserPermissionsUtil {
+  public static final String OKAPI_HEADER_PERMISSIONS = "X-Okapi-Permissions";
+
   private static final String EMPTY_ARRAY = "[]";
 
   private UserPermissionsUtil(){

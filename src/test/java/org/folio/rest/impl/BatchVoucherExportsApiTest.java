@@ -13,6 +13,7 @@ import java.io.IOException;
 import org.folio.rest.jaxrs.model.BatchVoucherExport;
 import org.folio.rest.jaxrs.model.BatchVoucherExportCollection;
 import org.folio.rest.jaxrs.model.Errors;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 import io.restassured.http.Headers;
@@ -43,7 +44,7 @@ public class BatchVoucherExportsApiTest extends ApiTestBase {
     logger.info(" === Test POST Batch Voucher Exports === ");
     String jsonBody = getMockAsJson(BATCH_VOUCHER_EXPORT_SAMPLE_PATH).toString();
     Response resp = verifySuccessPost(BATCH_VOUCHER_EXPORTS_PATH, jsonBody);
-    assertEquals(resp.getStatusCode(), CREATED.getStatusCode());
+    Assertions.assertEquals(resp.getStatusCode(), CREATED.getStatusCode());
   }
 
   @Test
@@ -61,7 +62,7 @@ public class BatchVoucherExportsApiTest extends ApiTestBase {
     logger.info(" === Test Get Batch-voucher-exports without query - get 200 by successful retrieval of batch-voucher-exports === ");
 
     final BatchVoucherExportCollection resp = verifySuccessGet(BATCH_VOUCHER_EXPORTS_PATH, BatchVoucherExportCollection.class);
-    assertEquals(1, resp.getTotalRecords()
+    Assertions.assertEquals(1, resp.getTotalRecords()
       .intValue());
   }
 
@@ -96,7 +97,7 @@ public class BatchVoucherExportsApiTest extends ApiTestBase {
 
     logger.info(JsonObject.mapFrom(resp)
       .encodePrettily());
-    assertEquals(id, resp.getId());
+    Assertions.assertEquals(id, resp.getId());
   }
 
   @Test
@@ -111,7 +112,7 @@ public class BatchVoucherExportsApiTest extends ApiTestBase {
       .get(0)
       .getMessage();
 
-    assertEquals(BAD_BATCH_VOUCHER_EXPORTS_ID, actual);
+    Assertions.assertEquals(BAD_BATCH_VOUCHER_EXPORTS_ID, actual);
   }
 
   @Test
