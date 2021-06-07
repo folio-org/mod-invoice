@@ -1,7 +1,5 @@
 package org.folio.services.ftp;
 
-import static org.junit.Assert.fail;
-
 import java.net.URISyntaxException;
 import java.text.SimpleDateFormat;
 import java.util.Date;

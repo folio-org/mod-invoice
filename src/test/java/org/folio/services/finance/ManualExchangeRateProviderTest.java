@@ -1,7 +1,6 @@
 package org.folio.services.finance;
 
 import static org.folio.services.exchange.ExchangeRateProviderResolver.RATE_KEY;
-import static org.junit.Assert.assertEquals;
 
 import javax.money.convert.ConversionContext;
 import javax.money.convert.ConversionQuery;

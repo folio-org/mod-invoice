@@ -6,7 +6,6 @@ import static javax.ws.rs.core.Response.Status.CREATED;
 import static org.folio.rest.impl.MockServer.getBatchVoucherExportUpdates;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.junit.Assert.assertEquals;
 
 import java.io.IOException;
 

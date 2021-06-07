@@ -1,8 +1,6 @@
 package org.folio.services.voucher;
 
 import static java.util.concurrent.CompletableFuture.completedFuture;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;

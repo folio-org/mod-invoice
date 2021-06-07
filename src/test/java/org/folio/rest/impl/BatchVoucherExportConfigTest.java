@@ -5,7 +5,6 @@ import static org.folio.invoices.utils.ResourcePathResolver.BATCH_VOUCHER_EXPORT
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.notNullValue;
-import static org.junit.Assert.assertEquals;
 
 import java.io.IOException;
 

@@ -1,7 +1,6 @@
 package org.folio.services.voucher;
 
 import static org.folio.ApiTestSuite.mockPort;
-import static org.junit.Assert.assertNotNull;
 
 import java.io.IOException;
 import java.util.HashMap;

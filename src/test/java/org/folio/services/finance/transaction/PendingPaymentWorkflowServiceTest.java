@@ -206,7 +206,7 @@ public class PendingPaymentWorkflowServiceTest {
     verify(baseTransactionService, times(2)).updateTransaction(transactionArgumentCaptor.capture(), eq(requestContext));
 
     Transaction updateArgumentInvoiceTransaction = transactionArgumentCaptor.getAllValues().stream()
-      .filter(transaction -> Objects.isNull(transaction.getSourceInvoiceLineId())).findFirst().get();;
+      .filter(transaction -> Objects.isNull(transaction.getSourceInvoiceLineId())).findFirst().get();
 
     assertEquals(existingInvoiceTransaction.getId(), updateArgumentInvoiceTransaction.getId());
     assertEquals(expectedInvoiceTransactionAmount, updateArgumentInvoiceTransaction.getAmount());

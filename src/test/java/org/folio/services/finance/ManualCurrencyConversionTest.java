@@ -1,8 +1,6 @@
 package org.folio.services.finance;
 
 import static org.folio.services.exchange.ExchangeRateProviderResolver.RATE_KEY;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
 import static org.mockito.Mockito.doReturn;
 
 import javax.money.MonetaryAmount;

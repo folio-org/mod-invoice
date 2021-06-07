@@ -2,8 +2,6 @@ package org.folio.converters;
 
 import static java.math.BigInteger.valueOf;
 import static org.folio.jaxb.JAXBUtil.convertOldJavaDate;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -28,7 +26,7 @@ import io.vertx.core.json.JsonObject;
 public class BatchVoucherModelConverterTest {
   public static final String RESOURCES_PATH = "src/test/resources/mockdata/batchVouchers";
   public static final String VALID_BATCH_VOUCHER_JSON = "35657479-83b9-4760-9c39-b58dcd02ee14.json";
-  private static Path JSON_BATCH_VOUCHER_PATH = Paths.get(RESOURCES_PATH, VALID_BATCH_VOUCHER_JSON).toAbsolutePath();
+  private static final Path JSON_BATCH_VOUCHER_PATH = Paths.get(RESOURCES_PATH, VALID_BATCH_VOUCHER_JSON).toAbsolutePath();
 
   @InjectMocks
   BatchVoucherModelConverter converter;

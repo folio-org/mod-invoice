@@ -4,7 +4,6 @@ import static java.util.concurrent.CompletableFuture.completedFuture;
 import static org.folio.invoices.utils.ErrorCodes.FUNDS_NOT_FOUND;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.instanceOf;
-import static org.junit.Assert.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doReturn;

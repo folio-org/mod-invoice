@@ -2,7 +2,6 @@ package org.folio.converters;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.junit.Assert.assertEquals;
 
 import java.io.IOException;
 import java.math.BigDecimal;
@@ -25,7 +24,7 @@ import io.vertx.core.json.JsonObject;
 public class BatchedVoucherLinesModelConverterTest {
   public static final String RESOURCES_PATH = "src/test/resources/mockdata/batchVouchers";
   public static final String VALID_BATCH_VOUCHER_JSON = "35657479-83b9-4760-9c39-b58dcd02ee14.json";
-  private static Path JSON_BATCH_VOUCHER_PATH = Paths.get(RESOURCES_PATH, VALID_BATCH_VOUCHER_JSON)
+  private static final Path JSON_BATCH_VOUCHER_PATH = Paths.get(RESOURCES_PATH, VALID_BATCH_VOUCHER_JSON)
     .toAbsolutePath();
 
   @InjectMocks

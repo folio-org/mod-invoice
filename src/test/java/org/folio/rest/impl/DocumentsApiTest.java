@@ -1,8 +1,6 @@
 package org.folio.rest.impl;
 
 import static io.vertx.core.http.HttpHeaders.CONTENT_TYPE;
-import static javax.ws.rs.core.MediaType.TEXT_HTML;
-import static javax.ws.rs.core.MediaType.TEXT_PLAIN;
 import static org.apache.commons.io.FileUtils.ONE_MB;
 import static org.folio.invoices.utils.ErrorCodes.DOCUMENT_IS_TOO_LARGE;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_DOCUMENTS;

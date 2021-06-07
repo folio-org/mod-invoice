@@ -20,8 +20,6 @@ import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.isEmptyOrNullString;
 import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.notNullValue;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -107,7 +105,7 @@ public class ApiTestBase {
   private static boolean runningOnOwn;
 
   // The variable is defined in main thread but the value is going to be inserted in vert.x event loop thread
-  private static List<Message<JsonObject>> eventMessages = new CopyOnWriteArrayList<>();
+  private static final List<Message<JsonObject>> eventMessages = new CopyOnWriteArrayList<>();
 
   /**
    * Define unit test specific beans to override actual ones

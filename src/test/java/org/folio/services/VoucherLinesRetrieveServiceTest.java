@@ -3,7 +3,6 @@ package org.folio.services;
 import static java.util.stream.Collectors.toList;
 import static org.folio.ApiTestSuite.mockPort;
 import static org.folio.rest.RestConstants.OKAPI_URL;
-import static org.junit.Assert.assertEquals;
 
 import java.io.IOException;
 import java.util.HashMap;
