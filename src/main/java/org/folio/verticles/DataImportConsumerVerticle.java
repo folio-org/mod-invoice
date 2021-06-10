@@ -11,7 +11,7 @@ import org.folio.kafka.KafkaConsumerWrapper;
 import org.folio.kafka.KafkaTopicNameHelper;
 import org.folio.kafka.SubscriptionDefinition;
 import org.folio.processing.events.EventManager;
-import org.folio.util.pubsub.PubSubClientUtils;
+import org.folio.processing.events.utils.PomReaderUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.beans.factory.config.ConfigurableBeanFactory;
@@ -65,7 +65,7 @@ public class DataImportConsumerVerticle extends AbstractVerticle {
       .subscriptionDefinition(subscriptionDefinition)
       .build();
 
-    consumerWrapper.start(dataImportKafkaHandler, PubSubClientUtils.constructModuleName())
+    consumerWrapper.start(dataImportKafkaHandler, PomReaderUtil.INSTANCE.constructModuleVersionAndVersion(PomReaderUtil.INSTANCE.getModuleName(), PomReaderUtil.INSTANCE.getVersion()))
       .onComplete(ar -> startPromise.handle(ar));
   }
 

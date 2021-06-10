@@ -10,6 +10,7 @@ import java.util.concurrent.TimeoutException;
 import org.folio.converters.BatchVoucherModelConverterTest;
 import org.folio.converters.BatchedVoucherLinesModelConverterTest;
 import org.folio.converters.BatchedVoucherModelConverterTest;
+import org.folio.dataimport.handlers.actions.CreateInvoiceEventHandlerTest;
 import org.folio.invoices.events.handlers.InvoiceSummaryTest;
 import org.folio.invoices.util.HelperUtilsTest;
 import org.folio.jaxb.DefaultJAXBRootElementNameResolverTest;
@@ -50,6 +51,7 @@ import org.folio.services.validator.FundAvailabilityHolderValidatorTest;
 import org.folio.services.validator.InvoiceLineHolderValidatorTest;
 import org.folio.services.voucher.BatchVoucherGenerateServiceTest;
 import org.folio.services.voucher.UploadBatchVoucherExportServiceTest;
+import org.folio.verticles.DataImportConsumerVerticleTest;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Nested;
@@ -284,11 +286,11 @@ public class ApiTestSuite {
   class ExpenseClassRetrieveServiceTestNested extends ExpenseClassRetrieveServiceTest {
   }
 
-/*  @Nested
+  @Nested
   class DataImportConsumerVerticleTestNested extends DataImportConsumerVerticleTest {
   }
 
   @Nested
   class CreateInvoiceEventHandlerTestNested extends CreateInvoiceEventHandlerTest {
-  }*/
+  }
 }
