@@ -1,10 +1,12 @@
 package org.folio;
 
-import io.restassured.RestAssured;
-import io.vertx.core.DeploymentOptions;
-import io.vertx.core.Vertx;
-import io.vertx.core.json.JsonObject;
-import net.mguenther.kafka.junit.EmbeddedKafkaCluster;
+import static net.mguenther.kafka.junit.EmbeddedKafkaClusterConfig.useDefaults;
+
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+
 import org.folio.converters.BatchVoucherModelConverterTest;
 import org.folio.converters.BatchedVoucherLinesModelConverterTest;
 import org.folio.converters.BatchedVoucherModelConverterTest;
@@ -36,16 +38,16 @@ import org.folio.rest.tools.utils.NetworkUtils;
 import org.folio.schemas.xsd.BatchVoucherSchemaXSDTest;
 import org.folio.services.InvoiceRetrieveServiceTest;
 import org.folio.services.VoucherLinesRetrieveServiceTest;
-import org.folio.services.finance.expense.ExpenseClassRetrieveServiceTest;
 import org.folio.services.finance.BudgetExpenseClassTest;
-import org.folio.services.validator.FundAvailabilityHolderValidatorTest;
 import org.folio.services.finance.CurrentFiscalYearServiceTest;
 import org.folio.services.finance.ManualCurrencyConversionTest;
 import org.folio.services.finance.ManualExchangeRateProviderTest;
-import org.folio.services.ftp.FTPVertxCommandLoggerTest;
-import org.folio.services.ftp.FtpUploadServiceTest;
+import org.folio.services.finance.expense.ExpenseClassRetrieveServiceTest;
 import org.folio.services.finance.transaction.BaseTransactionServiceTest;
 import org.folio.services.finance.transaction.PendingPaymentWorkflowServiceTest;
+import org.folio.services.ftp.FTPVertxCommandLoggerTest;
+import org.folio.services.ftp.FtpUploadServiceTest;
+import org.folio.services.validator.FundAvailabilityHolderValidatorTest;
 import org.folio.services.validator.InvoiceLineHolderValidatorTest;
 import org.folio.services.voucher.BatchVoucherGenerateServiceTest;
 import org.folio.services.voucher.UploadBatchVoucherExportServiceTest;
@@ -53,17 +55,13 @@ import org.folio.verticles.DataImportConsumerVerticleTest;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Nested;
-import org.junit.platform.runner.JUnitPlatform;
-import org.junit.runner.RunWith;
 
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
+import io.restassured.RestAssured;
+import io.vertx.core.DeploymentOptions;
+import io.vertx.core.Vertx;
+import io.vertx.core.json.JsonObject;
+import net.mguenther.kafka.junit.EmbeddedKafkaCluster;
 
-import static net.mguenther.kafka.junit.EmbeddedKafkaClusterConfig.useDefaults;
-
-@RunWith(JUnitPlatform.class)
 public class ApiTestSuite {
 
   private static final int okapiPort = NetworkUtils.nextFreePort();

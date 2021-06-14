@@ -11,7 +11,7 @@ import org.folio.kafka.KafkaConsumerWrapper;
 import org.folio.kafka.KafkaTopicNameHelper;
 import org.folio.kafka.SubscriptionDefinition;
 import org.folio.processing.events.EventManager;
-import org.folio.util.pubsub.PubSubClientUtils;
+import org.folio.processing.events.utils.PomReaderUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.beans.factory.config.ConfigurableBeanFactory;
@@ -25,7 +25,7 @@ import static org.folio.DataImportEventTypes.DI_EDIFACT_RECORD_CREATED;
 @Scope(ConfigurableBeanFactory.SCOPE_PROTOTYPE)
 public class DataImportConsumerVerticle extends AbstractVerticle {
 
-  private static final Logger LOGGER = LogManager.getLogger(DataImportConsumerVerticle.class);
+  private static final Logger logger = LogManager.getLogger(DataImportConsumerVerticle.class);
   private static final GlobalLoadSensor GLOBAL_LOAD_SENSOR = new GlobalLoadSensor();
 
   @Value("${mod.invoice.kafka.DataImportConsumer.loadLimit:5}")
@@ -50,7 +50,7 @@ public class DataImportConsumerVerticle extends AbstractVerticle {
   public void start(Promise<Void> startPromise) {
     context.put("springContext", springContext);
 
-    LOGGER.info("Kafka config: {}", kafkaConfig);
+    logger.info("Kafka config: {}", kafkaConfig);
     EventManager.registerKafkaEventPublisher(kafkaConfig, vertx, maxDistributionNumber);
 
     SubscriptionDefinition subscriptionDefinition = KafkaTopicNameHelper.createSubscriptionDefinition(kafkaConfig.getEnvId(),
@@ -65,7 +65,7 @@ public class DataImportConsumerVerticle extends AbstractVerticle {
       .subscriptionDefinition(subscriptionDefinition)
       .build();
 
-    consumerWrapper.start(dataImportKafkaHandler, PubSubClientUtils.constructModuleName())
+    consumerWrapper.start(dataImportKafkaHandler, PomReaderUtil.INSTANCE.constructModuleVersionAndVersion(PomReaderUtil.INSTANCE.getModuleName(), PomReaderUtil.INSTANCE.getVersion()))
       .onComplete(ar -> startPromise.handle(ar));
   }
 

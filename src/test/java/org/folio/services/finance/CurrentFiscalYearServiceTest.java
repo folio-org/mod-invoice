@@ -4,7 +4,6 @@ import static java.util.concurrent.CompletableFuture.completedFuture;
 import static org.folio.invoices.utils.ErrorCodes.FUNDS_NOT_FOUND;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.instanceOf;
-import static org.junit.Assert.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doReturn;
@@ -25,6 +24,7 @@ import org.folio.rest.core.RestClient;
 import org.folio.rest.core.models.RequestContext;
 import org.folio.rest.jaxrs.model.Error;
 import org.folio.services.finance.fiscalyear.CurrentFiscalYearService;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
@@ -63,7 +63,7 @@ public class CurrentFiscalYearServiceTest {
     //When
     FiscalYear currentFiscalYear = currentFiscalYearService.getCurrentFiscalYear(ledgerId, requestContextMock).join();
     //Then
-    assertEquals(fiscalYearId, currentFiscalYear.getId());
+    Assertions.assertEquals(fiscalYearId, currentFiscalYear.getId());
   }
 
   @Test
@@ -87,7 +87,7 @@ public class CurrentFiscalYearServiceTest {
     //When
     FiscalYear currentFiscalYear = currentFiscalYearService.getCurrentFiscalYearByFund(fundId, requestContextMock).join();
     //Then
-    assertEquals(fiscalYearId, currentFiscalYear.getId());
+    Assertions.assertEquals(fiscalYearId, currentFiscalYear.getId());
 
   }
 
@@ -108,9 +108,9 @@ public class CurrentFiscalYearServiceTest {
     //Then
     assertThat(e.getCause(), instanceOf(HttpException.class));
     HttpException httpException = (HttpException) e.getCause();
-    assertEquals(404, httpException.getCode());
+    Assertions.assertEquals(404, httpException.getCode());
     Error error = httpException.getErrors().getErrors().get(0);
-    assertEquals(FUNDS_NOT_FOUND.toError().getMessage(), error.getMessage());
-    assertEquals(FUNDS_NOT_FOUND.toError().getCode(), error.getCode());
+    Assertions.assertEquals(FUNDS_NOT_FOUND.toError().getMessage(), error.getMessage());
+    Assertions.assertEquals(FUNDS_NOT_FOUND.toError().getCode(), error.getCode());
   }
 }

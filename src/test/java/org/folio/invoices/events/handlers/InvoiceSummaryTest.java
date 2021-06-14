@@ -24,7 +24,6 @@ import javax.ws.rs.core.Response;
 import org.folio.rest.impl.ApiTestBase;
 import org.folio.rest.impl.MockServer;
 import org.folio.rest.jaxrs.model.Invoice;
-import org.folio.services.invoice.InvoiceLineService;
 import org.folio.services.invoice.InvoiceService;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;

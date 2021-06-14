@@ -41,8 +41,8 @@ enum ProtectedOperations {
     }
   };
 
-  private int code;
-  private String contentType;
+  private final int code;
+  private final String contentType;
 
   ProtectedOperations(int code, String contentType) {
     this.code = code;
@@ -60,7 +60,7 @@ enum ProtectedOperations {
     return contentType;
   }
 
-  private static ApiTestBase apiTestBase = new ApiTestBase();
+  private static final ApiTestBase apiTestBase = new ApiTestBase();
 
   abstract Response process(String url, String body, Headers headers, String expectedContentType, int expectedCode);
 }
