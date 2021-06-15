@@ -634,6 +634,38 @@ public class InvoiceLinesApiTest extends ApiTestBase {
 
   }
 
+  @Test
+  public void testPutDeletePoLineRef() throws Exception {
+    logger.info("=== Test update invoice line by id with protected fields (all fields set) ===");
+    InvoiceLine invoiceLine = getMockAsJson( INVOICE_LINES_MOCK_DATA_PATH + INVOICE_LINE_WITH_OPEN_EXISTED_INVOICE_ID + ".json").mapTo(InvoiceLine.class);
+    invoiceLine.setPoLineId(null);
+    // Invoice line updated (invoice status = APPROVED) - protected field not modified
+    verifyPut(invoiceLine.getId(), invoiceLine, "", HttpStatus.SC_NO_CONTENT);
+
+    verifyInvoiceSummaryUpdateEvent(0);
+    clearServiceInteractions();
+
+    verifyInvoiceSummaryUpdateEvent(0);
+    clearServiceInteractions();
+
+  }
+
+  @Test
+  public void testPutUpdatePoLineRef() throws Exception {
+    logger.info("=== Test update invoice line by id with protected fields (all fields set) ===");
+    InvoiceLine invoiceLine = getMockAsJson( INVOICE_LINES_MOCK_DATA_PATH + INVOICE_LINE_WITH_OPEN_EXISTED_INVOICE_ID + ".json").mapTo(InvoiceLine.class);
+    invoiceLine.setPoLineId("0000edd1-b463-41ba-bf64-1b1d9f9d0001");
+    // Invoice line updated (invoice status = APPROVED) - protected field not modified
+    verifyPut(invoiceLine.getId(), invoiceLine, "", HttpStatus.SC_NO_CONTENT);
+
+    verifyInvoiceSummaryUpdateEvent(0);
+    clearServiceInteractions();
+
+    verifyInvoiceSummaryUpdateEvent(0);
+    clearServiceInteractions();
+
+  }
+
   private void checkPreventInvoiceLineModificationRule(InvoiceLine invoiceLine, Map<InvoiceLineProtectedFields, Object> updatedFields) throws IllegalAccessException {
     for (Map.Entry<InvoiceLineProtectedFields, Object> m : updatedFields.entrySet()) {
       FieldUtils.writeDeclaredField(invoiceLine, m.getKey().getFieldName(), m.getValue(), true);
