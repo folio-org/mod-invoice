@@ -2,9 +2,9 @@ package org.folio.rest.impl.protection;
 
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICES;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_LINES;
-import static org.folio.rest.RestVerticle.OKAPI_HEADER_PERMISSIONS;
 import static org.folio.rest.RestVerticle.OKAPI_USERID_HEADER;
 import static org.folio.rest.impl.MockServer.addMockEntry;
+import static org.folio.utils.UserPermissionsUtil.OKAPI_HEADER_PERMISSIONS;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.hasSize;
@@ -68,7 +68,7 @@ public abstract class ProtectedEntityTestBase extends ApiTestBase {
     addMockEntry(INVOICE_LINES, JsonObject.mapFrom(invoiceLine));
     return invoiceLine;
   }
-  
+
   public AcquisitionsUnit prepareTestUnit(boolean isDeleted) {
     String id = UUID.randomUUID().toString();
     return new AcquisitionsUnit().withId(id).withName(id).withIsDeleted(isDeleted);

@@ -5,15 +5,13 @@ import static javax.ws.rs.core.MediaType.TEXT_PLAIN;
 import static org.folio.rest.impl.MockServer.getBatchGroupUpdates;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
 
 import java.io.IOException;
 
 import org.folio.rest.jaxrs.model.BatchGroup;
 import org.folio.rest.jaxrs.model.BatchGroupCollection;
 import org.folio.rest.jaxrs.model.Errors;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 import io.restassured.response.Response;
@@ -39,7 +37,7 @@ public class BatchGroupsApiTest extends ApiTestBase {
     logger.info("=== Test Get Batch-groups without query - get 200 by successful retrieval of batch-groups ===");
 
     final BatchGroupCollection resp = verifySuccessGet(BATCH_GROUPS_PATH, BatchGroupCollection.class);
-    assertEquals(1, resp.getTotalRecords()
+    Assertions.assertEquals(1, resp.getTotalRecords()
       .intValue());
   }
 
@@ -57,7 +55,7 @@ public class BatchGroupsApiTest extends ApiTestBase {
 
     logger.info(JsonObject.mapFrom(resp)
       .encodePrettily());
-    assertEquals(id, resp.getId());
+    Assertions.assertEquals(id, resp.getId());
   }
 
   @Test
@@ -73,7 +71,7 @@ public class BatchGroupsApiTest extends ApiTestBase {
       .getMessage();
     logger.info("Id not found: " + actual);
 
-    assertEquals(BAD_BATCH_GROUP_ID, actual);
+    Assertions.assertEquals(BAD_BATCH_GROUP_ID, actual);
   }
 
   @Test
@@ -85,8 +83,8 @@ public class BatchGroupsApiTest extends ApiTestBase {
     String actual = resp.getBody().asString();
     logger.info(actual);
 
-    assertNotNull(actual);
-    assertTrue(actual.contains(INVALID_BATCH_GROUP_ID));
+    Assertions.assertNotNull(actual);
+    Assertions.assertTrue(actual.contains(INVALID_BATCH_GROUP_ID));
   }
 
   @Test
