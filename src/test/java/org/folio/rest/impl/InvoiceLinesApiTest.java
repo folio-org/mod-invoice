@@ -35,7 +35,6 @@ import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.nullValue;
-import static org.junit.Assert.assertEquals;
 
 import java.util.ArrayList;
 import java.util.Date;
@@ -55,6 +54,7 @@ import org.folio.rest.jaxrs.model.InvoiceLine;
 import org.folio.rest.jaxrs.model.InvoiceLineCollection;
 import org.hamcrest.MatcherAssert;
 import org.hamcrest.Matchers;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
@@ -181,7 +181,7 @@ public class InvoiceLinesApiTest extends ApiTestBase {
     String actual = resp.getBody().as(Errors.class).getErrors().get(0).getMessage();
     logger.info("Id not found: " + actual);
 
-    assertEquals(ID_DOES_NOT_EXIST, actual);
+    Assertions.assertEquals(ID_DOES_NOT_EXIST, actual);
   }
 
   @Test
@@ -318,9 +318,9 @@ public class InvoiceLinesApiTest extends ApiTestBase {
     Errors resp = verifyPostResponse(INVOICE_LINES_PATH, jsonBody, prepareHeaders(MockServer.NON_EXIST_CONFIG_X_OKAPI_TENANT),
         APPLICATION_JSON, 422).as(Errors.class);
 
-    assertEquals(1, resp.getErrors().size());
-    assertEquals(INVOICE_ID, resp.getErrors().get(0).getParameters().get(0).getKey());
-    assertEquals(NULL, resp.getErrors().get(0).getParameters().get(0).getValue());
+    Assertions.assertEquals(1, resp.getErrors().size());
+    Assertions.assertEquals(INVOICE_ID, resp.getErrors().get(0).getParameters().get(0).getKey());
+    Assertions.assertEquals(NULL, resp.getErrors().get(0).getParameters().get(0).getValue());
   }
 
   @Test
@@ -552,7 +552,7 @@ public class InvoiceLinesApiTest extends ApiTestBase {
     final InvoiceLine resp = verifySuccessGetById(id, true, true);
 
     logger.info(JsonObject.mapFrom(resp).encodePrettily());
-    assertEquals(id, resp.getId());
+    Assertions.assertEquals(id, resp.getId());
     assertThat(resp.getAdjustmentsTotal(), not(incorrectAdjustmentTotal));
   }
 

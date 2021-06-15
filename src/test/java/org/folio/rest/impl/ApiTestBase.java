@@ -20,8 +20,6 @@ import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.isEmptyOrNullString;
 import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.notNullValue;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -53,6 +51,7 @@ import org.folio.services.invoice.BaseInvoiceService;
 import org.folio.services.invoice.InvoiceLineService;
 import org.folio.services.invoice.InvoiceService;
 import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.springframework.context.annotation.Bean;
@@ -106,7 +105,7 @@ public class ApiTestBase {
   private static boolean runningOnOwn;
 
   // The variable is defined in main thread but the value is going to be inserted in vert.x event loop thread
-  private static List<Message<JsonObject>> eventMessages = new CopyOnWriteArrayList<>();
+  private static final List<Message<JsonObject>> eventMessages = new CopyOnWriteArrayList<>();
 
   /**
    * Define unit test specific beans to override actual ones
@@ -184,7 +183,7 @@ public class ApiTestBase {
       return new JsonObject(getMockData(fullPath));
     } catch (IOException e) {
       logger.error("Failed to load mock data: {}", fullPath, e);
-      fail(e.getMessage());
+      Assertions.fail(e.getMessage());
     }
     return new JsonObject();
   }
@@ -404,7 +403,7 @@ public class ApiTestBase {
       if (sampleField instanceof JsonObject) {
         testAllFieldsExists((JsonObject) sampleField, (JsonObject) extracted.getValue(fieldName));
       } else {
-        assertEquals(sampleObject.getValue(fieldName).toString(), extracted.getValue(fieldName).toString());
+        Assertions.assertEquals(sampleObject.getValue(fieldName).toString(), extracted.getValue(fieldName).toString());
       }
     }
   }

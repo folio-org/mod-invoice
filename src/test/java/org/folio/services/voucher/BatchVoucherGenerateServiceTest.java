@@ -1,7 +1,6 @@
 package org.folio.services.voucher;
 
 import static org.folio.ApiTestSuite.mockPort;
-import static org.junit.Assert.assertNotNull;
 
 import java.io.IOException;
 import java.util.HashMap;
@@ -76,7 +75,7 @@ public class BatchVoucherGenerateServiceTest extends ApiTestBase {
 
     CompletableFuture<BatchVoucher> future = service.generateBatchVoucher(batchVoucherExport, new RequestContext(context, okapiHeaders));
     BatchVoucher batchVoucher = future.get();
-    assertNotNull(batchVoucher);
+    Assertions.assertNotNull(batchVoucher);
   }
 
   @Test
