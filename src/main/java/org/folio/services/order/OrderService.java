@@ -99,9 +99,13 @@ public class OrderService {
 
   public CompletableFuture<Void> deleteOrderInvoiceRelationship(String invoiceId, String poLineId, RequestContext requestContext) {
     return getPoLine(poLineId, requestContext)
-      .thenCompose(poLine -> getOrderInvoiceRelationship(poLine.getPurchaseOrderId(), invoiceId, requestContext)
-        .thenApply(relation -> relation.getOrderInvoiceRelationships().get(0).getId())
-        .thenCompose(id -> deleteOrderInvoiceRelationship(id, requestContext)));
+      .thenCompose(poLine -> getOrderInvoiceRelationship(poLine.getPurchaseOrderId(), invoiceId, requestContext))
+      .thenCompose(relation -> {
+          if (relation.getTotalRecords() > 0) {
+            return deleteOrderInvoiceRelationship(relation.getOrderInvoiceRelationships().get(0).getId(), requestContext);
+          }
+          return CompletableFuture.completedFuture(null);
+      });
   }
 
   public CompletableFuture<Boolean> isInvoiceLineLastForOrder(InvoiceLine invoiceLine, RequestContext requestContext) {

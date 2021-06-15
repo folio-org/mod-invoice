@@ -227,15 +227,14 @@ public class InvoiceLineHelper extends AbstractHelper {
 
         return protectionHelper.isOperationRestricted(invoice.getAcqUnitIds(), UPDATE)
           .thenCompose(ok -> applyAdjustmentsAndUpdateLine(invoiceLine, invoiceLineFromStorage, invoice))
-          .thenCompose(ok -> {
-
-            //  Create/update the relationship in case ids don't match
-            return updateOrderInvoiceRelationship(invoiceLine, invoiceLineFromStorage, requestContext);
-          });
+          .thenCompose(ok -> updateOrderInvoiceRelationship(invoiceLine, invoiceLineFromStorage, requestContext));
       }));
   }
 
   private CompletableFuture<Void> updateOrderInvoiceRelationship(InvoiceLine invoiceLine, InvoiceLine invoiceLineFromStorage, RequestContext requestContext) {
+    if (invoiceLine.getPoLineId() == null && invoiceLineFromStorage.getPoLineId() != null) {
+      return orderService.deleteOrderInvoiceRelationship(invoiceLine.getInvoiceId(), invoiceLineFromStorage.getPoLineId(), requestContext);
+    }
     if (!StringUtils.equals(invoiceLine.getPoLineId(), invoiceLineFromStorage.getPoLineId())) {
       return orderService.getPoLine(invoiceLine.getPoLineId(), requestContext).thenCompose(
         poLine -> orderService.getOrderInvoiceRelationship(poLine.getPurchaseOrderId(), invoiceLine.getInvoiceId(), requestContext)
@@ -245,8 +244,10 @@ public class InvoiceLineHelper extends AbstractHelper {
               OrderInvoiceRelationship orderInvoiceRelationship = new OrderInvoiceRelationship();
               orderInvoiceRelationship.withInvoiceId(invoiceLine.getInvoiceId()).withPurchaseOrderId(poLine.getPurchaseOrderId());
 
-              return orderService.createOrderInvoiceRelationship(orderInvoiceRelationship, requestContext)
-                                 .thenCompose(v -> CompletableFuture.completedFuture(null));
+              return orderService.deleteOrderInvoiceRelationship(invoiceLine.getInvoiceId(), invoiceLineFromStorage.getPoLineId(), requestContext)
+                        .thenCompose(v -> orderService.createOrderInvoiceRelationship(orderInvoiceRelationship, requestContext)
+                                                      .thenCompose(relationship -> CompletableFuture.completedFuture(null))
+                        );
             }
             return CompletableFuture.completedFuture(null);
           }));
