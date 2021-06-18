@@ -1,4 +1,14 @@
 ## 5.1.0 - Unreleased
+
+## 5.0.5 - Released
+
+Release contains data import dependency updates with the fixed kafka configuration 
+
+[Full Changelog](https://github.com/folio-org/mod-invoice/compare/v5.0.4...v5.0.5)
+
+### Bug Fixes
+* [MODPUBSUB-181](https://issues.folio.org/browse/MODPUBSUB-181) - Unable to create Kafka topics if tenant ID doesn't match
+
 ## 5.0.4 - Released
 
 The focus of this release was to fix issue with credit transactions
