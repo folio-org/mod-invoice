@@ -1,4 +1,26 @@
-## 5.1.0 - Unreleased
+## 5.2.0 - Unrleased
+
+## 5.1.0 - Released
+
+The focus of this release was to fix populating fields of the voucher lines
+
+[Full Changelog](https://github.com/folio-org/mod-invoice/compare/v5.0.3...v5.1.0)
+
+### Stories
+* [MODINVOICE-241](https://issues.folio.org/browse/MODINVOICE-241) - Populate Vendor primary address on GET /voucher/vouchers/id
+* [MODINVOICE-240](https://issues.folio.org/browse/MODINVOICE-240) - Include vendor organization address in voucher export for each batched voucher
+* [MODINVOICE-238](https://issues.folio.org/browse/MODINVOICE-238) - mod-invoice: Update RMB
+* [MODINVOICE-234](https://issues.folio.org/browse/MODINVOICE-234) - Update export batch voucher logic for supporting "enclosureNeeded" and "accountNo"
+* [MODINVOICE-225](https://issues.folio.org/browse/MODINVOICE-225) - Prevent approval of invoice when organization IS NOT a vendor
+* [MODINVOICE-221](https://issues.folio.org/browse/MODINVOICE-221) - Relink invoice with new order if POL link changed in invoice line
+
+### Bug Fixes
+* [MODINVOICE-255](https://issues.folio.org/browse/MODINVOICE-255) - Credit transaction given value of $0
+* [MODINVOICE-249](https://issues.folio.org/browse/MODINVOICE-249) - The relation between the order and the invoice is not deleted if the invoice is last online
+* [MODINVOICE-246](https://issues.folio.org/browse/MODINVOICE-246) - Voucher line reference to the invoice line is empty
+* [MODINVOICE-245](https://issues.folio.org/browse/MODINVOICE-245) - Incorrect split funds with an odd number of pennies for vouchers
+* [MODINVOICE-232](https://issues.folio.org/browse/MODINVOICE-232) - Cannot split funds on an Invoice with an odd number of pennies as the cost
+
 
 ## 5.0.3 - Released
 
