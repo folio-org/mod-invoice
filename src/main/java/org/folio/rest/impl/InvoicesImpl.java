@@ -109,7 +109,7 @@ public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     InvoiceHelper helper = new InvoiceHelper(okapiHeaders, vertxContext, lang);
 
-    helper.deleteInvoice(id)
+    helper.deleteInvoice(id, new RequestContext(vertxContext, okapiHeaders))
       .thenAccept(ok -> asyncResultHandler.handle(succeededFuture(helper.buildNoContentResponse())))
       .exceptionally(fail -> handleErrorResponse(asyncResultHandler, helper, fail));
   }

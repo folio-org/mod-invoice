@@ -96,7 +96,9 @@
             "invoice-storage.invoices.item.get",
             "invoice-storage.invoices.item.delete",
             "acquisitions-units.units.collection.get",
-            "acquisitions-units.memberships.collection.get"
+            "acquisitions-units.memberships.collection.get",
+            "orders-storage.order-invoice-relationships.collection.get",
+            "orders-storage.order-invoice-relationships.item.delete"
           ]
         },
         {
@@ -585,6 +587,10 @@
     },
     {
       "id": "finance.expense-classes",
+      "version": "1.0"
+    },
+    {
+      "id" : "orders-storage.order-invoice-relationships",
       "version": "1.0"
     }
   ],

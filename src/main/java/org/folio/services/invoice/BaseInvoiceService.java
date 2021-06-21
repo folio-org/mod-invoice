@@ -29,6 +29,7 @@ import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.jaxrs.model.InvoiceCollection;
 import org.folio.rest.jaxrs.model.InvoiceLine;
 import org.folio.services.adjusment.AdjustmentsService;
+import org.folio.services.order.OrderService;
 import org.javamoney.moneta.Money;
 import org.javamoney.moneta.function.MonetaryFunctions;
 import io.vertx.core.json.JsonObject;
@@ -41,11 +42,12 @@ public class BaseInvoiceService implements InvoiceService {
     private final AdjustmentsService adjustmentsService;
     private final RestClient restClient;
     private final InvoiceLineService invoiceLineService;
+    private final OrderService orderService;
 
-
-    public BaseInvoiceService(RestClient restClient, InvoiceLineService invoiceLineService) {
+    public BaseInvoiceService(RestClient restClient, InvoiceLineService invoiceLineService, OrderService orderService) {
       this.restClient = restClient;
       this.invoiceLineService = invoiceLineService;
+      this.orderService = orderService;
       this.adjustmentsService = new AdjustmentsService();
     }
 
@@ -79,7 +81,8 @@ public class BaseInvoiceService implements InvoiceService {
     @Override
     public CompletableFuture<Void> deleteInvoice(String invoiceId, RequestContext requestContext) {
         RequestEntry requestEntry = new RequestEntry(INVOICE_BY_ID_ENDPOINT).withId(invoiceId);
-        return restClient.delete(requestEntry, requestContext);
+        return restClient.delete(requestEntry, requestContext)
+                         .thenCompose(v -> orderService.deleteOrderInvoiceRelationshipByInvoiceId(invoiceId, requestContext));
     }
 
     @Override
