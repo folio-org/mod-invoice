@@ -233,18 +233,18 @@ public class InvoiceLineHelper extends AbstractHelper {
 
   private CompletableFuture<Void> updateOrderInvoiceRelationship(InvoiceLine invoiceLine, InvoiceLine invoiceLineFromStorage, RequestContext requestContext) {
     if (invoiceLine.getPoLineId() == null && invoiceLineFromStorage.getPoLineId() != null) {
-      return orderService.deleteOrderInvoiceRelationship(invoiceLine.getInvoiceId(), invoiceLineFromStorage.getPoLineId(), requestContext);
+      return orderService.deleteOrderInvoiceRelationshipByInvoiceIdAndLineId(invoiceLine.getInvoiceId(), invoiceLineFromStorage.getPoLineId(), requestContext);
     }
     if (!StringUtils.equals(invoiceLine.getPoLineId(), invoiceLineFromStorage.getPoLineId())) {
       return orderService.getPoLine(invoiceLine.getPoLineId(), requestContext).thenCompose(
-        poLine -> orderService.getOrderInvoiceRelationship(poLine.getPurchaseOrderId(), invoiceLine.getInvoiceId(), requestContext)
+        poLine -> orderService.getOrderInvoiceRelationshipByOrderIdAndInvoiceId(poLine.getPurchaseOrderId(), invoiceLine.getInvoiceId(), requestContext)
           .thenCompose(relationships -> {
             if (relationships.getTotalRecords() == 0) {
 
               OrderInvoiceRelationship orderInvoiceRelationship = new OrderInvoiceRelationship();
               orderInvoiceRelationship.withInvoiceId(invoiceLine.getInvoiceId()).withPurchaseOrderId(poLine.getPurchaseOrderId());
 
-              return orderService.deleteOrderInvoiceRelationship(invoiceLine.getInvoiceId(), invoiceLineFromStorage.getPoLineId(), requestContext)
+              return orderService.deleteOrderInvoiceRelationshipByInvoiceIdAndLineId(invoiceLine.getInvoiceId(), invoiceLineFromStorage.getPoLineId(), requestContext)
                         .thenCompose(v -> orderService.createOrderInvoiceRelationship(orderInvoiceRelationship, requestContext)
                                                       .thenCompose(relationship -> CompletableFuture.completedFuture(null))
                         );

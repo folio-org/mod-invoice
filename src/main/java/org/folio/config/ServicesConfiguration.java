@@ -137,8 +137,8 @@ public class ServicesConfiguration {
   }
 
   @Bean
-  InvoiceService invoiceService(RestClient restClient, InvoiceLineService invoiceLineService) {
-    return new BaseInvoiceService(restClient, invoiceLineService);
+  InvoiceService invoiceService(RestClient restClient, InvoiceLineService invoiceLineService, OrderService orderService) {
+    return new BaseInvoiceService(restClient, invoiceLineService, orderService);
   }
 
   @Bean

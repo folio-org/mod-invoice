@@ -50,6 +50,7 @@ import org.folio.rest.jaxrs.model.InvoiceLine;
 import org.folio.services.invoice.BaseInvoiceService;
 import org.folio.services.invoice.InvoiceLineService;
 import org.folio.services.invoice.InvoiceService;
+import org.folio.services.order.OrderService;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
@@ -129,8 +130,13 @@ public class ApiTestBase {
     }
 
     @Bean
-    InvoiceService invoiceService(RestClient restClient, InvoiceLineService invoiceLineService) {
-      return new BaseInvoiceService(restClient, invoiceLineService);
+    OrderService orderService(RestClient restClient, InvoiceLineService invoiceLineService) {
+      return new OrderService(restClient, invoiceLineService);
+    }
+
+    @Bean
+    InvoiceService invoiceService(RestClient restClient, InvoiceLineService invoiceLineService, OrderService orderService) {
+      return new BaseInvoiceService(restClient, invoiceLineService, orderService);
     }
   }
 

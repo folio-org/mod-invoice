@@ -47,6 +47,7 @@ import org.folio.services.finance.transaction.BaseTransactionServiceTest;
 import org.folio.services.finance.transaction.PendingPaymentWorkflowServiceTest;
 import org.folio.services.ftp.FTPVertxCommandLoggerTest;
 import org.folio.services.ftp.FtpUploadServiceTest;
+import org.folio.services.order.OrderServiceTest;
 import org.folio.services.validator.FundAvailabilityHolderValidatorTest;
 import org.folio.services.validator.InvoiceLineHolderValidatorTest;
 import org.folio.services.voucher.BatchVoucherGenerateServiceTest;
@@ -293,4 +294,9 @@ public class ApiTestSuite {
   @Nested
   class CreateInvoiceEventHandlerTestNested extends CreateInvoiceEventHandlerTest {
   }
+
+  @Nested
+  class OrderServiceTestNested extends OrderServiceTest {
+  }
+
 }
