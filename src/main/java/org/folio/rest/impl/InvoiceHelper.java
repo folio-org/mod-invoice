@@ -256,12 +256,12 @@ public class InvoiceHelper extends AbstractHelper {
    * 4. If user has permission to delete and invoice is not approved or paid then delete invoiceLine
    * @param id invoiceLine id to be deleted
    */
-  public CompletableFuture<Void> deleteInvoice(String id) {
+  public CompletableFuture<Void> deleteInvoice(String id, RequestContext requestContext) {
     return getInvoiceRecord(id)
     .thenCompose(invoice -> protectionHelper.isOperationRestricted(invoice.getAcqUnitIds(), ProtectedOperationType.DELETE)
       .thenApply(vVoid -> invoice))
     .thenCompose(InvoiceRestrictionsUtil::checkIfInvoiceDeletionPermitted)
-    .thenCompose(invoice -> invoiceService.deleteInvoice(id, new RequestContext(ctx, okapiHeaders)));
+    .thenCompose(invoice -> invoiceService.deleteInvoice(id, requestContext));
   }
 
   /**

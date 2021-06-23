@@ -21,6 +21,7 @@ import org.folio.rest.jaxrs.model.VoucherCollection;
 import org.folio.services.invoice.BaseInvoiceService;
 import org.folio.services.invoice.InvoiceLineService;
 import org.folio.services.invoice.InvoiceService;
+import org.folio.services.order.OrderService;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -38,6 +39,9 @@ public class InvoiceRetrieveServiceTest extends ApiTestBase {
   @Autowired
   InvoiceLineService invoiceLineService;
 
+  @Autowired
+  OrderService orderService;
+
   @BeforeEach
   public void setUp()  {
     super.setUp();
@@ -52,7 +56,7 @@ public class InvoiceRetrieveServiceTest extends ApiTestBase {
   @Test
   public void positiveGetInvoicesByChunksTest() throws IOException, ExecutionException, InterruptedException {
 
-    InvoiceService invoiceService = new BaseInvoiceService(new RestClient(), invoiceLineService);
+    InvoiceService invoiceService = new BaseInvoiceService(new RestClient(), invoiceLineService, orderService);
     InvoiceRetrieveService service = new InvoiceRetrieveService(invoiceService);
     JsonObject vouchersList = new JsonObject(getMockData(VOUCHERS_LIST_PATH));
     List<Voucher> vouchers = vouchersList.getJsonArray("vouchers").stream()
@@ -67,7 +71,7 @@ public class InvoiceRetrieveServiceTest extends ApiTestBase {
 
   @Test
   public void positiveGetInvoiceMapTest() throws IOException, ExecutionException, InterruptedException {
-        InvoiceService invoiceService = new BaseInvoiceService(new RestClient(), invoiceLineService);
+        InvoiceService invoiceService = new BaseInvoiceService(new RestClient(), invoiceLineService, orderService);
     InvoiceRetrieveService service = new InvoiceRetrieveService(invoiceService);
     JsonObject vouchersList = new JsonObject(getMockData(VOUCHERS_LIST_PATH));
     List<Voucher> vouchers = vouchersList.getJsonArray("vouchers") .stream()

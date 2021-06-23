@@ -5,6 +5,7 @@ import static java.util.stream.Collectors.toMap;
 import static org.folio.invoices.utils.HelperUtils.buildIdsChunks;
 import static org.folio.invoices.utils.HelperUtils.collectResultsOnSuccess;
 import static org.folio.invoices.utils.HelperUtils.convertIdsToCqlQuery;
+import static org.folio.rest.RestConstants.MAX_IDS_FOR_GET_RQ;
 
 import java.util.List;
 import java.util.Map;
@@ -20,7 +21,6 @@ import org.folio.rest.jaxrs.model.VoucherCollection;
 import org.folio.services.invoice.InvoiceService;
 
 public class InvoiceRetrieveService {
-  static final int MAX_IDS_FOR_GET_RQ = 15;
   private final InvoiceService invoiceService;
 
   public InvoiceRetrieveService(InvoiceService invoiceService) {

@@ -24,6 +24,7 @@ import org.folio.services.exchange.ExchangeRateProviderResolver;
 import org.folio.services.invoice.BaseInvoiceService;
 import org.folio.services.invoice.InvoiceLineService;
 import org.folio.services.invoice.InvoiceService;
+import org.folio.services.order.OrderService;
 import org.folio.services.validator.VoucherValidator;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
@@ -66,8 +67,8 @@ public class BatchVoucherGenerateServiceTest extends ApiTestBase {
     VoucherService voucherService = new VoucherService(voucherRetrieveService, voucherCommandService,
       vendorRetrieveService, addressConverter);
 
-
-    InvoiceService invoiceService = new BaseInvoiceService(new RestClient(), new InvoiceLineService(new RestClient()));
+    InvoiceLineService invoiceLineService = new InvoiceLineService(new RestClient());
+    InvoiceService invoiceService = new BaseInvoiceService(new RestClient(), invoiceLineService, new OrderService(new RestClient(), invoiceLineService));
     InvoiceRetrieveService invoiceRetrieveService = new InvoiceRetrieveService(invoiceService);
     BatchVoucherGenerateService service = new BatchVoucherGenerateService(okapiHeaders, context, "en", vendorRetrieveService,
               invoiceRetrieveService, voucherService, addressConverter);
@@ -91,7 +92,10 @@ public class BatchVoucherGenerateServiceTest extends ApiTestBase {
       AddressConverter addressConverter = AddressConverter.getInstance();
       VoucherService voucherService = new VoucherService(voucherRetrieveService, voucherCommandService,
         vendorRetrieveService, addressConverter);
-      InvoiceService invoiceService = new BaseInvoiceService(restClient, new InvoiceLineService(new RestClient()));
+
+      InvoiceLineService invoiceLineService = new InvoiceLineService(new RestClient());
+      InvoiceService invoiceService = new BaseInvoiceService(new RestClient(), invoiceLineService, new OrderService(new RestClient(), invoiceLineService));
+
       InvoiceRetrieveService invoiceRetrieveService = new InvoiceRetrieveService(invoiceService);
 
       BatchVoucherGenerateService service = new BatchVoucherGenerateService(okapiHeaders, context, "en", vendorRetrieveService,
