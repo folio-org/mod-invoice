@@ -8,8 +8,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.instanceOf;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.ArgumentMatchers.contains;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
 import java.util.ArrayList;
@@ -29,6 +28,7 @@ import org.folio.rest.acq.model.finance.ExpenseClass;
 import org.folio.rest.acq.model.finance.Fund;
 import org.folio.rest.core.RestClient;
 import org.folio.rest.core.models.RequestContext;
+import org.folio.rest.core.models.RequestEntry;
 import org.folio.rest.jaxrs.model.Adjustment;
 import org.folio.rest.jaxrs.model.Error;
 import org.folio.rest.jaxrs.model.Errors;
@@ -38,7 +38,6 @@ import org.folio.rest.jaxrs.model.InvoiceLine;
 import org.folio.services.finance.budget.BudgetExpenseClassService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentMatchers;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
@@ -49,7 +48,7 @@ public class BudgetExpenseClassTest {
     private BudgetExpenseClassService budgetExpenseClassService;
 
     @Mock
-    private RestClient budgetExpenseClassRestClient;
+    private RestClient restClient;
 
     @Mock
     private RequestContext requestContext;
@@ -57,7 +56,7 @@ public class BudgetExpenseClassTest {
     @BeforeEach
     public void initMocks() {
         MockitoAnnotations.openMocks(this);
-        budgetExpenseClassService = new BudgetExpenseClassService(budgetExpenseClassRestClient);
+        budgetExpenseClassService = new BudgetExpenseClassService(restClient);
     }
 
     @Test
@@ -122,15 +121,14 @@ public class BudgetExpenseClassTest {
         holders.add(holder2);
         holders.add(holder3);
 
+        when(restClient.get(any(RequestEntry.class), any(), any()))
+                .thenAnswer(invocation -> {
+                    RequestEntry requestEntry = invocation.getArgument(0);
+                    BudgetExpenseClass bec = requestEntry.buildEndpoint().contains(activeExpenseClassId) ? active : inactive;
+                    return CompletableFuture.completedFuture(new BudgetExpenseClassCollection()
+                                                          .withBudgetExpenseClasses(Collections.singletonList(bec)).withTotalRecords(1));
+                });
 
-
-        when(budgetExpenseClassRestClient.get(contains(inactiveExpenseClassId), anyInt(), anyInt(), ArgumentMatchers.any(), ArgumentMatchers.any()))
-                .thenReturn(CompletableFuture.completedFuture(new BudgetExpenseClassCollection()
-                        .withBudgetExpenseClasses(Collections.singletonList(inactive)).withTotalRecords(1)));
-
-        when(budgetExpenseClassRestClient.get(contains(activeExpenseClassId), anyInt(), anyInt(), ArgumentMatchers.any(), ArgumentMatchers.any()))
-                .thenReturn(CompletableFuture.completedFuture(new BudgetExpenseClassCollection()
-                        .withBudgetExpenseClasses(Collections.singletonList(active)).withTotalRecords(1)));
         when(requestContext.getContext()).thenReturn(Vertx.vertx().getOrCreateContext());
 
         CompletableFuture<List<InvoiceWorkflowDataHolder>> future = budgetExpenseClassService.checkExpenseClasses(holders, requestContext);
@@ -210,13 +208,14 @@ public class BudgetExpenseClassTest {
         holders.add(holder2);
         holders.add(holder3);
 
-        when(budgetExpenseClassRestClient.get(contains(notAssignedExpenseClassId), anyInt(), anyInt(), ArgumentMatchers.any(), ArgumentMatchers.any()))
-                .thenReturn(CompletableFuture.completedFuture(new BudgetExpenseClassCollection()
-                        .withTotalRecords(0)));
-
-        when(budgetExpenseClassRestClient.get(contains(activeExpenseClassId), anyInt(), anyInt(), ArgumentMatchers.any(), ArgumentMatchers.any()))
-                .thenReturn(CompletableFuture.completedFuture(new BudgetExpenseClassCollection()
-                        .withBudgetExpenseClasses(Collections.singletonList(active)).withTotalRecords(1)));
+        when(restClient.get(any(RequestEntry.class), any(), any()))
+            .thenAnswer(invocation -> {
+                RequestEntry requestEntry = invocation.getArgument(0);
+                List<BudgetExpenseClass> budgetExpenseClasses = requestEntry.buildEndpoint().contains(notAssignedExpenseClassId)
+                    ? Collections.emptyList() : Collections.singletonList(active);
+                return CompletableFuture.completedFuture(new BudgetExpenseClassCollection()
+                                                             .withBudgetExpenseClasses(budgetExpenseClasses).withTotalRecords(1));
+            });
         when(requestContext.getContext()).thenReturn(Vertx.vertx().getOrCreateContext());
 
 

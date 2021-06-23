@@ -1,8 +1,6 @@
 package org.folio.services.voucher;
 
 import static java.util.concurrent.CompletableFuture.completedFuture;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -25,6 +23,7 @@ import org.folio.rest.jaxrs.model.BatchVoucher;
 import org.folio.rest.jaxrs.model.BatchVoucherExport;
 import org.folio.rest.jaxrs.model.Credentials;
 import org.folio.rest.jaxrs.model.ExportConfigCollection;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
@@ -65,7 +64,7 @@ public class UploadBatchVoucherExportServiceTest extends ApiTestBase {
     //given
     UploadBatchVoucherExportService service =  new UploadBatchVoucherExportService(ctxMock, bvHelper, bvExportConfigHelper, bvExportsHelper);
     //Then
-    assertNotNull(service);
+    Assertions.assertNotNull(service);
   }
 
   @Test
@@ -97,7 +96,7 @@ public class UploadBatchVoucherExportServiceTest extends ApiTestBase {
     verify(bvHelper).getBatchVoucherById(BV_ID);
     verify(bvExportsHelper).updateBatchVoucherExportRecord(eq(bvExport));
     verify(bvExportConfigHelper).getExportConfigs(eq(1), eq(0), anyString());
-    assertEquals(BatchVoucherExport.Status.UPLOADED, bvExport.getStatus());
+    Assertions.assertEquals(BatchVoucherExport.Status.UPLOADED, bvExport.getStatus());
   }
 
   @Test
@@ -124,7 +123,7 @@ public class UploadBatchVoucherExportServiceTest extends ApiTestBase {
     //When
     String actFileName = serviceSpy.generateFileName(bv, "json");
     //Then
-    assertEquals("bv_"+expId+"_Amherst College (AC)_2019-12-06_2019-12-07.json", actFileName);
+    Assertions.assertEquals("bv_"+expId+"_Amherst College (AC)_2019-12-06_2019-12-07.json", actFileName);
   }
 
   @Test
@@ -136,6 +135,6 @@ public class UploadBatchVoucherExportServiceTest extends ApiTestBase {
     //When
     String actFileName = serviceSpy.generateFileName(bv, "json");
     //Then
-    assertEquals("bv_"+bv.getId()+"_Amherst College (AC)_2019-12-06_2019-12-07.json", actFileName);
+    Assertions.assertEquals("bv_"+bv.getId()+"_Amherst College (AC)_2019-12-06_2019-12-07.json", actFileName);
   }
 }

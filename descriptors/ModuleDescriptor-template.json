@@ -4,7 +4,7 @@
   "provides": [
     {
       "id": "invoice",
-      "version": "7.0",
+      "version": "7.2",
       "handlers": [
         {
           "methods": ["GET"],
@@ -26,7 +26,8 @@
             "invoice-storage.invoices.item.post",
             "invoice-storage.invoice-number.get",
             "acquisitions-units.units.collection.get",
-            "acquisitions-units.memberships.collection.get"
+            "acquisitions-units.memberships.collection.get",
+            "organizations-storage.organizations.item.get"
           ]
         },
         {
@@ -83,7 +84,8 @@
             "finance-storage.budget-expense-classes.collection.get",
             "finance.exchange-rate.item.get",
             "finance.fiscal-years.item.get",
-            "finance.fiscal-years.collection.get"
+            "finance.fiscal-years.collection.get",
+            "organizations-storage.organizations.item.get"
           ]
         },
         {
@@ -94,7 +96,9 @@
             "invoice-storage.invoices.item.get",
             "invoice-storage.invoices.item.delete",
             "acquisitions-units.units.collection.get",
-            "acquisitions-units.memberships.collection.get"
+            "acquisitions-units.memberships.collection.get",
+            "orders-storage.order-invoice-relationships.collection.get",
+            "orders-storage.order-invoice-relationships.item.delete"
           ]
         },
         {
@@ -153,7 +157,10 @@
             "invoice-storage.invoices.item.put",
             "acquisitions-units.units.collection.get",
             "acquisitions-units.memberships.collection.get",
-            "finance.exchange-rate.item.get"
+            "finance.exchange-rate.item.get",
+            "orders-storage.order-invoice-relationships.collection.get",
+            "orders-storage.order-invoice-relationships.item.post",
+            "orders.po-lines.item.get"
           ]
         },
         {
@@ -225,7 +232,8 @@
           "permissionsRequired": ["voucher.vouchers.item.get"],
           "modulePermissions": [
             "voucher-storage.vouchers.item.get",
-            "finance.exchange-rate.item.get"
+            "finance.exchange-rate.item.get",
+            "organizations-storage.organizations.item.get"
           ]
         },
         {
@@ -579,6 +587,10 @@
     },
     {
       "id": "finance.expense-classes",
+      "version": "1.0"
+    },
+    {
+      "id" : "orders-storage.order-invoice-relationships",
       "version": "1.0"
     }
   ],

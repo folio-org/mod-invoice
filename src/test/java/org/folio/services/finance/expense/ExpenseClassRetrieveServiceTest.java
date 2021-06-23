@@ -6,7 +6,6 @@ import static org.hamcrest.Matchers.instanceOf;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
@@ -47,7 +46,7 @@ public class ExpenseClassRetrieveServiceTest {
     void getExpenseClassByIdShouldReturnExpenseClassNotFoundWhenGetRestClientReturn404() {
         CompletableFuture<ExpenseClass> future = new CompletableFuture<>();
         future.completeExceptionally(new HttpException(404, "Not found"));
-        when(restClient.getById(anyString(), any(), eq(ExpenseClass.class))).thenReturn(future);
+        when(restClient.get(any(), any(), eq(ExpenseClass.class))).thenReturn(future);
         String expenseClassId = UUID.randomUUID().toString();
         CompletableFuture<ExpenseClass> resultFuture = expenseClassRetrieveService.getExpenseClassById(expenseClassId, requestContext);
 

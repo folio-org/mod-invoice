@@ -10,7 +10,6 @@ import static org.mockito.Mockito.verify;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import java.io.IOException;
 import org.apache.logging.log4j.Logger;
 
 public class FTPVertxCommandLoggerTest {

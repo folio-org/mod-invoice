@@ -2,9 +2,7 @@ package org.folio.services;
 
 import static java.util.stream.Collectors.toList;
 import static org.folio.ApiTestSuite.mockPort;
-import static org.folio.invoices.utils.ResourcePathResolver.INVOICES;
 import static org.folio.rest.RestConstants.OKAPI_URL;
-import static org.junit.Assert.assertEquals;
 
 import java.io.IOException;
 import java.util.HashMap;
@@ -13,7 +11,6 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 
-import org.folio.invoices.utils.ResourcePathResolver;
 import org.folio.rest.core.RestClient;
 import org.folio.rest.core.models.RequestContext;
 import org.folio.rest.impl.ApiTestBase;
@@ -22,9 +19,13 @@ import org.folio.rest.jaxrs.model.InvoiceCollection;
 import org.folio.rest.jaxrs.model.Voucher;
 import org.folio.rest.jaxrs.model.VoucherCollection;
 import org.folio.services.invoice.BaseInvoiceService;
+import org.folio.services.invoice.InvoiceLineService;
 import org.folio.services.invoice.InvoiceService;
+import org.folio.services.order.OrderService;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import io.vertx.core.Context;
 import io.vertx.core.Vertx;
@@ -34,6 +35,12 @@ public class InvoiceRetrieveServiceTest extends ApiTestBase {
   private static Context context;
   private static Map<String, String> okapiHeaders;
   private static final String VOUCHERS_LIST_PATH = BASE_MOCK_DATA_PATH + "vouchers/vouchers.json";
+
+  @Autowired
+  InvoiceLineService invoiceLineService;
+
+  @Autowired
+  OrderService orderService;
 
   @BeforeEach
   public void setUp()  {
@@ -49,7 +56,7 @@ public class InvoiceRetrieveServiceTest extends ApiTestBase {
   @Test
   public void positiveGetInvoicesByChunksTest() throws IOException, ExecutionException, InterruptedException {
 
-    InvoiceService invoiceService = new BaseInvoiceService(new RestClient(ResourcePathResolver.resourcesPath(INVOICES)));
+    InvoiceService invoiceService = new BaseInvoiceService(new RestClient(), invoiceLineService, orderService);
     InvoiceRetrieveService service = new InvoiceRetrieveService(invoiceService);
     JsonObject vouchersList = new JsonObject(getMockData(VOUCHERS_LIST_PATH));
     List<Voucher> vouchers = vouchersList.getJsonArray("vouchers").stream()
@@ -59,12 +66,12 @@ public class InvoiceRetrieveServiceTest extends ApiTestBase {
     vouchers.remove(1);
     CompletableFuture<List<InvoiceCollection>> future = service.getInvoicesByChunks(vouchers, new RequestContext(context, okapiHeaders));
     List<InvoiceCollection> lineCollections = future.get();
-    assertEquals(3, lineCollections.get(0).getInvoices().size());
+    Assertions.assertEquals(3, lineCollections.get(0).getInvoices().size());
   }
 
   @Test
   public void positiveGetInvoiceMapTest() throws IOException, ExecutionException, InterruptedException {
-        InvoiceService invoiceService = new BaseInvoiceService(new RestClient(ResourcePathResolver.resourcesPath(INVOICES)));
+        InvoiceService invoiceService = new BaseInvoiceService(new RestClient(), invoiceLineService, orderService);
     InvoiceRetrieveService service = new InvoiceRetrieveService(invoiceService);
     JsonObject vouchersList = new JsonObject(getMockData(VOUCHERS_LIST_PATH));
     List<Voucher> vouchers = vouchersList.getJsonArray("vouchers") .stream()
@@ -77,6 +84,6 @@ public class InvoiceRetrieveServiceTest extends ApiTestBase {
 
     CompletableFuture<Map<String, Invoice>> future = service.getInvoiceMap(voucherCollection, new RequestContext(context, okapiHeaders));
     Map<String, Invoice> lineMap = future.get();
-    assertEquals(3, lineMap.values().size());
+    Assertions.assertEquals(3, lineMap.values().size());
   }
 }

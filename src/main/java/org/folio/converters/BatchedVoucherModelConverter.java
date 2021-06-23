@@ -2,13 +2,16 @@ package org.folio.converters;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import org.folio.jaxb.JAXBUtil;
 import org.folio.rest.jaxrs.model.BatchedVoucher;
+import org.folio.rest.jaxrs.model.VendorAddress;
 import org.folio.rest.jaxrs.model.jaxb.BatchedVoucherLineType;
 import org.folio.rest.jaxrs.model.jaxb.BatchedVoucherType;
 import org.folio.rest.jaxrs.model.jaxb.PaymentAccountType;
+import org.folio.rest.jaxrs.model.jaxb.VendorAddressType;
 import org.springframework.core.convert.converter.Converter;
 
 public class BatchedVoucherModelConverter implements Converter<BatchedVoucher, BatchedVoucherType> {
@@ -23,6 +26,7 @@ public class BatchedVoucherModelConverter implements Converter<BatchedVoucher, B
     BatchedVoucherType batchedVoucherType = new BatchedVoucherType();
     batchedVoucherType.setVoucherNumber(batchedVoucher.getVoucherNumber());
     batchedVoucherType.setAccountingCode(batchedVoucher.getAccountingCode());
+    Optional.ofNullable(batchedVoucher.getAccountNo()).ifPresent(batchedVoucherType::setAccountNo);
     batchedVoucherType.setAmount(BigDecimal.valueOf(batchedVoucher.getAmount()));
 
     batchedVoucherType.setDisbursementNumber(batchedVoucher.getDisbursementNumber());
@@ -30,8 +34,8 @@ public class BatchedVoucherModelConverter implements Converter<BatchedVoucher, B
       batchedVoucherType.setDisbursementDate(JAXBUtil.convertOldJavaDate(batchedVoucher.getDisbursementDate()));
     }
     batchedVoucherType.setDisbursementAmount(BigDecimal.valueOf(batchedVoucher.getAmount()));
-
-    batchedVoucherType.setEnclosureNeeded(batchedVoucher.getEnclosureNeeded());
+    Optional.ofNullable(batchedVoucher.getEnclosureNeeded())
+      .ifPresentOrElse(batchedVoucherType::setEnclosureNeeded, () -> batchedVoucherType.setEnclosureNeeded(false));
     batchedVoucherType.setExchangeRate(BigDecimal.valueOf(batchedVoucher.getExchangeRate()));
     batchedVoucherType.setInvoiceCurrency(batchedVoucher.getInvoiceCurrency());
     batchedVoucherType.setFolioInvoiceNo(batchedVoucher.getFolioInvoiceNo());
@@ -41,6 +45,7 @@ public class BatchedVoucherModelConverter implements Converter<BatchedVoucher, B
 
     batchedVoucherType.setVendorInvoiceNo(batchedVoucher.getVendorInvoiceNo());
     batchedVoucherType.setVendorName(batchedVoucher.getVendorName());
+    batchedVoucherType.setVendorAddress(convertVendorAddress(batchedVoucher.getVendorAddress()));
     if (batchedVoucher.getVoucherDate() != null) {
       batchedVoucherType.setVoucherDate(JAXBUtil.convertOldJavaDate(batchedVoucher.getVoucherDate()));
     }
@@ -50,6 +55,18 @@ public class BatchedVoucherModelConverter implements Converter<BatchedVoucher, B
     BatchedVoucherType.BatchedVoucherLines batchedVoucherLines = convertBatchedVoucherLines(batchedVoucher);
     batchedVoucherType.withBatchedVoucherLines(batchedVoucherLines);
     return batchedVoucherType;
+  }
+
+  private VendorAddressType convertVendorAddress(VendorAddress address) {
+    if (address == null)
+      return null;
+    return new VendorAddressType()
+      .withAddressLine1(address.getAddressLine1())
+      .withAddressLine2(address.getAddressLine2())
+      .withCity(address.getCity())
+      .withStateRegion(address.getStateRegion())
+      .withZipCode(address.getZipCode())
+      .withCountry(address.getCountry());
   }
 
   private BatchedVoucherType.BatchedVoucherLines convertBatchedVoucherLines(BatchedVoucher batchedVoucher) {

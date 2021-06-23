@@ -1,9 +1,28 @@
 package org.folio.dataimport.handlers.actions;
 
-import io.vertx.core.Vertx;
-import io.vertx.core.json.Json;
-import io.vertx.core.json.JsonArray;
-import io.vertx.core.json.JsonObject;
+import static java.lang.String.format;
+import static org.apache.commons.collections4.CollectionUtils.isNotEmpty;
+import static org.apache.commons.lang3.StringUtils.isBlank;
+import static org.folio.ActionProfile.Action.CREATE;
+import static org.folio.ActionProfile.FolioRecord.INVOICE;
+import static org.folio.DataImportEventTypes.DI_INVOICE_CREATED;
+import static org.folio.invoices.utils.ResourcePathResolver.ORDER_LINES;
+import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
+import static org.folio.rest.jaxrs.model.EntityType.EDIFACT_INVOICE;
+import static org.folio.rest.jaxrs.model.InvoiceLine.InvoiceLineStatus.OPEN;
+import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.ACTION_PROFILE;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -24,36 +43,21 @@ import org.folio.rest.acq.model.orders.PoLine;
 import org.folio.rest.acq.model.orders.PoLineCollection;
 import org.folio.rest.core.RestClient;
 import org.folio.rest.core.models.RequestContext;
+import org.folio.rest.core.models.RequestEntry;
 import org.folio.rest.impl.InvoiceHelper;
 import org.folio.rest.impl.InvoiceLineHelper;
 import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.jaxrs.model.InvoiceLine;
 import org.folio.rest.jaxrs.model.InvoiceLineCollection;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.concurrent.CompletableFuture;
-import java.util.regex.Pattern;
-import java.util.stream.Collectors;
-
-import static java.lang.String.format;
-import static org.apache.commons.collections4.CollectionUtils.isNotEmpty;
-import static org.apache.commons.lang3.StringUtils.isBlank;
-import static org.folio.ActionProfile.Action.CREATE;
-import static org.folio.ActionProfile.FolioRecord.INVOICE;
-import static org.folio.DataImportEventTypes.DI_INVOICE_CREATED;
-import static org.folio.rest.jaxrs.model.EntityType.EDIFACT_INVOICE;
-import static org.folio.rest.jaxrs.model.InvoiceLine.InvoiceLineStatus.OPEN;
-import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.ACTION_PROFILE;
+import io.vertx.core.Vertx;
+import io.vertx.core.json.Json;
+import io.vertx.core.json.JsonArray;
+import io.vertx.core.json.JsonObject;
 
 public class CreateInvoiceEventHandler implements EventHandler {
 
-  private static final Logger LOGGER = LogManager.getLogger(CreateInvoiceEventHandler.class);
+  private static final Logger logger = LogManager.getLogger(CreateInvoiceEventHandler.class);
   private static final String PAYLOAD_HAS_NO_DATA_MSG = "Failed to handle event payload, cause event payload context does not contain EDIFACT data";
 
   public static final String INVOICE_LINES_KEY = "INVOICE_LINES";
@@ -74,10 +78,10 @@ public class CreateInvoiceEventHandler implements EventHandler {
   private static final Pattern SEGMENT_QUERY_PATTERN = Pattern.compile("([A-Z]{3}((\\+|<)\\w*)(\\2*\\w*)*(\\?\\w+)?\\[[1-9](-[1-9])?\\])");
   private static final String DEFAULT_LANG = "en";
 
-  private final RestClient orderLinesRestClient;
+  private final RestClient restClient;
 
-  public CreateInvoiceEventHandler(RestClient orderLinesRestClient) {
-    this.orderLinesRestClient = orderLinesRestClient;
+  public CreateInvoiceEventHandler(RestClient restClient) {
+    this.restClient = restClient;
   }
 
   @Override
@@ -87,7 +91,7 @@ public class CreateInvoiceEventHandler implements EventHandler {
     try {
       HashMap<String, String> payloadContext = dataImportEventPayload.getContext();
       if (payloadContext == null || isBlank(payloadContext.get(EDIFACT_INVOICE.value()))) {
-        LOGGER.error(PAYLOAD_HAS_NO_DATA_MSG);
+        logger.error(PAYLOAD_HAS_NO_DATA_MSG);
         return CompletableFuture.failedFuture(new EventProcessingException(PAYLOAD_HAS_NO_DATA_MSG));
       }
 
@@ -116,12 +120,12 @@ public class CreateInvoiceEventHandler implements EventHandler {
             future.complete(dataImportEventPayload);
           } else {
             preparePayloadWithMappedInvoiceLines(dataImportEventPayload);
-            LOGGER.error("Error during invoice creation", throwable);
+            logger.error("Error during invoice creation", throwable);
             future.completeExceptionally(throwable);
           }
         });
     } catch (Exception e) {
-      LOGGER.error("Error during creation invoice and invoice lines", e);
+      logger.error("Error during creation invoice and invoice lines", e);
       future.completeExceptionally(e);
     }
     return future;
@@ -225,7 +229,11 @@ public class CreateInvoiceEventHandler implements EventHandler {
     }
 
     String preparedCql = prepareQueryGetPoLinesByNumber(List.copyOf(invoiceLineNoToPoLineNo.values()));
-    return orderLinesRestClient.get(preparedCql, 0, Integer.MAX_VALUE, new RequestContext(Vertx.currentContext(), okapiHeaders), PoLineCollection.class)
+    RequestEntry requestEntry = new RequestEntry(resourcesPath(ORDER_LINES))
+        .withQuery(preparedCql)
+        .withOffset(0)
+        .withLimit(Integer.MAX_VALUE);
+    return restClient.get(requestEntry, new RequestContext(Vertx.currentContext(), okapiHeaders), PoLineCollection.class)
       .thenApply(poLineCollection -> poLineCollection.getPoLines().stream().collect(Collectors.toMap(PoLine::getPoLineNumber, poLine -> poLine)))
       .thenAccept(poLineNumberToPoLine -> invoiceLineNoToPoLineNo
         .forEach((key, value) -> poLineNumberToPoLine.computeIfPresent(value, (polNo, poLine) -> invoiceLineNoToPoLine.put(key, poLine))))
@@ -240,7 +248,12 @@ public class CreateInvoiceEventHandler implements EventHandler {
     Map<Integer, CompletableFuture<PoLineCollection>> poLinesFutures = new HashMap<>();
     invoiceLineNoToRefNumbers.forEach((invoiceLineNumber, refNumberList) -> {
       String cqlGetPoLinesByRefNo = prepareQueryGetPoLinesByRefNumber(refNumberList);
-      poLinesFutures.put(invoiceLineNumber, orderLinesRestClient.get(cqlGetPoLinesByRefNo, 0, Integer.MAX_VALUE, new RequestContext(Vertx.currentContext(), okapiHeaders), PoLineCollection.class));
+      RequestEntry requestEntry = new RequestEntry(resourcesPath(ORDER_LINES))
+          .withQuery(cqlGetPoLinesByRefNo)
+          .withOffset(0)
+          .withLimit(Integer.MAX_VALUE);
+      poLinesFutures.put(invoiceLineNumber, restClient
+          .get(requestEntry, new RequestContext(Vertx.currentContext(), okapiHeaders), PoLineCollection.class));
     });
 
     return CompletableFuture.allOf(poLinesFutures.values().toArray(new CompletableFuture[0]))
@@ -276,7 +289,7 @@ public class CreateInvoiceEventHandler implements EventHandler {
         dataImportEventPayload.getContext().put(INVOICE.value(), Json.encode(invoice));
         return;
       }
-      LOGGER.error("Error during creation invoice in the storage", throwable);
+      logger.error("Error during creation invoice in the storage", throwable);
     });
   }
 
@@ -319,7 +332,7 @@ public class CreateInvoiceEventHandler implements EventHandler {
         int invLineNumber = i + 1;
         futures.get(i).whenComplete((savedInvLine, e) -> {
           if (e != null) {
-            LOGGER.error("Error to create invoice line with number {}", invLineNumber, e);
+            logger.error("Error to create invoice line with number {}", invLineNumber, e);
           }
           Pair<InvoiceLine, String> invoiceLineToMsg = e == null ? Pair.of(savedInvLine, null) : Pair.of(mappedInvoiceLine, e.getMessage());
           savingResults.add(invoiceLineToMsg);

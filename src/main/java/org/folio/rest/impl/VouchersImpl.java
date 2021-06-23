@@ -6,8 +6,10 @@ import java.util.Map;
 
 import javax.ws.rs.core.Response;
 
+import io.vertx.core.Vertx;
 import org.apache.commons.lang3.StringUtils;
 import org.folio.rest.annotations.Validate;
+import org.folio.rest.core.models.RequestContext;
 import org.folio.rest.jaxrs.model.Voucher;
 import org.folio.rest.jaxrs.model.VoucherLine;
 
@@ -17,10 +19,22 @@ import io.vertx.core.Handler;
 import io.vertx.core.json.JsonObject;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
+import org.folio.services.voucher.VoucherNumberService;
+import org.folio.spring.SpringContextUtil;
+import org.springframework.beans.factory.annotation.Autowired;
 
-public class VouchersImpl implements org.folio.rest.jaxrs.resource.Voucher {
+public class VouchersImpl extends BaseApi implements org.folio.rest.jaxrs.resource.Voucher {
 
   private static final Logger logger = LogManager.getLogger(VouchersImpl.class);
+
+  @Autowired
+  private VoucherService voucherService;
+  @Autowired
+  private VoucherNumberService voucherNumberService;
+
+  public VouchersImpl() {
+    SpringContextUtil.autowireDependencies(this, Vertx.currentContext());
+  }
 
   private Void handleErrorResponse(Handler<AsyncResult<Response>> asyncResultHandler, AbstractHelper helper,
                                    Throwable t) {
@@ -32,21 +46,20 @@ public class VouchersImpl implements org.folio.rest.jaxrs.resource.Voucher {
   @Validate
   public void getVoucherVouchersById(String id, String lang, Map<String, String> okapiHeaders,
                                      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
-    VoucherHelper helper = new VoucherHelper(okapiHeaders, vertxContext, lang);
-    helper.getVoucher(id)
-      .thenAccept(voucher -> asyncResultHandler.handle(succeededFuture(helper.buildOkResponse(voucher))))
-      .exceptionally(t -> handleErrorResponse(asyncResultHandler, helper, t));
+
+    voucherService.getVoucher(id, new RequestContext(vertxContext, okapiHeaders))
+      .thenAccept(voucher -> asyncResultHandler.handle(succeededFuture(buildOkResponse(voucher))))
+      .exceptionally(t -> handleErrorResponse(asyncResultHandler, t));
   }
 
   @Override
   @Validate
   public void putVoucherVouchersById(String id, String lang, Voucher entity, Map<String, String> okapiHeaders,
     Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
-    VoucherHelper helper = new VoucherHelper(okapiHeaders, vertxContext, lang);
 
-    helper.partialVoucherUpdate(id, entity)
-      .thenAccept(voucher -> asyncResultHandler.handle(succeededFuture(helper.buildNoContentResponse())))
-      .exceptionally(t -> handleErrorResponse(asyncResultHandler, helper, t));
+    voucherService.partialVoucherUpdate(id, entity, new RequestContext(vertxContext, okapiHeaders))
+      .thenAccept(voucher -> asyncResultHandler.handle(succeededFuture(buildNoContentResponse())))
+      .exceptionally(t -> handleErrorResponse(asyncResultHandler, t));
   }
 
   @Override
@@ -90,10 +103,10 @@ public class VouchersImpl implements org.folio.rest.jaxrs.resource.Voucher {
   public void postVoucherVoucherNumberStartByValue(String value, String lang, Map<String, String> okapiHeaders,
       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     logger.info("== Re(set) the current start value of the voucher number sequence ==");
-    VoucherHelper helper = new VoucherHelper(okapiHeaders, vertxContext, lang);
-    helper.setStartValue(value)
-      .thenAccept(ok -> asyncResultHandler.handle(succeededFuture(helper.buildNoContentResponse())))
-      .exceptionally(fail -> handleErrorResponse(asyncResultHandler, helper, fail));
+
+    voucherNumberService.setStartValue(value, new RequestContext(vertxContext, okapiHeaders))
+      .thenAccept(ok -> asyncResultHandler.handle(succeededFuture(buildNoContentResponse())))
+      .exceptionally(fail -> handleErrorResponse(asyncResultHandler, fail));
   }
 
   @Override
@@ -102,27 +115,24 @@ public class VouchersImpl implements org.folio.rest.jaxrs.resource.Voucher {
       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     logger.info("== Getting the current start value of the voucher number sequence ==");
 
-    VoucherHelper helper = new VoucherHelper(okapiHeaders, vertxContext, lang);
-
-    helper.getVoucherNumberStartValue()
-      .thenAccept(number -> asyncResultHandler.handle(succeededFuture(helper.buildOkResponse(number))))
-      .exceptionally(t -> handleErrorResponse(asyncResultHandler, helper, t));
+    voucherNumberService.getStartValue(new RequestContext(vertxContext, okapiHeaders))
+      .thenAccept(number -> asyncResultHandler.handle(succeededFuture(buildOkResponse(number))))
+      .exceptionally(t -> handleErrorResponse(asyncResultHandler, t));
   }
 
   @Validate
   @Override
   public void getVoucherVouchers(int offset, int limit, String query, String lang, Map<String, String> okapiHeaders,
       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
-    VoucherHelper vouchersHelper = new VoucherHelper(okapiHeaders, vertxContext, lang);
 
-    vouchersHelper.getVouchers(limit, offset, query)
+    voucherService.getVouchers(query, offset, limit, new RequestContext(vertxContext, okapiHeaders))
       .thenAccept(vouchers -> {
         if (logger.isInfoEnabled()) {
           logger.info("Successfully retrieved vouchers: {}", JsonObject.mapFrom(vouchers)
             .encodePrettily());
         }
-        asyncResultHandler.handle(succeededFuture(vouchersHelper.buildOkResponse(vouchers)));
+        asyncResultHandler.handle(succeededFuture(buildOkResponse(vouchers)));
       })
-      .exceptionally(t -> handleErrorResponse(asyncResultHandler, vouchersHelper, t));
+      .exceptionally(t -> handleErrorResponse(asyncResultHandler, t));
   }
 }

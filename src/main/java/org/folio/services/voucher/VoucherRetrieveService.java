@@ -4,23 +4,34 @@ import java.util.concurrent.CompletableFuture;
 
 import org.folio.rest.core.RestClient;
 import org.folio.rest.core.models.RequestContext;
+import org.folio.rest.core.models.RequestEntry;
 import org.folio.rest.jaxrs.model.Voucher;
 import org.folio.rest.jaxrs.model.VoucherCollection;
 
+import static org.folio.invoices.utils.ResourcePathResolver.VOUCHERS_STORAGE;
+import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
+
 public class VoucherRetrieveService {
   public static final String QUERY_BY_INVOICE_ID = "invoiceId==%s";
-  private final RestClient voucherStorageRestClient;
+  private static final String VOUCHER_ENDPOINT = resourcesPath(VOUCHERS_STORAGE);
+  private static final String VOUCHER_BY_ID_ENDPOINT = resourcesPath(VOUCHERS_STORAGE) + "/{id}";
+  private final RestClient restClient;
 
-  public VoucherRetrieveService(RestClient voucherStorageRestClient) {
-    this.voucherStorageRestClient = voucherStorageRestClient;
+  public VoucherRetrieveService(RestClient restClient) {
+    this.restClient = restClient;
   }
 
   public CompletableFuture<Voucher> getVoucherById(String voucherId, RequestContext requestContext) {
-    return voucherStorageRestClient.getById(voucherId, requestContext, Voucher.class);
+    RequestEntry requestEntry = new RequestEntry(VOUCHER_BY_ID_ENDPOINT).withId(voucherId);
+    return restClient.get(requestEntry, requestContext, Voucher.class);
   }
 
   public CompletableFuture<VoucherCollection> getVouchers(int limit, int offset, String query, RequestContext requestContext) {
-    return voucherStorageRestClient.get(query, offset, limit, requestContext, VoucherCollection.class);
+    RequestEntry requestEntry = new RequestEntry(VOUCHER_ENDPOINT)
+        .withQuery(query)
+        .withLimit(limit)
+        .withOffset(offset);
+    return restClient.get(requestEntry, requestContext, VoucherCollection.class);
   }
 
   public CompletableFuture<Voucher> getVoucherByInvoiceId(String invoiceId, RequestContext requestContext) {

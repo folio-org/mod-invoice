@@ -12,6 +12,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.rest.annotations.Stream;
 import org.folio.rest.annotations.Validate;
+import org.folio.rest.core.models.RequestContext;
 import org.folio.rest.jaxrs.model.Errors;
 import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.jaxrs.model.InvoiceDocument;
@@ -108,7 +109,7 @@ public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     InvoiceHelper helper = new InvoiceHelper(okapiHeaders, vertxContext, lang);
 
-    helper.deleteInvoice(id)
+    helper.deleteInvoice(id, new RequestContext(vertxContext, okapiHeaders))
       .thenAccept(ok -> asyncResultHandler.handle(succeededFuture(helper.buildNoContentResponse())))
       .exceptionally(fail -> handleErrorResponse(asyncResultHandler, helper, fail));
   }
@@ -157,7 +158,7 @@ public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
       invoiceLine.setId(invoiceLineId);
     }
 
-    invoiceLinesHelper.updateInvoiceLine(invoiceLine)
+    invoiceLinesHelper.updateInvoiceLine(invoiceLine, new RequestContext(vertxContext, okapiHeaders))
       .thenAccept(v -> asyncResultHandler.handle(succeededFuture(invoiceLinesHelper.buildNoContentResponse())))
       .exceptionally(t -> handleErrorResponse(asyncResultHandler, invoiceLinesHelper, t));
   }

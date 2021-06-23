@@ -1,5 +1,7 @@
 package org.folio.services.finance.transaction;
 
+import static org.folio.rest.impl.AbstractHelper.DEFAULT_SYSTEM_CURRENCY;
+import static org.folio.services.exchange.ExchangeRateProviderResolver.RATE_KEY;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasSize;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -20,7 +22,10 @@ import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
-import javax.money.MonetaryAmount;
+import javax.money.convert.ConversionQuery;
+import javax.money.convert.ConversionQueryBuilder;
+import javax.money.convert.CurrencyConversion;
+import javax.money.convert.ExchangeRateProvider;
 
 import org.folio.models.InvoiceWorkflowDataHolder;
 import org.folio.rest.acq.model.finance.FiscalYear;
@@ -31,6 +36,7 @@ import org.folio.rest.jaxrs.model.Adjustment;
 import org.folio.rest.jaxrs.model.FundDistribution;
 import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.jaxrs.model.InvoiceLine;
+import org.folio.services.exchange.ExchangeRateProviderResolver;
 import org.folio.services.exchange.ManualCurrencyConversion;
 import org.folio.services.validator.FundAvailabilityHolderValidator;
 import org.junit.jupiter.api.BeforeEach;
@@ -115,6 +121,7 @@ public class PendingPaymentWorkflowServiceTest {
       .withCurrency("EUR");
 
     InvoiceLine invoiceLine = new InvoiceLine()
+      .withSubTotal(60d)
       .withTotal(60d)
       .withId(invoiceLineId);
 
@@ -124,6 +131,11 @@ public class PendingPaymentWorkflowServiceTest {
       .withValue(60d);
 
     invoiceLine.getFundDistributions().add(invoiceLineFundDistribution);
+
+    ConversionQuery conversionQuery = ConversionQueryBuilder.of().setTermCurrency(DEFAULT_SYSTEM_CURRENCY).set(RATE_KEY, exchangeRate).build();
+    ExchangeRateProvider exchangeRateProvider = new ExchangeRateProviderResolver().resolve(conversionQuery, new RequestContext(
+      Vertx.currentContext(), Collections.emptyMap()));
+    CurrencyConversion conversion = exchangeRateProvider.getCurrencyConversion(conversionQuery);
 
     List<InvoiceWorkflowDataHolder> holders = new ArrayList<>();
 
@@ -150,10 +162,6 @@ public class PendingPaymentWorkflowServiceTest {
     doNothing().when(fundAvailabilityValidator).validate(anyList());
     when(invoiceTransactionSummaryService.updateInvoiceTransactionSummary(any(), any())).thenReturn(CompletableFuture.completedFuture(null));
     when(baseTransactionService.updateTransaction(any(), any())).thenReturn(CompletableFuture.completedFuture(null));
-    when(conversion.apply(any(MonetaryAmount.class))).thenAnswer(invocation -> {
-      MonetaryAmount amount = invocation.getArgument(0);
-      return amount.multiply(exchangeRate);
-    });
 
     when(requestContext.getContext()).thenReturn(Vertx.vertx().getOrCreateContext());
 
@@ -198,7 +206,7 @@ public class PendingPaymentWorkflowServiceTest {
     verify(baseTransactionService, times(2)).updateTransaction(transactionArgumentCaptor.capture(), eq(requestContext));
 
     Transaction updateArgumentInvoiceTransaction = transactionArgumentCaptor.getAllValues().stream()
-      .filter(transaction -> Objects.isNull(transaction.getSourceInvoiceLineId())).findFirst().get();;
+      .filter(transaction -> Objects.isNull(transaction.getSourceInvoiceLineId())).findFirst().get();
 
     assertEquals(existingInvoiceTransaction.getId(), updateArgumentInvoiceTransaction.getId());
     assertEquals(expectedInvoiceTransactionAmount, updateArgumentInvoiceTransaction.getAmount());

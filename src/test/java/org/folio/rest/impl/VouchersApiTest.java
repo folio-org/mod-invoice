@@ -2,6 +2,7 @@ package org.folio.rest.impl;
 
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 import static javax.ws.rs.core.MediaType.TEXT_PLAIN;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.folio.invoices.utils.HelperUtils.INVOICE_ID;
 import static org.folio.rest.impl.MockServer.ERROR_X_OKAPI_TENANT;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -10,7 +11,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
 
-import org.assertj.core.api.Assertions;
 import org.folio.rest.jaxrs.model.Errors;
 import org.folio.rest.jaxrs.model.SequenceNumber;
 import org.folio.rest.jaxrs.model.Voucher;
@@ -79,6 +79,16 @@ public class VouchersApiTest extends ApiTestBase {
 
     final Voucher resp = verifySuccessGet(String.format(VOUCHER_ID_PATH, id), Voucher.class);
 
+    assertNotNull(resp.getVendorAddress());
+
+    assertThat(resp.getVendorAddress())
+        .hasFieldOrPropertyWithValue("addressLine1", "10 Estes Street")
+        .hasFieldOrPropertyWithValue("addressLine2", "22")
+        .hasFieldOrPropertyWithValue("city", "Ipswich")
+        .hasFieldOrPropertyWithValue("stateRegion", "MA")
+        .hasFieldOrPropertyWithValue("zipCode", "01938")
+        .hasFieldOrPropertyWithValue("country", "USA");
+
     logger.info(JsonObject.mapFrom(resp)
       .encodePrettily());
     assertEquals(id, resp.getId());
@@ -142,7 +152,7 @@ public class VouchersApiTest extends ApiTestBase {
     logger.info("=== Test Get Voucher number start value - success ===");
 
     SequenceNumber number = verifyGet(VOUCHER_NUMBER_START_PATH, APPLICATION_JSON, 200).as(SequenceNumber.class);
-    Assertions.assertThat(number.getSequenceNumber()).isNotBlank();
+    assertThat(number.getSequenceNumber()).isNotBlank();
   }
 
   @Test

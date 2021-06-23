@@ -5,6 +5,7 @@ import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.rest.acq.model.finance.Budget;
 import org.folio.rest.core.RestClient;
 import org.folio.rest.core.models.RequestContext;
+import org.folio.rest.core.models.RequestEntry;
 import org.folio.rest.jaxrs.model.Parameter;
 
 import java.util.Collection;
@@ -20,31 +21,35 @@ import static org.folio.invoices.utils.ErrorCodes.BUDGET_NOT_FOUND;
 
 public class BudgetService {
 
-    private final RestClient activeBudgetRestClient;
+  private static final String ACTIVE_BUDGET_ENDPOINT = "/finance/funds/{id}/budget";
 
-    public BudgetService(RestClient activeBudgetRestClient) {
-        this.activeBudgetRestClient = activeBudgetRestClient;
-    }
+  private final RestClient restClient;
 
-    public CompletableFuture<List<Budget>> fetchBudgetsByFundIds(Collection<String> fundIds, RequestContext requestContext) {
-        List<CompletableFuture<Budget>> futureList = fundIds.stream()
-                .distinct()
-                .map(fundId -> getActiveBudgetByFundId(fundId, requestContext))
-                .collect(toList());
+  public BudgetService(RestClient restClient) {
+      this.restClient = restClient;
+  }
 
-        return FolioVertxCompletableFuture.allOf(requestContext.getContext(), futureList.toArray(new CompletableFuture[0]))
-                .thenApply(v -> futureList.stream().map(CompletableFuture::join).collect(Collectors.toList()));
-    }
+  public CompletableFuture<List<Budget>> fetchBudgetsByFundIds(Collection<String> fundIds, RequestContext requestContext) {
+    List<CompletableFuture<Budget>> futureList = fundIds.stream()
+            .distinct()
+            .map(fundId -> getActiveBudgetByFundId(fundId, requestContext))
+            .collect(toList());
 
-    private CompletableFuture<Budget> getActiveBudgetByFundId(String fundId, RequestContext requestContext) {
-        return activeBudgetRestClient.getById(fundId, requestContext, Budget.class)
-                .exceptionally(t -> {
-                    Throwable cause = Objects.isNull(t.getCause()) ? t : t.getCause();
-                    if (cause instanceof HttpException) {
-                        throw new HttpException(404, BUDGET_NOT_FOUND
-                                .toError().withParameters(Collections.singletonList(new Parameter().withKey("fund").withValue(fundId))));
-                    }
-                    throw new CompletionException(t.getCause());
-                });
-    }
+    return FolioVertxCompletableFuture.allOf(requestContext.getContext(), futureList.toArray(new CompletableFuture[0]))
+            .thenApply(v -> futureList.stream().map(CompletableFuture::join).collect(Collectors.toList()));
+  }
+
+  private CompletableFuture<Budget> getActiveBudgetByFundId(String fundId, RequestContext requestContext) {
+    RequestEntry requestEntry = new RequestEntry(ACTIVE_BUDGET_ENDPOINT)
+        .withId(fundId);
+    return restClient.get(requestEntry, requestContext, Budget.class)
+            .exceptionally(t -> {
+                Throwable cause = Objects.isNull(t.getCause()) ? t : t.getCause();
+                if (cause instanceof HttpException) {
+                    throw new HttpException(404, BUDGET_NOT_FOUND
+                            .toError().withParameters(Collections.singletonList(new Parameter().withKey("fund").withValue(fundId))));
+                }
+                throw new CompletionException(t.getCause());
+            });
+  }
 }

@@ -5,6 +5,7 @@ import static java.util.stream.Collectors.toList;
 import static org.folio.invoices.utils.ErrorCodes.TRANSACTION_CREATION_FAILURE;
 import static org.folio.invoices.utils.HelperUtils.convertToDoubleWithRounding;
 import static org.folio.invoices.utils.HelperUtils.getFundDistributionAmount;
+import static org.folio.services.FundsDistributionService.distributeFunds;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -39,17 +40,21 @@ public class PaymentCreditWorkflowService {
    * @param dataHolders {@link List<InvoiceWorkflowDataHolder>} that should be processed
    * @return {@link CompletableFuture <List<InvoiceWorkflowDataHolder>>}
    */
-  public CompletableFuture<List<InvoiceWorkflowDataHolder>> handlePaymentsAndCreditsCreation(List<InvoiceWorkflowDataHolder> dataHolders, RequestContext requestContext) {
+  public CompletableFuture<List<InvoiceWorkflowDataHolder>> handlePaymentsAndCreditsCreation(
+      List<InvoiceWorkflowDataHolder> dataHolders, RequestContext requestContext) {
     List<InvoiceWorkflowDataHolder> holders = withNewPaymentsCredits(dataHolders);
-    return holders.stream().findFirst().map(holder -> isPaymentsAlreadyProcessed(holder.getInvoice().getId(), requestContext).thenCompose(isProcessed -> {
-      if (Boolean.TRUE.equals(isProcessed)) {
-        return completedFuture(holders);
-      }
+    return holders.stream()
+      .findFirst()
+      .map(holder -> isPaymentsAlreadyProcessed(holder.getInvoice().getId(), requestContext)
+        .thenCompose(isProcessed -> {
+          if (Boolean.TRUE.equals(isProcessed)) {
+            return completedFuture(holders);
+          }
 
-      return  createTransactions(holders, requestContext)
-              .thenApply(aVoid -> holders);
-
-    })).orElseGet(() -> completedFuture(holders));
+          distributeFunds(holders);
+          return createTransactions(holders, requestContext).thenApply(aVoid -> holders);
+        }))
+      .orElseGet(() -> completedFuture(holders));
   }
 
   /**
@@ -101,11 +106,9 @@ public class PaymentCreditWorkflowService {
 
     return new Transaction()
             .withSource(Transaction.Source.INVOICE)
-            .withCurrency(holder.getTenantCurrency())
-            .withFiscalYearId(holder.getFiscalYear()
-                    .getId())
-            .withSourceInvoiceId(holder.getInvoice()
-                    .getId())
+            .withCurrency(holder.getFyCurrency())
+            .withFiscalYearId(holder.getFiscalYear().getId())
+            .withSourceInvoiceId(holder.getInvoice().getId())
             .withFromFundId(holder.getFundId())
             .withExpenseClassId(holder.getExpenseClassId());
   }
