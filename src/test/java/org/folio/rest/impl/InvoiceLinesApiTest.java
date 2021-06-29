@@ -1,10 +1,7 @@
 package org.folio.rest.impl;
 
-import static java.util.concurrent.TimeUnit.MILLISECONDS;
-import static java.util.concurrent.TimeUnit.SECONDS;
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 import static javax.ws.rs.core.MediaType.TEXT_PLAIN;
-import static org.awaitility.Awaitility.await;
 import static org.folio.invoices.utils.ErrorCodes.CANNOT_DELETE_INVOICE_LINE;
 import static org.folio.invoices.utils.ErrorCodes.PROHIBITED_INVOICE_LINE_CREATION;
 import static org.folio.invoices.utils.HelperUtils.INVOICE_ID;
@@ -24,6 +21,7 @@ import static org.folio.rest.impl.MockServer.getInvoiceLineCreations;
 import static org.folio.rest.impl.MockServer.getInvoiceLineRetrievals;
 import static org.folio.rest.impl.MockServer.getInvoiceLineUpdates;
 import static org.folio.rest.impl.MockServer.getInvoiceRetrievals;
+import static org.folio.rest.impl.MockServer.getInvoiceUpdates;
 import static org.folio.rest.impl.MockServer.getQueryParams;
 import static org.folio.rest.impl.ProtectionHelper.ACQUISITIONS_UNIT_IDS;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -160,16 +158,15 @@ public class InvoiceLinesApiTest extends ApiTestBase {
 
   @Test
   public void testGetInvoicingInvoiceLinesByIdUpdateTotalException() {
-    logger.info("=== Test 200 when correct calculated invoice line total is returned without waiting to update in storage ===");
+    logger.info("=== Test 500 when update in storage fails ===");
 
     InvoiceLine invoiceLine = getMockAsJson(INVOICE_LINE_OUTDATED_TOTAL_PATH).mapTo(InvoiceLine.class);
     addMockEntry(INVOICE_LINES, invoiceLine.withId(ID_FOR_INTERNAL_SERVER_ERROR_PUT));
 
     // Check that invoice line update called which is expected to fail so invoice update is not triggered
-    final InvoiceLine resp = verifySuccessGetById(invoiceLine.getId(), true, false);
-
-    Double expectedTotal = 4.62;
-    assertThat(resp.getTotal(), equalTo(expectedTotal));
+    String endpointQuery = String.format(INVOICE_LINE_ID_PATH, invoiceLine.getId());
+    verifyGet(endpointQuery, APPLICATION_JSON, 500);
+    MatcherAssert.assertThat(getInvoiceUpdates(), hasSize(0));
   }
 
   @Test
@@ -192,6 +189,17 @@ public class InvoiceLinesApiTest extends ApiTestBase {
     addMockEntry(INVOICES, getMinimalContentInvoice());
 
     verifyDeleteResponse(String.format(INVOICE_LINE_ID_PATH, VALID_UUID), "", 204);
+  }
+
+  @Test
+  public void deleteInvoicingInvoiceLinesByIdWithInvoiceUpdate() {
+    logger.info("=== Test delete invoice line triggering an invoice update ===");
+
+    addMockEntry(INVOICE_LINES, getMinimalContentInvoiceLine().withId(VALID_UUID).withInvoiceId(APPROVED_INVOICE_ID));
+    addMockEntry(INVOICES, getMinimalContentInvoice().withAdjustmentsTotal(1.0d));
+
+    verifyDeleteResponse(String.format(INVOICE_LINE_ID_PATH, VALID_UUID), "", 204);
+    MatcherAssert.assertThat(getInvoiceUpdates(), hasSize(1));
   }
 
   @Test
@@ -330,7 +338,7 @@ public class InvoiceLinesApiTest extends ApiTestBase {
     verifyPut(INVOICE_LINE_WITH_APPROVED_EXISTED_INVOICE_ID, reqData, "", 204);
 
     // No any total changed
-    verifyInvoiceSummaryUpdateEvent(0);
+    MatcherAssert.assertThat(getInvoiceUpdates(), hasSize(0));
   }
 
   @Test
@@ -338,6 +346,7 @@ public class InvoiceLinesApiTest extends ApiTestBase {
     logger.info("=== Test case when invoice line updates triggers also invoice update ===");
 
     InvoiceLine invoiceLine = getMockAsJson(INVOICE_LINE_OUTDATED_TOTAL_PATH).mapTo(InvoiceLine.class);
+    addMockEntry(INVOICE_LINES, invoiceLine);
     invoiceLine.setSubTotal(100.500d);
 
     verifyPut(invoiceLine.getId(), JsonObject.mapFrom(invoiceLine), "", 204);
@@ -345,7 +354,17 @@ public class InvoiceLinesApiTest extends ApiTestBase {
     MatcherAssert.assertThat(getInvoiceLineRetrievals(), hasSize(1));
     MatcherAssert.assertThat(getInvoiceRetrievals(), hasSize(1));
     MatcherAssert.assertThat(getInvoiceLineUpdates(), hasSize(1));
-    verifyInvoiceSummaryUpdateEvent(1);
+    InvoiceLine updatedInvoiceLine = getInvoiceLineUpdates().get(0).mapTo(InvoiceLine.class);
+    Assertions.assertEquals(100.5d, updatedInvoiceLine.getSubTotal());
+    Assertions.assertEquals(10.15d, updatedInvoiceLine.getAdjustmentsTotal());
+    Assertions.assertEquals(110.65d, updatedInvoiceLine.getTotal());
+    MatcherAssert.assertThat(getInvoiceUpdates(), hasSize(1));
+    Invoice updatedInvoice = getInvoiceUpdates().get(0).mapTo(Invoice.class);
+    // invoice totals are using the line totals pre-update because the mock server is not actually modifying the line,
+    // but we can check the total was correctly updated
+    Assertions.assertEquals(4.2d, updatedInvoice.getSubTotal());
+    Assertions.assertEquals(0.42d, updatedInvoice.getAdjustmentsTotal());
+    Assertions.assertEquals(4.62d, updatedInvoice.getTotal());
   }
 
   @Test
@@ -391,7 +410,7 @@ public class InvoiceLinesApiTest extends ApiTestBase {
 
     super.verifyPut(endpoint, reqData, TEXT_PLAIN, 400);
 
-    verifyInvoiceSummaryUpdateEvent(0);
+    MatcherAssert.assertThat(getInvoiceUpdates(), hasSize(0));
   }
 
   @Test
@@ -577,7 +596,7 @@ public class InvoiceLinesApiTest extends ApiTestBase {
     MatcherAssert.assertThat(getInvoiceLineUpdates(), hasSize(1));
 
     // All totals are unchanged
-    verifyInvoiceSummaryUpdateEvent(0);
+    MatcherAssert.assertThat(getInvoiceUpdates(), hasSize(0));
     clearServiceInteractions();
   }
 
@@ -589,14 +608,14 @@ public class InvoiceLinesApiTest extends ApiTestBase {
     // Invoice line updated (invoice status = APPROVED) - protected field not modified
     verifyPut(invoiceLine.getId(), invoiceLine, "", HttpStatus.SC_NO_CONTENT);
 
-    verifyInvoiceSummaryUpdateEvent(0);
+    MatcherAssert.assertThat(getInvoiceUpdates(), hasSize(0));
     clearServiceInteractions();
 
     // Invoice line updated (invoice status = OPEN) - protected field not modified
     invoiceLine.setId(INVOICE_LINE_WITH_OPEN_EXISTED_INVOICE_ID);
     verifyPut(invoiceLine.getId(), invoiceLine, "", HttpStatus.SC_NO_CONTENT);
 
-    verifyInvoiceSummaryUpdateEvent(0);
+    MatcherAssert.assertThat(getInvoiceUpdates(), hasSize(0));
     clearServiceInteractions();
 
     // Invoice line updated (invoice status = APPROVED) - all protected fields modified
@@ -635,35 +654,25 @@ public class InvoiceLinesApiTest extends ApiTestBase {
   }
 
   @Test
-  public void testPutDeletePoLineRef() throws Exception {
+  public void testPutDeletePoLineRef() {
     logger.info("=== Test update invoice line by id with protected fields (all fields set) ===");
     InvoiceLine invoiceLine = getMockAsJson( INVOICE_LINES_MOCK_DATA_PATH + INVOICE_LINE_WITH_OPEN_EXISTED_INVOICE_ID + ".json").mapTo(InvoiceLine.class);
     invoiceLine.setPoLineId(null);
     // Invoice line updated (invoice status = APPROVED) - protected field not modified
     verifyPut(invoiceLine.getId(), invoiceLine, "", HttpStatus.SC_NO_CONTENT);
 
-    verifyInvoiceSummaryUpdateEvent(0);
-    clearServiceInteractions();
-
-    verifyInvoiceSummaryUpdateEvent(0);
-    clearServiceInteractions();
-
+    MatcherAssert.assertThat(getInvoiceUpdates(), hasSize(0));
   }
 
   @Test
-  public void testPutUpdatePoLineRef() throws Exception {
+  public void testPutUpdatePoLineRef() {
     logger.info("=== Test update invoice line by id with protected fields (all fields set) ===");
     InvoiceLine invoiceLine = getMockAsJson( INVOICE_LINES_MOCK_DATA_PATH + INVOICE_LINE_WITH_OPEN_EXISTED_INVOICE_ID + ".json").mapTo(InvoiceLine.class);
     invoiceLine.setPoLineId("0000edd1-b463-41ba-bf64-1b1d9f9d0001");
     // Invoice line updated (invoice status = APPROVED) - protected field not modified
     verifyPut(invoiceLine.getId(), invoiceLine, "", HttpStatus.SC_NO_CONTENT);
 
-    verifyInvoiceSummaryUpdateEvent(0);
-    clearServiceInteractions();
-
-    verifyInvoiceSummaryUpdateEvent(0);
-    clearServiceInteractions();
-
+    MatcherAssert.assertThat(getInvoiceUpdates(), hasSize(0));
   }
 
   private void checkPreventInvoiceLineModificationRule(InvoiceLine invoiceLine, Map<InvoiceLineProtectedFields, Object> updatedFields) throws IllegalAccessException {
@@ -676,16 +685,6 @@ public class InvoiceLinesApiTest extends ApiTestBase {
     Object[] expected = updatedFields.keySet().stream().map(InvoiceLineProtectedFields::getFieldName).toArray();
     MatcherAssert.assertThat(failedFieldNames.length, is(expected.length));
     MatcherAssert.assertThat(expected, Matchers.arrayContainingInAnyOrder(failedFieldNames));
-
-    clearServiceInteractions();
-  }
-
-  private void verifyInvoiceLineUpdateCalls(int msgQty) {
-    logger.debug("Verifying calls to update invoice line");
-    // Wait until message is registered
-    await().atLeast(50, MILLISECONDS)
-      .atMost(1, SECONDS)
-      .until(MockServer::getInvoiceLineUpdates, hasSize(msgQty));
   }
 
   private void compareRecordWithSentToStorage(InvoiceLine invoiceLine) {
@@ -695,12 +694,12 @@ public class InvoiceLinesApiTest extends ApiTestBase {
     assertThat(invoiceLine, equalTo(invoiceLineToStorage));
   }
 
-  private InvoiceLine verifySuccessGetById(String id, boolean asyncLineUpdate, boolean asyncInvoiceUpdate) {
+  private InvoiceLine verifySuccessGetById(String id, boolean lineUpdate, boolean invoiceUpdate) {
     InvoiceLine invoiceLine = verifySuccessGet(String.format(INVOICE_LINE_ID_PATH, id), InvoiceLine.class);
 
     // MODINVOICE-86 calculate the totals and if different from what was retrieved, write it back to storage
-    verifyInvoiceLineUpdateCalls(asyncLineUpdate ? 1 : 0);
-    verifyInvoiceSummaryUpdateEvent(asyncInvoiceUpdate ? 1 : 0);
+    MatcherAssert.assertThat(getInvoiceLineUpdates(), hasSize(lineUpdate ? 1 : 0));
+    MatcherAssert.assertThat(getInvoiceUpdates(), hasSize(invoiceUpdate ? 1 : 0));
 
     return invoiceLine;
   }
@@ -709,7 +708,7 @@ public class InvoiceLinesApiTest extends ApiTestBase {
   Response verifyPut(String id, Object body, String expectedContentType, int expectedCode) {
     Response response = super.verifyPut(String.format(INVOICE_LINE_ID_PATH, id), body, expectedContentType, expectedCode);
     if (expectedCode != 204) {
-      verifyInvoiceSummaryUpdateEvent(0);
+      MatcherAssert.assertThat(getInvoiceUpdates(), hasSize(0));
     }
     return response;
   }

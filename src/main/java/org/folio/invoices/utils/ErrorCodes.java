@@ -49,7 +49,8 @@ public enum ErrorCodes {
   EXPENSE_CLASS_NOT_FOUND("expenseClassNotFound", "Expense class record is not found"),
   LOCK_AND_CALCULATED_TOTAL_MISMATCH("lockCalculatedTotalsMismatch", "Lock total and calculated total mismatch"),
   ORG_NOT_FOUND("organizationIsNotExist", "Organization is not exist"),
-  ORG_IS_NOT_VENDOR("organizationIsNotVendor", "Organization is not vendor");
+  ORG_IS_NOT_VENDOR("organizationIsNotVendor", "Organization is not vendor"),
+  FAILED_TO_UPDATE_INVOICE_AND_OTHER_LINES("failedToUpdateInvoiceAndOtherLines", "Failed to update the invoice and other lines");
 
   private final String code;
   private final String description;

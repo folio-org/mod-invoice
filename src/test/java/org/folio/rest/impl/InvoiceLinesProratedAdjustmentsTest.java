@@ -1,9 +1,6 @@
 package org.folio.rest.impl;
 
 import static java.util.UUID.randomUUID;
-import static java.util.concurrent.TimeUnit.MILLISECONDS;
-import static java.util.concurrent.TimeUnit.SECONDS;
-import static org.awaitility.Awaitility.await;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICES;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_LINES;
 import static org.folio.rest.impl.InvoiceLinesApiTest.INVOICE_LINES_LIST_PATH;
@@ -13,6 +10,7 @@ import static org.folio.rest.impl.InvoicesApiTest.OPEN_INVOICE_SAMPLE_PATH;
 import static org.folio.rest.impl.MockServer.addMockEntry;
 import static org.folio.rest.impl.MockServer.getInvoiceLineCreations;
 import static org.folio.rest.impl.MockServer.getInvoiceLineUpdates;
+import static org.folio.rest.impl.MockServer.getInvoiceUpdates;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.is;
@@ -61,8 +59,8 @@ public class InvoiceLinesProratedAdjustmentsTest extends ApiTestBase {
     InvoiceLine invoiceLine = verifySuccessPost(INVOICE_LINES_PATH, invoiceLineBody).as(InvoiceLine.class);
 
     // Verification
-    verifyInvoiceLineUpdateCalls(0);
-    verifyInvoiceSummaryUpdateEvent(1);
+    assertThat(getInvoiceLineUpdates(), Matchers.hasSize(0));
+    assertThat(getInvoiceUpdates(), Matchers.hasSize(1));
     compareRecordWithSentToStorage(invoiceLine);
 
 
@@ -111,8 +109,8 @@ public class InvoiceLinesProratedAdjustmentsTest extends ApiTestBase {
     verifySuccessPut(String.format(INVOICE_LINE_ID_PATH, lineId), invoiceLineBody);
 
     // Verification
-    verifyInvoiceLineUpdateCalls(1);
-    verifyInvoiceSummaryUpdateEvent(1);
+    assertThat(getInvoiceLineUpdates(), Matchers.hasSize(1));
+    assertThat(getInvoiceUpdates(), Matchers.hasSize(1));
 
     InvoiceLine lineToStorage = getLineToStorageById(lineId);
     assertThat(lineToStorage.getAdjustments(), hasSize(1));
@@ -159,8 +157,8 @@ public class InvoiceLinesProratedAdjustmentsTest extends ApiTestBase {
     verifyDeleteResponse(String.format(INVOICE_LINE_ID_PATH, line2.getId()), "", 204);
 
     // Verification
-    verifyInvoiceLineUpdateCalls(1);
-    verifyInvoiceSummaryUpdateEvent(1);
+    assertThat(getInvoiceLineUpdates(), Matchers.hasSize(1));
+    assertThat(getInvoiceUpdates(), Matchers.hasSize(1));
 
     InvoiceLine lineToStorage = getLineToStorageById(line1.getId());
     assertThat(lineToStorage.getAdjustments(), hasSize(1));
@@ -209,14 +207,6 @@ public class InvoiceLinesProratedAdjustmentsTest extends ApiTestBase {
     assertThat(lineAdjustment.getProrate(), equalTo(Adjustment.Prorate.NOT_PRORATED));
     assertThat(lineAdjustment.getRelationToTotal(), equalTo(invoiceAdjustment.getRelationToTotal()));
     assertThat(lineAdjustment.getType(), equalTo(Adjustment.Type.AMOUNT));
-  }
-
-  private void verifyInvoiceLineUpdateCalls(int msgQty) {
-    logger.debug("Verifying calls to update invoice line");
-    // Wait until message is registered
-    await().atLeast(50, MILLISECONDS)
-      .atMost(1, SECONDS)
-      .until(MockServer::getInvoiceLineUpdates, Matchers.hasSize(msgQty));
   }
 
   private void compareRecordWithSentToStorage(InvoiceLine invoiceLine) {
