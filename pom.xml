@@ -215,6 +215,19 @@
         </exclusion>
       </exclusions>
     </dependency>
+
+    <!-- these 2 are needed for XMLConverter.java with Java 11 -->
+    <dependency>
+      <groupId>jakarta.xml.bind</groupId>
+      <artifactId>jakarta.xml.bind-api</artifactId>
+      <version>2.3.3</version>
+    </dependency>
+    <dependency>
+      <groupId>org.glassfish.jaxb</groupId>
+      <artifactId>jaxb-runtime</artifactId>
+      <version>2.3.3</version>
+    </dependency>
+
   </dependencies>
 
   <build>

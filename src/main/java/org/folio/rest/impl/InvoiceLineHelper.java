@@ -1,9 +1,9 @@
 package org.folio.rest.impl;
 
+import static java.util.concurrent.CompletableFuture.completedFuture;
 import static java.util.stream.Collectors.toList;
 import static org.apache.commons.lang3.StringUtils.isEmpty;
 import static org.folio.invoices.utils.ErrorCodes.*;
-import static org.folio.invoices.utils.HelperUtils.INVOICE;
 import static org.folio.invoices.utils.HelperUtils.INVOICE_ID;
 import static org.folio.invoices.utils.HelperUtils.QUERY_PARAM_START_WITH;
 import static org.folio.invoices.utils.HelperUtils.calculateInvoiceLineTotals;
@@ -31,7 +31,6 @@ import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 
 import org.apache.commons.lang3.StringUtils;
-import org.folio.invoices.events.handlers.MessageAddress;
 import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.invoices.utils.InvoiceRestrictionsUtil;
 import org.folio.invoices.utils.ProtectedOperationType;
@@ -48,6 +47,7 @@ import org.folio.rest.jaxrs.model.Parameter;
 import org.folio.rest.jaxrs.model.SequenceNumber;
 import org.folio.rest.tools.client.interfaces.HttpClientInterface;
 import org.folio.services.adjusment.AdjustmentsService;
+import org.folio.services.invoice.InvoiceService;
 import org.folio.services.order.OrderService;
 import org.folio.services.validator.InvoiceLineValidator;
 
@@ -66,10 +66,12 @@ public class InvoiceLineHelper extends AbstractHelper {
   private final ProtectionHelper protectionHelper;
   private final AdjustmentsService adjustmentsService;
   private final InvoiceLineValidator validator;
-  private RestClient restClient;
+  private final RestClient restClient;
 
   @Autowired
   private OrderService orderService;
+  @Autowired
+  private InvoiceService invoiceService;
 
   public InvoiceLineHelper(Map<String, String> okapiHeaders, Context ctx, String lang) {
     this(getHttpClient(okapiHeaders), okapiHeaders, ctx, lang);
@@ -131,19 +133,11 @@ public class InvoiceLineHelper extends AbstractHelper {
     return future;
   }
 
-  private void updateOutOfSyncInvoiceLine(InvoiceLine invoiceLine, Invoice invoice) {
-    FolioVertxCompletableFuture.runAsync(ctx, () -> {
-      logger.info("Invoice line with id={} is out of date in storage and going to be updated", invoiceLine.getId());
-      InvoiceLineHelper helper = new InvoiceLineHelper(okapiHeaders, ctx, lang);
-      helper.updateInvoiceLineToStorage(invoiceLine)
-        .handle((ok, fail) -> {
-          if (fail == null) {
-            updateInvoiceAsync(invoice);
-          }
-          helper.closeHttpClient();
-          return null;
-        });
-    });
+  private CompletableFuture<Void> updateOutOfSyncInvoiceLine(InvoiceLine invoiceLine, Invoice invoice) {
+    logger.info("Invoice line with id={} is out of date in storage and going to be updated", invoiceLine.getId());
+    InvoiceLineHelper helper = new InvoiceLineHelper(okapiHeaders, ctx, lang);
+    return helper.updateInvoiceLineToStorage(invoiceLine)
+      .thenCompose(v -> updateInvoice(invoice, buildRequestContext()));
   }
 
   /**
@@ -195,13 +189,17 @@ public class InvoiceLineHelper extends AbstractHelper {
 
     // GET invoice-line from storage
     getInvoiceLine(id)
-      .thenCompose(invoiceLineFromStorage -> getInvoiceAndCheckProtection(invoiceLineFromStorage).thenApply(invoice -> {
-        boolean isTotalOutOfSync = reCalculateInvoiceLineTotals(invoiceLineFromStorage, invoice);
-        if (isTotalOutOfSync) {
-          updateOutOfSyncInvoiceLine(invoiceLineFromStorage, invoice);
-        }
-        return invoiceLineFromStorage;
-      }))
+      .thenCompose(invoiceLineFromStorage ->
+        getInvoiceAndCheckProtection(invoiceLineFromStorage)
+          .thenCompose(invoice -> {
+            boolean isTotalOutOfSync = reCalculateInvoiceLineTotals(invoiceLineFromStorage, invoice);
+            if (!isTotalOutOfSync) {
+              return CompletableFuture.completedFuture(invoiceLineFromStorage);
+            }
+            return updateOutOfSyncInvoiceLine(invoiceLineFromStorage, invoice)
+              .thenApply(v -> invoiceLineFromStorage);
+          })
+      )
       .thenAccept(future::complete)
       .exceptionally(t -> {
         logger.error("Failed to get an Invoice Line by id={}", id, t.getCause());
@@ -269,10 +267,12 @@ public class InvoiceLineHelper extends AbstractHelper {
       // Recalculate totals before update which also indicates if invoice requires update
       calculateInvoiceLineTotals(invoiceLine, invoice);
       // Update invoice line in storage
-      return updateInvoiceLineToStorage(invoiceLine).thenRun(() -> {
+      return updateInvoiceLineToStorage(invoiceLine).thenCompose(v -> {
         // Trigger invoice update event only if this is required
         if (!affectedLines.isEmpty() || !areTotalsEqual(invoiceLine, invoiceLineFromStorage)) {
-          updateInvoiceAndAffectedLinesAsync(invoice, affectedLines);
+          return updateInvoiceAndAffectedLines(invoice, affectedLines);
+        } else {
+          return CompletableFuture.completedFuture(null);
         }
       });
     });
@@ -300,7 +300,7 @@ public class InvoiceLineHelper extends AbstractHelper {
           throw new HttpException(404, error);
         })
         .thenCompose(v -> handleDeleteRequest(resourceByIdPath(INVOICE_LINES, lineId, lang), httpClient, ctx, okapiHeaders, logger))
-        .thenRun(() -> updateInvoiceAndLinesAsync(invoice)));
+        .thenCompose(v -> updateInvoiceAndLines(invoice, buildRequestContext())));
   }
 
   private CompletableFuture<Invoice> getInvoicesIfExists(String lineId) {
@@ -373,10 +373,8 @@ public class InvoiceLineHelper extends AbstractHelper {
         calculateInvoiceLineTotals(invoiceLine, invoice);
         RequestEntry requestEntry = new RequestEntry(resourcesPath(INVOICE_LINES));
         return restClient.post(requestEntry, invoiceLine, buildRequestContext(), InvoiceLine.class)
-          .thenApply(createdInvoiceLine -> {
-            updateInvoiceAndAffectedLinesAsync(invoice, affectedLines);
-            return invoiceLine.withId(createdInvoiceLine.getId());
-          });
+          .thenCompose(createdInvoiceLine -> updateInvoiceAndAffectedLines(invoice, affectedLines)
+            .thenApply(v -> invoiceLine.withId(createdInvoiceLine.getId())));
       }));
   }
 
@@ -436,18 +434,13 @@ public class InvoiceLineHelper extends AbstractHelper {
     return getInvoiceLineCollection(endpoint).thenApply(InvoiceLineCollection::getInvoiceLines);
   }
 
-  private void updateInvoiceAndAffectedLinesAsync(Invoice invoice, List<InvoiceLine> lines) {
-    FolioVertxCompletableFuture.runAsync(ctx, () -> {
-      InvoiceLineHelper helper = new InvoiceLineHelper(okapiHeaders, ctx, lang);
-      helper.persistInvoiceLines(invoice, lines)
-        .handle((ok, fail) -> {
-          if (fail == null) {
-            updateInvoiceAsync(invoice);
-          }
-          helper.closeHttpClient();
-          return null;
-        });
-    });
+  private CompletableFuture<Void> updateInvoiceAndAffectedLines(Invoice invoice, List<InvoiceLine> lines) {
+    return persistInvoiceLines(invoice, lines)
+      .thenCompose(v -> updateInvoice(invoice, buildRequestContext()))
+      .exceptionally(t -> {
+        logger.error("Failed to update the invoice and other lines", t);
+        throw new HttpException(500, FAILED_TO_UPDATE_INVOICE_AND_OTHER_LINES.toError());
+      });
   }
 
   private CompletableFuture<Void> persistInvoiceLines(Invoice invoice, List<InvoiceLine> lines) {
@@ -459,41 +452,31 @@ public class InvoiceLineHelper extends AbstractHelper {
       .toArray(CompletableFuture[]::new));
   }
 
-  public CompletableFuture<Void> persistInvoiceLines(List<InvoiceLine> lines) {
-    return FolioVertxCompletableFuture.allOf(ctx, lines.stream()
-      .map(this::updateInvoiceLineToStorage)
-      .toArray(CompletableFuture[]::new));
+  private CompletableFuture<Void> updateInvoice(Invoice invoice, RequestContext requestContext) {
+    return invoiceService.recalculateTotals(invoice, requestContext)
+      .thenCompose(isOutOfSync -> {
+        if (Boolean.TRUE.equals(isOutOfSync)) {
+          logger.info("The invoice with id={} is out of sync in storage and requires updates", invoice.getId());
+          InvoiceHelper helper = new InvoiceHelper(okapiHeaders, ctx, lang);
+          return helper.updateInvoiceRecord(invoice);
+        } else {
+          logger.info("The invoice with id={} is up to date in storage", invoice.getId());
+          return completedFuture(null);
+        }
+      });
   }
 
-  private void updateInvoiceAsync(Invoice invoice) {
-    FolioVertxCompletableFuture.runAsync(ctx,
-        () -> sendEvent(MessageAddress.INVOICE_TOTALS, new JsonObject().put(INVOICE, JsonObject.mapFrom(invoice))));
-  }
-
-  private void updateInvoiceAndLinesAsync(Invoice invoice) {
-    FolioVertxCompletableFuture.runAsync(ctx, () -> {
-      InvoiceLineHelper helper = new InvoiceLineHelper(okapiHeaders, ctx, lang);
-      helper.updateInvoiceAndLines(invoice)
-        .handle((ok, fail) -> {
-          helper.closeHttpClient();
-          return null;
-        });
-    });
-  }
-
-  private CompletableFuture<Void> updateInvoiceAndLines(Invoice invoice) {
+  private CompletableFuture<Void> updateInvoiceAndLines(Invoice invoice, RequestContext requestContext) {
 
     // If no prorated adjustments, just update invoice details
-    if (adjustmentsService.getProratedAdjustments(invoice)
-      .isEmpty()) {
-      updateInvoiceAsync(invoice);
-      return CompletableFuture.completedFuture(null);
+    if (adjustmentsService.getProratedAdjustments(invoice).isEmpty()) {
+      return updateInvoice(invoice, requestContext);
     }
 
     return getInvoiceLinesByInvoiceId(invoice.getId())
       .thenApply(lines -> adjustmentsService.applyProratedAdjustments(lines, invoice))
       .thenCompose(lines -> persistInvoiceLines(invoice, lines))
-      .thenAccept(ok -> updateInvoiceAsync(invoice));
+      .thenCompose(ok -> updateInvoice(invoice, requestContext));
 
   }
 

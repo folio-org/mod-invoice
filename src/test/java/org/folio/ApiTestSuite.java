@@ -11,7 +11,6 @@ import org.folio.converters.BatchVoucherModelConverterTest;
 import org.folio.converters.BatchedVoucherLinesModelConverterTest;
 import org.folio.converters.BatchedVoucherModelConverterTest;
 import org.folio.dataimport.handlers.actions.CreateInvoiceEventHandlerTest;
-import org.folio.invoices.events.handlers.InvoiceSummaryTest;
 import org.folio.invoices.util.HelperUtilsTest;
 import org.folio.jaxb.DefaultJAXBRootElementNameResolverTest;
 import org.folio.jaxb.JAXBUtilTest;
@@ -145,10 +144,6 @@ public class ApiTestSuite {
 
   @Nested
   class DocumentsApiTestNested extends DocumentsApiTest {
-  }
-
-  @Nested
-  class InvoiceSummaryTestNested extends InvoiceSummaryTest {
   }
 
   @Nested
