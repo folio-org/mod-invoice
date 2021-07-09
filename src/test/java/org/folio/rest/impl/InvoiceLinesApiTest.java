@@ -23,6 +23,7 @@ import static org.folio.rest.impl.MockServer.getInvoiceLineUpdates;
 import static org.folio.rest.impl.MockServer.getInvoiceRetrievals;
 import static org.folio.rest.impl.MockServer.getInvoiceUpdates;
 import static org.folio.rest.impl.MockServer.getQueryParams;
+import static org.folio.rest.impl.MockServer.serverRqRs;
 import static org.folio.rest.impl.ProtectionHelper.ACQUISITIONS_UNIT_IDS;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsString;
@@ -80,8 +81,11 @@ public class InvoiceLinesApiTest extends ApiTestBase {
   private static final String INVOICE_LINE_WITH_OPEN_EXISTED_INVOICE_ID = "5cb6d270-a54c-4c38-b645-3ae7f249c606";
   private static final String INVOICE_LINE_WITH_INTERNAL_ERROR_ON_GET_INVOICE = "4051b42d-c6cf-4306-a331-209514af9877";
   private static final String INVOICE_LINE_OUTDATED_TOTAL = "55e4b6f5-f974-42da-9a77-24d4e8ef0e70";
+  private static final String INVOICE_LINE_WITH_PO_NUMBER = "db49086e-df56-11eb-ba80-0242ac130004";
+  private static final String PO_LINE_WITH_NO_PO_ID = "0009662b-8b80-4001-b704-ca10971f175d";
   private static final String INVOICE_LINE_OUTDATED_TOTAL_PATH = INVOICE_LINES_MOCK_DATA_PATH + INVOICE_LINE_OUTDATED_TOTAL + ".json";
   static final String INVOICE_LINE_WITH_APPROVED_INVOICE_SAMPLE_PATH = INVOICE_LINES_MOCK_DATA_PATH + INVOICE_LINE_WITH_APPROVED_EXISTED_INVOICE_ID + ".json";
+  private static final String INVOICE_LINE_WITH_PO_NUMBER_PATH = INVOICE_LINES_MOCK_DATA_PATH + INVOICE_LINE_WITH_PO_NUMBER + ".json";
 
   @Test
   public void getInvoicingInvoiceLinesTest() {
@@ -673,6 +677,69 @@ public class InvoiceLinesApiTest extends ApiTestBase {
     verifyPut(invoiceLine.getId(), invoiceLine, "", HttpStatus.SC_NO_CONTENT);
 
     MatcherAssert.assertThat(getInvoiceUpdates(), hasSize(0));
+  }
+
+  @Test
+  public void checkInvoiceLineCreationUpdatesInvoicePoNumbers() {
+    logger.info("=== Check an invoice line creation triggers the update of the invoice's poNumbers field ===");
+
+    InvoiceLine reqData = getMockAsJson(INVOICE_LINE_WITH_PO_NUMBER_PATH).mapTo(InvoiceLine.class);
+    reqData.setInvoiceId(OPEN_INVOICE_ID);
+
+    String body = JsonObject.mapFrom(reqData).encodePrettily();
+    verifyPostResponse(INVOICE_LINES_PATH, body, prepareHeaders(X_OKAPI_TENANT), APPLICATION_JSON, 201);
+
+    List<JsonObject> objects = serverRqRs.get(INVOICES, HttpMethod.PUT);
+    assertThat(objects, notNullValue());
+    Invoice updatedInvoice = objects.get(objects.size() - 1).mapTo(Invoice.class);
+    List<String> poNumbers = updatedInvoice.getPoNumbers();
+    assertThat(poNumbers, hasSize(1));
+    assertThat(poNumbers.get(0), equalTo("AB268758XYZ"));
+  }
+
+  @Test
+  public void checkInvoiceLineUpdateUpdatesInvoicePoNumbers() {
+    logger.info("=== Check an invoice line update triggers the update of the invoice's poNumbers field ===");
+
+    InvoiceLine invoiceLine = getMockAsJson(INVOICE_LINE_WITH_PO_NUMBER_PATH).mapTo(InvoiceLine.class);
+    invoiceLine.setInvoiceId(OPEN_INVOICE_ID);
+    addMockEntry(INVOICE_LINES, invoiceLine);
+
+    verifyPut(INVOICE_LINE_WITH_PO_NUMBER, JsonObject.mapFrom(invoiceLine), "", 204);
+
+    List<JsonObject> objects = serverRqRs.get(INVOICES, HttpMethod.PUT);
+    assertThat(objects, notNullValue());
+    Invoice updatedInvoice = objects.get(0).mapTo(Invoice.class);
+    List<String> poNumbers = updatedInvoice.getPoNumbers();
+    assertThat(poNumbers, hasSize(1));
+    assertThat(poNumbers.get(0), equalTo("AB268758XYZ"));
+  }
+
+  @Test
+  public void checkInvoiceLineUpdateRemovesInvoicePoNumbers() {
+    logger.info("=== Check an invoice line update removing the po line link triggers the update of the invoice's poNumbers field ===");
+
+    InvoiceLine invoiceLine = getMockAsJson(INVOICE_LINE_WITH_PO_NUMBER_PATH).mapTo(InvoiceLine.class);
+    invoiceLine.setPoLineId(null);
+
+    verifyPut(INVOICE_LINE_WITH_PO_NUMBER, JsonObject.mapFrom(invoiceLine), "", 204);
+
+    List<JsonObject> objects = serverRqRs.get(INVOICES, HttpMethod.PUT);
+    assertThat(objects, notNullValue());
+    Invoice updatedInvoice = objects.get(0).mapTo(Invoice.class);
+    List<String> poNumbers = updatedInvoice.getPoNumbers();
+    assertThat(poNumbers, hasSize(0));
+  }
+
+  @Test
+  public void checkInvoiceLineUpdateFailsToUpdateInvoicePoNumbers() {
+    logger.info("=== Check the returned error when a poNumbers field cannot be updated ===");
+
+    InvoiceLine invoiceLine = getMockAsJson(INVOICE_LINE_WITH_PO_NUMBER_PATH).mapTo(InvoiceLine.class);
+    invoiceLine.setInvoiceId(OPEN_INVOICE_ID);
+    invoiceLine.setPoLineId(PO_LINE_WITH_NO_PO_ID);
+    // updating poNumbers will fail because it cannot get the PO from the PO line
+    verifyPut(INVOICE_LINE_WITH_PO_NUMBER, JsonObject.mapFrom(invoiceLine), "", 500);
   }
 
   private void checkPreventInvoiceLineModificationRule(InvoiceLine invoiceLine, Map<InvoiceLineProtectedFields, Object> updatedFields) throws IllegalAccessException {

@@ -34,6 +34,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.invoices.utils.InvoiceRestrictionsUtil;
 import org.folio.invoices.utils.ProtectedOperationType;
+import org.folio.rest.acq.model.orders.CompositePoLine;
 import org.folio.rest.acq.model.orders.OrderInvoiceRelationship;
 import org.folio.rest.core.RestClient;
 import org.folio.rest.core.models.RequestContext;
@@ -225,7 +226,8 @@ public class InvoiceLineHelper extends AbstractHelper {
 
         return protectionHelper.isOperationRestricted(invoice.getAcqUnitIds(), UPDATE)
           .thenCompose(ok -> applyAdjustmentsAndUpdateLine(invoiceLine, invoiceLineFromStorage, invoice))
-          .thenCompose(ok -> updateOrderInvoiceRelationship(invoiceLine, invoiceLineFromStorage, requestContext));
+          .thenCompose(ok -> updateOrderInvoiceRelationship(invoiceLine, invoiceLineFromStorage, requestContext))
+          .thenCompose(ok -> updateInvoicePoNumbers(invoice, invoiceLine, invoiceLineFromStorage, requestContext));
       }));
   }
 
@@ -242,10 +244,17 @@ public class InvoiceLineHelper extends AbstractHelper {
               OrderInvoiceRelationship orderInvoiceRelationship = new OrderInvoiceRelationship();
               orderInvoiceRelationship.withInvoiceId(invoiceLine.getInvoiceId()).withPurchaseOrderId(poLine.getPurchaseOrderId());
 
-              return orderService.deleteOrderInvoiceRelationshipByInvoiceIdAndLineId(invoiceLine.getInvoiceId(), invoiceLineFromStorage.getPoLineId(), requestContext)
-                        .thenCompose(v -> orderService.createOrderInvoiceRelationship(orderInvoiceRelationship, requestContext)
-                                                      .thenCompose(relationship -> CompletableFuture.completedFuture(null))
-                        );
+              return CompletableFuture.supplyAsync(() -> {
+                if (invoiceLineFromStorage.getPoLineId() != null) {
+                  return orderService.deleteOrderInvoiceRelationshipByInvoiceIdAndLineId(invoiceLine.getInvoiceId(),
+                    invoiceLineFromStorage.getPoLineId(), requestContext);
+                } else {
+                  return CompletableFuture.completedFuture(null);
+                }
+              })
+              .thenCompose(v -> orderService.createOrderInvoiceRelationship(orderInvoiceRelationship, requestContext)
+                                            .thenCompose(relationship -> CompletableFuture.completedFuture(null))
+              );
             }
             return CompletableFuture.completedFuture(null);
           }));
@@ -339,6 +348,7 @@ public class InvoiceLineHelper extends AbstractHelper {
           .exceptionally(throwable -> {
             throw new HttpException(500, ORDER_INVOICE_RELATION_CREATE_FAILED.toError());
           })
+          .thenCompose(v -> updateInvoicePoNumbers(invoice, line, null, buildRequestContext()))
           .thenApply(v -> line)));
   }
 
@@ -480,4 +490,64 @@ public class InvoiceLineHelper extends AbstractHelper {
 
   }
 
+  /**
+   * Updates the invoice's poNumbers field, following an invoice line creation, update or removal.
+   * @param invoice - the invoice of the modified invoice line
+   * @param invoiceLine - the modified invoice line
+   * @param invoiceLineFromStorage - the old version of the invoice line
+   * @param requestContext - used to start new requests
+   */
+  private CompletableFuture<Void> updateInvoicePoNumbers(Invoice invoice, InvoiceLine invoiceLine,
+      InvoiceLine invoiceLineFromStorage, RequestContext requestContext) {
+
+    if (invoiceLineFromStorage == null && invoiceLine.getPoLineId() == null)
+      return CompletableFuture.completedFuture(null);
+    if (invoiceLine.getPoLineId() == null && invoiceLineFromStorage != null && invoiceLineFromStorage.getPoLineId() == null)
+      return CompletableFuture.completedFuture(null);
+    String poLineId = (invoiceLineFromStorage == null || invoiceLine.getPoLineId() != null) ? invoiceLine.getPoLineId() :
+      invoiceLineFromStorage.getPoLineId();
+    return orderService.getPoLine(poLineId, requestContext)
+      .thenCompose(poLine -> orderService.getOrder(poLine.getPurchaseOrderId(), requestContext))
+      .thenCompose(order -> {
+        List<String> invoicePoNumbers = invoice.getPoNumbers();
+        String orderPoNumber = order.getPoNumber();
+        if (orderPoNumber == null)
+          return CompletableFuture.completedFuture(null);
+        if (invoiceLineFromStorage != null && invoiceLineFromStorage.getPoLineId() != null && invoiceLine.getPoLineId() == null) {
+          // remove the po number if needed
+          if (invoicePoNumbers == null || !invoicePoNumbers.contains(orderPoNumber))
+            return CompletableFuture.completedFuture(null);
+          // check the other invoice lines to see if one of them is linking to the same order
+          List<String> orderLineIds = order.getCompositePoLines().stream().map(CompositePoLine::getId).collect(toList());
+          return getRelatedLines(invoiceLine).thenCompose(lines -> {
+            if (lines.stream().anyMatch(line -> orderLineIds.contains(line.getPoLineId()))) {
+              return CompletableFuture.completedFuture(null);
+            } else {
+              List<String> newNumbers = invoicePoNumbers.stream().filter(n -> !n.equals(orderPoNumber)).collect(toList());
+              return invoiceService.updateInvoice(invoice.withPoNumbers(newNumbers), requestContext);
+            }
+          });
+        }
+        // add the po number if needed
+        if (invoicePoNumbers != null && invoicePoNumbers.contains(orderPoNumber))
+          return CompletableFuture.completedFuture(null);
+        return invoiceService.updateInvoice(invoice.withPoNumbers(addPoNumber(invoicePoNumbers, orderPoNumber)), requestContext);
+      })
+      .exceptionally(throwable -> {
+        logger.error("Failed to update invoice poNumbers", throwable);
+        throw new HttpException(500, FAILED_TO_UPDATE_PONUMBERS.toError());
+      });
+  }
+
+  private List<String> addPoNumber(List<String> numbers, String newNumber) {
+    if (newNumber == null)
+      return numbers;
+    if (numbers == null)
+      return List.of(newNumber);
+    if (numbers.contains(newNumber))
+      return numbers;
+    var newNumbers = new ArrayList<>(numbers);
+    newNumbers.add(newNumber);
+    return newNumbers;
+  }
 }

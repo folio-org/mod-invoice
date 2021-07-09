@@ -1,5 +1,5 @@
 {
-  "id": "c0d08448-347b-418a-8c2f-5fb50248d67e",
+  "id": "8d3881f6-dd93-46f0-b29d-1c36bdb5c9f9",
   "accountingCode": "2556",
   "adjustments": [
     {
@@ -45,14 +45,16 @@
   "note": "Some note 1",
   "paymentTerms": "Payment in Advance",
   "paymentMethod": "EFT",
-  "status": "Approved",
+  "status": "Open",
   "source": "User",
   "subTotal": 34.82,
   "total": 144.0,
   "vendorInvoiceNo": "YK75851",
   "voucherNumber": "478",
   "paymentId": "a5065f0d-fb88-4d23-b0c1-57e754fba40e",
-  "poNumbers": [],
+  "poNumbers": [
+    "AB268758XYZ"
+  ],
   "vendorId": "168f8a63-d612-406e-813f-c7527f241ac3",
   "manualPayment": true
 }
