@@ -716,6 +716,19 @@ public class InvoiceLinesApiTest extends ApiTestBase {
   }
 
   @Test
+  public void checkInvoiceLineUpdateDoesNotTriggerInvoiceUpdateIfPoNumberAlreadyThere() {
+    logger.info("=== Check an invoice line update does not trigger the update of the invoice's poNumbers field if it already includes the new line's po number ===");
+
+    InvoiceLine invoiceLine = getMockAsJson(INVOICE_LINE_WITH_PO_NUMBER_PATH).mapTo(InvoiceLine.class);
+    addMockEntry(INVOICE_LINES, invoiceLine);
+
+    verifyPut(INVOICE_LINE_WITH_PO_NUMBER, JsonObject.mapFrom(invoiceLine), "", 204);
+
+    List<JsonObject> objects = serverRqRs.get(INVOICES, HttpMethod.PUT);
+    assertThat(objects, nullValue());
+  }
+
+  @Test
   public void checkInvoiceLineUpdateRemovesInvoicePoNumbers() {
     logger.info("=== Check an invoice line update removing the po line link triggers the update of the invoice's poNumbers field ===");
 
@@ -729,6 +742,22 @@ public class InvoiceLinesApiTest extends ApiTestBase {
     Invoice updatedInvoice = objects.get(0).mapTo(Invoice.class);
     List<String> poNumbers = updatedInvoice.getPoNumbers();
     assertThat(poNumbers, hasSize(0));
+  }
+
+  @Test
+  public void checkNoPoNumbersUpdateIfAnotherLineIsLinkedToSamePO() {
+    logger.info("=== Check an invoice line update removing the po line link does not triggers the update of the invoice's poNumbers field if another invoice line links to the same PO ===");
+
+    InvoiceLine invoiceLine1 = getMockAsJson(INVOICE_LINE_WITH_PO_NUMBER_PATH).mapTo(InvoiceLine.class);
+    invoiceLine1.setId(UUID.randomUUID().toString());
+    addMockEntry(INVOICE_LINES, invoiceLine1);
+    InvoiceLine invoiceLine2 = getMockAsJson(INVOICE_LINE_WITH_PO_NUMBER_PATH).mapTo(InvoiceLine.class);
+    invoiceLine2.setPoLineId(null);
+
+    verifyPut(INVOICE_LINE_WITH_PO_NUMBER, JsonObject.mapFrom(invoiceLine2), "", 204);
+
+    List<JsonObject> objects = serverRqRs.get(INVOICES, HttpMethod.PUT);
+    assertThat(objects, nullValue());
   }
 
   @Test
