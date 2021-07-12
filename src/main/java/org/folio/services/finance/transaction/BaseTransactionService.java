@@ -49,12 +49,12 @@ public class BaseTransactionService {
 
   public CompletableFuture<List<Transaction>> getTransactions(List<String> transactionIds, RequestContext requestContext) {
     if (!CollectionUtils.isEmpty(transactionIds)) {
-      List<CompletableFuture<TransactionCollection>> expenseClassesFutureList = StreamEx
+      List<CompletableFuture<TransactionCollection>> transactionFutureList = StreamEx
         .ofSubLists(transactionIds, MAX_IDS_FOR_GET_RQ)
-        .map(ids -> getTransactionsChunk(transactionIds, requestContext))
+        .map(ids -> getTransactionsChunk(ids, requestContext))
         .collect(toList());
 
-      return collectResultsOnSuccess(expenseClassesFutureList)
+      return collectResultsOnSuccess(transactionFutureList)
         .thenApply(expenseClassCollections ->
           expenseClassCollections.stream().flatMap(col -> col.getTransactions().stream()).collect(toList())
         );
