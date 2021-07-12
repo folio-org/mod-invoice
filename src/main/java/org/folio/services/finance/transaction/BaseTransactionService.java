@@ -51,7 +51,7 @@ public class BaseTransactionService {
     if (!CollectionUtils.isEmpty(transactionIds)) {
       List<CompletableFuture<TransactionCollection>> expenseClassesFutureList = StreamEx
         .ofSubLists(transactionIds, MAX_IDS_FOR_GET_RQ)
-        .map(ids -> getTransactionsChunk(transactionIds, requestContext))
+        .map(ids -> getTransactionsChunk(ids, requestContext))
         .collect(toList());
 
       return collectResultsOnSuccess(expenseClassesFutureList)
