@@ -35,6 +35,7 @@ import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.invoices.utils.InvoiceRestrictionsUtil;
 import org.folio.invoices.utils.ProtectedOperationType;
 import org.folio.rest.acq.model.orders.CompositePoLine;
+import org.folio.rest.acq.model.orders.CompositePurchaseOrder;
 import org.folio.rest.acq.model.orders.OrderInvoiceRelationship;
 import org.folio.rest.core.RestClient;
 import org.folio.rest.core.models.RequestContext;
@@ -509,29 +510,13 @@ public class InvoiceLineHelper extends AbstractHelper {
     return orderService.getPoLine(poLineId, requestContext)
       .thenCompose(poLine -> orderService.getOrder(poLine.getPurchaseOrderId(), requestContext))
       .thenCompose(order -> {
-        List<String> invoicePoNumbers = invoice.getPoNumbers();
         String orderPoNumber = order.getPoNumber();
         if (orderPoNumber == null)
           return CompletableFuture.completedFuture(null);
         if (invoiceLineFromStorage != null && invoiceLineFromStorage.getPoLineId() != null && invoiceLine.getPoLineId() == null) {
-          // remove the po number if needed
-          if (invoicePoNumbers == null || !invoicePoNumbers.contains(orderPoNumber))
-            return CompletableFuture.completedFuture(null);
-          // check the other invoice lines to see if one of them is linking to the same order
-          List<String> orderLineIds = order.getCompositePoLines().stream().map(CompositePoLine::getId).collect(toList());
-          return getRelatedLines(invoiceLine).thenCompose(lines -> {
-            if (lines.stream().anyMatch(line -> orderLineIds.contains(line.getPoLineId()))) {
-              return CompletableFuture.completedFuture(null);
-            } else {
-              List<String> newNumbers = invoicePoNumbers.stream().filter(n -> !n.equals(orderPoNumber)).collect(toList());
-              return invoiceService.updateInvoice(invoice.withPoNumbers(newNumbers), requestContext);
-            }
-          });
+          return removeInvoicePoNumber(orderPoNumber, order, invoice, invoiceLine, requestContext);
         }
-        // add the po number if needed
-        if (invoicePoNumbers != null && invoicePoNumbers.contains(orderPoNumber))
-          return CompletableFuture.completedFuture(null);
-        return invoiceService.updateInvoice(invoice.withPoNumbers(addPoNumber(invoicePoNumbers, orderPoNumber)), requestContext);
+        return addInvoicePoNumber(orderPoNumber, invoice, requestContext);
       })
       .exceptionally(throwable -> {
         logger.error("Failed to update invoice poNumbers", throwable);
@@ -539,7 +524,39 @@ public class InvoiceLineHelper extends AbstractHelper {
       });
   }
 
-  private List<String> addPoNumber(List<String> numbers, String newNumber) {
+  /**
+   * Removes orderPoNumber from the invoice's poNumbers field if needed.
+   */
+  private CompletableFuture<Void> removeInvoicePoNumber(String orderPoNumber, CompositePurchaseOrder order,
+      Invoice invoice, InvoiceLine invoiceLine, RequestContext requestContext) {
+
+    List<String> invoicePoNumbers = invoice.getPoNumbers();
+    if (!invoicePoNumbers.contains(orderPoNumber))
+      return CompletableFuture.completedFuture(null);
+    // check the other invoice lines to see if one of them is linking to the same order
+    List<String> orderLineIds = order.getCompositePoLines().stream().map(CompositePoLine::getId).collect(toList());
+    return getRelatedLines(invoiceLine).thenCompose(lines -> {
+      if (lines.stream().anyMatch(line -> orderLineIds.contains(line.getPoLineId()))) {
+        return CompletableFuture.completedFuture(null);
+      } else {
+        List<String> newNumbers = invoicePoNumbers.stream().filter(n -> !n.equals(orderPoNumber)).collect(toList());
+        return invoiceService.updateInvoice(invoice.withPoNumbers(newNumbers), requestContext);
+      }
+    });
+  }
+
+  /**
+   * Adds orderPoNumber to the invoice's poNumbers field if needed.
+   */
+  private CompletableFuture<Void> addInvoicePoNumber(String orderPoNumber, Invoice invoice, RequestContext requestContext) {
+    List<String> invoicePoNumbers = invoice.getPoNumbers();
+    if (invoicePoNumbers.contains(orderPoNumber))
+      return CompletableFuture.completedFuture(null);
+    return invoiceService.updateInvoice(invoice.withPoNumbers(addPoNumberToList(invoicePoNumbers, orderPoNumber)),
+      requestContext);
+  }
+
+  private List<String> addPoNumberToList(List<String> numbers, String newNumber) {
     if (newNumber == null)
       return numbers;
     if (numbers == null)
