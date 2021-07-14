@@ -230,8 +230,8 @@ public class InvoiceLineHelper extends AbstractHelper {
   }
 
   private CompletableFuture<Void> updateOrderInvoiceRelationship(InvoiceLine invoiceLine, InvoiceLine invoiceLineFromStorage, RequestContext requestContext) {
-    if (invoiceLine.getPoLineId() == null && invoiceLineFromStorage.getPoLineId() != null) {
-      return orderService.deleteOrderInvoiceRelationshipByInvoiceIdAndLineId(invoiceLine.getInvoiceId(), invoiceLineFromStorage.getPoLineId(), requestContext);
+    if (invoiceLine.getPoLineId() == null) {
+      return deleteOrderInvoiceRelationshipIfNeeded(invoiceLine, invoiceLineFromStorage, requestContext);
     }
     if (!StringUtils.equals(invoiceLine.getPoLineId(), invoiceLineFromStorage.getPoLineId())) {
       return orderService.getPoLine(invoiceLine.getPoLineId(), requestContext).thenCompose(
@@ -242,10 +242,10 @@ public class InvoiceLineHelper extends AbstractHelper {
               OrderInvoiceRelationship orderInvoiceRelationship = new OrderInvoiceRelationship();
               orderInvoiceRelationship.withInvoiceId(invoiceLine.getInvoiceId()).withPurchaseOrderId(poLine.getPurchaseOrderId());
 
-              return orderService.deleteOrderInvoiceRelationshipByInvoiceIdAndLineId(invoiceLine.getInvoiceId(), invoiceLineFromStorage.getPoLineId(), requestContext)
-                        .thenCompose(v -> orderService.createOrderInvoiceRelationship(orderInvoiceRelationship, requestContext)
-                                                      .thenCompose(relationship -> CompletableFuture.completedFuture(null))
-                        );
+              return deleteOrderInvoiceRelationshipIfNeeded(invoiceLine, invoiceLineFromStorage, requestContext)
+                .thenCompose(v -> orderService.createOrderInvoiceRelationship(orderInvoiceRelationship, requestContext)
+                  .thenCompose(relationship -> CompletableFuture.completedFuture(null))
+                );
             }
             return CompletableFuture.completedFuture(null);
           }));
@@ -253,6 +253,16 @@ public class InvoiceLineHelper extends AbstractHelper {
 
     //  Don't create/update the relationship in case ids match
     return CompletableFuture.completedFuture(null);
+  }
+
+  private CompletableFuture<Void> deleteOrderInvoiceRelationshipIfNeeded(InvoiceLine invoiceLine,
+      InvoiceLine invoiceLineFromStorage, RequestContext requestContext) {
+    // if the stored invoice line does not have a link, there is no relationship to delete
+    if (invoiceLineFromStorage.getPoLineId() == null) {
+      return CompletableFuture.completedFuture(null);
+    }
+    return orderService.deleteOrderInvoiceRelationshipByInvoiceIdAndLineId(invoiceLine.getInvoiceId(),
+      invoiceLineFromStorage.getPoLineId(), requestContext);
   }
 
   private CompletableFuture<Void> applyAdjustmentsAndUpdateLine(InvoiceLine invoiceLine, InvoiceLine invoiceLineFromStorage,
