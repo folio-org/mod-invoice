@@ -501,13 +501,10 @@ public class InvoiceLineHelper extends AbstractHelper {
     return orderService.getPoLine(poLineId, requestContext)
       .thenCompose(poLine -> orderService.getOrder(poLine.getPurchaseOrderId(), requestContext))
       .thenCompose(order -> {
-        String orderPoNumber = order.getPoNumber();
-        if (orderPoNumber == null)
-          return CompletableFuture.completedFuture(null);
         if (invoiceLineFromStorage != null && invoiceLineFromStorage.getPoLineId() != null && invoiceLine.getPoLineId() == null) {
-          return removeInvoicePoNumber(orderPoNumber, order, invoice, invoiceLine, requestContext);
+          return removeInvoicePoNumber(order.getPoNumber(), order, invoice, invoiceLine, requestContext);
         }
-        return addInvoicePoNumber(orderPoNumber, invoice, requestContext);
+        return addInvoicePoNumber(order.getPoNumber(), invoice, requestContext);
       })
       .exceptionally(throwable -> {
         logger.error("Failed to update invoice poNumbers", throwable);

@@ -664,8 +664,8 @@ public class InvoiceLinesApiTest extends ApiTestBase {
     invoiceLine.setPoLineId(null);
     // Invoice line updated (invoice status = APPROVED) - protected field not modified
     verifyPut(invoiceLine.getId(), invoiceLine, "", HttpStatus.SC_NO_CONTENT);
-
-    MatcherAssert.assertThat(getInvoiceUpdates(), hasSize(0));
+    // a poNumbers update is needed for the invoice
+    MatcherAssert.assertThat(getInvoiceUpdates(), hasSize(1));
   }
 
   @Test
@@ -693,8 +693,9 @@ public class InvoiceLinesApiTest extends ApiTestBase {
     assertThat(objects, notNullValue());
     Invoice updatedInvoice = objects.get(objects.size() - 1).mapTo(Invoice.class);
     List<String> poNumbers = updatedInvoice.getPoNumbers();
-    assertThat(poNumbers, hasSize(1));
-    assertThat(poNumbers.get(0), equalTo("AB268758XYZ"));
+    // that invoice already had a poNumber, it gets another one
+    assertThat(poNumbers, hasSize(2));
+    assertThat(poNumbers.get(1), equalTo("AB268758XYZ"));
   }
 
   @Test
@@ -711,8 +712,9 @@ public class InvoiceLinesApiTest extends ApiTestBase {
     assertThat(objects, notNullValue());
     Invoice updatedInvoice = objects.get(0).mapTo(Invoice.class);
     List<String> poNumbers = updatedInvoice.getPoNumbers();
-    assertThat(poNumbers, hasSize(1));
-    assertThat(poNumbers.get(0), equalTo("AB268758XYZ"));
+    // that invoice already had a poNumber, it gets another one
+    assertThat(poNumbers, hasSize(2));
+    assertThat(poNumbers.get(1), equalTo("AB268758XYZ"));
   }
 
   @Test
