@@ -501,9 +501,7 @@ public class InvoiceLineHelper extends AbstractHelper {
   private CompletableFuture<Void> updateInvoicePoNumbers(Invoice invoice, InvoiceLine invoiceLine,
       InvoiceLine invoiceLineFromStorage, RequestContext requestContext) {
 
-    if (invoiceLineFromStorage == null && invoiceLine.getPoLineId() == null)
-      return CompletableFuture.completedFuture(null);
-    if (invoiceLine.getPoLineId() == null && invoiceLineFromStorage != null && invoiceLineFromStorage.getPoLineId() == null)
+    if (!isPoNumbersUpdateNeeded(invoiceLineFromStorage, invoiceLine))
       return CompletableFuture.completedFuture(null);
     String poLineId = (invoiceLineFromStorage == null || invoiceLine.getPoLineId() != null) ? invoiceLine.getPoLineId() :
       invoiceLineFromStorage.getPoLineId();
@@ -522,6 +520,14 @@ public class InvoiceLineHelper extends AbstractHelper {
         logger.error("Failed to update invoice poNumbers", throwable);
         throw new HttpException(500, FAILED_TO_UPDATE_PONUMBERS.toError());
       });
+  }
+
+  /**
+   * @return false if we can tell right away that an update of the invoice poNumbers is not needed.
+   */
+  private boolean isPoNumbersUpdateNeeded(InvoiceLine invoiceLineFromStorage, InvoiceLine invoiceLine) {
+    return !((invoiceLineFromStorage == null && invoiceLine.getPoLineId() == null) ||
+      (invoiceLine.getPoLineId() == null && invoiceLineFromStorage != null && invoiceLineFromStorage.getPoLineId() == null));
   }
 
   /**
