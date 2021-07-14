@@ -245,17 +245,10 @@ public class InvoiceLineHelper extends AbstractHelper {
               OrderInvoiceRelationship orderInvoiceRelationship = new OrderInvoiceRelationship();
               orderInvoiceRelationship.withInvoiceId(invoiceLine.getInvoiceId()).withPurchaseOrderId(poLine.getPurchaseOrderId());
 
-              return CompletableFuture.supplyAsync(() -> {
-                if (invoiceLineFromStorage.getPoLineId() != null) {
-                  return orderService.deleteOrderInvoiceRelationshipByInvoiceIdAndLineId(invoiceLine.getInvoiceId(),
-                    invoiceLineFromStorage.getPoLineId(), requestContext);
-                } else {
-                  return CompletableFuture.completedFuture(null);
-                }
-              })
-              .thenCompose(v -> orderService.createOrderInvoiceRelationship(orderInvoiceRelationship, requestContext)
-                                            .thenCompose(relationship -> CompletableFuture.completedFuture(null))
-              );
+              return orderService.deleteOrderInvoiceRelationshipByInvoiceIdAndLineId(invoiceLine.getInvoiceId(), invoiceLineFromStorage.getPoLineId(), requestContext)
+                        .thenCompose(v -> orderService.createOrderInvoiceRelationship(orderInvoiceRelationship, requestContext)
+                                                      .thenCompose(relationship -> CompletableFuture.completedFuture(null))
+                        );
             }
             return CompletableFuture.completedFuture(null);
           }));
