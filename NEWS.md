@@ -1,4 +1,16 @@
-## 5.2.0 - Unrleased
+## 5.2.0 - Unrlease
+
+## 5.1.1 - Released
+
+The focus of this release was to fix populating fields of the voucher lines
+
+[Full Changelog](https://github.com/folio-org/mod-invoice/compare/v5.1.0...v5.1.1)
+
+### Bug Fixes
+* [MODINVOICE-272](https://issues.folio.org/browse/MODINVOICE-272) - Cannot approve multiline invoice with more than 15 linked encumbrances
+* [MODINVOICE-269](https://issues.folio.org/browse/MODINVOICE-269) - Invoice line not saved when linked to POL
+* [MODINVOICE-264](https://issues.folio.org/browse/MODINVOICE-264) - Invoice adjustmentsTotal is not updated after a line created
+* [MODINVOICE-258](https://issues.folio.org/browse/MODINVOICE-258) - Invoice <> order relationship not cleaned up when invoice deleted
 
 ## 5.1.0 - Released
 
