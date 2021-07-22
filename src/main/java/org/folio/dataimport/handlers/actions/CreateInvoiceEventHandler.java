@@ -64,8 +64,8 @@ public class CreateInvoiceEventHandler implements EventHandler {
   public static final String INVOICE_LINES_ERRORS_KEY = "INVOICE_LINES_ERRORS";
   private static final String INVOICE_FIELD = "invoice";
   private static final String INVOICE_LINES_FIELD = "invoiceLines";
-  private static final String PO_LINES_BY_POL_NUMBER_CQL = "workflowStatus==Open AND poLineNumber==(%s)";
-  private static final String PO_LINES_BY_REF_NUMBER_CQL = "workflowStatus==Open AND vendorDetail.referenceNumbers=(%s)";
+  private static final String PO_LINES_BY_POL_NUMBER_CQL = "purchaseOrder.workflowStatus==Open AND poLineNumber==(%s)";
+  private static final String PO_LINES_BY_REF_NUMBER_CQL = "purchaseOrder.workflowStatus==Open AND vendorDetail.referenceNumbers=(%s)";
   private static final String REF_NUMBER_CRITERIA_PATTERN = "\"\\\"refNumber\\\":\\\"%s\\\"\"";
   private static final String POL_TITLE_KEY = "POL_TITLE_%s";
   private static final String PO_LINE_NUMBER_RULE_NAME = "poLineId";
