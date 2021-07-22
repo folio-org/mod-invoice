@@ -777,8 +777,10 @@ public class InvoiceHelper extends AbstractHelper {
 
   private CompletableFuture<Map<String, Map<String, List<FundDistribution>>>> groupFundDistrByFundIdByExpenseClassExtNo(List<FundDistribution> fundDistrs) {
     List<String> expenseClassIds = fundDistrs.stream()
-                                             .filter(fundDistribution -> nonNull(fundDistribution.getExpenseClassId()))
-                                             .map(FundDistribution::getExpenseClassId).collect(toList());
+      .map(FundDistribution::getExpenseClassId)
+      .filter(Objects::nonNull)
+      .distinct()
+      .collect(toList());
     return expenseClassRetrieveService.getExpenseClasses(expenseClassIds, new RequestContext(ctx, okapiHeaders))
                                .thenApply(expenseClasses -> expenseClasses.stream().collect(toMap(ExpenseClass::getId, Function.identity())))
                                .thenApply(expenseClassByIds ->
