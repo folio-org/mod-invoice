@@ -1,4 +1,14 @@
 ## 5.1.0 - Unreleased
+
+## 5.0.7 - Released
+
+Release contains fix of approve invoice with large amount of expense classes
+
+[Full Changelog](https://github.com/folio-org/mod-invoice/compare/v5.0.6...v5.0.7)
+
+### Bug Fixes
+* [MODINVOICE-266](https://issues.folio.org/browse/MODINVOICE-266) - Cannot approve multiline invoice with more than 15 linked encumbrances
+
 ## 5.0.6 - Released
 
 Release contains fix of approve invoice with large amount of encumbrances
