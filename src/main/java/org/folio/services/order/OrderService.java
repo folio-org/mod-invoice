@@ -53,7 +53,7 @@ public class OrderService {
       .thenApply(CompositePurchaseOrder::getCompositePoLines);
   }
 
-  private CompletableFuture<CompositePurchaseOrder> getOrder(String orderId, RequestContext requestContext) {
+  public CompletableFuture<CompositePurchaseOrder> getOrder(String orderId, RequestContext requestContext) {
     RequestEntry requestEntry = new RequestEntry(ORDERS_BY_ID_ENDPOINT).withId(orderId);
     return restClient.get(requestEntry, requestContext, CompositePurchaseOrder.class);
   }

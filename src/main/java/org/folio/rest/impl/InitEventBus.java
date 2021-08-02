@@ -26,10 +26,6 @@ public class InitEventBus implements PostDeployVerticle {
   private final Logger logger = LogManager.getLogger(InitEventBus.class);
 
   @Autowired
-  @Qualifier("invoiceSummaryHandler")
-  Handler<Message<JsonObject>> invoiceSummaryHandler;
-
-  @Autowired
   @Qualifier("batchVoucherProcessHandler")
   Handler<Message<JsonObject>> batchVoucherProcessHandler;
 
@@ -43,18 +39,12 @@ public class InitEventBus implements PostDeployVerticle {
       EventBus eb = vertx.eventBus();
 
       // Create consumers and assign handlers
-      Promise<Void> invoiceSummaryRegistrationHandler = Promise.promise();
-
-      MessageConsumer<JsonObject> invoiceSummaryConsumer = eb.localConsumer(MessageAddress.INVOICE_TOTALS.address);
-      invoiceSummaryConsumer.handler(invoiceSummaryHandler)
-        .completionHandler(invoiceSummaryRegistrationHandler);
-
       Promise<Void> batchVoucherPersistRegistrationHandler = Promise.promise();
       MessageConsumer<JsonObject> batchVoucherPersist = eb.localConsumer(MessageAddress.BATCH_VOUCHER_PERSIST_TOPIC.address);
       batchVoucherPersist.handler(batchVoucherProcessHandler)
         .completionHandler(batchVoucherPersistRegistrationHandler);
 
-      invoiceSummaryRegistrationHandler.future().onComplete(result -> {
+      batchVoucherPersistRegistrationHandler.future().onComplete(result -> {
         if (result.succeeded()) {
           blockingCodeFuture.complete();
         } else {

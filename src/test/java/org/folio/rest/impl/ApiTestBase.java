@@ -1,25 +1,12 @@
 package org.folio.rest.impl;
 
-import static java.util.concurrent.TimeUnit.MILLISECONDS;
-import static java.util.concurrent.TimeUnit.SECONDS;
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 import static javax.ws.rs.core.MediaType.APPLICATION_XML;
-import static org.awaitility.Awaitility.await;
 import static org.folio.ApiTestSuite.mockPort;
-import static org.folio.invoices.utils.HelperUtils.INVOICE;
-import static org.folio.invoices.utils.HelperUtils.INVOICE_ID;
 import static org.folio.rest.RestConstants.OKAPI_URL;
 import static org.folio.rest.RestVerticle.OKAPI_HEADER_TENANT;
 import static org.folio.rest.RestVerticle.OKAPI_HEADER_TOKEN;
 import static org.folio.rest.RestVerticle.OKAPI_USERID_HEADER;
-import static org.folio.rest.impl.InvoiceLinesApiTest.INVOICE_LINES_PATH;
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.emptyIterable;
-import static org.hamcrest.Matchers.equalTo;
-import static org.hamcrest.Matchers.is;
-import static org.hamcrest.Matchers.isEmptyOrNullString;
-import static org.hamcrest.Matchers.not;
-import static org.hamcrest.Matchers.notNullValue;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -27,10 +14,8 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Date;
-import java.util.List;
 import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.Stream;
@@ -38,10 +23,7 @@ import java.util.stream.Stream;
 import javax.ws.rs.core.HttpHeaders;
 
 import org.apache.commons.io.IOUtils;
-import org.awaitility.core.ConditionEvaluationLogger;
 import org.folio.ApiTestSuite;
-import org.folio.invoices.events.handlers.MessageAddress;
-import org.folio.invoices.utils.HelperUtils;
 import org.folio.rest.core.RestClient;
 import org.folio.rest.jaxrs.model.Adjustment;
 import org.folio.rest.jaxrs.model.BatchVoucher;
@@ -57,14 +39,11 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Primary;
 
 import io.restassured.RestAssured;
 import io.restassured.http.Header;
 import io.restassured.http.Headers;
 import io.restassured.response.Response;
-import io.vertx.core.Handler;
-import io.vertx.core.eventbus.Message;
 import io.vertx.core.json.JsonObject;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
@@ -105,24 +84,11 @@ public class ApiTestBase {
 
   private static boolean runningOnOwn;
 
-  // The variable is defined in main thread but the value is going to be inserted in vert.x event loop thread
-  private static final List<Message<JsonObject>> eventMessages = new CopyOnWriteArrayList<>();
-
   /**
    * Define unit test specific beans to override actual ones
    */
   @Configuration
   static class ContextConfiguration {
-
-    @Bean("invoiceSummaryHandler")
-    @Primary
-    public Handler<Message<JsonObject>> mockedInvoiceSummaryHandler() {
-      // As an implementation just add received message to list
-      return message -> {
-        logger.info("New message sent to {} address: {}", message.address(), message.body());
-        eventMessages.add(message);
-      };
-    }
 
     @Bean
     InvoiceLineService invoiceLineService(RestClient restClient) {
@@ -156,7 +122,6 @@ public class ApiTestBase {
   }
 
   protected void clearServiceInteractions() {
-    eventMessages.clear();
     MockServer.release();
   }
 
@@ -215,10 +180,12 @@ public class ApiTestBase {
           .contentType(expectedContentType)
           .extract()
             .response();
-
-    int msgQty = (201 == expectedCode && url.startsWith(INVOICE_LINES_PATH)) ? 1 : 0;
-    verifyInvoiceSummaryUpdateEvent(msgQty);
-
+    // sleep needed to avoid some issues with async processing - otherwise some tests start running in parallel and fail randomly (see MODINVOICE-265)
+    try {
+      Thread.sleep(100);
+    } catch (InterruptedException e) {
+      e.printStackTrace();
+    }
     return response;
   }
 
@@ -252,7 +219,7 @@ public class ApiTestBase {
   }
 
   public Response verifyGet(String url, Headers headers, String expectedContentType, int expectedCode) {
-    Response response = RestAssured
+    return RestAssured
       .with()
         .headers(headers)
         .header(X_OKAPI_URL)
@@ -263,12 +230,6 @@ public class ApiTestBase {
         .contentType(expectedContentType)
         .extract()
           .response();
-
-    if (!url.startsWith(INVOICE_LINES_PATH)) {
-      verifyInvoiceSummaryUpdateEvent(0);
-    }
-
-    return response;
   }
 
   <T> T verifySuccessGet(String url, Class<T> clazz) {
@@ -285,7 +246,7 @@ public class ApiTestBase {
   }
 
   public Response verifyDeleteResponse(String url, Headers headers, String expectedContentType, int expectedCode) {
-    Response response = RestAssured
+    return RestAssured
       .with()
         .headers(headers)
         .header(X_OKAPI_URL)
@@ -295,11 +256,6 @@ public class ApiTestBase {
           .contentType(expectedContentType)
           .extract()
             .response();
-
-    int msgQty = (204 == expectedCode && url.startsWith(INVOICE_LINES_PATH)) ? 1 : 0;
-    verifyInvoiceSummaryUpdateEvent(msgQty);
-
-    return response;
   }
 
   public Headers prepareHeaders(Header... headers) {
@@ -319,31 +275,6 @@ public class ApiTestBase {
       return ((JsonObject) body).encodePrettily();
     } else {
       return JsonObject.mapFrom(body).encodePrettily();
-    }
-  }
-
-  void verifyInvoiceSummaryUpdateEvent(int msgQty) {
-    logger.debug("Verifying event bus messages");
-
-    // Wait until event bus registers message
-    await().conditionEvaluationListener(new ConditionEvaluationLogger())
-      .atLeast(50, MILLISECONDS)
-      .atMost(1, SECONDS)
-      .until(eventMessages::size, is(msgQty));
-
-    for (int i = 0; i < msgQty; i++) {
-      Message<JsonObject> message = eventMessages.get(i);
-      assertThat(message.address(), equalTo(MessageAddress.INVOICE_TOTALS.address));
-      assertThat(message.headers(), not(emptyIterable()));
-
-      JsonObject body = message.body();
-      assertThat(body, notNullValue());
-      assertThat(body.getString(HelperUtils.LANG), not(isEmptyOrNullString()));
-      if (body.containsKey(INVOICE_ID)) {
-        assertThat(body.getString(INVOICE_ID), not(isEmptyOrNullString()));
-      } else {
-        assertThat(body.getJsonObject(INVOICE), notNullValue());
-      }
     }
   }
 

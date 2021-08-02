@@ -154,12 +154,12 @@
     <dependency>
       <groupId>org.folio</groupId>
       <artifactId>folio-kafka-wrapper</artifactId>
-      <version>2.3.1</version>
+      <version>2.3.2</version>
     </dependency>
     <dependency>
       <groupId>org.folio</groupId>
       <artifactId>data-import-processing-core</artifactId>
-      <version>3.1.1</version>
+      <version>3.1.3</version>
     </dependency>
     <dependency>
       <groupId>org.mockftpserver</groupId>
@@ -190,6 +190,11 @@
       <version>1.15.3</version>
       <scope>test</scope>
     </dependency>
+    <dependency>
+      <groupId>javax.xml.bind</groupId>
+      <artifactId>jaxb-api</artifactId>
+      <version>2.3.1</version>
+    </dependency>
 
     <dependency>
       <groupId>net.mguenther.kafka</groupId>
@@ -215,6 +220,19 @@
         </exclusion>
       </exclusions>
     </dependency>
+
+    <!-- these 2 are needed for XMLConverter.java with Java 11 -->
+    <dependency>
+      <groupId>jakarta.xml.bind</groupId>
+      <artifactId>jakarta.xml.bind-api</artifactId>
+      <version>2.3.3</version>
+    </dependency>
+    <dependency>
+      <groupId>org.glassfish.jaxb</groupId>
+      <artifactId>jaxb-runtime</artifactId>
+      <version>2.3.3</version>
+    </dependency>
+
   </dependencies>
 
   <build>
