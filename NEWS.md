@@ -1,5 +1,16 @@
 ## 5.2.0 - Unreleased
 
+## 5.1.3 (Juniper) - Released
+
+The focus of this release was to fix batch voucher creation and data import issues
+
+[Full Changelog](https://github.com/folio-org/mod-invoice/compare/v5.1.2...v5.1.3)
+
+### Bug Fixes
+* [MODINVOICE-282](https://issues.folio.org/browse/MODINVOICE-282) - Support max.request.size configuration
+* [MODINVOICE-280](https://issues.folio.org/browse/MODINVOICE-280) - Batch voucher ID not found/returned to UI
+* [MODINVOICE-259](https://issues.folio.org/browse/MODINVOICE-259) - When EDIFACT invoice is imported, matching to PO line is not working properly
+
 ## 5.1.2 - Released
 
 The focus of this release was to fix approve invoice with expense classes amount more than 15
