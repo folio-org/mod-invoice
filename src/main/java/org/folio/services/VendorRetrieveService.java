@@ -48,7 +48,7 @@ public class VendorRetrieveService {
           .collect(toList()).stream()
           .flatMap(List::stream)
           .collect(Collectors.toList()))
-      .thenAccept(organizations -> future.complete(organizations.stream().collect(toMap(Organization::getId, Function.identity()))))
+      .thenAccept(organizations -> future.complete(organizations.stream().distinct().collect(toMap(Organization::getId, Function.identity()))))
       .exceptionally(t -> {
         future.completeExceptionally(t);
         return null;
