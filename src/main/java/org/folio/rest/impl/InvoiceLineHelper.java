@@ -328,7 +328,7 @@ public class InvoiceLineHelper extends AbstractHelper {
         })
         .thenCompose(v -> handleDeleteRequest(resourceByIdPath(INVOICE_LINES, lineId, lang), httpClient, ctx, okapiHeaders, logger))
         .thenCompose(v -> updateInvoiceAndLines(invoiceHold.getInvoice(), buildRequestContext()))
-        .thenCompose(invoiceLine -> deleteInvoicePoNumbers(invoiceHold.getInvoice(), invoiceHolder.getInvoiceLine(),buildRequestContext())));
+        .thenCompose(invoiceLine -> deleteAndUpdateInvoicePoNumbers(invoiceHold.getInvoice(), invoiceHolder.getInvoiceLine(), buildRequestContext())));
   }
 
   private CompletableFuture<Invoice> getInvoicesIfExists(String lineId) {
@@ -539,18 +539,22 @@ public class InvoiceLineHelper extends AbstractHelper {
 
 
   /**
-   * Delete the invoice's poNumbers field, following an invoice line removal.
+   * Delete and update the invoice's poNumbers field, following an invoice line removal.
    * @param invoice - the invoice of the modified invoice line
    * @param invoiceLine - the modified invoice line
    * @param requestContext - used to start new requests
    */
-  private CompletableFuture<Void> deleteInvoicePoNumbers(Invoice invoice, InvoiceLine invoiceLine, RequestContext requestContext) {
+  private CompletableFuture<Void> deleteAndUpdateInvoicePoNumbers(Invoice invoice, InvoiceLine invoiceLine, RequestContext requestContext) {
 
+    InvoiceHolder invoiceHolder = new InvoiceHolder();
     if (invoiceLine.getPoLineId() == null)
       return CompletableFuture.completedFuture(null);
     return orderService.getPoLine(invoiceLine.getPoLineId(), requestContext)
-      .thenCompose(poLine -> orderService.getOrder(poLine.getPurchaseOrderId(), requestContext))
-      .thenCompose(order -> removeInvoicePoNumber(order.getPoNumber(), order, invoice, invoiceLine, requestContext))
+      .thenCompose(poLine -> orderService.getOrder(poLine.getPurchaseOrderId(), requestContext)
+        .thenApply(invoiceHolder::setCompositePurchaseOrder))
+      .thenCompose(invoiceHolderOrder -> removeInvoicePoNumber(invoiceHolder.getCompositePurchaseOrder().getPoNumber(),
+        invoiceHolderOrder.getCompositePurchaseOrder(), invoice, invoiceLine, requestContext))
+      .thenCompose(v -> addInvoicePoNumber(invoiceHolder.getCompositePurchaseOrder().getPoNumber(), invoice, requestContext))
       .exceptionally(throwable -> {
         logger.error("Failed to update invoice poNumbers", throwable);
         throw new HttpException(500, FAILED_TO_UPDATE_PONUMBERS.toError());
