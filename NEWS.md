@@ -1,5 +1,14 @@
 ## 5.2.0 - Unreleased
 
+## 5.1.4 (Juniper) - Released
+
+The focus of this release was to fix batch voucher creation.
+
+[Full Changelog](https://github.com/folio-org/mod-invoice/compare/v5.1.3...v5.1.4)
+
+### Bug Fixes
+* [MODINVOICE-280](https://issues.folio.org/browse/MODINVOICE-280) - Batch voucher ID not found/returned to UI
+
 ## 5.1.3 (Juniper) - Released
 
 The focus of this release was to fix batch voucher creation and data import issues
