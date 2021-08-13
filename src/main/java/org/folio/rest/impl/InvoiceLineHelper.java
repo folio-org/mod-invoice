@@ -328,8 +328,11 @@ public class InvoiceLineHelper extends AbstractHelper {
         })
         .thenCompose(v -> handleDeleteRequest(resourceByIdPath(INVOICE_LINES, lineId, lang), httpClient, ctx, okapiHeaders, logger))
         .thenCompose(v -> updateInvoiceAndLines(invoiceHold.getInvoice(), buildRequestContext()))
-        .thenCompose(invoiceLine -> deleteInvoicePoNumbers(invoiceHold.getInvoice(), invoiceHolder.getInvoiceLine(), buildRequestContext())));
-        //.thenCompose(v -> addInvoicePoNumber(invoiceHolder.getCompositePurchaseOrder().getPoNumber(), invoice, requestContext));
+        .thenCompose(invoiceLine -> deleteInvoicePoNumbers(invoiceHold.getInvoice(), invoiceHolder.getInvoiceLine(), buildRequestContext())))
+        .thenCompose(inv -> orderService.getPoLine(invoiceHolder.getInvoiceLine().getPoLineId(), buildRequestContext()))
+        .thenCompose(poLine -> orderService.getOrder(poLine.getPurchaseOrderId(),  buildRequestContext())
+          .thenApply(invoiceHolder::setCompositePurchaseOrder))
+        .thenCompose(v -> addInvoicePoNumber(invoiceHolder.getCompositePurchaseOrder().getPoNumber(), invoiceHolder.getInvoice(), buildRequestContext()));
   }
 
   private CompletableFuture<Invoice> getInvoicesIfExists(String lineId) {
