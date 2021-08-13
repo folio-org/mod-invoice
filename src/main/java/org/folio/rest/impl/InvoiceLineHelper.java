@@ -22,7 +22,7 @@ import org.folio.rest.jaxrs.model.InvoiceLineCollection;
 import org.folio.rest.jaxrs.model.Parameter;
 import org.folio.rest.jaxrs.model.SequenceNumber;
 import org.folio.rest.tools.client.interfaces.HttpClientInterface;
-import org.folio.rest.util.InvoiceHolder;
+import org.folio.models.InvoiceHolder;
 import org.folio.services.adjusment.AdjustmentsService;
 import org.folio.services.invoice.InvoiceLineService;
 import org.folio.services.invoice.InvoiceService;
@@ -495,7 +495,7 @@ public class InvoiceLineHelper extends AbstractHelper {
       });
   }
 
-  private CompletableFuture<Void> updateInvoiceAndLines(Invoice invoice, RequestContext requestContext) {
+  public CompletableFuture<Void> updateInvoiceAndLines(Invoice invoice, RequestContext requestContext) {
 
     // If no prorated adjustments, just update invoice details
     if (adjustmentsService.getProratedAdjustments(invoice).isEmpty()) {

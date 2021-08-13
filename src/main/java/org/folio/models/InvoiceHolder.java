@@ -1,4 +1,4 @@
-package org.folio.rest.util;
+package org.folio.models;
 
 import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.jaxrs.model.InvoiceLine;
