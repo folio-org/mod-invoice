@@ -546,20 +546,7 @@ public class InvoiceLineHelper extends AbstractHelper {
    */
   private CompletableFuture<Void> deleteInvoicePoNumbers(Invoice invoice, InvoiceLine invoiceLine, RequestContext requestContext) {
 
-    InvoiceHolder invoiceHolder = new InvoiceHolder();
     if (invoiceLine.getPoLineId() == null)
-      return CompletableFuture.completedFuture(null);
-    return orderService.getPoLine(invoiceLine.getPoLineId(), requestContext)
-      .thenCompose(poLine -> orderService.getOrder(poLine.getPurchaseOrderId(), requestContext)
-        .thenApply(invoiceHolder::setCompositePurchaseOrder))
-      .thenCompose(invoiceHolderOrder -> removeInvoicePoNumber(invoiceHolder.getCompositePurchaseOrder().getPoNumber(),
-        invoiceHolderOrder.getCompositePurchaseOrder(), invoice, invoiceLine, requestContext))
-      .thenCompose(v -> addInvoicePoNumber(invoiceHolder.getCompositePurchaseOrder().getPoNumber(), invoice, requestContext))
-      .exceptionally(throwable -> {
-        logger.error("Failed to update invoice poNumbers", throwable);
-        throw new HttpException(500, FAILED_TO_UPDATE_PONUMBERS.toError());
-      });
-    /*if (invoiceLine.getPoLineId() == null)
       return CompletableFuture.completedFuture(null);
     return orderService.getPoLine(invoiceLine.getPoLineId(), requestContext)
       .thenCompose(poLine -> orderService.getOrder(poLine.getPurchaseOrderId(), requestContext))
@@ -567,7 +554,7 @@ public class InvoiceLineHelper extends AbstractHelper {
       .exceptionally(throwable -> {
         logger.error("Failed to update invoice poNumbers", throwable);
         throw new HttpException(500, FAILED_TO_UPDATE_PONUMBERS.toError());
-      });  */
+      });
   }
 
   /**
