@@ -1,36 +1,10 @@
 package org.folio.rest.impl;
 
-import static java.util.concurrent.CompletableFuture.completedFuture;
-import static java.util.stream.Collectors.toList;
-import static org.apache.commons.lang3.StringUtils.isEmpty;
-import static org.folio.invoices.utils.ErrorCodes.*;
-import static org.folio.invoices.utils.HelperUtils.INVOICE_ID;
-import static org.folio.invoices.utils.HelperUtils.QUERY_PARAM_START_WITH;
-import static org.folio.invoices.utils.HelperUtils.calculateInvoiceLineTotals;
-import static org.folio.invoices.utils.HelperUtils.combineCqlExpressions;
-import static org.folio.invoices.utils.HelperUtils.getEndpointWithQuery;
-import static org.folio.invoices.utils.HelperUtils.getHttpClient;
-import static org.folio.invoices.utils.HelperUtils.getInvoiceById;
-import static org.folio.invoices.utils.HelperUtils.getInvoices;
-import static org.folio.invoices.utils.HelperUtils.handleDeleteRequest;
-import static org.folio.invoices.utils.HelperUtils.handleGetRequest;
-import static org.folio.invoices.utils.HelperUtils.handlePutRequest;
-import static org.folio.invoices.utils.HelperUtils.isPostApproval;
-import static org.folio.invoices.utils.ProtectedOperationType.DELETE;
-import static org.folio.invoices.utils.ProtectedOperationType.READ;
-import static org.folio.invoices.utils.ProtectedOperationType.UPDATE;
-import static org.folio.invoices.utils.ResourcePathResolver.*;
-import static org.folio.services.voucher.VoucherRetrieveService.QUERY_BY_INVOICE_ID;
-
+import io.vertx.core.Context;
 import io.vertx.core.Vertx;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.concurrent.CompletableFuture;
-
+import io.vertx.core.json.JsonObject;
 import org.apache.commons.lang3.StringUtils;
+import org.folio.completablefuture.FolioVertxCompletableFuture;
 import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.invoices.utils.InvoiceRestrictionsUtil;
 import org.folio.invoices.utils.ProtectedOperationType;
@@ -52,12 +26,44 @@ import org.folio.services.adjusment.AdjustmentsService;
 import org.folio.services.invoice.InvoiceService;
 import org.folio.services.order.OrderService;
 import org.folio.services.validator.InvoiceLineValidator;
-
-import io.vertx.core.Context;
-import io.vertx.core.json.JsonObject;
-import org.folio.completablefuture.FolioVertxCompletableFuture;
 import org.folio.spring.SpringContextUtil;
 import org.springframework.beans.factory.annotation.Autowired;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.concurrent.CompletableFuture;
+
+import static java.util.concurrent.CompletableFuture.completedFuture;
+import static java.util.stream.Collectors.toList;
+import static org.apache.commons.lang3.StringUtils.isEmpty;
+import static org.folio.invoices.utils.ErrorCodes.CANNOT_DELETE_INVOICE_LINE;
+import static org.folio.invoices.utils.ErrorCodes.FAILED_TO_UPDATE_INVOICE_AND_OTHER_LINES;
+import static org.folio.invoices.utils.ErrorCodes.FAILED_TO_UPDATE_PONUMBERS;
+import static org.folio.invoices.utils.ErrorCodes.ORDER_INVOICE_RELATION_CREATE_FAILED;
+import static org.folio.invoices.utils.ErrorCodes.PROHIBITED_INVOICE_LINE_CREATION;
+import static org.folio.invoices.utils.HelperUtils.INVOICE_ID;
+import static org.folio.invoices.utils.HelperUtils.QUERY_PARAM_START_WITH;
+import static org.folio.invoices.utils.HelperUtils.calculateInvoiceLineTotals;
+import static org.folio.invoices.utils.HelperUtils.combineCqlExpressions;
+import static org.folio.invoices.utils.HelperUtils.getEndpointWithQuery;
+import static org.folio.invoices.utils.HelperUtils.getHttpClient;
+import static org.folio.invoices.utils.HelperUtils.getInvoiceById;
+import static org.folio.invoices.utils.HelperUtils.getInvoices;
+import static org.folio.invoices.utils.HelperUtils.handleDeleteRequest;
+import static org.folio.invoices.utils.HelperUtils.handleGetRequest;
+import static org.folio.invoices.utils.HelperUtils.handlePutRequest;
+import static org.folio.invoices.utils.HelperUtils.isPostApproval;
+import static org.folio.invoices.utils.ProtectedOperationType.DELETE;
+import static org.folio.invoices.utils.ProtectedOperationType.READ;
+import static org.folio.invoices.utils.ProtectedOperationType.UPDATE;
+import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_LINES;
+import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_LINE_NUMBER;
+import static org.folio.invoices.utils.ResourcePathResolver.resourceByIdPath;
+import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
+import static org.folio.services.voucher.VoucherRetrieveService.QUERY_BY_INVOICE_ID;
 
 public class InvoiceLineHelper extends AbstractHelper {
 
