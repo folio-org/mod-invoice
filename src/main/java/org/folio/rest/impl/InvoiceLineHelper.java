@@ -1,36 +1,10 @@
 package org.folio.rest.impl;
 
-import static java.util.concurrent.CompletableFuture.completedFuture;
-import static java.util.stream.Collectors.toList;
-import static org.apache.commons.lang3.StringUtils.isEmpty;
-import static org.folio.invoices.utils.ErrorCodes.*;
-import static org.folio.invoices.utils.HelperUtils.INVOICE_ID;
-import static org.folio.invoices.utils.HelperUtils.QUERY_PARAM_START_WITH;
-import static org.folio.invoices.utils.HelperUtils.calculateInvoiceLineTotals;
-import static org.folio.invoices.utils.HelperUtils.combineCqlExpressions;
-import static org.folio.invoices.utils.HelperUtils.getEndpointWithQuery;
-import static org.folio.invoices.utils.HelperUtils.getHttpClient;
-import static org.folio.invoices.utils.HelperUtils.getInvoiceById;
-import static org.folio.invoices.utils.HelperUtils.getInvoices;
-import static org.folio.invoices.utils.HelperUtils.handleDeleteRequest;
-import static org.folio.invoices.utils.HelperUtils.handleGetRequest;
-import static org.folio.invoices.utils.HelperUtils.handlePutRequest;
-import static org.folio.invoices.utils.HelperUtils.isPostApproval;
-import static org.folio.invoices.utils.ProtectedOperationType.DELETE;
-import static org.folio.invoices.utils.ProtectedOperationType.READ;
-import static org.folio.invoices.utils.ProtectedOperationType.UPDATE;
-import static org.folio.invoices.utils.ResourcePathResolver.*;
-import static org.folio.services.voucher.VoucherRetrieveService.QUERY_BY_INVOICE_ID;
-
+import io.vertx.core.Context;
 import io.vertx.core.Vertx;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.concurrent.CompletableFuture;
-
+import io.vertx.core.json.JsonObject;
 import org.apache.commons.lang3.StringUtils;
+import org.folio.completablefuture.FolioVertxCompletableFuture;
 import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.invoices.utils.InvoiceRestrictionsUtil;
 import org.folio.invoices.utils.ProtectedOperationType;
@@ -48,16 +22,50 @@ import org.folio.rest.jaxrs.model.InvoiceLineCollection;
 import org.folio.rest.jaxrs.model.Parameter;
 import org.folio.rest.jaxrs.model.SequenceNumber;
 import org.folio.rest.tools.client.interfaces.HttpClientInterface;
+import org.folio.models.InvoiceHolder;
 import org.folio.services.adjusment.AdjustmentsService;
+import org.folio.services.invoice.InvoiceLineService;
 import org.folio.services.invoice.InvoiceService;
 import org.folio.services.order.OrderService;
 import org.folio.services.validator.InvoiceLineValidator;
-
-import io.vertx.core.Context;
-import io.vertx.core.json.JsonObject;
-import org.folio.completablefuture.FolioVertxCompletableFuture;
 import org.folio.spring.SpringContextUtil;
 import org.springframework.beans.factory.annotation.Autowired;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.concurrent.CompletableFuture;
+
+import static java.util.concurrent.CompletableFuture.completedFuture;
+import static java.util.stream.Collectors.toList;
+import static org.apache.commons.lang3.StringUtils.isEmpty;
+import static org.folio.invoices.utils.ErrorCodes.CANNOT_DELETE_INVOICE_LINE;
+import static org.folio.invoices.utils.ErrorCodes.FAILED_TO_UPDATE_INVOICE_AND_OTHER_LINES;
+import static org.folio.invoices.utils.ErrorCodes.FAILED_TO_UPDATE_PONUMBERS;
+import static org.folio.invoices.utils.ErrorCodes.ORDER_INVOICE_RELATION_CREATE_FAILED;
+import static org.folio.invoices.utils.ErrorCodes.PROHIBITED_INVOICE_LINE_CREATION;
+import static org.folio.invoices.utils.HelperUtils.INVOICE_ID;
+import static org.folio.invoices.utils.HelperUtils.QUERY_PARAM_START_WITH;
+import static org.folio.invoices.utils.HelperUtils.calculateInvoiceLineTotals;
+import static org.folio.invoices.utils.HelperUtils.combineCqlExpressions;
+import static org.folio.invoices.utils.HelperUtils.getEndpointWithQuery;
+import static org.folio.invoices.utils.HelperUtils.getHttpClient;
+import static org.folio.invoices.utils.HelperUtils.getInvoiceById;
+import static org.folio.invoices.utils.HelperUtils.getInvoices;
+import static org.folio.invoices.utils.HelperUtils.handleDeleteRequest;
+import static org.folio.invoices.utils.HelperUtils.handleGetRequest;
+import static org.folio.invoices.utils.HelperUtils.handlePutRequest;
+import static org.folio.invoices.utils.HelperUtils.isPostApproval;
+import static org.folio.invoices.utils.ProtectedOperationType.DELETE;
+import static org.folio.invoices.utils.ProtectedOperationType.READ;
+import static org.folio.invoices.utils.ProtectedOperationType.UPDATE;
+import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_LINES;
+import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_LINE_NUMBER;
+import static org.folio.invoices.utils.ResourcePathResolver.resourceByIdPath;
+import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
+import static org.folio.services.voucher.VoucherRetrieveService.QUERY_BY_INVOICE_ID;
 
 public class InvoiceLineHelper extends AbstractHelper {
 
@@ -74,6 +82,8 @@ public class InvoiceLineHelper extends AbstractHelper {
   private OrderService orderService;
   @Autowired
   private InvoiceService invoiceService;
+  @Autowired
+  private InvoiceLineService invoiceLineService;
 
   public InvoiceLineHelper(Map<String, String> okapiHeaders, Context ctx, String lang) {
     this(getHttpClient(okapiHeaders), okapiHeaders, ctx, lang);
@@ -299,11 +309,15 @@ public class InvoiceLineHelper extends AbstractHelper {
    * @param lineId invoiceLine id to be deleted
    */
   public CompletableFuture<Void> deleteInvoiceLine(String lineId) {
+    InvoiceHolder invoiceHolder = new InvoiceHolder();
     return getInvoicesIfExists(lineId)
-      .thenCompose(invoice -> protectionHelper.isOperationRestricted(invoice.getAcqUnitIds(), DELETE)
-        .thenApply(vVoid -> invoice))
+      .thenApply(invoiceHolder::setInvoice)
+      .thenCompose(invHolder -> protectionHelper.isOperationRestricted(invHolder.getInvoice().getAcqUnitIds(), DELETE)
+        .thenApply(vVoid -> invHolder.getInvoice()))
       .thenCompose(InvoiceRestrictionsUtil::checkIfInvoiceDeletionPermitted)
-      .thenCompose(invoice -> orderService.deleteOrderInvoiceRelationIfLastInvoice(lineId, buildRequestContext())
+      .thenCompose(v -> invoiceLineService.getInvoiceLine(lineId, buildRequestContext())
+        .thenApply(invoiceHolder::setInvoiceLine))
+      .thenCompose(invoiceHold -> orderService.deleteOrderInvoiceRelationIfLastInvoice(lineId, buildRequestContext())
         .exceptionally(throwable -> {
           logger.error("Can't delete Order Invoice relation for lineId: {}", lineId, throwable);
           List<Parameter> parameters = Collections.singletonList(new Parameter().withKey("lineId")
@@ -313,7 +327,8 @@ public class InvoiceLineHelper extends AbstractHelper {
           throw new HttpException(404, error);
         })
         .thenCompose(v -> handleDeleteRequest(resourceByIdPath(INVOICE_LINES, lineId, lang), httpClient, ctx, okapiHeaders, logger))
-        .thenCompose(v -> updateInvoiceAndLines(invoice, buildRequestContext())));
+        .thenCompose(v -> updateInvoiceAndLines(invoiceHold.getInvoice(), buildRequestContext()))
+        .thenCompose(invoiceLine -> deleteInvoicePoNumbers(invoiceHold.getInvoice(), invoiceHolder.getInvoiceLine(), buildRequestContext())));
   }
 
   private CompletableFuture<Invoice> getInvoicesIfExists(String lineId) {
@@ -480,7 +495,7 @@ public class InvoiceLineHelper extends AbstractHelper {
       });
   }
 
-  private CompletableFuture<Void> updateInvoiceAndLines(Invoice invoice, RequestContext requestContext) {
+  public CompletableFuture<Void> updateInvoiceAndLines(Invoice invoice, RequestContext requestContext) {
 
     // If no prorated adjustments, just update invoice details
     if (adjustmentsService.getProratedAdjustments(invoice).isEmpty()) {
@@ -516,6 +531,26 @@ public class InvoiceLineHelper extends AbstractHelper {
         }
         return addInvoicePoNumber(order.getPoNumber(), invoice, requestContext);
       })
+      .exceptionally(throwable -> {
+        logger.error("Failed to update invoice poNumbers", throwable);
+        throw new HttpException(500, FAILED_TO_UPDATE_PONUMBERS.toError());
+      });
+  }
+
+
+  /**
+   * Delete the invoice's poNumbers field, following an invoice line removal.
+   * @param invoice - the invoice of the modified invoice line
+   * @param invoiceLine - the modified invoice line
+   * @param requestContext - used to start new requests
+   */
+  private CompletableFuture<Void> deleteInvoicePoNumbers(Invoice invoice, InvoiceLine invoiceLine, RequestContext requestContext) {
+
+    if (invoiceLine.getPoLineId() == null)
+      return CompletableFuture.completedFuture(null);
+    return orderService.getPoLine(invoiceLine.getPoLineId(), requestContext)
+      .thenCompose(poLine -> orderService.getOrder(poLine.getPurchaseOrderId(), requestContext))
+      .thenCompose(order -> removeInvoicePoNumber(order.getPoNumber(), order, invoice, invoiceLine, requestContext))
       .exceptionally(throwable -> {
         logger.error("Failed to update invoice poNumbers", throwable);
         throw new HttpException(500, FAILED_TO_UPDATE_PONUMBERS.toError());
