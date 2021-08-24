@@ -89,14 +89,13 @@ public class PaymentCreditWorkflowService {
 
   private Transaction buildTransaction(InvoiceWorkflowDataHolder holder) {
     MonetaryAmount amount = getFundDistributionAmount(holder.getFundDistribution(), holder.getTotal(), holder.getInvoiceCurrency()).with(holder.getConversion());
-
     Transaction transaction = buildBaseTransaction(holder);
     if (amount.isNegative()) {
       transaction.setToFundId(holder.getFundId());
       transaction.setFromFundId(null);
     }
     return transaction
-            .withTransactionType(amount.isPositive() ? Transaction.TransactionType.PAYMENT : Transaction.TransactionType.CREDIT)
+            .withTransactionType(amount.isPositiveOrZero() ? Transaction.TransactionType.PAYMENT : Transaction.TransactionType.CREDIT)
             .withAmount(convertToDoubleWithRounding(amount.abs()))
             .withPaymentEncumbranceId(holder.getFundDistribution().getEncumbrance())
             .withSourceInvoiceLineId(holder.getInvoiceLineId());
