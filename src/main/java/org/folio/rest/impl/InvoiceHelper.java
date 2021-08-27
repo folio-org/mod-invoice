@@ -13,21 +13,15 @@ import static org.folio.completablefuture.FolioVertxCompletableFuture.completedF
 import static org.folio.invoices.utils.ErrorCodes.INVALID_INVOICE_TRANSITION_ON_PAID_STATUS;
 import static org.folio.invoices.utils.ErrorCodes.ORG_IS_NOT_VENDOR;
 import static org.folio.invoices.utils.ErrorCodes.ORG_NOT_FOUND;
-import static org.folio.invoices.utils.ErrorCodes.PO_LINE_NOT_FOUND;
-import static org.folio.invoices.utils.ErrorCodes.PO_LINE_UPDATE_FAILURE;
 import static org.folio.invoices.utils.HelperUtils.calculateVoucherLineAmount;
 import static org.folio.invoices.utils.HelperUtils.combineCqlExpressions;
 import static org.folio.invoices.utils.HelperUtils.getAdjustmentFundDistributionAmount;
 import static org.folio.invoices.utils.HelperUtils.getFundDistributionAmount;
 import static org.folio.invoices.utils.HelperUtils.getHttpClient;
-import static org.folio.invoices.utils.HelperUtils.handleGetRequest;
-import static org.folio.invoices.utils.HelperUtils.handlePutRequest;
 import static org.folio.invoices.utils.HelperUtils.isPostApproval;
 import static org.folio.invoices.utils.ProtectedOperationType.UPDATE;
 import static org.folio.invoices.utils.ResourcePathResolver.FOLIO_INVOICE_NUMBER;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICES;
-import static org.folio.invoices.utils.ResourcePathResolver.ORDER_LINES;
-import static org.folio.invoices.utils.ResourcePathResolver.resourceByIdPath;
 import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
 import static org.folio.services.voucher.VoucherCommandService.VOUCHER_NUMBER_PREFIX_CONFIG_QUERY;
 import static org.folio.utils.UserPermissionsUtil.verifyUserHasAssignPermission;
@@ -91,6 +85,7 @@ import org.folio.services.finance.transaction.EncumbranceService;
 import org.folio.services.finance.transaction.PaymentCreditWorkflowService;
 import org.folio.services.finance.transaction.PendingPaymentWorkflowService;
 import org.folio.services.invoice.InvoiceLineService;
+import org.folio.services.invoice.InvoicePaymentService;
 import org.folio.services.invoice.InvoiceService;
 import org.folio.services.validator.InvoiceValidator;
 import org.folio.services.voucher.VoucherCommandService;
@@ -140,6 +135,8 @@ public class InvoiceHelper extends AbstractHelper {
   private ConfigurationService configurationService;
   @Autowired
   private VendorRetrieveService vendorService;
+  @Autowired
+  private InvoicePaymentService invoicePaymentService;
 
   public InvoiceHelper(Map<String, String> okapiHeaders, Context ctx, String lang) {
     super(getHttpClient(okapiHeaders), okapiHeaders, ctx, lang);
@@ -388,12 +385,13 @@ public class InvoiceHelper extends AbstractHelper {
     } else if (isAfterApprove(invoice, invoiceFromStorage) && isExchangeRateChanged(invoice, invoiceFromStorage)) {
       return handleExchangeRateChange(invoice, invoiceLines);
     } else if (isTransitionToPaid(invoiceFromStorage, invoice)) {
+      RequestContext requestContext = new RequestContext(ctx, okapiHeaders);
       if (isExchangeRateChanged(invoice, invoiceFromStorage)) {
         return handleExchangeRateChange(invoice, invoiceLines)
-          .thenCompose(aVoid1 -> payInvoice(invoice, invoiceLines));
+          .thenCompose(aVoid1 -> invoicePaymentService.payInvoice(invoice, invoiceLines, requestContext));
       }
       invoice.setExchangeRate(invoiceFromStorage.getExchangeRate());
-      return payInvoice(invoice, invoiceLines);
+      return invoicePaymentService.payInvoice(invoice, invoiceLines, requestContext);
 
     }
     return CompletableFuture.completedFuture(null);
@@ -804,120 +802,6 @@ public class InvoiceHelper extends AbstractHelper {
     return invoiceFromStorage.getStatus() == Invoice.Status.APPROVED && invoice.getStatus() == Invoice.Status.PAID;
   }
 
-  /**
-   * Handles transition of given invoice to PAID status.
-   *
-   * @param invoice Invoice to be paid
-   * @return CompletableFuture that indicates when transition is completed
-   */
-
-  @VisibleForTesting
-  CompletableFuture<Void> payInvoice(Invoice invoice, List<InvoiceLine> invoiceLines) {
-
-    //  Set payment date, when the invoice is being paid.
-    invoice.setPaymentDate(invoice.getMetadata().getUpdatedDate());
-    return getInvoiceWorkflowDataHolders(invoice, invoiceLines, new RequestContext(ctx, okapiHeaders))
-           .thenCompose(holders -> paymentCreditWorkflowService.handlePaymentsAndCreditsCreation(holders, new RequestContext(ctx, okapiHeaders)))
-            .thenCompose(vVoid -> FolioVertxCompletableFuture.allOf(ctx, payPoLines(invoiceLines),
-                    voucherCommandService.payInvoiceVoucher(invoice.getId(), new RequestContext(ctx, okapiHeaders)))
-            );
-  }
-
-  /**
-   * Updates payment status of the associated PO Lines.
-   *
-   * @param invoiceLines the invoice lines to be paid
-   * @return CompletableFuture that indicates when transition is completed
-   */
-  private CompletableFuture<Void> payPoLines(List<InvoiceLine> invoiceLines) {
-    Map<String, List<InvoiceLine>> poLineIdInvoiceLinesMap = groupInvoiceLinesByPoLineId(invoiceLines);
-    return fetchPoLines(poLineIdInvoiceLinesMap)
-      .thenApply(this::updatePoLinesPaymentStatus)
-      .thenCompose(this::updateCompositePoLines);
-  }
-
-
-  private Map<String, List<InvoiceLine>>  groupInvoiceLinesByPoLineId(List<InvoiceLine> invoiceLines) {
-    if (CollectionUtils.isEmpty(invoiceLines)) {
-      return Collections.emptyMap();
-    }
-    return invoiceLines
-      .stream()
-      .filter(invoiceLine -> StringUtils.isNotEmpty(invoiceLine.getPoLineId()))
-      .collect(Collectors.groupingBy(InvoiceLine::getPoLineId));
-  }
-
-  /**
-   * Retrieves PO Lines associated with invoice lines and calculates expected PO Line's payment status
-   * @param poLineIdsWithInvoiceLines map where key is PO Line id and value is list of associated invoice lines
-   * @return map where key is {@link CompositePoLine} and value is expected PO Line's payment status
-   */
-  private CompletableFuture<Map<CompositePoLine, CompositePoLine.PaymentStatus>> fetchPoLines(Map<String, List<InvoiceLine>> poLineIdsWithInvoiceLines) {
-    List<CompletableFuture<CompositePoLine>> futures = poLineIdsWithInvoiceLines.keySet()
-      .stream()
-      .map(this::getPoLineById)
-      .collect(toList());
-
-    return allOf(futures.toArray(new CompletableFuture[0]))
-      .thenApply(v -> futures.stream()
-        .map(CompletableFuture::join)
-        .collect(Collectors.toMap(poLine -> poLine, poLine -> getPoLinePaymentStatus(poLineIdsWithInvoiceLines.get(poLine.getId())))));
-  }
-
-  private CompletableFuture<CompositePoLine> getPoLineById(String poLineId) {
-    return handleGetRequest(resourceByIdPath(ORDER_LINES, poLineId, lang), httpClient, ctx, okapiHeaders, logger)
-      .thenApply(jsonObject -> jsonObject.mapTo(CompositePoLine.class))
-      .exceptionally(throwable -> {
-        List<Parameter> parameters = Collections.singletonList(new Parameter().withKey("poLineId").withValue(poLineId));
-        Error error = PO_LINE_NOT_FOUND.toError().withParameters(parameters);
-        throw new HttpException(500, error);
-      });
-  }
-
-  private List<CompositePoLine> updatePoLinesPaymentStatus(Map<CompositePoLine, CompositePoLine.PaymentStatus> compositePoLinesWithNewStatuses) {
-    return compositePoLinesWithNewStatuses
-      .keySet().stream()
-      .filter(compositePoLine -> isPaymentStatusUpdateRequired(compositePoLinesWithNewStatuses, compositePoLine))
-      .map(compositePoLine -> updatePaymentStatus(compositePoLinesWithNewStatuses, compositePoLine))
-      .collect(toList());
-  }
-
-  @VisibleForTesting
-  boolean isPaymentStatusUpdateRequired(Map<CompositePoLine, CompositePoLine.PaymentStatus> compositePoLinesWithStatus, CompositePoLine compositePoLine) {
-    CompositePoLine.PaymentStatus newPaymentStatus = compositePoLinesWithStatus.get(compositePoLine);
-    return (!newPaymentStatus.equals(compositePoLine.getPaymentStatus()) &&
-      !compositePoLine.getPaymentStatus().equals(CompositePoLine.PaymentStatus.ONGOING));
-  }
-
-  private CompositePoLine updatePaymentStatus(Map<CompositePoLine, CompositePoLine.PaymentStatus> compositePoLinesWithStatus, CompositePoLine compositePoLine) {
-    CompositePoLine.PaymentStatus newPaymentStatus = compositePoLinesWithStatus.get(compositePoLine);
-    compositePoLine.setPaymentStatus(newPaymentStatus);
-    return compositePoLine;
-  }
-
-
-  private CompositePoLine.PaymentStatus getPoLinePaymentStatus(List<InvoiceLine> invoiceLines) {
-    if (isAnyInvoiceLineReleaseEncumbrance(invoiceLines)) {
-      return CompositePoLine.PaymentStatus.FULLY_PAID;
-    } else {
-      return CompositePoLine.PaymentStatus.PARTIALLY_PAID;
-    }
-  }
-
-  private boolean isAnyInvoiceLineReleaseEncumbrance(List<InvoiceLine> invoiceLines) {
-    return invoiceLines.stream().anyMatch(InvoiceLine::getReleaseEncumbrance);
-  }
-
-  private CompletionStage<Void> updateCompositePoLines(List<CompositePoLine> poLines) {
-    return allOf(poLines.stream()
-      .map(JsonObject::mapFrom)
-      .map(poLine -> handlePutRequest(resourceByIdPath(ORDER_LINES, HelperUtils.getId(poLine), lang), poLine, httpClient, ctx, okapiHeaders, logger))
-      .toArray(CompletableFuture[]::new))
-      .exceptionally(fail -> {
-        throw new HttpException(500, PO_LINE_UPDATE_FAILURE.toError());
-      });
-  }
-
   private CompletableFuture<String> generateFolioInvoiceNumber() {
     return HelperUtils.handleGetRequest(resourcesPath(FOLIO_INVOICE_NUMBER), httpClient, ctx, okapiHeaders, logger)
       .thenApply(seqNumber -> seqNumber.mapTo(SequenceNumber.class).getSequenceNumber());
@@ -964,4 +848,10 @@ public class InvoiceHelper extends AbstractHelper {
    );
   }
 
+  @VisibleForTesting
+  boolean isPaymentStatusUpdateRequired(Map<CompositePoLine, CompositePoLine.PaymentStatus> compositePoLinesWithStatus, CompositePoLine compositePoLine) {
+    CompositePoLine.PaymentStatus newPaymentStatus = compositePoLinesWithStatus.get(compositePoLine);
+    return (!newPaymentStatus.equals(compositePoLine.getPaymentStatus()) &&
+      !compositePoLine.getPaymentStatus().equals(CompositePoLine.PaymentStatus.ONGOING));
+  }
 }

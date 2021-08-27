@@ -25,6 +25,7 @@ import org.folio.services.invoice.BaseInvoiceService;
 import org.folio.services.invoice.InvoiceLineService;
 import org.folio.services.invoice.InvoiceService;
 import org.folio.services.order.OrderService;
+import org.folio.services.order.OrderLineService;
 import org.folio.services.validator.VoucherValidator;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
@@ -68,7 +69,9 @@ public class BatchVoucherGenerateServiceTest extends ApiTestBase {
       vendorRetrieveService, addressConverter);
 
     InvoiceLineService invoiceLineService = new InvoiceLineService(new RestClient());
-    InvoiceService invoiceService = new BaseInvoiceService(new RestClient(), invoiceLineService, new OrderService(new RestClient(), invoiceLineService));
+    OrderLineService orderLineService = new OrderLineService(restClient);
+    InvoiceService invoiceService = new BaseInvoiceService(new RestClient(), invoiceLineService,
+      new OrderService(new RestClient(), invoiceLineService, orderLineService));
     InvoiceRetrieveService invoiceRetrieveService = new InvoiceRetrieveService(invoiceService);
     BatchVoucherGenerateService service = new BatchVoucherGenerateService(okapiHeaders, context, "en", vendorRetrieveService,
               invoiceRetrieveService, voucherService, addressConverter);
@@ -94,7 +97,9 @@ public class BatchVoucherGenerateServiceTest extends ApiTestBase {
         vendorRetrieveService, addressConverter);
 
       InvoiceLineService invoiceLineService = new InvoiceLineService(new RestClient());
-      InvoiceService invoiceService = new BaseInvoiceService(new RestClient(), invoiceLineService, new OrderService(new RestClient(), invoiceLineService));
+      OrderLineService orderLineService = new OrderLineService(restClient);
+      InvoiceService invoiceService = new BaseInvoiceService(new RestClient(), invoiceLineService,
+        new OrderService(new RestClient(), invoiceLineService, orderLineService));
 
       InvoiceRetrieveService invoiceRetrieveService = new InvoiceRetrieveService(invoiceService);
 

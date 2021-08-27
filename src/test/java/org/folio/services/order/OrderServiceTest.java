@@ -3,9 +3,7 @@ package org.folio.services.order;
 import static java.util.concurrent.CompletableFuture.completedFuture;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.*;
 
 import java.util.Collections;
 import java.util.List;
@@ -33,6 +31,8 @@ public class OrderServiceTest {
   private InvoiceLineService invoiceLineService;
   @Mock
   private RequestContext requestContextMock;
+  @Mock
+  private OrderLineService orderLineService;
 
   @BeforeEach
   public void initMocks() {
@@ -53,6 +53,7 @@ public class OrderServiceTest {
     doReturn(completedFuture(poLine)).when(restClient).get(any(RequestEntry.class), eq(requestContextMock), eq(CompositePoLine.class));
     doReturn(completedFuture(relationships)).when(restClient).get(any(RequestEntry.class), eq(requestContextMock), eq(OrderInvoiceRelationshipCollection.class));
     doReturn(completedFuture(null)).when(restClient).delete(any(RequestEntry.class), eq(requestContextMock));
+    doReturn(completedFuture(poLine)).when(orderLineService).getPoLine(poLineId, requestContextMock);
     orderService.deleteOrderInvoiceRelationshipByInvoiceIdAndLineId(invoiceId, poLineId, requestContextMock).join();
 
     verify(restClient).delete(any(RequestEntry.class), eq(requestContextMock));
@@ -69,6 +70,7 @@ public class OrderServiceTest {
 
     doReturn(completedFuture(poLine)).when(restClient).get(any(RequestEntry.class), eq(requestContextMock), eq(CompositePoLine.class));
     doReturn(completedFuture(relationships)).when(restClient).get(any(RequestEntry.class), eq(requestContextMock), eq(OrderInvoiceRelationshipCollection.class));
+    doReturn(completedFuture(poLine)).when(orderLineService).getPoLine(poLineId, requestContextMock);
     orderService.deleteOrderInvoiceRelationshipByInvoiceIdAndLineId(invoiceId, poLineId, requestContextMock).join();
 
     verify(restClient, times(0)).delete(any(RequestEntry.class), eq(requestContextMock));

@@ -570,6 +570,45 @@ public class InvoicesApiTest extends ApiTestBase {
   }
 
   @Test
+  void testInvoiceTransitionApprovedWithZeroDollarAmount() {
+    logger.info("=== Test transition invoice to Approved with 0$ amount ===");
+
+    Invoice invoice = getMockAsJson(OPEN_INVOICE_SAMPLE_PATH).mapTo(Invoice.class);
+    invoice.setTotal(0.0);
+    String id = invoice.getId();
+    InvoiceLine invoiceLine = getMinimalContentInvoiceLineWithZeroAmount(id);
+    invoiceLine.setId(UUID.randomUUID().toString());
+    FundDistribution amountDistribution = new FundDistribution()
+      .withFundId("1d1574f1-9196-4a57-8d1f-3b2e4309eb81")
+      .withDistributionType(PERCENTAGE)
+      .withValue(100d);
+
+    invoiceLine.getFundDistributions().add(amountDistribution);
+
+    addMockEntry(INVOICE_LINES, JsonObject.mapFrom(invoiceLine));
+
+    invoice.setStatus(Invoice.Status.APPROVED);
+
+    String jsonBody = JsonObject.mapFrom(invoice).encode();
+    Headers headers = prepareHeaders(X_OKAPI_URL, X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID);
+    verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, headers, "", 204);
+
+    // Verify that expected number of external calls made
+    assertThat(getInvoiceRetrievals(), hasSize(1));
+    assertThat(getInvoiceLineSearches(), hasSize(1));
+    Invoice updatedInvoice = serverRqRs.get(INVOICES, HttpMethod.PUT).get(0).mapTo(Invoice.class);
+    List<JsonObject> vouchersCreated = serverRqRs.get(VOUCHERS_STORAGE, HttpMethod.POST);
+    assertThat(vouchersCreated, notNullValue());
+    assertThat(vouchersCreated, hasSize(1));
+    Voucher voucherCreated = vouchersCreated.get(0).mapTo(Voucher.class);
+    assertThat(voucherCreated.getVoucherNumber(), equalTo(TEST_PREFIX + VOUCHER_NUMBER_VALUE));
+    assertThat(voucherCreated.getSystemCurrency(), equalTo(DEFAULT_SYSTEM_CURRENCY));
+    verifyTransitionToApproved(voucherCreated, Collections.singletonList(invoiceLine), updatedInvoice, 1);
+    checkVoucherAcqUnitIdsList(voucherCreated, invoice);
+  }
+
+
+  @Test
   void testInvoiceTransitionApprovedWithOddNumberOfPennies() {
     logger.info("=== Test transition invoice to Approved with odd number of pennies ===");
 
@@ -1793,7 +1832,7 @@ public class InvoicesApiTest extends ApiTestBase {
     assertThat(Voucher.Type.VOUCHER, equalTo(voucherCreated.getType()));
 
     int paymentCreditNumber = invoiceLines.stream()
-      .filter(invoiceLine -> invoiceLine.getTotal() != 0)
+      .filter(invoiceLine -> invoiceLine.getTotal() >= 0)
       .mapToInt(line -> line.getFundDistributions().size())
       .sum();
 
@@ -1859,7 +1898,7 @@ public class InvoicesApiTest extends ApiTestBase {
 
     String jsonBody = JsonObject.mapFrom(reqData).encode();
 
-    Errors errors = verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, APPLICATION_JSON, 500).then().extract().body().as(Errors.class);
+    Errors errors = verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, APPLICATION_JSON, 404).then().extract().body().as(Errors.class);
     assertThat(serverRqRs.get(INVOICES, HttpMethod.PUT), nullValue());
     assertThat(errors.getErrors(), hasSize(1));
     assertThat(errors.getErrors().get(0).getCode(), equalTo(PO_LINE_NOT_FOUND.getCode()));
@@ -1882,7 +1921,7 @@ public class InvoicesApiTest extends ApiTestBase {
 
     String jsonBody = JsonObject.mapFrom(reqData).encode();
 
-    Errors errors = verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, APPLICATION_JSON, 500).as(Errors.class);
+    Errors errors = verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, APPLICATION_JSON, 400).as(Errors.class);
     assertThat(serverRqRs.get(INVOICES, HttpMethod.PUT), nullValue());
     assertThat(errors.getErrors(), hasSize(1));
     assertThat(errors.getErrors().get(0).getCode(), equalTo(PO_LINE_UPDATE_FAILURE.getCode()));

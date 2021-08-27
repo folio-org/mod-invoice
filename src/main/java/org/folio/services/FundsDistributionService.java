@@ -44,12 +44,11 @@ public class FundsDistributionService {
       int calculatedTotalSignum = calculatedTotal.signum();
 
       final MonetaryAmount remainder = expectedTotal.abs().subtract(calculatedTotal.abs());
-
       Optional<Transaction> resultTransaction = Optional.of(invoiceWorkflowDataHolder)
         .map(holder -> {
           if (remainder.isNegative()) {
             return holder.get(0);
-          } else if (remainder.isPositive()) {
+          } else if (remainder.isPositiveOrZero()) {
             return holder.get(holder.size() - 1);
           }
           return null;

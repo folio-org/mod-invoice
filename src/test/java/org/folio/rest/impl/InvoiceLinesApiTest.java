@@ -44,6 +44,8 @@ import java.util.UUID;
 
 import org.apache.commons.lang3.reflect.FieldUtils;
 import org.apache.http.HttpStatus;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.folio.invoices.utils.InvoiceLineProtectedFields;
 import org.folio.rest.jaxrs.model.Adjustment;
 import org.folio.rest.jaxrs.model.Error;
@@ -60,8 +62,6 @@ import org.junit.jupiter.api.Test;
 import io.restassured.response.Response;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.core.json.JsonObject;
-import org.apache.logging.log4j.Logger;
-import org.apache.logging.log4j.LogManager;
 
 
 public class InvoiceLinesApiTest extends ApiTestBase {
@@ -193,6 +193,19 @@ public class InvoiceLinesApiTest extends ApiTestBase {
     addMockEntry(INVOICES, getMinimalContentInvoice());
 
     verifyDeleteResponse(String.format(INVOICE_LINE_ID_PATH, VALID_UUID), "", 204);
+  }
+
+  @Test
+  public void shouldRemovePolNumbersFromInvoiceInInvoiceLineDeletingTimeTest() {
+    InvoiceLine invoiceLineForDelete = getMinimalContentInvoiceLine().withId(VALID_UUID).withInvoiceId(APPROVED_INVOICE_ID);
+    invoiceLineForDelete.setPoLineId("0000edd1-b463-41ba-bf64-1b1d9f9d0001");
+    addMockEntry(INVOICE_LINES, invoiceLineForDelete);
+    Invoice invoice = getMinimalContentInvoice();
+    invoice.setPoNumbers(List.of("228D126"));
+    addMockEntry(INVOICES, invoice);
+
+    verifyDeleteResponse(String.format(INVOICE_LINE_ID_PATH, VALID_UUID), "", 204);
+    MatcherAssert.assertThat(getInvoiceUpdates(), hasSize(1));
   }
 
   @Test
