@@ -23,8 +23,10 @@ import org.folio.services.finance.transaction.PaymentCreditWorkflowService;
 import org.folio.services.finance.transaction.PendingPaymentWorkflowService;
 import org.folio.services.invoice.BaseInvoiceService;
 import org.folio.services.invoice.InvoiceLineService;
+import org.folio.services.invoice.InvoicePaymentService;
 import org.folio.services.invoice.InvoiceService;
 import org.folio.services.order.OrderService;
+import org.folio.services.order.OrderLineService;
 import org.folio.services.validator.FundAvailabilityHolderValidator;
 import org.folio.services.validator.VoucherValidator;
 import org.folio.services.voucher.VoucherCommandService;
@@ -127,8 +129,9 @@ public class ServicesConfiguration {
   }
 
   @Bean
-  OrderService orderService(RestClient restClient, InvoiceLineService invoiceLineService) {
-    return new OrderService(restClient, invoiceLineService);
+  OrderService orderService(RestClient restClient, InvoiceLineService invoiceLineService,
+                            OrderLineService orderLineService) {
+    return new OrderService(restClient, invoiceLineService, orderLineService);
   }
 
   @Bean
@@ -187,5 +190,19 @@ public class ServicesConfiguration {
   @Bean
   AddressConverter addressConverter() {
     return AddressConverter.getInstance();
+  }
+
+  @Bean
+  InvoicePaymentService invoicePaymentService(InvoiceWorkflowDataHolderBuilder holderBuilder,
+                                              PaymentCreditWorkflowService paymentCreditWorkflowService,
+                                              VoucherCommandService voucherCommandService,
+                                              OrderLineService orderLineService) {
+    return new InvoicePaymentService(holderBuilder, paymentCreditWorkflowService,
+      voucherCommandService, orderLineService);
+  }
+
+  @Bean
+  OrderLineService orderLineService(RestClient restClient) {
+    return new OrderLineService(restClient);
   }
 }

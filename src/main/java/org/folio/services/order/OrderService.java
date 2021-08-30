@@ -1,21 +1,17 @@
 package org.folio.services.order;
 
-import static org.folio.invoices.utils.ErrorCodes.PO_LINE_NOT_FOUND;
 import static org.folio.invoices.utils.HelperUtils.collectResultsOnSuccess;
 import static org.folio.invoices.utils.ResourcePathResolver.COMPOSITE_ORDER;
 import static org.folio.invoices.utils.ResourcePathResolver.ORDER_INVOICE_RELATIONSHIP;
-import static org.folio.invoices.utils.ResourcePathResolver.ORDER_LINES;
 import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.rest.acq.model.orders.CompositePoLine;
 import org.folio.rest.acq.model.orders.CompositePurchaseOrder;
 import org.folio.rest.acq.model.orders.OrderInvoiceRelationship;
@@ -24,7 +20,6 @@ import org.folio.rest.core.RestClient;
 import org.folio.rest.core.models.RequestContext;
 import org.folio.rest.core.models.RequestEntry;
 import org.folio.rest.jaxrs.model.InvoiceLine;
-import org.folio.rest.jaxrs.model.Parameter;
 import org.folio.services.invoice.InvoiceLineService;
 
 public class OrderService {
@@ -34,8 +29,6 @@ public class OrderService {
   private static final String ORDER_INVOICE_RELATIONSHIP_BY_INVOICE_ID_QUERY = "invoiceId==%s";
   private static final String ORDERS_ENDPOINT = resourcesPath(COMPOSITE_ORDER);
   private static final String ORDERS_BY_ID_ENDPOINT = ORDERS_ENDPOINT + "/{id}";
-  private static final String ORDER_LINES_ENDPOINT = resourcesPath(ORDER_LINES);
-  private static final String ORDER_LINES_BY_ID_ENDPOINT = ORDER_LINES_ENDPOINT + "/{id}";
   private static final String ORDER_INVOICE_RELATIONSHIPS_ENDPOINT = resourcesPath(ORDER_INVOICE_RELATIONSHIP);
   private static final String ORDER_INVOICE_RELATIONSHIPS_BY_ID_ENDPOINT = ORDER_INVOICE_RELATIONSHIPS_ENDPOINT + "/{id}";
 
@@ -43,9 +36,13 @@ public class OrderService {
 
   private final InvoiceLineService invoiceLineService;
 
-  public OrderService(RestClient restClient, InvoiceLineService invoiceLineService) {
+  private final OrderLineService orderLineService;
+
+  public OrderService(RestClient restClient, InvoiceLineService invoiceLineService,
+                      OrderLineService orderLineService) {
     this.restClient = restClient;
     this.invoiceLineService = invoiceLineService;
+    this.orderLineService = orderLineService;
   }
 
   public CompletableFuture<List<CompositePoLine>> getOrderPoLines(String orderId, RequestContext requestContext) {
@@ -58,18 +55,10 @@ public class OrderService {
     return restClient.get(requestEntry, requestContext, CompositePurchaseOrder.class);
   }
 
-  public CompletableFuture<CompositePoLine> getPoLine(String poLineId, RequestContext requestContext) {
-    RequestEntry requestEntry = new RequestEntry(ORDER_LINES_BY_ID_ENDPOINT).withId(poLineId);
-    return restClient.get(requestEntry, requestContext, CompositePoLine.class)
-      .exceptionally(throwable -> {
-        List<Parameter> parameters = Collections.singletonList(new Parameter().withKey("poLineId").withValue(poLineId));
-        throw new HttpException(404, PO_LINE_NOT_FOUND.toError().withParameters(parameters));
-      });
-  }
 
   public CompletableFuture<Void> createInvoiceOrderRelation(InvoiceLine invoiceLine, RequestContext requestContext) {
     if (invoiceLine.getPoLineId() == null) return CompletableFuture.completedFuture(null);
-    return getPoLine(invoiceLine.getPoLineId(), requestContext)
+    return orderLineService.getPoLine(invoiceLine.getPoLineId(), requestContext)
       .thenCompose(poLine -> getOrderInvoiceRelationshipByOrderIdAndInvoiceId(poLine.getPurchaseOrderId(), invoiceLine.getInvoiceId(), requestContext)
         .thenCompose(relationships -> {
           if (relationships.getTotalRecords() == 0) {
@@ -112,7 +101,7 @@ public class OrderService {
   }
 
   public CompletableFuture<Void> deleteOrderInvoiceRelationshipByInvoiceIdAndLineId(String invoiceId, String poLineId, RequestContext requestContext) {
-    return getPoLine(poLineId, requestContext)
+    return orderLineService.getPoLine(poLineId, requestContext)
       .thenCompose(poLine -> getOrderInvoiceRelationshipByOrderIdAndInvoiceId(poLine.getPurchaseOrderId(), invoiceId, requestContext))
       .thenCompose(relation -> {
           if (relation.getTotalRecords() > 0) {
@@ -134,7 +123,7 @@ public class OrderService {
   }
 
   public CompletableFuture<Boolean> isInvoiceLineLastForOrder(InvoiceLine invoiceLine, RequestContext requestContext) {
-    return getPoLine(invoiceLine.getPoLineId(), requestContext)
+    return orderLineService.getPoLine(invoiceLine.getPoLineId(), requestContext)
       .thenApply(CompositePoLine::getPurchaseOrderId)
       .thenCompose(orderId -> getOrderPoLines(orderId, requestContext)
         .thenApply(compositePoLines -> compositePoLines.stream()

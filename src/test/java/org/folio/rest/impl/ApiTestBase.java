@@ -33,6 +33,7 @@ import org.folio.services.invoice.BaseInvoiceService;
 import org.folio.services.invoice.InvoiceLineService;
 import org.folio.services.invoice.InvoiceService;
 import org.folio.services.order.OrderService;
+import org.folio.services.order.OrderLineService;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
@@ -96,8 +97,14 @@ public class ApiTestBase {
     }
 
     @Bean
-    OrderService orderService(RestClient restClient, InvoiceLineService invoiceLineService) {
-      return new OrderService(restClient, invoiceLineService);
+    OrderLineService orderLineService(RestClient restClient) {
+      return new OrderLineService(restClient);
+    }
+
+    @Bean
+    OrderService orderService(RestClient restClient, InvoiceLineService invoiceLineService,
+                              OrderLineService orderLineService) {
+      return new OrderService(restClient, invoiceLineService, orderLineService);
     }
 
     @Bean
@@ -313,6 +320,19 @@ public class ApiTestBase {
       .withQuantity(1)
       .withAdjustmentsTotal(0.0)
       .withTotal(1.0)
+      .withReleaseEncumbrance(true);
+  }
+
+  public static InvoiceLine getMinimalContentInvoiceLineWithZeroAmount(String invoiceId) {
+    return new InvoiceLine()
+      .withId(UUID.randomUUID().toString())
+      .withDescription("Test line")
+      .withInvoiceId(invoiceId)
+      .withInvoiceLineStatus(InvoiceLine.InvoiceLineStatus.OPEN)
+      .withSubTotal(0.0)
+      .withQuantity(1)
+      .withAdjustmentsTotal(0.0)
+      .withTotal(0.0)
       .withReleaseEncumbrance(true);
   }
 
