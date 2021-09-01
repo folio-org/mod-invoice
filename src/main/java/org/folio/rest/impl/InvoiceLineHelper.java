@@ -27,6 +27,7 @@ import org.folio.services.adjusment.AdjustmentsService;
 import org.folio.services.invoice.InvoiceLineService;
 import org.folio.services.invoice.InvoiceService;
 import org.folio.services.order.OrderService;
+import org.folio.services.order.OrderLineService;
 import org.folio.services.validator.InvoiceLineValidator;
 import org.folio.spring.SpringContextUtil;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -84,6 +85,8 @@ public class InvoiceLineHelper extends AbstractHelper {
   private InvoiceService invoiceService;
   @Autowired
   private InvoiceLineService invoiceLineService;
+  @Autowired
+  private OrderLineService orderLineService;
 
   public InvoiceLineHelper(Map<String, String> okapiHeaders, Context ctx, String lang) {
     this(getHttpClient(okapiHeaders), okapiHeaders, ctx, lang);
@@ -247,7 +250,7 @@ public class InvoiceLineHelper extends AbstractHelper {
       return deleteOrderInvoiceRelationshipIfNeeded(invoiceLine, invoiceLineFromStorage, requestContext);
     }
     if (!StringUtils.equals(invoiceLine.getPoLineId(), invoiceLineFromStorage.getPoLineId())) {
-      return orderService.getPoLine(invoiceLine.getPoLineId(), requestContext).thenCompose(
+      return orderLineService.getPoLine(invoiceLine.getPoLineId(), requestContext).thenCompose(
         poLine -> orderService.getOrderInvoiceRelationshipByOrderIdAndInvoiceId(poLine.getPurchaseOrderId(), invoiceLine.getInvoiceId(), requestContext)
           .thenCompose(relationships -> {
             if (relationships.getTotalRecords() == 0) {
@@ -523,7 +526,7 @@ public class InvoiceLineHelper extends AbstractHelper {
       return CompletableFuture.completedFuture(null);
     String poLineId = (invoiceLineFromStorage == null || invoiceLine.getPoLineId() != null) ? invoiceLine.getPoLineId() :
       invoiceLineFromStorage.getPoLineId();
-    return orderService.getPoLine(poLineId, requestContext)
+    return orderLineService.getPoLine(poLineId, requestContext)
       .thenCompose(poLine -> orderService.getOrder(poLine.getPurchaseOrderId(), requestContext))
       .thenCompose(order -> {
         if (invoiceLineFromStorage != null && invoiceLineFromStorage.getPoLineId() != null && invoiceLine.getPoLineId() == null) {
@@ -548,7 +551,7 @@ public class InvoiceLineHelper extends AbstractHelper {
 
     if (invoiceLine.getPoLineId() == null)
       return CompletableFuture.completedFuture(null);
-    return orderService.getPoLine(invoiceLine.getPoLineId(), requestContext)
+    return orderLineService.getPoLine(invoiceLine.getPoLineId(), requestContext)
       .thenCompose(poLine -> orderService.getOrder(poLine.getPurchaseOrderId(), requestContext))
       .thenCompose(order -> removeInvoicePoNumber(order.getPoNumber(), order, invoice, invoiceLine, requestContext))
       .exceptionally(throwable -> {
