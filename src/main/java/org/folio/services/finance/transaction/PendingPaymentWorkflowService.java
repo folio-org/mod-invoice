@@ -31,14 +31,17 @@ public class PendingPaymentWorkflowService {
   private static final Logger logger = LogManager.getLogger(PendingPaymentWorkflowService.class);
 
   private final BaseTransactionService baseTransactionService;
+  private final EncumbranceService encumbranceService;
   private final InvoiceTransactionSummaryService invoiceTransactionSummaryService;
   private final HolderValidator holderValidator;
 
 
   public PendingPaymentWorkflowService(BaseTransactionService baseTransactionService,
+                                       EncumbranceService encumbranceService,
                                        InvoiceTransactionSummaryService invoiceTransactionSummaryService,
                                        HolderValidator validator) {
     this.baseTransactionService = baseTransactionService;
+    this.encumbranceService = encumbranceService;
     this.invoiceTransactionSummaryService = invoiceTransactionSummaryService;
     this.holderValidator = validator;
 
@@ -49,8 +52,8 @@ public class PendingPaymentWorkflowService {
     holderValidator.validate(holders);
     InvoiceTransactionSummary summary = buildInvoiceTransactionsSummary(holders);
     return invoiceTransactionSummaryService.createInvoiceTransactionSummary(summary, requestContext)
-      .thenCompose(s -> createPendingPayments(holders, requestContext));
-
+      .thenCompose(s -> createPendingPayments(holders, requestContext))
+      .thenCompose(s -> cleanupOldEncumbrances(holders, requestContext));
   }
 
   public CompletableFuture<Void> handlePendingPaymentsUpdate(List<InvoiceWorkflowDataHolder> dataHolders, RequestContext requestContext) {
@@ -79,6 +82,25 @@ public class PendingPaymentWorkflowService {
           throw new HttpException(400, PENDING_PAYMENT_ERROR.toError());
         }))
       .toArray(CompletableFuture[]::new));
+  }
+
+  private CompletableFuture<Void> cleanupOldEncumbrances(List<InvoiceWorkflowDataHolder> holders, RequestContext requestContext) {
+    List<String> poLineIds = holders.stream().filter(holder -> holder.getInvoiceLine() != null).map(holder -> holder.getInvoiceLine().getPoLineId()).collect(toList());
+    return encumbranceService.getEncumbrancesByPoLineIds(poLineIds, requestContext)
+      .thenAccept(transactions -> cleanupOldEncumbrances(transactions, holders, requestContext));
+  }
+
+  private void cleanupOldEncumbrances(List<Transaction> poLineTransactions, List<InvoiceWorkflowDataHolder> holders, RequestContext requestContext) {
+    for (Transaction transaction : poLineTransactions) {
+      boolean encumbranceIsNoLongerRelevant = holders.stream().noneMatch(holder -> sameFundAndPoLine(transaction, holder));
+      if (encumbranceIsNoLongerRelevant) {
+        baseTransactionService.releaseEncumbrance(transaction, requestContext);
+      }
+    }
+  }
+
+  private boolean sameFundAndPoLine(Transaction transaction, InvoiceWorkflowDataHolder holder) {
+    return transaction.getFromFundId().equals(holder.getFundId()) && transaction.getEncumbrance().getSourcePoLineId().equals(holder.getInvoiceLine().getPoLineId());
   }
 
   private List<InvoiceWorkflowDataHolder> withNewPendingPayments(List<InvoiceWorkflowDataHolder> dataHolders) {

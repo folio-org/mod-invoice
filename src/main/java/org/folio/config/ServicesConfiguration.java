@@ -102,9 +102,10 @@ public class ServicesConfiguration {
 
   @Bean
   PendingPaymentWorkflowService pendingPaymentService(BaseTransactionService baseTransactionService,
+                                                      EncumbranceService encumbranceService,
                                                       InvoiceTransactionSummaryService invoiceTransactionSummaryService,
                                                       FundAvailabilityHolderValidator fundAvailabilityValidator) {
-    return new PendingPaymentWorkflowService(baseTransactionService, invoiceTransactionSummaryService, fundAvailabilityValidator);
+    return new PendingPaymentWorkflowService(baseTransactionService, encumbranceService, invoiceTransactionSummaryService, fundAvailabilityValidator);
   }
 
   @Bean
