@@ -2,10 +2,12 @@ package org.folio.services.finance.transaction;
 
 import static java.util.stream.Collectors.toList;
 import static org.folio.invoices.utils.ErrorCodes.PENDING_PAYMENT_ERROR;
+import static org.folio.invoices.utils.HelperUtils.collectResultsOnSuccess;
 import static org.folio.invoices.utils.HelperUtils.convertToDoubleWithRounding;
 import static org.folio.invoices.utils.HelperUtils.getFundDistributionAmount;
 import static org.folio.services.FundsDistributionService.distributeFunds;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
@@ -87,16 +89,21 @@ public class PendingPaymentWorkflowService {
   private CompletableFuture<Void> cleanupOldEncumbrances(List<InvoiceWorkflowDataHolder> holders, RequestContext requestContext) {
     List<String> poLineIds = holders.stream().filter(holder -> holder.getInvoiceLine() != null).map(holder -> holder.getInvoiceLine().getPoLineId()).collect(toList());
     return encumbranceService.getEncumbrancesByPoLineIds(poLineIds, requestContext)
-      .thenAccept(transactions -> cleanupOldEncumbrances(transactions, holders, requestContext));
+      .thenCompose(transactions -> cleanupOldEncumbrances(transactions, holders, requestContext));
   }
 
-  private void cleanupOldEncumbrances(List<Transaction> poLineTransactions, List<InvoiceWorkflowDataHolder> holders, RequestContext requestContext) {
+  private CompletableFuture<Void> cleanupOldEncumbrances(List<Transaction> poLineTransactions, List<InvoiceWorkflowDataHolder> holders, RequestContext requestContext) {
+    List<CompletableFuture<Void>> futures = new ArrayList<>();
+
     for (Transaction transaction : poLineTransactions) {
       boolean encumbranceIsNoLongerRelevant = holders.stream().noneMatch(holder -> sameFundAndPoLine(transaction, holder));
       if (encumbranceIsNoLongerRelevant) {
-        baseTransactionService.releaseEncumbrance(transaction, requestContext);
+        futures.add(baseTransactionService.releaseEncumbrance(transaction, requestContext));
       }
     }
+
+    return collectResultsOnSuccess(futures).thenAccept(result -> logger.debug(
+      "Number of encumbrances released due to invoice lines fund distributions being different from PO lines fund distributions: " + result.size()));
   }
 
   private boolean sameFundAndPoLine(Transaction transaction, InvoiceWorkflowDataHolder holder) {
