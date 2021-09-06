@@ -1,15 +1,6 @@
 package org.folio.services.invoice;
 
-import static java.util.stream.Collectors.toList;
-import static org.folio.completablefuture.FolioVertxCompletableFuture.allOf;
-import static org.folio.invoices.utils.ErrorCodes.INVOICE_LINE_NOT_FOUND;
-import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_LINES;
-import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
-
-import java.util.Collections;
-import java.util.List;
-import java.util.concurrent.CompletableFuture;
-
+import one.util.streamex.StreamEx;
 import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.invoices.utils.HelperUtils;
 import org.folio.rest.core.RestClient;
@@ -19,6 +10,20 @@ import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.jaxrs.model.InvoiceLine;
 import org.folio.rest.jaxrs.model.InvoiceLineCollection;
 import org.folio.rest.jaxrs.model.Parameter;
+
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
+
+import static java.util.stream.Collectors.toList;
+import static org.folio.completablefuture.FolioVertxCompletableFuture.allOf;
+import static org.folio.invoices.utils.ErrorCodes.INVOICE_LINE_NOT_FOUND;
+import static org.folio.invoices.utils.HelperUtils.collectResultsOnSuccess;
+import static org.folio.invoices.utils.HelperUtils.convertIdsToCqlQuery;
+import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_LINES;
+import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
+import static org.folio.rest.RestConstants.MAX_IDS_FOR_GET_RQ;
 
 public class InvoiceLineService {
 
@@ -31,6 +36,14 @@ public class InvoiceLineService {
 
   public InvoiceLineService(RestClient restClient) {
     this.restClient = restClient;
+  }
+
+  public CompletableFuture<InvoiceLineCollection> getInvoiceLines(String query, int offset, int limit, RequestContext requestContext) {
+    RequestEntry requestEntry = new RequestEntry(INVOICE_LINES_ENDPOINT)
+      .withQuery(query)
+      .withLimit(Integer.MAX_VALUE)
+      .withOffset(0);
+    return restClient.get(requestEntry, requestContext, InvoiceLineCollection.class);
   }
 
   public CompletableFuture<InvoiceLine> getInvoiceLine(String invoiceLineId, RequestContext requestContext) {
@@ -75,5 +88,20 @@ public class InvoiceLineService {
   private CompletableFuture<Void> persistInvoiceLine(InvoiceLine invoiceLine,  RequestContext requestContext) {
     RequestEntry requestEntry = new RequestEntry(INVOICE_LINE_BY_ID_ENDPOINT).withId(invoiceLine.getId());
     return restClient.put(requestEntry, invoiceLine, requestContext);
+  }
+
+  public CompletableFuture<List<InvoiceLine>> getInvoiceLinesByIds(List<String> invoiceIds, RequestContext requestContext) {
+    List<CompletableFuture<List<InvoiceLine>>> futures = StreamEx
+      .ofSubLists(invoiceIds, MAX_IDS_FOR_GET_RQ)
+      .map(ids -> getInvoiceLinesChunk(ids, requestContext))
+      .collect(toList());
+    return collectResultsOnSuccess(futures)
+      .thenApply(listList -> listList.stream().flatMap(Collection::stream).distinct().collect(toList()));
+  }
+
+  private CompletableFuture<List<InvoiceLine>> getInvoiceLinesChunk(List<String> ids, RequestContext requestContext) {
+    String query = convertIdsToCqlQuery(ids, "invoiceId", true);
+    return getInvoiceLines(query, 0, Integer.MAX_VALUE, requestContext)
+      .thenApply(InvoiceLineCollection::getInvoiceLines);
   }
 }
