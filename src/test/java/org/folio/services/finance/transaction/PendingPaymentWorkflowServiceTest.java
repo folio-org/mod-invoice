@@ -1,6 +1,5 @@
 package org.folio.services.finance.transaction;
 
-import static javax.money.convert.RateType.OTHER;
 import static org.folio.rest.impl.AbstractHelper.DEFAULT_SYSTEM_CURRENCY;
 import static org.folio.services.exchange.ExchangeRateProviderResolver.RATE_KEY;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -23,14 +22,10 @@ import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
-import javax.money.MonetaryAmount;
-import javax.money.convert.ConversionContext;
-import javax.money.convert.ConversionContextBuilder;
 import javax.money.convert.ConversionQuery;
 import javax.money.convert.ConversionQueryBuilder;
 import javax.money.convert.CurrencyConversion;
 import javax.money.convert.ExchangeRateProvider;
-import javax.money.convert.RateType;
 
 import org.folio.models.InvoiceWorkflowDataHolder;
 import org.folio.rest.acq.model.finance.FiscalYear;
@@ -211,7 +206,7 @@ public class PendingPaymentWorkflowServiceTest {
     verify(baseTransactionService, times(2)).updateTransaction(transactionArgumentCaptor.capture(), eq(requestContext));
 
     Transaction updateArgumentInvoiceTransaction = transactionArgumentCaptor.getAllValues().stream()
-      .filter(transaction -> Objects.isNull(transaction.getSourceInvoiceLineId())).findFirst().get();;
+      .filter(transaction -> Objects.isNull(transaction.getSourceInvoiceLineId())).findFirst().get();
 
     assertEquals(existingInvoiceTransaction.getId(), updateArgumentInvoiceTransaction.getId());
     assertEquals(expectedInvoiceTransactionAmount, updateArgumentInvoiceTransaction.getAmount());

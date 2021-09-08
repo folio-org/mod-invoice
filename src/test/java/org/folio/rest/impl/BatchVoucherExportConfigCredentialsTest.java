@@ -5,11 +5,11 @@ import static org.folio.invoices.utils.ResourcePathResolver.BATCH_VOUCHER_EXPORT
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.notNullValue;
-import static org.junit.Assert.assertEquals;
 
 import java.io.IOException;
 
 import org.folio.rest.jaxrs.model.Credentials;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 import io.vertx.core.http.HttpMethod;
@@ -63,7 +63,7 @@ public class BatchVoucherExportConfigCredentialsTest extends ApiTestBase {
 
     final Credentials credentials = verifySuccessGet(BATCH_VOUCHER_EXPORT_CONFIGS_CREDENTIALS_ENDPOINT, Credentials.class);
     assertThat(MockServer.serverRqRs.get(BATCH_VOUCHER_EXPORT_CONFIGS_CREDENTIALS, HttpMethod.GET), hasSize(1));
-    assertEquals(CREDENTIALS_ID, credentials.getId());
+    Assertions.assertEquals(CREDENTIALS_ID, credentials.getId());
   }
 
   @Test

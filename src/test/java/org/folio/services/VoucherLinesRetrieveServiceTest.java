@@ -3,7 +3,6 @@ package org.folio.services;
 import static java.util.stream.Collectors.toList;
 import static org.folio.ApiTestSuite.mockPort;
 import static org.folio.rest.RestConstants.OKAPI_URL;
-import static org.junit.Assert.assertEquals;
 
 import java.io.IOException;
 import java.util.HashMap;
@@ -17,6 +16,7 @@ import org.folio.rest.acq.model.VoucherLineCollection;
 import org.folio.rest.impl.ApiTestBase;
 import org.folio.rest.jaxrs.model.Voucher;
 import org.folio.rest.jaxrs.model.VoucherCollection;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -52,7 +52,7 @@ public class VoucherLinesRetrieveServiceTest extends ApiTestBase {
     vouchers.remove(1);
     CompletableFuture<List<VoucherLineCollection>> future = service.getVoucherLinesByChunks(vouchers);
     List<VoucherLineCollection> lineCollections = future.get();
-    assertEquals(3, lineCollections.get(0).getVoucherLines().size());
+    Assertions.assertEquals(3, lineCollections.get(0).getVoucherLines().size());
   }
 
   @Test
@@ -69,6 +69,6 @@ public class VoucherLinesRetrieveServiceTest extends ApiTestBase {
 
     CompletableFuture<Map<String, List<VoucherLine>>> future = service.getVoucherLinesMap(voucherCollection);
     Map<String, List<VoucherLine>> lineMap = future.get();
-    assertEquals(3, lineMap.get("a9b99f8a-7100-47f2-9903-6293d44a9905").size());
+    Assertions.assertEquals(3, lineMap.get("a9b99f8a-7100-47f2-9903-6293d44a9905").size());
   }
 }

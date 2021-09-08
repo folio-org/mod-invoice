@@ -17,7 +17,7 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 public class XMLConverterTest {
-  private static Path XML_BATCH_VOUCHER_EXAMPLES_PATH = Paths.get("ramls/examples", "batch_voucher_sample.xml")
+  private static final Path XML_BATCH_VOUCHER_EXAMPLES_PATH = Paths.get("ramls/examples", "batch_voucher_sample.xml")
     .toAbsolutePath();
 
   XMLConverter xmlConverter = XMLConverter.getInstance();

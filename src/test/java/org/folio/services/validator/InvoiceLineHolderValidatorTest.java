@@ -21,7 +21,7 @@ import org.junit.jupiter.api.Test;
 
 public class InvoiceLineHolderValidatorTest {
 
-  private InvoiceLineValidator invoiceLineValidator = new InvoiceLineValidator();
+  private final InvoiceLineValidator invoiceLineValidator = new InvoiceLineValidator();
 
   @Test
   void validateLineAdjustmentsOnUpdate() {

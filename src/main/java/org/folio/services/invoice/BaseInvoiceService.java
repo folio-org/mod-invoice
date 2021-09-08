@@ -29,6 +29,7 @@ import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.jaxrs.model.InvoiceCollection;
 import org.folio.rest.jaxrs.model.InvoiceLine;
 import org.folio.services.adjusment.AdjustmentsService;
+import org.folio.services.order.OrderService;
 import org.javamoney.moneta.Money;
 import org.javamoney.moneta.function.MonetaryFunctions;
 import io.vertx.core.json.JsonObject;
@@ -41,11 +42,12 @@ public class BaseInvoiceService implements InvoiceService {
     private final AdjustmentsService adjustmentsService;
     private final RestClient restClient;
     private final InvoiceLineService invoiceLineService;
+    private final OrderService orderService;
 
-
-    public BaseInvoiceService(RestClient restClient, InvoiceLineService invoiceLineService) {
+    public BaseInvoiceService(RestClient restClient, InvoiceLineService invoiceLineService, OrderService orderService) {
       this.restClient = restClient;
       this.invoiceLineService = invoiceLineService;
+      this.orderService = orderService;
       this.adjustmentsService = new AdjustmentsService();
     }
 
@@ -79,7 +81,8 @@ public class BaseInvoiceService implements InvoiceService {
     @Override
     public CompletableFuture<Void> deleteInvoice(String invoiceId, RequestContext requestContext) {
         RequestEntry requestEntry = new RequestEntry(INVOICE_BY_ID_ENDPOINT).withId(invoiceId);
-        return restClient.delete(requestEntry, requestContext);
+        return restClient.delete(requestEntry, requestContext)
+                         .thenCompose(v -> orderService.deleteOrderInvoiceRelationshipByInvoiceId(invoiceId, requestContext));
     }
 
     @Override
@@ -117,7 +120,7 @@ public class BaseInvoiceService implements InvoiceService {
    * Updates total values of the invoice and invoice lines
    * @param invoice invoice to update totals for
    * @param lines List<InvoiceLine> invoice lines to update totals for
-   * @return {code true} if adjustments total, sub total or grand total value is different to original one
+   * @return {code true} if adjustments total value is different from original one
    */
   @Override
   public boolean recalculateTotals(Invoice invoice, List<InvoiceLine> lines) {
@@ -128,7 +131,7 @@ public class BaseInvoiceService implements InvoiceService {
   /**
    * Gets invoice lines from the storage and updates total values of the invoice
    * @param invoice invoice to update totals for
-   * @return {code true} if adjustments total, sub total or grand total value is different to original one
+   * @return {code true} if adjustments total is different from original one
    */
   @Override
   public CompletableFuture<Boolean> recalculateTotals(Invoice invoice, RequestContext requestContext) {
@@ -166,11 +169,11 @@ public class BaseInvoiceService implements InvoiceService {
    * Updates total values of the invoice
    * @param invoice invoice to update totals for
    * @param lines invoice lines for the invoice
-   * @return {code true} if adjustments total, sub total or grand total value is different to original one
+   * @return {code true} if adjustments total value is different from original one
    */
   private boolean recalculateInvoiceTotals(Invoice invoice, List<InvoiceLine> lines) {
     Double adjustmentsTotal = invoice.getAdjustmentsTotal();
     calculateTotals(invoice, lines);
-    return Objects.equals(adjustmentsTotal, invoice.getAdjustmentsTotal());
+    return !Objects.equals(adjustmentsTotal, invoice.getAdjustmentsTotal());
   }
 }

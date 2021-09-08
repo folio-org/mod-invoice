@@ -2,12 +2,10 @@ package org.folio.rest.impl;
 
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 import static javax.ws.rs.core.MediaType.TEXT_PLAIN;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
 
 import org.folio.rest.jaxrs.model.Errors;
 import org.folio.rest.jaxrs.model.VoucherLine;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 import io.restassured.response.Response;
@@ -63,7 +61,7 @@ public class VoucherLinesApiTest extends ApiTestBase {
     final VoucherLine resp = verifySuccessGet(String.format(VOUCHER_LINES_ID_PATH, id), VoucherLine.class);
 
     logger.info(JsonObject.mapFrom(resp).encodePrettily());
-    assertEquals(id, resp.getId());
+    Assertions.assertEquals(id, resp.getId());
   }
 
   @Test
@@ -75,7 +73,7 @@ public class VoucherLinesApiTest extends ApiTestBase {
     String actual = resp.getBody().as(Errors.class).getErrors().get(0).getMessage();
     logger.info("Id not found: " + actual);
 
-    assertEquals(NOT_FOUND_VOUCHER_LINE_ID, actual);
+    Assertions.assertEquals(NOT_FOUND_VOUCHER_LINE_ID, actual);
   }
 
   @Test
@@ -85,8 +83,8 @@ public class VoucherLinesApiTest extends ApiTestBase {
     String actual = resp.getBody().asString();
     logger.info(actual);
 
-    assertNotNull(actual);
-    assertTrue(actual.contains(INVALID_VOUCHER_LINE_ID));
+    Assertions.assertNotNull(actual);
+    Assertions.assertTrue(actual.contains(INVALID_VOUCHER_LINE_ID));
   }
 
   @Test

@@ -4,7 +4,7 @@
   "provides": [
     {
       "id": "invoice",
-      "version": "7.1",
+      "version": "7.2",
       "handlers": [
         {
           "methods": ["GET"],
@@ -96,7 +96,9 @@
             "invoice-storage.invoices.item.get",
             "invoice-storage.invoices.item.delete",
             "acquisitions-units.units.collection.get",
-            "acquisitions-units.memberships.collection.get"
+            "acquisitions-units.memberships.collection.get",
+            "orders-storage.order-invoice-relationships.collection.get",
+            "orders-storage.order-invoice-relationships.item.delete"
           ]
         },
         {
@@ -155,7 +157,10 @@
             "invoice-storage.invoices.item.put",
             "acquisitions-units.units.collection.get",
             "acquisitions-units.memberships.collection.get",
-            "finance.exchange-rate.item.get"
+            "finance.exchange-rate.item.get",
+            "orders-storage.order-invoice-relationships.collection.get",
+            "orders-storage.order-invoice-relationships.item.post",
+            "orders.po-lines.item.get"
           ]
         },
         {
@@ -582,6 +587,10 @@
     },
     {
       "id": "finance.expense-classes",
+      "version": "1.0"
+    },
+    {
+      "id" : "orders-storage.order-invoice-relationships",
       "version": "1.0"
     }
   ],
