@@ -2,7 +2,7 @@ package org.folio.dataimport.handlers.events;
 
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
-import io.vertx.core.json.JsonObject;
+import io.vertx.core.json.Json;
 import io.vertx.core.json.jackson.DatabindCodec;
 import io.vertx.kafka.client.consumer.KafkaConsumerRecord;
 import org.apache.logging.log4j.LogManager;
@@ -13,7 +13,6 @@ import org.folio.dataimport.cache.JobProfileSnapshotCache;
 import org.folio.dataimport.handlers.actions.CreateInvoiceEventHandler;
 import org.folio.kafka.AsyncRecordHandler;
 import org.folio.processing.events.EventManager;
-import org.folio.processing.events.utils.ZIPArchiver;
 import org.folio.processing.exceptions.EventProcessingException;
 import org.folio.processing.mapping.MappingManager;
 import org.folio.processing.mapping.mapper.reader.record.edifact.EdifactReaderFactory;
@@ -54,7 +53,7 @@ public class DataImportKafkaHandler implements AsyncRecordHandler<String, String
     try {
       Promise<String> promise = Promise.promise();
       Event event = DatabindCodec.mapper().readValue(kafkaRecord.value(), Event.class);
-      DataImportEventPayload eventPayload = new JsonObject(ZIPArchiver.unzip(event.getEventPayload())).mapTo(DataImportEventPayload.class);
+      DataImportEventPayload eventPayload = Json.decodeValue(event.getEventPayload(), DataImportEventPayload.class);
       logger.info("Data import event payload has been received with event type: {}", eventPayload.getEventType());
 
       String profileSnapshotId = eventPayload.getContext().get(JOB_PROFILE_SNAPSHOT_ID_KEY);
