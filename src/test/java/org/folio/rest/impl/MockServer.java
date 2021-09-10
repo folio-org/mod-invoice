@@ -74,6 +74,7 @@ import java.util.regex.Pattern;
 
 import javax.ws.rs.core.Response;
 
+import io.vertx.core.json.Json;
 import org.apache.commons.lang3.StringUtils;
 import org.folio.HttpStatus;
 import org.folio.invoices.utils.ResourcePathResolver;
@@ -118,6 +119,7 @@ import org.folio.rest.jaxrs.model.InvoiceCollection;
 import org.folio.rest.jaxrs.model.InvoiceDocument;
 import org.folio.rest.jaxrs.model.InvoiceLine;
 import org.folio.rest.jaxrs.model.InvoiceLineCollection;
+import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
 import org.folio.rest.jaxrs.model.Voucher;
 import org.folio.rest.jaxrs.model.VoucherCollection;
 import org.mockftpserver.fake.FakeFtpServer;
@@ -412,6 +414,7 @@ public class MockServer {
     router.route(HttpMethod.GET, resourcesPath(FISCAL_YEARS)).handler(this::handleFiscalYear);
     router.route(HttpMethod.GET, resourceByIdPath(FUNDS)).handler(this::handleFundById);
     router.route(HttpMethod.GET, "/finance/funds/:id/budget").handler(this::handleGetBudgetByFundId);
+    router.route(HttpMethod.GET, "/data-import-profiles/jobProfileSnapshots/:id").handler(this::handleGetJobProfileSnapshotById);
 
     router.route(HttpMethod.DELETE, resourceByIdPath(INVOICES)).handler(ctx -> handleDeleteRequest(ctx, INVOICES));
     router.route(HttpMethod.DELETE, resourceByIdPath(INVOICE_LINES)).handler(ctx -> handleDeleteRequest(ctx, INVOICE_LINES));
@@ -1903,6 +1906,26 @@ public class MockServer {
       ctx.response()
         .setStatusCode(HttpStatus.HTTP_NOT_FOUND.toInt())
         .end();
+    }
+  }
+
+  private void handleGetJobProfileSnapshotById(RoutingContext ctx) {
+    logger.info("handleGetJobProfileSnapshotById got: " + ctx.request().path());
+    String id = ctx.request().getParam(AbstractHelper.ID);
+    logger.info("id: " + id);
+    if (ID_FOR_INTERNAL_SERVER_ERROR.equals(id)) {
+      serverResponse(ctx, 500, APPLICATION_JSON, Response.Status.INTERNAL_SERVER_ERROR.getReasonPhrase());
+    } else {
+      Optional<JsonObject> jobProfileSnapshotOptional = getMockEntry("jobProfileSnapshots", id);
+      if (jobProfileSnapshotOptional.isPresent()) {
+        // validate content against schema
+        JsonObject jobProfileSnapshot = jobProfileSnapshotOptional.get();
+        ProfileSnapshotWrapper profileSnapshotClassSchema = jobProfileSnapshot.mapTo(ProfileSnapshotWrapper.class);
+        profileSnapshotClassSchema.setId(id);
+        serverResponse(ctx, 200, APPLICATION_JSON, Json.encodePrettily(profileSnapshotClassSchema));
+      } else {
+        serverResponse(ctx, 404, APPLICATION_JSON, id);
+      }
     }
   }
 
