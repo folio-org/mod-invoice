@@ -85,7 +85,8 @@
             "finance.exchange-rate.item.get",
             "finance.fiscal-years.item.get",
             "finance.fiscal-years.collection.get",
-            "organizations-storage.organizations.item.get"
+            "organizations-storage.organizations.item.get",
+            "finance.release-encumbrance.item.post"
           ]
         },
         {
