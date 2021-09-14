@@ -12,7 +12,7 @@ ENV LIB_DIR ${VERTICLE_HOME}/libs
 
 RUN mkdir -p ${LIB_DIR}
 
-COPY mod-invoice/libs/data-import-processing-core-fat.jar ${LIB_DIR}/
+COPY libs/data-import-processing-core-fat.jar ${LIB_DIR}/
 
 # Expose this port locally in the container.
 EXPOSE 8081
