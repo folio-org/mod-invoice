@@ -160,6 +160,7 @@
             "acquisitions-units.memberships.collection.get",
             "finance.exchange-rate.item.get",
             "orders-storage.order-invoice-relationships.collection.get",
+            "orders-storage.order-invoice-relationships.item.delete",
             "orders-storage.order-invoice-relationships.item.post",
             "orders.po-lines.item.get"
           ]
