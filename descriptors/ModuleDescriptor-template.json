@@ -126,6 +126,7 @@
             "invoice-storage.invoice-lines.collection.get",
             "acquisitions-units.units.collection.get",
             "acquisitions-units.memberships.collection.get",
+            "orders.item.get",
             "orders.po-lines.item.get",
             "orders-storage.order-invoice-relationships.collection.get",
             "orders-storage.order-invoice-relationships.item.post"
@@ -162,6 +163,7 @@
             "orders-storage.order-invoice-relationships.collection.get",
             "orders-storage.order-invoice-relationships.item.delete",
             "orders-storage.order-invoice-relationships.item.post",
+            "orders.item.get",
             "orders.po-lines.item.get"
           ]
         },
