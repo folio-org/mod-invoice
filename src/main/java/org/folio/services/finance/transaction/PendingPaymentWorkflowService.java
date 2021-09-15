@@ -102,8 +102,9 @@ public class PendingPaymentWorkflowService {
       }
     }
 
-    return collectResultsOnSuccess(futures).thenAccept(result -> logger.debug(
-      "Number of encumbrances released due to invoice lines fund distributions being different from PO lines fund distributions: " + result.size()));
+    return collectResultsOnSuccess(futures)
+      .thenAccept(result -> logger.debug(
+          "Number of encumbrances released due to invoice lines fund distributions being different from PO lines fund distributions: {}", result.size()));
   }
 
   private boolean sameFundAndPoLine(Transaction transaction, InvoiceWorkflowDataHolder holder) {
