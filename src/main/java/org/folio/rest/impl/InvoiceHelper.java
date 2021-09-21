@@ -299,7 +299,7 @@ public class InvoiceHelper extends AbstractHelper {
   private CompletableFuture<Void> validateAndHandleInvoiceStatusTransition(Invoice invoice, Invoice invoiceFromStorage) {
     return validateAcqUnitsOnUpdate(invoice, invoiceFromStorage)
     .thenCompose(ok -> {
-      validator.validateInvoiceProtectedFields(invoice, invoiceFromStorage);
+      validator.validateInvoice(invoice, invoiceFromStorage);
       verifyUserHasManagePermission(invoice.getAcqUnitIds(), invoiceFromStorage.getAcqUnitIds(), okapiHeaders);
       setSystemGeneratedData(invoiceFromStorage, invoice);
       return invoiceLineService.getInvoiceLinesWithTotals(invoice, new RequestContext(ctx, okapiHeaders))
