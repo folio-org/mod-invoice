@@ -10,25 +10,7 @@ import static java.util.stream.Collectors.toMap;
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 import static javax.ws.rs.core.MediaType.TEXT_PLAIN;
 import static org.awaitility.Awaitility.await;
-import static org.folio.invoices.utils.ErrorCodes.ACCOUNTING_CODE_NOT_PRESENT;
-import static org.folio.invoices.utils.ErrorCodes.ADJUSTMENT_FUND_DISTRIBUTIONS_NOT_PRESENT;
-import static org.folio.invoices.utils.ErrorCodes.ADJUSTMENT_FUND_DISTRIBUTIONS_SUMMARY_MISMATCH;
-import static org.folio.invoices.utils.ErrorCodes.BUDGET_NOT_FOUND;
-import static org.folio.invoices.utils.ErrorCodes.EXTERNAL_ACCOUNT_NUMBER_IS_MISSING;
-import static org.folio.invoices.utils.ErrorCodes.FUNDS_NOT_FOUND;
-import static org.folio.invoices.utils.ErrorCodes.FUND_CANNOT_BE_PAID;
-import static org.folio.invoices.utils.ErrorCodes.FUND_DISTRIBUTIONS_NOT_PRESENT;
-import static org.folio.invoices.utils.ErrorCodes.GENERIC_ERROR_CODE;
-import static org.folio.invoices.utils.ErrorCodes.INVALID_INVOICE_TRANSITION_ON_PAID_STATUS;
-import static org.folio.invoices.utils.ErrorCodes.LINE_FUND_DISTRIBUTIONS_SUMMARY_MISMATCH;
-import static org.folio.invoices.utils.ErrorCodes.LOCK_AND_CALCULATED_TOTAL_MISMATCH;
-import static org.folio.invoices.utils.ErrorCodes.PENDING_PAYMENT_ERROR;
-import static org.folio.invoices.utils.ErrorCodes.PO_LINE_NOT_FOUND;
-import static org.folio.invoices.utils.ErrorCodes.PO_LINE_UPDATE_FAILURE;
-import static org.folio.invoices.utils.ErrorCodes.PROHIBITED_FIELD_CHANGING;
-import static org.folio.invoices.utils.ErrorCodes.VOUCHER_NOT_FOUND;
-import static org.folio.invoices.utils.ErrorCodes.VOUCHER_NUMBER_PREFIX_NOT_ALPHA;
-import static org.folio.invoices.utils.ErrorCodes.VOUCHER_UPDATE_FAILURE;
+import static org.folio.invoices.utils.ErrorCodes.*;
 import static org.folio.invoices.utils.HelperUtils.INVOICE;
 import static org.folio.invoices.utils.HelperUtils.calculateInvoiceLineTotals;
 import static org.folio.invoices.utils.HelperUtils.calculateVoucherAmount;
@@ -2741,6 +2723,28 @@ public class InvoicesApiTest extends ApiTestBase {
     assertThat(serverRqRs.row(INVOICES).get(HttpMethod.GET), hasSize(1));
     // PUT request wasn't processed
     assertThat(serverRqRs.row(INVOICES).get(HttpMethod.PUT), nullValue());
+  }
+
+  @Test
+  void testUpdateInvoiceStatusToPaidWithoutApproved(){
+    logger.info("=== Don't allow to pay for the invoice which was not approved before ===");
+    Invoice reqData = getMockAsJson(OPEN_INVOICE_SAMPLE_PATH).mapTo(Invoice.class);
+    String id = reqData.getId();
+    InvoiceLine invoiceLine = getMinimalContentInvoiceLine(id);
+
+    invoiceLine.setId(UUID.randomUUID().toString());
+    invoiceLine.setInvoiceId(reqData.getId());
+
+    addMockEntry(INVOICES, reqData);
+    addMockEntry(INVOICE_LINES, invoiceLine);
+    verifySuccessPut(String.format(INVOICE_ID_PATH, id), JsonObject.mapFrom(reqData));
+
+    reqData.setStatus(Status.PAID);
+    Errors errors = verifyPut(String.format(INVOICE_ID_PATH, id), JsonObject.mapFrom(reqData), APPLICATION_JSON, 400).as(Errors.class);
+
+    assertThat(errors.getErrors(), hasSize(1));
+    Error error = errors.getErrors().get(0);
+    assertThat(error.getCode(), equalTo(CANNOT_PAY_INVOICE_WITHOUT_APPROVAL.getCode()));
   }
 
   private void checkPreventInvoiceModificationRule(Invoice invoice, Map<InvoiceProtectedFields, Object> updatedFields) throws IllegalAccessException {
