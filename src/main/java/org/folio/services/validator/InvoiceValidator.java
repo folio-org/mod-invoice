@@ -1,26 +1,39 @@
 package org.folio.services.validator;
 
-import org.apache.commons.collections4.CollectionUtils;
-import org.apache.commons.lang3.ObjectUtils;
-import org.apache.commons.lang3.StringUtils;
-import org.folio.invoices.rest.exceptions.HttpException;
-import org.folio.invoices.utils.InvoiceProtectedFields;
-import org.folio.rest.jaxrs.model.Error;
-import org.folio.rest.jaxrs.model.*;
-import org.folio.services.adjusment.AdjustmentsService;
-import org.javamoney.moneta.Money;
+import static org.folio.invoices.utils.ErrorCodes.ACCOUNTING_CODE_NOT_PRESENT;
+import static org.folio.invoices.utils.ErrorCodes.ADJUSTMENT_FUND_DISTRIBUTIONS_NOT_PRESENT;
+import static org.folio.invoices.utils.ErrorCodes.ADJUSTMENT_FUND_DISTRIBUTIONS_SUMMARY_MISMATCH;
+import static org.folio.invoices.utils.ErrorCodes.ADJUSTMENT_IDS_NOT_UNIQUE;
+import static org.folio.invoices.utils.ErrorCodes.CANNOT_PAY_INVOICE_WITHOUT_APPROVAL;
+import static org.folio.invoices.utils.ErrorCodes.FUND_DISTRIBUTIONS_NOT_PRESENT;
+import static org.folio.invoices.utils.ErrorCodes.INCOMPATIBLE_INVOICE_FIELDS_ON_STATUS_TRANSITION;
+import static org.folio.invoices.utils.ErrorCodes.LINE_FUND_DISTRIBUTIONS_SUMMARY_MISMATCH;
+import static org.folio.invoices.utils.ErrorCodes.LOCK_AND_CALCULATED_TOTAL_MISMATCH;
+import static org.folio.invoices.utils.HelperUtils.getFundDistributionAmount;
+import static org.folio.invoices.utils.HelperUtils.isPostApproval;
 
-import javax.money.CurrencyUnit;
-import javax.money.Monetary;
-import javax.money.MonetaryAmount;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import static org.folio.invoices.utils.ErrorCodes.*;
-import static org.folio.invoices.utils.HelperUtils.getFundDistributionAmount;
-import static org.folio.invoices.utils.HelperUtils.isPostApproval;
+import javax.money.CurrencyUnit;
+import javax.money.Monetary;
+import javax.money.MonetaryAmount;
+
+import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.lang3.ObjectUtils;
+import org.apache.commons.lang3.StringUtils;
+import org.folio.invoices.rest.exceptions.HttpException;
+import org.folio.invoices.utils.InvoiceProtectedFields;
+import org.folio.rest.jaxrs.model.Adjustment;
+import org.folio.rest.jaxrs.model.Error;
+import org.folio.rest.jaxrs.model.Errors;
+import org.folio.rest.jaxrs.model.FundDistribution;
+import org.folio.rest.jaxrs.model.Invoice;
+import org.folio.rest.jaxrs.model.InvoiceLine;
+import org.folio.services.adjusment.AdjustmentsService;
+import org.javamoney.moneta.Money;
 
 public class InvoiceValidator extends BaseValidator {
 
@@ -37,13 +50,13 @@ public class InvoiceValidator extends BaseValidator {
   }
 
   public void validateInvoice(Invoice invoice, Invoice invoiceFromStorage) {
-    validateInvoiceStatus(invoice, invoiceFromStorage);
+    validateInvoiceStatusTransition(invoice, invoiceFromStorage);
     validateInvoiceProtectedFields(invoice, invoiceFromStorage);
   }
 
-  public void validateInvoiceStatus(Invoice invoice, Invoice invoiceFromStorage) {
+  public void validateInvoiceStatusTransition(Invoice invoice, Invoice invoiceFromStorage) {
     if (invoice.getStatus() == Invoice.Status.PAID
-      && invoiceFromStorage.getStatus() == Invoice.Status.OPEN) {
+      && invoiceFromStorage.getStatus() != Invoice.Status.APPROVED ) {
       throw new HttpException(400, CANNOT_PAY_INVOICE_WITHOUT_APPROVAL);
     }
   }
