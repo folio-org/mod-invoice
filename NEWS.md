@@ -1,5 +1,15 @@
 ## 5.2.0 - Unreleased
 
+## 5.1.6 (Juniper) - Released
+
+The focus of this release was to fix invoice import
+
+[Full Changelog](https://github.com/folio-org/mod-invoice/compare/v5.1.5...v5.1.6)
+
+### Bug Fixes
+* [MODINVOICE-306](https://issues.folio.org/browse/MODINVOICE-306) - Acq unit in invoice field mapping profile causes import to complete with errors
+* [MODINVOICE-304](https://issues.folio.org/browse/MODINVOICE-304) - Update dependency on data-import-processing-core
+
 ## 5.1.5 (Juniper) - Released
 
 The focus of this release was to fix batch voucher creation.
