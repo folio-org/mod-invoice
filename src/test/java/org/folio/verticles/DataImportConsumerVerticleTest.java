@@ -6,13 +6,13 @@ import net.mguenther.kafka.junit.KeyValue;
 import net.mguenther.kafka.junit.ObserveKeyValues;
 import net.mguenther.kafka.junit.SendKeyValues;
 import org.folio.ActionProfile;
+import org.folio.ApiTestSuite;
 import org.folio.DataImportEventPayload;
 import org.folio.JobProfile;
 import org.folio.MappingProfile;
 import org.folio.kafka.KafkaTopicNameHelper;
 import org.folio.processing.events.EventManager;
 import org.folio.processing.events.services.handler.EventHandler;
-import org.folio.processing.events.utils.ZIPArchiver;
 import org.folio.processing.exceptions.EventProcessingException;
 import org.folio.rest.impl.ApiTestBase;
 import org.folio.rest.jaxrs.model.Event;
@@ -20,7 +20,6 @@ import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import java.io.IOException;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.UUID;
@@ -33,7 +32,9 @@ import static org.folio.ApiTestSuite.kafkaCluster;
 import static org.folio.DataImportEventTypes.DI_COMPLETED;
 import static org.folio.DataImportEventTypes.DI_EDIFACT_RECORD_CREATED;
 import static org.folio.DataImportEventTypes.DI_ERROR;
+import static org.folio.dataimport.handlers.events.DataImportKafkaHandler.JOB_PROFILE_SNAPSHOT_ID_KEY;
 import static org.folio.kafka.KafkaTopicNameHelper.getDefaultNameSpace;
+import static org.folio.rest.impl.MockServer.addMockEntry;
 import static org.folio.rest.jaxrs.model.EntityType.EDIFACT_INVOICE;
 import static org.folio.rest.jaxrs.model.EntityType.INVOICE;
 import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.ACTION_PROFILE;
@@ -46,7 +47,8 @@ import static org.mockito.Mockito.when;
 
 public class DataImportConsumerVerticleTest extends ApiTestBase {
 
-  private static final String OKAPI_URL = "localhost";
+  private static final String JOB_PROFILE_SNAPSHOTS_MOCK = "jobProfileSnapshots";
+  private static final String OKAPI_URL = "http://localhost:" + ApiTestSuite.mockPort;
   private static final String TENANT_ID = "diku";
   private static final String TOKEN = "test-token";
 
@@ -84,10 +86,11 @@ public class DataImportConsumerVerticleTest extends ApiTestBase {
   @BeforeEach
   public void setUp() {
     EventManager.clearEventHandlers();
+    addMockEntry(JOB_PROFILE_SNAPSHOTS_MOCK, profileSnapshotWrapper);
   }
 
   @Test
-  public void shouldPublishDiCompletedEventWhenProcessingCoreHandlerSucceeded() throws IOException, InterruptedException {
+  public void shouldPublishDiCompletedEventWhenProcessingCoreHandlerSucceeded() throws InterruptedException {
     // given
     EventHandler mockedEventHandler = mock(EventHandler.class);
     when(mockedEventHandler.isEligible(any(DataImportEventPayload.class))).thenReturn(true);
@@ -100,11 +103,13 @@ public class DataImportConsumerVerticleTest extends ApiTestBase {
       .withTenant(TENANT_ID)
       .withOkapiUrl(OKAPI_URL)
       .withToken(TOKEN)
-      .withContext(new HashMap<>())
+      .withContext(new HashMap<>(){{
+        put(JOB_PROFILE_SNAPSHOT_ID_KEY, profileSnapshotWrapper.getId());
+      }})
       .withProfileSnapshot(profileSnapshotWrapper);
 
     String topic = KafkaTopicNameHelper.formatTopicName(KAFKA_ENV_VALUE, getDefaultNameSpace(), TENANT_ID, dataImportEventPayload.getEventType());
-    Event event = new Event().withEventPayload(ZIPArchiver.zip(Json.encode(dataImportEventPayload)));
+    Event event = new Event().withEventPayload(Json.encode(dataImportEventPayload));
     KeyValue<String, String> record = new KeyValue<>("test-key", Json.encode(event));
     SendKeyValues<String, String> request = SendKeyValues.to(topic, Collections.singletonList(record)).useDefaults();
 
@@ -119,7 +124,7 @@ public class DataImportConsumerVerticleTest extends ApiTestBase {
   }
 
   @Test
-  public void shouldPublishDiErrorEventWhenProcessingCoreHandlerFailed() throws IOException, InterruptedException {
+  public void shouldPublishDiErrorEventWhenProcessingCoreHandlerFailed() throws InterruptedException {
     // given
     EventHandler mockedEventHandler = mock(EventHandler.class);
     when(mockedEventHandler.isEligible(any(DataImportEventPayload.class))).thenReturn(true);
@@ -132,11 +137,13 @@ public class DataImportConsumerVerticleTest extends ApiTestBase {
       .withTenant(TENANT_ID)
       .withOkapiUrl(OKAPI_URL)
       .withToken(TOKEN)
-      .withContext(new HashMap<>())
+      .withContext(new HashMap<>(){{
+        put(JOB_PROFILE_SNAPSHOT_ID_KEY, profileSnapshotWrapper.getId());
+      }})
       .withProfileSnapshot(profileSnapshotWrapper);
 
     String topic = KafkaTopicNameHelper.formatTopicName(KAFKA_ENV_VALUE, getDefaultNameSpace(), TENANT_ID, dataImportEventPayload.getEventType());
-    Event event = new Event().withEventPayload(ZIPArchiver.zip(Json.encode(dataImportEventPayload)));
+    Event event = new Event().withEventPayload(Json.encode(dataImportEventPayload));
     KeyValue<String, String> record = new KeyValue<>("test-key", Json.encode(event));
     SendKeyValues<String, String> request = SendKeyValues.to(topic, Collections.singletonList(record)).useDefaults();
 

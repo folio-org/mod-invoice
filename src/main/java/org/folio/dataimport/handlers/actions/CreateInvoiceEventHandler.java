@@ -35,6 +35,7 @@ import org.folio.Record;
 import org.folio.processing.events.services.handler.EventHandler;
 import org.folio.processing.exceptions.EventProcessingException;
 import org.folio.processing.mapping.MappingManager;
+import org.folio.processing.mapping.mapper.MappingContext;
 import org.folio.processing.mapping.mapper.reader.record.edifact.EdifactRecordReader;
 import org.folio.rest.RestConstants;
 import org.folio.rest.RestVerticle;
@@ -101,7 +102,7 @@ public class CreateInvoiceEventHandler implements EventHandler {
       poLinesFuture
         .thenAccept(invLineNoToPoLine -> ensureAdditionalData(dataImportEventPayload, invLineNoToPoLine))
         .thenAccept(v -> prepareEventPayloadForMapping(dataImportEventPayload))
-        .thenAccept(v -> MappingManager.map(dataImportEventPayload))
+        .thenAccept(v -> MappingManager.map(dataImportEventPayload, new MappingContext()))
         .thenAccept(v -> prepareMappingResult(dataImportEventPayload))
         .thenCompose(v -> saveInvoice(dataImportEventPayload, okapiHeaders))
         .thenApply(savedInvoice -> prepareInvoiceLinesToSave(savedInvoice.getId(), dataImportEventPayload, poLinesFuture.join()))
