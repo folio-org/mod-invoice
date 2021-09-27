@@ -242,7 +242,7 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
   }
 
   @Test
-  public void shouldCreateInvoiceAndPublishDiCompletedEvent() throws IOException, InterruptedException {
+  public void shouldCreateInvoiceAndPublishDiCompletedEvent() throws InterruptedException {
     // given
     Record record = new Record().withParsedRecord(new ParsedRecord().withContent(EDIFACT_PARSED_CONTENT));
     ProfileSnapshotWrapper profileSnapshotWrapper = buildProfileSnapshotWrapper(jobProfile, actionProfile, mappingProfile);
@@ -662,7 +662,7 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
   }
 
   @Test
-  public void shouldPublishDiErrorEventWhenPostInvoiceToStorageFailed() throws IOException, InterruptedException {
+  public void shouldPublishDiErrorEventWhenPostInvoiceToStorageFailed() throws InterruptedException {
     // given
     ProfileSnapshotWrapper profileSnapshotWrapper = buildProfileSnapshotWrapper(jobProfile, actionProfile, mappingProfile);
     addMockEntry(JOB_PROFILE_SNAPSHOTS_MOCK, profileSnapshotWrapper);
@@ -764,7 +764,7 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
   }
 
   @Test
-  public void shouldPublishDiErrorWhenMappingProfileHasInvalidMappingSyntax() throws IOException, InterruptedException {
+  public void shouldPublishDiErrorWhenMappingProfileHasInvalidMappingSyntax() throws InterruptedException {
     // given
     Record record = new Record().withParsedRecord(new ParsedRecord().withContent(PARSED_CONTENT_INVOICE_LINE_3_HAS_NO_SUBTOTAL));
     ProfileSnapshotWrapper profileSnapshotWrapper = buildProfileSnapshotWrapper(jobProfile, actionProfile, mappingProfileWithInvalidMappingSyntax);
