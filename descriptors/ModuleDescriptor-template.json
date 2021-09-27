@@ -596,6 +596,10 @@
     {
       "id" : "orders-storage.order-invoice-relationships",
       "version": "1.0"
+    },
+    {
+      "id": "data-import-converter-storage",
+      "version": "1.2"
     }
   ],
   "permissionSets": [
