@@ -4,6 +4,7 @@ import static org.folio.invoices.utils.ErrorCodes.ACCOUNTING_CODE_NOT_PRESENT;
 import static org.folio.invoices.utils.ErrorCodes.ADJUSTMENT_FUND_DISTRIBUTIONS_NOT_PRESENT;
 import static org.folio.invoices.utils.ErrorCodes.ADJUSTMENT_FUND_DISTRIBUTIONS_SUMMARY_MISMATCH;
 import static org.folio.invoices.utils.ErrorCodes.ADJUSTMENT_IDS_NOT_UNIQUE;
+import static org.folio.invoices.utils.ErrorCodes.CANNOT_PAY_INVOICE_WITHOUT_APPROVAL;
 import static org.folio.invoices.utils.ErrorCodes.FUND_DISTRIBUTIONS_NOT_PRESENT;
 import static org.folio.invoices.utils.ErrorCodes.INCOMPATIBLE_INVOICE_FIELDS_ON_STATUS_TRANSITION;
 import static org.folio.invoices.utils.ErrorCodes.LINE_FUND_DISTRIBUTIONS_SUMMARY_MISMATCH;
@@ -45,6 +46,18 @@ public class InvoiceValidator extends BaseValidator {
     if(isPostApproval(invoiceFromStorage)) {
       Set<String> fields = findChangedProtectedFields(invoice, invoiceFromStorage, InvoiceProtectedFields.getFieldNames());
       verifyThatProtectedFieldsUnchanged(fields);
+    }
+  }
+
+  public void validateInvoice(Invoice invoice, Invoice invoiceFromStorage) {
+    validateInvoiceStatusTransition(invoice, invoiceFromStorage);
+    validateInvoiceProtectedFields(invoice, invoiceFromStorage);
+  }
+
+  public void validateInvoiceStatusTransition(Invoice invoice, Invoice invoiceFromStorage) {
+    if (invoice.getStatus() == Invoice.Status.PAID
+      && invoiceFromStorage.getStatus() != Invoice.Status.APPROVED ) {
+      throw new HttpException(400, CANNOT_PAY_INVOICE_WITHOUT_APPROVAL);
     }
   }
 

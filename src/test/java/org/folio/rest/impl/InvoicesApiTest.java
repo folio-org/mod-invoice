@@ -14,6 +14,7 @@ import static org.folio.invoices.utils.ErrorCodes.ACCOUNTING_CODE_NOT_PRESENT;
 import static org.folio.invoices.utils.ErrorCodes.ADJUSTMENT_FUND_DISTRIBUTIONS_NOT_PRESENT;
 import static org.folio.invoices.utils.ErrorCodes.ADJUSTMENT_FUND_DISTRIBUTIONS_SUMMARY_MISMATCH;
 import static org.folio.invoices.utils.ErrorCodes.BUDGET_NOT_FOUND;
+import static org.folio.invoices.utils.ErrorCodes.CANNOT_PAY_INVOICE_WITHOUT_APPROVAL;
 import static org.folio.invoices.utils.ErrorCodes.EXTERNAL_ACCOUNT_NUMBER_IS_MISSING;
 import static org.folio.invoices.utils.ErrorCodes.FUNDS_NOT_FOUND;
 import static org.folio.invoices.utils.ErrorCodes.FUND_CANNOT_BE_PAID;
@@ -2741,6 +2742,28 @@ public class InvoicesApiTest extends ApiTestBase {
     assertThat(serverRqRs.row(INVOICES).get(HttpMethod.GET), hasSize(1));
     // PUT request wasn't processed
     assertThat(serverRqRs.row(INVOICES).get(HttpMethod.PUT), nullValue());
+  }
+
+  @Test
+  void testUpdateInvoiceStatusToPaidWithoutApproved(){
+    logger.info("=== Don't allow to pay for the invoice which was not approved before ===");
+    Invoice reqData = getMockAsJson(OPEN_INVOICE_SAMPLE_PATH).mapTo(Invoice.class);
+    String id = reqData.getId();
+    InvoiceLine invoiceLine = getMinimalContentInvoiceLine(id);
+
+    invoiceLine.setId(UUID.randomUUID().toString());
+    invoiceLine.setInvoiceId(reqData.getId());
+
+    addMockEntry(INVOICES, reqData);
+    addMockEntry(INVOICE_LINES, invoiceLine);
+    verifySuccessPut(String.format(INVOICE_ID_PATH, id), JsonObject.mapFrom(reqData));
+
+    reqData.setStatus(Status.PAID);
+    Errors errors = verifyPut(String.format(INVOICE_ID_PATH, id), JsonObject.mapFrom(reqData), APPLICATION_JSON, 400).as(Errors.class);
+
+    assertThat(errors.getErrors(), hasSize(1));
+    Error error = errors.getErrors().get(0);
+    assertThat(error.getCode(), equalTo(CANNOT_PAY_INVOICE_WITHOUT_APPROVAL.getCode()));
   }
 
   private void checkPreventInvoiceModificationRule(Invoice invoice, Map<InvoiceProtectedFields, Object> updatedFields) throws IllegalAccessException {

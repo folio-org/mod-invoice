@@ -51,7 +51,8 @@ public enum ErrorCodes {
   ORG_NOT_FOUND("organizationIsNotExist", "Organization is not exist"),
   ORG_IS_NOT_VENDOR("organizationIsNotVendor", "Organization is not vendor"),
   FAILED_TO_UPDATE_INVOICE_AND_OTHER_LINES("failedToUpdateInvoiceAndOtherLines", "Failed to update the invoice and other lines"),
-  FAILED_TO_UPDATE_PONUMBERS("failedToUpdatePoNumbers", "Failed to update invoice poNumbers");
+  FAILED_TO_UPDATE_PONUMBERS("failedToUpdatePoNumbers", "Failed to update invoice poNumbers"),
+  CANNOT_PAY_INVOICE_WITHOUT_APPROVAL("cannotPayInvoiceWithoutApproval", "Cannot pay an invoice without approval");
 
   private final String code;
   private final String description;
