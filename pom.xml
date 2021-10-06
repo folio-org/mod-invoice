@@ -153,13 +153,8 @@
     </dependency>
     <dependency>
       <groupId>org.folio</groupId>
-      <artifactId>folio-kafka-wrapper</artifactId>
-      <version>2.3.2</version>
-    </dependency>
-    <dependency>
-      <groupId>org.folio</groupId>
       <artifactId>data-import-processing-core</artifactId>
-      <version>3.1.4</version>
+      <version>3.1.5</version>
     </dependency>
     <dependency>
       <groupId>org.mockftpserver</groupId>
