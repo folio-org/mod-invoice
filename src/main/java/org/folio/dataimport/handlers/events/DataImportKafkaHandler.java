@@ -88,13 +88,12 @@ public class DataImportKafkaHandler implements AsyncRecordHandler<String, String
 
   private void populateContextWithOkapiPermissions(KafkaConsumerRecord<String, String> kafkaRecord,
                                                    DataImportEventPayload eventPayload) {
-    List<KafkaHeader> headers = kafkaRecord.headers();
-    if (CollectionUtils.isNotEmpty(headers)) {
-      List<String> permissions = headers.stream()
-        .filter(header -> UserPermissionsUtil.OKAPI_HEADER_PERMISSIONS.equalsIgnoreCase(header.key()))
-        .map(KafkaHeader::value)
-        .map(Buffer::toString)
-        .collect(Collectors.toList());
+    List<String> permissions = kafkaRecord.headers().stream()
+      .filter(header -> UserPermissionsUtil.OKAPI_HEADER_PERMISSIONS.equalsIgnoreCase(header.key()))
+      .map(KafkaHeader::value)
+      .map(Buffer::toString)
+      .collect(Collectors.toList());
+    if (CollectionUtils.isNotEmpty(permissions)) {
       eventPayload.getContext().put(DataImportUtils.DATA_IMPORT_PAYLOAD_OKAPI_PERMISSIONS, Json.encode(permissions));
     }
   }
