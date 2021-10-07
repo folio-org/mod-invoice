@@ -6,6 +6,7 @@ import org.folio.rest.RestConstants;
 import org.folio.rest.RestVerticle;
 import org.folio.utils.UserPermissionsUtil;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -24,6 +25,6 @@ public class DataImportUtils {
     if (StringUtils.isNotBlank(payloadPermissions)) {
       result.put(UserPermissionsUtil.OKAPI_HEADER_PERMISSIONS, payloadPermissions);
     }
-    return result;
+    return Collections.unmodifiableMap(result);
   }
 }
