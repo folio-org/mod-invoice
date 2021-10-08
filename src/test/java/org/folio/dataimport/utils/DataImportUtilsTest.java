@@ -33,7 +33,37 @@ public class DataImportUtilsTest {
   }
 
   @Test
-  public void shouldAlsoReturnOkapiPermissionsAndUserIdIfExistsInContext() {
+  public void shouldAlsoReturnOkapiPermissionsIfExistsInContext() {
+    HashMap<String, String> context = new HashMap<>();
+    context.put(DataImportUtils.DATA_IMPORT_PAYLOAD_OKAPI_PERMISSIONS, PERMISSIONS_ARRAY);
+    DataImportEventPayload payload = getPayload(context);
+
+    Map<String, String> okapiHeaders = DataImportUtils.getOkapiHeaders(payload);
+
+    assertEquals(4, okapiHeaders.size());
+    assertEquals(TENANT, okapiHeaders.get(RestVerticle.OKAPI_HEADER_TENANT));
+    assertEquals(TOKEN, okapiHeaders.get(RestVerticle.OKAPI_HEADER_TOKEN));
+    assertEquals(OKAPI_URL, okapiHeaders.get(RestConstants.OKAPI_URL));
+    assertEquals(PERMISSIONS_ARRAY, okapiHeaders.get(UserPermissionsUtil.OKAPI_HEADER_PERMISSIONS));
+  }
+
+  @Test
+  public void shouldAlsoReturnUserIdIfExistsInContext() {
+    HashMap<String, String> context = new HashMap<>();
+    context.put(DataImportUtils.DATA_IMPORT_PAYLOAD_OKAPI_USER_ID, USER_ID);
+    DataImportEventPayload payload = getPayload(context);
+
+    Map<String, String> okapiHeaders = DataImportUtils.getOkapiHeaders(payload);
+
+    assertEquals(4, okapiHeaders.size());
+    assertEquals(TENANT, okapiHeaders.get(RestVerticle.OKAPI_HEADER_TENANT));
+    assertEquals(TOKEN, okapiHeaders.get(RestVerticle.OKAPI_HEADER_TOKEN));
+    assertEquals(OKAPI_URL, okapiHeaders.get(RestConstants.OKAPI_URL));
+    assertEquals(USER_ID, okapiHeaders.get(RestVerticle.OKAPI_USERID_HEADER));
+  }
+
+  @Test
+  public void shouldReturlAllPossibleAuthValues() {
     HashMap<String, String> context = new HashMap<>();
     context.put(DataImportUtils.DATA_IMPORT_PAYLOAD_OKAPI_PERMISSIONS, PERMISSIONS_ARRAY);
     context.put(DataImportUtils.DATA_IMPORT_PAYLOAD_OKAPI_USER_ID, USER_ID);
