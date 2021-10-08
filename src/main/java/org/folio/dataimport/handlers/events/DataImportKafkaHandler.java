@@ -1,13 +1,9 @@
 package org.folio.dataimport.handlers.events;
 
 import java.io.IOException;
-import java.util.List;
-import java.util.stream.Collectors;
 
-import io.vertx.core.buffer.Buffer;
 import io.vertx.core.json.Json;
 import io.vertx.kafka.client.producer.KafkaHeader;
-import org.apache.commons.collections4.CollectionUtils;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.core.json.jackson.DatabindCodec;
@@ -62,7 +58,7 @@ public class DataImportKafkaHandler implements AsyncRecordHandler<String, String
       Event event = DatabindCodec.mapper().readValue(kafkaRecord.value(), Event.class);
       DataImportEventPayload eventPayload = Json.decodeValue(event.getEventPayload(), DataImportEventPayload.class);
       logger.info("Data import event payload has been received with event type: {}", eventPayload.getEventType());
-      populateContextWithOkapiPermissions(kafkaRecord, eventPayload);
+      populateContextWithOkapiUserAndPerms(kafkaRecord, eventPayload);
 
       String profileSnapshotId = eventPayload.getContext().get(JOB_PROFILE_SNAPSHOT_ID_KEY);
       Map<String, String> okapiHeaders = DataImportUtils.getOkapiHeaders(eventPayload);
@@ -87,8 +83,8 @@ public class DataImportKafkaHandler implements AsyncRecordHandler<String, String
     }
   }
 
-  private void populateContextWithOkapiPermissions(KafkaConsumerRecord<String, String> kafkaRecord,
-                                                   DataImportEventPayload eventPayload) {
+  private void populateContextWithOkapiUserAndPerms(KafkaConsumerRecord<String, String> kafkaRecord,
+                                                    DataImportEventPayload eventPayload) {
     for (KafkaHeader header: kafkaRecord.headers()) {
       if (UserPermissionsUtil.OKAPI_HEADER_PERMISSIONS.equalsIgnoreCase(header.key())) {
         String permissions = header.value().toString();
