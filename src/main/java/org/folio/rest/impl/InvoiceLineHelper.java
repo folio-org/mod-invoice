@@ -249,6 +249,7 @@ public class InvoiceLineHelper extends AbstractHelper {
   private void unlinkEncumbranceFromChangedFunds(InvoiceLine invoiceLine, InvoiceLine invoiceLineFromStorage) {
     invoiceLine.getFundDistributions().stream()
       .filter(distribution -> invoiceLineFromStorage.getFundDistributions().stream()
+        .filter(fdStorage -> fdStorage.getEncumbrance() != null)
         .anyMatch(distributionFromStorage ->
           distributionFromStorage.getEncumbrance().equals(distribution.getEncumbrance())
           && !distributionFromStorage.getFundId().equals(distribution.getFundId())))
