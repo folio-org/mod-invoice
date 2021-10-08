@@ -12,6 +12,7 @@ import java.util.Map;
 
 public class DataImportUtils {
   public static final String DATA_IMPORT_PAYLOAD_OKAPI_PERMISSIONS = "data-import-payload-okapi-permissions";
+  public static final String DATA_IMPORT_PAYLOAD_OKAPI_USER_ID = "data-import-payload-okapi-user-id";
 
   private DataImportUtils() {}
 
@@ -24,6 +25,10 @@ public class DataImportUtils {
     String payloadPermissions = eventPayload.getContext().get(DATA_IMPORT_PAYLOAD_OKAPI_PERMISSIONS);
     if (StringUtils.isNotBlank(payloadPermissions)) {
       result.put(UserPermissionsUtil.OKAPI_HEADER_PERMISSIONS, payloadPermissions);
+    }
+    String userId = eventPayload.getContext().get(DATA_IMPORT_PAYLOAD_OKAPI_USER_ID);
+    if (StringUtils.isNotBlank(userId)) {
+      result.put(RestVerticle.OKAPI_USERID_HEADER, userId);
     }
     return Collections.unmodifiableMap(result);
   }

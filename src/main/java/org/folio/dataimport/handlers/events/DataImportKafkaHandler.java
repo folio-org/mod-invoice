@@ -24,6 +24,7 @@ import org.folio.processing.events.EventManager;
 import org.folio.processing.exceptions.EventProcessingException;
 import org.folio.processing.mapping.MappingManager;
 import org.folio.processing.mapping.mapper.reader.record.edifact.EdifactReaderFactory;
+import org.folio.rest.RestVerticle;
 import org.folio.rest.core.RestClient;
 import org.folio.rest.jaxrs.model.Event;
 import org.folio.utils.UserPermissionsUtil;
@@ -88,13 +89,14 @@ public class DataImportKafkaHandler implements AsyncRecordHandler<String, String
 
   private void populateContextWithOkapiPermissions(KafkaConsumerRecord<String, String> kafkaRecord,
                                                    DataImportEventPayload eventPayload) {
-    List<String> permissions = kafkaRecord.headers().stream()
-      .filter(header -> UserPermissionsUtil.OKAPI_HEADER_PERMISSIONS.equalsIgnoreCase(header.key()))
-      .map(KafkaHeader::value)
-      .map(Buffer::toString)
-      .collect(Collectors.toList());
-    if (CollectionUtils.isNotEmpty(permissions)) {
-      eventPayload.getContext().put(DataImportUtils.DATA_IMPORT_PAYLOAD_OKAPI_PERMISSIONS, Json.encode(permissions));
+    for (KafkaHeader header: kafkaRecord.headers()) {
+      if (UserPermissionsUtil.OKAPI_HEADER_PERMISSIONS.equalsIgnoreCase(header.key())) {
+        String permissions = header.value().toString();
+        eventPayload.getContext().put(DataImportUtils.DATA_IMPORT_PAYLOAD_OKAPI_PERMISSIONS, permissions);
+      } else if (RestVerticle.OKAPI_USERID_HEADER.equalsIgnoreCase(header.key())) {
+        String userId = header.value().toString();
+        eventPayload.getContext().put(DataImportUtils.DATA_IMPORT_PAYLOAD_OKAPI_USER_ID, userId);
+      }
     }
   }
 }
