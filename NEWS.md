@@ -1,6 +1,24 @@
-## 5.2.0 - Unrleased
-* [MODINVOICE-251](https://issues.folio.org/browse/MODINVOICE-251) - Remove zipping mechanism for data-import event payloads and use cache for job profile snapshot
+## 5.3.0 - Unreleased
+
+## 5.2.0 - Released
+
+The focus of this release was to adjust and fix invoice approval handling
+
+[Full Changelog](https://github.com/folio-org/mod-invoice/compare/v5.0.3...v5.1.0)
+
+### Stories
+* [MODINVOICE-294](https://issues.folio.org/browse/MODINVOICE-294) - Don't allow to pay for the invoice which was not approved before
+* [MODINVOICE-275](https://issues.folio.org/browse/MODINVOICE-275) - Invoice poNumbers needs to be updated when an invoice line is deleted
+* [MODINVOICE-251](https://issues.folio.org/browse/MODINVOICE-251) - Remove zipping mechanism for data import event payloads and use cache for params
+* [MODINVOICE-178](https://issues.folio.org/browse/MODINVOICE-178) - Update invoice.poNumbers field when invoiceLine is being linked to poLine
+* [MODINVOICE-56](https://issues.folio.org/browse/MODINVOICE-56) - API tests for voucher/voucherLine creation
+
+### Bug Fixes
 * [MODINVOICE-306](https://issues.folio.org/browse/MODINVOICE-306) - Acq unit in invoice field mapping profile causes import to complete with errors
+* [MODINVOICE-290](https://issues.folio.org/browse/MODINVOICE-290) - Encumbrance not released when Invoice approved if invoice has diff Fund from POL
+* [MODINVOICE-279](https://issues.folio.org/browse/MODINVOICE-279) - Approval allowed for 0 amount invoice and invoices with 0 amount invoice lines
+* [MODINVOICE-233](https://issues.folio.org/browse/MODINVOICE-233) - Integration test check-invoice-and-invoice-lines-deletion-restrictions fails randomly
+
 
 ## 5.1.0 - Released
 
