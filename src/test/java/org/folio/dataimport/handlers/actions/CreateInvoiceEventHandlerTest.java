@@ -17,6 +17,7 @@ import org.folio.JobProfile;
 import org.folio.MappingProfile;
 import org.folio.ParsedRecord;
 import org.folio.Record;
+import org.folio.invoices.utils.AcqDesiredPermissions;
 import org.folio.kafka.KafkaTopicNameHelper;
 import org.folio.processing.events.EventManager;
 import org.folio.processing.events.services.handler.EventHandler;
@@ -40,11 +41,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mockito;
 
 import java.io.IOException;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
@@ -57,6 +54,8 @@ import static org.folio.DataImportEventTypes.DI_ERROR;
 import static org.folio.DataImportEventTypes.DI_INVOICE_CREATED;
 import static org.folio.dataimport.handlers.actions.CreateInvoiceEventHandler.INVOICE_LINES_ERRORS_KEY;
 import static org.folio.dataimport.handlers.actions.CreateInvoiceEventHandler.INVOICE_LINES_KEY;
+import static org.folio.dataimport.utils.DataImportUtils.DATA_IMPORT_PAYLOAD_OKAPI_PERMISSIONS;
+import static org.folio.dataimport.utils.DataImportUtils.DATA_IMPORT_PAYLOAD_OKAPI_USER_ID;
 import static org.folio.kafka.KafkaTopicNameHelper.getDefaultNameSpace;
 import static org.folio.rest.impl.MockServer.DI_POST_INVOICE_LINES_SUCCESS_TENANT;
 import static org.folio.rest.impl.MockServer.ERROR_TENANT;
@@ -95,7 +94,8 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
   private static final String GROUP_ID = "test-consumers-group";
   private static final String JOB_PROFILE_SNAPSHOTS_MOCK = "jobProfileSnapshots";
   private static final String JOB_PROFILE_SNAPSHOT_ID_KEY = "JOB_PROFILE_SNAPSHOT_ID";
-  public static final String ERROR_MSG_KEY = "ERROR";
+  private static final String ERROR_MSG_KEY = "ERROR";
+  private static final String USER_ID = "userId";
 
   private JobProfile jobProfile = new JobProfile()
     .withId(UUID.randomUUID().toString())
@@ -315,6 +315,8 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
     HashMap<String, String> payloadContext = new HashMap<>();
     payloadContext.put(EDIFACT_INVOICE.value(), Json.encode(record));
     payloadContext.put(JOB_PROFILE_SNAPSHOT_ID_KEY, profileSnapshotWrapper.getId());
+    payloadContext.put(DATA_IMPORT_PAYLOAD_OKAPI_PERMISSIONS, Json.encode(Collections.singletonList(AcqDesiredPermissions.ASSIGN.getPermission())));
+    payloadContext.put(DATA_IMPORT_PAYLOAD_OKAPI_USER_ID, USER_ID);
 
     DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
       .withEventType(DI_EDIFACT_RECORD_CREATED.value())

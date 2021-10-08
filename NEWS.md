@@ -1,5 +1,6 @@
 ## 5.2.0 - Unrleased
 * [MODINVOICE-251](https://issues.folio.org/browse/MODINVOICE-251) - Remove zipping mechanism for data-import event payloads and use cache for job profile snapshot
+* [MODINVOICE-306](https://issues.folio.org/browse/MODINVOICE-306) - Acq unit in invoice field mapping profile causes import to complete with errors
 
 ## 5.1.0 - Released
 

@@ -32,13 +32,12 @@ import org.folio.EdifactParsedContent;
 import org.folio.MappingProfile;
 import org.folio.ParsedRecord;
 import org.folio.Record;
+import org.folio.dataimport.utils.DataImportUtils;
 import org.folio.processing.events.services.handler.EventHandler;
 import org.folio.processing.exceptions.EventProcessingException;
 import org.folio.processing.mapping.MappingManager;
 import org.folio.processing.mapping.mapper.MappingContext;
 import org.folio.processing.mapping.mapper.reader.record.edifact.EdifactRecordReader;
-import org.folio.rest.RestConstants;
-import org.folio.rest.RestVerticle;
 import org.folio.rest.acq.model.orders.FundDistribution;
 import org.folio.rest.acq.model.orders.PoLine;
 import org.folio.rest.acq.model.orders.PoLineCollection;
@@ -96,7 +95,7 @@ public class CreateInvoiceEventHandler implements EventHandler {
         return CompletableFuture.failedFuture(new EventProcessingException(PAYLOAD_HAS_NO_DATA_MSG));
       }
 
-      Map<String, String> okapiHeaders = getOkapiHeaders(dataImportEventPayload);
+      Map<String, String> okapiHeaders = DataImportUtils.getOkapiHeaders(dataImportEventPayload);
       CompletableFuture<Map<Integer, PoLine>> poLinesFuture = getAssociatedPoLines(dataImportEventPayload, okapiHeaders);
 
       poLinesFuture
@@ -283,7 +282,7 @@ public class CreateInvoiceEventHandler implements EventHandler {
   private CompletableFuture<Invoice> saveInvoice(DataImportEventPayload dataImportEventPayload, Map<String, String> okapiHeaders) {
     Invoice invoiceToSave = Json.decodeValue(dataImportEventPayload.getContext().get(INVOICE.value()), Invoice.class);
     invoiceToSave.setSource(Invoice.Source.EDI);
-    InvoiceHelper invoiceHelper = new InvoiceHelper(okapiHeaders, Vertx.currentContext(), null);
+    InvoiceHelper invoiceHelper = new InvoiceHelper(okapiHeaders, Vertx.currentContext(), DEFAULT_LANG);
 
     return invoiceHelper.createInvoice(invoiceToSave).whenComplete((invoice, throwable) -> {
       if (throwable == null) {
@@ -348,12 +347,6 @@ public class CreateInvoiceEventHandler implements EventHandler {
       .map(JsonObject.class::cast)
       .map(json -> json.mapTo(InvoiceLine.class))
       .collect(Collectors.toList());
-  }
-
-  private Map<String, String> getOkapiHeaders(DataImportEventPayload dataImportEventPayload) {
-    return Map.of(RestVerticle.OKAPI_HEADER_TENANT, dataImportEventPayload.getTenant(),
-      RestVerticle.OKAPI_HEADER_TOKEN, dataImportEventPayload.getToken(),
-      RestConstants.OKAPI_URL, dataImportEventPayload.getOkapiUrl());
   }
 
   private void prepareEventPayloadForMapping(DataImportEventPayload dataImportEventPayload) {
