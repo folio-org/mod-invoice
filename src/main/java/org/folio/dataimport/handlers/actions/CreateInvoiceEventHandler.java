@@ -6,6 +6,8 @@ import static org.apache.commons.lang3.StringUtils.isBlank;
 import static org.folio.ActionProfile.Action.CREATE;
 import static org.folio.ActionProfile.FolioRecord.INVOICE;
 import static org.folio.DataImportEventTypes.DI_INVOICE_CREATED;
+import static org.folio.dataimport.handlers.events.DataImportKafkaHandler.DATA_IMPORT_PAYLOAD_OKAPI_PERMISSIONS;
+import static org.folio.dataimport.handlers.events.DataImportKafkaHandler.DATA_IMPORT_PAYLOAD_OKAPI_USER_ID;
 import static org.folio.invoices.utils.ResourcePathResolver.ORDER_LINES;
 import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
 import static org.folio.rest.jaxrs.model.EntityType.EDIFACT_INVOICE;
@@ -23,6 +25,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -54,6 +57,7 @@ import io.vertx.core.Vertx;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
+import org.folio.utils.UserPermissionsUtil;
 
 public class CreateInvoiceEventHandler implements EventHandler {
 
@@ -282,7 +286,7 @@ public class CreateInvoiceEventHandler implements EventHandler {
   private CompletableFuture<Invoice> saveInvoice(DataImportEventPayload dataImportEventPayload, Map<String, String> okapiHeaders) {
     Invoice invoiceToSave = Json.decodeValue(dataImportEventPayload.getContext().get(INVOICE.value()), Invoice.class);
     invoiceToSave.setSource(Invoice.Source.EDI);
-    InvoiceHelper invoiceHelper = new InvoiceHelper(okapiHeaders, Vertx.currentContext(), null);
+    InvoiceHelper invoiceHelper = new InvoiceHelper(okapiHeaders, Vertx.currentContext(), DEFAULT_LANG);
 
     return invoiceHelper.createInvoice(invoiceToSave).whenComplete((invoice, throwable) -> {
       if (throwable == null) {
@@ -350,9 +354,20 @@ public class CreateInvoiceEventHandler implements EventHandler {
   }
 
   private Map<String, String> getOkapiHeaders(DataImportEventPayload dataImportEventPayload) {
-    return Map.of(RestVerticle.OKAPI_HEADER_TENANT, dataImportEventPayload.getTenant(),
-      RestVerticle.OKAPI_HEADER_TOKEN, dataImportEventPayload.getToken(),
-      RestConstants.OKAPI_URL, dataImportEventPayload.getOkapiUrl());
+    Map<String, String> result = new HashMap<>();
+    result.put(RestVerticle.OKAPI_HEADER_TENANT, dataImportEventPayload.getTenant());
+    result.put(RestVerticle.OKAPI_HEADER_TOKEN, dataImportEventPayload.getToken());
+    result.put(RestConstants.OKAPI_URL, dataImportEventPayload.getOkapiUrl());
+
+    String payloadPermissions = dataImportEventPayload.getContext().get(DATA_IMPORT_PAYLOAD_OKAPI_PERMISSIONS);
+    if (StringUtils.isNotBlank(payloadPermissions)) {
+      result.put(UserPermissionsUtil.OKAPI_HEADER_PERMISSIONS, payloadPermissions);
+    }
+    String userId = dataImportEventPayload.getContext().get(DATA_IMPORT_PAYLOAD_OKAPI_USER_ID);
+    if (StringUtils.isNotBlank(userId)) {
+      result.put(RestVerticle.OKAPI_USERID_HEADER, userId);
+    }
+    return Collections.unmodifiableMap(result);
   }
 
   private void prepareEventPayloadForMapping(DataImportEventPayload dataImportEventPayload) {
