@@ -23,6 +23,8 @@ import org.folio.verticles.DataImportConsumerVerticle;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.support.AbstractApplicationContext;
 
+import javax.money.convert.MonetaryConversions;
+
 /**
  * The class initializes vertx context adding spring context
  */
@@ -49,6 +51,8 @@ public class InitAPIs implements InitAPI {
 
         SpringContextUtil.init(vertx, context, ApplicationConfig.class);
         SpringContextUtil.autowireDependencies(this, context);
+
+        initJavaMoney();
 
         deployDataImportConsumerVerticle(vertx).onComplete(ar -> {
           if (ar.failed() && isConsumerVerticleMandatory) {
@@ -80,5 +84,13 @@ public class InitAPIs implements InitAPI {
     return promise.future()
       .onSuccess(ar -> logger.info("DataImportConsumerVerticle verticle was successfully started"))
       .onFailure(e -> logger.error("DataImportConsumerVerticle verticle was not successfully started", e));
+  }
+
+  private void initJavaMoney() {
+    try {
+      logger.info("Available currency rates providers {}", MonetaryConversions.getConversionProviderNames());
+    } catch (Exception e){
+      logger.error("Java Money API preload failed", e);
+    }
   }
 }
