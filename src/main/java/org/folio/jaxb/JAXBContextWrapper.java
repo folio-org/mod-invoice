@@ -62,7 +62,7 @@ public final class JAXBContextWrapper {
     final String SCHEMA_PATH = "ramls" + File.separator + "schemas" + File.separator;
     List<StreamSource> streamSourceList = JAXBUtil.xsdSchemasAsStreamResources(SCHEMA_PATH, schemas);
     StreamSource[] streamSources = new StreamSource[streamSourceList.size()];
-    return SchemaFactory.newInstance(W3C_XML_SCHEMA_NS_URI)
-      .newSchema(streamSourceList.toArray(streamSources));
+    SchemaFactory schemaFactory = SchemaFactory.newInstance(W3C_XML_SCHEMA_NS_URI);
+    return schemaFactory.newSchema(streamSourceList.toArray(streamSources));
   }
 }
