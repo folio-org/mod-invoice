@@ -2,10 +2,12 @@ package org.folio.services.finance.transaction;
 
 import static java.util.stream.Collectors.toList;
 import static org.folio.invoices.utils.ErrorCodes.PENDING_PAYMENT_ERROR;
+import static org.folio.invoices.utils.HelperUtils.collectResultsOnSuccess;
 import static org.folio.invoices.utils.HelperUtils.convertToDoubleWithRounding;
 import static org.folio.invoices.utils.HelperUtils.getFundDistributionAmount;
 import static org.folio.services.FundsDistributionService.distributeFunds;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
@@ -31,14 +33,17 @@ public class PendingPaymentWorkflowService {
   private static final Logger logger = LogManager.getLogger(PendingPaymentWorkflowService.class);
 
   private final BaseTransactionService baseTransactionService;
+  private final EncumbranceService encumbranceService;
   private final InvoiceTransactionSummaryService invoiceTransactionSummaryService;
   private final HolderValidator holderValidator;
 
 
   public PendingPaymentWorkflowService(BaseTransactionService baseTransactionService,
+                                       EncumbranceService encumbranceService,
                                        InvoiceTransactionSummaryService invoiceTransactionSummaryService,
                                        HolderValidator validator) {
     this.baseTransactionService = baseTransactionService;
+    this.encumbranceService = encumbranceService;
     this.invoiceTransactionSummaryService = invoiceTransactionSummaryService;
     this.holderValidator = validator;
 
@@ -49,8 +54,8 @@ public class PendingPaymentWorkflowService {
     holderValidator.validate(holders);
     InvoiceTransactionSummary summary = buildInvoiceTransactionsSummary(holders);
     return invoiceTransactionSummaryService.createInvoiceTransactionSummary(summary, requestContext)
-      .thenCompose(s -> createPendingPayments(holders, requestContext));
-
+      .thenCompose(s -> createPendingPayments(holders, requestContext))
+      .thenCompose(s -> cleanupOldEncumbrances(holders, requestContext));
   }
 
   public CompletableFuture<Void> handlePendingPaymentsUpdate(List<InvoiceWorkflowDataHolder> dataHolders, RequestContext requestContext) {
@@ -79,6 +84,31 @@ public class PendingPaymentWorkflowService {
           throw new HttpException(400, PENDING_PAYMENT_ERROR.toError());
         }))
       .toArray(CompletableFuture[]::new));
+  }
+
+  private CompletableFuture<Void> cleanupOldEncumbrances(List<InvoiceWorkflowDataHolder> holders, RequestContext requestContext) {
+    List<String> poLineIds = holders.stream().filter(holder -> holder.getInvoiceLine() != null).map(holder -> holder.getInvoiceLine().getPoLineId()).collect(toList());
+    return encumbranceService.getEncumbrancesByPoLineIds(poLineIds, requestContext)
+      .thenCompose(transactions -> cleanupOldEncumbrances(transactions, holders, requestContext));
+  }
+
+  private CompletableFuture<Void> cleanupOldEncumbrances(List<Transaction> poLineTransactions, List<InvoiceWorkflowDataHolder> holders, RequestContext requestContext) {
+    List<CompletableFuture<Void>> futures = new ArrayList<>();
+
+    for (Transaction transaction : poLineTransactions) {
+      boolean encumbranceIsNoLongerRelevant = holders.stream().noneMatch(holder -> sameFundAndPoLine(transaction, holder));
+      if (encumbranceIsNoLongerRelevant) {
+        futures.add(baseTransactionService.releaseEncumbrance(transaction, requestContext));
+      }
+    }
+
+    return collectResultsOnSuccess(futures)
+      .thenAccept(result -> logger.debug(
+          "Number of encumbrances released due to invoice lines fund distributions being different from PO lines fund distributions: {}", result.size()));
+  }
+
+  private boolean sameFundAndPoLine(Transaction transaction, InvoiceWorkflowDataHolder holder) {
+    return transaction.getFromFundId().equals(holder.getFundId()) && transaction.getEncumbrance().getSourcePoLineId().equals(holder.getInvoiceLine().getPoLineId());
   }
 
   private List<InvoiceWorkflowDataHolder> withNewPendingPayments(List<InvoiceWorkflowDataHolder> dataHolders) {

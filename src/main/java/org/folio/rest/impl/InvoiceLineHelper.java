@@ -224,11 +224,22 @@ public class InvoiceLineHelper extends AbstractHelper {
         validator.validateProtectedFields(invoice, invoiceLine, invoiceLineFromStorage);
         validator.validateLineAdjustmentsOnUpdate(invoiceLine, invoice);
         invoiceLine.setInvoiceLineNumber(invoiceLineFromStorage.getInvoiceLineNumber());
+        unlinkEncumbranceFromChangedFunds(invoiceLine, invoiceLineFromStorage);
 
         return protectionHelper.isOperationRestricted(invoice.getAcqUnitIds(), UPDATE)
           .thenCompose(ok -> applyAdjustmentsAndUpdateLine(invoiceLine, invoiceLineFromStorage, invoice))
           .thenCompose(ok -> updateOrderInvoiceRelationship(invoiceLine, invoiceLineFromStorage, requestContext));
       }));
+  }
+
+  private void unlinkEncumbranceFromChangedFunds(InvoiceLine invoiceLine, InvoiceLine invoiceLineFromStorage) {
+    invoiceLine.getFundDistributions().stream()
+      .filter(distribution -> invoiceLineFromStorage.getFundDistributions().stream()
+        .filter(fdStorage -> fdStorage.getEncumbrance() != null)
+        .anyMatch(distributionFromStorage ->
+          distributionFromStorage.getEncumbrance().equals(distribution.getEncumbrance())
+          && !distributionFromStorage.getFundId().equals(distribution.getFundId())))
+      .forEach(distribution -> distribution.setEncumbrance(null));
   }
 
   private CompletableFuture<Void> updateOrderInvoiceRelationship(InvoiceLine invoiceLine, InvoiceLine invoiceLineFromStorage, RequestContext requestContext) {

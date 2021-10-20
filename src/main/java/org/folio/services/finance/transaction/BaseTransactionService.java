@@ -3,6 +3,7 @@ package org.folio.services.finance.transaction;
 import static java.util.stream.Collectors.toList;
 import static org.folio.invoices.utils.HelperUtils.collectResultsOnSuccess;
 import static org.folio.invoices.utils.HelperUtils.convertIdsToCqlQuery;
+import static org.folio.invoices.utils.ResourcePathResolver.FINANCE_RELEASE_ENCUMBRANCE;
 import static org.folio.invoices.utils.ResourcePathResolver.FINANCE_TRANSACTIONS;
 import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
 import static org.folio.rest.RestConstants.MAX_IDS_FOR_GET_RQ;
@@ -95,6 +96,11 @@ public class BaseTransactionService {
 
   public String getByIdEndpoint(Transaction transaction) {
     return TRANSACTION_ENDPOINTS.get(transaction.getTransactionType()) + "/{id}";
+  }
+
+  public CompletableFuture<Void> releaseEncumbrance(Transaction transaction, RequestContext requestContext) {
+    RequestEntry requestEntry = new RequestEntry(resourcesPath(FINANCE_RELEASE_ENCUMBRANCE) + "/{id}").withId(transaction.getId());
+    return restClient.post(requestEntry, null, requestContext, Void.class);
   }
 
 }
