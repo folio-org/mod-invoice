@@ -2,6 +2,15 @@
 
 ## 5.1.6 (Juniper) - Released
 
+The focus of this release was to fix encumbrance processing during invoice approval
+
+[Full Changelog](https://github.com/folio-org/mod-invoice/compare/v5.1.6...v5.1.7)
+
+### Bug Fixes
+* [MODINVOICE-310](https://issues.folio.org/browse/MODINVOICE-310) - Invoice will not approve with diff Fund from POL
+
+## 5.1.6 (Juniper) - Released
+
 The focus of this release was to fix invoice import
 
 [Full Changelog](https://github.com/folio-org/mod-invoice/compare/v5.1.5...v5.1.6)
