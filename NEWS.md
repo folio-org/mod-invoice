@@ -1,6 +1,6 @@
 ## 5.2.0 - Unreleased
 
-## 5.1.6 (Juniper) - Released
+## 5.1.7 (Juniper) - Released
 
 The focus of this release was to fix encumbrance processing during invoice approval
 
