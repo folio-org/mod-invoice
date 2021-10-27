@@ -100,8 +100,8 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
   private static final String GROUP_ID = "test-consumers-group";
   private static final String JOB_PROFILE_SNAPSHOTS_MOCK = "jobProfileSnapshots";
   private static final String JOB_PROFILE_SNAPSHOT_ID_KEY = "JOB_PROFILE_SNAPSHOT_ID";
-  private static final String RECORD_ID_HEADER = "recordId";
   private static final String ERROR_MSG_KEY = "ERROR";
+  private static final String RECORD_ID_HEADER = "recordId";
   private static final String USER_ID = "userId";
 
   private JobProfile jobProfile = new JobProfile()
