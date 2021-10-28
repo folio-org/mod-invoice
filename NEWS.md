@@ -1,5 +1,8 @@
 ## 5.3.0 - Unreleased
 
+## 5.2.1 - Unreleased
+* [MODINVOICE-314](https://issues.folio.org/browse/MODINVOICE-314) - Provide recordId header for data-import events correlation
+
 ## 5.2.0 - Released
 
 The focus of this release was to adjust and fix invoice approval handling

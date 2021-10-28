@@ -27,6 +27,7 @@ import org.folio.utils.UserPermissionsUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
@@ -37,6 +38,7 @@ import static org.folio.DataImportEventTypes.DI_ERROR;
 public class DataImportKafkaHandler implements AsyncRecordHandler<String, String> {
 
   public static final String JOB_PROFILE_SNAPSHOT_ID_KEY = "JOB_PROFILE_SNAPSHOT_ID";
+  private static final String RECORD_ID_HEADER = "recordId";
   private static final String PROFILE_SNAPSHOT_NOT_FOUND_MSG = "JobProfileSnapshot was not found by id '%s'";
 
   private final Logger logger = LogManager.getLogger(DataImportKafkaHandler.class);
@@ -57,7 +59,9 @@ public class DataImportKafkaHandler implements AsyncRecordHandler<String, String
       Promise<String> promise = Promise.promise();
       Event event = DatabindCodec.mapper().readValue(kafkaRecord.value(), Event.class);
       DataImportEventPayload eventPayload = Json.decodeValue(event.getEventPayload(), DataImportEventPayload.class);
-      logger.info("Data import event payload has been received with event type: {}", eventPayload.getEventType());
+      String recordId = extractRecordId(kafkaRecord.headers());
+      logger.info("Data import event payload has been received with event type: {}, recordId: {}", eventPayload.getEventType(), recordId);
+      eventPayload.getContext().put(RECORD_ID_HEADER, recordId);
       populateContextWithOkapiUserAndPerms(kafkaRecord, eventPayload);
 
       String profileSnapshotId = eventPayload.getContext().get(JOB_PROFILE_SNAPSHOT_ID_KEY);
@@ -94,5 +98,13 @@ public class DataImportKafkaHandler implements AsyncRecordHandler<String, String
         eventPayload.getContext().put(DataImportUtils.DATA_IMPORT_PAYLOAD_OKAPI_USER_ID, userId);
       }
     }
+  }
+
+  private String extractRecordId(List<KafkaHeader> headers) {
+    return headers.stream()
+      .filter(header -> header.key().equals(RECORD_ID_HEADER))
+      .findFirst()
+      .map(header -> header.value().toString())
+      .orElse(null);
   }
 }
