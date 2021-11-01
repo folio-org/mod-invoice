@@ -20,7 +20,7 @@ import org.folio.rest.jaxrs.model.VoucherCollection;
 import io.vertx.core.Context;
 
 public class VoucherLinesRetrieveService {
-  static final int MAX_VOUCHER_IDS_FOR_GET_RQ = 10;
+  static final int MAX_IDS_FOR_GET_RQ = 15;
   private final VoucherLineHelper voucherLineHelper;
 
   public VoucherLinesRetrieveService(Map<String, String> okapiHeaders, Context ctx, String lang) {
@@ -47,7 +47,7 @@ public class VoucherLinesRetrieveService {
   }
 
   public CompletableFuture<List<VoucherLineCollection>> getVoucherLinesByChunks(List<Voucher> vouchers) {
-    List<CompletableFuture<VoucherLineCollection>> invoiceFutureList = buildIdsChunks(vouchers, MAX_VOUCHER_IDS_FOR_GET_RQ).values()
+    List<CompletableFuture<VoucherLineCollection>> invoiceFutureList = buildIdsChunks(vouchers, MAX_IDS_FOR_GET_RQ).values()
       .stream()
       .map(this::buildVoucherLinesQuery)
       .map(query -> voucherLineHelper.getVoucherLines(Integer.MAX_VALUE, 0, query))
