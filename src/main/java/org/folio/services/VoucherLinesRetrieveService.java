@@ -50,7 +50,7 @@ public class VoucherLinesRetrieveService {
     List<CompletableFuture<VoucherLineCollection>> invoiceFutureList = buildIdsChunks(vouchers, MAX_IDS_FOR_GET_RQ).values()
       .stream()
       .map(this::buildVoucherLinesQuery)
-      .map(query -> voucherLineHelper.getVoucherLines(MAX_IDS_FOR_GET_RQ, 0, query))
+      .map(query -> voucherLineHelper.getVoucherLines(Integer.MAX_VALUE, 0, query))
       .collect(Collectors.toList());
 
     return collectResultsOnSuccess(invoiceFutureList);

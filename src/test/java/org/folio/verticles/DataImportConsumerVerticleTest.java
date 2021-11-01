@@ -5,6 +5,7 @@ import io.vertx.core.json.JsonObject;
 import net.mguenther.kafka.junit.KeyValue;
 import net.mguenther.kafka.junit.ObserveKeyValues;
 import net.mguenther.kafka.junit.SendKeyValues;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.folio.ActionProfile;
 import org.folio.ApiTestSuite;
 import org.folio.DataImportEventPayload;
@@ -20,12 +21,15 @@ import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.io.UnsupportedEncodingException;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.folio.ActionProfile.Action.CREATE;
 import static org.folio.ApiTestSuite.KAFKA_ENV_VALUE;
 import static org.folio.ApiTestSuite.kafkaCluster;
@@ -40,6 +44,7 @@ import static org.folio.rest.jaxrs.model.EntityType.INVOICE;
 import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.ACTION_PROFILE;
 import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.JOB_PROFILE;
 import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.MAPPING_PROFILE;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
@@ -51,6 +56,7 @@ public class DataImportConsumerVerticleTest extends ApiTestBase {
   private static final String OKAPI_URL = "http://localhost:" + ApiTestSuite.mockPort;
   private static final String TENANT_ID = "diku";
   private static final String TOKEN = "test-token";
+  private static final String RECORD_ID_HEADER = "recordId";
 
   private JobProfile jobProfile = new JobProfile()
     .withId(UUID.randomUUID().toString())
@@ -90,7 +96,7 @@ public class DataImportConsumerVerticleTest extends ApiTestBase {
   }
 
   @Test
-  public void shouldPublishDiCompletedEventWhenProcessingCoreHandlerSucceeded() throws InterruptedException {
+  public void shouldPublishDiCompletedEventWhenProcessingCoreHandlerSucceeded() throws InterruptedException, UnsupportedEncodingException {
     // given
     EventHandler mockedEventHandler = mock(EventHandler.class);
     when(mockedEventHandler.isEligible(any(DataImportEventPayload.class))).thenReturn(true);
@@ -108,9 +114,11 @@ public class DataImportConsumerVerticleTest extends ApiTestBase {
       }})
       .withProfileSnapshot(profileSnapshotWrapper);
 
+    String recordId = UUID.randomUUID().toString();
     String topic = KafkaTopicNameHelper.formatTopicName(KAFKA_ENV_VALUE, getDefaultNameSpace(), TENANT_ID, dataImportEventPayload.getEventType());
     Event event = new Event().withEventPayload(Json.encode(dataImportEventPayload));
     KeyValue<String, String> record = new KeyValue<>("test-key", Json.encode(event));
+    record.addHeader(RECORD_ID_HEADER, recordId, UTF_8);
     SendKeyValues<String, String> request = SendKeyValues.to(topic, Collections.singletonList(record)).useDefaults();
 
     // when
@@ -118,9 +126,11 @@ public class DataImportConsumerVerticleTest extends ApiTestBase {
 
     // then
     String topicToObserve = KafkaTopicNameHelper.formatTopicName(KAFKA_ENV_VALUE, getDefaultNameSpace(), TENANT_ID, DI_COMPLETED.value());
-    kafkaCluster.observeValues(ObserveKeyValues.on(topicToObserve, 1)
+    List<KeyValue<String, String>> observedRecords = kafkaCluster.observe(ObserveKeyValues.on(topicToObserve, 1)
       .observeFor(30, TimeUnit.SECONDS)
       .build());
+
+    assertEquals(recordId, new String(observedRecords.get(0).getHeaders().lastHeader(RECORD_ID_HEADER).value(), UTF_8.name()));
   }
 
   @Test
