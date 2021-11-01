@@ -1,7 +1,13 @@
 ## 5.3.0 - Unreleased
 
-## 5.2.1 - Unreleased
+## 5.2.1 - Released
+The focus of this release was to fix invoice data import
+
+[Full Changelog](https://github.com/folio-org/mod-invoice/compare/v5.2.0...v5.2.1)
+
 * [MODINVOICE-314](https://issues.folio.org/browse/MODINVOICE-314) - Provide recordId header for data-import events correlation
+* [MODINVOICE-312](https://issues.folio.org/browse/MODINVOICE-312) - Voucher line missing from batch voucher export
+* [MODINVOICE-303](https://issues.folio.org/browse/MODINVOICE-303) - Invoice approval is successful but throws error message
 
 ## 5.2.0 - Released
 
