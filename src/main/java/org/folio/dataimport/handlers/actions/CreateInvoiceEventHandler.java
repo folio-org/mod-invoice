@@ -240,27 +240,36 @@ public class CreateInvoiceEventHandler implements EventHandler {
       .thenApply(v -> invoiceLineNoToPoLine);
   }
 
-  private CompletableFuture<Map<Integer, PoLine>> getAssociatedPoLinesByRefNumbers(Map<Integer, List<String>> invoiceLineNoToRefNumbers, Map<String, String> okapiHeaders) {
+  private CompletableFuture<Map<Integer, PoLine>> getAssociatedPoLinesByRefNumbers(
+      Map<Integer, List<String>> invoiceLineNoToRefNumbers, Map<String, String> okapiHeaders) {
     if (invoiceLineNoToRefNumbers.isEmpty()) {
       return CompletableFuture.completedFuture(new HashMap<>());
     }
 
-    Map<Integer, CompletableFuture<PoLineCollection>> poLinesFutures = new HashMap<>();
-    invoiceLineNoToRefNumbers.forEach((invoiceLineNumber, refNumberList) -> {
-      String cqlGetPoLinesByRefNo = prepareQueryGetPoLinesByRefNumber(refNumberList);
-      RequestEntry requestEntry = new RequestEntry(resourcesPath(ORDER_LINES))
-          .withQuery(cqlGetPoLinesByRefNo)
+    Map<Integer, PoLine> poLinesByRefNumbers = new HashMap<>();
+
+    invoiceLineNoToRefNumbers.entrySet()
+      .stream()
+      .sequential()
+      .forEach(entry -> {
+        var invoiceLineNumber = entry.getKey();
+        var refNumberList = entry.getValue();
+        String cqlGetPoLinesByRefNo = prepareQueryGetPoLinesByRefNumber(refNumberList);
+        RequestEntry requestEntry = new RequestEntry(resourcesPath(ORDER_LINES)).withQuery(cqlGetPoLinesByRefNo)
           .withOffset(0)
           .withLimit(Integer.MAX_VALUE);
-      poLinesFutures.put(invoiceLineNumber, restClient
-          .get(requestEntry, new RequestContext(Vertx.currentContext(), okapiHeaders), PoLineCollection.class));
-    });
+        try {
+          var polines = restClient.get(requestEntry, new RequestContext(Vertx.currentContext(), okapiHeaders), PoLineCollection.class)
+            .join();
+          if (polines.getPoLines().size() == 1) {
+            poLinesByRefNumbers.put(invoiceLineNumber, polines.getPoLines().get(0));
+          }
+        } catch (Exception e) {
+          logger.error(requestEntry.buildEndpoint(), e);
+        }
+      });
+    return CompletableFuture.completedFuture(poLinesByRefNumbers);
 
-    return CompletableFuture.allOf(poLinesFutures.values().toArray(new CompletableFuture[0]))
-      .thenApply(v -> poLinesFutures.entrySet().stream()
-        .filter(numberToFuture -> !numberToFuture.getValue().isCompletedExceptionally()
-          && numberToFuture.getValue().join().getPoLines().size() == 1)
-        .collect(Collectors.toMap(Map.Entry::getKey, pair -> pair.getValue().join().getPoLines().get(0))));
   }
 
   private String prepareQueryGetPoLinesByNumber(List<String> poLineNumbers) {
@@ -298,7 +307,7 @@ public class CreateInvoiceEventHandler implements EventHandler {
       .stream()
       .map(JsonObject.class::cast)
       .map(json -> json.mapTo(InvoiceLine.class))
-      .peek(invoiceLine -> invoiceLine.withInvoiceId(invoiceId).withInvoiceLineStatus(OPEN))
+      .map(invoiceLine -> invoiceLine.withInvoiceId(invoiceId).withInvoiceLineStatus(OPEN))
       .collect(Collectors.toList());
 
     linkInvoiceLinesToPoLines(invoiceLines, associatedPoLines);
