@@ -245,7 +245,13 @@ public class CreateInvoiceEventHandler implements EventHandler {
     if (invoiceLineNoToRefNumbers.isEmpty()) {
       return CompletableFuture.completedFuture(new HashMap<>());
     }
+    RequestContext requestContext = new RequestContext(Vertx.currentContext(), okapiHeaders);
 
+    return CompletableFuture.completedFuture(getAssociatedPoLinesByRefNumbers(invoiceLineNoToRefNumbers, requestContext));
+
+  }
+
+  private Map<Integer, PoLine> getAssociatedPoLinesByRefNumbers(Map<Integer, List<String>> invoiceLineNoToRefNumbers, RequestContext requestContext) {
     Map<Integer, PoLine> poLinesByRefNumbers = new HashMap<>();
 
     invoiceLineNoToRefNumbers.entrySet()
@@ -259,7 +265,7 @@ public class CreateInvoiceEventHandler implements EventHandler {
           .withOffset(0)
           .withLimit(Integer.MAX_VALUE);
         try {
-          var polines = restClient.get(requestEntry, new RequestContext(Vertx.currentContext(), okapiHeaders), PoLineCollection.class)
+          var polines = restClient.get(requestEntry, requestContext, PoLineCollection.class)
             .join();
           if (polines.getPoLines().size() == 1) {
             poLinesByRefNumbers.put(invoiceLineNumber, polines.getPoLines().get(0));
@@ -268,8 +274,8 @@ public class CreateInvoiceEventHandler implements EventHandler {
           logger.error(requestEntry.buildEndpoint(), e);
         }
       });
-    return CompletableFuture.completedFuture(poLinesByRefNumbers);
 
+    return poLinesByRefNumbers;
   }
 
   private String prepareQueryGetPoLinesByNumber(List<String> poLineNumbers) {
