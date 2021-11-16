@@ -163,16 +163,14 @@ public class CreateInvoiceEventHandler implements EventHandler {
       ? Collections.emptyMap() : retrieveInvoiceLinesReferenceNumbers(parsedRecord, ReferenceNumberExpressions);
 
     return getAssociatedPoLinesByPoLineNumber(invoiceLineNoToPoLineNo, okapiHeaders)
-      .thenCompose(associatedPoLineMap -> {
+      .thenApply(associatedPoLineMap -> {
         if (associatedPoLineMap.size() < invoiceLinesAmount) {
           associatedPoLineMap.keySet().forEach(invoiceLineNoToRefNo2::remove);
-          return getAssociatedPoLinesByRefNumbers(invoiceLineNoToRefNo2, new RequestContext(Vertx.currentContext(), okapiHeaders))
-            .thenApply(poLinesMap -> {
-              associatedPoLineMap.putAll(poLinesMap);
-              return associatedPoLineMap;
-          });
+          var poLinesMap = getAssociatedPoLinesByRefNumbers(invoiceLineNoToRefNo2, new RequestContext(Vertx.currentContext(), okapiHeaders));
+          associatedPoLineMap.putAll(poLinesMap);
+          return associatedPoLineMap;
         }
-        return completedFuture(associatedPoLineMap);
+        return associatedPoLineMap;
       });
   }
 
@@ -246,41 +244,17 @@ public class CreateInvoiceEventHandler implements EventHandler {
       .thenApply(v -> invoiceLineNoToPoLine);
   }
 
-  private CompletableFuture<Map<Integer, PoLine>> getAssociatedPoLinesByRefNumbers(Map<Integer, List<String>> invoiceLineNoToRefNumbers, Map<String, String> okapiHeaders) {
-    if (invoiceLineNoToRefNumbers.isEmpty()) {
-      return CompletableFuture.completedFuture(new HashMap<>());
-    }
 
-    Map<Integer, CompletableFuture<PoLineCollection>> poLinesFutures = new HashMap<>();
-    invoiceLineNoToRefNumbers.forEach((invoiceLineNumber, refNumberList) -> {
-      String cqlGetPoLinesByRefNo = prepareQueryGetPoLinesByRefNumber(refNumberList);
-      RequestEntry requestEntry = new RequestEntry(resourcesPath(ORDER_LINES))
-          .withQuery(cqlGetPoLinesByRefNo)
-          .withOffset(0)
-          .withLimit(Integer.MAX_VALUE);
-      poLinesFutures.put(invoiceLineNumber, restClient
-          .get(requestEntry, new RequestContext(Vertx.currentContext(), okapiHeaders), PoLineCollection.class));
-    });
-
-    return CompletableFuture.allOf(poLinesFutures.values().toArray(new CompletableFuture[0]))
-      .thenApply(v -> poLinesFutures.entrySet().stream()
-        .filter(numberToFuture -> !numberToFuture.getValue().isCompletedExceptionally()
-          && numberToFuture.getValue().join().getPoLines().size() == 1)
-        .collect(Collectors.toMap(Map.Entry::getKey, pair -> pair.getValue().join().getPoLines().get(0))));
-  }
-
-  private CompletableFuture<Map<Integer, PoLine>> getAssociatedPoLinesByRefNumbers(Map<Integer, List<String>> refNumberList,
+  private Map<Integer, PoLine> getAssociatedPoLinesByRefNumbers(Map<Integer, List<String>> refNumberList,
       RequestContext requestContext) {
     int index = 1;
     List<Pair<Integer, PoLine>> response = new ArrayList<>();
     List<CompletableFuture<Pair<Integer, PoLine>>> linesChunk = new ArrayList<>();
 
     for (Map.Entry<Integer, List<String>> entry : refNumberList.entrySet()) {
-      int vvv = 3;
-
       linesChunk.add(getLinePair(entry, requestContext));
 
-      if (index % vvv == 0 || index == refNumberList.size()) {
+      if (index % MAX_PARALLEL_SEARCHES == 0 || index == refNumberList.size()) {
         CompletableFuture<List<Pair<Integer, PoLine>>> chunk = collectResultsOnSuccess(linesChunk);
         if (chunk.isDone() && !chunk.isCompletedExceptionally()) {
           response.addAll(chunk.join());
@@ -290,9 +264,9 @@ public class CreateInvoiceEventHandler implements EventHandler {
       index++;
     }
 
-    return completedFuture(response.stream()
+    return response.stream()
       .filter(Objects::nonNull)
-      .collect(Collectors.toMap(Pair::getKey, Pair::getValue)));
+      .collect(Collectors.toMap(Pair::getKey, Pair::getValue));
   }
 
   private CompletableFuture<Pair<Integer, PoLine>> getLinePair(Map.Entry<Integer, List<String>> refNumbers, RequestContext requestContext) {
@@ -305,7 +279,7 @@ public class CreateInvoiceEventHandler implements EventHandler {
 
     return restClient.get(requestEntry, requestContext, PoLineCollection.class)
       .handle((polines, error) -> {
-        if (error == null || polines.getPoLines().size() == 1) {
+        if (error == null && polines.getPoLines().size() == 1) {
           return Pair.of(refNumbers.getKey(), polines.getPoLines().get(0));
         }
         return null;
