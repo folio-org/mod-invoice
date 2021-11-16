@@ -1,6 +1,7 @@
 package org.folio.dataimport.handlers.actions;
 
 import static java.lang.String.format;
+import static java.util.concurrent.CompletableFuture.completedFuture;
 import static org.apache.commons.collections4.CollectionUtils.isNotEmpty;
 import static org.apache.commons.lang3.StringUtils.isBlank;
 import static org.folio.ActionProfile.Action.CREATE;
@@ -8,6 +9,7 @@ import static org.folio.ActionProfile.FolioRecord.INVOICE;
 import static org.folio.DataImportEventTypes.DI_INVOICE_CREATED;
 import static org.folio.dataimport.handlers.events.DataImportKafkaHandler.DATA_IMPORT_PAYLOAD_OKAPI_PERMISSIONS;
 import static org.folio.dataimport.handlers.events.DataImportKafkaHandler.DATA_IMPORT_PAYLOAD_OKAPI_USER_ID;
+import static org.folio.invoices.utils.HelperUtils.collectResultsOnSuccess;
 import static org.folio.invoices.utils.ResourcePathResolver.ORDER_LINES;
 import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
 import static org.folio.rest.jaxrs.model.EntityType.EDIFACT_INVOICE;
@@ -52,12 +54,12 @@ import org.folio.rest.impl.InvoiceLineHelper;
 import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.jaxrs.model.InvoiceLine;
 import org.folio.rest.jaxrs.model.InvoiceLineCollection;
+import org.folio.utils.UserPermissionsUtil;
 
 import io.vertx.core.Vertx;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
-import org.folio.utils.UserPermissionsUtil;
 
 public class CreateInvoiceEventHandler implements EventHandler {
 
@@ -81,6 +83,7 @@ public class CreateInvoiceEventHandler implements EventHandler {
   private static final String POL_FUND_DISTRIBUTIONS_KEY = "POL_FUND_DISTRIBUTIONS_%s";
   private static final Pattern SEGMENT_QUERY_PATTERN = Pattern.compile("([A-Z]{3}((\\+|<)\\w*)(\\2*\\w*)*(\\?\\w+)?\\[[1-9](-[1-9])?\\])");
   private static final String DEFAULT_LANG = "en";
+  private static final int MAX_PARALLEL_SEARCHES = 5;
 
   private final RestClient restClient;
 
@@ -162,15 +165,14 @@ public class CreateInvoiceEventHandler implements EventHandler {
       ? Collections.emptyMap() : retrieveInvoiceLinesReferenceNumbers(parsedRecord, ReferenceNumberExpressions);
 
     return getAssociatedPoLinesByPoLineNumber(invoiceLineNoToPoLineNo, okapiHeaders)
-      .thenCompose(associatedPoLineMap -> {
+      .thenApply(associatedPoLineMap -> {
         if (associatedPoLineMap.size() < invoiceLinesAmount) {
           associatedPoLineMap.keySet().forEach(invoiceLineNoToRefNo2::remove);
-          return getAssociatedPoLinesByRefNumbers(invoiceLineNoToRefNo2, okapiHeaders).thenApply(poLinesMap -> {
-            associatedPoLineMap.putAll(poLinesMap);
-            return associatedPoLineMap;
-          });
+          var poLinesMap = getAssociatedPoLinesByRefNumbers(invoiceLineNoToRefNo2, new RequestContext(Vertx.currentContext(), okapiHeaders));
+          associatedPoLineMap.putAll(poLinesMap);
+          return associatedPoLineMap;
         }
-        return CompletableFuture.completedFuture(associatedPoLineMap);
+        return associatedPoLineMap;
       });
   }
 
@@ -229,7 +231,7 @@ public class CreateInvoiceEventHandler implements EventHandler {
   private CompletableFuture<Map<Integer, PoLine>> getAssociatedPoLinesByPoLineNumber(Map<Integer, String> invoiceLineNoToPoLineNo, Map<String, String> okapiHeaders) {
     Map<Integer, PoLine> invoiceLineNoToPoLine = new HashMap<>();
     if (invoiceLineNoToPoLineNo.isEmpty()) {
-      return CompletableFuture.completedFuture(invoiceLineNoToPoLine);
+      return completedFuture(invoiceLineNoToPoLine);
     }
 
     String preparedCql = prepareQueryGetPoLinesByNumber(List.copyOf(invoiceLineNoToPoLineNo.values()));
@@ -244,27 +246,46 @@ public class CreateInvoiceEventHandler implements EventHandler {
       .thenApply(v -> invoiceLineNoToPoLine);
   }
 
-  private CompletableFuture<Map<Integer, PoLine>> getAssociatedPoLinesByRefNumbers(Map<Integer, List<String>> invoiceLineNoToRefNumbers, Map<String, String> okapiHeaders) {
-    if (invoiceLineNoToRefNumbers.isEmpty()) {
-      return CompletableFuture.completedFuture(new HashMap<>());
+
+  private Map<Integer, PoLine> getAssociatedPoLinesByRefNumbers(Map<Integer, List<String>> refNumberList,
+      RequestContext requestContext) {
+    int index = 1;
+    List<Pair<Integer, PoLine>> response = new ArrayList<>();
+    List<CompletableFuture<Pair<Integer, PoLine>>> linesChunk = new ArrayList<>();
+
+    for (Map.Entry<Integer, List<String>> entry : refNumberList.entrySet()) {
+      linesChunk.add(getLinePair(entry, requestContext));
+
+      if (index % MAX_PARALLEL_SEARCHES == 0 || index == refNumberList.size()) {
+        CompletableFuture<List<Pair<Integer, PoLine>>> chunk = collectResultsOnSuccess(linesChunk);
+        if (chunk.isDone() && !chunk.isCompletedExceptionally()) {
+          response.addAll(chunk.join());
+        }
+        linesChunk.clear();
+      }
+      index++;
     }
 
-    Map<Integer, CompletableFuture<PoLineCollection>> poLinesFutures = new HashMap<>();
-    invoiceLineNoToRefNumbers.forEach((invoiceLineNumber, refNumberList) -> {
-      String cqlGetPoLinesByRefNo = prepareQueryGetPoLinesByRefNumber(refNumberList);
-      RequestEntry requestEntry = new RequestEntry(resourcesPath(ORDER_LINES))
-          .withQuery(cqlGetPoLinesByRefNo)
-          .withOffset(0)
-          .withLimit(Integer.MAX_VALUE);
-      poLinesFutures.put(invoiceLineNumber, restClient
-          .get(requestEntry, new RequestContext(Vertx.currentContext(), okapiHeaders), PoLineCollection.class));
-    });
+    return response.stream()
+      .filter(Objects::nonNull)
+      .collect(Collectors.toMap(Pair::getKey, Pair::getValue));
+  }
 
-    return CompletableFuture.allOf(poLinesFutures.values().toArray(new CompletableFuture[0]))
-      .thenApply(v -> poLinesFutures.entrySet().stream()
-        .filter(numberToFuture -> !numberToFuture.getValue().isCompletedExceptionally()
-          && numberToFuture.getValue().join().getPoLines().size() == 1)
-        .collect(Collectors.toMap(Map.Entry::getKey, pair -> pair.getValue().join().getPoLines().get(0))));
+  private CompletableFuture<Pair<Integer, PoLine>> getLinePair(Map.Entry<Integer, List<String>> refNumbers, RequestContext requestContext) {
+    String cqlGetPoLinesByRefNo = prepareQueryGetPoLinesByRefNumber(refNumbers.getValue());
+
+    RequestEntry requestEntry = new RequestEntry(resourcesPath(ORDER_LINES)).withQuery(cqlGetPoLinesByRefNo)
+      .withQuery(cqlGetPoLinesByRefNo)
+      .withOffset(0)
+      .withLimit(Integer.MAX_VALUE);
+
+    return restClient.get(requestEntry, requestContext, PoLineCollection.class)
+      .handle((polines, error) -> {
+        if (error == null && polines.getPoLines().size() == 1) {
+          return Pair.of(refNumbers.getKey(), polines.getPoLines().get(0));
+        }
+        return null;
+      });
   }
 
   private String prepareQueryGetPoLinesByNumber(List<String> poLineNumbers) {
@@ -302,7 +323,7 @@ public class CreateInvoiceEventHandler implements EventHandler {
       .stream()
       .map(JsonObject.class::cast)
       .map(json -> json.mapTo(InvoiceLine.class))
-      .peek(invoiceLine -> invoiceLine.withInvoiceId(invoiceId).withInvoiceLineStatus(OPEN))
+      .map(invoiceLine -> invoiceLine.withInvoiceId(invoiceId).withInvoiceLineStatus(OPEN))
       .collect(Collectors.toList());
 
     linkInvoiceLinesToPoLines(invoiceLines, associatedPoLines);
@@ -322,7 +343,7 @@ public class CreateInvoiceEventHandler implements EventHandler {
   private CompletableFuture<List<Pair<InvoiceLine, String>>> saveInvoiceLines(List<InvoiceLine> invoiceLines, Map<String, String> okapiHeaders) {
     ArrayList<CompletableFuture<InvoiceLine>> futures = new ArrayList<>();
 
-    CompletableFuture<InvoiceLine> future = CompletableFuture.completedFuture(null);
+    CompletableFuture<InvoiceLine> future = completedFuture(null);
     InvoiceLineHelper helper = new InvoiceLineHelper(okapiHeaders, Vertx.currentContext(), DEFAULT_LANG);
     for (InvoiceLine invoiceLine : invoiceLines) {
       future = future.thenCompose(v -> helper.createInvoiceLine(invoiceLine));

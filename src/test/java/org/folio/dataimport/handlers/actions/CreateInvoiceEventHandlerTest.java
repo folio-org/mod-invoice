@@ -41,6 +41,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mockito;
 
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -363,7 +365,7 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
     PoLine poLine3 = Json.decodeValue(getMockData(String.format(MOCK_DATA_PATH_PATTERN, PO_LINES_MOCK_DATA_PATH, PO_LINE_ID_3)), PoLine.class);
 
     when(mockOrderLinesRestClient.get(any(), any(RequestContext.class), eq(PoLineCollection.class)))
-      .thenReturn(CompletableFuture.completedFuture(new PoLineCollection()))
+      .thenReturn(CompletableFuture.completedFuture(new PoLineCollection().withPoLines(new ArrayList<>())))
       .thenReturn(CompletableFuture.completedFuture(new PoLineCollection().withPoLines(List.of(poLine1))))
       .thenReturn(CompletableFuture.completedFuture(new PoLineCollection()))
       .thenReturn(CompletableFuture.completedFuture(new PoLineCollection().withPoLines(List.of(poLine3))));
