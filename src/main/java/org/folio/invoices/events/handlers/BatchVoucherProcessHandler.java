@@ -1,15 +1,14 @@
 package org.folio.invoices.events.handlers;
 
-import static javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
-import static org.folio.invoices.utils.HelperUtils.BATCH_VOUCHER_EXPORT;
-import static org.folio.invoices.utils.HelperUtils.LANG;
-import static org.folio.invoices.utils.HelperUtils.getOkapiHeaders;
-
-import java.util.Map;
-import java.util.concurrent.CompletableFuture;
-
-import javax.ws.rs.core.Response;
-
+import io.vertx.core.Context;
+import io.vertx.core.Handler;
+import io.vertx.core.Vertx;
+import io.vertx.core.eventbus.Message;
+import io.vertx.core.json.JsonObject;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.folio.completablefuture.FolioVertxCompletableFuture;
+import org.folio.exceptions.BatchVoucherGenerationException;
 import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.rest.impl.BatchVoucherPersistHelper;
 import org.folio.rest.jaxrs.model.BatchVoucherExport;
@@ -17,14 +16,12 @@ import org.folio.services.voucher.UploadBatchVoucherExportService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
-import io.vertx.core.Context;
-import io.vertx.core.Handler;
-import io.vertx.core.Vertx;
-import io.vertx.core.eventbus.Message;
-import io.vertx.core.json.JsonObject;
-import org.apache.logging.log4j.Logger;
-import org.apache.logging.log4j.LogManager;
-import org.folio.completablefuture.FolioVertxCompletableFuture;
+import javax.ws.rs.core.Response;
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+
+import static javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
+import static org.folio.invoices.utils.HelperUtils.*;
 
 @Component("batchVoucherProcessHandler")
 public class BatchVoucherProcessHandler implements Handler<Message<JsonObject>> {
@@ -49,6 +46,7 @@ public class BatchVoucherProcessHandler implements Handler<Message<JsonObject>> 
     getBatchVoucherExportBody(body)
       .thenCompose(bvExport -> manager.persistBatchVoucher(bvExport)
                                       .thenAccept(bvExport::withBatchVoucherId)
+                                      .thenAccept(aVoid -> isBatchVoucherCreated(bvExport))
                                       .thenCompose(id -> uploadService.uploadBatchVoucherExport(bvExport)))
       .handle((ok, fail) -> {
         // Sending reply message just in case some logic requires it
@@ -64,6 +62,12 @@ public class BatchVoucherProcessHandler implements Handler<Message<JsonObject>> 
         }
         return null;
       });
+  }
+
+  private void isBatchVoucherCreated(BatchVoucherExport bvExport) {
+    if(bvExport.getStatus() == BatchVoucherExport.Status.ERROR) {
+      throw new BatchVoucherGenerationException(bvExport.getMessage());
+    }
   }
 
   private CompletableFuture<BatchVoucherExport> getBatchVoucherExportBody(JsonObject body) {

@@ -1,10 +1,9 @@
 package org.folio.services.voucher;
 
-import java.net.URISyntaxException;
-import java.util.Map;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionException;
-
+import io.vertx.core.Context;
+import io.vertx.core.json.JsonObject;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.models.BatchVoucherUploadHolder;
 import org.folio.rest.impl.BatchVoucherExportConfigHelper;
@@ -15,10 +14,10 @@ import org.folio.rest.jaxrs.model.BatchVoucherExport;
 import org.folio.services.ftp.FtpUploadService;
 import org.folio.services.ftp.UploadService;
 
-import io.vertx.core.Context;
-import io.vertx.core.json.JsonObject;
-import org.apache.logging.log4j.Logger;
-import org.apache.logging.log4j.LogManager;
+import java.net.URISyntaxException;
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 
 public class UploadBatchVoucherExportService {
   private static final Logger LOG = LogManager.getLogger(UploadBatchVoucherExportService.class);
@@ -28,6 +27,7 @@ public class UploadBatchVoucherExportService {
   private final BatchVoucherHelper bvHelper;
   private final BatchVoucherExportConfigHelper bvExportConfigHelper;
   private final BatchVoucherExportsHelper bvExportsHelper;
+  private final String CREDENTIALS_NOT_FOUND = "Credentials for FTP upload were not found";
 
   public UploadBatchVoucherExportService(Map<String, String> okapiHeaders, Context ctx, String lang) {
     this.bvHelper = new BatchVoucherHelper(okapiHeaders, ctx, lang);
@@ -149,7 +149,7 @@ public class UploadBatchVoucherExportService {
       .thenAccept(uploadHolder::setCredentials)
       .thenAccept(v -> future.complete(null))
       .exceptionally(t -> {
-        future.completeExceptionally(new HttpException(404, "Credentials for export configuration was not found"));
+        future.completeExceptionally(new HttpException(404, CREDENTIALS_NOT_FOUND));
         return null;
       });
     return future;
@@ -173,6 +173,7 @@ public class UploadBatchVoucherExportService {
 
   private void failUploadUpdate(BatchVoucherExport bvExport, Throwable t) {
     if (bvExport != null) {
+      if (!CREDENTIALS_NOT_FOUND.equals(t.getCause().getMessage()))
       bvExport.setStatus(BatchVoucherExport.Status.ERROR);
       bvExport.setMessage(t.getCause().getMessage());
       updateBatchVoucher(bvExport);
