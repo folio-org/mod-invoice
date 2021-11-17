@@ -1,5 +1,14 @@
 ## 5.3.0 - Unreleased
 
+## 5.2.2 - Released
+The focus of this release was to fix invoice data import
+
+[Full Changelog](https://github.com/folio-org/mod-invoice/compare/v5.2.1...v5.2.2)
+
+* [MODINVOICE-327](https://issues.folio.org/browse/MODINVOICE-327) - Update data-import-processing-core to v3.2.4
+* [MODINVOICE-325](https://issues.folio.org/browse/MODINVOICE-325) - Creating multiple large invoices quickly from Data Import failed
+
+
 ## 5.2.1 - Released
 The focus of this release was to fix invoice data import
 
