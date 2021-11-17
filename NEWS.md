@@ -1,5 +1,15 @@
 ## 5.2.0 - Unreleased
 
+## 5.1.9 (Juniper) - Released
+
+The focus of this release was to fix batch voucher export of large amount of voucher lines
+
+[Full Changelog](https://github.com/folio-org/mod-invoice/compare/v5.1.8...v5.1.9)
+
+### Bug Fixes
+* [MODINVOICE-318](https://issues.folio.org/browse/MODINVOICE-318) - Creating multiple large invoices quickly from Data Import failed
+
+
 ## 5.1.8 (Juniper) - Released
 
 The focus of this release was to fix batch voucher export of large amount of voucher lines
