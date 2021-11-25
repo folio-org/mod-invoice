@@ -367,7 +367,7 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
     when(mockOrderLinesRestClient.get(any(), any(RequestContext.class), eq(PoLineCollection.class)))
       .thenReturn(CompletableFuture.completedFuture(new PoLineCollection().withPoLines(new ArrayList<>())))
       .thenReturn(CompletableFuture.completedFuture(new PoLineCollection().withPoLines(List.of(poLine1))))
-      .thenReturn(CompletableFuture.completedFuture(new PoLineCollection()))
+      .thenReturn(CompletableFuture.completedFuture(new PoLineCollection().withPoLines(new ArrayList<>())))
       .thenReturn(CompletableFuture.completedFuture(new PoLineCollection().withPoLines(List.of(poLine3))));
 
     ProfileSnapshotWrapper profileSnapshotWrapper = buildProfileSnapshotWrapper(jobProfile, actionProfile, mappingProfileWithPoLineSyntax);
