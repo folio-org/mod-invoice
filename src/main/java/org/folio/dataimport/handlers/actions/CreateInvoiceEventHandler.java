@@ -16,7 +16,6 @@ import static org.folio.rest.jaxrs.model.InvoiceLine.InvoiceLineStatus.OPEN;
 import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.ACTION_PROFILE;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -27,7 +26,6 @@ import java.util.concurrent.CompletableFuture;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-import one.util.streamex.StreamEx;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -259,7 +257,10 @@ public class CreateInvoiceEventHandler implements EventHandler {
       linesChunk.add(getLinePair(entry, requestContext));
 
       if (index % MAX_PARALLEL_SEARCHES == 0 || index == refNumberList.size()) {
-        response.addAll(collectResultsOnSuccess(linesChunk).join());
+        CompletableFuture<List<Pair<Integer, PoLine>>> chunk = collectResultsOnSuccess(linesChunk);
+        if (chunk.isDone() && !chunk.isCompletedExceptionally()) {
+          response.addAll(chunk.join());
+        }
         linesChunk.clear();
       }
       index++;
