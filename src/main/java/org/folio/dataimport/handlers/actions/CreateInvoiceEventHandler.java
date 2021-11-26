@@ -167,14 +167,15 @@ public class CreateInvoiceEventHandler implements EventHandler {
       ? Collections.emptyMap() : retrieveInvoiceLinesReferenceNumbers(parsedRecord, ReferenceNumberExpressions);
 
     return getAssociatedPoLinesByPoLineNumber(invoiceLineNoToPoLineNo, okapiHeaders)
-      .thenApply(associatedPoLineMap -> {
+      .thenCompose(associatedPoLineMap -> {
         if (associatedPoLineMap.size() < invoiceLinesAmount) {
           associatedPoLineMap.keySet().forEach(invoiceLineNoToRefNo2::remove);
-          var poLinesMap = getAssociatedPoLinesByRefNumbers(invoiceLineNoToRefNo2, new RequestContext(Vertx.currentContext(), okapiHeaders));
-          associatedPoLineMap.putAll(poLinesMap);
-          return associatedPoLineMap;
+          return getAssociatedPoLinesByRefNumbers(invoiceLineNoToRefNo2, new RequestContext(Vertx.currentContext(), okapiHeaders)).thenApply(poLinesMap -> {
+              associatedPoLineMap.putAll(poLinesMap);
+              return associatedPoLineMap;
+          });
         }
-        return associatedPoLineMap;
+        return CompletableFuture.completedFuture(associatedPoLineMap);
       });
   }
 
@@ -251,28 +252,18 @@ public class CreateInvoiceEventHandler implements EventHandler {
   }
 
 
-  private Map<Integer, PoLine> getAssociatedPoLinesByRefNumbers(Map<Integer, List<String>> refNumberList,
-      RequestContext requestContext) {
-    int index = 1;
-    List<Pair<Integer, PoLine>> response = new ArrayList<>();
-    List<CompletableFuture<Pair<Integer, PoLine>>> linesChunk = new ArrayList<>();
+  private CompletableFuture<Map<Integer, PoLine>> getAssociatedPoLinesByRefNumbers(Map<Integer, List<String>> refNumberList, RequestContext requestContext) {
+    List<CompletableFuture<Pair<Integer, PoLine>>> futures = new ArrayList<>();
+    CompletableFuture<Pair<Integer, PoLine>> future = completedFuture(null);
 
     for (Map.Entry<Integer, List<String>> entry : refNumberList.entrySet()) {
-      linesChunk.add(getLinePair(entry, requestContext));
-
-      if (index % MAX_PARALLEL_SEARCHES == 0 || index == refNumberList.size()) {
-        CompletableFuture<List<Pair<Integer, PoLine>>> chunk = collectResultsOnSuccess(linesChunk);
-        if (chunk.isDone() && !chunk.isCompletedExceptionally()) {
-          response.addAll(chunk.join());
-        }
-        linesChunk.clear();
-      }
-      index++;
+      future = future.thenCompose(v -> getLinePair(entry, requestContext));
+      futures.add(future);
     }
 
-    return response.stream()
+    return collectResultsOnSuccess(futures).thenApply(poLinePairs -> poLinePairs.stream()
       .filter(Objects::nonNull)
-      .collect(Collectors.toMap(Pair::getKey, Pair::getValue));
+      .collect(Collectors.toMap(Pair::getKey, Pair::getValue)));
   }
 
   private CompletableFuture<Pair<Integer, PoLine>> getLinePair(Map.Entry<Integer, List<String>> refNumbers, RequestContext requestContext) {
