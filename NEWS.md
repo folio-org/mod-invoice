@@ -1,5 +1,15 @@
 ## 5.2.0 - Unreleased
 
+## 5.1.10 (Juniper) - Released
+
+The focus of this release was ещ fix invoice import from large EDIFACT files
+
+[Full Changelog](https://github.com/folio-org/mod-invoice/compare/v5.1.9...v5.1.10)
+### Bug Fixes
+* [MODINVOICE-338](https://issues.folio.org/browse/MODINVOICE-338) - When EDIFACT record is imported matching by vendor reference number is not working
+* [MODINVOICE-332](https://issues.folio.org/browse/MODINVOICE-332) - Creating multiple invoice lines per invoice fails
+
+
 ## 5.1.9 (Juniper) - Released
 
 The focus of this release was to fix batch voucher export of large amount of voucher lines
