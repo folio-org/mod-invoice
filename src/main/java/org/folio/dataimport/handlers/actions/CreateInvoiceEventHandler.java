@@ -8,6 +8,7 @@ import static org.apache.commons.lang3.StringUtils.isBlank;
 import static org.folio.ActionProfile.Action.CREATE;
 import static org.folio.ActionProfile.FolioRecord.INVOICE;
 import static org.folio.DataImportEventTypes.DI_INVOICE_CREATED;
+import static org.folio.invoices.utils.HelperUtils.collectChunkResultsWithCdl;
 import static org.folio.invoices.utils.HelperUtils.collectResultsOnSuccess;
 import static org.folio.invoices.utils.ResourcePathResolver.ORDER_LINES;
 import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
@@ -23,6 +24,9 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -35,6 +39,7 @@ import org.folio.EdifactParsedContent;
 import org.folio.MappingProfile;
 import org.folio.ParsedRecord;
 import org.folio.Record;
+import org.folio.completablefuture.FolioVertxCompletableFuture;
 import org.folio.dataimport.utils.DataImportUtils;
 import org.folio.processing.events.services.handler.EventHandler;
 import org.folio.processing.exceptions.EventProcessingException;
@@ -158,9 +163,9 @@ public class CreateInvoiceEventHandler implements EventHandler {
       .map(expression -> EdifactRecordReader.getInvoiceLinesSegmentsValues(parsedRecord, expression))
       .orElse(Collections.emptyMap());
 
-    List<String> ReferenceNumberExpressions = getPoLineRefNumberMappingExpressions(eventPayload);
-    Map<Integer, List<String>> invoiceLineNoToRefNo2 = ReferenceNumberExpressions.isEmpty()
-      ? Collections.emptyMap() : retrieveInvoiceLinesReferenceNumbers(parsedRecord, ReferenceNumberExpressions);
+    List<String> referenceNumberExpressions = getPoLineRefNumberMappingExpressions(eventPayload);
+    Map<Integer, List<String>> invoiceLineNoToRefNo2 = referenceNumberExpressions.isEmpty()
+      ? Collections.emptyMap() : retrieveInvoiceLinesReferenceNumbers(parsedRecord, referenceNumberExpressions);
 
     return getAssociatedPoLinesByPoLineNumber(invoiceLineNoToPoLineNo, okapiHeaders)
       .thenApply(associatedPoLineMap -> {
@@ -188,7 +193,7 @@ public class CreateInvoiceEventHandler implements EventHandler {
       .flatMap(mappingRule -> mappingRule.getSubfields().get(0).getFields().stream())
       .filter(mappingRule -> PO_LINE_NUMBER_RULE_NAME.equals(mappingRule.getName()))
       .map(mappingRule -> SEGMENT_QUERY_PATTERN.matcher(mappingRule.getValue()))
-      .filter(mappingExpressionMatcher -> mappingExpressionMatcher.find())
+      .filter(Matcher::find)
       .map(matcher -> matcher.group(1))
       .findFirst();
   }
@@ -202,7 +207,7 @@ public class CreateInvoiceEventHandler implements EventHandler {
       .flatMap(mappingRule -> mappingRule.getSubfields().get(0).getFields().stream())
       .filter(mappingRule -> REF_NUMBER_RULE_NAME.equals(mappingRule.getName()))
       .map(mappingRule -> SEGMENT_QUERY_PATTERN.matcher(mappingRule.getValue()))
-      .filter(mappingExpressionMatcher -> mappingExpressionMatcher.find())
+      .filter(Matcher::find)
       .map(matcher -> matcher.group(1))
       .collect(Collectors.toList());
   }
@@ -249,21 +254,30 @@ public class CreateInvoiceEventHandler implements EventHandler {
 
   private Map<Integer, PoLine> getAssociatedPoLinesByRefNumbers(Map<Integer, List<String>> refNumberList,
       RequestContext requestContext) {
-    int index = 1;
     List<Pair<Integer, PoLine>> response = new ArrayList<>();
     List<CompletableFuture<Pair<Integer, PoLine>>> linesChunk = new ArrayList<>();
 
+    CountDownLatch cdl = new CountDownLatch(MAX_PARALLEL_SEARCHES);
+    var mapCounter = 0;
     for (Map.Entry<Integer, List<String>> entry : refNumberList.entrySet()) {
+      mapCounter++;
+      cdl.countDown();
+
       linesChunk.add(getLinePair(entry, requestContext));
 
-      if (index % MAX_PARALLEL_SEARCHES == 0 || index == refNumberList.size()) {
-        CompletableFuture<List<Pair<Integer, PoLine>>> chunk = collectResultsOnSuccess(linesChunk);
-        if (chunk.isDone() && !chunk.isCompletedExceptionally()) {
+      // check if 5 elements put into chunk or the last element added
+      if (cdl.getCount() == 0 || mapCounter == refNumberList.size()) {
+        CompletableFuture<List<Pair<Integer, PoLine>>> chunk = FolioVertxCompletableFuture.from(Vertx.currentContext(), collectChunkResultsWithCdl(linesChunk, cdl));
+        try {
+          cdl.await(30, TimeUnit.SECONDS);
           response.addAll(chunk.join());
+
+          cdl = new CountDownLatch(MAX_PARALLEL_SEARCHES);
+          linesChunk.clear();
+        } catch (InterruptedException e) {
+          logger.error("getAssociatedPoLinesByRefNumbers countDownLatch interrupted", e);
         }
-        linesChunk.clear();
       }
-      index++;
     }
 
     return response.stream()

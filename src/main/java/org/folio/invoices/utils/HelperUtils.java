@@ -30,6 +30,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
+import java.util.concurrent.CountDownLatch;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.IntStream;
@@ -355,6 +356,18 @@ public class HelperUtils {
         .stream()
         // The CompletableFuture::join can be safely used because the `allOf` guaranties success at this step
         .map(CompletableFuture::join)
+        .filter(Objects::nonNull)
+        .collect(toList())
+      );
+  }
+
+  public static <T> CompletableFuture<List<T>> collectChunkResultsWithCdl(List<CompletableFuture<T>> futures, CountDownLatch cdl) {
+    return allOf(futures.toArray(new CompletableFuture[0]))
+      .thenApply(v -> futures
+        .stream()
+        // The CompletableFuture::join can be safely used because the `allOf` guaranties success at this step
+        .map(CompletableFuture::join)
+        .peek(d -> cdl.countDown())
         .filter(Objects::nonNull)
         .collect(toList())
       );
