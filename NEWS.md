@@ -1,5 +1,14 @@
 ## 5.3.0 - Unreleased
 
+## 5.2.3 (Kiwi) - Released
+
+The focus of this release was to fix invoice import from large EDIFACT files
+
+[Full Changelog](https://github.com/folio-org/mod-invoice/compare/v5.2.2...v5.2.3)
+### Bug Fixes
+* [MODINVOICE-338](https://issues.folio.org/browse/MODINVOICE-338) - When EDIFACT record is imported matching by vendor reference number is not working
+* [MODINVOICE-333](https://issues.folio.org/browse/MODINVOICE-333) - Creating multiple invoice lines per invoice fails
+
 ## 5.2.2 - Released
 The focus of this release was to fix invoice data import
 
