@@ -252,42 +252,32 @@ public class CreateInvoiceEventHandler implements EventHandler {
   }
 
 
-  private Map<Integer, PoLine> getAssociatedPoLinesByRefNumbers(Map<Integer, List<String>> refNumberList,
+  private Map<Integer, PoLine> getAssociatedPoLinesByRefNumbers(Map<Integer, List<String>> invoiceLineNoToRefNumbers,
       RequestContext requestContext) {
-    List<Pair<Integer, PoLine>> response = new ArrayList<>();
-    List<CompletableFuture<Pair<Integer, PoLine>>> linesChunk = new ArrayList<>();
-
-    var mapCounter = 0;
-    var startCdlValue = Math.min((refNumberList.size() - mapCounter), MAX_CHUNK_SIZE);
-    CountDownLatch cdlChunk = new CountDownLatch(startCdlValue);
-
-    for (Map.Entry<Integer, List<String>> entry : refNumberList.entrySet()) {
-      mapCounter++;
-
-      linesChunk.add(getLinePair(entry, requestContext));
-
-      // check if 5 elements put into chunk or the last element added
-        if (linesChunk.size() == MAX_PARALLEL_SEARCHES || mapCounter == refNumberList.size()) {
-        CompletableFuture<List<Pair<Integer, PoLine>>> chunk = FolioVertxCompletableFuture.from(Vertx.currentContext(), collectChunkResultsWithCdl(linesChunk, cdlChunk));
-        try {
-          cdlChunk.await(30, TimeUnit.SECONDS);
-          response.addAll(chunk.join());
-        } catch (InterruptedException e) {
-          logger.error("getAssociatedPoLinesByRefNumbers countDownLatch interrupted", e);
-        } finally {
-          linesChunk.clear();
-          // recreate cdl if there are elements left to be processed
-          if (mapCounter < refNumberList.size()) {
-            var nextCdlValue = Math.min((refNumberList.size() - mapCounter), MAX_CHUNK_SIZE);
-            cdlChunk = new CountDownLatch(nextCdlValue);
-          }
-        }
-      }
+    if (invoiceLineNoToRefNumbers.isEmpty()) {
+      return new HashMap<>();
     }
 
-    return response.stream()
-      .filter(Objects::nonNull)
-      .collect(Collectors.toMap(Pair::getKey, Pair::getValue));
+    Map<Integer, PoLine> poLinesByRefNumbers = new HashMap<>();
+
+    for (Map.Entry<Integer, List<String>> entry : invoiceLineNoToRefNumbers.entrySet()) {
+      var invoiceLineNumber = entry.getKey();
+      var refNumberList = entry.getValue();
+      String cqlGetPoLinesByRefNo = prepareQueryGetPoLinesByRefNumber(refNumberList);
+      RequestEntry requestEntry = new RequestEntry(resourcesPath(ORDER_LINES)).withQuery(cqlGetPoLinesByRefNo)
+        .withOffset(0)
+        .withLimit(Integer.MAX_VALUE);
+      try {
+        var polines = restClient.get(requestEntry, requestContext, PoLineCollection.class).join();
+        if (polines.getPoLines().size() == 1) {
+          poLinesByRefNumbers.put(invoiceLineNumber, polines.getPoLines().get(0));
+        }
+      } catch (Exception e) {
+        logger.error(requestEntry.buildEndpoint(), e);
+      }
+    }
+    return poLinesByRefNumbers;
+
   }
 
   private CompletableFuture<Pair<Integer, PoLine>> getLinePair(Map.Entry<Integer, List<String>> refNumbers, RequestContext requestContext) {
