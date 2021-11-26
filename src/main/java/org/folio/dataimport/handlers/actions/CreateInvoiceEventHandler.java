@@ -257,25 +257,30 @@ public class CreateInvoiceEventHandler implements EventHandler {
     List<Pair<Integer, PoLine>> response = new ArrayList<>();
     List<CompletableFuture<Pair<Integer, PoLine>>> linesChunk = new ArrayList<>();
 
-    CountDownLatch cdl = new CountDownLatch(MAX_PARALLEL_SEARCHES);
     var mapCounter = 0;
+    var startCdlValue = Math.min((refNumberList.size() - mapCounter), MAX_CHUNK_SIZE);
+    CountDownLatch cdlChunk = new CountDownLatch(startCdlValue);
+
     for (Map.Entry<Integer, List<String>> entry : refNumberList.entrySet()) {
       mapCounter++;
-      cdl.countDown();
 
       linesChunk.add(getLinePair(entry, requestContext));
 
       // check if 5 elements put into chunk or the last element added
-      if (cdl.getCount() == 0 || mapCounter == refNumberList.size()) {
-        CompletableFuture<List<Pair<Integer, PoLine>>> chunk = FolioVertxCompletableFuture.from(Vertx.currentContext(), collectChunkResultsWithCdl(linesChunk, cdl));
+        if (linesChunk.size() == MAX_PARALLEL_SEARCHES || mapCounter == refNumberList.size()) {
+        CompletableFuture<List<Pair<Integer, PoLine>>> chunk = FolioVertxCompletableFuture.from(Vertx.currentContext(), collectChunkResultsWithCdl(linesChunk, cdlChunk));
         try {
-          cdl.await(30, TimeUnit.SECONDS);
+          cdlChunk.await(30, TimeUnit.SECONDS);
           response.addAll(chunk.join());
         } catch (InterruptedException e) {
           logger.error("getAssociatedPoLinesByRefNumbers countDownLatch interrupted", e);
         } finally {
           linesChunk.clear();
-          cdl = new CountDownLatch(MAX_PARALLEL_SEARCHES);
+          // recreate cdl if there are elements left to be processed
+          if (mapCounter < refNumberList.size()) {
+            var nextCdlValue = Math.min((refNumberList.size() - mapCounter), MAX_CHUNK_SIZE);
+            cdlChunk = new CountDownLatch(nextCdlValue);
+          }
         }
       }
     }
