@@ -271,11 +271,11 @@ public class CreateInvoiceEventHandler implements EventHandler {
         try {
           cdl.await(30, TimeUnit.SECONDS);
           response.addAll(chunk.join());
-
-          cdl = new CountDownLatch(MAX_PARALLEL_SEARCHES);
-          linesChunk.clear();
         } catch (InterruptedException e) {
           logger.error("getAssociatedPoLinesByRefNumbers countDownLatch interrupted", e);
+        } finally {
+          linesChunk.clear();
+          cdl = new CountDownLatch(MAX_PARALLEL_SEARCHES);
         }
       }
     }
