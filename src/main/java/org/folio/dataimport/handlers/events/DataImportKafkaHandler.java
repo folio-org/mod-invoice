@@ -39,6 +39,8 @@ public class DataImportKafkaHandler implements AsyncRecordHandler<String, String
 
   public static final String JOB_PROFILE_SNAPSHOT_ID_KEY = "JOB_PROFILE_SNAPSHOT_ID";
   private static final String RECORD_ID_HEADER = "recordId";
+  private static final String CHUNK_ID_HEADER = "chunkId";
+  private static final String JOB_EXECUTION_ID_HEADER = "jobExecutionId";
   private static final String PROFILE_SNAPSHOT_NOT_FOUND_MSG = "JobProfileSnapshot was not found by id '%s'";
 
   private final Logger logger = LogManager.getLogger(DataImportKafkaHandler.class);
@@ -59,8 +61,11 @@ public class DataImportKafkaHandler implements AsyncRecordHandler<String, String
       Promise<String> promise = Promise.promise();
       Event event = DatabindCodec.mapper().readValue(kafkaRecord.value(), Event.class);
       DataImportEventPayload eventPayload = Json.decodeValue(event.getEventPayload(), DataImportEventPayload.class);
-      String recordId = extractRecordId(kafkaRecord.headers());
-      logger.info("Data import event payload has been received with event type: {}, recordId: {}", eventPayload.getEventType(), recordId);
+      String recordId = extractValueFromHeaders(kafkaRecord.headers(), RECORD_ID_HEADER);
+      String chunkId = extractValueFromHeaders(kafkaRecord.headers(), CHUNK_ID_HEADER);
+      String jobExecutionId = extractValueFromHeaders(kafkaRecord.headers(), JOB_EXECUTION_ID_HEADER);
+
+      logger.info("Data import event payload has been received with event type: {}, jobExecutionId: {}, recordId: {}, chunkId: {}", eventPayload.getEventType(), jobExecutionId, recordId, chunkId);
       eventPayload.getContext().put(RECORD_ID_HEADER, recordId);
       populateContextWithOkapiUserAndPerms(kafkaRecord, eventPayload);
 
@@ -100,9 +105,9 @@ public class DataImportKafkaHandler implements AsyncRecordHandler<String, String
     }
   }
 
-  private String extractRecordId(List<KafkaHeader> headers) {
+  private String extractValueFromHeaders(List<KafkaHeader> headers, String key) {
     return headers.stream()
-      .filter(header -> header.key().equals(RECORD_ID_HEADER))
+      .filter(header -> header.key().equals(key))
       .findFirst()
       .map(header -> header.value().toString())
       .orElse(null);
