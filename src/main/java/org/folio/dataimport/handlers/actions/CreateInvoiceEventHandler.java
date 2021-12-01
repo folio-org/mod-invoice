@@ -2,6 +2,7 @@ package org.folio.dataimport.handlers.actions;
 
 import static java.lang.String.format;
 import static java.util.concurrent.CompletableFuture.completedFuture;
+import static one.util.streamex.StreamEx.ofSubLists;
 import static org.apache.commons.collections4.CollectionUtils.isNotEmpty;
 import static org.apache.commons.lang3.StringUtils.isBlank;
 import static org.folio.ActionProfile.Action.CREATE;
@@ -80,6 +81,7 @@ public class CreateInvoiceEventHandler implements EventHandler {
   private static final Pattern SEGMENT_QUERY_PATTERN = Pattern.compile("([A-Z]{3}((\\+|<)\\w*)(\\2*\\w*)*(\\?\\w+)?\\[[1-9](-[1-9])?\\])");
   private static final String DEFAULT_LANG = "en";
   private static final int MAX_PARALLEL_SEARCHES = 5;
+  private static final int MAX_CHUNK_SIZE = 15;
 
   private final RestClient restClient;
 
@@ -161,14 +163,15 @@ public class CreateInvoiceEventHandler implements EventHandler {
       ? Collections.emptyMap() : retrieveInvoiceLinesReferenceNumbers(parsedRecord, ReferenceNumberExpressions);
 
     return getAssociatedPoLinesByPoLineNumber(invoiceLineNoToPoLineNo, okapiHeaders)
-      .thenApply(associatedPoLineMap -> {
+      .thenCompose(associatedPoLineMap -> {
         if (associatedPoLineMap.size() < invoiceLinesAmount) {
           associatedPoLineMap.keySet().forEach(invoiceLineNoToRefNo2::remove);
-          var poLinesMap = getAssociatedPoLinesByRefNumbers(invoiceLineNoToRefNo2, new RequestContext(Vertx.currentContext(), okapiHeaders));
-          associatedPoLineMap.putAll(poLinesMap);
-          return associatedPoLineMap;
+          return getAssociatedPoLinesByRefNumbers(invoiceLineNoToRefNo2, new RequestContext(Vertx.currentContext(), okapiHeaders)).thenApply(poLinesMap -> {
+              associatedPoLineMap.putAll(poLinesMap);
+              return associatedPoLineMap;
+          });
         }
-        return associatedPoLineMap;
+        return CompletableFuture.completedFuture(associatedPoLineMap);
       });
   }
 
@@ -230,41 +233,33 @@ public class CreateInvoiceEventHandler implements EventHandler {
       return completedFuture(invoiceLineNoToPoLine);
     }
 
-    String preparedCql = prepareQueryGetPoLinesByNumber(List.copyOf(invoiceLineNoToPoLineNo.values()));
-    RequestEntry requestEntry = new RequestEntry(resourcesPath(ORDER_LINES))
-        .withQuery(preparedCql)
-        .withOffset(0)
-        .withLimit(Integer.MAX_VALUE);
-    return restClient.get(requestEntry, new RequestContext(Vertx.currentContext(), okapiHeaders), PoLineCollection.class)
-      .thenApply(poLineCollection -> poLineCollection.getPoLines().stream().collect(Collectors.toMap(PoLine::getPoLineNumber, poLine -> poLine)))
+    List<CompletableFuture<PoLineCollection>> polineCollectionsFuture = ofSubLists(List.copyOf(invoiceLineNoToPoLineNo.values()), MAX_CHUNK_SIZE)
+      .map(this::prepareQueryGetPoLinesByNumber)
+      .map(cqlQuery -> new RequestEntry(resourcesPath(ORDER_LINES)).withQuery(cqlQuery).withOffset(0).withLimit(Integer.MAX_VALUE))
+      .map(requestEntry -> restClient.get(requestEntry, new RequestContext(Vertx.currentContext(), okapiHeaders), PoLineCollection.class))
+      .collect(Collectors.toList());
+
+    return collectResultsOnSuccess(polineCollectionsFuture)
+      .thenApply(lists -> lists.stream().flatMap(polCollection -> polCollection.getPoLines().stream()).distinct().collect(Collectors.toList()))
+      .thenApply(poLines -> poLines.stream().collect(Collectors.toMap(PoLine::getPoLineNumber, poLine -> poLine)))
       .thenAccept(poLineNumberToPoLine -> invoiceLineNoToPoLineNo
         .forEach((key, value) -> poLineNumberToPoLine.computeIfPresent(value, (polNo, poLine) -> invoiceLineNoToPoLine.put(key, poLine))))
       .thenApply(v -> invoiceLineNoToPoLine);
   }
 
 
-  private Map<Integer, PoLine> getAssociatedPoLinesByRefNumbers(Map<Integer, List<String>> refNumberList,
-      RequestContext requestContext) {
-    int index = 1;
-    List<Pair<Integer, PoLine>> response = new ArrayList<>();
-    List<CompletableFuture<Pair<Integer, PoLine>>> linesChunk = new ArrayList<>();
+  private CompletableFuture<Map<Integer, PoLine>> getAssociatedPoLinesByRefNumbers(Map<Integer, List<String>> refNumberList, RequestContext requestContext) {
+    List<CompletableFuture<Pair<Integer, PoLine>>> futures = new ArrayList<>();
+    CompletableFuture<Pair<Integer, PoLine>> future = completedFuture(null);
 
     for (Map.Entry<Integer, List<String>> entry : refNumberList.entrySet()) {
-      linesChunk.add(getLinePair(entry, requestContext));
-
-      if (index % MAX_PARALLEL_SEARCHES == 0 || index == refNumberList.size()) {
-        CompletableFuture<List<Pair<Integer, PoLine>>> chunk = collectResultsOnSuccess(linesChunk);
-        if (chunk.isDone() && !chunk.isCompletedExceptionally()) {
-          response.addAll(chunk.join());
-        }
-        linesChunk.clear();
-      }
-      index++;
+      future = future.thenCompose(v -> getLinePair(entry, requestContext));
+      futures.add(future);
     }
 
-    return response.stream()
+    return collectResultsOnSuccess(futures).thenApply(poLinePairs -> poLinePairs.stream()
       .filter(Objects::nonNull)
-      .collect(Collectors.toMap(Pair::getKey, Pair::getValue));
+      .collect(Collectors.toMap(Pair::getKey, Pair::getValue)));
   }
 
   private CompletableFuture<Pair<Integer, PoLine>> getLinePair(Map.Entry<Integer, List<String>> refNumbers, RequestContext requestContext) {
