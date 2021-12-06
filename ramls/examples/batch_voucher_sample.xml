@@ -26,6 +26,8 @@
       <exchangeRate>1</exchangeRate>
       <folioInvoiceNo>123folionumber456</folioInvoiceNo>
       <invoiceCurrency>USD</invoiceCurrency>
+      <invoiceDate>2019-12-05T00:00:00Z</invoiceDate>
+      <invoiceTerms>Payment in Advance</invoiceTerms>
       <invoiceNote>Process immediately</invoiceNote>
       <status>Paid</status>
       <systemCurrency>USD</systemCurrency>

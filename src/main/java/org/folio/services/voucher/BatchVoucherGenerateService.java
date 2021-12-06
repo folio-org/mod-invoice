@@ -131,8 +131,10 @@ public class BatchVoucherGenerateService {
     Invoice invoice = mapInvoices.get(voucher.getInvoiceId());
     batchedVoucher.setFolioInvoiceNo(invoice.getFolioInvoiceNo());
     batchedVoucher.setVendorInvoiceNo(invoice.getVendorInvoiceNo());
-    Organization organization = vendorsMap.get(invoice.getVendorId());
+    batchedVoucher.setInvoiceDate(invoice.getInvoiceDate());
+    batchedVoucher.setInvoiceTerms(invoice.getPaymentTerms());
     batchedVoucher.setInvoiceNote(invoice.getNote());
+    Organization organization = vendorsMap.get(invoice.getVendorId());
     batchedVoucher.setVendorName(organization.getName());
     List<Address> addresses = organization.getAddresses();
     if (addresses != null && !addresses.isEmpty()) {
