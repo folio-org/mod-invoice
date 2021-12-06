@@ -85,6 +85,16 @@
           <xs:documentation>The currency in which invoice was originally defined</xs:documentation>
         </xs:annotation>
       </xs:element>
+      <xs:element name="invoiceDate" type="xs:dateTime">
+        <xs:annotation>
+          <xs:documentation>Invoice date</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="invoiceTerms" type="xs:string">
+        <xs:annotation>
+          <xs:documentation>Invoice payment terms</xs:documentation>
+        </xs:annotation>
+      </xs:element>
       <xs:element name="invoiceNote" type="xs:string" minOccurs="0">
         <xs:annotation>
           <xs:documentation>Free-form notes from the invoice</xs:documentation>

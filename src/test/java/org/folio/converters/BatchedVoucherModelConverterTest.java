@@ -78,6 +78,8 @@ public class BatchedVoucherModelConverterTest {
     assertEquals(batchedVoucher.getVendorInvoiceNo(), batchedVoucherType.getVendorInvoiceNo());
     assertEquals(batchedVoucher.getVendorName(), batchedVoucherType.getVendorName());
     assertEquals(convertOldJavaDate(batchedVoucher.getVoucherDate()), batchedVoucherType.getVoucherDate());
+    assertEquals(convertOldJavaDate(batchedVoucher.getInvoiceDate()), batchedVoucherType.getInvoiceDate());
+    assertEquals(batchedVoucher.getInvoiceTerms(), batchedVoucherType.getInvoiceTerms());
     assertEquals(batchedVoucher.getInvoiceNote(), batchedVoucherType.getInvoiceNote());
     assertEquals(batchedVoucher.getStatus().toString(), batchedVoucherType.getStatus());
     assertEquals(batchedVoucher.getEnclosureNeeded(), batchedVoucherType.isEnclosureNeeded());
