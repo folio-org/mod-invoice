@@ -85,12 +85,12 @@
           <xs:documentation>The currency in which invoice was originally defined</xs:documentation>
         </xs:annotation>
       </xs:element>
-      <xs:element name="invoiceDate" type="xs:dateTime">
+      <xs:element name="invoiceDate" type="xs:dateTime" minOccurs="0">
         <xs:annotation>
           <xs:documentation>Invoice date</xs:documentation>
         </xs:annotation>
       </xs:element>
-      <xs:element name="invoiceTerms" type="xs:string">
+      <xs:element name="invoiceTerms" type="xs:string" minOccurs="0">
         <xs:annotation>
           <xs:documentation>Invoice payment terms</xs:documentation>
         </xs:annotation>
