@@ -1,5 +1,6 @@
 package org.folio.services.finance.transaction;
 
+import static java.util.concurrent.CompletableFuture.completedFuture;
 import static java.util.stream.Collectors.toList;
 import static org.folio.invoices.utils.ErrorCodes.PENDING_PAYMENT_ERROR;
 import static org.folio.invoices.utils.HelperUtils.collectResultsOnSuccess;
@@ -76,14 +77,17 @@ public class PendingPaymentWorkflowService {
   }
 
   private CompletableFuture<Void> createPendingPayments(List<InvoiceWorkflowDataHolder> holders, RequestContext requestContext) {
-    return FolioVertxCompletableFuture.allOf(requestContext.getContext(), holders.stream()
-      .map(InvoiceWorkflowDataHolder::getNewTransaction)
-      .map(pendingPayment -> baseTransactionService.createTransaction(pendingPayment, requestContext)
+    CompletableFuture<Void> future = completedFuture(null);
+    for (InvoiceWorkflowDataHolder holder : holders) {
+      Transaction pendingPayment = holder.getNewTransaction();
+      future = future.thenCompose(v -> baseTransactionService.createTransaction(pendingPayment, requestContext))
+        .thenAccept(t -> {})
         .exceptionally(t -> {
           logger.error("Failed to create pending payment with id {}", pendingPayment.getId(), t);
           throw new HttpException(400, PENDING_PAYMENT_ERROR.toError());
-        }))
-      .toArray(CompletableFuture[]::new));
+        });
+    }
+    return future;
   }
 
   private CompletableFuture<Void> cleanupOldEncumbrances(List<InvoiceWorkflowDataHolder> holders, RequestContext requestContext) {

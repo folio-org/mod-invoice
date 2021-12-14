@@ -16,7 +16,6 @@ import javax.money.MonetaryAmount;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.folio.completablefuture.FolioVertxCompletableFuture;
 import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.models.InvoiceWorkflowDataHolder;
 import org.folio.rest.acq.model.finance.Transaction;
@@ -73,18 +72,21 @@ public class PaymentCreditWorkflowService {
   }
 
   private CompletionStage<Void> createTransactions(List<InvoiceWorkflowDataHolder> holders, RequestContext requestContext) {
-    return FolioVertxCompletableFuture.allOf(requestContext.getContext(), holders.stream()
-      .map(InvoiceWorkflowDataHolder::getNewTransaction)
-      .map(tr -> baseTransactionService.createTransaction(tr, requestContext)
-      .exceptionally(t -> {
-        logger.error("Failed to create transaction for invoice with id - {}", tr.getSourceInvoiceId(), t);
-        List<Parameter> parameters = new ArrayList<>();
-        parameters.add(new Parameter().withKey("invoiceLineId").withValue(tr.getSourceInvoiceLineId()));
-        parameters.add(new Parameter().withKey(FUND_ID)
-          .withValue((tr.getTransactionType() == Transaction.TransactionType.PAYMENT) ? tr.getFromFundId() : tr.getToFundId()));
-        throw new HttpException(400, TRANSACTION_CREATION_FAILURE.toError().withParameters(parameters));
-      }))
-      .toArray(CompletableFuture[]::new));
+    CompletableFuture<Void> future = completedFuture(null);
+    for (InvoiceWorkflowDataHolder holder : holders) {
+      Transaction tr = holder.getNewTransaction();
+      future = future.thenCompose(v -> baseTransactionService.createTransaction(tr, requestContext))
+        .thenAccept(t -> {})
+        .exceptionally(t -> {
+          logger.error("Failed to create transaction for invoice with id - {}", tr.getSourceInvoiceId(), t);
+          List<Parameter> parameters = new ArrayList<>();
+          parameters.add(new Parameter().withKey("invoiceLineId").withValue(tr.getSourceInvoiceLineId()));
+          parameters.add(new Parameter().withKey(FUND_ID)
+            .withValue((tr.getTransactionType() == Transaction.TransactionType.PAYMENT) ? tr.getFromFundId() : tr.getToFundId()));
+          throw new HttpException(400, TRANSACTION_CREATION_FAILURE.toError().withParameters(parameters));
+        });
+    }
+    return future;
   }
 
   private Transaction buildTransaction(InvoiceWorkflowDataHolder holder) {
