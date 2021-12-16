@@ -1,5 +1,14 @@
 ## 5.3.0 - Unreleased
 
+## 5.2.4 (Kiwi) - Released
+
+This bugfix release focused on fixing Log4j vulnerability
+
+[Full Changelog](https://github.com/folio-org/mod-invoice/compare/v5.2.3...v5.2.4)
+
+### Bug Fixes
+* [MODINVOICE-348](https://issues.folio.org/browse/MODINVOICE-348) - Kiwi R3 2021 - Log4j vulnerability verification and correction
+
 ## 5.2.3 (Kiwi) - Released
 
 The focus of this release was to fix invoice import from large EDIFACT files
