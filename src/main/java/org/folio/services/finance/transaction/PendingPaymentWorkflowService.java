@@ -80,12 +80,13 @@ public class PendingPaymentWorkflowService {
     CompletableFuture<Void> future = completedFuture(null);
     for (InvoiceWorkflowDataHolder holder : holders) {
       Transaction pendingPayment = holder.getNewTransaction();
-      future = future.thenCompose(v -> baseTransactionService.createTransaction(pendingPayment, requestContext))
+      future = future.thenCompose(v -> baseTransactionService.createTransaction(pendingPayment, requestContext)
         .thenAccept(t -> {})
         .exceptionally(t -> {
           logger.error("Failed to create pending payment with id {}", pendingPayment.getId(), t);
           throw new HttpException(400, PENDING_PAYMENT_ERROR.toError());
-        });
+        })
+      );
     }
     return future;
   }

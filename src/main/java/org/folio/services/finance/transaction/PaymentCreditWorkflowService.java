@@ -75,7 +75,7 @@ public class PaymentCreditWorkflowService {
     CompletableFuture<Void> future = completedFuture(null);
     for (InvoiceWorkflowDataHolder holder : holders) {
       Transaction tr = holder.getNewTransaction();
-      future = future.thenCompose(v -> baseTransactionService.createTransaction(tr, requestContext))
+      future = future.thenCompose(v -> baseTransactionService.createTransaction(tr, requestContext)
         .thenAccept(t -> {})
         .exceptionally(t -> {
           logger.error("Failed to create transaction for invoice with id - {}", tr.getSourceInvoiceId(), t);
@@ -84,7 +84,8 @@ public class PaymentCreditWorkflowService {
           parameters.add(new Parameter().withKey(FUND_ID)
             .withValue((tr.getTransactionType() == Transaction.TransactionType.PAYMENT) ? tr.getFromFundId() : tr.getToFundId()));
           throw new HttpException(400, TRANSACTION_CREATION_FAILURE.toError().withParameters(parameters));
-        });
+        })
+      );
     }
     return future;
   }
