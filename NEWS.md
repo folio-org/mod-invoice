@@ -1,5 +1,13 @@
 ## 5.2.0 - Unreleased
 
+## 5.1.11 (Juniper) - Released
+The focus of this release was to fix Log4j vulnerability
+
+[Full Changelog](https://github.com/folio-org/mod-invoice/compare/v5.1.10...v5.1.11)
+
+### Bug Fixes
+* [MODINVOICE-349](https://issues.folio.org/browse/MODINVOICE-349) - Juniper R2 2021 - Log4j vulnerability verification and correction
+
 ## 5.1.10 (Juniper) - Released
 
 The focus of this release was ещ fix invoice import from large EDIFACT files
