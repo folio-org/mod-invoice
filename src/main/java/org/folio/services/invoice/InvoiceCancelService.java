@@ -81,6 +81,8 @@ public class InvoiceCancelService {
 
   private CompletableFuture<Void> cancelTransactions(String invoiceId, List<Transaction> transactions,
       RequestContext requestContext) {
+    if (transactions.size() == 0)
+      return CompletableFuture.completedFuture(null);
     transactions.forEach(tr -> tr.setInvoiceCancelled(true));
     InvoiceTransactionSummary summary = buildInvoiceTransactionsSummary(invoiceId, transactions);
     return invoiceTransactionSummaryService.updateInvoiceTransactionSummary(summary, requestContext)
