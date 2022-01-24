@@ -82,8 +82,8 @@ import org.folio.services.finance.budget.BudgetExpenseClassService;
 import org.folio.services.finance.expence.ExpenseClassRetrieveService;
 import org.folio.services.finance.fiscalyear.CurrentFiscalYearService;
 import org.folio.services.finance.transaction.EncumbranceService;
-import org.folio.services.finance.transaction.PaymentCreditWorkflowService;
 import org.folio.services.finance.transaction.PendingPaymentWorkflowService;
+import org.folio.services.invoice.InvoiceCancelService;
 import org.folio.services.invoice.InvoiceLineService;
 import org.folio.services.invoice.InvoicePaymentService;
 import org.folio.services.invoice.InvoiceService;
@@ -126,8 +126,6 @@ public class InvoiceHelper extends AbstractHelper {
   @Autowired
   private PendingPaymentWorkflowService pendingPaymentWorkflowService;
   @Autowired
-  private PaymentCreditWorkflowService paymentCreditWorkflowService;
-  @Autowired
   private FundService fundService;
   @Autowired
   private InvoiceWorkflowDataHolderBuilder holderBuilder;
@@ -137,6 +135,8 @@ public class InvoiceHelper extends AbstractHelper {
   private VendorRetrieveService vendorService;
   @Autowired
   private InvoicePaymentService invoicePaymentService;
+  @Autowired
+  private InvoiceCancelService invoiceCancelService;
 
   public InvoiceHelper(Map<String, String> okapiHeaders, Context ctx, String lang) {
     super(getHttpClient(okapiHeaders), okapiHeaders, ctx, lang);
@@ -392,7 +392,9 @@ public class InvoiceHelper extends AbstractHelper {
       }
       invoice.setExchangeRate(invoiceFromStorage.getExchangeRate());
       return invoicePaymentService.payInvoice(invoice, invoiceLines, requestContext);
-
+    } else if (isTransitionToCancelled(invoiceFromStorage, invoice)) {
+      RequestContext requestContext = new RequestContext(ctx, okapiHeaders);
+      return invoiceCancelService.cancelInvoice(invoiceFromStorage, invoiceLines, requestContext);
     }
     return CompletableFuture.completedFuture(null);
   }
@@ -406,8 +408,9 @@ public class InvoiceHelper extends AbstractHelper {
   }
 
   private void verifyTransitionOnPaidStatus(Invoice invoiceFromStorage, Invoice invoice) {
-    // Once an invoice is Paid, it should no longer transition to other statuses.
-    if (invoiceFromStorage.getStatus() == Invoice.Status.PAID && invoice.getStatus() != invoiceFromStorage.getStatus()) {
+    // Once an invoice is Paid, it should no longer transition to other statuses, except Cancelled.
+    if (invoiceFromStorage.getStatus() == Invoice.Status.PAID && invoice.getStatus() != Invoice.Status.CANCELLED &&
+        invoice.getStatus() != invoiceFromStorage.getStatus()) {
       List<Parameter> parameters = Collections.singletonList(new Parameter().withKey("invoiceId")
         .withValue(invoice.getId()));
       Error error = INVALID_INVOICE_TRANSITION_ON_PAID_STATUS.toError()
@@ -419,6 +422,10 @@ public class InvoiceHelper extends AbstractHelper {
   private boolean isTransitionToApproved(Invoice invoiceFromStorage, Invoice invoice) {
     verifyTransitionOnPaidStatus(invoiceFromStorage, invoice);
     return invoice.getStatus() == Invoice.Status.APPROVED && !isPostApproval(invoiceFromStorage);
+  }
+
+  private boolean isTransitionToCancelled(Invoice invoiceFromStorage, Invoice invoice) {
+    return invoiceFromStorage.getStatus() != Invoice.Status.CANCELLED && invoice.getStatus() == Invoice.Status.CANCELLED;
   }
 
   /**

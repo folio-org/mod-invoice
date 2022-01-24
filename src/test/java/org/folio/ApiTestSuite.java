@@ -47,6 +47,7 @@ import org.folio.services.finance.transaction.BaseTransactionServiceTest;
 import org.folio.services.finance.transaction.PendingPaymentWorkflowServiceTest;
 import org.folio.services.ftp.FTPVertxCommandLoggerTest;
 import org.folio.services.ftp.FtpUploadServiceTest;
+import org.folio.services.invoice.InvoiceCancelServiceTest;
 import org.folio.services.order.OrderServiceTest;
 import org.folio.services.validator.FundAvailabilityHolderValidatorTest;
 import org.folio.services.validator.InvoiceLineHolderValidatorTest;
@@ -297,6 +298,10 @@ public class ApiTestSuite {
 
   @Nested
   class OrderServiceTestNested extends OrderServiceTest {
+  }
+
+  @Nested
+  class InvoiceCancelServiceTestNested extends InvoiceCancelServiceTest {
   }
 
 }
