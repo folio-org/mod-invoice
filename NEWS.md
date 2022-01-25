@@ -1,4 +1,14 @@
-## 5.3.0 - Unreleased
+## 5.3.6 - Unreleased
+
+## 5.2.5 (Kiwi) - Released
+
+This bugfix release focused on fixing approving invoice with multiple lines
+
+[Full Changelog](https://github.com/folio-org/mod-invoice/compare/v5.2.4...v5.2.5)
+
+### Bug Fixes
+* [MODINVOICE-346](https://issues.folio.org/browse/MODINVOICE-346) - Approving an invoice with multiple lines that ref the same POL 2 payment 1 credit. Causes over reported encumbrance value on budget
+
 
 ## 5.2.4 (Kiwi) - Released
 
