@@ -87,6 +87,7 @@ public class ApiTestBase {
 
   /**
    * Define unit test specific beans to override actual ones
+   * FIXME: this class is not used - some cleanup needed
    */
   @Configuration
   static class ContextConfiguration {

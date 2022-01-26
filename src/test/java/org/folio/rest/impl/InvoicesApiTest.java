@@ -1071,10 +1071,10 @@ public class InvoicesApiTest extends ApiTestBase {
   @Test
   void testInvoiceTransitionFailureOnPaidStatus() {
     logger.info(
-        "=== Test invoice cannot be transitioned to \"Open\", \"Reviewed\", \"Cancelled\" or \"Approved\" status if it is in \"Paid\" status ===");
+        "=== Test invoice cannot be transitioned to \"Open\", \"Reviewed\" or \"Approved\" status if it is in \"Paid\" status ===");
 
     for (Status status : Invoice.Status.values()) {
-      if (status != Invoice.Status.PAID) {
+      if (status != Invoice.Status.PAID && status != Status.CANCELLED) {
         Invoice reqData = createMockEntryInStorage();
 
         // Try to update storage entry

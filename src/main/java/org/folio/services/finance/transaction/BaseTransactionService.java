@@ -1,5 +1,6 @@
 package org.folio.services.finance.transaction;
 
+import static java.util.concurrent.CompletableFuture.completedFuture;
 import static java.util.stream.Collectors.toList;
 import static org.folio.invoices.utils.HelperUtils.collectResultsOnSuccess;
 import static org.folio.invoices.utils.HelperUtils.convertIdsToCqlQuery;
@@ -81,6 +82,15 @@ public class BaseTransactionService {
         .map(requestEntry -> requestEntry.withId(transaction.getId()))
         .map(requestEntry -> restClient.put(requestEntry, transaction, requestContext))
         .orElseGet(this::unsupportedOperation);
+  }
+
+  public CompletableFuture<Void> updateTransactions(List<Transaction> transactions, RequestContext requestContext) {
+    // currently done sequentially, this could be done in parallel in the future
+    CompletableFuture<Void> future = completedFuture(null);
+    for (Transaction tr : transactions) {
+      future = future.thenCompose(v -> updateTransaction(tr, requestContext));
+    }
+    return future;
   }
 
   public <T> CompletableFuture<T> unsupportedOperation() {

@@ -69,6 +69,8 @@
             "finance.invoice-transaction-summaries.item.put",
             "finance.payments.item.post",
             "finance.credits.item.post",
+            "finance.credits.item.put",
+            "finance.payments.item.put",
             "finance.pending-payments.item.post",
             "finance.pending-payments.item.put",
             "finance.transactions.collection.get",

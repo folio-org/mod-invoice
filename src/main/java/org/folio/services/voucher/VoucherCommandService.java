@@ -90,7 +90,22 @@ public class VoucherCommandService {
   public CompletableFuture<Void> payInvoiceVoucher(String invoiceId, RequestContext requestContext) {
     return voucherRetrieveService.getVoucherByInvoiceId(invoiceId, requestContext)
       .thenApply(voucher -> Optional.ofNullable(voucher).orElseThrow(() -> new HttpException(500, VOUCHER_NOT_FOUND.toError())))
-      .thenCompose(voucher -> updateVoucherStatusToPaid(voucher, requestContext));
+      .thenCompose(voucher -> updateVoucherStatus(voucher, Voucher.Status.PAID, requestContext));
+  }
+
+  /**
+   * Updates associated Voucher status to Cancelled, does nothing if no associated voucher is found.
+   *
+   * @param invoiceId invoice id
+   * @return CompletableFuture that indicates when transition is completed
+   */
+  public CompletableFuture<Void> cancelInvoiceVoucher(String invoiceId, RequestContext requestContext) {
+    return voucherRetrieveService.getVoucherByInvoiceId(invoiceId, requestContext)
+      .thenCompose(voucher -> {
+        if (voucher == null)
+          return completedFuture(null);
+        return updateVoucherStatus(voucher, Voucher.Status.CANCELLED, requestContext);
+      });
   }
 
   public CompletableFuture<Voucher> createVoucher(Voucher voucher, RequestContext requestContext) {
@@ -164,20 +179,21 @@ public class VoucherCommandService {
   }
 
   /**
-   * In case voucher's status is already Paid, returns completed future. Otherwise updates voucher in storage with Paid status.
-   * @param voucher voucher to update status to Paid for
+   * In case voucher's status is already the given one, returns completed future.
+   * Otherwise updates voucher in storage with given status.
+   * @param voucher existing voucher
+   * @param status new voucher status
    * @return completed future on success or with {@link HttpException} if update fails
    */
-  private CompletableFuture<Void> updateVoucherStatusToPaid(Voucher voucher, RequestContext requestContext) {
-    if (voucher.getStatus() == Voucher.Status.PAID) {
-      // Voucher already marked as paid
+  private CompletableFuture<Void> updateVoucherStatus(Voucher voucher, Voucher.Status status, RequestContext requestContext) {
+    if (voucher.getStatus() == status) {
+      // Voucher already has the status
       return completedFuture(null);
-    } else {
-      return updateVoucher(voucher.getId(), voucher.withStatus(Voucher.Status.PAID), requestContext)
-        .exceptionally(fail -> {
-          throw new HttpException(500, VOUCHER_UPDATE_FAILURE.toError());
-        });
     }
+    return updateVoucher(voucher.getId(), voucher.withStatus(status), requestContext)
+      .exceptionally(fail -> {
+        throw new HttpException(500, VOUCHER_UPDATE_FAILURE.toError());
+      });
   }
 
 }

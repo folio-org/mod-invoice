@@ -22,6 +22,7 @@ import org.folio.services.finance.transaction.InvoiceTransactionSummaryService;
 import org.folio.services.finance.transaction.PaymentCreditWorkflowService;
 import org.folio.services.finance.transaction.PendingPaymentWorkflowService;
 import org.folio.services.invoice.BaseInvoiceService;
+import org.folio.services.invoice.InvoiceCancelService;
 import org.folio.services.invoice.InvoiceLineService;
 import org.folio.services.invoice.InvoicePaymentService;
 import org.folio.services.invoice.InvoiceService;
@@ -205,5 +206,11 @@ public class ServicesConfiguration {
   @Bean
   OrderLineService orderLineService(RestClient restClient) {
     return new OrderLineService(restClient);
+  }
+
+  @Bean
+  InvoiceCancelService invoiceCancelService(BaseTransactionService baseTransactionService,
+      InvoiceTransactionSummaryService invoiceTransactionSummaryService, VoucherCommandService voucherCommandService) {
+    return new InvoiceCancelService(baseTransactionService, invoiceTransactionSummaryService, voucherCommandService);
   }
 }
