@@ -1,4 +1,5 @@
 ## 5.3.0 - Unreleased
+* [MODINVOICE-356](https://issues.folio.org/browse/MODINVOICE-356) - Fix progress bar stuck behaviour after the RecordTooLargeException
 
 ## 5.2.1 - Unreleased
 * [MODINVOICE-314](https://issues.folio.org/browse/MODINVOICE-314) - Provide recordId header for data-import events correlation

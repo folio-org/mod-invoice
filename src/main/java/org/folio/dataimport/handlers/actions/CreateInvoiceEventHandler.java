@@ -112,6 +112,8 @@ public class CreateInvoiceEventHandler implements EventHandler {
         .thenApply(savedInvoice -> prepareInvoiceLinesToSave(savedInvoice.getId(), dataImportEventPayload, poLinesFuture.join()))
         .thenCompose(preparedInvoiceLines -> saveInvoiceLines(preparedInvoiceLines, okapiHeaders))
         .whenComplete((savedInvoiceLines, throwable) -> {
+          makeLightweightReturnPayload(dataImportEventPayload);
+
           if (throwable == null) {
             List<InvoiceLine> invoiceLines = savedInvoiceLines.stream().map(Pair::getLeft).collect(Collectors.toList());
             InvoiceLineCollection invoiceLineCollection = new InvoiceLineCollection().withInvoiceLines(invoiceLines).withTotalRecords(invoiceLines.size());
@@ -406,6 +408,13 @@ public class CreateInvoiceEventHandler implements EventHandler {
       InvoiceLineCollection invoiceLineCollection = new InvoiceLineCollection().withInvoiceLines(invoiceLines).withTotalRecords(invoiceLines.size());
       dataImportEventPayload.getContext().put(INVOICE_LINES_KEY, Json.encode(invoiceLineCollection));
     }
+  }
+
+  private void makeLightweightReturnPayload(DataImportEventPayload eventPayload) {
+    Record sourceRecord = Json.decodeValue(eventPayload.getContext().get(EDIFACT_INVOICE.value()), Record.class);
+    sourceRecord.setParsedRecord(null);
+    sourceRecord.setRawRecord(null);
+    eventPayload.getContext().put(EDIFACT_INVOICE.value(), Json.encode(sourceRecord));
   }
 
   @Override

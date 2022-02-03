@@ -298,6 +298,11 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
     assertEquals("Open", createdInvoice.getStatus().value());
     assertEquals(Invoice.Source.EDI, createdInvoice.getSource());
 
+    assertNotNull(eventPayload.getContext().get(EDIFACT_INVOICE.value()));
+    Record sourceRecord = Json.decodeValue(eventPayload.getContext().get(EDIFACT_INVOICE.value()), Record.class);
+    assertNull(sourceRecord.getParsedRecord());
+    assertNull(sourceRecord.getRawRecord());
+
     assertNotNull(eventPayload.getContext().get(INVOICE_LINES_KEY));
     InvoiceLineCollection createdInvoiceLines = Json.decodeValue(eventPayload.getContext().get(INVOICE_LINES_KEY), InvoiceLineCollection.class);
     assertEquals(3, createdInvoiceLines.getTotalRecords());
@@ -720,6 +725,11 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
     assertNotNull(eventPayload.getContext().get(ERROR_MSG_KEY));
     assertNotNull(eventPayload.getContext().get(INVOICE.value()));
     assertNotNull(eventPayload.getContext().get(INVOICE_LINES_KEY));
+
+    assertNotNull(eventPayload.getContext().get(EDIFACT_INVOICE.value()));
+    Record sourceRecord = Json.decodeValue(eventPayload.getContext().get(EDIFACT_INVOICE.value()), Record.class);
+    assertNull(sourceRecord.getParsedRecord());
+    assertNull(sourceRecord.getRawRecord());
 
     InvoiceLineCollection invoiceLineCollection = Json.decodeValue(eventPayload.getContext().get(INVOICE_LINES_KEY), InvoiceLineCollection.class);
     assertEquals(3, invoiceLineCollection.getTotalRecords());
