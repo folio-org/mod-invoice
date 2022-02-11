@@ -140,6 +140,7 @@ import org.folio.rest.acq.model.finance.Fund;
 import org.folio.rest.acq.model.finance.FundCollection;
 import org.folio.rest.acq.model.finance.InvoiceTransactionSummary;
 import org.folio.rest.acq.model.finance.Ledger;
+import org.folio.rest.acq.model.finance.Ledger;
 import org.folio.rest.acq.model.finance.Transaction;
 import org.folio.rest.acq.model.orders.CompositePoLine;
 import org.folio.rest.acq.model.units.AcquisitionsUnitMembershipCollection;

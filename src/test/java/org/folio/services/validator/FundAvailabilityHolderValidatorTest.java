@@ -38,10 +38,10 @@ public class FundAvailabilityHolderValidatorTest {
 
   @Test
   void checkEnoughMoneyInBudgetShouldThrowFundCannotBePaidIfTransactionsAmountDifferenceGreaterThanBudgetRemainingAmount() {
-
     String fiscalYearId = UUID.randomUUID().toString();
     String fundId = UUID.randomUUID().toString();
     String budgetId = UUID.randomUUID().toString();
+    String ledgerId = UUID.randomUUID().toString();
 
     Transaction existingTransaction = new Transaction()
       .withTransactionType(Transaction.TransactionType.PENDING_PAYMENT)
@@ -57,6 +57,13 @@ public class FundAvailabilityHolderValidatorTest {
       .withFromFundId(fundId)
       .withCurrency("USD");
 
+    Fund fund = new Fund()
+      .withId(fundId)
+      .withName("TestFund")
+      .withLedgerId(ledgerId)
+      .withCode("FC")
+      .withFundStatus(Fund.FundStatus.ACTIVE);
+
     Budget budget = new Budget()
       .withId(budgetId)
       .withFiscalYearId(fiscalYearId)
@@ -69,22 +76,19 @@ public class FundAvailabilityHolderValidatorTest {
       .withAllowableExpenditure(100d);
 
     List<InvoiceWorkflowDataHolder> holders = new ArrayList<>();
-    InvoiceWorkflowDataHolder holder = new InvoiceWorkflowDataHolder().withExistingTransaction(existingTransaction)
+    InvoiceWorkflowDataHolder holder = new InvoiceWorkflowDataHolder().withFund(fund)
+      .withExistingTransaction(existingTransaction)
             .withNewTransaction(newTransaction)
             .withBudget(budget)
             .withRestrictExpenditures(true)
             .withFiscalYear(new FiscalYear().withId(fiscalYearId).withCurrency("USD"));
     holders.add(holder);
 
-
-
     HttpException httpException = assertThrows(HttpException.class, () -> fundAvailabilityValidator.validate(holders));
-
     assertEquals(422, httpException.getCode());
     Error error = httpException.getErrors().getErrors().get(0);
     assertEquals(FUND_CANNOT_BE_PAID.getCode(), error.getCode());
-    assertEquals(Collections.singletonList(budgetId).toString(), error.getParameters().get(0).getValue());
-
+    assertEquals(Collections.singletonList("FC").toString(), error.getParameters().get(0).getValue());
   }
 
 
@@ -148,6 +152,7 @@ public class FundAvailabilityHolderValidatorTest {
     String fiscalYearId = UUID.randomUUID().toString();
     String fundId = UUID.randomUUID().toString();
     String budgetId = UUID.randomUUID().toString();
+    String ledgerId = UUID.randomUUID().toString();
 
     Transaction existingTransaction = new Transaction()
       .withTransactionType(Transaction.TransactionType.PENDING_PAYMENT)
@@ -162,6 +167,13 @@ public class FundAvailabilityHolderValidatorTest {
       .withFiscalYearId(fiscalYearId)
       .withFromFundId(fundId)
       .withCurrency("USD");
+
+    Fund fund = new Fund()
+      .withId(fundId)
+      .withName("TestFund")
+      .withLedgerId(ledgerId)
+      .withCode("FC")
+      .withFundStatus(Fund.FundStatus.ACTIVE);
 
     Budget budget = new Budget()
       .withId(budgetId)
@@ -178,6 +190,7 @@ public class FundAvailabilityHolderValidatorTest {
     List<InvoiceWorkflowDataHolder> holders = new ArrayList<>();
 
     InvoiceWorkflowDataHolder holder = new InvoiceWorkflowDataHolder()
+            .withFund(fund)
             .withExistingTransaction(existingTransaction)
             .withNewTransaction(newTransaction)
             .withBudget(budget)
@@ -195,11 +208,18 @@ public class FundAvailabilityHolderValidatorTest {
     String fiscalYearId = UUID.randomUUID().toString();
     String fundId = UUID.randomUUID().toString();
     String budgetId = UUID.randomUUID().toString();
+    String ledgerId = UUID.randomUUID().toString();
 
     FiscalYear fiscalYear = new FiscalYear()
       .withCurrency("USD")
       .withId(fiscalYearId);
 
+    Fund fund = new Fund()
+      .withId(fundId)
+      .withName("TestFund")
+      .withLedgerId(ledgerId)
+      .withCode("FC")
+      .withFundStatus(Fund.FundStatus.ACTIVE);
 
     Budget budget = new Budget()
       .withId(budgetId)
@@ -221,12 +241,14 @@ public class FundAvailabilityHolderValidatorTest {
             .withCurrency("USD");
 
     InvoiceWorkflowDataHolder holder1 = new InvoiceWorkflowDataHolder()
+            .withFund(fund)
             .withBudget(budget)
             .withRestrictExpenditures(true)
             .withFiscalYear(fiscalYear)
             .withNewTransaction(linePendingPayment);
 
     InvoiceWorkflowDataHolder holder2 = new InvoiceWorkflowDataHolder()
+            .withFund(fund)
             .withBudget(budget)
             .withRestrictExpenditures(true)
             .withFiscalYear(fiscalYear)
@@ -241,7 +263,7 @@ public class FundAvailabilityHolderValidatorTest {
     assertEquals(422, httpException.getCode());
     Error error = httpException.getErrors().getErrors().get(0);
     assertEquals(FUND_CANNOT_BE_PAID.getCode(), error.getCode());
-    assertEquals(Collections.singletonList(budgetId).toString(), error.getParameters().get(0).getValue());
+    assertEquals(Collections.singletonList("FC").toString(), error.getParameters().get(0).getValue());
 
   }
 
@@ -250,10 +272,17 @@ public class FundAvailabilityHolderValidatorTest {
     String fiscalYearId = UUID.randomUUID().toString();
     String fundId = UUID.randomUUID().toString();
     String budgetId = UUID.randomUUID().toString();
-
+    String ledgerId = UUID.randomUUID().toString();
     FiscalYear fiscalYear = new FiscalYear()
             .withCurrency("USD")
             .withId(fiscalYearId);
+
+    Fund fund = new Fund()
+      .withId(fundId)
+      .withName("TestFund")
+      .withLedgerId(ledgerId)
+      .withCode("FC")
+      .withFundStatus(Fund.FundStatus.ACTIVE);
 
     Budget budget = new Budget()
             .withId(budgetId)
@@ -282,6 +311,7 @@ public class FundAvailabilityHolderValidatorTest {
             .withCurrency("USD");
 
     InvoiceWorkflowDataHolder holder1 = new InvoiceWorkflowDataHolder()
+            .withFund(fund)
             .withBudget(budget)
             .withRestrictExpenditures(true)
             .withFiscalYear(fiscalYear)
@@ -289,6 +319,7 @@ public class FundAvailabilityHolderValidatorTest {
             .withEncumbrance(encumbrance);
 
     InvoiceWorkflowDataHolder holder2 = new InvoiceWorkflowDataHolder()
+            .withFund(fund)
             .withBudget(budget)
             .withRestrictExpenditures(true)
             .withFiscalYear(fiscalYear)
@@ -307,10 +338,17 @@ public class FundAvailabilityHolderValidatorTest {
     String fiscalYearId = UUID.randomUUID().toString();
     String fundId = UUID.randomUUID().toString();
     String budgetId = UUID.randomUUID().toString();
+    String ledgerId = UUID.randomUUID().toString();
 
     FiscalYear fiscalYear = new FiscalYear()
             .withCurrency("USD")
             .withId(fiscalYearId);
+    Fund fund = new Fund()
+      .withId(fundId)
+      .withName("TestFund")
+      .withLedgerId(ledgerId)
+      .withCode("FC")
+      .withFundStatus(Fund.FundStatus.ACTIVE);
 
     Budget budget = new Budget()
             .withId(budgetId)
@@ -338,6 +376,7 @@ public class FundAvailabilityHolderValidatorTest {
             .withCurrency("USD");
 
     InvoiceWorkflowDataHolder holder = new InvoiceWorkflowDataHolder()
+            .withFund(fund)
             .withBudget(budget)
             .withRestrictExpenditures(true)
             .withFiscalYear(fiscalYear)
@@ -351,6 +390,6 @@ public class FundAvailabilityHolderValidatorTest {
     assertEquals(422, httpException.getCode());
     Error error = httpException.getErrors().getErrors().get(0);
     assertEquals(FUND_CANNOT_BE_PAID.getCode(), error.getCode());
-    assertEquals(Collections.singletonList(budgetId).toString(), error.getParameters().get(0).getValue());
+    assertEquals(Collections.singletonList("FC").toString(), error.getParameters().get(0).getValue());
   }
 }

@@ -1,37 +1,41 @@
 package org.folio.services.validator;
 
-import static java.util.stream.Collectors.groupingBy;
-import static java.util.stream.Collectors.toList;
-import static org.folio.invoices.utils.ErrorCodes.FUND_CANNOT_BE_PAID;
-import static org.folio.invoices.utils.ResourcePathResolver.BUDGETS;
-
-import java.math.BigDecimal;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
+import org.folio.invoices.rest.exceptions.HttpException;
+import org.folio.models.InvoiceWorkflowDataHolder;
+import org.folio.rest.acq.model.finance.Budget;
+import org.folio.rest.acq.model.finance.Fund;
+import org.folio.rest.jaxrs.model.Parameter;
+import org.javamoney.moneta.Money;
+import org.javamoney.moneta.function.MonetaryFunctions;
 
 import javax.money.CurrencyUnit;
 import javax.money.Monetary;
 import javax.money.MonetaryAmount;
+import java.math.BigDecimal;
+import java.util.*;
 
-import org.folio.invoices.rest.exceptions.HttpException;
-import org.folio.models.InvoiceWorkflowDataHolder;
-import org.folio.rest.acq.model.finance.Budget;
-import org.folio.rest.jaxrs.model.Parameter;
-import org.javamoney.moneta.Money;
-import org.javamoney.moneta.function.MonetaryFunctions;
+import static java.util.stream.Collectors.groupingBy;
+import static java.util.stream.Collectors.toList;
+import static org.folio.invoices.utils.ErrorCodes.FUND_CANNOT_BE_PAID;
+import static org.folio.invoices.utils.ResourcePathResolver.FUNDS;
 
 public class FundAvailabilityHolderValidator implements HolderValidator {
 
   @Override
   public void validate(List<InvoiceWorkflowDataHolder> dataHolders) {
-
     Map<Budget, List<InvoiceWorkflowDataHolder>> budgetHoldersMap = dataHolders.stream()
       .filter(InvoiceWorkflowDataHolder::isRestrictExpenditures)
       .collect(groupingBy(InvoiceWorkflowDataHolder::getBudget));
 
+    Map<Fund, List<InvoiceWorkflowDataHolder>> FundHoldersMap = dataHolders.stream()
+      .filter(InvoiceWorkflowDataHolder::isRestrictExpenditures)
+      .collect(groupingBy(InvoiceWorkflowDataHolder::getFund));
+
+    Map<String,String> fundIdMap = new HashMap<>();
+    FundHoldersMap.forEach((fundEntity,invoiceWorkflowDataHoldersEntity) -> {
+      fundIdMap.put(fundEntity.getId(),fundEntity.getCode());
+
+});
     List<String> failedBudgetIds = budgetHoldersMap.entrySet()
       .stream()
       .filter(entry -> Objects.nonNull(entry.getKey()
@@ -42,12 +46,12 @@ public class FundAvailabilityHolderValidator implements HolderValidator {
         return isRemainingAmountExceed(entry.getKey(), newExpendedAmount, totalExpendedAmount);
       })
       .map(Map.Entry::getKey)
-      .map(Budget::getId)
+      .map(Budget::getFundId)
       .collect(toList());
 
     if (!failedBudgetIds.isEmpty()) {
-      Parameter parameter = new Parameter().withKey(BUDGETS)
-        .withValue(failedBudgetIds.toString());
+      Parameter parameter = new Parameter().withKey(FUNDS)
+        .withValue(failedBudgetIds.stream().map(e->fundIdMap.get(e)).collect(toList()).toString());
       throw new HttpException(422, FUND_CANNOT_BE_PAID.toError()
         .withParameters(Collections.singletonList(parameter)));
     }
