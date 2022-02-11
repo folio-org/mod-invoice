@@ -13,6 +13,7 @@ import javax.money.Monetary;
 import javax.money.MonetaryAmount;
 import java.math.BigDecimal;
 import java.util.*;
+import java.util.stream.Collectors;
 
 import static java.util.stream.Collectors.groupingBy;
 import static java.util.stream.Collectors.toList;
@@ -27,15 +28,10 @@ public class FundAvailabilityHolderValidator implements HolderValidator {
       .filter(InvoiceWorkflowDataHolder::isRestrictExpenditures)
       .collect(groupingBy(InvoiceWorkflowDataHolder::getBudget));
 
-    Map<Fund, List<InvoiceWorkflowDataHolder>> FundHoldersMap = dataHolders.stream()
+    Map<String, String> fundHoldersMap = dataHolders.stream()
       .filter(InvoiceWorkflowDataHolder::isRestrictExpenditures)
-      .collect(groupingBy(InvoiceWorkflowDataHolder::getFund));
+      .map(InvoiceWorkflowDataHolder::getFund).collect(Collectors.toMap(fundEntity->fundEntity.getId(),fundEntity->fundEntity.getCode(),(fundEntityKey, fundEntityDupKey) -> fundEntityKey));
 
-    Map<String,String> fundIdMap = new HashMap<>();
-    FundHoldersMap.forEach((fundEntity,invoiceWorkflowDataHoldersEntity) -> {
-      fundIdMap.put(fundEntity.getId(),fundEntity.getCode());
-
-});
     List<String> failedBudgetIds = budgetHoldersMap.entrySet()
       .stream()
       .filter(entry -> Objects.nonNull(entry.getKey()
@@ -51,7 +47,7 @@ public class FundAvailabilityHolderValidator implements HolderValidator {
 
     if (!failedBudgetIds.isEmpty()) {
       Parameter parameter = new Parameter().withKey(FUNDS)
-        .withValue(failedBudgetIds.stream().map(e->fundIdMap.get(e)).collect(toList()).toString());
+        .withValue(failedBudgetIds.stream().map(e->fundHoldersMap.get(e)).collect(toList()).toString());
       throw new HttpException(422, FUND_CANNOT_BE_PAID.toError()
         .withParameters(Collections.singletonList(parameter)));
     }

@@ -127,7 +127,10 @@ public class FundAvailabilityHolderValidatorTest {
 
     Fund fund = new Fund()
       .withId(fundId)
-      .withLedgerId(ledgerId);
+      .withLedgerId(ledgerId)
+      .withCode("FC")
+      .withFundStatus(Fund.FundStatus.ACTIVE);
+
 
     Ledger ledger = new Ledger()
       .withId(ledgerId)
@@ -257,9 +260,7 @@ public class FundAvailabilityHolderValidatorTest {
     holders.add(holder1);
     holders.add(holder2);
 
-
     HttpException httpException = assertThrows(HttpException.class, () -> fundAvailabilityValidator.validate(holders));
-
     assertEquals(422, httpException.getCode());
     Error error = httpException.getErrors().getErrors().get(0);
     assertEquals(FUND_CANNOT_BE_PAID.getCode(), error.getCode());
@@ -327,7 +328,6 @@ public class FundAvailabilityHolderValidatorTest {
 
     holders.add(holder1);
     holders.add(holder2);
-
 
     assertDoesNotThrow(()-> fundAvailabilityValidator.validate(holders));
 
