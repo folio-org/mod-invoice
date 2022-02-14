@@ -140,6 +140,7 @@ import org.folio.rest.acq.model.finance.Fund;
 import org.folio.rest.acq.model.finance.FundCollection;
 import org.folio.rest.acq.model.finance.InvoiceTransactionSummary;
 import org.folio.rest.acq.model.finance.Ledger;
+import org.folio.rest.acq.model.finance.Ledger;
 import org.folio.rest.acq.model.finance.Transaction;
 import org.folio.rest.acq.model.orders.CompositePoLine;
 import org.folio.rest.acq.model.units.AcquisitionsUnitMembershipCollection;
@@ -738,8 +739,11 @@ public class InvoicesApiTest extends ApiTestBase {
 
     Fund fund = new Fund()
       .withId(fundId)
-      .withExternalAccountNo("test")
-      .withLedgerId(EXISTING_LEDGER_ID);
+      .withName("test")
+      .withLedgerId(EXISTING_LEDGER_ID)
+      .withCode("FC")
+      .withExternalAccountNo("1234")
+      .withFundStatus(Fund.FundStatus.ACTIVE);
 
     FundDistribution amountDistribution = new FundDistribution()
       .withFundId(fundId)
@@ -782,7 +786,10 @@ public class InvoicesApiTest extends ApiTestBase {
     Fund fund = new Fund()
       .withId(fundId)
       .withExternalAccountNo("test")
-      .withLedgerId(ledgerId);
+      .withLedgerId(ledgerId)
+      .withCode("FC")
+      .withFundStatus(Fund.FundStatus.ACTIVE);
+
 
     Ledger ledger = new Ledger()
       .withId(ledgerId)
