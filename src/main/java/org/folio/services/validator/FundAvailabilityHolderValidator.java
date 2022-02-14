@@ -31,7 +31,7 @@ public class FundAvailabilityHolderValidator implements HolderValidator {
     Map<String, String> fundHoldersMap =dataHolders.stream()
       .filter(InvoiceWorkflowDataHolder::isRestrictExpenditures)
       .map(InvoiceWorkflowDataHolder::getFund)
-      .collect(Collectors.toMap(fundEntity->fundEntity.getId(),fundEntity->fundEntity.getCode(),(fundEntityKey, fundEntityDupKey) -> fundEntityKey));
+      .filter(Objects::nonNull).collect(Collectors.toMap(fundEntity->fundEntity.getId(),fundEntity->fundEntity.getCode(),(fundEntityKey, fundEntityDupKey) -> fundEntityKey));
 
     List<String> failedBudgetIds = budgetHoldersMap.entrySet()
       .stream()
