@@ -83,7 +83,6 @@ public class FundAvailabilityHolderValidator implements HolderValidator {
     Money unavailable = Money.of(budget.getUnavailable(), currency);
     Money totalAmountCanBeExpended = totalFundings.multiply(allowableExpenditures);
     Money amountCanBeExpended = totalAmountCanBeExpended.subtract(unavailable);
-
     Money afterApproveExpended = expended.add(totalExpendedAmount);
 
     return newExpendedAmount.isGreaterThan(amountCanBeExpended) || afterApproveExpended.isGreaterThan(totalAmountCanBeExpended);
