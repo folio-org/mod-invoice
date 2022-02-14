@@ -739,8 +739,10 @@ public class InvoicesApiTest extends ApiTestBase {
 
     Fund fund = new Fund()
       .withId(fundId)
-      .withExternalAccountNo("test")
-      .withLedgerId(EXISTING_LEDGER_ID);
+      .withName("test")
+      .withLedgerId(EXISTING_LEDGER_ID)
+      .withCode("FC")
+      .withFundStatus(Fund.FundStatus.ACTIVE);
 
     FundDistribution amountDistribution = new FundDistribution()
       .withFundId(fundId)
