@@ -19,6 +19,14 @@
           <externalAccountNumber>54321098</externalAccountNumber>
         </batchedVoucherLine>
       </batchedVoucherLines>
+      <adjustments>
+        <adjustment>
+          <description>GST</description>
+          <amount>20</amount>
+          <relationToTotal>Separate from</relationToTotal>
+          <proRate>Not pro rate</proRate>
+        </adjustment>
+      </adjustments>
       <disbursementNumber>EFT546789</disbursementNumber>
       <disbursementDate>2019-12-06T00:01:04Z</disbursementDate>
       <disbursementAmount>23.45</disbursementAmount>

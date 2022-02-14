@@ -4,6 +4,7 @@ import org.folio.InvoiceWorkflowDataHolderBuilder;
 import org.folio.converters.AddressConverter;
 import org.folio.rest.core.RestClient;
 import org.folio.rest.impl.VoucherService;
+import org.folio.services.InvoiceLinesRetrieveService;
 import org.folio.services.InvoiceRetrieveService;
 import org.folio.services.VendorRetrieveService;
 import org.folio.services.configuration.ConfigurationService;
@@ -165,6 +166,11 @@ public class ServicesConfiguration {
   @Bean
   InvoiceRetrieveService invoiceRetrieveService(InvoiceService invoiceService) {
     return new InvoiceRetrieveService(invoiceService);
+  }
+
+  @Bean
+  InvoiceLinesRetrieveService invoiceLinesRetrieveService(InvoiceLineService invoiceLineService) {
+    return new InvoiceLinesRetrieveService(invoiceLineService);
   }
 
   @Bean

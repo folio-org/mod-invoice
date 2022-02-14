@@ -48,6 +48,13 @@
           </xs:complexContent>
         </xs:complexType>
       </xs:element>
+      <xs:element name="adjustments">
+        <xs:complexType>
+          <xs:complexContent>
+            <xs:extension base="AdjustmentsType"/>
+          </xs:complexContent>
+        </xs:complexType>
+      </xs:element>
       <xs:element name="disbursementNumber" type="xs:string" minOccurs="0">
         <xs:annotation>
           <xs:documentation>The identifier for the physical transaction corresponding to a payment;
@@ -175,12 +182,56 @@
     </xs:sequence>
   </xs:complexType>
 
+  <xs:complexType name="AdjustmentsType">
+    <xs:sequence>
+      <xs:element name="adjustment" type="AdjustmentLineType" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
   <xs:complexType name="FundCodesType">
     <xs:annotation>
       <xs:documentation>A list of fund codes</xs:documentation>
     </xs:annotation>
     <xs:sequence>
       <xs:element name="fundCode" type="xs:string" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="AdjustmentLineType">
+    <xs:annotation>
+      <xs:documentation>A list of adjustments records</xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="id" type="UUIDType">
+        <xs:annotation>
+          <xs:documentation>UUID of adjustment</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="description" type="xs:string">
+        <xs:annotation>
+          <xs:documentation>Displayed in invoice line as a name for the input</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="prorate" type="xs:string">
+        <xs:annotation>
+          <xs:documentation>Displayed in invoice line per adjustment in toggled on in settings</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="relationToTotal" type="xs:string">
+        <xs:annotation>
+          <xs:documentation>Relationship of this adjustment to the total;In addition to: added to subtotal;Included in: reported as subtotal portion;Separate from:calculated from subtotal</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="type" type="xs:string">
+        <xs:annotation>
+          <xs:documentation>Adjustment type</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="value" type="xs:double">
+        <xs:annotation>
+          <xs:documentation>Adjustment value</xs:documentation>
+        </xs:annotation>
+      </xs:element>
     </xs:sequence>
   </xs:complexType>
 

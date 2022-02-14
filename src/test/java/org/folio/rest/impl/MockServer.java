@@ -991,7 +991,7 @@ public class MockServer {
       while (iterator.hasNext()) {
         InvoiceLine invoiceLine = iterator.next();
         String id = invoiceLine.getId();
-        if (excludedLineIds.contains(id) || (includedLineIds.isEmpty() ? !invoiceId.equals(invoiceLine.getInvoiceId()) : !includedLineIds.contains(id))) {
+        if (excludedLineIds.contains(id) || (includedLineIds.isEmpty() ? !invoiceId.contains(invoiceLine.getInvoiceId()) : !includedLineIds.contains(id))) {
           iterator.remove();
         }
       }
