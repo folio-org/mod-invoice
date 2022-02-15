@@ -10,7 +10,11 @@ import org.folio.jaxb.JAXBUtil;
 import org.folio.rest.jaxrs.model.Adjustment;
 import org.folio.rest.jaxrs.model.BatchedVoucher;
 import org.folio.rest.jaxrs.model.VendorAddress;
-import org.folio.rest.jaxrs.model.jaxb.*;
+import org.folio.rest.jaxrs.model.jaxb.AdjustmentLineType;
+import org.folio.rest.jaxrs.model.jaxb.BatchedVoucherLineType;
+import org.folio.rest.jaxrs.model.jaxb.BatchedVoucherType;
+import org.folio.rest.jaxrs.model.jaxb.PaymentAccountType;
+import org.folio.rest.jaxrs.model.jaxb.VendorAddressType;
 import org.springframework.core.convert.converter.Converter;
 
 public class BatchedVoucherModelConverter implements Converter<BatchedVoucher, BatchedVoucherType> {
