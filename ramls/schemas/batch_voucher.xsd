@@ -184,7 +184,7 @@
 
   <xs:complexType name="AdjustmentsType">
     <xs:sequence>
-      <xs:element name="adjustment" type="AdjustmentLineType" maxOccurs="unbounded"/>
+      <xs:element name="adjustment" type="AdjustmentLineType" minOccurs="0" maxOccurs="unbounded"/>
     </xs:sequence>
   </xs:complexType>
 
@@ -202,7 +202,7 @@
       <xs:documentation>A list of adjustments records</xs:documentation>
     </xs:annotation>
     <xs:sequence>
-      <xs:element name="id" type="UUIDType">
+      <xs:element name="id" type="UUIDType" minOccurs="0">
         <xs:annotation>
           <xs:documentation>UUID of adjustment</xs:documentation>
         </xs:annotation>

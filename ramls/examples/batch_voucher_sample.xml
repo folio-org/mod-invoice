@@ -22,9 +22,10 @@
       <adjustments>
         <adjustment>
           <description>GST</description>
-          <amount>20</amount>
+          <prorate>Not pro rate</prorate>
           <relationToTotal>Separate from</relationToTotal>
-          <proRate>Not pro rate</proRate>
+          <type>Payment</type>
+          <value>20.0</value>
         </adjustment>
       </adjustments>
       <disbursementNumber>EFT546789</disbursementNumber>
