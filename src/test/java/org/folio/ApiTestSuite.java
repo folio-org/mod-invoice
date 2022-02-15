@@ -36,6 +36,7 @@ import org.folio.rest.impl.protection.InvoicesProtectionTest;
 import org.folio.rest.impl.protection.LinesProtectionTest;
 import org.folio.rest.tools.utils.NetworkUtils;
 import org.folio.schemas.xsd.BatchVoucherSchemaXSDTest;
+import org.folio.services.InvoiceLinesRetrieveServiceTest;
 import org.folio.services.InvoiceRetrieveServiceTest;
 import org.folio.services.VoucherLinesRetrieveServiceTest;
 import org.folio.services.finance.BudgetExpenseClassTest;
@@ -222,6 +223,10 @@ public class ApiTestSuite {
 
   @Nested
   class InvoiceRetrieveServiceTestNested extends InvoiceRetrieveServiceTest {
+  }
+
+  @Nested
+  class InvoiceLinesRetrieveServiceTestNested extends InvoiceLinesRetrieveServiceTest {
   }
 
   @Nested

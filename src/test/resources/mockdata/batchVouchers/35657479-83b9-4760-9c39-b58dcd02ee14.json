@@ -34,6 +34,16 @@
 
       },
       "vendorInvoiceNo": "YK75851",
+      "adjustments": [
+        {
+          "description": "Test",
+          "exportToAccounting": true,
+          "type": "Amount",
+          "value": 4.50,
+          "prorate": "By line",
+          "relationToTotal": "In addition to"
+        }
+      ],
       "batchedVoucherLines": [
         {
           "amount": 23.45,

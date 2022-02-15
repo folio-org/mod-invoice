@@ -10,6 +10,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
+import java.util.stream.Collectors;
 
 import io.vertx.core.Vertx;
 import org.folio.converters.AddressConverter;
@@ -21,13 +22,8 @@ import org.folio.rest.acq.model.VoucherLine;
 import org.folio.rest.core.models.RequestContext;
 import org.folio.rest.impl.BatchGroupHelper;
 import org.folio.rest.impl.VoucherService;
-import org.folio.rest.jaxrs.model.BatchVoucher;
-import org.folio.rest.jaxrs.model.BatchVoucherExport;
-import org.folio.rest.jaxrs.model.BatchedVoucher;
-import org.folio.rest.jaxrs.model.BatchedVoucherLine;
-import org.folio.rest.jaxrs.model.Invoice;
-import org.folio.rest.jaxrs.model.Voucher;
-import org.folio.rest.jaxrs.model.VoucherCollection;
+import org.folio.rest.jaxrs.model.*;
+import org.folio.services.InvoiceLinesRetrieveService;
 import org.folio.services.InvoiceRetrieveService;
 import org.folio.services.VendorRetrieveService;
 import org.folio.services.VoucherLinesRetrieveService;
@@ -43,6 +39,8 @@ public class BatchVoucherGenerateService {
   private final BatchGroupHelper batchGroupHelper;
   @Autowired
   private InvoiceRetrieveService invoiceRetrieveService;
+  @Autowired
+  private InvoiceLinesRetrieveService invoiceLinesRetrieveService;
   private final VoucherLinesRetrieveService voucherLinesRetrieveService;
   @Autowired
   private VendorRetrieveService vendorRetrieveService;
@@ -58,12 +56,14 @@ public class BatchVoucherGenerateService {
   public BatchVoucherGenerateService(Map<String, String> okapiHeaders, Context ctx, String lang,
                                      VendorRetrieveService vendorRetrieveService,
                                      InvoiceRetrieveService invoiceRetrieveService,
+                                     InvoiceLinesRetrieveService invoiceLinesRetrieveService,
                                      VoucherService voucherService,
                                      AddressConverter addressConverter) {
     voucherLinesRetrieveService = new VoucherLinesRetrieveService(okapiHeaders, ctx, lang);
     batchGroupHelper = new BatchGroupHelper(okapiHeaders, ctx, lang);
     this.vendorRetrieveService = vendorRetrieveService;
     this.voucherService = voucherService;
+    this.invoiceLinesRetrieveService = invoiceLinesRetrieveService;
     this.invoiceRetrieveService = invoiceRetrieveService;
     this.addressConverter = addressConverter;
   }
@@ -76,8 +76,9 @@ public class BatchVoucherGenerateService {
         if (!vouchers.getVouchers().isEmpty()) {
           CompletableFuture<Map<String, List<VoucherLine>>> voucherLines = voucherLinesRetrieveService.getVoucherLinesMap(vouchers);
           CompletableFuture<Map<String, Invoice>> invoices = invoiceRetrieveService.getInvoiceMap(vouchers, requestContext);
-          return allOf(voucherLines, invoices)
-            .thenCompose(v -> buildBatchVoucher(batchVoucherExport, vouchers, voucherLines.join(), invoices.join(), requestContext))
+          CompletableFuture<Map<String, List<InvoiceLine>>> invoiceLines = invoiceLinesRetrieveService.getInvoiceLineMap(vouchers, requestContext);
+          return allOf(voucherLines, invoices, invoiceLines)
+            .thenCompose(v -> buildBatchVoucher(batchVoucherExport, vouchers, voucherLines.join(), invoices.join(), invoiceLines.join(), requestContext))
             .thenAccept(batchVoucher -> {
               future.complete(batchVoucher);
               closeHttpConnections();
@@ -94,7 +95,7 @@ public class BatchVoucherGenerateService {
   }
 
   private CompletableFuture<BatchVoucher> buildBatchVoucher(BatchVoucherExport batchVoucherExport,
-      VoucherCollection voucherCollection, Map<String, List<VoucherLine>> voucherLinesMap, Map<String, Invoice> invoiceMap, RequestContext requestContext) {
+      VoucherCollection voucherCollection, Map<String, List<VoucherLine>> voucherLinesMap, Map<String, Invoice> invoiceMap, Map<String, List<InvoiceLine>> invoiceLinesMap, RequestContext requestContext) {
     List<Invoice> invoices = new ArrayList<>(invoiceMap.values());
     return vendorRetrieveService.getVendorsMap(invoices, requestContext)
       .thenCombine(batchGroupHelper.getBatchGroup(batchVoucherExport.getBatchGroupId()), (vendorsMap, batchGroup) -> {
@@ -103,7 +104,7 @@ public class BatchVoucherGenerateService {
         batchVoucher.setEnd(batchVoucherExport.getStart());
         List<BatchedVoucher> batchedVouchers = voucherCollection.getVouchers()
           .stream()
-          .map(voucher -> buildBatchedVoucher(voucher, voucherLinesMap, invoiceMap, vendorsMap))
+          .map(voucher -> buildBatchedVoucher(voucher, voucherLinesMap, invoiceMap, invoiceLinesMap, vendorsMap))
           .collect(toList());
         batchVoucher.setTotalRecords(batchedVouchers.size());
         batchVoucher.withBatchedVouchers(batchedVouchers);
@@ -114,7 +115,7 @@ public class BatchVoucherGenerateService {
   }
 
   private BatchedVoucher buildBatchedVoucher(Voucher voucher, Map<String, List<VoucherLine>> mapVoucherLines,
-      Map<String, Invoice> mapInvoices, Map<String, Organization> vendorsMap) {
+      Map<String, Invoice> mapInvoices, Map<String, List<InvoiceLine>> invoiceLinesMap, Map<String, Organization> vendorsMap) {
     BatchedVoucher batchedVoucher = new BatchedVoucher();
     batchedVoucher.setVoucherNumber(voucher.getVoucherNumber());
     batchedVoucher.setAccountingCode(voucher.getAccountingCode());
@@ -136,6 +137,21 @@ public class BatchVoucherGenerateService {
     batchedVoucher.setInvoiceNote(invoice.getNote());
     Organization organization = vendorsMap.get(invoice.getVendorId());
     batchedVoucher.setVendorName(organization.getName());
+    List<Adjustment> adjustments = new ArrayList<>();
+    List<InvoiceLine> invoiceLines = invoiceLinesMap.get(invoice.getId());
+    List<String> invoiceAdjustmentIds = invoice.getAdjustments().stream()
+      .map(Adjustment::getId)
+      .collect(Collectors.toList());
+    if (invoiceLines != null && !invoiceLines.isEmpty()) {
+      for (InvoiceLine invoiceLine : invoiceLines) {
+        adjustments.addAll(getInvoiceLineAdjustments(invoiceLine, invoiceAdjustmentIds));
+      }
+    }
+    List<Adjustment> invoiceAdjustmentToExport = invoice.getAdjustments().stream()
+      .filter(Adjustment::getExportToAccounting)
+      .collect(Collectors.toList());
+    adjustments.addAll(invoiceAdjustmentToExport);
+    batchedVoucher.setAdjustments(adjustments);
     List<Address> addresses = organization.getAddresses();
     if (addresses != null && !addresses.isEmpty()) {
       Address primaryAddress = addresses.stream()
@@ -151,6 +167,16 @@ public class BatchVoucherGenerateService {
     batchedVoucher.setDisbursementAmount(voucher.getDisbursementAmount());
     batchedVoucher.withBatchedVoucherLines(buildBatchedVoucherLines(voucher.getId(), mapVoucherLines));
     return batchedVoucher;
+  }
+
+  private List<Adjustment> getInvoiceLineAdjustments(InvoiceLine invoiceLine, List<String> adjustmentIds) {
+    return invoiceLine.getAdjustments().stream()
+      .filter(adjustment -> isOnlyUniqueAndExportingAdjustments(adjustment, adjustmentIds))
+      .collect(Collectors.toList());
+  }
+
+  private boolean isOnlyUniqueAndExportingAdjustments(Adjustment adjustment, List<String> adjustmentIds) {
+    return adjustment.getId() == null && adjustment.getExportToAccounting() && !adjustmentIds.contains(adjustment.getAdjustmentId());
   }
 
   private List<BatchedVoucherLine> buildBatchedVoucherLines(String voucherId, Map<String, List<VoucherLine>> mapVoucherLines) {

@@ -1,13 +1,16 @@
 package org.folio.converters;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
 import org.folio.jaxb.JAXBUtil;
+import org.folio.rest.jaxrs.model.Adjustment;
 import org.folio.rest.jaxrs.model.BatchedVoucher;
 import org.folio.rest.jaxrs.model.VendorAddress;
+import org.folio.rest.jaxrs.model.jaxb.AdjustmentLineType;
 import org.folio.rest.jaxrs.model.jaxb.BatchedVoucherLineType;
 import org.folio.rest.jaxrs.model.jaxb.BatchedVoucherType;
 import org.folio.rest.jaxrs.model.jaxb.PaymentAccountType;
@@ -59,7 +62,26 @@ public class BatchedVoucherModelConverter implements Converter<BatchedVoucher, B
 
     BatchedVoucherType.BatchedVoucherLines batchedVoucherLines = convertBatchedVoucherLines(batchedVoucher);
     batchedVoucherType.withBatchedVoucherLines(batchedVoucherLines);
+
+    BatchedVoucherType.Adjustments adjustments = convertAdjustmentsLines(batchedVoucher);
+    batchedVoucherType.withAdjustments(adjustments);
     return batchedVoucherType;
+  }
+
+  private BatchedVoucherType.Adjustments convertAdjustmentsLines(BatchedVoucher batchedVoucher) {
+    BatchedVoucherType.Adjustments adjustments = new BatchedVoucherType.Adjustments();
+    List<AdjustmentLineType> adjustmentsList = new ArrayList<>();
+    for (Adjustment adjustment : batchedVoucher.getAdjustments()) {
+      AdjustmentLineType normalizedAdjustment = new AdjustmentLineType();
+      normalizedAdjustment.setDescription(adjustment.getDescription());
+      normalizedAdjustment.setRelationToTotal(adjustment.getRelationToTotal().value());
+      normalizedAdjustment.setProrate(adjustment.getProrate().value());
+      normalizedAdjustment.setType(adjustment.getType().value());
+      normalizedAdjustment.setValue(adjustment.getValue());
+      adjustmentsList.add(normalizedAdjustment);
+    }
+    adjustments.withAdjustment(adjustmentsList);
+    return adjustments;
   }
 
   private VendorAddressType convertVendorAddress(VendorAddress address) {

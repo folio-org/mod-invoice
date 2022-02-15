@@ -17,6 +17,7 @@ import org.folio.rest.impl.ApiTestBase;
 import org.folio.rest.impl.VoucherService;
 import org.folio.rest.jaxrs.model.BatchVoucher;
 import org.folio.rest.jaxrs.model.BatchVoucherExport;
+import org.folio.services.InvoiceLinesRetrieveService;
 import org.folio.services.InvoiceRetrieveService;
 import org.folio.services.VendorRetrieveService;
 import org.folio.services.configuration.ConfigurationService;
@@ -67,6 +68,7 @@ public class BatchVoucherGenerateServiceTest extends ApiTestBase {
     AddressConverter addressConverter = AddressConverter.getInstance();
     VoucherService voucherService = new VoucherService(voucherRetrieveService, voucherCommandService,
       vendorRetrieveService, addressConverter);
+    InvoiceLinesRetrieveService invoiceLinesRetrieveService = new InvoiceLinesRetrieveService(new InvoiceLineService(restClient));
 
     InvoiceLineService invoiceLineService = new InvoiceLineService(new RestClient());
     OrderLineService orderLineService = new OrderLineService(restClient);
@@ -74,7 +76,7 @@ public class BatchVoucherGenerateServiceTest extends ApiTestBase {
       new OrderService(new RestClient(), invoiceLineService, orderLineService));
     InvoiceRetrieveService invoiceRetrieveService = new InvoiceRetrieveService(invoiceService);
     BatchVoucherGenerateService service = new BatchVoucherGenerateService(okapiHeaders, context, "en", vendorRetrieveService,
-              invoiceRetrieveService, voucherService, addressConverter);
+              invoiceRetrieveService, invoiceLinesRetrieveService, voucherService, addressConverter);
     BatchVoucherExport batchVoucherExport = new JsonObject(getMockData(BATCH_VOUCHER_EXPORT_SAMPLE_PATH)).mapTo(BatchVoucherExport.class);
 
     CompletableFuture<BatchVoucher> future = service.generateBatchVoucher(batchVoucherExport, new RequestContext(context, okapiHeaders));
@@ -95,6 +97,7 @@ public class BatchVoucherGenerateServiceTest extends ApiTestBase {
       AddressConverter addressConverter = AddressConverter.getInstance();
       VoucherService voucherService = new VoucherService(voucherRetrieveService, voucherCommandService,
         vendorRetrieveService, addressConverter);
+      InvoiceLinesRetrieveService invoiceLinesRetrieveService = new InvoiceLinesRetrieveService(new InvoiceLineService(restClient));
 
       InvoiceLineService invoiceLineService = new InvoiceLineService(new RestClient());
       OrderLineService orderLineService = new OrderLineService(restClient);
@@ -104,7 +107,7 @@ public class BatchVoucherGenerateServiceTest extends ApiTestBase {
       InvoiceRetrieveService invoiceRetrieveService = new InvoiceRetrieveService(invoiceService);
 
       BatchVoucherGenerateService service = new BatchVoucherGenerateService(okapiHeaders, context, "en", vendorRetrieveService,
-              invoiceRetrieveService, voucherService, addressConverter);
+              invoiceRetrieveService, invoiceLinesRetrieveService, voucherService, addressConverter);
       BatchVoucherExport batchVoucherExport = new BatchVoucherExport();
       CompletableFuture<BatchVoucher> future = service.generateBatchVoucher(batchVoucherExport, new RequestContext(context, okapiHeaders));
       future.join();
