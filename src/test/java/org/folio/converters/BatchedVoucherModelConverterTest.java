@@ -1,9 +1,7 @@
 package org.folio.converters;
 
 import static org.folio.jaxb.JAXBUtil.convertOldJavaDate;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.*;
 
 import java.io.IOException;
 import java.math.BigDecimal;
@@ -43,6 +41,7 @@ public class BatchedVoucherModelConverterTest {
     BatchedVoucher batchedVoucher = json.getBatchedVouchers().get(0);
     BatchedVoucherType batchedVoucherType = converter.convert(batchedVoucher);
     assertNotNull(batchedVoucherType);
+    assertEquals(1, batchedVoucher.getAdjustments().size());
     checkEquals(batchedVoucherType, batchedVoucher);
   }
 
