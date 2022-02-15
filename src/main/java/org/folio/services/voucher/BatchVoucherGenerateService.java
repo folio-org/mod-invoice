@@ -139,15 +139,18 @@ public class BatchVoucherGenerateService {
     batchedVoucher.setVendorName(organization.getName());
     List<Adjustment> adjustments = new ArrayList<>();
     List<InvoiceLine> invoiceLines = invoiceLinesMap.get(invoice.getId());
-    List<String> adjustmentIds = invoice.getAdjustments().stream()
+    List<String> invoiceAdjustmentIds = invoice.getAdjustments().stream()
       .map(Adjustment::getId)
       .collect(Collectors.toList());
     if (invoiceLines != null && !invoiceLines.isEmpty()) {
       for (InvoiceLine invoiceLine : invoiceLines) {
-        adjustments.addAll(getInvoiceLineAdjustments(invoiceLine, adjustmentIds));
+        adjustments.addAll(getInvoiceLineAdjustments(invoiceLine, invoiceAdjustmentIds));
       }
     }
-    adjustments.addAll(invoice.getAdjustments().stream().filter(Adjustment::getExportToAccounting).collect(Collectors.toList()));
+    List<Adjustment> invoiceAdjustmentToExport = invoice.getAdjustments().stream()
+      .filter(Adjustment::getExportToAccounting)
+      .collect(Collectors.toList());
+    adjustments.addAll(invoiceAdjustmentToExport);
     batchedVoucher.setAdjustments(adjustments);
     List<Address> addresses = organization.getAddresses();
     if (addresses != null && !addresses.isEmpty()) {
@@ -168,11 +171,11 @@ public class BatchVoucherGenerateService {
 
   private List<Adjustment> getInvoiceLineAdjustments(InvoiceLine invoiceLine, List<String> adjustmentIds) {
     return invoiceLine.getAdjustments().stream()
-      .filter(adjustment -> getOnlyUniqueAndExportingAdjustments(adjustment, adjustmentIds))
+      .filter(adjustment -> isOnlyUniqueAndExportingAdjustments(adjustment, adjustmentIds))
       .collect(Collectors.toList());
   }
 
-  private boolean getOnlyUniqueAndExportingAdjustments(Adjustment adjustment, List<String> adjustmentIds) {
+  private boolean isOnlyUniqueAndExportingAdjustments(Adjustment adjustment, List<String> adjustmentIds) {
     return adjustment.getId() == null && adjustment.getExportToAccounting() && !adjustmentIds.contains(adjustment.getAdjustmentId());
   }
 
