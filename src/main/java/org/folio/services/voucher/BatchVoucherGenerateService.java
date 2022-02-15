@@ -144,9 +144,7 @@ public class BatchVoucherGenerateService {
       .collect(Collectors.toList());
     if (invoiceLines != null && !invoiceLines.isEmpty()) {
       for (InvoiceLine invoiceLine : invoiceLines) {
-        adjustments.addAll(invoiceLine.getAdjustments().stream()
-          .filter(adjustment -> adjustment.getId() == null && adjustment.getExportToAccounting() && !adjustmentIds.contains(adjustment.getAdjustmentId()))
-          .collect(Collectors.toList()));
+        adjustments.addAll(getInvoiceLineAdjustments(invoiceLine, adjustmentIds));
       }
     }
     adjustments.addAll(invoice.getAdjustments().stream().filter(Adjustment::getExportToAccounting).collect(Collectors.toList()));
@@ -166,6 +164,16 @@ public class BatchVoucherGenerateService {
     batchedVoucher.setDisbursementAmount(voucher.getDisbursementAmount());
     batchedVoucher.withBatchedVoucherLines(buildBatchedVoucherLines(voucher.getId(), mapVoucherLines));
     return batchedVoucher;
+  }
+
+  private List<Adjustment> getInvoiceLineAdjustments(InvoiceLine invoiceLine, List<String> adjustmentIds) {
+    return invoiceLine.getAdjustments().stream()
+      .filter(adjustment -> getOnlyUniqueAndExportingAdjustments(adjustment, adjustmentIds))
+      .collect(Collectors.toList());
+  }
+
+  private boolean getOnlyUniqueAndExportingAdjustments(Adjustment adjustment, List<String> adjustmentIds) {
+    return adjustment.getId() == null && adjustment.getExportToAccounting() && !adjustmentIds.contains(adjustment.getAdjustmentId());
   }
 
   private List<BatchedVoucherLine> buildBatchedVoucherLines(String voucherId, Map<String, List<VoucherLine>> mapVoucherLines) {
