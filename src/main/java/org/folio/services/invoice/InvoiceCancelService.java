@@ -147,6 +147,8 @@ public class InvoiceCancelService {
       .map(InvoiceLine::getPoLineId)
       .distinct()
       .collect(toList());
+    if (poLineIds.isEmpty())
+      return completedFuture(null);
     return orderLineService.getPoLines(queryToGetPoLinesWithRightPaymentStatusByIds(poLineIds), requestContext)
       .thenCompose(poLines -> selectPoLinesWithOpenOrders(poLines, requestContext))
       .thenCompose(poLines -> unreleaseEncumbrancesForPoLines(poLines, requestContext))
