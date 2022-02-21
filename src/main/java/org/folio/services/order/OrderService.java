@@ -16,6 +16,8 @@ import org.folio.rest.acq.model.orders.CompositePoLine;
 import org.folio.rest.acq.model.orders.CompositePurchaseOrder;
 import org.folio.rest.acq.model.orders.OrderInvoiceRelationship;
 import org.folio.rest.acq.model.orders.OrderInvoiceRelationshipCollection;
+import org.folio.rest.acq.model.orders.PurchaseOrder;
+import org.folio.rest.acq.model.orders.PurchaseOrderCollection;
 import org.folio.rest.core.RestClient;
 import org.folio.rest.core.models.RequestContext;
 import org.folio.rest.core.models.RequestEntry;
@@ -48,6 +50,15 @@ public class OrderService {
   public CompletableFuture<List<CompositePoLine>> getOrderPoLines(String orderId, RequestContext requestContext) {
     return getOrder(orderId, requestContext)
       .thenApply(CompositePurchaseOrder::getCompositePoLines);
+  }
+
+  public CompletableFuture<List<PurchaseOrder>> getOrders(String query, RequestContext requestContext) {
+    RequestEntry requestEntry = new RequestEntry(ORDERS_ENDPOINT)
+      .withQuery(query)
+      .withOffset(0)
+      .withLimit(Integer.MAX_VALUE);
+    return restClient.get(requestEntry, requestContext, PurchaseOrderCollection.class)
+      .thenApply(PurchaseOrderCollection::getPurchaseOrders);
   }
 
   public CompletableFuture<CompositePurchaseOrder> getOrder(String orderId, RequestContext requestContext) {

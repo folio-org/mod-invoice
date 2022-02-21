@@ -2649,8 +2649,8 @@ public class InvoicesApiTest extends ApiTestBase {
   void testNumberOfRequests() {
     logger.info("=== Test number of requests on invoice PUT ===");
 
-    // Invoice status APPROVED, PAID, CANCELLED - expect invoice updating with GET invoice rq + PUT invoice rq by statuses processable flow
-    Invoice.Status[] processableStatuses = {Invoice.Status.APPROVED, Invoice.Status.PAID, Invoice.Status.CANCELLED};
+    // Invoice status APPROVED, PAID - expect invoice updating with GET invoice rq + PUT invoice rq by statuses processable flow
+    Invoice.Status[] processableStatuses = {Invoice.Status.APPROVED, Invoice.Status.PAID};
     checkNumberOfRequests(processableStatuses);
 
     // Invoice status OPEN, REVIEWED - expect invoice updating with GET invoice rq + PUT invoice rq without statuses processable flow

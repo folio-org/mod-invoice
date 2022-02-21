@@ -371,6 +371,7 @@
                 <include>order_invoice_relationship_collection.json</include>
                 <include>po_line.json</include>
                 <include>po_line_collection.json</include>
+                <include>purchase_order_collection.json</include>
               </includes>
               <sourceDirectory>${basedir}/ramls/acq-models/mod-orders-storage/schemas</sourceDirectory>
               <targetPackage>org.folio.rest.acq.model.orders</targetPackage>

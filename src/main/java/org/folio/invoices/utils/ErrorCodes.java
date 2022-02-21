@@ -54,7 +54,8 @@ public enum ErrorCodes {
   FAILED_TO_UPDATE_PONUMBERS("failedToUpdatePoNumbers", "Failed to update invoice poNumbers"),
   CANNOT_PAY_INVOICE_WITHOUT_APPROVAL("cannotPayInvoiceWithoutApproval", "Cannot pay an invoice without approval"),
   CANNOT_CANCEL_INVOICE("cannotCancelInvoice" ,"Only approved and paid invoices can be cancelled"),
-  CANCEL_TRANSACTIONS_ERROR("cancelTransactionsError", "Failed to cancel transactions");
+  CANCEL_TRANSACTIONS_ERROR("cancelTransactionsError", "Failed to cancel transactions"),
+  ERROR_UNRELEASING_ENCUMBRANCES("errorUnreleasingEncumbrances", "Error unreleasing encumbrances after cancelling the invoice");
 
   private final String code;
   private final String description;
