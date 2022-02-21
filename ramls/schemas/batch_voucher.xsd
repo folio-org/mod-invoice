@@ -232,6 +232,11 @@
           <xs:documentation>Adjustment value</xs:documentation>
         </xs:annotation>
       </xs:element>
+      <xs:element name="totalAmount" type="xs:double">
+        <xs:annotation>
+          <xs:documentation>Adjustment total amount</xs:documentation>
+        </xs:annotation>
+      </xs:element>
     </xs:sequence>
   </xs:complexType>
 

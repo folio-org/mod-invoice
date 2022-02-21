@@ -78,6 +78,7 @@ public class BatchedVoucherModelConverter implements Converter<BatchedVoucher, B
       normalizedAdjustment.setProrate(adjustment.getProrate().value());
       normalizedAdjustment.setType(adjustment.getType().value());
       normalizedAdjustment.setValue(adjustment.getValue());
+      normalizedAdjustment.setTotalAmount(adjustment.getTotalAmount());
       adjustmentsList.add(normalizedAdjustment);
     }
     adjustments.withAdjustment(adjustmentsList);
