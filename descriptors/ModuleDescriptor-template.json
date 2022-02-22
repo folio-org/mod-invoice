@@ -417,7 +417,7 @@
     },
     {
       "id": "batch-voucher.batch-voucher-exports",
-      "version": "1.1",
+      "version": "1.2",
       "handlers": [
         {
           "methods": ["GET"],
