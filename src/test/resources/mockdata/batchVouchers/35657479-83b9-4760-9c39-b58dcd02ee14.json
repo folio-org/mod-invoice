@@ -40,6 +40,7 @@
           "exportToAccounting": true,
           "type": "Amount",
           "value": 4.50,
+          "totalAmount": 4.50,
           "prorate": "By line",
           "relationToTotal": "In addition to"
         }

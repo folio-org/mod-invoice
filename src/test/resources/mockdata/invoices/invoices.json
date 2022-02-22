@@ -7,14 +7,23 @@
       "adjustments": [
        {
       	  "description": "Extra Taxes",
-         "exportToAccounting": false,
+         "exportToAccounting": true,
          "type": "Amount",
       	  "value": 10.0,
+          "prorate": "Not prorated",
+          "relationToTotal": "In addition to"
+       },
+       {
+          "description": "Percentage",
+          "exportToAccounting": true,
+          "type": "Percentage",
+          "value": 10.0,
           "prorate": "Not prorated",
           "relationToTotal": "In addition to"
        }
   	  ],
   	  "adjustmentsTotal":10,
+      "subTotal": 200.0,
       "currency": "USD",
       "folioInvoiceNo": "123invoicenumber45",
       "invoiceDate": "2018-07-20T00:00:00.000+0000",
@@ -45,6 +54,19 @@
       "source": "User",
       "vendorInvoiceNo": "YK75852",
       "voucherNumber": "479",
+      "subTotal": 100.0,
+      "adjustments": [
+        {
+          "description": "Extra Taxes",
+          "exportToAccounting": true,
+          "type": "Percentage",
+          "value": 10.0,
+          "totalAmount": 10.0,
+          "prorate": "Not prorated",
+          "relationToTotal": "In addition to"
+        }
+      ],
+      "adjustmentsTotal":10.0,
       "paymentId": "a5065f0d-fb88-4d23-b0c1-57e754fba40e",
       "poNumbers": [
         "AB268758PQR"
@@ -65,6 +87,18 @@
       "source": "User",
       "vendorInvoiceNo": "YK75853",
       "voucherNumber": "480",
+      "adjustments": [
+        {
+          "description": "Extra Taxes",
+          "exportToAccounting": true,
+          "type": "Amount",
+          "value": 15.0,
+          "totalAmount": 15.0,
+          "prorate": "Not prorated",
+          "relationToTotal": "In addition to"
+        }
+      ],
+      "adjustmentsTotal":15.0,
       "paymentId": "a5065f0d-fb88-4d23-b0c1-57e754fba40e",
       "poNumbers": [
         "AB268758LMN"

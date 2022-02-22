@@ -144,12 +144,14 @@ public class BatchVoucherGenerateService {
       .collect(Collectors.toList());
     if (invoiceLines != null && !invoiceLines.isEmpty()) {
       for (InvoiceLine invoiceLine : invoiceLines) {
-        adjustments.addAll(getInvoiceLineAdjustments(invoiceLine, invoiceAdjustmentIds));
+        adjustments.addAll(getInvoiceLineAdjustments(invoiceLine, invoiceAdjustmentIds, voucher.getExchangeRate()));
       }
     }
     List<Adjustment> invoiceAdjustmentToExport = invoice.getAdjustments().stream()
       .filter(Adjustment::getExportToAccounting)
+      .map(adjustment -> calculateTotalAmount(adjustment, invoice.getSubTotal(), voucher.getExchangeRate()))
       .collect(Collectors.toList());
+
     adjustments.addAll(invoiceAdjustmentToExport);
     batchedVoucher.setAdjustments(adjustments);
     List<Address> addresses = organization.getAddresses();
@@ -169,10 +171,23 @@ public class BatchVoucherGenerateService {
     return batchedVoucher;
   }
 
-  private List<Adjustment> getInvoiceLineAdjustments(InvoiceLine invoiceLine, List<String> adjustmentIds) {
+  private List<Adjustment> getInvoiceLineAdjustments(InvoiceLine invoiceLine, List<String> adjustmentIds, Double exchangeRate) {
     return invoiceLine.getAdjustments().stream()
       .filter(adjustment -> isOnlyUniqueAndExportingAdjustments(adjustment, adjustmentIds))
+      .map(adjustment -> calculateTotalAmount(adjustment, invoiceLine.getSubTotal(), exchangeRate))
       .collect(Collectors.toList());
+  }
+
+  private Adjustment calculateTotalAmount(Adjustment adjustment, Double subTotal, Double exchangeRate) {
+    double totalAmount;
+    if (adjustment.getType().equals(Adjustment.Type.AMOUNT)) {
+      totalAmount = adjustment.getValue() * exchangeRate;
+    } else {
+      totalAmount = (subTotal / 100 * adjustment.getValue()) * exchangeRate;
+    }
+    adjustment.setTotalAmount(totalAmount);
+
+    return adjustment;
   }
 
   private boolean isOnlyUniqueAndExportingAdjustments(Adjustment adjustment, List<String> adjustmentIds) {
