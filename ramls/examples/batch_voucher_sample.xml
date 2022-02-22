@@ -26,6 +26,7 @@
           <relationToTotal>Separate from</relationToTotal>
           <type>Payment</type>
           <value>20.0</value>
+          <totalAmount>20.0</totalAmount>
         </adjustment>
       </adjustments>
       <disbursementNumber>EFT546789</disbursementNumber>
