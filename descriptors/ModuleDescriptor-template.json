@@ -532,10 +532,6 @@
       "version": "3.0"
     },
     {
-      "id": "orders",
-      "version": "12.0"
-    },
-    {
       "id": "voucher-storage.vouchers",
       "version": "1.2"
     },
@@ -614,6 +610,12 @@
     {
       "id": "data-import-converter-storage",
       "version": "1.2"
+    }
+  ],
+  "optional": [
+    {
+      "id": "orders",
+      "version": "12.0"
     }
   ],
   "permissionSets": [
