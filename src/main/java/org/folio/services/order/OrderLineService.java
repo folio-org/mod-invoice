@@ -3,6 +3,8 @@ package org.folio.services.order;
 import org.folio.completablefuture.FolioVertxCompletableFuture;
 import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.rest.acq.model.orders.CompositePoLine;
+import org.folio.rest.acq.model.orders.PoLine;
+import org.folio.rest.acq.model.orders.PoLineCollection;
 import org.folio.rest.core.RestClient;
 import org.folio.rest.core.models.RequestContext;
 import org.folio.rest.core.models.RequestEntry;
@@ -28,6 +30,15 @@ public class OrderLineService {
     this.restClient = restClient;
   }
 
+  public CompletableFuture<List<PoLine>> getPoLines(String query, RequestContext requestContext) {
+    RequestEntry requestEntry = new RequestEntry(ORDER_LINES_ENDPOINT)
+      .withQuery(query)
+      .withOffset(0)
+      .withLimit(Integer.MAX_VALUE);
+    return restClient.get(requestEntry, requestContext, PoLineCollection.class)
+      .thenApply(PoLineCollection::getPoLines);
+  }
+
   public CompletableFuture<CompositePoLine> getPoLine(String poLineId, RequestContext requestContext) {
     RequestEntry requestEntry = new RequestEntry(ORDER_LINES_BY_ID_ENDPOINT).withId(poLineId);
     return restClient.get(requestEntry, requestContext, CompositePoLine.class)
@@ -50,4 +61,5 @@ public class OrderLineService {
         }))
       .toArray(CompletableFuture[]::new));
   }
+
 }

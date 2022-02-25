@@ -54,6 +54,8 @@
             "invoice-storage.invoices.item.get",
             "invoice-storage.invoice-lines.item.put",
             "invoice-storage.invoice-lines.collection.get",
+            "orders.collection.get",
+            "orders.po-lines.collection.get",
             "orders.po-lines.item.put",
             "orders.po-lines.item.get",
             "voucher-storage.vouchers.collection.get",
@@ -67,12 +69,14 @@
             "acquisitions-units.memberships.collection.get",
             "finance.invoice-transaction-summaries.item.post",
             "finance.invoice-transaction-summaries.item.put",
+            "finance.order-transaction-summaries.item.put",
             "finance.payments.item.post",
             "finance.credits.item.post",
             "finance.credits.item.put",
             "finance.payments.item.put",
             "finance.pending-payments.item.post",
             "finance.pending-payments.item.put",
+            "finance.encumbrances.item.put",
             "finance.transactions.collection.get",
             "finance.funds.item.get",
             "finance.funds.collection.get",
@@ -592,6 +596,10 @@
       "version": "2.1"
     },
     {
+      "id": "finance.order-transaction-summaries",
+      "version": "1.2"
+    },
+    {
       "id": "finance.expense-classes",
       "version": "2.0"
     },
@@ -602,6 +610,12 @@
     {
       "id": "data-import-converter-storage",
       "version": "1.2"
+    }
+  ],
+  "optional": [
+    {
+      "id": "orders",
+      "version": "12.0"
     }
   ],
   "permissionSets": [

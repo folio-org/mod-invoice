@@ -20,6 +20,7 @@ import org.folio.services.finance.fiscalyear.FiscalYearService;
 import org.folio.services.finance.transaction.BaseTransactionService;
 import org.folio.services.finance.transaction.EncumbranceService;
 import org.folio.services.finance.transaction.InvoiceTransactionSummaryService;
+import org.folio.services.finance.transaction.OrderTransactionSummaryService;
 import org.folio.services.finance.transaction.PaymentCreditWorkflowService;
 import org.folio.services.finance.transaction.PendingPaymentWorkflowService;
 import org.folio.services.invoice.BaseInvoiceService;
@@ -43,8 +44,9 @@ public class ServicesConfiguration {
   }
 
   @Bean
-  EncumbranceService encumbranceService(BaseTransactionService transactionService) {
-    return new EncumbranceService(transactionService);
+  EncumbranceService encumbranceService(BaseTransactionService transactionService,
+                                        OrderTransactionSummaryService orderTransactionSummaryService) {
+    return new EncumbranceService(transactionService, orderTransactionSummaryService);
   }
 
   @Bean
@@ -118,6 +120,11 @@ public class ServicesConfiguration {
   @Bean
   InvoiceTransactionSummaryService invoiceTransactionSummaryService(RestClient restClient) {
     return new InvoiceTransactionSummaryService(restClient);
+  }
+
+  @Bean
+  OrderTransactionSummaryService orderTransactionSummaryService(RestClient restClient) {
+    return new OrderTransactionSummaryService(restClient);
   }
 
   @Bean
@@ -216,7 +223,12 @@ public class ServicesConfiguration {
 
   @Bean
   InvoiceCancelService invoiceCancelService(BaseTransactionService baseTransactionService,
-      InvoiceTransactionSummaryService invoiceTransactionSummaryService, VoucherCommandService voucherCommandService) {
-    return new InvoiceCancelService(baseTransactionService, invoiceTransactionSummaryService, voucherCommandService);
+                                            EncumbranceService encumbranceService,
+                                            InvoiceTransactionSummaryService invoiceTransactionSummaryService,
+                                            VoucherCommandService voucherCommandService,
+                                            OrderLineService orderLineService,
+                                            OrderService orderService) {
+    return new InvoiceCancelService(baseTransactionService, encumbranceService, invoiceTransactionSummaryService,
+      voucherCommandService, orderLineService, orderService);
   }
 }

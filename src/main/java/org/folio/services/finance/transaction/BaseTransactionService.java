@@ -18,6 +18,7 @@ import java.util.concurrent.CompletableFuture;
 
 import org.apache.commons.collections4.CollectionUtils;
 import org.folio.rest.acq.model.finance.Transaction;
+import org.folio.rest.acq.model.finance.Transaction.TransactionType;
 import org.folio.rest.acq.model.finance.TransactionCollection;
 import org.folio.rest.core.RestClient;
 import org.folio.rest.core.models.RequestContext;
@@ -29,11 +30,12 @@ public class BaseTransactionService {
 
   private static final String TRANSACTIONS_ENDPOINT = resourcesPath(FINANCE_TRANSACTIONS);
 
-  private static final Map<Transaction.TransactionType, String> TRANSACTION_ENDPOINTS = Collections.unmodifiableMap(Map.of(
-      Transaction.TransactionType.PAYMENT, "/finance/payments",
-      Transaction.TransactionType.CREDIT, "/finance/credits",
-      Transaction.TransactionType.PENDING_PAYMENT, "/finance/pending-payments"
-  ));
+  private static final Map<TransactionType, String> TRANSACTION_ENDPOINTS = Map.of(
+    TransactionType.PAYMENT, "/finance/payments",
+    TransactionType.CREDIT, "/finance/credits",
+    TransactionType.PENDING_PAYMENT, "/finance/pending-payments",
+    TransactionType.ENCUMBRANCE, "/finance/encumbrances"
+  );
 
   private final RestClient restClient;
 
