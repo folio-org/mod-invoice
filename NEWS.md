@@ -1,5 +1,22 @@
-## 5.3.0 - Unreleased
+## 5.4.0 - Unreleased
+
+## 5.3.0 - Released
+The focus of this release was to fix transaction and vouchers processing
+
+[Full Changelog](https://github.com/folio-org/mod-invoice/compare/v5.2.0...v5.3.0)
+
+### Stories
+* [MODINVOICE-262](https://issues.folio.org/browse/MODINVOICE-262) - Include "Invoice date" and "Terms" field in voucher export for each batched voucher
+
+### Bug Fixes
+* [MODINVOICE-360](https://issues.folio.org/browse/MODINVOICE-360) - Unrelease auto-released encumbrances when cancelling an invoice
+* [MODINVOICE-357](https://issues.folio.org/browse/MODINVOICE-357) - Error message does not indicate what Fund does not have money
 * [MODINVOICE-356](https://issues.folio.org/browse/MODINVOICE-356) - Fix progress bar stuck behaviour after the RecordTooLargeException
+* [MODINVOICE-347](https://issues.folio.org/browse/MODINVOICE-347) - Unable to download batch vouchers
+* [MODINVOICE-335](https://issues.folio.org/browse/MODINVOICE-335) - Creating multiple invoice lines per invoice fails
+* [MODINVOICE-313](https://issues.folio.org/browse/MODINVOICE-313) - Display Batch export status as "Generated" when export created
+* [MODINVOICE-312](https://issues.folio.org/browse/MODINVOICE-312) - Voucher line missing from batch voucher export
+
 
 ## 5.2.1 - Unreleased
 * [MODINVOICE-314](https://issues.folio.org/browse/MODINVOICE-314) - Provide recordId header for data-import events correlation
