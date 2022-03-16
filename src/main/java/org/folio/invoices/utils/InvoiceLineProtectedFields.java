@@ -15,9 +15,6 @@ public enum InvoiceLineProtectedFields {
   PRODUCT_ID("productId"),
   PRODUCT_ID_TYPE("productIdType"),
   QUANTITY("quantity"),
-  SUBSCRIPTION_INFO("subscriptionInfo"),
-  SUBSCRIPTION_START("subscriptionStart"),
-  SUBSCRIPTION_END("subscriptionEnd"),
   SUB_TOTAL("subTotal"),
   TOTAL("total");
 
