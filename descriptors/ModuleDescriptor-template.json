@@ -468,6 +468,7 @@
             "batch-voucher-storage.export-configurations.credentials.item.get",
             "invoice-storage.invoices.item.get",
             "invoice-storage.invoices.collection.get",
+            "invoice-storage.invoice-lines.collection.get",
             "voucher-storage.vouchers.collection.get",
             "voucher-storage.voucher-lines.collection.get",
             "batch-group-storage.batch-groups.item.get",
