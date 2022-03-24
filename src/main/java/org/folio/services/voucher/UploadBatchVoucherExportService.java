@@ -174,7 +174,8 @@ public class UploadBatchVoucherExportService {
 
   private void failUploadUpdate(BatchVoucherExport bvExport, Throwable t) {
     if (bvExport != null) {
-      if (!CREDENTIALS_NOT_FOUND.equals(t.getCause().getMessage())) {
+      if (!CREDENTIALS_NOT_FOUND.equals(t.getCause().getMessage())
+                      && !(t.getCause() instanceof URISyntaxException)) {
         bvExport.setStatus(BatchVoucherExport.Status.ERROR);
       }
       bvExport.setMessage(t.getCause().getMessage());
