@@ -1,5 +1,18 @@
 ## 5.4.0 - Unreleased
 
+## 5.3.1 - Released
+The focus of this release was to fix issues with permissions and invoice payment
+
+[Full Changelog](https://github.com/folio-org/mod-invoice/compare/v5.3.0...v5.3.1)
+
+### Stories
+* [MODINVOICE-372](https://issues.folio.org/browse/MODINVOICE-372) - Update version of data-import-processing-core
+
+### Bug Fixes
+* [MODINVOICE-379](https://issues.folio.org/browse/MODINVOICE-379) - Export run is showing a permission error
+* [MODINVOICE-369](https://issues.folio.org/browse/MODINVOICE-369) - Undefined permission 'invoice.invoice-number.item.post'
+* [MODINVOICE-363](https://issues.folio.org/browse/MODINVOICE-363) - Can not pay invoice that references the same POL and 2 different invoice lines
+
 ## 5.3.0 - Released
 The focus of this release was to fix transaction and vouchers processing
 
