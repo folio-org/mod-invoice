@@ -88,7 +88,12 @@ public class FundAvailabilityHolderValidator implements HolderValidator {
       .movePointLeft(2);
     Money unavailable = Money.of(budget.getUnavailable(), currency);
     Money totalAmountCanBeExpended = totalFundings.multiply(allowableExpenditures);
-    Money amountCanBeExpended = totalAmountCanBeExpended.subtract(unavailable);
+    Money amountCanBeExpended;
+    if (totalAmountCanBeExpended.subtract(unavailable).isNegative()) {
+      amountCanBeExpended = totalAmountCanBeExpended.subtract(newExpendedAmount);
+    } else {
+      amountCanBeExpended = totalAmountCanBeExpended.subtract(unavailable);
+    }
     Money afterApproveExpended = expended.add(totalExpendedAmount);
 
     return newExpendedAmount.isGreaterThan(amountCanBeExpended) || afterApproveExpended.isGreaterThan(totalAmountCanBeExpended);
@@ -110,7 +115,10 @@ public class FundAvailabilityHolderValidator implements HolderValidator {
           MonetaryAmount transactionAmountDif = newTransactionAmount.subtract(existingTransactionAmount);
           MonetaryAmount newExpendedAmount = transactionAmountDif;
           if (transactionAmountDif.isPositive()) {
-              newExpendedAmount = MonetaryFunctions.max().apply(transactionAmountDif.subtract(encumbranceAmount), Money.zero(currency));
+              newExpendedAmount = transactionAmountDif.subtract(encumbranceAmount);
+              if (newExpendedAmount.isNegative()) {
+                newExpendedAmount = transactionAmountDif;
+              }
               MonetaryAmount encumbranceReminder = MonetaryFunctions.max().apply(encumbranceAmount.subtract(newExpendedAmount).add(existingTransactionAmount), Money.zero(currency));
               Optional.ofNullable(holder.getEncumbrance()).ifPresent(transaction -> transaction.setAmount(encumbranceReminder.getNumber().doubleValue()));
           }
