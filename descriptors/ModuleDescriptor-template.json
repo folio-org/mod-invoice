@@ -969,6 +969,16 @@
         "batch-voucher.batch-voucher-exports.all"
       ],
       "visible": false
+    },
+    {
+      "permissionName": "invoices.acquisitions-units-assignments.assign",
+      "displayName": "Ability to assign acquisition unit and create invoice",
+      "description": "Ability to assign acquisition unit and create invoice"
+    },
+    {
+      "permissionName": "invoices.acquisitions-units-assignments.manage",
+      "displayName": "Ability to manage acquisition unit and update invoice",
+      "description": "Ability to manage acquisition unit and update invoice"
     }
   ],
   "launchDescriptor": {
