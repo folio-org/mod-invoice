@@ -2785,7 +2785,8 @@ public class InvoicesApiTest extends ApiTestBase {
 
     invoiceLine.setId(UUID.randomUUID().toString());
     invoiceLine.setInvoiceId(reqData.getId());
-
+    addMockEntry(INVOICES, reqData);
+    addMockEntry(INVOICE_LINES, invoiceLine);
     verifySuccessPut(String.format(INVOICE_ID_PATH, id), JsonObject.mapFrom(reqData));
 
     List<String> tagsList =Arrays.asList("TestTagURGENT","TestTagIMPORTANT");
