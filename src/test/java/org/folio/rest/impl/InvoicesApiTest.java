@@ -2776,7 +2776,7 @@ public class InvoicesApiTest extends ApiTestBase {
 
   @Test
   void testUpdatePaidStatusInvoice(){
-  logger.info("=== Don't allow to pay for the invoice which was not approved before ===");
+  logger.info("=== allow to update fields for the paid invoices ===");
     Invoice reqData = getMockAsJson(OPEN_INVOICE_SAMPLE_PATH).mapTo(Invoice.class);
     String id = reqData.getId();
     reqData.setStatus(Status.PAID);
