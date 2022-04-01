@@ -156,6 +156,7 @@ import org.folio.rest.jaxrs.model.Invoice.Status;
 import org.folio.rest.jaxrs.model.InvoiceCollection;
 import org.folio.rest.jaxrs.model.InvoiceLine;
 import org.folio.rest.jaxrs.model.InvoiceLineCollection;
+import org.folio.rest.jaxrs.model.Tags;
 import org.folio.rest.jaxrs.model.Voucher;
 import org.folio.rest.jaxrs.model.VoucherCollection;
 import org.folio.rest.jaxrs.model.VoucherLine;
@@ -2772,6 +2773,27 @@ public class InvoicesApiTest extends ApiTestBase {
     Error error = errors.getErrors().get(0);
     assertThat(error.getCode(), equalTo(CANNOT_PAY_INVOICE_WITHOUT_APPROVAL.getCode()));
   }
+
+  @Test
+  void testUpdatePaidStatusInvoice(){
+  logger.info("=== Don't allow to pay for the invoice which was not approved before ===");
+    Invoice reqData = getMockAsJson(OPEN_INVOICE_SAMPLE_PATH).mapTo(Invoice.class);
+    String id = reqData.getId();
+    reqData.setStatus(Status.PAID);
+    prepareMockVoucher(reqData.getId());
+    InvoiceLine invoiceLine = getMinimalContentInvoiceLine(id);
+
+    invoiceLine.setId(UUID.randomUUID().toString());
+    invoiceLine.setInvoiceId(reqData.getId());
+
+    verifySuccessPut(String.format(INVOICE_ID_PATH, id), JsonObject.mapFrom(reqData));
+
+    List<String> tagsList =Arrays.asList("TestTagURGENT","TestTagIMPORTANT");
+    reqData.setTags(new Tags().withTagList(tagsList));
+    verifyPut(String.format(INVOICE_ID_PATH, id), JsonObject.mapFrom(reqData), "", 204);
+
+  }
+
 
   private void checkPreventInvoiceModificationRule(Invoice invoice, Map<InvoiceProtectedFields, Object> updatedFields) throws IllegalAccessException {
     invoice.setStatus(Invoice.Status.APPROVED);
