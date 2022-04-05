@@ -2775,11 +2775,10 @@ public class InvoicesApiTest extends ApiTestBase {
   }
 
   @Test
-  void testUpdatePaidStatusInvoice(){
-  logger.info("=== allow to update fields for the paid invoices ===");
-    Invoice reqData = getMockAsJson(OPEN_INVOICE_SAMPLE_PATH).mapTo(Invoice.class);
+  void testUpdateTagsForPaidStatusInvoice(){
+  logger.info("=== allow to update  tags fields for the paid invoices ===");
+    Invoice reqData = getMockAsJson(OPEN_INVOICE_SAMPLE_PATH).mapTo(Invoice.class).withStatus(Status.PAID);
     String id = reqData.getId();
-    reqData.setStatus(Status.PAID);
     prepareMockVoucher(reqData.getId());
     InvoiceLine invoiceLine = getMinimalContentInvoiceLine(id);
 
@@ -2787,12 +2786,9 @@ public class InvoicesApiTest extends ApiTestBase {
     invoiceLine.setInvoiceId(reqData.getId());
     addMockEntry(INVOICES, reqData);
     addMockEntry(INVOICE_LINES, invoiceLine);
-    verifySuccessPut(String.format(INVOICE_ID_PATH, id), JsonObject.mapFrom(reqData));
-
     List<String> tagsList =Arrays.asList("TestTagURGENT","TestTagIMPORTANT");
     reqData.setTags(new Tags().withTagList(tagsList));
     verifyPut(String.format(INVOICE_ID_PATH, id), JsonObject.mapFrom(reqData), "", 204);
-
   }
 
 

@@ -51,22 +51,22 @@ public class InvoiceValidator extends BaseValidator {
   }
 
   public boolean validateInvoiceUnprotectedFields(Invoice invoice, Invoice invoiceFromStorage) {
-    if(isPostApproval(invoiceFromStorage)){
-      Set<String> fields = findChangedFields(invoice, invoiceFromStorage, InvoiceUnprotectedFields.getFieldNames());
-      if(CollectionUtils.isNotEmpty(fields))
-       return true;
+    if (invoice.getStatus() == Invoice.Status.PAID
+      && invoiceFromStorage.getStatus() == Invoice.Status.PAID ){
+        Set<String> fields = findChangedFields(invoice, invoiceFromStorage, InvoiceUnprotectedFields.getFieldNames());
+        return CollectionUtils.isNotEmpty(fields)?true:false;
     }
     return false;
   }
 
   public void validateInvoice(Invoice invoice, Invoice invoiceFromStorage) {
-    validateInvoiceProtectedFields(invoice, invoiceFromStorage);
     if(!validateInvoiceUnprotectedFields(invoice, invoiceFromStorage)){
-    validateInvoiceStatusTransition(invoice, invoiceFromStorage);}
+    validateInvoiceStatusTransition(invoice, invoiceFromStorage);
+    }
+    validateInvoiceProtectedFields(invoice, invoiceFromStorage);
   }
 
   public void validateInvoiceStatusTransition(Invoice invoice, Invoice invoiceFromStorage) {
-
     if (invoice.getStatus() == Invoice.Status.PAID
       && invoiceFromStorage.getStatus() != Invoice.Status.APPROVED )
       throw new HttpException(400, CANNOT_PAY_INVOICE_WITHOUT_APPROVAL);
