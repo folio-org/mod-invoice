@@ -32,7 +32,7 @@ public class InvoiceLineValidator extends BaseValidator {
 
   public void validateProtectedFields(Invoice existedInvoice, InvoiceLine invoiceLine, InvoiceLine existedInvoiceLine) {
     if(isPostApproval(existedInvoice)) {
-      Set<String> fields = findChangedProtectedFields(invoiceLine, existedInvoiceLine, InvoiceLineProtectedFields.getFieldNames());
+      Set<String> fields = findChangedFields(invoiceLine, existedInvoiceLine, InvoiceLineProtectedFields.getFieldNames());
       verifyThatProtectedFieldsUnchanged(fields);
     }
   }

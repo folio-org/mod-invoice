@@ -24,9 +24,9 @@ public abstract class BaseValidator {
     }
   }
 
-  protected Set<String> findChangedProtectedFields(Object newObject, Object existedObject, List<String> protectedFields) {
+  protected Set<String> findChangedFields(Object newObject, Object existedObject, List<String> changedFields) {
     Set<String> fields = new HashSet<>();
-    for(String field : protectedFields) {
+    for(String field : changedFields) {
       try {
         if(isFieldNotEmpty(newObject, existedObject, field) && isFieldChanged(newObject, existedObject, field)) {
           fields.add(field);
