@@ -1,5 +1,14 @@
 ## 5.4.0 - Unreleased
 
+## 5.3.2 - Released
+The focus of this release was to fix issues with encumbrance calculations
+
+[Full Changelog](https://github.com/folio-org/mod-invoice/compare/v5.3.1...v5.3.2)
+
+### Bug Fixes
+* [MODINVOICE-385](https://issues.folio.org/browse/MODINVOICE-385) - Cancel only unreleased 1 encumbrance from an invoice line
+* [MODINVOICE-367](https://issues.folio.org/browse/MODINVOICE-367) - No money can be expended when fully encumbered
+
 ## 5.3.1 - Released
 The focus of this release was to fix issues with permissions and invoice payment
 
