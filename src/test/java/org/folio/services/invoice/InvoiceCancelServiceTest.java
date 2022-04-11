@@ -331,7 +331,7 @@ public class InvoiceCancelServiceTest {
     RequestEntry requestEntry = new RequestEntry(TRANSACTIONS_ENDPOINT)
       .withQuery(transactionQuery)
       .withOffset(0)
-      .withLimit(selectedPoLines.size());
+      .withLimit(Integer.MAX_VALUE);
     doReturn(completedFuture(transactionCollection)).when(restClient).get(argThat(re -> sameRequestEntry(requestEntry, re)),
       eq(requestContextMock), eq(TransactionCollection.class));
   }

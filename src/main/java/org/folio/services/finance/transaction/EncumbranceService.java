@@ -34,8 +34,7 @@ public class EncumbranceService {
     List<CompletableFuture<TransactionCollection>> expenseClassesFutureList = StreamEx
       .ofSubLists(poLineIds, MAX_IDS_FOR_GET_RQ)
       .map(this::buildEncumbranceChunckQueryByPoLineIds)
-      .map(queryAndSize -> baseTransactionService.getTransactions(queryAndSize.getLeft(), 0,
-        queryAndSize.getRight(), requestContext))
+      .map(query -> baseTransactionService.getTransactions(query, 0, Integer.MAX_VALUE, requestContext))
       .collect(toList());
 
     return collectResultsOnSuccess(expenseClassesFutureList)
@@ -52,9 +51,9 @@ public class EncumbranceService {
       .toArray(CompletableFuture[]::new));
   }
 
-  private Pair<String, Integer> buildEncumbranceChunckQueryByPoLineIds(List<String> poLineIds) {
-    String query = "transactionType==Encumbrance and " + convertIdsToCqlQuery(poLineIds, "encumbrance.sourcePoLineId", true);
-    return Pair.of(query, poLineIds.size());
+  private String buildEncumbranceChunckQueryByPoLineIds(List<String> poLineIds) {
+    return "transactionType==Encumbrance and " +
+      convertIdsToCqlQuery(poLineIds, "encumbrance.sourcePoLineId", true);
   }
 
   private CompletableFuture<Void> unreleaseEncumbrancesByOrderId(String orderId, List<Transaction> transactions,
