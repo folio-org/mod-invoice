@@ -26,6 +26,7 @@ import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.invoices.utils.InvoiceProtectedFields;
+import org.folio.invoices.utils.InvoiceUnprotectedFields;
 import org.folio.rest.jaxrs.model.Adjustment;
 import org.folio.rest.jaxrs.model.Error;
 import org.folio.rest.jaxrs.model.Errors;
@@ -44,13 +45,24 @@ public class InvoiceValidator extends BaseValidator {
 
   public void validateInvoiceProtectedFields(Invoice invoice, Invoice invoiceFromStorage) {
     if(isPostApproval(invoiceFromStorage)) {
-      Set<String> fields = findChangedProtectedFields(invoice, invoiceFromStorage, InvoiceProtectedFields.getFieldNames());
+      Set<String> fields = findChangedFields(invoice, invoiceFromStorage, InvoiceProtectedFields.getFieldNames());
       verifyThatProtectedFieldsUnchanged(fields);
     }
   }
 
+  public boolean  isInvoiceUnprotectedFieldsChanged(Invoice invoice, Invoice invoiceFromStorage) {
+    if (invoice.getStatus() == Invoice.Status.PAID
+      && invoiceFromStorage.getStatus() == Invoice.Status.PAID ){
+        Set<String> fields = findChangedFields(invoice, invoiceFromStorage, InvoiceUnprotectedFields.getFieldNames());
+        return CollectionUtils.isNotEmpty(fields);
+    }
+    return false;
+  }
+
   public void validateInvoice(Invoice invoice, Invoice invoiceFromStorage) {
+    if(!isInvoiceUnprotectedFieldsChanged(invoice, invoiceFromStorage)){
     validateInvoiceStatusTransition(invoice, invoiceFromStorage);
+    }
     validateInvoiceProtectedFields(invoice, invoiceFromStorage);
   }
 
@@ -59,7 +71,7 @@ public class InvoiceValidator extends BaseValidator {
       && invoiceFromStorage.getStatus() != Invoice.Status.APPROVED ) {
       throw new HttpException(400, CANNOT_PAY_INVOICE_WITHOUT_APPROVAL);
     }
-  }
+   }
 
   public void validateIncomingInvoice(Invoice invoice) {
 
