@@ -1,10 +1,14 @@
 package org.folio;
 
+import static java.util.stream.Collectors.groupingBy;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toMap;
 import static java.util.stream.Collectors.toSet;
+import static org.folio.invoices.utils.ErrorCodes.MULTIPLE_FISCAL_YEARS;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
@@ -12,7 +16,10 @@ import java.util.function.Function;
 import javax.money.convert.ConversionQuery;
 import javax.money.convert.ExchangeRateProvider;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.folio.completablefuture.FolioVertxCompletableFuture;
+import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.invoices.utils.HelperUtils;
 import org.folio.models.InvoiceWorkflowDataHolder;
 import org.folio.rest.acq.model.finance.Budget;
@@ -23,6 +30,7 @@ import org.folio.rest.acq.model.finance.Ledger;
 import org.folio.rest.acq.model.finance.Transaction;
 import org.folio.rest.acq.model.finance.TransactionCollection;
 import org.folio.rest.core.models.RequestContext;
+import org.folio.rest.jaxrs.model.Error;
 import org.folio.rest.jaxrs.model.FundDistribution;
 import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.jaxrs.model.InvoiceLine;
@@ -35,6 +43,8 @@ import org.folio.services.finance.fiscalyear.FiscalYearService;
 import org.folio.services.finance.transaction.BaseTransactionService;
 
 public class InvoiceWorkflowDataHolderBuilder {
+
+    private static final Logger log = LogManager.getLogger(InvoiceWorkflowDataHolderBuilder.class);
 
     private final ExchangeRateProviderResolver exchangeRateProviderResolver;
     private final FiscalYearService fiscalYearService;
@@ -108,7 +118,24 @@ public class InvoiceWorkflowDataHolderBuilder {
                         .collect(toList()));
     }
 
-    public CompletableFuture<List<InvoiceWorkflowDataHolder>> withFiscalYear(List<InvoiceWorkflowDataHolder> holders, RequestContext requestContext) {
+  public List<InvoiceWorkflowDataHolder> checkMultipleFiscalYears(List<InvoiceWorkflowDataHolder> holders) {
+    Map<String, List<InvoiceWorkflowDataHolder>> fiscalYearToHolders = holders.stream()
+      .filter(h -> h.getBudget() != null && h.getBudget().getFiscalYearId() != null)
+      .collect(groupingBy(h -> h.getBudget().getFiscalYearId()));
+    if (fiscalYearToHolders.size() > 1) {
+      List<String> fiscalYearIds = new ArrayList<>(fiscalYearToHolders.keySet());
+      InvoiceWorkflowDataHolder h1 = fiscalYearToHolders.get(fiscalYearIds.get(0)).get(0);
+      InvoiceWorkflowDataHolder h2 = fiscalYearToHolders.get(fiscalYearIds.get(1)).get(0);
+      String message = String.format(MULTIPLE_FISCAL_YEARS.getDescription(), h1.getFundDistribution().getCode(),
+        h2.getFundDistribution().getCode());
+      Error error = new Error().withCode(MULTIPLE_FISCAL_YEARS.getCode()).withMessage(message);
+      log.error(error);
+      throw new HttpException(422, error);
+    }
+    return holders;
+  }
+
+  public CompletableFuture<List<InvoiceWorkflowDataHolder>> withFiscalYear(List<InvoiceWorkflowDataHolder> holders, RequestContext requestContext) {
         return holders.stream().map(InvoiceWorkflowDataHolder::getBudget).map(Budget::getFiscalYearId).findFirst()
                 .map(s -> fiscalYearService.getFiscalYear(s, requestContext)
                         .thenApply(fiscalYear -> holders.stream().map(holder -> holder.withFiscalYear(fiscalYear)).collect(toList())))

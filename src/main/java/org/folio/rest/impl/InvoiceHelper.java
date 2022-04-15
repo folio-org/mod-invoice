@@ -474,6 +474,7 @@ public class InvoiceHelper extends AbstractHelper {
     return holderBuilder.withFunds(dataHolders, requestContext)
             .thenCompose(holders -> holderBuilder.withLedgers(holders, requestContext))
             .thenCompose(holders -> holderBuilder.withBudgets(holders, requestContext))
+            .thenApply(holderBuilder::checkMultipleFiscalYears)
             .thenCompose(holders -> holderBuilder.withFiscalYear(holders, requestContext))
             .thenCompose(holders -> holderBuilder.withEncumbrances(holders, requestContext))
             .thenCompose(holders -> holderBuilder.withExpenseClasses(holders, requestContext))
