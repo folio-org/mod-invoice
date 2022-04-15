@@ -1032,6 +1032,83 @@ public class InvoicesApiTest extends ApiTestBase {
     assertThat(error.getCode(), equalTo(LINE_FUND_DISTRIBUTIONS_SUMMARY_MISMATCH.getCode()));
   }
 
+  @Test
+  void testTransitionFromOpenToApprovedWithMultipleFiscalYears() {
+    Invoice reqData = getMockAsJson(OPEN_INVOICE_SAMPLE_PATH).mapTo(Invoice.class);
+    String invoiceId = reqData.getId();
+
+    InvoiceLine invoiceLine1 = getMinimalContentInvoiceLine(invoiceId);
+
+    Fund fund1 = new Fund()
+      .withId(UUID.randomUUID().toString())
+      .withLedgerId(EXISTING_LEDGER_ID)
+      .withCode("FUND1")
+      .withExternalAccountNo("1234")
+      .withFundStatus(Fund.FundStatus.ACTIVE);
+
+    Budget budget1 = new Budget()
+      .withId(UUID.randomUUID().toString())
+      .withFundId(fund1.getId())
+      .withFiscalYearId(UUID.randomUUID().toString())
+      .withAllocated(100d)
+      .withAvailable(100d)
+      .withBudgetStatus(BudgetStatus.ACTIVE)
+      .withUnavailable(0d);
+
+    FundDistribution fd1 = new FundDistribution()
+      .withFundId(fund1.getId())
+      .withDistributionType(PERCENTAGE)
+      .withValue(100d)
+      .withCode(fund1.getCode());
+    invoiceLine1.getFundDistributions().add(fd1);
+
+    InvoiceLine invoiceLine2 = getMinimalContentInvoiceLine(invoiceId);
+
+    Fund fund2 = new Fund()
+      .withId(UUID.randomUUID().toString())
+      .withLedgerId(EXISTING_LEDGER_ID)
+      .withCode("FUND2")
+      .withExternalAccountNo("1234")
+      .withFundStatus(Fund.FundStatus.ACTIVE);
+
+    Budget budget2 = new Budget()
+      .withId(UUID.randomUUID().toString())
+      .withFundId(fund2.getId())
+      .withFiscalYearId(UUID.randomUUID().toString())
+      .withAllocated(100d)
+      .withAvailable(100d)
+      .withBudgetStatus(BudgetStatus.ACTIVE)
+      .withUnavailable(0d);
+
+    FundDistribution fd2 = new FundDistribution()
+      .withFundId(fund2.getId())
+      .withDistributionType(PERCENTAGE)
+      .withValue(100d)
+      .withCode(fund2.getCode());
+    invoiceLine2.getFundDistributions().add(fd2);
+
+    addMockEntry(INVOICE_LINES, JsonObject.mapFrom(invoiceLine1));
+    addMockEntry(BUDGETS, JsonObject.mapFrom(budget1));
+    addMockEntry(FUNDS, JsonObject.mapFrom(fund1));
+    addMockEntry(INVOICE_LINES, JsonObject.mapFrom(invoiceLine2));
+    addMockEntry(BUDGETS, JsonObject.mapFrom(budget2));
+    addMockEntry(FUNDS, JsonObject.mapFrom(fund2));
+
+    reqData.setStatus(Invoice.Status.APPROVED);
+
+    String jsonBody = JsonObject.mapFrom(reqData).encode();
+    Headers headers = prepareHeaders(X_OKAPI_URL, X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID);
+    Errors errors = verifyPut(String.format(INVOICE_ID_PATH, invoiceId), jsonBody, headers, "", 422)
+      .as(Errors.class);
+
+    assertThat(errors, notNullValue());
+    assertThat(errors.getErrors(), hasSize(1));
+    String errorMessage = errors.getErrors().get(0).getMessage();
+    String possibleMessage1 = "Multiple fiscal years are used with the funds " + fund1.getCode() + " and " + fund2.getCode() + ".";
+    String possibleMessage2 = "Multiple fiscal years are used with the funds " + fund2.getCode() + " and " + fund1.getCode() + ".";
+    assertTrue(possibleMessage1.equals(errorMessage) || possibleMessage2.equals(errorMessage));
+  }
+
   private Invoice createMockEntryInStorage() {
     // Add mock entry in storage with status Paid
     Invoice invoice = getMinimalContentInvoice();
