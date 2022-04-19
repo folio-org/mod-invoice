@@ -52,7 +52,11 @@ public enum ErrorCodes {
   ORG_IS_NOT_VENDOR("organizationIsNotVendor", "Organization is not vendor"),
   FAILED_TO_UPDATE_INVOICE_AND_OTHER_LINES("failedToUpdateInvoiceAndOtherLines", "Failed to update the invoice and other lines"),
   FAILED_TO_UPDATE_PONUMBERS("failedToUpdatePoNumbers", "Failed to update invoice poNumbers"),
-  CANNOT_PAY_INVOICE_WITHOUT_APPROVAL("cannotPayInvoiceWithoutApproval", "Cannot pay an invoice without approval");
+  CANNOT_PAY_INVOICE_WITHOUT_APPROVAL("cannotPayInvoiceWithoutApproval", "Cannot pay an invoice without approval"),
+  CANNOT_CANCEL_INVOICE("cannotCancelInvoice" ,"Only approved and paid invoices can be cancelled"),
+  CANCEL_TRANSACTIONS_ERROR("cancelTransactionsError", "Failed to cancel transactions"),
+  ERROR_UNRELEASING_ENCUMBRANCES("errorUnreleasingEncumbrances", "Error unreleasing encumbrances after cancelling the invoice"),
+  MULTIPLE_FISCAL_YEARS("multipleFiscalYears", "Multiple fiscal years are used with the funds %s and %s.");
 
   private final String code;
   private final String description;
