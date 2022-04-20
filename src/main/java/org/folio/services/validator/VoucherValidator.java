@@ -8,7 +8,7 @@ import org.folio.rest.jaxrs.model.Voucher;
 public class VoucherValidator extends BaseValidator {
 
   public void validateProtectedFields(Voucher updatedVoucher, Voucher voucherFromStorage) {
-    Set<String> fields = findChangedProtectedFields(updatedVoucher, voucherFromStorage, VoucherProtectedFields.getProtectedFields());
+    Set<String> fields = findChangedFields(updatedVoucher, voucherFromStorage, VoucherProtectedFields.getProtectedFields());
     verifyThatProtectedFieldsUnchanged(fields);
   }
 
