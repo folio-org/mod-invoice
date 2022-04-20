@@ -5,7 +5,19 @@
       "budgetId": "d71635df-c08c-49cc-9082-197a30fd0392",
       "expenseClassId": "6e6ed3c9-d959-4c91-a436-6076fb373816",
       "status": "Active"
+    },
+    {
+      "id": "67325aae-ec01-4088-b11f-d456138f7ace",
+      "budgetId": "7fbd5d85-62d1-44c6-9c45-6cb173999bbd",
+      "expenseClassId": "5b5ebe3a-cf8b-4f16-a880-46873ef21388",
+      "status": "Active"
+    },
+    {
+      "id": "2f7f0e07-c129-4148-b5bd-2c4456d6db00",
+      "budgetId": "55f48dc6-efa7-4cfe-bc7c-4786efe493e2",
+      "expenseClassId": "6e6ed3c9-d959-4c91-a436-6076fb373816",
+      "status": "Active"
     }
   ],
-  "totalRecords": 1
+  "totalRecords": 3
 }
