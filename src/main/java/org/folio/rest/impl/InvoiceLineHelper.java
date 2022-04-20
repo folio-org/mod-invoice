@@ -4,6 +4,7 @@ import io.vertx.core.Context;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
 import org.apache.commons.lang3.StringUtils;
+import org.folio.InvoiceWorkflowDataHolderBuilder;
 import org.folio.completablefuture.FolioVertxCompletableFuture;
 import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.invoices.utils.InvoiceRestrictionsUtil;
@@ -23,7 +24,9 @@ import org.folio.rest.jaxrs.model.Parameter;
 import org.folio.rest.jaxrs.model.SequenceNumber;
 import org.folio.rest.tools.client.interfaces.HttpClientInterface;
 import org.folio.models.InvoiceHolder;
+import org.folio.models.InvoiceWorkflowDataHolder;
 import org.folio.services.adjusment.AdjustmentsService;
+import org.folio.services.finance.budget.BudgetExpenseClassService;
 import org.folio.services.invoice.InvoiceLineService;
 import org.folio.services.invoice.InvoiceService;
 import org.folio.services.order.OrderService;
@@ -87,6 +90,10 @@ public class InvoiceLineHelper extends AbstractHelper {
   private InvoiceLineService invoiceLineService;
   @Autowired
   private OrderLineService orderLineService;
+  @Autowired
+  private InvoiceWorkflowDataHolderBuilder holderBuilder;
+  @Autowired
+  private BudgetExpenseClassService budgetExpenseClassService;
 
   public InvoiceLineHelper(Map<String, String> okapiHeaders, Context ctx, String lang) {
     this(getHttpClient(okapiHeaders), okapiHeaders, ctx, lang);
@@ -230,9 +237,12 @@ public class InvoiceLineHelper extends AbstractHelper {
   }
 
   public CompletableFuture<Void> updateInvoiceLine(InvoiceLine invoiceLine, RequestContext requestContext) {
-
     return getInvoiceLine(invoiceLine.getId())
-      .thenCompose(invoiceLineFromStorage -> getInvoice(invoiceLineFromStorage).thenCompose(invoice -> {
+      .thenCompose(invoiceLineFromStorage -> getInvoice(invoiceLineFromStorage)
+          .thenCompose(invoice -> getInvoiceWorkflowDataHolders(invoice, invoiceLine, requestContext)
+              .thenCompose(holders -> budgetExpenseClassService.checkExpenseClasses(holders, requestContext))
+              .thenApply(v -> invoice))
+          .thenCompose(invoice -> {
         // Validate if invoice line update is allowed
         validator.validateProtectedFields(invoice, invoiceLine, invoiceLineFromStorage);
         validator.validateLineAdjustmentsOnUpdate(invoiceLine, invoice);
@@ -369,11 +379,15 @@ public class InvoiceLineHelper extends AbstractHelper {
    *         any issue happens
    */
   public CompletableFuture<InvoiceLine> createInvoiceLine(InvoiceLine invoiceLine) {
+    RequestContext requestContext = new RequestContext(ctx, okapiHeaders);
     return getInvoice(invoiceLine).thenApply(invoice -> {
       validator.validateLineAdjustmentsOnCreate(invoiceLine, invoice);
       return invoice;
     })
       .thenApply(this::checkIfInvoiceLineCreationAllowed)
+      .thenCompose(invoice -> getInvoiceWorkflowDataHolders(invoice, invoiceLine, requestContext)
+        .thenCompose(holders -> budgetExpenseClassService.checkExpenseClasses(holders, requestContext))
+        .thenApply(v -> invoice))
       .thenCompose(invoice -> protectionHelper.isOperationRestricted(invoice.getAcqUnitIds(), ProtectedOperationType.CREATE)
         .thenApply(v -> invoice))
       .thenCompose(invoice -> createInvoiceLine(invoiceLine, invoice)
@@ -621,5 +635,19 @@ public class InvoiceLineHelper extends AbstractHelper {
     var newNumbers = new ArrayList<>(numbers);
     newNumbers.add(newNumber);
     return newNumbers;
+  }
+
+  private CompletableFuture<List<InvoiceWorkflowDataHolder>> getInvoiceWorkflowDataHolders(Invoice invoice, InvoiceLine invoiceLine, RequestContext requestContext) {
+    List<InvoiceLine> lines = new ArrayList<>();
+    lines.add(invoiceLine);
+
+    List<InvoiceWorkflowDataHolder> dataHolders = holderBuilder.buildHoldersSkeleton(lines, invoice);
+    return holderBuilder.withFunds(dataHolders, requestContext)
+        .thenCompose(holders -> holderBuilder.withLedgers(holders, requestContext))
+        .thenCompose(holders -> holderBuilder.withBudgets(holders, requestContext))
+        .thenCompose(holders -> holderBuilder.withFiscalYear(holders, requestContext))
+        .thenCompose(holders -> holderBuilder.withEncumbrances(holders, requestContext))
+        .thenCompose(holders -> holderBuilder.withExpenseClasses(holders, requestContext))
+        .thenCompose(holders -> holderBuilder.withExchangeRate(holders, requestContext));
   }
 }
