@@ -2,6 +2,7 @@ package org.folio.rest.impl;
 
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 import static javax.ws.rs.core.MediaType.TEXT_PLAIN;
+import static org.folio.invoices.utils.ErrorCodes.BUDGET_EXPENSE_CLASS_NOT_FOUND;
 import static org.folio.invoices.utils.ErrorCodes.CANNOT_DELETE_INVOICE_LINE;
 import static org.folio.invoices.utils.ErrorCodes.PROHIBITED_INVOICE_LINE_CREATION;
 import static org.folio.invoices.utils.HelperUtils.INVOICE_ID;
@@ -25,6 +26,7 @@ import static org.folio.rest.impl.MockServer.getInvoiceUpdates;
 import static org.folio.rest.impl.MockServer.getQueryParams;
 import static org.folio.rest.impl.MockServer.serverRqRs;
 import static org.folio.rest.impl.ProtectionHelper.ACQUISITIONS_UNIT_IDS;
+import static org.folio.rest.jaxrs.model.FundDistribution.DistributionType.PERCENTAGE;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.endsWith;
@@ -50,6 +52,7 @@ import org.folio.invoices.utils.InvoiceLineProtectedFields;
 import org.folio.rest.jaxrs.model.Adjustment;
 import org.folio.rest.jaxrs.model.Error;
 import org.folio.rest.jaxrs.model.Errors;
+import org.folio.rest.jaxrs.model.FundDistribution;
 import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.jaxrs.model.InvoiceLine;
 import org.folio.rest.jaxrs.model.InvoiceLineCollection;
@@ -62,7 +65,6 @@ import org.junit.jupiter.api.Test;
 import io.restassured.response.Response;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.core.json.JsonObject;
-
 
 public class InvoiceLinesApiTest extends ApiTestBase {
 
@@ -349,6 +351,29 @@ public class InvoiceLinesApiTest extends ApiTestBase {
   }
 
   @Test
+  public void testAddInvoiceLineWithWrongExpenseClasses() {
+    logger.info("=== Test create invoice line (expense class doesn't exist in budget) ===");
+    InvoiceLine invoiceLine = getMockAsJson(INVOICE_LINE_WITH_APPROVED_INVOICE_SAMPLE_PATH).mapTo(InvoiceLine.class);
+    invoiceLine.setId(UUID.randomUUID().toString());
+    invoiceLine.setInvoiceId(OPEN_INVOICE_ID);
+    List<FundDistribution> fundDistrList = new ArrayList<>();
+    fundDistrList.add(new FundDistribution()
+        .withDistributionType(PERCENTAGE)
+        .withValue(50d)
+        .withFundId("1d1574f1-9196-4a57-8d1f-3b2e4309eb81")
+        .withExpenseClassId("198bcc9a-3f87-43d7-9313-7adddf98f284"));
+
+    invoiceLine.setFundDistributions(fundDistrList);
+    String jsonBody = JsonObject.mapFrom(invoiceLine).encodePrettily();
+
+    Errors resp = verifyPostResponse(INVOICE_LINES_PATH, jsonBody, prepareHeaders(X_OKAPI_TENANT),
+        APPLICATION_JSON, 400).as(Errors.class);
+
+    Assertions.assertEquals(1, resp.getErrors().size());
+    Assertions.assertEquals(BUDGET_EXPENSE_CLASS_NOT_FOUND.getCode(), resp.getErrors().get(0).getCode());
+  }
+
+  @Test
   public void testPutInvoicingInvoiceLinesByIdTest() throws Exception {
     String reqData = getMockData(INVOICE_LINES_MOCK_DATA_PATH + INVOICE_LINE_WITH_APPROVED_EXISTED_INVOICE_ID + ".json");
 
@@ -428,6 +453,29 @@ public class InvoiceLinesApiTest extends ApiTestBase {
     super.verifyPut(endpoint, reqData, TEXT_PLAIN, 400);
 
     MatcherAssert.assertThat(getInvoiceUpdates(), hasSize(0));
+  }
+
+  @Test
+  public void testPutInvoiceLineWithWrongExpenseClasses() {
+    logger.info("=== Test put invoice line (expense class doesn't exist in budget) ===");
+    InvoiceLine invoiceLine = getMockAsJson(INVOICE_LINE_WITH_APPROVED_INVOICE_SAMPLE_PATH).mapTo(InvoiceLine.class);
+    invoiceLine.setInvoiceId(OPEN_INVOICE_ID);
+
+    List<FundDistribution> fundDistrList = new ArrayList<>();
+    fundDistrList.add(new FundDistribution()
+        .withDistributionType(PERCENTAGE)
+        .withValue(50d)
+        .withFundId("1d1574f1-9196-4a57-8d1f-3b2e4309eb81")
+        .withExpenseClassId("198bcc9a-3f87-43d7-9313-7adddf98f284"));
+
+    invoiceLine.setFundDistributions(fundDistrList);
+    String jsonBody = JsonObject.mapFrom(invoiceLine).encodePrettily();
+
+    Errors resp = verifyPut(INVOICE_LINE_WITH_APPROVED_EXISTED_INVOICE_ID, jsonBody, "", 400)
+        .as(Errors.class);
+
+    Assertions.assertEquals(1, resp.getErrors().size());
+    Assertions.assertEquals(BUDGET_EXPENSE_CLASS_NOT_FOUND.getCode(), resp.getErrors().get(0).getCode());
   }
 
   @Test
