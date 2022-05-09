@@ -1,5 +1,16 @@
 ## 5.3.6 - Unreleased
 
+## 5.2.6 (Kiwi) - Released
+
+This bugfix release focused on fixing approving invoice with multiple lines
+
+[Full Changelog](https://github.com/folio-org/mod-invoice/compare/v5.2.5...v5.2.6)
+
+### Bug Fixes
+* [MODINVOICE-396](https://issues.folio.org/browse/MODINVOICE-396) - Kiwi (R3 2021) Hot Fix #3 - Insufficient fund validation to approve invoice
+* [MODINVOICE-395](https://issues.folio.org/browse/MODINVOICE-395) - R3 Kiwi (2021) Hotfix #3 - Can not pay invoice that references the same POL and 2 different invoice lines
+
+
 ## 5.2.5 (Kiwi) - Released
 
 This bugfix release focused on fixing approving invoice with multiple lines
