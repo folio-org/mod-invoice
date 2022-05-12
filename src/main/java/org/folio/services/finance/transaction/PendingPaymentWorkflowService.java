@@ -142,8 +142,10 @@ public class PendingPaymentWorkflowService {
               .withReleaseEncumbrance(releaseEncumbrance);
     }
     String transactionId = Optional.ofNullable(holder.getExistingTransaction()).map(Transaction::getId).orElse(null);
+    Integer version = Optional.ofNullable(holder.getExistingTransaction()).map(Transaction::getVersion).orElse(null);
     return buildBaseTransaction(holder)
             .withId(transactionId)
+            .withVersion(version)
             .withTransactionType(Transaction.TransactionType.PENDING_PAYMENT)
             .withAwaitingPayment(awaitingPayment)
             .withAmount(convertToDoubleWithRounding(amount))
