@@ -1,5 +1,13 @@
 ## 5.4.0 - Unreleased
 
+## 5.3.3 - Released
+The focus of this release was to fix issue with insufficient fund validation to approve invoice
+
+[Full Changelog](https://github.com/folio-org/mod-invoice/compare/v5.3.2...v5.3.3)
+
+### Bug Fixes
+* [MODINVOICE-398](https://issues.folio.org/browse/MODINVOICE-398) - Lotus HF#1 - Insufficient fund validation to approve invoice
+
 ## 5.3.2 - Released
 The focus of this release was to fix issues with encumbrance calculations
 
