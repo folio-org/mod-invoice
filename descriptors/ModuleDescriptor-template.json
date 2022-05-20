@@ -136,6 +136,7 @@
             "orders.po-lines.item.get",
             "orders-storage.order-invoice-relationships.collection.get",
             "orders-storage.order-invoice-relationships.item.post",
+            "finance-storage.budget-expense-classes.collection.get",
             "finance.ledgers.collection.get",
             "finance.funds.budget.item.get",
             "finance-storage.fiscal-years.item.get",
