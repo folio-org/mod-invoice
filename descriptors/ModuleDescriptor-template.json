@@ -180,7 +180,14 @@
             "orders-storage.order-invoice-relationships.item.post",
             "orders.item.get",
             "orders.po-lines.item.get",
-            "finance-storage.budget-expense-classes.collection.get"
+            "finance-storage.budget-expense-classes.collection.get",
+            "finance.ledgers.collection.get",
+            "finance.funds.budget.item.get",
+            "finance-storage.fiscal-years.item.get",
+            "finance.fiscal-years.item.get",
+            "finance-storage.budgets.collection.get",
+            "finance.transactions.collection.get",
+            "finance.expense-classes.collection.get"
           ]
         },
         {
