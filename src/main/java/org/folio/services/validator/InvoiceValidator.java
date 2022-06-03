@@ -54,7 +54,7 @@ public class InvoiceValidator extends BaseValidator {
     if (invoice.getStatus() == Invoice.Status.PAID
       && invoiceFromStorage.getStatus() == Invoice.Status.PAID ){
         Set<String> fields = findChangedFields(invoice, invoiceFromStorage, InvoiceUnprotectedFields.getFieldNames());
-        return CollectionUtils.isNotEmpty(fields);
+        return !(CollectionUtils.isNotEmpty(fields));
     }
     return false;
   }
