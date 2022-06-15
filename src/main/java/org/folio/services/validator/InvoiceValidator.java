@@ -67,8 +67,8 @@ public class InvoiceValidator extends BaseValidator {
   }
 
   public void validateInvoiceStatusTransition(Invoice invoice, Invoice invoiceFromStorage) {
-    if (invoice.getStatus() == Invoice.Status.PAID
-      && invoiceFromStorage.getStatus() != Invoice.Status.APPROVED ) {
+    if (!(invoice.getStatus() == Invoice.Status.PAID && invoiceFromStorage.getStatus() == Invoice.Status.PAID)
+    && (invoice.getStatus() == Invoice.Status.PAID && invoiceFromStorage.getStatus() != Invoice.Status.APPROVED)) {
       throw new HttpException(400, CANNOT_PAY_INVOICE_WITHOUT_APPROVAL);
     }
    }
