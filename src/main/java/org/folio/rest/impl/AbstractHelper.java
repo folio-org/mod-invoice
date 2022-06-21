@@ -123,6 +123,7 @@ public abstract class AbstractHelper {
       case 400:
       case 403:
       case 404:
+      case 409:
       case 413:
       case 422:
         responseBuilder = Response.status(exception.getCode());

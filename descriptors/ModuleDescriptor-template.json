@@ -136,7 +136,15 @@
             "orders.po-lines.item.get",
             "orders-storage.order-invoice-relationships.collection.get",
             "orders-storage.order-invoice-relationships.item.post",
-            "finance-storage.budget-expense-classes.collection.get"
+            "finance-storage.budget-expense-classes.collection.get",
+            "finance.ledgers.collection.get",
+            "finance.funds.budget.item.get",
+            "finance-storage.fiscal-years.item.get",
+            "finance.fiscal-years.item.get",
+            "finance-storage.budgets.collection.get",
+            "finance.transactions.collection.get",
+            "finance.expense-classes.collection.get",
+            "finance.exchange-rate.item.get"
           ]
         },
         {
@@ -172,7 +180,14 @@
             "orders-storage.order-invoice-relationships.item.post",
             "orders.item.get",
             "orders.po-lines.item.get",
-            "finance-storage.budget-expense-classes.collection.get"
+            "finance-storage.budget-expense-classes.collection.get",
+            "finance.ledgers.collection.get",
+            "finance.funds.budget.item.get",
+            "finance-storage.fiscal-years.item.get",
+            "finance.fiscal-years.item.get",
+            "finance-storage.budgets.collection.get",
+            "finance.transactions.collection.get",
+            "finance.expense-classes.collection.get"
           ]
         },
         {
@@ -516,7 +531,7 @@
     },
     {
       "id": "finance.funds",
-      "version": "1.3"
+      "version": "2.0"
     },
     {
       "id": "invoice-storage.invoices",
@@ -560,7 +575,7 @@
     },
     {
       "id": "finance.transactions",
-      "version": "4.1"
+      "version": "5.0"
     },
     {
       "id": "batch-group-storage.batch-groups",
@@ -572,7 +587,7 @@
     },
     {
       "id": "finance.ledgers",
-      "version": "1.5"
+      "version": "2.0"
     },
     {
       "id":"organizations-storage.organizations",
@@ -580,7 +595,7 @@
     },
     {
       "id": "finance-storage.budget-expense-classes",
-      "version": "1.0"
+      "version": "2.0"
     },
     {
       "id": "finance.exchange-rate",
@@ -588,11 +603,11 @@
     },
     {
       "id": "finance.fiscal-years",
-      "version": "1.1"
+      "version": "2.0"
     },
     {
       "id": "finance.budgets",
-      "version": "1.3"
+      "version": "2.0"
     },
     {
       "id": "finance.invoice-transaction-summaries",
@@ -604,7 +619,7 @@
     },
     {
       "id": "finance.expense-classes",
-      "version": "2.0"
+      "version": "3.0"
     },
     {
       "id" : "orders-storage.order-invoice-relationships",
