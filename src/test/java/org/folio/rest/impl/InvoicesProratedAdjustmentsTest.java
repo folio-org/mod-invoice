@@ -417,11 +417,11 @@ public class InvoicesProratedAdjustmentsTest extends ApiTestBase {
     assertThat(invoiceAdjustment.getId(), not(isEmptyOrNullString()));
 
 
-    verifyAdjustmentValue(invoiceLine1.getId(), 3.57d); // 5 * 50 / 70 = 3,57(1428571428571‬)
+    verifyAdjustmentValue(invoiceLine1.getId(), 3.57d); // 5 * 50 / 70 = 3,57(1428571428571…)
 
-    verifyAdjustmentValue(invoiceLine2.getId(), 1.07d); // 5 * 15 / 70 = 1,07(1428571428571‬)
+    verifyAdjustmentValue(invoiceLine2.getId(), 1.07d); // 5 * 15 / 70 = 1,07(1428571428571…)
 
-    verifyAdjustmentValue(invoiceLine3.getId(), 0.36d); //5 * 5 / 70 = 0,35(7142857142857) + 0.01
+    verifyAdjustmentValue(invoiceLine3.getId(), 0.36d); // 5 * 5 / 70 = 0,35(7142857142857…) + 0.01
 
   }
 
