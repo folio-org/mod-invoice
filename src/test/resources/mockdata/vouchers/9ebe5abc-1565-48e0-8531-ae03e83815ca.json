@@ -1,0 +1,25 @@
+{
+  "id": "9ebe5abc-1565-48e0-8531-ae03e83815ca",
+  "accountingCode": "G64758-74834",
+  "accountNo": "G64758-74834",
+  "amount": 0,
+  "batchGroupId": "2a2cb998-1437-41d1-88ad-01930aaeadd5",
+  "enclosureNeeded": false,
+  "invoiceCurrency": "USD",
+  "invoiceId": "b8862151-6aa5-4301-aa1a-34096a03a5f7",
+  "exchangeRate": 1,
+  "exportToAccounting": true,
+  "status": "Awaiting payment",
+  "systemCurrency": "USD",
+  "type": "Voucher",
+  "voucherDate": "2022-06-28T12:03:14.462+0000",
+  "voucherNumber": "11",
+  "vendorId": "e0fb5df2-cdf1-11e8-a8d5-f2801f1b9fd1",
+  "acqUnitIds": [],
+  "metadata": {
+    "createdDate": "2022-06-28T12:03:13.464+0000",
+    "createdByUserId": "0c7bdd5c-40a2-58ea-9a40-7caf55281401",
+    "updatedDate": "2022-06-28T12:03:13.464+0000",
+    "updatedByUserId": "0c7bdd5c-40a2-58ea-9a40-7caf55281401"
+  }
+}

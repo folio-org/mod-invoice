@@ -1,0 +1,53 @@
+{
+  "voucherLines": [
+    {
+    "id": "04409173-9caa-4242-aaab-c4020e01c12a",
+    "amount": 50,
+    "externalAccountNumber": "USHIST",
+    "fundDistributions": [
+      {
+        "code": "USHIST",
+        "fundId": "388c0f7b-9fff-451c-b300-6509e443bef5",
+        "invoiceLineId": "8a1dc57e-8857-4dc3-bdda-871686e0b98b",
+        "distributionType": "amount",
+        "value": 50
+      }
+    ],
+    "sourceIds": [
+      "8a1dc57e-8857-4dc3-bdda-871686e0b98b"
+    ],
+    "voucherId": "9ebe5abc-1565-48e0-8531-ae03e83815ca",
+    "metadata": {
+      "createdDate": "2022-06-28T12:03:13.520+0000",
+      "createdByUserId": "0c7bdd5c-40a2-58ea-9a40-7caf55281401",
+      "updatedDate": "2022-06-28T12:03:13.520+0000",
+      "updatedByUserId": "0c7bdd5c-40a2-58ea-9a40-7caf55281401"
+    }
+  },
+    {
+    "id": "71c9eba4-7e8b-4a4d-9028-633c83085486",
+    "amount": -50,
+    "externalAccountNumber": "EUHIST",
+    "fundDistributions": [
+      {
+        "code": "EUHIST",
+        "fundId": "55f48dc6-efa7-4cfe-bc7c-4786efe493e3",
+        "invoiceLineId": "8a1dc57e-8857-4dc3-bdda-871686e0b98b",
+        "distributionType": "amount",
+        "value": -50
+      }
+    ],
+    "sourceIds": [
+      "8a1dc57e-8857-4dc3-bdda-871686e0b98b"
+    ],
+    "voucherId": "9ebe5abc-1565-48e0-8531-ae03e83815ca",
+    "metadata": {
+      "createdDate": "2022-06-28T12:03:13.545+0000",
+      "createdByUserId": "0c7bdd5c-40a2-58ea-9a40-7caf55281401",
+      "updatedDate": "2022-06-28T12:03:13.545+0000",
+      "updatedByUserId": "0c7bdd5c-40a2-58ea-9a40-7caf55281401"
+    }
+  }
+  ],
+  "totalRecords": 2
+}

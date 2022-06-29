@@ -36,7 +36,14 @@ public class FundsDistributionService {
         .with(getDefaultRounding());
 
       MonetaryAmount calculatedTotal = invoiceWorkflowDataHolder.stream()
-        .map(h -> h.getNewTransaction().getAmount())
+        .map(h -> {
+          Transaction transaction = h.getNewTransaction();
+          if (expectedTotal.isZero() && transaction.getTransactionType().equals(TransactionType.CREDIT)) {
+            return transaction.getAmount() * -1;
+          } else {
+            return transaction.getAmount();
+          }
+        })
         .map(aDouble -> Money.of(aDouble, conversion.getCurrency()))
         .reduce(Money::add)
         .orElse(Money.zero(conversion.getCurrency()));
@@ -48,10 +55,9 @@ public class FundsDistributionService {
         .map(holder -> {
           if (remainder.isNegative()) {
             return holder.get(0);
-          } else if (remainder.isPositiveOrZero()) {
+          } else {
             return holder.get(holder.size() - 1);
           }
-          return null;
         })
         .map(InvoiceWorkflowDataHolder::getNewTransaction);
 

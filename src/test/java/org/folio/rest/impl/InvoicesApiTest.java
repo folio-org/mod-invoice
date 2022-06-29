@@ -55,6 +55,7 @@ import static org.folio.invoices.utils.ResourcePathResolver.VOUCHER_NUMBER_STORA
 import static org.folio.rest.RestConstants.MAX_IDS_FOR_GET_RQ;
 import static org.folio.rest.impl.AbstractHelper.DEFAULT_SYSTEM_CURRENCY;
 import static org.folio.rest.impl.InvoiceLinesApiTest.INVOICE_LINES_LIST_PATH;
+import static org.folio.rest.impl.InvoiceLinesApiTest.INVOICE_LINES_MOCK_DATA_PATH;
 import static org.folio.rest.impl.InvoiceLinesApiTest.INVOICE_LINE_WITH_APPROVED_INVOICE_SAMPLE_PATH;
 import static org.folio.rest.impl.InvoicesImpl.PROTECTED_AND_MODIFIED_FIELDS;
 import static org.folio.rest.impl.MockServer.CURRENT_FISCAL_YEAR;
@@ -133,13 +134,11 @@ import org.apache.http.HttpStatus;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.invoices.utils.InvoiceProtectedFields;
-import org.folio.rest.acq.model.VoucherLineCollection;
 import org.folio.rest.acq.model.finance.Budget;
 import org.folio.rest.acq.model.finance.Budget.BudgetStatus;
 import org.folio.rest.acq.model.finance.Fund;
 import org.folio.rest.acq.model.finance.FundCollection;
 import org.folio.rest.acq.model.finance.InvoiceTransactionSummary;
-import org.folio.rest.acq.model.finance.Ledger;
 import org.folio.rest.acq.model.finance.Ledger;
 import org.folio.rest.acq.model.finance.Transaction;
 import org.folio.rest.acq.model.orders.CompositePoLine;
@@ -160,6 +159,7 @@ import org.folio.rest.jaxrs.model.Tags;
 import org.folio.rest.jaxrs.model.Voucher;
 import org.folio.rest.jaxrs.model.VoucherCollection;
 import org.folio.rest.jaxrs.model.VoucherLine;
+import org.folio.rest.jaxrs.model.VoucherLineCollection;
 import org.folio.services.exchange.ExchangeRateProviderResolver;
 import org.hamcrest.Matchers;
 import org.hamcrest.beans.HasProperty;
@@ -181,16 +181,21 @@ public class InvoicesApiTest extends ApiTestBase {
 
   public static final String INVOICE_PATH = "/invoice/invoices";
   static final String INVOICE_ID_PATH = INVOICE_PATH+ "/%s";
+  static final String INVOICE_LINE_FOR_MOVE_PAYMENT_PATH = INVOICE_LINES_MOCK_DATA_PATH + "8a1dc57e-8857-4dc3-bdda-871686e0b98b.json";
   private static final String INVOICE_ID_WITH_LANG_PATH = INVOICE_ID_PATH + "?lang=%s";
   private static final String INVOICE_PATH_BAD = "/invoice/bad";
   private static final String INVOICE_NUMBER_PATH = "/invoice/invoice-number";
   static final String INVOICE_MOCK_DATA_PATH = BASE_MOCK_DATA_PATH + "invoices/";
+  static final String VOUCHER_MOCK_DATA_PATH = BASE_MOCK_DATA_PATH + "vouchers/";
+  static final String VOUCHER_LINES_MOCK_DATA_PATH = BASE_MOCK_DATA_PATH + "voucherLines/";
   private static final String PO_LINE_MOCK_DATA_PATH = BASE_MOCK_DATA_PATH + "poLines/";
   static final String REVIEWED_INVOICE_ID = "3773625a-dc0d-4a2d-959e-4a91ee265d67";
   public static final String OPEN_INVOICE_ID = "52fd6ec7-ddc3-4c53-bc26-2779afc27136";
   private static final String APPROVED_INVOICE_SAMPLE_PATH = INVOICE_MOCK_DATA_PATH + APPROVED_INVOICE_ID + ".json";
+  private static final String APPROVED_INVOICE_FOR_MOVE_PAYMENT_PATH = INVOICE_MOCK_DATA_PATH + "b8862151-6aa5-4301-aa1a-34096a03a5f7.json";
   private static final String REVIEWED_INVOICE_SAMPLE_PATH = INVOICE_MOCK_DATA_PATH + REVIEWED_INVOICE_ID + ".json";
   private static final String REVIEWED_INVOICE_WITH_EXISTING_VOUCHER_SAMPLE_PATH = INVOICE_MOCK_DATA_PATH + "402d0d32-7377-46a7-86ab-542b5684506e.json";
+  private static final String VOUCHER_FOR_MOVE_PAYMENT_PATH = VOUCHER_MOCK_DATA_PATH + "9ebe5abc-1565-48e0-8531-ae03e83815ca.json";
 
   public static final String OPEN_INVOICE_SAMPLE_PATH = INVOICE_MOCK_DATA_PATH + OPEN_INVOICE_ID + ".json";
   private static final String OPEN_INVOICE_WITH_APPROVED_FILEDS_SAMPLE_PATH = INVOICE_MOCK_DATA_PATH + "d3e13ed1-59da-4f70-bba3-a140e11d30f3.json";
@@ -570,6 +575,29 @@ public class InvoicesApiTest extends ApiTestBase {
     verifyTransitionToApproved(voucherCreated, invoiceLines, updatedInvoice, 5);
     verifyVoucherLineWithExpenseClasses(2L);
     checkVoucherAcqUnitIdsList(voucherCreated, reqData);
+  }
+
+  @Test
+  void testTransitionFromApprovedToPaidWithDifferentFundDistributions() {
+    logger.info("=== Test transition invoice to Paid with different FundDistributions ===");
+
+    InvoiceLine invoiceLine = getMockAsJson(INVOICE_LINE_FOR_MOVE_PAYMENT_PATH).mapTo(InvoiceLine.class);
+    Invoice reqData = getMockAsJson(APPROVED_INVOICE_FOR_MOVE_PAYMENT_PATH).mapTo(Invoice.class);
+    Voucher voucher = getMockAsJson(VOUCHER_FOR_MOVE_PAYMENT_PATH).mapTo(Voucher.class);
+    String id = reqData.getId();
+
+    addMockEntry(INVOICE_LINES, JsonObject.mapFrom(invoiceLine));
+    addMockEntry(VOUCHERS_STORAGE, JsonObject.mapFrom(voucher));
+    reqData.setStatus(Status.PAID);
+
+    String jsonBody = JsonObject.mapFrom(reqData).encode();
+    Headers headers = prepareHeaders(X_OKAPI_URL, X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID);
+    verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, headers, "", 204);
+
+    assertThat(getInvoiceRetrievals(), hasSize(1));
+    assertThat(getInvoiceLineSearches(), hasSize(1));
+    Invoice updatedInvoice = serverRqRs.get(INVOICES, HttpMethod.PUT).get(0).mapTo(Invoice.class);
+    assertEquals(updatedInvoice.getStatus(), Status.PAID);
   }
 
   @Test
