@@ -37,11 +37,12 @@ public class FundsDistributionService {
 
       MonetaryAmount calculatedTotal = invoiceWorkflowDataHolder.stream()
         .map(h -> {
-          Double amount = h.getNewTransaction().getAmount();
-          if (expectedTotal.isZero() && h.getNewTransaction().getTransactionType().equals(TransactionType.CREDIT)) {
-            amount = -amount;
+          Transaction transaction = h.getNewTransaction();
+          if (expectedTotal.isZero() && transaction.getTransactionType().equals(TransactionType.CREDIT)) {
+            return transaction.getAmount() * -1;
+          } else {
+            return transaction.getAmount();
           }
-          return amount;
         })
         .map(aDouble -> Money.of(aDouble, conversion.getCurrency()))
         .reduce(Money::add)

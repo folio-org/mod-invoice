@@ -1,0 +1,33 @@
+{
+  "id": "b8862151-6aa5-4301-aa1a-34096a03a5f7",
+  "accountingCode": "G64758-74834",
+  "adjustments": [],
+  "adjustmentsTotal": 0,
+  "approvedBy": "0c7bdd5c-40a2-58ea-9a40-7caf55281401",
+  "approvalDate": "2022-06-28T12:03:07.855+0000",
+  "batchGroupId": "2a2cb998-1437-41d1-88ad-01930aaeadd5",
+  "chkSubscriptionOverlap": true,
+  "currency": "USD",
+  "enclosureNeeded": false,
+  "exchangeRate": 1,
+  "exportToAccounting": true,
+  "folioInvoiceNo": "10011",
+  "invoiceDate": "2022-06-28T00:00:00.000+0000",
+  "paymentMethod": "Credit Card",
+  "status": "Approved",
+  "source": "User",
+  "subTotal": 0,
+  "total": 0,
+  "vendorInvoiceNo": "746135",
+  "voucherNumber": "11",
+  "poNumbers": [],
+  "vendorId": "e0fb5df2-cdf1-11e8-a8d5-f2801f1b9fd1",
+  "accountNo": "G64758-74834",
+  "acqUnitIds": [],
+  "metadata": {
+    "createdDate": "2022-06-28T12:01:41.644+0000",
+    "createdByUserId": "0c7bdd5c-40a2-58ea-9a40-7caf55281401",
+    "updatedDate": "2022-06-28T12:03:13.622+0000",
+    "updatedByUserId": "0c7bdd5c-40a2-58ea-9a40-7caf55281401"
+  }
+}
