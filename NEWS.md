@@ -1,4 +1,23 @@
-## 5.4.0 - Unreleased
+## 5.5.0 - Unreleased
+
+## 5.4.0 - Released Morning Glory 2022 R2
+The focus of this release was to update core dependencies and fix invoice payments
+
+[Full Changelog](https://github.com/folio-org/mod-invoice/compare/v5.3.0...v5.4.0)
+
+### Stories
+* [MODINVOICE-410](https://issues.folio.org/browse/MODINVOICE-410) - mod-invoice: Upgrade RAML Module Builder
+* [MODINVOICE-373](https://issues.folio.org/browse/MODINVOICE-373) - Include "Invoice date" and "Terms" field in voucher export for each batched voucher
+* [MODINVOICE-372](https://issues.folio.org/browse/MODINVOICE-372) - Update version of data-import-processing-core
+* [MODINVOICE-328](https://issues.folio.org/browse/MODINVOICE-328) - Allow editing of subscription dates after an invoice is paid
+
+### Bug Fixes
+* [MODINVOICE-387](https://issues.folio.org/browse/MODINVOICE-387) - Insufficient fund validation to approve invoice
+* [MODINVOICE-401](https://issues.folio.org/browse/MODINVOICE-401) - Allow user to attach or remove files from approved/paid invoice
+* [MODINVOICE-402](https://issues.folio.org/browse/MODINVOICE-402) - User with certain permissions can not add invoice line
+* [MODINVOICE-404](https://issues.folio.org/browse/MODINVOICE-404) - User with certain permissions can not save changed fund name in invoice line
+* [MODINVOICE-377](https://issues.folio.org/browse/MODINVOICE-377) - Cannot add or remove tags from paid invoice
+
 
 ## 5.3.0 - Released
 The focus of this release was to fix transaction and vouchers processing
