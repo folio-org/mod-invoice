@@ -3,7 +3,7 @@
 ## 5.4.0 - Released Morning Glory 2022 R2
 The focus of this release was to update core dependencies and fix invoice payments
 
-[Full Changelog](https://github.com/folio-org/mod-invoice/compare/v5.4.0...v5.5.0)
+[Full Changelog](https://github.com/folio-org/mod-invoice/compare/v5.3.0...v5.4.0)
 
 ### Stories
 * [MODINVOICE-410](https://issues.folio.org/browse/MODINVOICE-410) - mod-invoice: Upgrade RAML Module Builder
