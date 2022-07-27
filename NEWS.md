@@ -1,5 +1,14 @@
 ## 5.5.0 - Unreleased
 
+## 5.4.1 - Released Morning Glory 2022 R2 Bug Fix
+The focus of this release was to provide new endpoint to validate fund distributions
+
+[Full Changelog](https://github.com/folio-org/mod-invoice/compare/v5.4.0...v5.4.1)
+
+### Bug Fixes
+* [MODINVOICE-417](https://issues.folio.org/browse/MODINVOICE-417) - Provide endpoint to validate fund distributions
+
+
 ## 5.4.0 - Released Morning Glory 2022 R2
 The focus of this release was to update core dependencies and fix invoice payments
 
