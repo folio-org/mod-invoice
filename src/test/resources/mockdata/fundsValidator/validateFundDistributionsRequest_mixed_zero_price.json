@@ -1,0 +1,19 @@
+{
+  "subTotal": 0,
+  "currency": "USD",
+
+  "fundDistribution": [
+    {
+      "code": "HIST",
+      "fundId": "63157e96-0693-426d-b0df-948bacdfdb08",
+      "distributionType": "percentage",
+      "value": 33.33
+    },
+    {
+      "code": "EUROHIST",
+      "fundId": "e9285a1c-1dfc-4380-868c-e74073003f43",
+      "distributionType": "amount",
+      "value": 33.33
+    }
+  ]
+}

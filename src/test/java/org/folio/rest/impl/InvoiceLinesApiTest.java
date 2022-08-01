@@ -73,6 +73,8 @@ public class InvoiceLinesApiTest extends ApiTestBase {
 
   static final String INVOICE_LINES_MOCK_DATA_PATH = BASE_MOCK_DATA_PATH + "invoiceLines/";
   static final String FUND_VALIDATOR_MOCK_DATA_PATH = BASE_MOCK_DATA_PATH + "fundsValidator/validateFundDistributionsRequest.json";
+  static final String FUND_VALIDATOR_MOCK_DATA_PATH_DUP_ADJ_ID = BASE_MOCK_DATA_PATH + "fundsValidator/validateFundDistributionsRequest_duplicate_adjId.json";
+  static final String FUND_VALIDATOR_MOCK_DATA_WITH_ZERO_PRICE = BASE_MOCK_DATA_PATH + "fundsValidator/validateFundDistributionsRequest_mixed_zero_price.json";
   static final String INVOICE_LINES_LIST_PATH = INVOICE_LINES_MOCK_DATA_PATH + "invoice_lines.json";
   public static final String INVOICE_LINES_PATH = "/invoice/invoice-lines";
   public static final String INVOICE_LINE_ID_PATH = INVOICE_LINES_PATH + "/%s";
@@ -288,6 +290,18 @@ public class InvoiceLinesApiTest extends ApiTestBase {
   {
     ValidateFundDistributionsRequest reqData = getMockAsJson(FUND_VALIDATOR_MOCK_DATA_PATH).mapTo(ValidateFundDistributionsRequest.class);
      verifyPut(INVOICE_LINE_FUNDS_VALIDATOR_ID_PATH, reqData, "", 204);
+  }
+  @Test
+  public void fundValidationDupAdjIdTest()
+  {
+    ValidateFundDistributionsRequest reqData = getMockAsJson(FUND_VALIDATOR_MOCK_DATA_PATH_DUP_ADJ_ID).mapTo(ValidateFundDistributionsRequest.class);
+     verifyPut(INVOICE_LINE_FUNDS_VALIDATOR_ID_PATH, reqData, "", 400);
+  }
+  @Test
+  public void fundValidationWithZeroSubtotalTest()
+  {
+    ValidateFundDistributionsRequest reqData = getMockAsJson(FUND_VALIDATOR_MOCK_DATA_WITH_ZERO_PRICE).mapTo(ValidateFundDistributionsRequest.class);
+     verifyPut(INVOICE_LINE_FUNDS_VALIDATOR_ID_PATH, reqData, "", 422);
   }
 
   @Test
