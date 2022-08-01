@@ -92,7 +92,6 @@ public class BaseApi {
     return responseBuilder.header(CONTENT_TYPE, APPLICATION_JSON)
       .entity(errors)
       .build();
-    //return buildErrorResponse(handleProcessingError(throwable));
   }
 
   public static int defineErrorCode(Throwable throwable) {

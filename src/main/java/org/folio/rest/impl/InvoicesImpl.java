@@ -33,7 +33,6 @@ import javax.ws.rs.core.Response;
 import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.lang.reflect.InvocationTargetException;
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.List;
@@ -42,8 +41,6 @@ import java.util.Objects;
 
 import static io.vertx.core.Future.succeededFuture;
 import static org.apache.commons.io.FileUtils.ONE_MB;
-import static org.folio.invoices.utils.ErrorCodes.ADJUSTMENT_FUND_DISTRIBUTIONS_NOT_PRESENT;
-import static org.folio.invoices.utils.ErrorCodes.ADJUSTMENT_FUND_DISTRIBUTIONS_SUMMARY_MISMATCH;
 import static org.folio.invoices.utils.ErrorCodes.ADJUSTMENT_IDS_NOT_UNIQUE;
 import static org.folio.invoices.utils.ErrorCodes.DOCUMENT_IS_TOO_LARGE;
 import static org.folio.invoices.utils.ErrorCodes.MISMATCH_BETWEEN_ID_IN_PATH_AND_BODY;
@@ -208,9 +205,9 @@ public class InvoicesImpl extends BaseApi implements org.folio.rest.jaxrs.resour
       subTotal = Money.of(entity.getSubTotal(), currencyUnit);
       MonetaryAmount adjustmentAndFundTotals = HelperUtils.calculateAdjustmentsTotal(entity.getAdjustments(), subTotal);
       total = HelperUtils.convertToDoubleWithRounding(adjustmentAndFundTotals.add(subTotal));
-      List<Adjustment> not_prorated_adjustmentList = AdjustmentsService.filterAdjustments(entity.getAdjustments(), NOT_PRORATED_ADJUSTMENTS_PREDICATE);
-      if(CollectionUtils.isNotEmpty(not_prorated_adjustmentList)) {
-        InvoiceValidator.validateInvoiceAdjustmentsDistributions(not_prorated_adjustmentList, currencyUnit);
+      List<Adjustment> notProratedAdjustmentList = AdjustmentsService.filterAdjustments(entity.getAdjustments(), NOT_PRORATED_ADJUSTMENTS_PREDICATE);
+      if(CollectionUtils.isNotEmpty(notProratedAdjustmentList)) {
+        InvoiceValidator.validateInvoiceAdjustmentsDistributions(notProratedAdjustmentList, currencyUnit);
       }
       }
       if(total == null) {
