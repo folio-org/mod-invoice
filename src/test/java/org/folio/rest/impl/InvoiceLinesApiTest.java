@@ -56,6 +56,7 @@ import org.folio.rest.jaxrs.model.FundDistribution;
 import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.jaxrs.model.InvoiceLine;
 import org.folio.rest.jaxrs.model.InvoiceLineCollection;
+import org.folio.rest.jaxrs.model.ValidateFundDistributionsRequest;
 import org.hamcrest.MatcherAssert;
 import org.hamcrest.Matchers;
 import org.junit.jupiter.api.Assertions;
@@ -71,9 +72,11 @@ public class InvoiceLinesApiTest extends ApiTestBase {
   private static final Logger logger = LogManager.getLogger(InvoiceLinesApiTest.class);
 
   static final String INVOICE_LINES_MOCK_DATA_PATH = BASE_MOCK_DATA_PATH + "invoiceLines/";
+  static final String FUND_VALIDATOR_MOCK_DATA_PATH = BASE_MOCK_DATA_PATH + "fundsValidator/validateFundDistributionsRequest.json";
   static final String INVOICE_LINES_LIST_PATH = INVOICE_LINES_MOCK_DATA_PATH + "invoice_lines.json";
   public static final String INVOICE_LINES_PATH = "/invoice/invoice-lines";
   public static final String INVOICE_LINE_ID_PATH = INVOICE_LINES_PATH + "/%s";
+  public static final String INVOICE_LINE_FUNDS_VALIDATOR_ID_PATH = "fundDistributions/validate";
 
   private static final String INVOICE_LINE_ADJUSTMENTS_SAMPLE_PATH = INVOICE_LINES_MOCK_DATA_PATH + "29846620-8fb6-4433-b84e-0b6051eb76ec.json";
 
@@ -278,6 +281,13 @@ public class InvoiceLinesApiTest extends ApiTestBase {
     String endpoint = String.format(INVOICE_LINE_ID_PATH, VALID_UUID) + String.format("?%s=%s", LANG_PARAM, INVALID_LANG) ;
 
     verifyDeleteResponse(endpoint, TEXT_PLAIN, 400);
+  }
+
+  @Test
+  public void fundValidationTest()
+  {
+    ValidateFundDistributionsRequest reqData = getMockAsJson(FUND_VALIDATOR_MOCK_DATA_PATH).mapTo(ValidateFundDistributionsRequest.class);
+     verifyPut(INVOICE_LINE_FUNDS_VALIDATOR_ID_PATH, reqData, "", 204);
   }
 
   @Test
