@@ -5,6 +5,7 @@ import static javax.ws.rs.core.HttpHeaders.CONTENT_TYPE;
 import static javax.ws.rs.core.HttpHeaders.LOCATION;
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 import static javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
+import static org.folio.exceptions.ExceptionUtil.convertToErrors;
 import static org.folio.invoices.utils.ErrorCodes.GENERIC_ERROR_CODE;
 
 import java.net.URI;
@@ -76,7 +77,6 @@ public class BaseApi {
   protected HttpException handleProcessingError(Throwable throwable) {
     final Throwable cause = throwable.getCause();
     logger.error("Exception encountered", cause);
-
     if (cause instanceof HttpException) {
       return ((HttpException) cause);
     } else {
@@ -85,27 +85,38 @@ public class BaseApi {
   }
 
   public Response buildErrorResponse(Throwable throwable) {
-    return buildErrorResponse(handleProcessingError(throwable));
+  logger.error("Exception encountered", throwable.getCause());
+    final int code = defineErrorCode(throwable);
+    final Errors errors = convertToErrors(throwable);
+    final Response.ResponseBuilder responseBuilder = createResponseBuilder(code);
+    return responseBuilder.header(CONTENT_TYPE, APPLICATION_JSON)
+      .entity(errors)
+      .build();
+    //return buildErrorResponse(handleProcessingError(throwable));
   }
 
-  public Response buildErrorResponse(HttpException exception) {
-    final Response.ResponseBuilder responseBuilder;
-    switch (exception.getCode()) {
+  public static int defineErrorCode(Throwable throwable) {
+    final Throwable cause = throwable.getCause() == null ? throwable : throwable.getCause();
+    if (cause instanceof HttpException) {
+      return ((HttpException) cause).getCode();
+    }
+    return INTERNAL_SERVER_ERROR.getStatusCode();
+  }
+
+  public static javax.ws.rs.core.Response.ResponseBuilder createResponseBuilder(int code) {
+    final javax.ws.rs.core.Response.ResponseBuilder responseBuilder;
+    switch (code) {
     case 400:
     case 403:
     case 404:
-    case 413:
+    case 409:
     case 422:
-      responseBuilder = Response.status(exception.getCode());
+      responseBuilder = javax.ws.rs.core.Response.status(code);
       break;
     default:
-      responseBuilder = Response.status(INTERNAL_SERVER_ERROR);
+      responseBuilder = javax.ws.rs.core.Response.status(INTERNAL_SERVER_ERROR);
     }
-
-    return responseBuilder
-        .header(CONTENT_TYPE, APPLICATION_JSON)
-        .entity(exception.getErrors())
-        .build();
+    return responseBuilder;
   }
 }
 

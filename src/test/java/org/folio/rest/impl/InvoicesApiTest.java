@@ -20,6 +20,7 @@ import static org.folio.invoices.utils.ErrorCodes.FUNDS_NOT_FOUND;
 import static org.folio.invoices.utils.ErrorCodes.FUND_CANNOT_BE_PAID;
 import static org.folio.invoices.utils.ErrorCodes.FUND_DISTRIBUTIONS_NOT_PRESENT;
 import static org.folio.invoices.utils.ErrorCodes.GENERIC_ERROR_CODE;
+import static org.folio.invoices.utils.ErrorCodes.INCORRECT_FUND_DISTRIBUTION_TOTAL;
 import static org.folio.invoices.utils.ErrorCodes.INVALID_INVOICE_TRANSITION_ON_PAID_STATUS;
 import static org.folio.invoices.utils.ErrorCodes.LINE_FUND_DISTRIBUTIONS_SUMMARY_MISMATCH;
 import static org.folio.invoices.utils.ErrorCodes.LOCK_AND_CALCULATED_TOTAL_MISMATCH;
@@ -548,7 +549,6 @@ public class InvoicesApiTest extends ApiTestBase {
           .map(BigDecimal::valueOf)
           .reduce(BigDecimal::add)
           .get();
-
         var reminder = total.subtract(invoiceLineSum);
         var fd1Value = BigDecimal.valueOf(invoiceLine.getFundDistributions().get(0).getValue());
         invoiceLine.getFundDistributions().get(0).setValue(fd1Value.add(reminder).doubleValue());
@@ -1044,7 +1044,7 @@ public class InvoicesApiTest extends ApiTestBase {
 
     String jsonBody = JsonObject.mapFrom(reqData).encode();
     Headers headers = prepareHeaders(X_OKAPI_URL, X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID);
-    Errors errors = verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, headers, "", 400)
+    Errors errors = verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, headers, "", 422)
       .as(Errors.class);
 
     // Verify that expected number of external calls made
@@ -1507,7 +1507,7 @@ public class InvoicesApiTest extends ApiTestBase {
     String jsonBody = JsonObject.mapFrom(reqData).encode();
     Headers headers = prepareHeaders(X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID);
 
-    Errors errors = verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, headers, APPLICATION_JSON, 400)
+    Errors errors = verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, headers, APPLICATION_JSON, 422)
       .then()
       .extract()
       .body().as(Errors.class);
@@ -1538,7 +1538,7 @@ public class InvoicesApiTest extends ApiTestBase {
     String jsonBody = JsonObject.mapFrom(reqData).encode();
     Headers headers = prepareHeaders(X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID);
 
-    Errors errors = verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, headers, APPLICATION_JSON, 400)
+    Errors errors = verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, headers, APPLICATION_JSON, 422)
       .then()
       .extract()
       .body().as(Errors.class);
@@ -1587,7 +1587,7 @@ public class InvoicesApiTest extends ApiTestBase {
     String jsonBody = JsonObject.mapFrom(reqData).encode();
     Headers headers = prepareHeaders(X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID);
 
-    Errors errors = verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, headers, APPLICATION_JSON, 400)
+    Errors errors = verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, headers, APPLICATION_JSON, 422)
       .then()
       .extract()
       .body().as(Errors.class);
@@ -1595,8 +1595,8 @@ public class InvoicesApiTest extends ApiTestBase {
     assertThat(errors, notNullValue());
     assertThat(errors.getErrors(), hasSize(1));
     Error error = errors.getErrors().get(0);
-    assertThat(error.getMessage(), equalTo(ADJUSTMENT_FUND_DISTRIBUTIONS_SUMMARY_MISMATCH.getDescription()));
-    assertThat(error.getCode(), equalTo(ADJUSTMENT_FUND_DISTRIBUTIONS_SUMMARY_MISMATCH.getCode()));
+    assertThat(error.getMessage(), equalTo( LINE_FUND_DISTRIBUTIONS_SUMMARY_MISMATCH.getDescription()));
+    assertThat(error.getCode(), equalTo( LINE_FUND_DISTRIBUTIONS_SUMMARY_MISMATCH.getCode()));
   }
 
   @Test
