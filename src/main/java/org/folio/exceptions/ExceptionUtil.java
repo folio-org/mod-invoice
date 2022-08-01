@@ -24,9 +24,7 @@ public class ExceptionUtil {
   public static Errors convertToErrors(Throwable throwable) {
     final Throwable cause = Optional.ofNullable(throwable.getCause()).orElse(throwable);
     Errors errors;
-     if (cause instanceof io.vertx.ext.web.handler.HttpException) {
-      errors = convertVertxHttpException((io.vertx.ext.web.handler.HttpException) cause);
-    } else if (cause instanceof HttpException) {
+    if (cause instanceof HttpException) {
       errors = ((HttpException) cause).getErrors();
       List<Error> errorList = errors.getErrors().stream().map(ExceptionUtil::mapToError).collect(toList());
       errors.setErrors(errorList);
@@ -57,15 +55,4 @@ public class ExceptionUtil {
     }
     return error;
   }
-
-  private static Errors convertVertxHttpException(io.vertx.ext.web.handler.HttpException throwable) {
-    Errors errors;
-    int code = throwable.getStatusCode();
-    String message =  Optional.ofNullable(throwable.getPayload()).orElse(throwable.getMessage());
-    Error error = new Error().withCode(String.valueOf(code)).withMessage(message);
-    errors = new Errors().withErrors(Collections.singletonList(error)).withTotalRecords(1);
-    return errors;
-  }
-
-
 }
