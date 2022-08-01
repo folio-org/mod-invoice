@@ -36,6 +36,7 @@ public class ExceptionUtil {
     return errors;
   }
 
+  @SuppressWarnings("java:S5852")
   public static boolean isErrorMessageJson(String errorMessage) {
     if (!StringUtils.isEmpty(errorMessage)) {
       Pattern pattern = Pattern.compile("(message).*(code).*(parameters)");
