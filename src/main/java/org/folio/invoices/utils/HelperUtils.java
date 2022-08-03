@@ -33,6 +33,7 @@ import java.util.concurrent.CompletionException;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.IntStream;
+
 import javax.money.CurrencyUnit;
 import javax.money.Monetary;
 import javax.money.MonetaryAmount;
@@ -59,6 +60,7 @@ import org.folio.rest.tools.utils.TenantTool;
 import org.javamoney.moneta.Money;
 import org.javamoney.moneta.function.MonetaryFunctions;
 import org.javamoney.moneta.function.MonetaryOperators;
+
 import io.vertx.core.Context;
 import io.vertx.core.eventbus.Message;
 import io.vertx.core.http.HttpMethod;
@@ -68,6 +70,7 @@ import org.folio.completablefuture.FolioVertxCompletableFuture;
 import one.util.streamex.StreamEx;
 
 public class HelperUtils {
+
   public static final String INVOICE_ID = "invoiceId";
   public static final String INVOICE = "invoice";
   public static final String LANG = "lang";
@@ -76,25 +79,32 @@ public class HelperUtils {
   public static final String IS_DELETED_PROP = "isDeleted";
   public static final String ALL_UNITS_CQL = IS_DELETED_PROP + "=*";
   public static final String BATCH_VOUCHER_EXPORT = "batchVoucherExport";
+
   private static final String EXCEPTION_CALLING_ENDPOINT_MSG = "Exception calling {} {}";
   private static final String CALLING_ENDPOINT_MSG = "Sending {} {}";
   private static final Pattern CQL_SORT_BY_PATTERN = Pattern.compile("(.*)(\\ssortBy\\s.*)", Pattern.CASE_INSENSITIVE);
 
+
   private HelperUtils() {
+
   }
 
   public static HttpClientInterface getHttpClient(Map<String, String> okapiHeaders) {
     final String okapiURL = okapiHeaders.getOrDefault(OKAPI_URL, "");
     final String tenantId = TenantTool.calculateTenantId(okapiHeaders.get(OKAPI_HEADER_TENANT));
+
     HttpClientInterface httpClient = HttpClientFactory.getHttpClient(okapiURL, tenantId);
+
     // The RMB's HttpModuleClient2.ACCEPT is in sentence case. Using the same format to avoid duplicates (issues migrating to RMB 27.1.1)
     httpClient.setDefaultHeaders(Collections.singletonMap("Accept", APPLICATION_JSON + ", " + TEXT_PLAIN));
     return httpClient;
   }
 
   public static CompletableFuture<InvoiceCollection> getInvoices(String query, HttpClientInterface httpClient, Context ctx,
-                                                                 Map<String, String> okapiHeaders, Logger logger, String lang) {
+      Map<String, String> okapiHeaders, Logger logger, String lang) {
+
     String getInvoiceByQuery = resourcesPath(INVOICES) + SEARCH_PARAMS;
+
     String queryParam = getEndpointWithQuery(query, logger);
     String endpoint = String.format(getInvoiceByQuery, Integer.MAX_VALUE, 0, queryParam, lang);
     return getInvoicesFromStorage(endpoint, httpClient, ctx, okapiHeaders, logger).thenCompose(invoiceCollection -> {
@@ -104,13 +114,14 @@ public class HelperUtils {
   }
 
   public static CompletableFuture<InvoiceCollection> getInvoicesFromStorage(String endpoint, HttpClientInterface httpClient,
-                                                                            Context ctx, Map<String, String> okapiHeaders, Logger logger) {
+      Context ctx, Map<String, String> okapiHeaders, Logger logger) {
     CompletableFuture<InvoiceCollection> future = new FolioVertxCompletableFuture<>(ctx);
+
     try {
       handleGetRequest(endpoint, httpClient, ctx, okapiHeaders, logger).thenAccept(jsonInvoices -> {
-          logger.info("Successfully retrieved invoices: {}", jsonInvoices.encodePrettily());
-          future.complete(jsonInvoices.mapTo(InvoiceCollection.class));
-        })
+        logger.info("Successfully retrieved invoices: {}", jsonInvoices.encodePrettily());
+        future.complete(jsonInvoices.mapTo(InvoiceCollection.class));
+      })
         .exceptionally(t -> {
           logger.error("Error getting invoices", t);
           future.completeExceptionally(t);
@@ -123,7 +134,7 @@ public class HelperUtils {
   }
 
   public static CompletableFuture<Invoice> getInvoiceById(String id, String lang, HttpClientInterface httpClient, Context ctx,
-                                                          Map<String, String> okapiHeaders, Logger logger) {
+      Map<String, String> okapiHeaders, Logger logger) {
     String endpoint = resourceByIdPath(INVOICES, id, lang);
     return handleGetRequest(endpoint, httpClient, ctx, okapiHeaders, logger)
       .thenApply(jsonInvoice -> {
@@ -153,7 +164,7 @@ public class HelperUtils {
   }
 
   /**
-   * @param query  string representing CQL query
+   * @param query string representing CQL query
    * @param logger {@link Logger} to log error if any
    * @return URL encoded string
    */
@@ -174,13 +185,16 @@ public class HelperUtils {
     if (ArrayUtils.isEmpty(expressions)) {
       return EMPTY;
     }
+
     String sorting = EMPTY;
+
     // Check whether last expression contains sorting query. If it does, extract it to be added in the end of the resulting query
     Matcher matcher = CQL_SORT_BY_PATTERN.matcher(expressions[expressions.length - 1]);
     if (matcher.find()) {
       expressions[expressions.length - 1] = matcher.group(1);
       sorting = matcher.group(2);
     }
+
     return StreamEx.of(expressions)
       .filter(StringUtils::isNotBlank)
       .joining(") " + term + " (", "(", ")") + sorting;
@@ -209,8 +223,8 @@ public class HelperUtils {
           return null;
         });
     } catch (Exception e) {
-      logger.error(EXCEPTION_CALLING_ENDPOINT_MSG, HttpMethod.GET, endpoint, e);
-      future.completeExceptionally(e);
+        logger.error(EXCEPTION_CALLING_ENDPOINT_MSG, HttpMethod.GET, endpoint, e);
+        future.completeExceptionally(e);
     }
     return future;
   }
@@ -219,11 +233,11 @@ public class HelperUtils {
    * A common method to update an entry in the storage
    *
    * @param recordData json to use for update operation
-   * @param endpoint   endpoint
+   * @param endpoint endpoint
    */
   public static CompletableFuture<Void> handlePutRequest(String endpoint, JsonObject recordData,
-                                                         HttpClientInterface httpClient,
-                                                         Context ctx, Map<String, String> okapiHeaders, Logger logger) {
+      HttpClientInterface httpClient,
+      Context ctx, Map<String, String> okapiHeaders, Logger logger) {
     CompletableFuture<Void> future = new FolioVertxCompletableFuture<>(ctx);
     try {
       if (logger.isDebugEnabled()) {
@@ -244,13 +258,16 @@ public class HelperUtils {
     } catch (Exception e) {
       future.completeExceptionally(e);
     }
+
     return future;
   }
 
   public static CompletableFuture<Void> handleDeleteRequest(String url, HttpClientInterface httpClient, Context ctx,
-                                                            Map<String, String> okapiHeaders, Logger logger) {
+      Map<String, String> okapiHeaders, Logger logger) {
     CompletableFuture<Void> future = new FolioVertxCompletableFuture<>(ctx);
+
     logger.debug(CALLING_ENDPOINT_MSG, HttpMethod.DELETE, url);
+
     try {
       httpClient.request(HttpMethod.DELETE, url, okapiHeaders)
         .thenAccept(HelperUtils::verifyResponse)
@@ -264,6 +281,7 @@ public class HelperUtils {
       logger.error(EXCEPTION_CALLING_ENDPOINT_MSG, HttpMethod.DELETE, url, e);
       future.completeExceptionally(e);
     }
+
     return future;
   }
 
@@ -301,12 +319,11 @@ public class HelperUtils {
 
   public static boolean isPostApproval(Invoice invoice) {
     return invoice.getStatus() == Invoice.Status.APPROVED || invoice.getStatus() == Invoice.Status.PAID
-      || invoice.getStatus() == Invoice.Status.CANCELLED;
+        || invoice.getStatus() == Invoice.Status.CANCELLED;
   }
 
   /**
    * Transform list of id's to CQL query using 'or' operation
-   *
    * @param ids list of id's
    * @return String representing CQL query to get records by id's
    */
@@ -316,9 +333,8 @@ public class HelperUtils {
 
   /**
    * Transform list of values for some property to CQL query using 'or' operation
-   *
-   * @param values      list of field values
-   * @param fieldName   the property name to search by
+   * @param values list of field values
+   * @param fieldName the property name to search by
    * @param strictMatch indicates whether strict match mode (i.e. ==) should be used or not (i.e. =)
    * @return String representing CQL query to get records by some property values
    */
@@ -329,9 +345,8 @@ public class HelperUtils {
 
   /**
    * Wait for all requests completion and collect all resulting objects. In case any failed, complete resulting future with the exception
-   *
    * @param futures list of futures and each produces resulting object on completion
-   * @param <T>     resulting objects type
+   * @param <T> resulting objects type
    * @return CompletableFuture with resulting objects
    */
   public static <T> CompletableFuture<List<T>> collectResultsOnSuccess(List<CompletableFuture<T>> futures) {
@@ -346,11 +361,14 @@ public class HelperUtils {
   }
 
   public static double calculateVoucherAmount(Voucher voucher, List<VoucherLine> voucherLines) {
+
     CurrencyUnit currency = Monetary.getCurrency(voucher.getSystemCurrency());
+
     MonetaryAmount amount = voucherLines.stream()
       .map(line -> Money.of(line.getAmount(), currency))
       .collect(MonetaryFunctions.summarizingMonetary(currency))
       .getSum();
+
     return convertToDoubleWithRounding(amount);
   }
 
@@ -366,6 +384,7 @@ public class HelperUtils {
     String currency = invoice.getCurrency();
     CurrencyUnit currencyUnit = Monetary.getCurrency(currency);
     MonetaryAmount subTotal = Money.of(invoiceLine.getSubTotal(), currencyUnit);
+
     MonetaryAmount adjustmentTotals = calculateAdjustmentsTotal(invoiceLine.getAdjustments(), subTotal);
     MonetaryAmount total = adjustmentTotals.add(subTotal);
     invoiceLine.setAdjustmentsTotal(convertToDoubleWithRounding(adjustmentTotals));
@@ -386,12 +405,9 @@ public class HelperUtils {
 
   public static String getAcqUnitIdsQueryParamName(String entity) {
     switch (entity) {
-      case INVOICE_LINES:
-        return INVOICES + "." + ProtectionHelper.ACQUISITIONS_UNIT_IDS;
-      case VOUCHER_LINES:
-        return VOUCHERS_STORAGE + "." + ProtectionHelper.ACQUISITIONS_UNIT_IDS;
-      default:
-        return ProtectionHelper.ACQUISITIONS_UNIT_IDS;
+      case INVOICE_LINES: return INVOICES + "." + ProtectionHelper.ACQUISITIONS_UNIT_IDS;
+      case VOUCHER_LINES: return VOUCHERS_STORAGE + "." + ProtectionHelper.ACQUISITIONS_UNIT_IDS;
+      default: return ProtectionHelper.ACQUISITIONS_UNIT_IDS;
     }
   }
 
@@ -441,7 +457,7 @@ public class HelperUtils {
   }
 
   public static ConversionQuery buildConversionQuery(Invoice invoice, String systemCurrency) {
-    if (invoice.getExchangeRate() != null) {
+    if (invoice.getExchangeRate() != null){
       return ConversionQueryBuilder.of().setBaseCurrency(invoice.getCurrency())
         .setTermCurrency(systemCurrency)
         .set(RATE_KEY, invoice.getExchangeRate()).build();
@@ -450,9 +466,11 @@ public class HelperUtils {
   }
 
   public static ConversionQuery buildConversionQuery(ExchangeRate exchangeRate) {
+
     return ConversionQueryBuilder.of().setBaseCurrency(exchangeRate.getFrom())
       .setTermCurrency(exchangeRate.getTo())
       .set(RATE_KEY, exchangeRate.getExchangeRate()).build();
+
   }
 
   public static boolean isNotFound(Throwable t) {

@@ -50,7 +50,7 @@
           "relationToTotal": "In addition to"
         }
       ],
-      "adjustmentsTotal": 0.22,
+      "adjustmentsTotal": 0.0,
       "total": 2.00,
       "metadata": {
         "createdDate": "2018-07-19T00:00:00.000+0000",
@@ -99,7 +99,7 @@
           "relationToTotal": "In addition to"
         }
       ],
-      "adjustmentsTotal": 0.42,
+      "adjustmentsTotal": 0.0,
       "total": 4.62,
       "metadata": {
         "createdDate": "2018-07-19T11:03:47.000+0000",
@@ -155,7 +155,7 @@
           "relationToTotal": "In addition to"
         }
       ],
-      "adjustmentsTotal": 1.1,
+      "adjustmentsTotal": 0.0,
       "total": 5.3,
       "metadata": {
         "createdDate": "2018-07-19T11:03:47.000+0000",
@@ -204,7 +204,7 @@
           "relationToTotal": "In addition to"
         }
       ],
-      "adjustmentsTotal": 0.42,
+      "adjustmentsTotal": 0.0,
       "total": 4.62,
       "metadata": {
         "createdDate": "2018-07-19T11:03:47.000+0000",
@@ -231,7 +231,7 @@
           "prorate": "Not prorated"
         }
       ],
-      "adjustmentsTotal": 7.02,
+      "adjustmentsTotal": 0.0,
       "description": "Some description",
       "poLineId": "0610be6d-0ddd-494b-b867-19f63d8b5d6d",
       "invoiceLineNumber": "1",
@@ -263,7 +263,7 @@
           "value": 100
         }
       ],
-      "total": 27.04,
+      "total": 28.14,
       "metadata": {
         "createdDate": "2018-07-19T00:00:00.000+0000",
         "createdByUserId": "28d1057c-d137-11e8-a8d5-f2801f1b9fd1"

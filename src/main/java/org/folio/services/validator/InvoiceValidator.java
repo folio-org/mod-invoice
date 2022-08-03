@@ -19,6 +19,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
+
 import javax.money.CurrencyUnit;
 import javax.money.Monetary;
 
@@ -38,15 +39,18 @@ import org.folio.services.adjusment.AdjustmentsService;
 import org.javamoney.moneta.Money;
 
 public class InvoiceValidator extends BaseValidator {
+
   public static final String TOTAL = "total";
   public static final String NO_INVOICE_LINES_ERROR_MSG = "An invoice cannot be approved if there are no corresponding lines of invoice.";
+
   public static final String REMAINING_AMOUNT_FIELD = "remainingAmount";
   private static final BigDecimal ZERO_REMAINING_AMOUNT = BigDecimal.ZERO.setScale(2, HALF_EVEN);
   private static final BigDecimal ONE_HUNDRED_PERCENT = BigDecimal.valueOf(100);
+
   private AdjustmentsService adjustmentsService = new AdjustmentsService();
 
   public void validateInvoiceProtectedFields(Invoice invoice, Invoice invoiceFromStorage) {
-    if (isPostApproval(invoiceFromStorage)) {
+    if(isPostApproval(invoiceFromStorage)) {
       Set<String> fields = findChangedFields(invoice, invoiceFromStorage, InvoiceProtectedFields.getFieldNames());
       verifyThatProtectedFieldsUnchanged(fields);
     }
@@ -63,11 +67,13 @@ public class InvoiceValidator extends BaseValidator {
     if (invoice.getStatus() == Invoice.Status.PAID && invoiceFromStorage.getStatus() != Invoice.Status.APPROVED) {
       throw new HttpException(400, CANNOT_PAY_INVOICE_WITHOUT_APPROVAL);
     }
-  }
+   }
 
   public void validateIncomingInvoice(Invoice invoice) {
+
     Errors errors = new Errors();
     List<Error> errorList = errors.getErrors();
+
     if (!isPostApproval(invoice) && (invoice.getApprovalDate() != null || invoice.getApprovedBy() != null)) {
       errorList.add(INCOMPATIBLE_INVOICE_FIELDS_ON_STATUS_TRANSITION.toError());
     }
@@ -86,10 +92,11 @@ public class InvoiceValidator extends BaseValidator {
     }
   }
 
-  public boolean isAdjustmentIdsNotUnique(List<Adjustment> adjustments) {
+  public static boolean isAdjustmentIdsNotUnique(List<Adjustment> adjustments) {
     Map<String, Long> ids = adjustments.stream()
       .filter(adjustment -> StringUtils.isNotEmpty(adjustment.getId()))
       .collect(Collectors.groupingBy(Adjustment::getId, Collectors.counting()));
+
     return ids.entrySet().stream().anyMatch(entry -> entry.getValue() > 1);
   }
 
@@ -98,7 +105,7 @@ public class InvoiceValidator extends BaseValidator {
     validateInvoiceTotals(invoice);
     verifyInvoiceLineNotEmpty(lines);
     validateInvoiceLineFundDistributions(lines, Monetary.getCurrency(invoice.getCurrency()));
-    validateAdjustments(adjustmentsService.getNotProratedAdjustments(invoice), Monetary.getCurrency(invoice.getCurrency()));
+    validateInvoiceAdjustmentsDistributions(adjustmentsService.getNotProratedAdjustments(invoice),Monetary.getCurrency(invoice.getCurrency()));
   }
 
   private void checkVendorHasAccountingCode(Invoice invoice) {
@@ -115,25 +122,25 @@ public class InvoiceValidator extends BaseValidator {
   }
 
   private void validateInvoiceLineFundDistributions(List<InvoiceLine> invoiceLines, CurrencyUnit currencyUnit) {
-    for (InvoiceLine line : invoiceLines) {
+    for (InvoiceLine line : invoiceLines){
       if (CollectionUtils.isEmpty(line.getFundDistributions())) {
         throw new HttpException(400, FUND_DISTRIBUTIONS_NOT_PRESENT);
       }
-      validateFundDistributions(line.getTotal(), line.getFundDistributions(), currencyUnit);
+      validateFundDistributionForInvoiceLine(line.getSubTotal(),line.getFundDistributions(),currencyUnit);
     }
   }
 
-  public static void validateAdjustments(List<Adjustment> adjustments, CurrencyUnit currencyUnit) {
+
+  public static void validateInvoiceAdjustmentsDistributions(List<Adjustment> adjustments,CurrencyUnit currencyUnit) {
     for (Adjustment adjustment : adjustments) {
       if (CollectionUtils.isEmpty(adjustment.getFundDistributions())) {
         throw new HttpException(400, ADJUSTMENT_FUND_DISTRIBUTIONS_NOT_PRESENT);
       }
-      validateFundDistributions(adjustment.getValue(), adjustment.getFundDistributions(), currencyUnit);
+      validateFundDistributionForInvoiceLine(adjustment.getValue(), adjustment.getFundDistributions(), currencyUnit);
     }
   }
-
-  public static void validateFundDistributions(Double total, List<FundDistribution> fundDistributions, CurrencyUnit currencyUnit) {
-    Double subtotal = Money.of(total, currencyUnit).getNumber().doubleValue();
+  public static void validateFundDistributionForInvoiceLine(Double total, List<FundDistribution> fundDistributions,CurrencyUnit currencyUnit) {
+    Double subtotal = Money.of(total,currencyUnit).getNumber().doubleValue();
     if (subtotal != null && CollectionUtils.isNotEmpty(fundDistributions)) {
       if (subtotal == 0d) {
         validateZeroPrice(fundDistributions);
@@ -141,11 +148,11 @@ public class InvoiceValidator extends BaseValidator {
       }
       BigDecimal remainingPercent = ONE_HUNDRED_PERCENT;
       for (FundDistribution fundDistribution : fundDistributions) {
-        Double value = fundDistribution.getValue();
         FundDistribution.DistributionType dType = fundDistribution.getDistributionType();
         if (dType == PERCENTAGE) {
           remainingPercent = remainingPercent.subtract(BigDecimal.valueOf(fundDistribution.getValue()));
         } else {
+          Double value = fundDistribution.getValue();
           BigDecimal percentageValue = BigDecimal.valueOf(value)
             .divide(BigDecimal.valueOf(subtotal), 15, HALF_EVEN)
             .movePointRight(2);
@@ -155,9 +162,8 @@ public class InvoiceValidator extends BaseValidator {
       checkRemainingPercentMatchesToZero(remainingPercent, subtotal);
     }
   }
-
-  private static void validateZeroPrice(List<FundDistribution> fdList) {
-    FundDistribution.DistributionType firstFdType = fdList.get(0).getDistributionType();
+  public static void validateZeroPrice(List<FundDistribution> fdList) {
+   FundDistribution.DistributionType firstFdType = fdList.get(0).getDistributionType();
     if (fdList.stream().skip(1).anyMatch(fd -> fd.getDistributionType() != firstFdType))
       throw new HttpException(422, CANNOT_MIX_TYPES_FOR_ZERO_PRICE);
     if (firstFdType == AMOUNT) {
@@ -174,14 +180,12 @@ public class InvoiceValidator extends BaseValidator {
       checkRemainingPercentMatchesToZero(remainingPercent, 0d);
     }
   }
-
   private static void checkRemainingPercentMatchesToZero(BigDecimal remainingPercent, Double subtotal) {
-    BigDecimal epsilon = BigDecimal.valueOf(1e-10);
-    if (remainingPercent.abs().compareTo(epsilon) > 0) {
-      throwExceptionWithIncorrectAmount(remainingPercent, subtotal);
-    }
+      BigDecimal epsilon = BigDecimal.valueOf(1e-10);
+      if (remainingPercent.abs().compareTo(epsilon) > 0) {
+        throwExceptionWithIncorrectAmount(remainingPercent, subtotal);
+      }
   }
-
   private static void throwExceptionWithIncorrectAmount(BigDecimal remainingPercent, Double subtotal) {
     BigDecimal total = BigDecimal.valueOf(subtotal);
     BigDecimal remainingAmount = remainingPercent.multiply(total).divide(ONE_HUNDRED_PERCENT, 2, HALF_EVEN);
@@ -189,8 +193,9 @@ public class InvoiceValidator extends BaseValidator {
   }
 
   private static void throwExceptionWithIncorrectAmount(BigDecimal remainingAmount) {
-    throw new HttpException(422, LINE_FUND_DISTRIBUTIONS_SUMMARY_MISMATCH, Lists.newArrayList(new Parameter()
+    throw new HttpException(422,LINE_FUND_DISTRIBUTIONS_SUMMARY_MISMATCH, Lists.newArrayList(new Parameter()
       .withKey(REMAINING_AMOUNT_FIELD)
       .withValue(remainingAmount.toString())));
   }
+
 }

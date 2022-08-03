@@ -1,6 +1,7 @@
 {
   "subTotal": 0,
   "currency": "USD",
+
   "fundDistribution": [
     {
       "code": "HIST",

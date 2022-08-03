@@ -48,7 +48,7 @@ public class AdjustmentsService {
     return filterAdjustments(invoiceLine.getAdjustments(), INVOICE_LINE_PRORATED_ADJUSTMENT_PREDICATE);
   }
 
-  public List<Adjustment> filterAdjustments(List<Adjustment> adjustments, Predicate<Adjustment> predicate) {
+  public static List<Adjustment> filterAdjustments(List<Adjustment> adjustments, Predicate<Adjustment> predicate) {
     return adjustments.stream()
       .filter(predicate)
       .collect(toList());
