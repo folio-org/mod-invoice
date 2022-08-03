@@ -985,7 +985,7 @@
         "invoice.invoice-lines.item.get",
         "invoice.invoice-lines.item.post",
         "invoice.invoice-lines.item.put",
-        "invoice.linvoice-lines.fund-distributions.validate",
+        "invoice.invoice-lines.fund-distributions.validate",
         "invoice.invoice-lines.item.delete",
         "invoice.invoice-number.item.get",
         "voucher-number.start.post",
