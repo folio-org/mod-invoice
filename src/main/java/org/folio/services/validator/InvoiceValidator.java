@@ -105,7 +105,7 @@ public class InvoiceValidator extends BaseValidator {
     validateInvoiceTotals(invoice);
     verifyInvoiceLineNotEmpty(lines);
     validateInvoiceLineFundDistributions(lines, Monetary.getCurrency(invoice.getCurrency()));
-    validateAdjustments(adjustmentsService.getNotProratedAdjustments(invoice), Monetary.getCurrency(invoice.getCurrency()));
+    validateAdjustments(adjustmentsService.getNotProratedAdjustments(invoice));
   }
 
   private void checkVendorHasAccountingCode(Invoice invoice) {
@@ -126,22 +126,21 @@ public class InvoiceValidator extends BaseValidator {
       if (CollectionUtils.isEmpty(line.getFundDistributions())) {
         throw new HttpException(400, FUND_DISTRIBUTIONS_NOT_PRESENT);
       }
-      validateFundDistributions(line.getTotal(), line.getFundDistributions(), currencyUnit);
+      validateFundDistributions(line.getTotal(), line.getFundDistributions());
     }
   }
 
 
-  public void validateAdjustments(List<Adjustment> adjustments,CurrencyUnit currencyUnit) {
+  public void validateAdjustments(List<Adjustment> adjustments) {
     for (Adjustment adjustment : adjustments) {
       if (CollectionUtils.isEmpty(adjustment.getFundDistributions())) {
         throw new HttpException(400, ADJUSTMENT_FUND_DISTRIBUTIONS_NOT_PRESENT);
       }
-      validateFundDistributions(adjustment.getValue(), adjustment.getFundDistributions(), currencyUnit);
+      validateFundDistributions(adjustment.getValue(), adjustment.getFundDistributions());
     }
   }
 
-  public void validateFundDistributions(Double total, List<FundDistribution> fundDistributions, CurrencyUnit currencyUnit) {
-    Double subtotal = Money.of(total,currencyUnit).getNumber().doubleValue();
+  public void validateFundDistributions(Double subtotal, List<FundDistribution> fundDistributions) {
     if (subtotal != null && CollectionUtils.isNotEmpty(fundDistributions)) {
       if (subtotal == 0d) {
         validateZeroPrice(fundDistributions);

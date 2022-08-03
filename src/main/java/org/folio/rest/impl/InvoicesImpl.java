@@ -212,13 +212,13 @@ public class InvoicesImpl extends BaseApi implements org.folio.rest.jaxrs.resour
         total = HelperUtils.convertToDoubleWithRounding(adjustmentAndFundTotals.add(subTotal));
         List<Adjustment> notProratedAdjustmentList = adjustmentsService.filterAdjustments(request.getAdjustments(), NOT_PRORATED_ADJUSTMENTS_PREDICATE);
         if (CollectionUtils.isNotEmpty(notProratedAdjustmentList)) {
-          validator.validateAdjustments(notProratedAdjustmentList, currencyUnit);
+          validator.validateAdjustments(notProratedAdjustmentList);
         }
       }
       if (total == null) {
-        validator.validateFundDistributions(request.getSubTotal(), fundDistributionList, currencyUnit);
+        validator.validateFundDistributions(request.getSubTotal(), fundDistributionList);
       } else {
-        validator.validateFundDistributions(total, fundDistributionList, currencyUnit);
+        validator.validateFundDistributions(total, fundDistributionList);
       }
       asyncResultHandler.handle(succeededFuture(buildNoContentResponse()));
     } catch (HttpException e) {
