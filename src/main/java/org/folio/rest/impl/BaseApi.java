@@ -92,7 +92,7 @@ public class BaseApi {
   public Response buildErrorResponse(HttpException exception) {
     final Response.ResponseBuilder responseBuilder;
     Errors errors = exception.getErrors();
-    List<Error> errorList = errors.getErrors().stream().collect(toList());
+    List<Error> errorList = errors.getErrors();
     errors.setErrors(errorList);
     switch (exception.getCode()) {
     case 400:
