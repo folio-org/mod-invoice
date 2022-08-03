@@ -2,15 +2,15 @@
   "subTotal": 10,
   "currency": "USD",
   "adjustments": [
-      {
-  "id": "14263abb-b22b-4ddc-9ecc-3434427c2c8f",
-  "description": "Service Fee",
-  "exportToAccounting": false,
-  "type": "Amount",
-  "value": 10,
-  "prorate": "By line",
-  "relationToTotal": "In addition to"
-   }
+    {
+      "id": "14263abb-b22b-4ddc-9ecc-3434427c2c8f",
+      "description": "Service Fee",
+      "exportToAccounting": false,
+      "type": "Amount",
+      "value": 10,
+      "prorate": "By line",
+      "relationToTotal": "In addition to"
+    }
   ],
   "fundDistribution": [
     {

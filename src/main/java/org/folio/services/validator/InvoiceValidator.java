@@ -126,7 +126,7 @@ public class InvoiceValidator extends BaseValidator {
       if (CollectionUtils.isEmpty(line.getFundDistributions())) {
         throw new HttpException(400, FUND_DISTRIBUTIONS_NOT_PRESENT);
       }
-      validateFundDistributions(line.getTotal(),line.getFundDistributions(),currencyUnit);
+      validateFundDistributions(line.getTotal(), line.getFundDistributions(), currencyUnit);
     }
   }
 
@@ -139,7 +139,8 @@ public class InvoiceValidator extends BaseValidator {
       validateFundDistributions(adjustment.getValue(), adjustment.getFundDistributions(), currencyUnit);
     }
   }
-  public void validateFundDistributions(Double total, List<FundDistribution> fundDistributions,CurrencyUnit currencyUnit) {
+
+  public void validateFundDistributions(Double total, List<FundDistribution> fundDistributions, CurrencyUnit currencyUnit) {
     Double subtotal = Money.of(total,currencyUnit).getNumber().doubleValue();
     if (subtotal != null && CollectionUtils.isNotEmpty(fundDistributions)) {
       if (subtotal == 0d) {
@@ -162,7 +163,7 @@ public class InvoiceValidator extends BaseValidator {
       checkRemainingPercentMatchesToZero(remainingPercent, subtotal);
     }
   }
-  private static void validateZeroPrice(List<FundDistribution> fdList) {
+  private void validateZeroPrice(List<FundDistribution> fdList) {
    FundDistribution.DistributionType firstFdType = fdList.get(0).getDistributionType();
     if (fdList.stream().skip(1).anyMatch(fd -> fd.getDistributionType() != firstFdType))
       throw new HttpException(422, CANNOT_MIX_TYPES_FOR_ZERO_PRICE);
@@ -181,20 +182,20 @@ public class InvoiceValidator extends BaseValidator {
     }
   }
 
-  private static void checkRemainingPercentMatchesToZero(BigDecimal remainingPercent, Double subtotal) {
+  private void checkRemainingPercentMatchesToZero(BigDecimal remainingPercent, Double subtotal) {
       BigDecimal epsilon = BigDecimal.valueOf(1e-10);
       if (remainingPercent.abs().compareTo(epsilon) > 0) {
         throwExceptionWithIncorrectAmount(remainingPercent, subtotal);
       }
   }
 
-  private static void throwExceptionWithIncorrectAmount(BigDecimal remainingPercent, Double subtotal) {
+  private void throwExceptionWithIncorrectAmount(BigDecimal remainingPercent, Double subtotal) {
     BigDecimal total = BigDecimal.valueOf(subtotal);
     BigDecimal remainingAmount = remainingPercent.multiply(total).divide(ONE_HUNDRED_PERCENT, 2, HALF_EVEN);
     throwExceptionWithIncorrectAmount(remainingAmount);
   }
 
-  private static void throwExceptionWithIncorrectAmount(BigDecimal remainingAmount) {
+  private void throwExceptionWithIncorrectAmount(BigDecimal remainingAmount) {
     throw new HttpException(422,LINE_FUND_DISTRIBUTIONS_SUMMARY_MISMATCH, Lists.newArrayList(new Parameter()
       .withKey(REMAINING_AMOUNT_FIELD)
       .withValue(remainingAmount.toString())));

@@ -80,7 +80,7 @@ public class InvoiceLinesApiTest extends ApiTestBase {
   static final String INVOICE_LINES_LIST_PATH = INVOICE_LINES_MOCK_DATA_PATH + "invoice_lines.json";
   public static final String INVOICE_LINES_PATH = "/invoice/invoice-lines";
   public static final String INVOICE_LINE_ID_PATH = INVOICE_LINES_PATH + "/%s";
-  public static final String INVOICE_LINE_FUNDS_VALIDATOR_ID_PATH = "fundDistributions/validate";
+  public static final String INVOICE_LINE_FUNDS_VALIDATOR_ID_PATH = "fund-distributions/validate";
 
   private static final String INVOICE_LINE_ADJUSTMENTS_SAMPLE_PATH = INVOICE_LINES_MOCK_DATA_PATH + "29846620-8fb6-4433-b84e-0b6051eb76ec.json";
 

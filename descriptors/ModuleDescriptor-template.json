@@ -241,7 +241,7 @@
         },
         {
           "methods": ["PUT"],
-          "pathPattern": "/invoice/invoice-lines/fundDistributions/validate",
+          "pathPattern": "/invoice/invoice-lines/fund-distributions/validate",
           "permissionsRequired": [
             "invoice.invoice-lines.fund-distributions.validate"
           ]
