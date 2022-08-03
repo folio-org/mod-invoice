@@ -58,6 +58,13 @@ public class InvoicesImpl extends BaseApi implements org.folio.rest.jaxrs.resour
   private static final String DOCUMENTS_LOCATION_PREFIX = "/invoice/invoices/%s/documents/%s";
   private byte[] requestBytesArray = new byte[0];
   private static final long MAX_DOCUMENT_SIZE = 7 * ONE_MB;
+  private final AdjustmentsService adjustmentsService;
+  private final InvoiceValidator validator;
+
+  public InvoicesImpl() {
+    this.validator = new InvoiceValidator();
+    this.adjustmentsService = new AdjustmentsService();
+  }
 
   @Validate
   @Override
@@ -189,35 +196,32 @@ public class InvoicesImpl extends BaseApi implements org.folio.rest.jaxrs.resour
   }
 
   @Override
-  public void putInvoiceInvoiceLinesFundDistributionsValidate(ValidateFundDistributionsRequest entity,
-     Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler,
-      Context vertxContext) {
+  public void putInvoiceInvoiceLinesFundDistributionsValidate(ValidateFundDistributionsRequest request,
+      Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler,Context vertxContext) {
     try {
       MonetaryAmount subTotal;
       Double total = null;
-      CurrencyUnit currencyUnit = Monetary.getCurrency(entity.getCurrency());
-      List<FundDistribution> fundDistributionList = entity.getFundDistribution();
-      if(CollectionUtils.isNotEmpty(entity.getAdjustments()))
-      {
-      if (InvoiceValidator.isAdjustmentIdsNotUnique(entity.getAdjustments())) {
-       throw new HttpException(400,ADJUSTMENT_IDS_NOT_UNIQUE);
+      CurrencyUnit currencyUnit = Monetary.getCurrency(request.getCurrency());
+      List<FundDistribution> fundDistributionList = request.getFundDistribution();
+      if (CollectionUtils.isNotEmpty(request.getAdjustments())) {
+        if (validator.isAdjustmentIdsNotUnique(request.getAdjustments())) {
+          throw new HttpException(400, ADJUSTMENT_IDS_NOT_UNIQUE);
+        }
+        subTotal = Money.of(request.getSubTotal(), currencyUnit);
+        MonetaryAmount adjustmentAndFundTotals = HelperUtils.calculateAdjustmentsTotal(request.getAdjustments(), subTotal);
+        total = HelperUtils.convertToDoubleWithRounding(adjustmentAndFundTotals.add(subTotal));
+        List<Adjustment> notProratedAdjustmentList = adjustmentsService.filterAdjustments(request.getAdjustments(), NOT_PRORATED_ADJUSTMENTS_PREDICATE);
+        if (CollectionUtils.isNotEmpty(notProratedAdjustmentList)) {
+          InvoiceValidator.validateInvoiceAdjustments(notProratedAdjustmentList, currencyUnit);
+        }
       }
-      subTotal = Money.of(entity.getSubTotal(), currencyUnit);
-      MonetaryAmount adjustmentAndFundTotals = HelperUtils.calculateAdjustmentsTotal(entity.getAdjustments(), subTotal);
-      total = HelperUtils.convertToDoubleWithRounding(adjustmentAndFundTotals.add(subTotal));
-      List<Adjustment> notProratedAdjustmentList = AdjustmentsService.filterAdjustments(entity.getAdjustments(), NOT_PRORATED_ADJUSTMENTS_PREDICATE);
-      if(CollectionUtils.isNotEmpty(notProratedAdjustmentList)) {
-        InvoiceValidator.validateInvoiceAdjustmentsDistributions(notProratedAdjustmentList, currencyUnit);
-      }
-      }
-      if(total == null) {
-        InvoiceValidator.validateFundDistributionForInvoiceLine(entity.getSubTotal(), fundDistributionList, currencyUnit);
-      }
-      else {
-        InvoiceValidator.validateFundDistributionForInvoiceLine(total, fundDistributionList, currencyUnit);
+      if (total == null) {
+        InvoiceValidator.validateFundDistributions(request.getSubTotal(), fundDistributionList, currencyUnit);
+      } else {
+        InvoiceValidator.validateFundDistributions(total, fundDistributionList, currencyUnit);
       }
       asyncResultHandler.handle(succeededFuture(buildNoContentResponse()));
-    } catch (HttpException e ) {
+    } catch (HttpException e) {
       handleErrorResponse(asyncResultHandler, e);
     }
   }

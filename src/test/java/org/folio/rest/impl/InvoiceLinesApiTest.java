@@ -4,6 +4,7 @@ import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 import static javax.ws.rs.core.MediaType.TEXT_PLAIN;
 import static org.folio.invoices.utils.ErrorCodes.BUDGET_EXPENSE_CLASS_NOT_FOUND;
 import static org.folio.invoices.utils.ErrorCodes.CANNOT_DELETE_INVOICE_LINE;
+import static org.folio.invoices.utils.ErrorCodes.LINE_FUND_DISTRIBUTIONS_SUMMARY_MISMATCH;
 import static org.folio.invoices.utils.ErrorCodes.PROHIBITED_INVOICE_LINE_CREATION;
 import static org.folio.invoices.utils.HelperUtils.INVOICE_ID;
 import static org.folio.invoices.utils.HelperUtils.getNoAcqUnitCQL;
@@ -287,34 +288,37 @@ public class InvoiceLinesApiTest extends ApiTestBase {
   }
 
   @Test
-  public void fundValidationTest()
-  {
+  public void fundValidationTest() {
     ValidateFundDistributionsRequest reqData = getMockAsJson(FUND_VALIDATOR_MOCK_DATA_PATH).mapTo(ValidateFundDistributionsRequest.class);
-     verifyPut(INVOICE_LINE_FUNDS_VALIDATOR_ID_PATH, reqData, "", 204);
+    verifyPut(INVOICE_LINE_FUNDS_VALIDATOR_ID_PATH, reqData, "", 204);
   }
+
   @Test
-  public void fundValidationDupAdjIdTest()
-  {
+  public void fundValidationDupAdjIdTest() {
     ValidateFundDistributionsRequest reqData = getMockAsJson(FUND_VALIDATOR_MOCK_DATA_PATH_DUP_ADJ_ID).mapTo(ValidateFundDistributionsRequest.class);
-     verifyPut(INVOICE_LINE_FUNDS_VALIDATOR_ID_PATH, reqData, "", 400);
+    verifyPut(INVOICE_LINE_FUNDS_VALIDATOR_ID_PATH, reqData, "", 400);
   }
+
   @Test
-  public void fundValidationWithZeroSubtotalTest()
-  {
+  public void fundValidationWithZeroSubtotalTest() {
     ValidateFundDistributionsRequest reqData = getMockAsJson(FUND_VALIDATOR_MOCK_DATA_WITH_ZERO_PRICE).mapTo(ValidateFundDistributionsRequest.class);
-     verifyPut(INVOICE_LINE_FUNDS_VALIDATOR_ID_PATH, reqData, "", 422);
+    verifyPut(INVOICE_LINE_FUNDS_VALIDATOR_ID_PATH, reqData, "", 422);
   }
+
   @Test
-  public void fundValidationWithRemainingAmountTest()
-  {
+  public void fundValidationWithRemainingAmountTest() {
     ValidateFundDistributionsRequest reqData = getMockAsJson(FUND_VALIDATOR_MOCK_DATA_WITH_REMAINING_AMOUNT).mapTo(ValidateFundDistributionsRequest.class);
-     verifyPut(INVOICE_LINE_FUNDS_VALIDATOR_ID_PATH, reqData, "", 422);
+    Errors resp = verifyPut(INVOICE_LINE_FUNDS_VALIDATOR_ID_PATH, reqData, "", 422).as(Errors.class);
+    Assertions.assertEquals(1, resp.getErrors().size());
+    Assertions.assertEquals(LINE_FUND_DISTRIBUTIONS_SUMMARY_MISMATCH.getCode(), resp.getErrors().get(0).getCode());
+    Assertions.assertEquals("remainingAmount", resp.getErrors().get(0).getParameters().get(0).getKey());
+    Assertions.assertEquals("10.00", resp.getErrors().get(0).getParameters().get(0).getValue().stripLeading());
   }
+
   @Test
-  public void fundValidationWithRemainingTest()
-  {
+  public void fundValidationWithRemainingTest() {
     ValidateFundDistributionsRequest reqData = getMockAsJson(FUND_VALIDATOR_MOCK_DATA_WITH_ZERO_PRICE).mapTo(ValidateFundDistributionsRequest.class);
-     verifyPut(INVOICE_LINE_FUNDS_VALIDATOR_ID_PATH, reqData, "", 422);
+    verifyPut(INVOICE_LINE_FUNDS_VALIDATOR_ID_PATH, reqData, "", 422);
   }
 
   @Test

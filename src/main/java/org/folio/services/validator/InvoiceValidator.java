@@ -92,7 +92,7 @@ public class InvoiceValidator extends BaseValidator {
     }
   }
 
-  public static boolean isAdjustmentIdsNotUnique(List<Adjustment> adjustments) {
+  public boolean isAdjustmentIdsNotUnique(List<Adjustment> adjustments) {
     Map<String, Long> ids = adjustments.stream()
       .filter(adjustment -> StringUtils.isNotEmpty(adjustment.getId()))
       .collect(Collectors.groupingBy(Adjustment::getId, Collectors.counting()));
@@ -105,7 +105,7 @@ public class InvoiceValidator extends BaseValidator {
     validateInvoiceTotals(invoice);
     verifyInvoiceLineNotEmpty(lines);
     validateInvoiceLineFundDistributions(lines, Monetary.getCurrency(invoice.getCurrency()));
-    validateInvoiceAdjustmentsDistributions(adjustmentsService.getNotProratedAdjustments(invoice),Monetary.getCurrency(invoice.getCurrency()));
+    validateInvoiceAdjustments(adjustmentsService.getNotProratedAdjustments(invoice), Monetary.getCurrency(invoice.getCurrency()));
   }
 
   private void checkVendorHasAccountingCode(Invoice invoice) {
@@ -126,20 +126,20 @@ public class InvoiceValidator extends BaseValidator {
       if (CollectionUtils.isEmpty(line.getFundDistributions())) {
         throw new HttpException(400, FUND_DISTRIBUTIONS_NOT_PRESENT);
       }
-      validateFundDistributionForInvoiceLine(line.getSubTotal(),line.getFundDistributions(),currencyUnit);
+      validateFundDistributions(line.getTotal(),line.getFundDistributions(),currencyUnit);
     }
   }
 
 
-  public static void validateInvoiceAdjustmentsDistributions(List<Adjustment> adjustments,CurrencyUnit currencyUnit) {
+  public static void validateInvoiceAdjustments(List<Adjustment> adjustments,CurrencyUnit currencyUnit) {
     for (Adjustment adjustment : adjustments) {
       if (CollectionUtils.isEmpty(adjustment.getFundDistributions())) {
         throw new HttpException(400, ADJUSTMENT_FUND_DISTRIBUTIONS_NOT_PRESENT);
       }
-      validateFundDistributionForInvoiceLine(adjustment.getValue(), adjustment.getFundDistributions(), currencyUnit);
+      validateFundDistributions(adjustment.getValue(), adjustment.getFundDistributions(), currencyUnit);
     }
   }
-  public static void validateFundDistributionForInvoiceLine(Double total, List<FundDistribution> fundDistributions,CurrencyUnit currencyUnit) {
+  public static void validateFundDistributions(Double total, List<FundDistribution> fundDistributions,CurrencyUnit currencyUnit) {
     Double subtotal = Money.of(total,currencyUnit).getNumber().doubleValue();
     if (subtotal != null && CollectionUtils.isNotEmpty(fundDistributions)) {
       if (subtotal == 0d) {
@@ -149,10 +149,10 @@ public class InvoiceValidator extends BaseValidator {
       BigDecimal remainingPercent = ONE_HUNDRED_PERCENT;
       for (FundDistribution fundDistribution : fundDistributions) {
         FundDistribution.DistributionType dType = fundDistribution.getDistributionType();
+        Double value = fundDistribution.getValue();
         if (dType == PERCENTAGE) {
           remainingPercent = remainingPercent.subtract(BigDecimal.valueOf(fundDistribution.getValue()));
         } else {
-          Double value = fundDistribution.getValue();
           BigDecimal percentageValue = BigDecimal.valueOf(value)
             .divide(BigDecimal.valueOf(subtotal), 15, HALF_EVEN)
             .movePointRight(2);
@@ -162,7 +162,7 @@ public class InvoiceValidator extends BaseValidator {
       checkRemainingPercentMatchesToZero(remainingPercent, subtotal);
     }
   }
-  public static void validateZeroPrice(List<FundDistribution> fdList) {
+  private static void validateZeroPrice(List<FundDistribution> fdList) {
    FundDistribution.DistributionType firstFdType = fdList.get(0).getDistributionType();
     if (fdList.stream().skip(1).anyMatch(fd -> fd.getDistributionType() != firstFdType))
       throw new HttpException(422, CANNOT_MIX_TYPES_FOR_ZERO_PRICE);
@@ -180,12 +180,14 @@ public class InvoiceValidator extends BaseValidator {
       checkRemainingPercentMatchesToZero(remainingPercent, 0d);
     }
   }
+
   private static void checkRemainingPercentMatchesToZero(BigDecimal remainingPercent, Double subtotal) {
       BigDecimal epsilon = BigDecimal.valueOf(1e-10);
       if (remainingPercent.abs().compareTo(epsilon) > 0) {
         throwExceptionWithIncorrectAmount(remainingPercent, subtotal);
       }
   }
+
   private static void throwExceptionWithIncorrectAmount(BigDecimal remainingPercent, Double subtotal) {
     BigDecimal total = BigDecimal.valueOf(subtotal);
     BigDecimal remainingAmount = remainingPercent.multiply(total).divide(ONE_HUNDRED_PERCENT, 2, HALF_EVEN);

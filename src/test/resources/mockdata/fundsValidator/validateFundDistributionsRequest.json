@@ -2,39 +2,38 @@
   "subTotal": 10,
   "currency": "USD",
   "adjustments": [
-      {
-  "id": "14263abb-b22b-4ddc-9ecc-3434427c2c8f",
-  "description": "Service Fee",
-  "exportToAccounting": false,
-  "type": "Amount",
-  "value": 10,
-  "prorate": "By line",
-  "relationToTotal": "In addition to"
-},
-      {
-       "id": "14263aab-b22b-4ddc-9ecc-3434427c2c8f",
-  "description": "Service Fee",
-  "exportToAccounting": false,
-  "fundDistributions": [
     {
-      "code": "HIST",
-      "fundId": "63157e96-0693-426d-b0df-948bacdfdb08",
-      "distributionType": "percentage",
-      "value": 50.00
+      "id": "14263abb-b22b-4ddc-9ecc-3434427c2c8f",
+      "description": "Service Fee",
+      "exportToAccounting": false,
+      "type": "Amount",
+      "value": 10,
+      "prorate": "By line",
+      "relationToTotal": "In addition to"
     },
     {
-      "code": "EUROHIST",
-      "fundId": "e9285a1c-1dfc-4380-868c-e74073003f43",
-      "distributionType": "percentage",
-      "value": 50.00
+      "id": "14263aab-b22b-4ddc-9ecc-3434427c2c8f",
+      "description": "Service Fee",
+      "exportToAccounting": false,
+      "fundDistributions": [
+        {
+          "code": "HIST",
+          "fundId": "63157e96-0693-426d-b0df-948bacdfdb08",
+          "distributionType": "percentage",
+          "value": 50.00
+        },
+        {
+          "code": "EUROHIST",
+          "fundId": "e9285a1c-1dfc-4380-868c-e74073003f43",
+          "distributionType": "percentage",
+          "value": 50.00
+        }
+      ],
+      "type": "Amount",
+      "value": 10,
+      "prorate": "Not prorated",
+      "relationToTotal": "In addition to"
     }
-  ],
-  "type": "Amount",
-  "value": 10,
-  "prorate": "Not prorated",
-  "relationToTotal": "In addition to"
-}
-
   ],
   "fundDistribution": [
     {

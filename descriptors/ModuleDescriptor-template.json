@@ -676,7 +676,7 @@
     },
     {
       "permissionName": "invoice.invoice-lines.fund-distributions.validate",
-      "displayName": "Orders - validate fund distributions for a invoice line",
+      "displayName": "Invoices - validate fund distributions for a invoice line",
       "description": "Validate fund distributions for a invoice line"
     },
    {
@@ -985,7 +985,7 @@
         "invoice.invoice-lines.item.get",
         "invoice.invoice-lines.item.post",
         "invoice.invoice-lines.item.put",
-        "invoice.invoice-lines.fund-distributions.validate",
+        "invoice.linvoice-lines.fund-distributions.validate",
         "invoice.invoice-lines.item.delete",
         "invoice.invoice-number.item.get",
         "voucher-number.start.post",

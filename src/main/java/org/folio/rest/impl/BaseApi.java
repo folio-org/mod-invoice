@@ -1,17 +1,17 @@
 package org.folio.rest.impl;
 
 import static io.vertx.core.Future.succeededFuture;
+import static java.util.stream.Collectors.toList;
 import static javax.ws.rs.core.HttpHeaders.CONTENT_TYPE;
 import static javax.ws.rs.core.HttpHeaders.LOCATION;
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 import static javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
-import static org.folio.exceptions.ExceptionUtil.convertToErrors;
 import static org.folio.invoices.utils.ErrorCodes.GENERIC_ERROR_CODE;
 
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.List;
-
+import java.util.Optional;
 import javax.ws.rs.core.Response;
 
 import org.apache.logging.log4j.LogManager;
@@ -75,8 +75,9 @@ public class BaseApi {
   }
 
   protected HttpException handleProcessingError(Throwable throwable) {
-    final Throwable cause = throwable.getCause();
+    final Throwable cause = Optional.ofNullable(throwable.getCause()).orElse(throwable);
     logger.error("Exception encountered", cause);
+
     if (cause instanceof HttpException) {
       return ((HttpException) cause);
     } else {
@@ -85,37 +86,30 @@ public class BaseApi {
   }
 
   public Response buildErrorResponse(Throwable throwable) {
-  logger.error("Exception encountered", throwable.getCause());
-    final int code = defineErrorCode(throwable);
-    final Errors errors = convertToErrors(throwable);
-    final Response.ResponseBuilder responseBuilder = createResponseBuilder(code);
-    return responseBuilder.header(CONTENT_TYPE, APPLICATION_JSON)
-      .entity(errors)
-      .build();
+    return buildErrorResponse(handleProcessingError(throwable));
   }
 
-  public static int defineErrorCode(Throwable throwable) {
-    final Throwable cause = throwable.getCause() == null ? throwable : throwable.getCause();
-    if (cause instanceof HttpException) {
-      return ((HttpException) cause).getCode();
-    }
-    return INTERNAL_SERVER_ERROR.getStatusCode();
-  }
-
-  public static javax.ws.rs.core.Response.ResponseBuilder createResponseBuilder(int code) {
-    final javax.ws.rs.core.Response.ResponseBuilder responseBuilder;
-    switch (code) {
+  public Response buildErrorResponse(HttpException exception) {
+    final Response.ResponseBuilder responseBuilder;
+    Errors errors = exception.getErrors();
+    List<Error> errorList = errors.getErrors().stream().collect(toList());
+    errors.setErrors(errorList);
+    switch (exception.getCode()) {
     case 400:
     case 403:
     case 404:
-    case 409:
+    case 413:
     case 422:
-      responseBuilder = javax.ws.rs.core.Response.status(code);
+      responseBuilder = Response.status(exception.getCode());
       break;
     default:
-      responseBuilder = javax.ws.rs.core.Response.status(INTERNAL_SERVER_ERROR);
+      responseBuilder = Response.status(INTERNAL_SERVER_ERROR);
     }
-    return responseBuilder;
+
+    return responseBuilder
+        .header(CONTENT_TYPE, APPLICATION_JSON)
+        .entity(errors)
+        .build();
   }
 }
 
