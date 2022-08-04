@@ -1,12 +1,17 @@
 package org.folio.services.adjusment;
 
-import static java.util.stream.Collectors.toList;
-import static java.util.stream.Collectors.toMap;
-import static org.apache.commons.lang3.StringUtils.isNotEmpty;
-import static org.folio.invoices.utils.HelperUtils.summarizeSubTotals;
-import static org.folio.rest.impl.InvoiceLineHelper.HYPHEN_SEPARATOR;
-import static org.folio.rest.jaxrs.model.Adjustment.Prorate.NOT_PRORATED;
+import io.vertx.core.json.JsonObject;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.folio.rest.jaxrs.model.Adjustment;
+import org.folio.rest.jaxrs.model.Invoice;
+import org.folio.rest.jaxrs.model.InvoiceLine;
+import org.javamoney.moneta.Money;
+import org.javamoney.moneta.function.MonetaryOperators;
 
+import javax.money.CurrencyUnit;
+import javax.money.Monetary;
+import javax.money.MonetaryAmount;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -16,19 +21,12 @@ import java.util.Objects;
 import java.util.function.BiFunction;
 import java.util.function.Predicate;
 
-import javax.money.CurrencyUnit;
-import javax.money.Monetary;
-import javax.money.MonetaryAmount;
-
-import org.folio.rest.jaxrs.model.Adjustment;
-import org.folio.rest.jaxrs.model.Invoice;
-import org.folio.rest.jaxrs.model.InvoiceLine;
-import org.javamoney.moneta.Money;
-
-import io.vertx.core.json.JsonObject;
-import org.apache.logging.log4j.Logger;
-import org.apache.logging.log4j.LogManager;
-import org.javamoney.moneta.function.MonetaryOperators;
+import static java.util.stream.Collectors.toList;
+import static java.util.stream.Collectors.toMap;
+import static org.apache.commons.lang3.StringUtils.isNotEmpty;
+import static org.folio.invoices.utils.HelperUtils.summarizeSubTotals;
+import static org.folio.rest.impl.InvoiceLineHelper.HYPHEN_SEPARATOR;
+import static org.folio.rest.jaxrs.model.Adjustment.Prorate.NOT_PRORATED;
 
 public class AdjustmentsService {
   private final Logger logger = LogManager.getLogger(this.getClass());
@@ -48,7 +46,7 @@ public class AdjustmentsService {
     return filterAdjustments(invoiceLine.getAdjustments(), INVOICE_LINE_PRORATED_ADJUSTMENT_PREDICATE);
   }
 
-  private List<Adjustment> filterAdjustments(List<Adjustment> adjustments, Predicate<Adjustment> predicate) {
+  public List<Adjustment> filterAdjustments(List<Adjustment> adjustments, Predicate<Adjustment> predicate) {
     return adjustments.stream()
       .filter(predicate)
       .collect(toList());

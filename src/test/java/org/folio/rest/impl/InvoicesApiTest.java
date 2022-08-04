@@ -1,5 +1,76 @@
 package org.folio.rest.impl;
 
+import io.restassured.http.Headers;
+import io.restassured.response.Response;
+import io.vertx.core.Vertx;
+import io.vertx.core.http.HttpMethod;
+import io.vertx.core.json.JsonObject;
+import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.reflect.FieldUtils;
+import org.apache.http.HttpStatus;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.folio.invoices.utils.InvoiceProtectedFields;
+import org.folio.rest.acq.model.finance.Budget;
+import org.folio.rest.acq.model.finance.Budget.BudgetStatus;
+import org.folio.rest.acq.model.finance.Fund;
+import org.folio.rest.acq.model.finance.FundCollection;
+import org.folio.rest.acq.model.finance.InvoiceTransactionSummary;
+import org.folio.rest.acq.model.finance.Ledger;
+import org.folio.rest.acq.model.finance.Transaction;
+import org.folio.rest.acq.model.orders.CompositePoLine;
+import org.folio.rest.acq.model.units.AcquisitionsUnitMembershipCollection;
+import org.folio.rest.core.models.RequestContext;
+import org.folio.rest.jaxrs.model.Adjustment;
+import org.folio.rest.jaxrs.model.Adjustment.Prorate;
+import org.folio.rest.jaxrs.model.Adjustment.Type;
+import org.folio.rest.jaxrs.model.Error;
+import org.folio.rest.jaxrs.model.Errors;
+import org.folio.rest.jaxrs.model.FundDistribution;
+import org.folio.rest.jaxrs.model.Invoice;
+import org.folio.rest.jaxrs.model.Invoice.Status;
+import org.folio.rest.jaxrs.model.InvoiceCollection;
+import org.folio.rest.jaxrs.model.InvoiceLine;
+import org.folio.rest.jaxrs.model.InvoiceLineCollection;
+import org.folio.rest.jaxrs.model.Tags;
+import org.folio.rest.jaxrs.model.Voucher;
+import org.folio.rest.jaxrs.model.VoucherCollection;
+import org.folio.rest.jaxrs.model.VoucherLine;
+import org.folio.rest.jaxrs.model.VoucherLineCollection;
+import org.folio.services.exchange.ExchangeRateProviderResolver;
+import org.hamcrest.Matchers;
+import org.hamcrest.beans.HasProperty;
+import org.hamcrest.beans.HasPropertyWithValue;
+import org.hamcrest.core.Every;
+import org.javamoney.moneta.Money;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
+
+import javax.money.CurrencyUnit;
+import javax.money.Monetary;
+import javax.money.MonetaryAmount;
+import javax.money.convert.ConversionQuery;
+import javax.money.convert.ConversionQueryBuilder;
+import javax.money.convert.CurrencyConversion;
+import javax.money.convert.ExchangeRateProvider;
+import java.io.IOException;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
 import static java.util.Collections.emptyList;
 import static java.util.UUID.randomUUID;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
@@ -12,7 +83,6 @@ import static javax.ws.rs.core.MediaType.TEXT_PLAIN;
 import static org.awaitility.Awaitility.await;
 import static org.folio.invoices.utils.ErrorCodes.ACCOUNTING_CODE_NOT_PRESENT;
 import static org.folio.invoices.utils.ErrorCodes.ADJUSTMENT_FUND_DISTRIBUTIONS_NOT_PRESENT;
-import static org.folio.invoices.utils.ErrorCodes.ADJUSTMENT_FUND_DISTRIBUTIONS_SUMMARY_MISMATCH;
 import static org.folio.invoices.utils.ErrorCodes.BUDGET_NOT_FOUND;
 import static org.folio.invoices.utils.ErrorCodes.CANNOT_PAY_INVOICE_WITHOUT_APPROVAL;
 import static org.folio.invoices.utils.ErrorCodes.EXTERNAL_ACCOUNT_NUMBER_IS_MISSING;
@@ -101,79 +171,6 @@ import static org.hamcrest.core.IsEqual.equalTo;
 import static org.hamcrest.core.IsNot.not;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-
-import java.io.IOException;
-import java.math.BigDecimal;
-import java.math.RoundingMode;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.UUID;
-import java.util.function.Function;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
-
-import javax.money.CurrencyUnit;
-import javax.money.Monetary;
-import javax.money.MonetaryAmount;
-import javax.money.convert.ConversionQuery;
-import javax.money.convert.ConversionQueryBuilder;
-import javax.money.convert.CurrencyConversion;
-import javax.money.convert.ExchangeRateProvider;
-
-import org.apache.commons.collections4.CollectionUtils;
-import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.reflect.FieldUtils;
-import org.apache.http.HttpStatus;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-import org.folio.invoices.utils.InvoiceProtectedFields;
-import org.folio.rest.acq.model.finance.Budget;
-import org.folio.rest.acq.model.finance.Budget.BudgetStatus;
-import org.folio.rest.acq.model.finance.Fund;
-import org.folio.rest.acq.model.finance.FundCollection;
-import org.folio.rest.acq.model.finance.InvoiceTransactionSummary;
-import org.folio.rest.acq.model.finance.Ledger;
-import org.folio.rest.acq.model.finance.Transaction;
-import org.folio.rest.acq.model.orders.CompositePoLine;
-import org.folio.rest.acq.model.units.AcquisitionsUnitMembershipCollection;
-import org.folio.rest.core.models.RequestContext;
-import org.folio.rest.jaxrs.model.Adjustment;
-import org.folio.rest.jaxrs.model.Adjustment.Prorate;
-import org.folio.rest.jaxrs.model.Adjustment.Type;
-import org.folio.rest.jaxrs.model.Error;
-import org.folio.rest.jaxrs.model.Errors;
-import org.folio.rest.jaxrs.model.FundDistribution;
-import org.folio.rest.jaxrs.model.Invoice;
-import org.folio.rest.jaxrs.model.Invoice.Status;
-import org.folio.rest.jaxrs.model.InvoiceCollection;
-import org.folio.rest.jaxrs.model.InvoiceLine;
-import org.folio.rest.jaxrs.model.InvoiceLineCollection;
-import org.folio.rest.jaxrs.model.Tags;
-import org.folio.rest.jaxrs.model.Voucher;
-import org.folio.rest.jaxrs.model.VoucherCollection;
-import org.folio.rest.jaxrs.model.VoucherLine;
-import org.folio.rest.jaxrs.model.VoucherLineCollection;
-import org.folio.services.exchange.ExchangeRateProviderResolver;
-import org.hamcrest.Matchers;
-import org.hamcrest.beans.HasProperty;
-import org.hamcrest.beans.HasPropertyWithValue;
-import org.hamcrest.core.Every;
-import org.javamoney.moneta.Money;
-import org.junit.jupiter.api.Disabled;
-import org.junit.jupiter.api.Test;
-
-import io.restassured.http.Headers;
-import io.restassured.response.Response;
-import io.vertx.core.Vertx;
-import io.vertx.core.http.HttpMethod;
-import io.vertx.core.json.JsonObject;
 
 public class InvoicesApiTest extends ApiTestBase {
 
@@ -548,7 +545,6 @@ public class InvoicesApiTest extends ApiTestBase {
           .map(BigDecimal::valueOf)
           .reduce(BigDecimal::add)
           .get();
-
         var reminder = total.subtract(invoiceLineSum);
         var fd1Value = BigDecimal.valueOf(invoiceLine.getFundDistributions().get(0).getValue());
         invoiceLine.getFundDistributions().get(0).setValue(fd1Value.add(reminder).doubleValue());
@@ -1044,7 +1040,7 @@ public class InvoicesApiTest extends ApiTestBase {
 
     String jsonBody = JsonObject.mapFrom(reqData).encode();
     Headers headers = prepareHeaders(X_OKAPI_URL, X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID);
-    Errors errors = verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, headers, "", 400)
+    Errors errors = verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, headers, "", 422)
       .as(Errors.class);
 
     // Verify that expected number of external calls made
@@ -1507,7 +1503,7 @@ public class InvoicesApiTest extends ApiTestBase {
     String jsonBody = JsonObject.mapFrom(reqData).encode();
     Headers headers = prepareHeaders(X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID);
 
-    Errors errors = verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, headers, APPLICATION_JSON, 400)
+    Errors errors = verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, headers, APPLICATION_JSON, 422)
       .then()
       .extract()
       .body().as(Errors.class);
@@ -1538,7 +1534,7 @@ public class InvoicesApiTest extends ApiTestBase {
     String jsonBody = JsonObject.mapFrom(reqData).encode();
     Headers headers = prepareHeaders(X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID);
 
-    Errors errors = verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, headers, APPLICATION_JSON, 400)
+    Errors errors = verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, headers, APPLICATION_JSON, 422)
       .then()
       .extract()
       .body().as(Errors.class);
@@ -1587,7 +1583,7 @@ public class InvoicesApiTest extends ApiTestBase {
     String jsonBody = JsonObject.mapFrom(reqData).encode();
     Headers headers = prepareHeaders(X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID);
 
-    Errors errors = verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, headers, APPLICATION_JSON, 400)
+    Errors errors = verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, headers, APPLICATION_JSON, 422)
       .then()
       .extract()
       .body().as(Errors.class);
@@ -1595,8 +1591,8 @@ public class InvoicesApiTest extends ApiTestBase {
     assertThat(errors, notNullValue());
     assertThat(errors.getErrors(), hasSize(1));
     Error error = errors.getErrors().get(0);
-    assertThat(error.getMessage(), equalTo(ADJUSTMENT_FUND_DISTRIBUTIONS_SUMMARY_MISMATCH.getDescription()));
-    assertThat(error.getCode(), equalTo(ADJUSTMENT_FUND_DISTRIBUTIONS_SUMMARY_MISMATCH.getCode()));
+    assertThat(error.getMessage(), equalTo( LINE_FUND_DISTRIBUTIONS_SUMMARY_MISMATCH.getDescription()));
+    assertThat(error.getCode(), equalTo( LINE_FUND_DISTRIBUTIONS_SUMMARY_MISMATCH.getCode()));
   }
 
   @Test
