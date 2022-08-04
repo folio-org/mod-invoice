@@ -197,10 +197,9 @@ public class InvoicesImpl extends BaseApi implements org.folio.rest.jaxrs.resour
 
   @Override
   public void putInvoiceInvoiceLinesFundDistributionsValidate(ValidateFundDistributionsRequest request,
-      Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler,Context vertxContext) {
+                                                              Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     try {
       MonetaryAmount subTotal;
-      Double total = null;
       CurrencyUnit currencyUnit = Monetary.getCurrency(request.getCurrency());
       List<FundDistribution> fundDistributionList = request.getFundDistribution();
       if (CollectionUtils.isNotEmpty(request.getAdjustments())) {
@@ -209,16 +208,14 @@ public class InvoicesImpl extends BaseApi implements org.folio.rest.jaxrs.resour
         }
         subTotal = Money.of(request.getSubTotal(), currencyUnit);
         MonetaryAmount adjustmentAndFundTotals = HelperUtils.calculateAdjustmentsTotal(request.getAdjustments(), subTotal);
-        total = HelperUtils.convertToDoubleWithRounding(adjustmentAndFundTotals.add(subTotal));
+        Double total = HelperUtils.convertToDoubleWithRounding(adjustmentAndFundTotals.add(subTotal));
         List<Adjustment> notProratedAdjustmentList = adjustmentsService.filterAdjustments(request.getAdjustments(), NOT_PRORATED_ADJUSTMENTS_PREDICATE);
         if (CollectionUtils.isNotEmpty(notProratedAdjustmentList)) {
           validator.validateAdjustments(notProratedAdjustmentList);
         }
-      }
-      if (total == null) {
-        validator.validateFundDistributions(request.getSubTotal(), fundDistributionList);
-      } else {
         validator.validateFundDistributions(total, fundDistributionList);
+      } else {
+        validator.validateFundDistributions(request.getSubTotal(), fundDistributionList);
       }
       asyncResultHandler.handle(succeededFuture(buildNoContentResponse()));
     } catch (HttpException e) {
