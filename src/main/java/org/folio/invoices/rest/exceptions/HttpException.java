@@ -4,6 +4,10 @@ import org.apache.commons.lang3.StringUtils;
 import org.folio.invoices.utils.ErrorCodes;
 import org.folio.rest.jaxrs.model.Error;
 import org.folio.rest.jaxrs.model.Errors;
+import org.folio.rest.jaxrs.model.Parameter;
+
+import java.util.Collections;
+import java.util.List;
 
 public class HttpException extends RuntimeException {
   private static final long serialVersionUID = 8109197948434861504L;
@@ -30,6 +34,18 @@ public class HttpException extends RuntimeException {
     this.code = code;
     this.errors = new Errors().withTotalRecords(1);
     this.errors.getErrors().add(error);
+  }
+
+
+  public HttpException(int code, ErrorCodes errCodes, List<Parameter> parameters) {
+    super(errCodes.getDescription());
+    this.errors = new Errors()
+      .withErrors(Collections.singletonList(new Error()
+        .withCode(errCodes.getCode())
+        .withMessage(errCodes.getDescription())
+        .withParameters(parameters)))
+      .withTotalRecords(1);
+    this.code = code;
   }
 
   public HttpException(int code, Errors errors, String message) {

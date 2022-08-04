@@ -238,6 +238,13 @@
           "pathPattern": "/invoice/invoices/{id}/documents/{documentId}",
           "permissionsRequired": ["invoice.invoices.documents.item.delete"],
           "modulePermissions": ["invoice-storage.invoices.documents.item.delete"]
+        },
+        {
+          "methods": ["PUT"],
+          "pathPattern": "/invoice/invoice-lines/fund-distributions/validate",
+          "permissionsRequired": [
+            "invoice.invoice-lines.fund-distributions.validate"
+          ]
         }
       ]
     },
@@ -667,6 +674,11 @@
       "displayName": "Invoice Line - get collection of Invoice lines",
       "description": "Get collection of Invoice lines"
     },
+    {
+      "permissionName": "invoice.invoice-lines.fund-distributions.validate",
+      "displayName": "Invoices - validate fund distributions for a invoice line",
+      "description": "Validate fund distributions for a invoice line"
+    },
    {
       "permissionName": "invoice.invoice-lines.item.get",
       "displayName": "Invoice - get an existing Invoice line",
@@ -973,6 +985,7 @@
         "invoice.invoice-lines.item.get",
         "invoice.invoice-lines.item.post",
         "invoice.invoice-lines.item.put",
+        "invoice.invoice-lines.fund-distributions.validate",
         "invoice.invoice-lines.item.delete",
         "invoice.invoice-number.item.get",
         "voucher-number.start.post",

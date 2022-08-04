@@ -21,7 +21,7 @@ types:
   UUID:
     type: string
     pattern: ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$
-
+  validate_fund_distributions_request: !include acq-models/mod-invoice/schemas/validate_fund_distributions_request.json
 traits:
   validate: !include raml-util/traits/validation.raml
   language: !include raml-util/traits/language.raml
@@ -176,6 +176,21 @@ resourceTypes:
         description: Update an invoice line with given {id}
       delete:
         description: Delete an invoice line with given {id}
+    /fund-distributions/validate:
+      displayName: Validate fund distributions
+      put:
+        description: Validate is total amount equals to sum of all fund distributions
+        body:
+          application/json:
+            type: validate_fund_distributions_request
+            example:
+              strict: false
+              value: !include acq-models/mod-invoice/examples/validate_fund_distributions_request.sample
+        responses:
+          204:
+            description: "Validation passes"
+          422:
+            description: "Validation failed, error with description and codes provided"
   /invoice-number:
     displayName: Invoice Number
     description: Manage Invoice Number
@@ -186,3 +201,4 @@ resourceTypes:
     get:
       description: Get system generated Invoice Number
       is: [validate]
+

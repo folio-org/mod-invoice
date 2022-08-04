@@ -4,37 +4,51 @@ import io.vertx.core.AsyncResult;
 import io.vertx.core.Context;
 import io.vertx.core.Handler;
 import io.vertx.core.json.JsonObject;
-import org.apache.logging.log4j.Logger;
-import org.apache.logging.log4j.LogManager;
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.folio.invoices.rest.exceptions.HttpException;
+import org.folio.invoices.utils.HelperUtils;
 import org.folio.rest.annotations.Stream;
 import org.folio.rest.annotations.Validate;
 import org.folio.rest.core.models.RequestContext;
+import org.folio.rest.jaxrs.model.Adjustment;
 import org.folio.rest.jaxrs.model.Errors;
+import org.folio.rest.jaxrs.model.FundDistribution;
 import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.jaxrs.model.InvoiceDocument;
 import org.folio.rest.jaxrs.model.InvoiceLine;
+import org.folio.rest.jaxrs.model.ValidateFundDistributionsRequest;
+import org.folio.services.adjusment.AdjustmentsService;
+import org.folio.services.validator.InvoiceValidator;
+import org.javamoney.moneta.Money;
 
+import javax.money.CurrencyUnit;
+import javax.money.Monetary;
+import javax.money.MonetaryAmount;
 import javax.ws.rs.core.Response;
 import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
 import static io.vertx.core.Future.succeededFuture;
 import static org.apache.commons.io.FileUtils.ONE_MB;
+import static org.folio.invoices.utils.ErrorCodes.ADJUSTMENT_IDS_NOT_UNIQUE;
 import static org.folio.invoices.utils.ErrorCodes.DOCUMENT_IS_TOO_LARGE;
 import static org.folio.invoices.utils.ErrorCodes.MISMATCH_BETWEEN_ID_IN_PATH_AND_BODY;
 import static org.folio.rest.RestVerticle.STREAM_ABORT;
 import static org.folio.rest.RestVerticle.STREAM_COMPLETE;
+import static org.folio.services.adjusment.AdjustmentsService.NOT_PRORATED_ADJUSTMENTS_PREDICATE;
 
-public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
+public class InvoicesImpl extends BaseApi implements org.folio.rest.jaxrs.resource.Invoice {
 
   private static final Logger logger = LogManager.getLogger(InvoicesImpl.class);
   private static final String NOT_SUPPORTED = "Not supported"; // To overcome sonarcloud warning
@@ -44,6 +58,13 @@ public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
   private static final String DOCUMENTS_LOCATION_PREFIX = "/invoice/invoices/%s/documents/%s";
   private byte[] requestBytesArray = new byte[0];
   private static final long MAX_DOCUMENT_SIZE = 7 * ONE_MB;
+  private final AdjustmentsService adjustmentsService;
+  private final InvoiceValidator validator;
+
+  public InvoicesImpl() {
+    this.validator = new InvoiceValidator();
+    this.adjustmentsService = new AdjustmentsService();
+  }
 
   @Validate
   @Override
@@ -172,6 +193,34 @@ public class InvoicesImpl implements org.folio.rest.jaxrs.resource.Invoice {
     invoiceLineHelper.deleteInvoiceLine(id)
       .thenAccept(invoiceLine -> asyncResultHandler.handle(succeededFuture(invoiceLineHelper.buildNoContentResponse())))
       .exceptionally(t -> handleErrorResponse(asyncResultHandler, invoiceLineHelper, t));
+  }
+
+  @Override
+  public void putInvoiceInvoiceLinesFundDistributionsValidate(ValidateFundDistributionsRequest request,
+                                                              Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+    try {
+      MonetaryAmount subTotal;
+      CurrencyUnit currencyUnit = Monetary.getCurrency(request.getCurrency());
+      List<FundDistribution> fundDistributionList = request.getFundDistribution();
+      if (CollectionUtils.isNotEmpty(request.getAdjustments())) {
+        if (validator.isAdjustmentIdsNotUnique(request.getAdjustments())) {
+          throw new HttpException(400, ADJUSTMENT_IDS_NOT_UNIQUE);
+        }
+        subTotal = Money.of(request.getSubTotal(), currencyUnit);
+        MonetaryAmount adjustmentAndFundTotals = HelperUtils.calculateAdjustmentsTotal(request.getAdjustments(), subTotal);
+        Double total = HelperUtils.convertToDoubleWithRounding(adjustmentAndFundTotals.add(subTotal));
+        List<Adjustment> notProratedAdjustmentList = adjustmentsService.filterAdjustments(request.getAdjustments(), NOT_PRORATED_ADJUSTMENTS_PREDICATE);
+        if (CollectionUtils.isNotEmpty(notProratedAdjustmentList)) {
+          validator.validateAdjustments(notProratedAdjustmentList);
+        }
+        validator.validateFundDistributions(total, fundDistributionList);
+      } else {
+        validator.validateFundDistributions(request.getSubTotal(), fundDistributionList);
+      }
+      asyncResultHandler.handle(succeededFuture(buildNoContentResponse()));
+    } catch (HttpException e) {
+      handleErrorResponse(asyncResultHandler, e);
+    }
   }
 
   @Validate
