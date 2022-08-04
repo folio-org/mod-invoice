@@ -1,28 +1,5 @@
 package org.folio.services.validator;
 
-import static java.math.RoundingMode.HALF_EVEN;
-import static org.folio.invoices.utils.ErrorCodes.ACCOUNTING_CODE_NOT_PRESENT;
-import static org.folio.invoices.utils.ErrorCodes.ADJUSTMENT_FUND_DISTRIBUTIONS_NOT_PRESENT;
-import static org.folio.invoices.utils.ErrorCodes.ADJUSTMENT_IDS_NOT_UNIQUE;
-import static org.folio.invoices.utils.ErrorCodes.CANNOT_PAY_INVOICE_WITHOUT_APPROVAL;
-import static org.folio.invoices.utils.ErrorCodes.FUND_DISTRIBUTIONS_NOT_PRESENT;
-import static org.folio.invoices.utils.ErrorCodes.INCOMPATIBLE_INVOICE_FIELDS_ON_STATUS_TRANSITION;
-import static org.folio.invoices.utils.ErrorCodes.LINE_FUND_DISTRIBUTIONS_SUMMARY_MISMATCH;
-import static org.folio.invoices.utils.ErrorCodes.LOCK_AND_CALCULATED_TOTAL_MISMATCH;
-import static org.folio.invoices.utils.HelperUtils.isPostApproval;
-import static org.folio.rest.jaxrs.model.FundDistribution.DistributionType.AMOUNT;
-import static org.folio.rest.jaxrs.model.FundDistribution.DistributionType.PERCENTAGE;
-import static org.folio.invoices.utils.ErrorCodes.CANNOT_MIX_TYPES_FOR_ZERO_PRICE;
-
-import java.math.BigDecimal;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.stream.Collectors;
-
-import javax.money.CurrencyUnit;
-import javax.money.Monetary;
-
 import com.google.common.collect.Lists;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -36,7 +13,26 @@ import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.jaxrs.model.InvoiceLine;
 import org.folio.rest.jaxrs.model.Parameter;
 import org.folio.services.adjusment.AdjustmentsService;
-import org.javamoney.moneta.Money;
+
+import java.math.BigDecimal;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
+
+import static java.math.RoundingMode.HALF_EVEN;
+import static org.folio.invoices.utils.ErrorCodes.ACCOUNTING_CODE_NOT_PRESENT;
+import static org.folio.invoices.utils.ErrorCodes.ADJUSTMENT_FUND_DISTRIBUTIONS_NOT_PRESENT;
+import static org.folio.invoices.utils.ErrorCodes.ADJUSTMENT_IDS_NOT_UNIQUE;
+import static org.folio.invoices.utils.ErrorCodes.CANNOT_MIX_TYPES_FOR_ZERO_PRICE;
+import static org.folio.invoices.utils.ErrorCodes.CANNOT_PAY_INVOICE_WITHOUT_APPROVAL;
+import static org.folio.invoices.utils.ErrorCodes.FUND_DISTRIBUTIONS_NOT_PRESENT;
+import static org.folio.invoices.utils.ErrorCodes.INCOMPATIBLE_INVOICE_FIELDS_ON_STATUS_TRANSITION;
+import static org.folio.invoices.utils.ErrorCodes.LINE_FUND_DISTRIBUTIONS_SUMMARY_MISMATCH;
+import static org.folio.invoices.utils.ErrorCodes.LOCK_AND_CALCULATED_TOTAL_MISMATCH;
+import static org.folio.invoices.utils.HelperUtils.isPostApproval;
+import static org.folio.rest.jaxrs.model.FundDistribution.DistributionType.AMOUNT;
+import static org.folio.rest.jaxrs.model.FundDistribution.DistributionType.PERCENTAGE;
 
 public class InvoiceValidator extends BaseValidator {
 

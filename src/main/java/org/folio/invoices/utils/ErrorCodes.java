@@ -1,9 +1,9 @@
 package org.folio.invoices.utils;
 
-import java.util.Collections;
-
 import org.folio.rest.jaxrs.model.Error;
 import org.folio.rest.jaxrs.model.Errors;
+
+import java.util.Collections;
 
 public enum ErrorCodes {
 

@@ -1,27 +1,25 @@
 package org.folio.rest.impl;
 
-import static io.vertx.core.Future.succeededFuture;
-import static java.util.stream.Collectors.toList;
-import static javax.ws.rs.core.HttpHeaders.CONTENT_TYPE;
-import static javax.ws.rs.core.HttpHeaders.LOCATION;
-import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
-import static javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
-import static org.folio.invoices.utils.ErrorCodes.GENERIC_ERROR_CODE;
-
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.util.List;
-import java.util.Optional;
-import javax.ws.rs.core.Response;
-
+import io.vertx.core.AsyncResult;
+import io.vertx.core.Handler;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.rest.jaxrs.model.Error;
 import org.folio.rest.jaxrs.model.Errors;
 
-import io.vertx.core.AsyncResult;
-import io.vertx.core.Handler;
+import javax.ws.rs.core.Response;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.util.List;
+import java.util.Optional;
+
+import static io.vertx.core.Future.succeededFuture;
+import static javax.ws.rs.core.HttpHeaders.CONTENT_TYPE;
+import static javax.ws.rs.core.HttpHeaders.LOCATION;
+import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
+import static javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
+import static org.folio.invoices.utils.ErrorCodes.GENERIC_ERROR_CODE;
 
 public class BaseApi {
 
