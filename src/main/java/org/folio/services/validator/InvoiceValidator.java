@@ -104,7 +104,7 @@ public class InvoiceValidator extends BaseValidator {
     checkVendorHasAccountingCode(invoice);
     validateInvoiceTotals(invoice);
     verifyInvoiceLineNotEmpty(lines);
-    validateInvoiceLineFundDistributions(lines, Monetary.getCurrency(invoice.getCurrency()));
+    validateInvoiceLineFundDistributions(lines);
     validateAdjustments(adjustmentsService.getNotProratedAdjustments(invoice));
   }
 
@@ -121,7 +121,7 @@ public class InvoiceValidator extends BaseValidator {
     }
   }
 
-  private void validateInvoiceLineFundDistributions(List<InvoiceLine> invoiceLines, CurrencyUnit currencyUnit) {
+  private void validateInvoiceLineFundDistributions(List<InvoiceLine> invoiceLines) {
     for (InvoiceLine line : invoiceLines){
       if (CollectionUtils.isEmpty(line.getFundDistributions())) {
         throw new HttpException(400, FUND_DISTRIBUTIONS_NOT_PRESENT);
@@ -162,6 +162,7 @@ public class InvoiceValidator extends BaseValidator {
       checkRemainingPercentMatchesToZero(remainingPercent, subtotal);
     }
   }
+
   private void validateZeroPrice(List<FundDistribution> fdList) {
    FundDistribution.DistributionType firstFdType = fdList.get(0).getDistributionType();
     if (fdList.stream().skip(1).anyMatch(fd -> fd.getDistributionType() != firstFdType))
@@ -173,8 +174,7 @@ public class InvoiceValidator extends BaseValidator {
       }
     } else {
       BigDecimal remainingPercent = ONE_HUNDRED_PERCENT;
-      for (FundDistribution fd : fdList
-      ) {
+      for (FundDistribution fd : fdList) {
         remainingPercent = remainingPercent.subtract(BigDecimal.valueOf(fd.getValue()));
       }
       checkRemainingPercentMatchesToZero(remainingPercent, 0d);
