@@ -90,8 +90,8 @@ import static org.folio.invoices.utils.ErrorCodes.FUNDS_NOT_FOUND;
 import static org.folio.invoices.utils.ErrorCodes.FUND_CANNOT_BE_PAID;
 import static org.folio.invoices.utils.ErrorCodes.FUND_DISTRIBUTIONS_NOT_PRESENT;
 import static org.folio.invoices.utils.ErrorCodes.GENERIC_ERROR_CODE;
+import static org.folio.invoices.utils.ErrorCodes.INCORRECT_FUND_DISTRIBUTION_TOTAL;
 import static org.folio.invoices.utils.ErrorCodes.INVALID_INVOICE_TRANSITION_ON_PAID_STATUS;
-import static org.folio.invoices.utils.ErrorCodes.LINE_FUND_DISTRIBUTIONS_SUMMARY_MISMATCH;
 import static org.folio.invoices.utils.ErrorCodes.LOCK_AND_CALCULATED_TOTAL_MISMATCH;
 import static org.folio.invoices.utils.ErrorCodes.PENDING_PAYMENT_ERROR;
 import static org.folio.invoices.utils.ErrorCodes.PO_LINE_NOT_FOUND;
@@ -1052,8 +1052,8 @@ public class InvoicesApiTest extends ApiTestBase {
     assertThat(errors, notNullValue());
     assertThat(errors.getErrors(), hasSize(1));
     Error error = errors.getErrors().get(0);
-    assertThat(error.getMessage(), equalTo(LINE_FUND_DISTRIBUTIONS_SUMMARY_MISMATCH.getDescription()));
-    assertThat(error.getCode(), equalTo(LINE_FUND_DISTRIBUTIONS_SUMMARY_MISMATCH.getCode()));
+    assertThat(error.getMessage(), equalTo(INCORRECT_FUND_DISTRIBUTION_TOTAL.getDescription()));
+    assertThat(error.getCode(), equalTo(INCORRECT_FUND_DISTRIBUTION_TOTAL.getCode()));
   }
 
   @Test
@@ -1511,8 +1511,8 @@ public class InvoicesApiTest extends ApiTestBase {
     assertThat(errors, notNullValue());
     assertThat(errors.getErrors(), hasSize(1));
     Error error = errors.getErrors().get(0);
-    assertThat(error.getMessage(), equalTo(LINE_FUND_DISTRIBUTIONS_SUMMARY_MISMATCH.getDescription()));
-    assertThat(error.getCode(), equalTo(LINE_FUND_DISTRIBUTIONS_SUMMARY_MISMATCH.getCode()));
+    assertThat(error.getMessage(), equalTo(INCORRECT_FUND_DISTRIBUTION_TOTAL.getDescription()));
+    assertThat(error.getCode(), equalTo(INCORRECT_FUND_DISTRIBUTION_TOTAL.getCode()));
   }
 
   @Test
@@ -1542,8 +1542,8 @@ public class InvoicesApiTest extends ApiTestBase {
     assertThat(errors, notNullValue());
     assertThat(errors.getErrors(), hasSize(1));
     Error error = errors.getErrors().get(0);
-    assertThat(error.getMessage(), equalTo(LINE_FUND_DISTRIBUTIONS_SUMMARY_MISMATCH.getDescription()));
-    assertThat(error.getCode(), equalTo(LINE_FUND_DISTRIBUTIONS_SUMMARY_MISMATCH.getCode()));
+    assertThat(error.getMessage(), equalTo(INCORRECT_FUND_DISTRIBUTION_TOTAL.getDescription()));
+    assertThat(error.getCode(), equalTo(INCORRECT_FUND_DISTRIBUTION_TOTAL.getCode()));
   }
 
   @Test
@@ -1591,8 +1591,8 @@ public class InvoicesApiTest extends ApiTestBase {
     assertThat(errors, notNullValue());
     assertThat(errors.getErrors(), hasSize(1));
     Error error = errors.getErrors().get(0);
-    assertThat(error.getMessage(), equalTo( LINE_FUND_DISTRIBUTIONS_SUMMARY_MISMATCH.getDescription()));
-    assertThat(error.getCode(), equalTo( LINE_FUND_DISTRIBUTIONS_SUMMARY_MISMATCH.getCode()));
+    assertThat(error.getMessage(), equalTo( INCORRECT_FUND_DISTRIBUTION_TOTAL.getDescription()));
+    assertThat(error.getCode(), equalTo( INCORRECT_FUND_DISTRIBUTION_TOTAL.getCode()));
   }
 
   @Test
