@@ -28,7 +28,7 @@ import static org.folio.invoices.utils.ErrorCodes.CANNOT_MIX_TYPES_FOR_ZERO_PRIC
 import static org.folio.invoices.utils.ErrorCodes.CANNOT_PAY_INVOICE_WITHOUT_APPROVAL;
 import static org.folio.invoices.utils.ErrorCodes.FUND_DISTRIBUTIONS_NOT_PRESENT;
 import static org.folio.invoices.utils.ErrorCodes.INCOMPATIBLE_INVOICE_FIELDS_ON_STATUS_TRANSITION;
-import static org.folio.invoices.utils.ErrorCodes.LINE_FUND_DISTRIBUTIONS_SUMMARY_MISMATCH;
+import static org.folio.invoices.utils.ErrorCodes.INCORRECT_FUND_DISTRIBUTION_TOTAL;
 import static org.folio.invoices.utils.ErrorCodes.LOCK_AND_CALCULATED_TOTAL_MISMATCH;
 import static org.folio.invoices.utils.HelperUtils.isPostApproval;
 import static org.folio.rest.jaxrs.model.FundDistribution.DistributionType.AMOUNT;
@@ -191,7 +191,7 @@ public class InvoiceValidator extends BaseValidator {
   }
 
   private void throwExceptionWithIncorrectAmount(BigDecimal remainingAmount) {
-    throw new HttpException(422,LINE_FUND_DISTRIBUTIONS_SUMMARY_MISMATCH, Lists.newArrayList(new Parameter()
+    throw new HttpException(422,INCORRECT_FUND_DISTRIBUTION_TOTAL, Lists.newArrayList(new Parameter()
       .withKey(REMAINING_AMOUNT_FIELD)
       .withValue(remainingAmount.toString())));
   }
