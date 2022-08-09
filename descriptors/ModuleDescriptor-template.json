@@ -436,6 +436,38 @@
         }
       ]
     },
+
+
+
+
+
+    {
+      "id": "po-line-invoice-line",
+      "version": "v4.0",
+      "handlers": [
+        {
+          "methods": ["GET"],
+          "pathPattern": "/po-line-invoice-line/{id}",
+          "permissionsRequired": ["po-line-invoice-line.item.get"],
+          "modulePermissions": [
+            "po-line-invoice-line.item.get"
+          ]
+        },
+        {
+          "methods": ["GET"],
+          "pathPattern": "/po-line-invoice-line/byQuery/{query}",
+          "permissionsRequired": ["po-line-invoice-line.byQuery.item.get"],
+          "modulePermissions": [
+            "po-line-invoice-line.byQuery.item.get"
+          ]
+        }
+      ]
+    },
+
+
+
+
+
     {
       "id": "batch-voucher.batch-voucher-exports",
       "version": "1.2",
@@ -642,6 +674,29 @@
       "displayName": "Invoice - get collection of Invoice",
       "description": "Get collection of Invoice"
     },
+
+
+
+
+
+
+    {
+      "permissionName": "po-line-invoice-line.byQuery.item.get",
+      "displayName": "po-line-invoice-line - get individual line by query",
+      "description": "Get individual line"
+    },
+    {
+      "permissionName": "po-line-invoice-line.item.get",
+      "displayName": "po-line-invoice-line - get individual line by id",
+      "description": "Get individual line"
+    },
+
+
+
+
+
+
+
     {
       "permissionName": "invoice.invoices.item.get",
       "displayName": "Invoice - get an existing Invoice",

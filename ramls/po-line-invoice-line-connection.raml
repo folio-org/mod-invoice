@@ -1,0 +1,50 @@
+#%RAML 1.0
+
+title: Lines
+version: v4.0
+protocols: [ HTTP, HTTPS ]
+baseUri: http://github.com/folio-org/mod-invoice
+
+documentation:
+  - title: define new CRUD API CONSIST ONLY  GET by id and GET by query
+    content: <b>API used to define new CRUD API</b>
+
+types:
+  linesCollection: !include acq-models/mod-invoice-storage/schemas/po_line_vs_invoice_line_collection.json
+  line: !include acq-models/mod-invoice-storage/schemas/po_line_vs_invoice_line.json
+  errors: !include raml-util/schemas/errors.schema
+  UUID:
+    type: string
+    pattern: ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$
+
+traits:
+  validate: !include raml-util/traits/validation.raml
+  language: !include raml-util/traits/language.raml
+
+resourceTypes:
+#  collection: !include raml-util/rtypes/collection.raml
+#  collection-item: !include raml-util/rtypes/item-collection.raml
+  item-collection-get: !include raml-util/rtypes/item-collection-get-with-json-response.raml
+
+/po-line-invoice-line:
+    /{id}:
+      uriParameters:
+        id:
+          description: The UUID of a line id
+          type: UUID
+      type:
+        item-collection-get:
+          schema: line
+          exampleItem: !include acq-models/mod-invoice-storage/examples/po_line_vs_invoice_line.sample
+
+    /byQuery/{query}:
+      uriParameters:
+        query:
+          description: The GET by query API
+          type: string
+      type:
+        item-collection-get:
+          schema: line
+          exampleItem: !include acq-models/mod-invoice-storage/examples/po_line_vs_invoice_line.sample
+
+
