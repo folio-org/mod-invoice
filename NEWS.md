@@ -1,4 +1,13 @@
-## 5.5.0 - Unreleased
+## 5.6.0 - Unreleased
+
+## 5.5.0 - Nolana R3 2022
+The focus of this release was to Upgrade RMB up to 35.0.1
+
+[Full Changelog](https://github.com/folio-org/mod-invoice/compare/v5.4.0...v5.5.0)
+
+### Stories
+* [FOLIO-3604](https://issues.folio.org/browse/FOLIO-3604) FolioVertxCompletableFuture copyright violation
+* [MODINVOICE-430](https://issues.folio.org/browse/MODINVOICE-430) Upgrade RAML Module Builder
 
 ## 5.4.0 - Released Morning Glory 2022 R2
 The focus of this release was to update core dependencies and fix invoice payments
