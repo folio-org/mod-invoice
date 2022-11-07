@@ -113,7 +113,7 @@ public class InvoiceValidator extends BaseValidator {
 
   private void verifyInvoiceLineNotEmpty(List<InvoiceLine> invoiceLines) {
     if (invoiceLines.isEmpty()) {
-      throw new HttpException(500, NO_INVOICE_LINES_ERROR_MSG);
+      throw new HttpException(400, NO_INVOICE_LINES_ERROR_MSG);
     }
   }
 
