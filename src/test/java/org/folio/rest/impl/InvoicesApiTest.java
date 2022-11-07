@@ -1416,7 +1416,7 @@ public class InvoicesApiTest extends ApiTestBase {
     String jsonBody = JsonObject.mapFrom(reqData).encode();
     Headers headers = prepareHeaders(X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID);
 
-    Errors errors = verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, headers, APPLICATION_JSON, 500)
+    Errors errors = verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, headers, APPLICATION_JSON, 400)
       .then()
         .extract()
           .body().as(Errors.class);
