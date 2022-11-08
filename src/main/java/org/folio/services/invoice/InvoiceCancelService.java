@@ -121,7 +121,7 @@ public class InvoiceCancelService {
         logger.error("Failed to cancel transactions for invoice with id {}", invoiceId, t);
         List<Parameter> parameters = Collections.singletonList(
           new Parameter().withKey("invoiceId").withValue(invoiceId));
-        throw new HttpException(400, CANCEL_TRANSACTIONS_ERROR.toError().withParameters(parameters));
+        throw new HttpException(500, CANCEL_TRANSACTIONS_ERROR.toError().withParameters(parameters));
       });
   }
 

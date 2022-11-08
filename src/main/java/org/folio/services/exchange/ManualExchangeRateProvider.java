@@ -33,7 +33,7 @@ public class ManualExchangeRateProvider implements ExchangeRateProvider {
     builder.setBase(conversionQuery.getBaseCurrency());
     builder.setTerm(conversionQuery.getCurrency());
     if (conversionQuery.get(RATE_KEY, Double.class) == null) {
-      throw new HttpException(500, "Rate must be provided in provider : " + this.getClass().getSimpleName());
+      throw new HttpException(400, "Rate must be provided in provider : " + this.getClass().getSimpleName());
     }
     builder.setFactor(DefaultNumberValue.of(conversionQuery.get(RATE_KEY, Double.class)));
     return builder.build();
