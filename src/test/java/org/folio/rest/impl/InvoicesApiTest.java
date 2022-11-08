@@ -2539,7 +2539,7 @@ public class InvoicesApiTest extends ApiTestBase {
 
     String jsonBody  = getMockData(APPROVED_INVOICE_SAMPLE_PATH);
 
-    verifyPut(String.format(INVOICE_ID_PATH, ID_BAD_FORMAT), jsonBody, APPLICATION_JSON, 404);
+    verifyPut(String.format(INVOICE_ID_PATH, ID_BAD_FORMAT), jsonBody, TEXT_PLAIN, 400);
   }
 
   @Test
@@ -2725,7 +2725,7 @@ public class InvoicesApiTest extends ApiTestBase {
 
   @Test
   void testDeleteInvoiceByIdWithInvalidFormat() {
-    verifyDeleteResponse(String.format(INVOICE_ID_PATH, ID_BAD_FORMAT), APPLICATION_JSON, 404);
+    verifyDeleteResponse(String.format(INVOICE_ID_PATH, ID_BAD_FORMAT), TEXT_PLAIN, 400);
   }
 
   @Test
