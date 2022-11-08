@@ -89,7 +89,7 @@ public class VoucherCommandService {
    */
   public CompletableFuture<Void> payInvoiceVoucher(String invoiceId, RequestContext requestContext) {
     return voucherRetrieveService.getVoucherByInvoiceId(invoiceId, requestContext)
-      .thenApply(voucher -> Optional.ofNullable(voucher).orElseThrow(() -> new HttpException(500, VOUCHER_NOT_FOUND.toError())))
+      .thenApply(voucher -> Optional.ofNullable(voucher).orElseThrow(() -> new HttpException(404, VOUCHER_NOT_FOUND.toError())))
       .thenCompose(voucher -> updateVoucherStatus(voucher, Voucher.Status.PAID, requestContext));
   }
 
@@ -156,7 +156,7 @@ public class VoucherCommandService {
 
   private void validateVoucherNumberPrefix(String prefix) {
     if (StringUtils.isNotEmpty(prefix) && !isAlpha(prefix)) {
-      throw new HttpException(500, VOUCHER_NUMBER_PREFIX_NOT_ALPHA);
+      throw new HttpException(400, VOUCHER_NUMBER_PREFIX_NOT_ALPHA);
     }
   }
 

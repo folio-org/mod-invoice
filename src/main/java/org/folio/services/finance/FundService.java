@@ -79,7 +79,7 @@ public class FundService {
   private List<Fund> verifyThatAllFundsFound(List<Fund> existingFunds, Collection<String> fundIds) {
     List<String> fundIdsWithoutExternalAccNo = getFundIdsWithoutExternalAccNo(existingFunds);
     if (isNotEmpty(fundIdsWithoutExternalAccNo)) {
-      throw new HttpException(500, buildFundError(fundIdsWithoutExternalAccNo, EXTERNAL_ACCOUNT_NUMBER_IS_MISSING));
+      throw new HttpException(400, buildFundError(fundIdsWithoutExternalAccNo, EXTERNAL_ACCOUNT_NUMBER_IS_MISSING));
     }
     if (fundIds.size() != existingFunds.size()) {
       List<String> idsNotFound = collectFundIdsThatWasNotFound(existingFunds, fundIds);
