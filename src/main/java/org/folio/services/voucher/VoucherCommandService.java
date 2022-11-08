@@ -89,7 +89,7 @@ public class VoucherCommandService {
    */
   public CompletableFuture<Void> payInvoiceVoucher(String invoiceId, RequestContext requestContext) {
     return voucherRetrieveService.getVoucherByInvoiceId(invoiceId, requestContext)
-      .thenApply(voucher -> Optional.ofNullable(voucher).orElseThrow(() -> new HttpException(400, VOUCHER_NOT_FOUND.toError())))
+      .thenApply(voucher -> Optional.ofNullable(voucher).orElseThrow(() -> new HttpException(404, VOUCHER_NOT_FOUND.toError())))
       .thenCompose(voucher -> updateVoucherStatus(voucher, Voucher.Status.PAID, requestContext));
   }
 

@@ -1211,7 +1211,7 @@ public class InvoicesApiTest extends ApiTestBase {
     String jsonBody = JsonObject.mapFrom(reqData).encode();
 
     Headers headers = prepareHeaders(X_OKAPI_USER_ID, X_OKAPI_TENANT);
-    Errors errors = verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, headers, APPLICATION_JSON, 500)
+    Errors errors = verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, headers, APPLICATION_JSON, 400)
       .then()
       .extract()
       .body().as(Errors.class);
@@ -1327,7 +1327,7 @@ public class InvoicesApiTest extends ApiTestBase {
     logger.info("=== Test transition invoice to Approved with invalid voucher number prefix ===");
 
     Headers headers = prepareHeaders(X_OKAPI_URL, INVALID_PREFIX_CONFIG_X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID);
-    Errors errors = transitionToApprovedWithError(REVIEWED_INVOICE_SAMPLE_PATH, headers);
+    Errors errors = transitionToApprovedWithError(REVIEWED_INVOICE_SAMPLE_PATH, headers,400);
 
     List<JsonObject> voucherNumberGeneration = serverRqRs.get(VOUCHER_NUMBER_STORAGE, HttpMethod.GET);
 
@@ -2174,7 +2174,7 @@ public class InvoicesApiTest extends ApiTestBase {
     prepareMockVoucher(ID_DOES_NOT_EXIST);
 
     String url = String.format(INVOICE_ID_PATH, reqData.getId());
-    Errors errors = verifyPut(url, JsonObject.mapFrom(reqData), APPLICATION_JSON, 500).as(Errors.class);
+    Errors errors = verifyPut(url, JsonObject.mapFrom(reqData), APPLICATION_JSON, 404).as(Errors.class);
 
     assertThat(errors.getErrors(), hasSize(1));
     assertThat(errors.getErrors().get(0).getCode(), equalTo(VOUCHER_NOT_FOUND.getCode()));
@@ -2539,7 +2539,7 @@ public class InvoicesApiTest extends ApiTestBase {
 
     String jsonBody  = getMockData(APPROVED_INVOICE_SAMPLE_PATH);
 
-    verifyPut(String.format(INVOICE_ID_PATH, ID_BAD_FORMAT), jsonBody, TEXT_PLAIN, 400);
+    verifyPut(String.format(INVOICE_ID_PATH, ID_BAD_FORMAT), jsonBody, APPLICATION_JSON, 404);
   }
 
   @Test
@@ -2725,7 +2725,7 @@ public class InvoicesApiTest extends ApiTestBase {
 
   @Test
   void testDeleteInvoiceByIdWithInvalidFormat() {
-    verifyDeleteResponse(String.format(INVOICE_ID_PATH, ID_BAD_FORMAT), TEXT_PLAIN, 400);
+    verifyDeleteResponse(String.format(INVOICE_ID_PATH, ID_BAD_FORMAT), APPLICATION_JSON, 404);
   }
 
   @Test
