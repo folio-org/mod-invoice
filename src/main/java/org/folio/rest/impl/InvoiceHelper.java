@@ -460,7 +460,7 @@ public class InvoiceHelper extends AbstractHelper {
 
   private void validateBeforeApproval(Organization organization, Invoice invoice, List<InvoiceLine> lines) {
     if (organization == null) {
-      throw new HttpException(400, ORG_NOT_FOUND);
+      throw new HttpException(404, ORG_NOT_FOUND);
     } else {
       if (!organization.getIsVendor()) {
         throw new HttpException(400, ORG_IS_NOT_VENDOR);

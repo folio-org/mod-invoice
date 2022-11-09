@@ -83,7 +83,7 @@ public class PaymentCreditWorkflowService {
           parameters.add(new Parameter().withKey("invoiceLineId").withValue(tr.getSourceInvoiceLineId()));
           parameters.add(new Parameter().withKey(FUND_ID)
             .withValue((tr.getTransactionType() == Transaction.TransactionType.PAYMENT) ? tr.getFromFundId() : tr.getToFundId()));
-          throw new HttpException(400, TRANSACTION_CREATION_FAILURE.toError().withParameters(parameters));
+          throw new HttpException(500, TRANSACTION_CREATION_FAILURE.toError().withParameters(parameters));
         })
       );
     }
