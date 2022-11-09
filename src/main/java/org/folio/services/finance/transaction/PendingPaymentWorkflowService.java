@@ -84,7 +84,7 @@ public class PendingPaymentWorkflowService {
         .thenAccept(t -> {})
         .exceptionally(t -> {
           logger.error("Failed to create pending payment with id {}", pendingPayment.getId(), t);
-          throw new HttpException(400, PENDING_PAYMENT_ERROR.toError());
+          throw new HttpException(500, PENDING_PAYMENT_ERROR.toError());
         })
       );
     }
