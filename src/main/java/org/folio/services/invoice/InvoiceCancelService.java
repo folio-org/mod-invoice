@@ -22,7 +22,7 @@ import org.folio.services.order.OrderLineService;
 import org.folio.services.order.OrderService;
 import org.folio.services.voucher.VoucherCommandService;
 
-import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -158,11 +158,11 @@ public class InvoiceCancelService {
       .map(this::queryToGetPoLinesWithRightPaymentStatusByIds)
       .map(query -> orderLineService.getPoLines(query, requestContext))
       .collect(toList());
-    List<PoLine> poLinesList = new ArrayList<>();
-    collectResultsOnSuccess(futureList)
-      .thenAccept(col -> col.forEach(poLinesList::addAll));
 
-    return selectPoLinesWithOpenOrders(poLinesList, requestContext)
+    CompletableFuture<List<PoLine>> poLinesFuture = collectResultsOnSuccess(futureList)
+      .thenApply(col -> col.stream().flatMap(Collection::stream).collect(toList()));
+
+    return poLinesFuture.thenCompose(poLines -> selectPoLinesWithOpenOrders(poLines, requestContext))
       .thenCompose(poLines -> unreleaseEncumbrancesForPoLines(poLines, requestContext))
       .exceptionally(t -> {
         Throwable cause = requireNonNullElse(t.getCause(), t);
