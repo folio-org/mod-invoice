@@ -153,13 +153,11 @@ public class InvoiceCancelService {
       .collect(toList());
     if (poLineIds.isEmpty())
       return completedFuture(null);
-
     List<CompletableFuture<List<PoLine>>> futureList = StreamEx
       .ofSubLists(poLineIds, MAX_IDS_FOR_GET_RQ)
       .map(this::queryToGetPoLinesWithRightPaymentStatusByIds)
       .map(query -> orderLineService.getPoLines(query, requestContext))
       .collect(toList());
-
     List<PoLine> poLinesList = new ArrayList<>();
     collectResultsOnSuccess(futureList)
       .thenAccept(col -> col.forEach(poLinesList::addAll));
