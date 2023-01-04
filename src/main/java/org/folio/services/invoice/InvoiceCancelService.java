@@ -160,7 +160,7 @@ public class InvoiceCancelService {
       .collect(toList());
 
     CompletableFuture<List<PoLine>> poLinesFuture = collectResultsOnSuccess(futureList)
-      .thenApply(col -> col.stream().flatMap(Collection::stream).collect(toList()));
+      .thenApply(col -> col.stream().flatMap(Collection::stream).distinct().collect(toList()));
 
     return poLinesFuture.thenCompose(poLines -> selectPoLinesWithOpenOrders(poLines, requestContext))
       .thenCompose(poLines -> unreleaseEncumbrancesForPoLines(poLines, requestContext))
