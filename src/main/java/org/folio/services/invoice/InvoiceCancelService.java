@@ -1,5 +1,6 @@
 package org.folio.services.invoice;
 
+import one.util.streamex.StreamEx;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.invoices.rest.exceptions.HttpException;
@@ -21,6 +22,7 @@ import org.folio.services.order.OrderLineService;
 import org.folio.services.order.OrderService;
 import org.folio.services.voucher.VoucherCommandService;
 
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -32,7 +34,9 @@ import static java.util.stream.Collectors.toList;
 import static org.folio.invoices.utils.ErrorCodes.CANCEL_TRANSACTIONS_ERROR;
 import static org.folio.invoices.utils.ErrorCodes.CANNOT_CANCEL_INVOICE;
 import static org.folio.invoices.utils.ErrorCodes.ERROR_UNRELEASING_ENCUMBRANCES;
+import static org.folio.invoices.utils.HelperUtils.collectResultsOnSuccess;
 import static org.folio.invoices.utils.HelperUtils.convertIdsToCqlQuery;
+import static org.folio.rest.RestConstants.MAX_IDS_FOR_GET_RQ;
 import static org.folio.rest.acq.model.finance.Encumbrance.Status.RELEASED;
 import static org.folio.rest.acq.model.finance.Encumbrance.Status.UNRELEASED;
 import static org.folio.rest.acq.model.finance.Transaction.TransactionType.CREDIT;
@@ -149,8 +153,16 @@ public class InvoiceCancelService {
       .collect(toList());
     if (poLineIds.isEmpty())
       return completedFuture(null);
-    return orderLineService.getPoLines(queryToGetPoLinesWithRightPaymentStatusByIds(poLineIds), requestContext)
-      .thenCompose(poLines -> selectPoLinesWithOpenOrders(poLines, requestContext))
+    List<CompletableFuture<List<PoLine>>> futureList = StreamEx
+      .ofSubLists(poLineIds, MAX_IDS_FOR_GET_RQ)
+      .map(this::queryToGetPoLinesWithRightPaymentStatusByIds)
+      .map(query -> orderLineService.getPoLines(query, requestContext))
+      .collect(toList());
+
+    CompletableFuture<List<PoLine>> poLinesFuture = collectResultsOnSuccess(futureList)
+      .thenApply(col -> col.stream().flatMap(Collection::stream).collect(toList()));
+
+    return poLinesFuture.thenCompose(poLines -> selectPoLinesWithOpenOrders(poLines, requestContext))
       .thenCompose(poLines -> unreleaseEncumbrancesForPoLines(poLines, requestContext))
       .exceptionally(t -> {
         Throwable cause = requireNonNullElse(t.getCause(), t);
