@@ -156,11 +156,19 @@ public class InvoiceCancelService {
       .distinct()
       .collect(toList());
     if (poLineIds.isEmpty())
-      return succeededFuture(null);
-    return orderLineService.getPoLines(queryToGetPoLinesWithRightPaymentStatusByIds(poLineIds), requestContext)
-      .compose(poLines -> selectPoLinesWithOpenOrders(poLines, requestContext))
-      .compose(poLines -> unreleaseEncumbrancesForPoLines(poLines, requestContext))
-      .recover(t -> {
+      return completedFuture(null);
+    List<CompletableFuture<List<PoLine>>> futureList = StreamEx
+      .ofSubLists(poLineIds, MAX_IDS_FOR_GET_RQ)
+      .map(this::queryToGetPoLinesWithRightPaymentStatusByIds)
+      .map(query -> orderLineService.getPoLines(query, requestContext))
+      .collect(toList());
+
+    CompletableFuture<List<PoLine>> poLinesFuture = collectResultsOnSuccess(futureList)
+      .thenApply(col -> col.stream().flatMap(Collection::stream).collect(toList()));
+
+    return poLinesFuture.thenCompose(poLines -> selectPoLinesWithOpenOrders(poLines, requestContext))
+      .thenCompose(poLines -> unreleaseEncumbrancesForPoLines(poLines, requestContext))
+      .exceptionally(t -> {
         Throwable cause = requireNonNullElse(t.getCause(), t);
         List<Parameter> parameters = Collections.singletonList(
           new Parameter().withKey("cause").withValue(cause.toString()));
