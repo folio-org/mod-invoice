@@ -1,9 +1,11 @@
 package org.folio.services.invoice;
 
+import static io.vertx.core.Future.succeededFuture;
 import static java.util.stream.Collectors.toList;
 import static org.folio.invoices.utils.HelperUtils.calculateAdjustmentsTotal;
 import static org.folio.invoices.utils.HelperUtils.collectResultsOnSuccess;
 import static org.folio.invoices.utils.HelperUtils.convertToDoubleWithRounding;
+import static org.folio.invoices.utils.ResourcePathResolver.FOLIO_INVOICE_NUMBER;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICES;
 import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
 
@@ -11,7 +13,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
-import java.util.concurrent.CompletableFuture;
 
 import javax.money.CurrencyUnit;
 import javax.money.Monetary;
@@ -28,12 +29,17 @@ import org.folio.rest.jaxrs.model.Adjustment;
 import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.jaxrs.model.InvoiceCollection;
 import org.folio.rest.jaxrs.model.InvoiceLine;
+import org.folio.rest.jaxrs.model.SequenceNumber;
 import org.folio.services.adjusment.AdjustmentsService;
 import org.folio.services.order.OrderService;
 import org.javamoney.moneta.Money;
 import org.javamoney.moneta.function.MonetaryFunctions;
+import org.springframework.stereotype.Service;
+
+import io.vertx.core.Future;
 import io.vertx.core.json.JsonObject;
 
+@Service
 public class BaseInvoiceService implements InvoiceService {
     private static final Logger logger = LogManager.getLogger(BaseInvoiceService.class);
     private static final String INVOICE_ENDPOINT = resourcesPath(INVOICES);
@@ -52,37 +58,42 @@ public class BaseInvoiceService implements InvoiceService {
     }
 
     @Override
-    public CompletableFuture<InvoiceCollection> getInvoices(String query, int offset, int limit, RequestContext requestContext) {
+    public Future<InvoiceCollection> getInvoices(String query, int offset, int limit, RequestContext requestContext) {
         RequestEntry requestEntry = new RequestEntry(INVOICE_ENDPOINT)
             .withQuery(query)
             .withOffset(offset)
             .withLimit(limit);
-        return restClient.get(requestEntry, requestContext, InvoiceCollection.class);
+        return restClient.get(requestEntry, InvoiceCollection.class, requestContext);
     }
 
     @Override
-    public CompletableFuture<Invoice> getInvoiceById(String invoiceId, RequestContext requestContext) {
+    public Future<Invoice> getInvoiceById(String invoiceId, RequestContext requestContext) {
         RequestEntry requestEntry = new RequestEntry(INVOICE_BY_ID_ENDPOINT).withId(invoiceId);
-        return restClient.get(requestEntry, requestContext, Invoice.class);
+        return restClient.get(requestEntry,  Invoice.class, requestContext);
     }
 
     @Override
-    public CompletableFuture<Invoice> createInvoice(Invoice invoice, RequestContext requestContext) {
+    public Future<Invoice> createInvoice(Invoice invoice, RequestContext requestContext) {
         RequestEntry requestEntry = new RequestEntry(INVOICE_ENDPOINT);
-        return restClient.post(requestEntry, invoice, requestContext, Invoice.class);
+        return restClient.post(requestEntry, invoice, Invoice.class, requestContext);
     }
 
     @Override
-    public CompletableFuture<Void> updateInvoice(Invoice invoice, RequestContext requestContext) {
+    public Future<Void> updateInvoice(Invoice invoice, RequestContext requestContext) {
         RequestEntry requestEntry = new RequestEntry(INVOICE_BY_ID_ENDPOINT).withId(invoice.getId());
         return restClient.put(requestEntry, invoice, requestContext);
     }
 
     @Override
-    public CompletableFuture<Void> deleteInvoice(String invoiceId, RequestContext requestContext) {
+    public Future<Void> deleteInvoice(String invoiceId, RequestContext requestContext) {
         RequestEntry requestEntry = new RequestEntry(INVOICE_BY_ID_ENDPOINT).withId(invoiceId);
         return restClient.delete(requestEntry, requestContext)
-                         .thenCompose(v -> orderService.deleteOrderInvoiceRelationshipByInvoiceId(invoiceId, requestContext));
+                         .compose(v -> orderService.deleteOrderInvoiceRelationshipByInvoiceId(invoiceId, requestContext));
+    }
+
+    public Future<String> generateFolioInvoiceNumber(RequestContext requestContext) {
+      return restClient.get(resourcesPath(FOLIO_INVOICE_NUMBER), SequenceNumber.class, requestContext)
+        .map(SequenceNumber::getSequenceNumber);
     }
 
     @Override
@@ -134,28 +145,32 @@ public class BaseInvoiceService implements InvoiceService {
    * @return {code true} if adjustments total is different from original one
    */
   @Override
-  public CompletableFuture<Boolean> recalculateTotals(Invoice invoice, RequestContext requestContext) {
+  public Future<Boolean> recalculateTotals(Invoice invoice, RequestContext requestContext) {
     return invoiceLineService.getInvoiceLinesWithTotals(invoice, requestContext)
-      .thenApply(invoiceLines -> recalculateTotals(invoice, invoiceLines));
+      .map(invoiceLines -> recalculateTotals(invoice, invoiceLines));
   }
 
   @Override
-  public CompletableFuture<Void> updateInvoicesTotals(InvoiceCollection invoiceCollection, RequestContext requestContext) {
+  public Future<Void> updateInvoicesTotals(InvoiceCollection invoiceCollection, RequestContext requestContext) {
     if (CollectionUtils.isEmpty(invoiceCollection.getInvoices())) {
-      return CompletableFuture.completedFuture(null);
+      return succeededFuture(null);
     }
-    List<CompletableFuture<Void>> invoiceListFutures = new ArrayList<>(invoiceCollection.getInvoices().size());
+    List<Future<Void>> invoiceListFutures = new ArrayList<>(invoiceCollection.getInvoices().size());
     invoiceCollection.getInvoices().forEach(invoice -> invoiceListFutures.add(
       invoiceLineService.getInvoiceLinesWithTotals(invoice, requestContext)
-        .thenAccept(invoiceLines -> {
+        .map(invoiceLines -> {
+          // clone invoice lines
           List<InvoiceLine> updatedInvoiceLines = invoiceLines.stream()
             .map(invoiceLine -> JsonObject.mapFrom(invoiceLine).mapTo(InvoiceLine.class))
             .collect(toList());
+
           recalculateTotals(invoice, updatedInvoiceLines);
+          return null;
         })
     ));
     return collectResultsOnSuccess(invoiceListFutures)
-      .thenAccept(results -> logger.debug("Invoice totals updated : {}", results.size()));
+      .onSuccess(results -> logger.debug("Invoice totals updated : {}", results.size()))
+      .mapEmpty();
   }
 
   private MonetaryAmount calculateInvoiceLinesAdjustmentsTotal(List<InvoiceLine> lines, CurrencyUnit currency) {

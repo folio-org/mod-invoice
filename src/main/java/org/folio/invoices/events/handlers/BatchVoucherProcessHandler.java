@@ -1,21 +1,20 @@
 package org.folio.invoices.events.handlers;
 
 import static javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
-import static org.folio.invoices.utils.HelperUtils.*;
+import static org.folio.invoices.utils.HelperUtils.BATCH_VOUCHER_EXPORT;
+import static org.folio.invoices.utils.HelperUtils.getOkapiHeaders;
 
 import java.util.Map;
-import java.util.concurrent.CompletableFuture;
 
 import javax.ws.rs.core.Response;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.folio.completablefuture.FolioVertxCompletableFuture;
 import org.folio.exceptions.BatchVoucherGenerationException;
 import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.rest.impl.BatchVoucherPersistHelper;
+import org.folio.rest.impl.UploadBatchVoucherExportHelper;
 import org.folio.rest.jaxrs.model.BatchVoucherExport;
-import org.folio.services.voucher.UploadBatchVoucherExportService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -42,27 +41,29 @@ public class BatchVoucherProcessHandler implements Handler<Message<JsonObject>> 
 
     logger.debug("Received message body: {}", body);
 
-    BatchVoucherPersistHelper manager = new BatchVoucherPersistHelper(okapiHeaders, ctx, body.getString(LANG));
-    UploadBatchVoucherExportService uploadService = new UploadBatchVoucherExportService(okapiHeaders, ctx, body.getString(LANG));
+    BatchVoucherPersistHelper manager = new BatchVoucherPersistHelper(okapiHeaders, ctx);
+    UploadBatchVoucherExportHelper uploadService = new UploadBatchVoucherExportHelper(okapiHeaders, ctx);
 
-    getBatchVoucherExportBody(body)
-      .thenCompose(bvExport -> manager.persistBatchVoucher(bvExport)
-                                      .thenAccept(bvExport::withBatchVoucherId)
-                                      .thenAccept(aVoid -> isBatchVoucherCreated(bvExport))
-                                      .thenCompose(id -> uploadService.uploadBatchVoucherExport(bvExport)))
-      .handle((ok, fail) -> {
+    var bvExport = getBatchVoucherExportBody(body);
+    manager.persistBatchVoucher(bvExport)
+      .map(bvId -> {
+        bvExport.setBatchVoucherId(bvId);
+        isBatchVoucherCreated(bvExport);
+        return null;
+      })
+      .compose(id -> uploadService.uploadBatchVoucherExport(bvExport))
+      .onComplete(asyncResult -> {
         // Sending reply message just in case some logic requires it
-        if (fail == null) {
+        if (asyncResult.succeeded()) {
           message.reply(Response.Status.OK.getReasonPhrase());
         } else {
-          Throwable cause = fail.getCause();
+          Throwable cause = asyncResult.cause();
           int code = INTERNAL_SERVER_ERROR.getStatusCode();
           if (cause instanceof HttpException) {
             code = ((HttpException) cause).getCode();
           }
           message.fail(code, cause.getMessage());
         }
-        return null;
       });
   }
 
@@ -72,8 +73,8 @@ public class BatchVoucherProcessHandler implements Handler<Message<JsonObject>> 
     }
   }
 
-  private CompletableFuture<BatchVoucherExport> getBatchVoucherExportBody(JsonObject body) {
-     return FolioVertxCompletableFuture.supplyAsync(ctx,
-       () -> body.getJsonObject(BATCH_VOUCHER_EXPORT).mapTo(BatchVoucherExport.class));
+  private BatchVoucherExport getBatchVoucherExportBody(JsonObject body) {
+     return body.getJsonObject(BATCH_VOUCHER_EXPORT)
+       .mapTo(BatchVoucherExport.class);
   }
 }

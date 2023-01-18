@@ -19,6 +19,8 @@ import static org.hamcrest.collection.IsCollectionWithSize.hasSize;
 
 import java.util.Collections;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.folio.rest.jaxrs.model.Adjustment;
 import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.jaxrs.model.InvoiceLine;
@@ -26,9 +28,6 @@ import org.folio.rest.jaxrs.model.InvoiceLineCollection;
 import org.hamcrest.Matchers;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
-
-import org.apache.logging.log4j.Logger;
-import org.apache.logging.log4j.LogManager;
 
 public class InvoiceLinesProratedAdjustmentsTest extends ApiTestBase {
 

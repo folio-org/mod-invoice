@@ -1,56 +1,6 @@
 package org.folio.dataimport.handlers.actions;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import io.vertx.core.json.Json;
-import io.vertx.core.json.JsonArray;
-import io.vertx.core.json.JsonObject;
-import io.vertx.core.json.jackson.DatabindCodec;
-import io.vertx.junit5.VertxExtension;
-import net.mguenther.kafka.junit.KeyValue;
-import net.mguenther.kafka.junit.ObserveKeyValues;
-import net.mguenther.kafka.junit.SendKeyValues;
-import org.apache.kafka.clients.consumer.ConsumerConfig;
-import org.folio.ActionProfile;
-import org.folio.ApiTestSuite;
-import org.folio.DataImportEventPayload;
-import org.folio.JobProfile;
-import org.folio.MappingProfile;
-import org.folio.ParsedRecord;
-import org.folio.Record;
-import org.folio.invoices.utils.AcqDesiredPermissions;
-import org.folio.kafka.KafkaTopicNameHelper;
-import org.folio.processing.events.EventManager;
-import org.folio.processing.events.services.handler.EventHandler;
-import org.folio.rest.acq.model.orders.PoLine;
-import org.folio.rest.acq.model.orders.PoLineCollection;
-import org.folio.rest.core.RestClient;
-import org.folio.rest.core.models.RequestContext;
-import org.folio.rest.impl.ApiTestBase;
-import org.folio.rest.jaxrs.model.Event;
-import org.folio.rest.jaxrs.model.Invoice;
-import org.folio.rest.jaxrs.model.InvoiceLine.InvoiceLineStatus;
-import org.folio.rest.jaxrs.model.InvoiceLineCollection;
-import org.folio.rest.jaxrs.model.MappingDetail;
-import org.folio.rest.jaxrs.model.MappingRule;
-import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
-import org.folio.rest.jaxrs.model.RepeatableSubfieldMapping;
-import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mockito;
-
-import java.io.IOException;
-import java.io.UnsupportedEncodingException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.TimeUnit;
-
+import static io.vertx.core.Future.succeededFuture;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.folio.ActionProfile.Action.CREATE;
 import static org.folio.ApiTestSuite.KAFKA_ENV_VALUE;
@@ -87,6 +37,59 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
+
+import java.io.IOException;
+import java.io.UnsupportedEncodingException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.TimeUnit;
+
+import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.folio.ActionProfile;
+import org.folio.ApiTestSuite;
+import org.folio.DataImportEventPayload;
+import org.folio.JobProfile;
+import org.folio.MappingProfile;
+import org.folio.ParsedRecord;
+import org.folio.Record;
+import org.folio.invoices.utils.AcqDesiredPermissions;
+import org.folio.kafka.KafkaTopicNameHelper;
+import org.folio.processing.events.EventManager;
+import org.folio.processing.events.services.handler.EventHandler;
+import org.folio.rest.acq.model.orders.PoLine;
+import org.folio.rest.acq.model.orders.PoLineCollection;
+import org.folio.rest.core.RestClient;
+import org.folio.rest.core.models.RequestContext;
+import org.folio.rest.core.models.RequestEntry;
+import org.folio.rest.impl.ApiTestBase;
+import org.folio.rest.jaxrs.model.Event;
+import org.folio.rest.jaxrs.model.Invoice;
+import org.folio.rest.jaxrs.model.InvoiceLine.InvoiceLineStatus;
+import org.folio.rest.jaxrs.model.InvoiceLineCollection;
+import org.folio.rest.jaxrs.model.MappingDetail;
+import org.folio.rest.jaxrs.model.MappingRule;
+import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
+import org.folio.rest.jaxrs.model.RepeatableSubfieldMapping;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mockito;
+
+import com.fasterxml.jackson.core.type.TypeReference;
+
+import io.vertx.core.json.Json;
+import io.vertx.core.json.JsonArray;
+import io.vertx.core.json.JsonObject;
+import io.vertx.core.json.jackson.DatabindCodec;
+import io.vertx.junit5.VertxExtension;
+import net.mguenther.kafka.junit.KeyValue;
+import net.mguenther.kafka.junit.ObserveKeyValues;
+import net.mguenther.kafka.junit.SendKeyValues;
 
 @ExtendWith(VertxExtension.class)
 public class CreateInvoiceEventHandlerTest extends ApiTestBase {
@@ -285,7 +288,7 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
       .observeFor(40, TimeUnit.SECONDS)
       .build());
 
-    assertEquals(record.getId(), new String(observedRecords.get(0).getHeaders().lastHeader(RECORD_ID_HEADER).value(), UTF_8.name()));
+    assertEquals(record.getId(), new String(observedRecords.get(0).getHeaders().lastHeader(RECORD_ID_HEADER).value(), UTF_8));
     Event obtainedEvent = Json.decodeValue(observedRecords.get(0).getValue(), Event.class);
     DataImportEventPayload eventPayload = Json.decodeValue(obtainedEvent.getEventPayload(), DataImportEventPayload.class);
     assertEquals(DI_INVOICE_CREATED.value(), eventPayload.getEventsChain().get(eventPayload.getEventsChain().size() -1));
@@ -314,14 +317,16 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
   }
 
   @Test
+
+
   public void shouldMatchPoLinesByPoLineNumberAndCreateInvoiceLinesWithDescriptionFromPoLines() throws IOException, InterruptedException {
     // given
     PoLine poLine1 = Json.decodeValue(getMockData(String.format(MOCK_DATA_PATH_PATTERN, PO_LINES_MOCK_DATA_PATH, PO_LINE_ID_1)), PoLine.class);
     PoLine poLine3 = Json.decodeValue(getMockData(String.format(MOCK_DATA_PATH_PATTERN, PO_LINES_MOCK_DATA_PATH, PO_LINE_ID_3)), PoLine.class);
     PoLineCollection poLineCollection = new PoLineCollection().withPoLines(List.of(poLine1, poLine3));
 
-    when(mockOrderLinesRestClient.get(any(), any(RequestContext.class), eq(PoLineCollection.class)))
-      .thenReturn(CompletableFuture.completedFuture(poLineCollection));
+    when(mockOrderLinesRestClient.get(any(RequestEntry.class), eq(PoLineCollection.class), any(RequestContext.class)))
+      .thenReturn(succeededFuture(poLineCollection));
 
     Record record = new Record().withParsedRecord(new ParsedRecord().withContent(EDIFACT_PARSED_CONTENT)).withId(UUID.randomUUID().toString());
     ProfileSnapshotWrapper profileSnapshotWrapper = buildProfileSnapshotWrapper(jobProfile, actionProfile, mappingProfileWithPoLineSyntax);
@@ -379,16 +384,18 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
   }
 
   @Test
+
+
   public void shouldMatchPoLinesByRefNumberAndCreateInvoiceLinesWithDescriptionFromPoLines() throws IOException, InterruptedException {
     // given
     PoLine poLine1 = Json.decodeValue(getMockData(String.format(MOCK_DATA_PATH_PATTERN, PO_LINES_MOCK_DATA_PATH, PO_LINE_ID_1)), PoLine.class);
     PoLine poLine3 = Json.decodeValue(getMockData(String.format(MOCK_DATA_PATH_PATTERN, PO_LINES_MOCK_DATA_PATH, PO_LINE_ID_3)), PoLine.class);
 
-    when(mockOrderLinesRestClient.get(any(), any(RequestContext.class), eq(PoLineCollection.class)))
-      .thenReturn(CompletableFuture.completedFuture(new PoLineCollection().withPoLines(new ArrayList<>())))
-      .thenReturn(CompletableFuture.completedFuture(new PoLineCollection().withPoLines(List.of(poLine1))))
-      .thenReturn(CompletableFuture.completedFuture(new PoLineCollection().withPoLines(new ArrayList<>())))
-      .thenReturn(CompletableFuture.completedFuture(new PoLineCollection().withPoLines(List.of(poLine3))));
+    when(mockOrderLinesRestClient.get(any(RequestEntry.class), eq(PoLineCollection.class), any(RequestContext.class)))
+      .thenReturn(succeededFuture(new PoLineCollection().withPoLines(new ArrayList<>())))
+      .thenReturn(succeededFuture(new PoLineCollection().withPoLines(List.of(poLine1))))
+      .thenReturn(succeededFuture(new PoLineCollection().withPoLines(new ArrayList<>())))
+      .thenReturn(succeededFuture(new PoLineCollection().withPoLines(List.of(poLine3))));
 
     ProfileSnapshotWrapper profileSnapshotWrapper = buildProfileSnapshotWrapper(jobProfile, actionProfile, mappingProfileWithPoLineSyntax);
     addMockEntry(JOB_PROFILE_SNAPSHOTS_MOCK, profileSnapshotWrapper);
@@ -454,14 +461,16 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
   }
 
   @Test
+
+
   public void shouldMatchPoLinesByPoLineNumberAndCreateInvoiceLinesWithPoLinesFundDistributions() throws IOException, InterruptedException {
     // given
     PoLine poLine1 = Json.decodeValue(getMockData(String.format(MOCK_DATA_PATH_PATTERN, PO_LINES_MOCK_DATA_PATH, PO_LINE_ID_1)), PoLine.class);
     PoLine poLine3 = Json.decodeValue(getMockData(String.format(MOCK_DATA_PATH_PATTERN, PO_LINES_MOCK_DATA_PATH, PO_LINE_ID_3)), PoLine.class);
     PoLineCollection poLineCollection = new PoLineCollection().withPoLines(List.of(poLine1, poLine3));
 
-    when(mockOrderLinesRestClient.get(any(), any(RequestContext.class), eq(PoLineCollection.class)))
-      .thenReturn(CompletableFuture.completedFuture(poLineCollection));
+    when(mockOrderLinesRestClient.get(any(RequestEntry.class), eq(PoLineCollection.class), any(RequestContext.class)))
+      .thenReturn(succeededFuture(poLineCollection));
 
     ProfileSnapshotWrapper profileSnapshotWrapper = buildProfileSnapshotWrapper(jobProfile, actionProfile, mappingProfileWithPoLineFundDistribution);
     addMockEntry(JOB_PROFILE_SNAPSHOTS_MOCK, profileSnapshotWrapper);
@@ -519,14 +528,16 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
   }
 
   @Test
+
+
   public void shouldNotLinkInvoiceLinesToPoLinesWhenMultiplePoLinesAreMatchedByRefNumber() throws IOException, InterruptedException {
     // given
     PoLine poLine1 = Json.decodeValue(getMockData(String.format(MOCK_DATA_PATH_PATTERN, PO_LINES_MOCK_DATA_PATH, PO_LINE_ID_1)), PoLine.class);
     PoLine poLine3 = Json.decodeValue(getMockData(String.format(MOCK_DATA_PATH_PATTERN, PO_LINES_MOCK_DATA_PATH, PO_LINE_ID_3)), PoLine.class);
 
-    when(mockOrderLinesRestClient.get(any(), any(RequestContext.class), eq(PoLineCollection.class)))
-      .thenReturn(CompletableFuture.completedFuture(new PoLineCollection()))
-      .thenReturn(CompletableFuture.completedFuture(new PoLineCollection().withPoLines(List.of(poLine1, poLine3))));
+    when(mockOrderLinesRestClient.get(any(RequestEntry.class), eq(PoLineCollection.class), any(RequestContext.class)))
+      .thenReturn(succeededFuture(new PoLineCollection()))
+      .thenReturn(succeededFuture(new PoLineCollection().withPoLines(List.of(poLine1, poLine3))));
 
     ProfileSnapshotWrapper profileSnapshotWrapper = buildProfileSnapshotWrapper(jobProfile, actionProfile, mappingProfileWithPoLineSyntax);
     addMockEntry(JOB_PROFILE_SNAPSHOTS_MOCK, profileSnapshotWrapper);
@@ -584,9 +595,9 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
     PoLine poLine3 = Json.decodeValue(getMockData(String.format(MOCK_DATA_PATH_PATTERN, PO_LINES_MOCK_DATA_PATH, PO_LINE_ID_3)), PoLine.class);
     PoLineCollection poLineCollection = new PoLineCollection().withPoLines(List.of(poLine3));
 
-    when(mockOrderLinesRestClient.get(any(), any(RequestContext.class), eq(PoLineCollection.class)))
-      .thenReturn(CompletableFuture.completedFuture(poLineCollection))
-      .thenReturn(CompletableFuture.completedFuture(new PoLineCollection()));
+    when(mockOrderLinesRestClient.get(any(RequestEntry.class), eq(PoLineCollection.class), any(RequestContext.class)))
+      .thenReturn(succeededFuture(poLineCollection))
+      .thenReturn(succeededFuture(new PoLineCollection()));
 
     ProfileSnapshotWrapper profileSnapshotWrapper = buildProfileSnapshotWrapper(jobProfile, actionProfile, mappingProfileWithMixedFundDistributionMapping);
     addMockEntry(JOB_PROFILE_SNAPSHOTS_MOCK, profileSnapshotWrapper);
@@ -685,6 +696,8 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
   }
 
   @Test
+
+
   public void shouldPublishDiErrorEventWhenPostInvoiceToStorageFailed() throws InterruptedException {
     // given
     ProfileSnapshotWrapper profileSnapshotWrapper = buildProfileSnapshotWrapper(jobProfile, actionProfile, mappingProfile);

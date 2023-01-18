@@ -8,6 +8,8 @@ import static org.hamcrest.Matchers.notNullValue;
 
 import java.io.IOException;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.folio.rest.jaxrs.model.ExportConfig;
 import org.folio.rest.jaxrs.model.ExportConfig.Format;
 import org.folio.rest.jaxrs.model.ExportConfigCollection;
@@ -16,8 +18,6 @@ import org.junit.jupiter.api.Test;
 
 import io.vertx.core.http.HttpMethod;
 import io.vertx.core.json.JsonObject;
-import org.apache.logging.log4j.Logger;
-import org.apache.logging.log4j.LogManager;
 
 public class BatchVoucherExportConfigTest extends ApiTestBase {
 

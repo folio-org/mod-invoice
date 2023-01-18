@@ -4,15 +4,18 @@ import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 import static javax.ws.rs.core.MediaType.APPLICATION_XML;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.folio.rest.jaxrs.model.BatchVoucher;
 import org.folio.rest.jaxrs.model.jaxb.BatchVoucherType;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 
 import io.restassured.http.Headers;
 import io.restassured.response.Response;
-import org.apache.logging.log4j.Logger;
-import org.apache.logging.log4j.LogManager;
+import io.vertx.junit5.VertxExtension;
 
+@ExtendWith(VertxExtension.class)
 public class BatchVoucherImplTest extends ApiTestBase {
 
   private static final Logger logger = LogManager.getLogger(BatchVoucherImplTest.class);

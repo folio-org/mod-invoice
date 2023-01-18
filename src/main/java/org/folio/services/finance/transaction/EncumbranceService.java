@@ -2,21 +2,20 @@ package org.folio.services.finance.transaction;
 
 import static java.util.stream.Collectors.groupingBy;
 import static java.util.stream.Collectors.toList;
-import static org.folio.completablefuture.FolioVertxCompletableFuture.allOf;
 import static org.folio.invoices.utils.HelperUtils.collectResultsOnSuccess;
 import static org.folio.invoices.utils.HelperUtils.convertIdsToCqlQuery;
 import static org.folio.rest.RestConstants.MAX_IDS_FOR_GET_RQ;
 
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CompletableFuture;
 
-import org.apache.commons.lang3.tuple.Pair;
+import org.folio.okapi.common.GenericCompositeFuture;
 import org.folio.rest.acq.model.finance.OrderTransactionSummary;
 import org.folio.rest.acq.model.finance.Transaction;
 import org.folio.rest.acq.model.finance.TransactionCollection;
 import org.folio.rest.core.models.RequestContext;
 
+import io.vertx.core.Future;
 import one.util.streamex.StreamEx;
 
 public class EncumbranceService {
@@ -30,25 +29,26 @@ public class EncumbranceService {
     this.orderTransactionSummaryService = orderTransactionSummaryService;
   }
 
-  public CompletableFuture<List<Transaction>> getEncumbrancesByPoLineIds(List<String> poLineIds, RequestContext requestContext) {
-    List<CompletableFuture<TransactionCollection>> expenseClassesFutureList = StreamEx
+  public Future<List<Transaction>> getEncumbrancesByPoLineIds(List<String> poLineIds, RequestContext requestContext) {
+    List<Future<TransactionCollection>> expenseClassesFutureList = StreamEx
       .ofSubLists(poLineIds, MAX_IDS_FOR_GET_RQ)
       .map(this::buildEncumbranceChunckQueryByPoLineIds)
       .map(query -> baseTransactionService.getTransactions(query, 0, Integer.MAX_VALUE, requestContext))
       .collect(toList());
 
     return collectResultsOnSuccess(expenseClassesFutureList)
-      .thenApply(expenseClassCollections ->
+      .map(expenseClassCollections ->
         expenseClassCollections.stream().flatMap(col -> col.getTransactions().stream()).collect(toList())
       );
   }
 
-  public CompletableFuture<Void> unreleaseEncumbrances(List<Transaction> transactions, RequestContext requestContext) {
+  public Future<Void> unreleaseEncumbrances(List<Transaction> transactions, RequestContext requestContext) {
     Map<String, List<Transaction>> transactionsByOrderId = transactions.stream()
       .collect(groupingBy(tr -> tr.getEncumbrance().getSourcePurchaseOrderId()));
-    return allOf(requestContext.getContext(), transactionsByOrderId.entrySet().stream()
+    var futures =  transactionsByOrderId.entrySet().stream()
       .map(entry -> unreleaseEncumbrancesByOrderId(entry.getKey(), entry.getValue(), requestContext))
-      .toArray(CompletableFuture[]::new));
+      .collect(toList());
+    return GenericCompositeFuture.join(futures).mapEmpty();
   }
 
   private String buildEncumbranceChunckQueryByPoLineIds(List<String> poLineIds) {
@@ -56,11 +56,11 @@ public class EncumbranceService {
       convertIdsToCqlQuery(poLineIds, "encumbrance.sourcePoLineId", true);
   }
 
-  private CompletableFuture<Void> unreleaseEncumbrancesByOrderId(String orderId, List<Transaction> transactions,
+  private Future<Void> unreleaseEncumbrancesByOrderId(String orderId, List<Transaction> transactions,
       RequestContext requestContext) {
     return orderTransactionSummaryService.updateOrderTransactionSummary(
         buildOrderTransactionsSummary(orderId, transactions), requestContext)
-      .thenCompose(v -> baseTransactionService.updateTransactions(transactions, requestContext));
+      .compose(v -> baseTransactionService.updateTransactions(transactions, requestContext));
   }
 
   private OrderTransactionSummary buildOrderTransactionsSummary(String orderId, List<Transaction> transactions) {

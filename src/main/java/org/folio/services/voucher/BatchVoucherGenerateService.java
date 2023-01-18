@@ -1,6 +1,5 @@
 package org.folio.services.voucher;
 
-import static java.util.concurrent.CompletableFuture.allOf;
 import static java.util.stream.Collectors.toList;
 
 import java.util.ArrayList;
@@ -9,102 +8,91 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
-import io.vertx.core.Vertx;
 import org.folio.converters.AddressConverter;
-import org.folio.exceptions.BatchVoucherGenerationException;
+import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.rest.acq.model.Address;
 import org.folio.rest.acq.model.FundDistribution;
 import org.folio.rest.acq.model.Organization;
 import org.folio.rest.acq.model.VoucherLine;
 import org.folio.rest.core.models.RequestContext;
-import org.folio.rest.impl.BatchGroupHelper;
-import org.folio.rest.impl.VoucherService;
-import org.folio.rest.jaxrs.model.*;
+import org.folio.rest.jaxrs.model.Adjustment;
+import org.folio.rest.jaxrs.model.BatchVoucher;
+import org.folio.rest.jaxrs.model.BatchVoucherExport;
+import org.folio.rest.jaxrs.model.BatchedVoucher;
+import org.folio.rest.jaxrs.model.BatchedVoucherLine;
+import org.folio.rest.jaxrs.model.Invoice;
+import org.folio.rest.jaxrs.model.InvoiceLine;
+import org.folio.rest.jaxrs.model.Voucher;
+import org.folio.rest.jaxrs.model.VoucherCollection;
+import org.folio.services.BatchGroupService;
 import org.folio.services.InvoiceLinesRetrieveService;
 import org.folio.services.InvoiceRetrieveService;
 import org.folio.services.VendorRetrieveService;
-import org.folio.services.VoucherLinesRetrieveService;
+import org.folio.services.VoucherLineService;
 
-import io.vertx.core.Context;
+import io.vertx.core.CompositeFuture;
+import io.vertx.core.Future;
 import io.vertx.core.json.JsonObject;
-import org.folio.spring.SpringContextUtil;
-import org.springframework.beans.factory.annotation.Autowired;
 
 public class BatchVoucherGenerateService {
-  @Autowired
-  private VoucherService voucherService;
-  private final BatchGroupHelper batchGroupHelper;
-  @Autowired
-  private InvoiceRetrieveService invoiceRetrieveService;
-  @Autowired
-  private InvoiceLinesRetrieveService invoiceLinesRetrieveService;
-  private final VoucherLinesRetrieveService voucherLinesRetrieveService;
-  @Autowired
-  private VendorRetrieveService vendorRetrieveService;
-  @Autowired
-  private AddressConverter addressConverter;
 
-  public BatchVoucherGenerateService(Map<String, String> okapiHeaders, Context ctx, String lang) {
-    SpringContextUtil.autowireDependencies(this, Vertx.currentContext());
-    voucherLinesRetrieveService = new VoucherLinesRetrieveService(okapiHeaders, ctx, lang);
-    batchGroupHelper = new BatchGroupHelper(okapiHeaders, ctx, lang);
-  }
+  private final VoucherService voucherService;
 
-  public BatchVoucherGenerateService(Map<String, String> okapiHeaders, Context ctx, String lang,
-                                     VendorRetrieveService vendorRetrieveService,
-                                     InvoiceRetrieveService invoiceRetrieveService,
-                                     InvoiceLinesRetrieveService invoiceLinesRetrieveService,
-                                     VoucherService voucherService,
-                                     AddressConverter addressConverter) {
-    voucherLinesRetrieveService = new VoucherLinesRetrieveService(okapiHeaders, ctx, lang);
-    batchGroupHelper = new BatchGroupHelper(okapiHeaders, ctx, lang);
-    this.vendorRetrieveService = vendorRetrieveService;
+  private final InvoiceRetrieveService invoiceRetrieveService;
+
+  private final InvoiceLinesRetrieveService invoiceLinesRetrieveService;
+
+  private final VendorRetrieveService vendorRetrieveService;
+  private final VoucherLineService voucherLineService;
+
+  private final AddressConverter addressConverter;
+
+  private final BatchGroupService batchGroupService;
+
+  public BatchVoucherGenerateService(VoucherService voucherService, InvoiceRetrieveService invoiceRetrieveService,
+      InvoiceLinesRetrieveService invoiceLinesRetrieveService, VoucherLineService voucherLineService,
+      VendorRetrieveService vendorRetrieveService, AddressConverter addressConverter, BatchGroupService batchGroupService) {
     this.voucherService = voucherService;
-    this.invoiceLinesRetrieveService = invoiceLinesRetrieveService;
     this.invoiceRetrieveService = invoiceRetrieveService;
+    this.invoiceLinesRetrieveService = invoiceLinesRetrieveService;
+    this.voucherLineService = voucherLineService;
+    this.vendorRetrieveService = vendorRetrieveService;
     this.addressConverter = addressConverter;
+    this.batchGroupService = batchGroupService;
+
   }
 
-  public CompletableFuture<BatchVoucher> generateBatchVoucher(BatchVoucherExport batchVoucherExport, RequestContext requestContext) {
-    CompletableFuture<BatchVoucher> future = new CompletableFuture<>();
+
+  public Future<BatchVoucher> buildBatchVoucherObject(BatchVoucherExport batchVoucherExport, RequestContext requestContext) {
     String voucherCQL = buildBatchVoucherQuery(batchVoucherExport);
-    voucherService.getVouchers(voucherCQL, 0, Integer.MAX_VALUE, requestContext)
-      .thenCompose(vouchers -> {
+    return voucherService.getVouchers(voucherCQL, 0, Integer.MAX_VALUE, requestContext)
+      .compose(vouchers -> {
         if (!vouchers.getVouchers().isEmpty()) {
-          CompletableFuture<Map<String, List<VoucherLine>>> voucherLines = voucherLinesRetrieveService.getVoucherLinesMap(vouchers);
-          CompletableFuture<Map<String, Invoice>> invoices = invoiceRetrieveService.getInvoiceMap(vouchers, requestContext);
-          CompletableFuture<Map<String, List<InvoiceLine>>> invoiceLines = invoiceLinesRetrieveService.getInvoiceLineMap(vouchers, requestContext);
-          return allOf(voucherLines, invoices, invoiceLines)
-            .thenCompose(v -> buildBatchVoucher(batchVoucherExport, vouchers, voucherLines.join(), invoices.join(), invoiceLines.join(), requestContext))
-            .thenAccept(batchVoucher -> {
-              future.complete(batchVoucher);
-              closeHttpConnections();
-            });
+          Future<Map<String, List<VoucherLine>>> voucherLines = voucherLineService.getVoucherLinesMap(vouchers, requestContext);
+          Future<Map<String, Invoice>> invoices = invoiceRetrieveService.getInvoiceMap(vouchers, requestContext);
+          Future<Map<String, List<InvoiceLine>>> invoiceLines = invoiceLinesRetrieveService.getInvoiceLineMap(vouchers, requestContext);
+          return CompositeFuture.join(voucherLines, invoices, invoiceLines)
+            .compose(v -> buildBatchVoucher(batchVoucherExport, vouchers, voucherLines.result(), invoices.result(), invoiceLines.result(), requestContext));
         }
-       throw new BatchVoucherGenerationException("Vouchers for batch voucher export were not found");
-      })
-      .exceptionally(t -> {
-        future.completeExceptionally(t);
-        closeHttpConnections();
-        return null;
+       throw new HttpException(404, "Vouchers for batch voucher export were not found");
       });
-     return future;
   }
 
-  private CompletableFuture<BatchVoucher> buildBatchVoucher(BatchVoucherExport batchVoucherExport,
+  private Future<BatchVoucher> buildBatchVoucher(BatchVoucherExport batchVoucherExport,
       VoucherCollection voucherCollection, Map<String, List<VoucherLine>> voucherLinesMap, Map<String, Invoice> invoiceMap, Map<String, List<InvoiceLine>> invoiceLinesMap, RequestContext requestContext) {
     List<Invoice> invoices = new ArrayList<>(invoiceMap.values());
-    return vendorRetrieveService.getVendorsMap(invoices, requestContext)
-      .thenCombine(batchGroupHelper.getBatchGroup(batchVoucherExport.getBatchGroupId()), (vendorsMap, batchGroup) -> {
+    var vendorsMapFuture = vendorRetrieveService.getVendorsMap(invoices, requestContext);
+    return vendorsMapFuture
+      .compose(vendorsMap -> batchGroupService.getBatchGroup(batchVoucherExport.getBatchGroupId(), requestContext))
+      .map(batchGroup -> {
         BatchVoucher batchVoucher = new BatchVoucher();
         batchVoucher.setStart(batchVoucherExport.getStart());
         batchVoucher.setEnd(batchVoucherExport.getStart());
         List<BatchedVoucher> batchedVouchers = voucherCollection.getVouchers()
           .stream()
-          .map(voucher -> buildBatchedVoucher(voucher, voucherLinesMap, invoiceMap, invoiceLinesMap, vendorsMap))
+          .map(voucher -> buildBatchedVoucher(voucher, voucherLinesMap, invoiceMap, invoiceLinesMap, vendorsMapFuture.result()))
           .collect(toList());
         batchVoucher.setTotalRecords(batchedVouchers.size());
         batchVoucher.withBatchedVouchers(batchedVouchers);
@@ -220,9 +208,5 @@ public class BatchVoucherGenerateService {
     return "batchGroupId==" + batchVoucherExport.getBatchGroupId() + " and voucherDate>=" + voucherStart
       + " and voucherDate<=" + voucherEnd
       + " and exportToAccounting==true";
-  }
-
-  private void closeHttpConnections() {
-    batchGroupHelper.closeHttpClient();
   }
 }

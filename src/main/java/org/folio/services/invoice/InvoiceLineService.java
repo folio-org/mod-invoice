@@ -1,17 +1,20 @@
 package org.folio.services.invoice;
 
 import static java.util.stream.Collectors.toList;
-import static org.folio.completablefuture.FolioVertxCompletableFuture.allOf;
 import static org.folio.invoices.utils.ErrorCodes.INVOICE_LINE_NOT_FOUND;
+import static org.folio.invoices.utils.HelperUtils.INVOICE_ID;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_LINES;
+import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_LINE_NUMBER;
+import static org.folio.invoices.utils.ResourcePathResolver.resourceByIdPath;
 import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
 
 import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
+import java.util.stream.Collectors;
 
 import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.invoices.utils.HelperUtils;
+import org.folio.okapi.common.GenericCompositeFuture;
 import org.folio.rest.core.RestClient;
 import org.folio.rest.core.models.RequestContext;
 import org.folio.rest.core.models.RequestEntry;
@@ -19,11 +22,15 @@ import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.jaxrs.model.InvoiceLine;
 import org.folio.rest.jaxrs.model.InvoiceLineCollection;
 import org.folio.rest.jaxrs.model.Parameter;
+import org.folio.rest.jaxrs.model.SequenceNumber;
+
+import io.vertx.core.Future;
 
 public class InvoiceLineService {
 
   private static final String INVOICE_LINES_ENDPOINT = resourcesPath(INVOICE_LINES);
   private static final String INVOICE_LINE_BY_ID_ENDPOINT = INVOICE_LINES_ENDPOINT + "/{id}";
+  private static final String INVOICE_LINE_NUMBER_ENDPOINT = resourcesPath(INVOICE_LINE_NUMBER) + "?" + INVOICE_ID + "=";
 
   private static final String INVOICE_ID_QUERY =  "invoiceId==%s";
 
@@ -33,47 +40,76 @@ public class InvoiceLineService {
     this.restClient = restClient;
   }
 
-  public CompletableFuture<InvoiceLine> getInvoiceLine(String invoiceLineId, RequestContext requestContext) {
+  public Future<InvoiceLine> getInvoiceLine(String invoiceLineId, RequestContext requestContext) {
     RequestEntry requestEntry = new RequestEntry(INVOICE_LINE_BY_ID_ENDPOINT).withId(invoiceLineId);
-    return restClient.get(requestEntry, requestContext, InvoiceLine.class)
-      .exceptionally(throwable -> {
-        List<Parameter> parameters = Collections.singletonList(new Parameter().withKey("invoiceLineId").withValue(invoiceLineId));
-        throw new HttpException(404, INVOICE_LINE_NOT_FOUND.toError().withParameters(parameters));
+    return restClient.get(requestEntry, InvoiceLine.class, requestContext)
+      .recover(throwable -> {
+        if (throwable instanceof HttpException && ((HttpException) throwable).getCode() == 404) {
+          List<Parameter> parameters = Collections.singletonList(new Parameter().withKey("invoiceLineId").withValue(invoiceLineId));
+          throw new HttpException(404, INVOICE_LINE_NOT_FOUND.toError().withParameters(parameters));
+        }
+        return Future.failedFuture(throwable);
       });
   }
 
-  public CompletableFuture<InvoiceLineCollection> getInvoiceLines(String invoiceId, RequestContext requestContext) {
+  public Future<InvoiceLineCollection> getInvoiceLinesByInvoiceId(String invoiceId, RequestContext requestContext) {
     String query = String.format(INVOICE_ID_QUERY, invoiceId);
     RequestEntry requestEntry = new RequestEntry(INVOICE_LINES_ENDPOINT)
         .withQuery(query)
         .withLimit(Integer.MAX_VALUE)
         .withOffset(0);
-    return restClient.get(requestEntry, requestContext, InvoiceLineCollection.class);
+    return restClient.get(requestEntry, InvoiceLineCollection.class, requestContext);
   }
 
-  public CompletableFuture<List<InvoiceLine>> getInvoiceLinesRelatedForOrder(List<String> orderPoLineIds, String invoiceId, RequestContext requestContext) {
-    return getInvoiceLines(invoiceId, requestContext)
-      .thenApply(invoiceLines -> invoiceLines.getInvoiceLines().stream()
+  public Future<InvoiceLineCollection> getInvoiceLines(String endpoint, RequestContext requestContext) {
+    return restClient.get(endpoint, InvoiceLineCollection.class, requestContext);
+  }
+
+  public Future<List<InvoiceLine>> getInvoiceLinesRelatedForOrder(List<String> orderPoLineIds, String invoiceId, RequestContext requestContext) {
+    return getInvoiceLinesByInvoiceId(invoiceId, requestContext)
+      .map(invoiceLines -> invoiceLines.getInvoiceLines().stream()
         .filter(invoiceLine -> orderPoLineIds.contains(invoiceLine.getPoLineId())).collect(toList()));
   }
 
-  public CompletableFuture<Void> persistInvoiceLines(List<InvoiceLine> lines,  RequestContext requestContext) {
-    return allOf(requestContext.getContext(), lines.stream()
-                                                   .map(invoiceLine -> persistInvoiceLine(invoiceLine, requestContext))
-                                                   .toArray(CompletableFuture[]::new));
+  public Future<Void> persistInvoiceLines(List<InvoiceLine> lines,  RequestContext requestContext) {
+    var futures = lines.stream()
+      .map(invoiceLine -> persistInvoiceLine(invoiceLine, requestContext))
+      .collect(Collectors.toList());
+    return GenericCompositeFuture.join(futures).mapEmpty();
+  }
+  public Future<Void> updateInvoiceLine(InvoiceLine invoiceLine, RequestContext requestContext) {
+    return restClient.put(resourceByIdPath(INVOICE_LINES, invoiceLine.getId()), invoiceLine, requestContext);
   }
 
-  public CompletableFuture<List<InvoiceLine>> getInvoiceLinesWithTotals(Invoice invoice,  RequestContext requestContext) {
-    return getInvoiceLines(invoice.getId(), requestContext)
-      .thenApply(InvoiceLineCollection::getInvoiceLines)
-      .thenApply(lines -> {
+  public Future<List<InvoiceLine>> getInvoiceLinesWithTotals(Invoice invoice,  RequestContext requestContext) {
+    return getInvoiceLinesByInvoiceId(invoice.getId(), requestContext)
+      .map(InvoiceLineCollection::getInvoiceLines)
+      .map(lines -> {
         lines.forEach(line -> HelperUtils.calculateInvoiceLineTotals(line, invoice));
         return lines;
       });
   }
 
-  private CompletableFuture<Void> persistInvoiceLine(InvoiceLine invoiceLine,  RequestContext requestContext) {
+  private Future<Void> persistInvoiceLine(InvoiceLine invoiceLine,  RequestContext requestContext) {
     RequestEntry requestEntry = new RequestEntry(INVOICE_LINE_BY_ID_ENDPOINT).withId(invoiceLine.getId());
     return restClient.put(requestEntry, invoiceLine, requestContext);
+  }
+
+  public Future<InvoiceLine> createInvoiceLine(InvoiceLine invoiceLine, RequestContext requestContext) {
+    RequestEntry requestEntry = new RequestEntry(INVOICE_LINES_ENDPOINT);
+    return restClient.post(requestEntry, invoiceLine, InvoiceLine.class, requestContext);
+  }
+
+  public Future<Void> deleteInvoiceLine(String lineId, RequestContext requestContext) {
+    var endpoint = resourceByIdPath(INVOICE_LINES, lineId);
+    return restClient.delete(endpoint, requestContext);
+  }
+
+  public Future<String> generateLineNumber(String invoiceId, RequestContext requestContext) {
+    return restClient.get(getInvoiceLineNumberEndpoint(invoiceId), SequenceNumber.class, requestContext)
+      .map(SequenceNumber::getSequenceNumber);
+  }
+  private String getInvoiceLineNumberEndpoint(String id) {
+    return INVOICE_LINE_NUMBER_ENDPOINT + id;
   }
 }

@@ -11,8 +11,6 @@ import static org.folio.rest.RestConstants.MAX_IDS_FOR_GET_RQ;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionException;
 
 import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.invoices.utils.HelperUtils;
@@ -22,9 +20,12 @@ import org.folio.rest.core.RestClient;
 import org.folio.rest.core.models.RequestContext;
 import org.folio.rest.core.models.RequestEntry;
 import org.folio.rest.jaxrs.model.Parameter;
+import org.springframework.stereotype.Service;
 
+import io.vertx.core.Future;
 import one.util.streamex.StreamEx;
 
+@Service
 public class ExpenseClassRetrieveService {
 
   private static final String EXPENSE_CLASS_ENDPOINT = resourcesPath(EXPENSE_CLASSES_URL);
@@ -36,41 +37,41 @@ public class ExpenseClassRetrieveService {
     this.restClient = restClient;
   }
 
-  public CompletableFuture<ExpenseClassCollection> getExpenseClasses(String query, int offset, int limit, RequestContext requestContext) {
+  public Future<ExpenseClassCollection> getExpenseClasses(String query, int offset, int limit, RequestContext requestContext) {
     RequestEntry requestEntry = new RequestEntry(EXPENSE_CLASS_ENDPOINT)
         .withQuery(query)
         .withOffset(offset)
         .withLimit(limit);
-    return restClient.get(requestEntry, requestContext, ExpenseClassCollection.class);
+    return restClient.get(requestEntry, ExpenseClassCollection.class, requestContext);
   }
 
-  public CompletableFuture<List<ExpenseClass>> getExpenseClasses(List<String> expenseClassIds, RequestContext requestContext) {
-    List<CompletableFuture<ExpenseClassCollection>> expenseClassesFutureList = StreamEx
+  public Future<List<ExpenseClass>> getExpenseClasses(List<String> expenseClassIds, RequestContext requestContext) {
+    List<Future<ExpenseClassCollection>> expenseClassesFutureList = StreamEx
       .ofSubLists(expenseClassIds, MAX_IDS_FOR_GET_RQ)
       .map(ids ->  getExpenseClassesChunk(ids, requestContext))
       .collect(toList());
 
     return collectResultsOnSuccess(expenseClassesFutureList)
-                      .thenApply(expenseClassCollections ->
+                      .map(expenseClassCollections ->
                                   expenseClassCollections.stream().flatMap(col -> col.getExpenseClasses().stream()).collect(toList())
                                 );
   }
 
-  public CompletableFuture<ExpenseClass> getExpenseClassById(String id, RequestContext requestContext) {
+  public Future<ExpenseClass> getExpenseClassById(String id, RequestContext requestContext) {
     RequestEntry requestEntry = new RequestEntry(EXPENSE_CLASS_BY_ID_ENDPOINT)
         .withId(id);
-    return restClient.get(requestEntry, requestContext, ExpenseClass.class)
-            .exceptionally(t -> {
+    return restClient.get(requestEntry, ExpenseClass.class, requestContext)
+            .recover(t -> {
               Throwable cause = t.getCause() == null ? t : t.getCause();
               if (HelperUtils.isNotFound(cause)) {
                 List<Parameter> parameters = Collections.singletonList(new Parameter().withValue(id).withKey("expenseClass"));
                   cause = new HttpException(404, EXPENSE_CLASS_NOT_FOUND.toError().withParameters(parameters));
               }
-              throw new CompletionException(cause);
+              return Future.failedFuture(cause);
             });
   }
 
-  private CompletableFuture<ExpenseClassCollection> getExpenseClassesChunk(List<String> expenseClassIds, RequestContext requestContext) {
+  private Future<ExpenseClassCollection> getExpenseClassesChunk(List<String> expenseClassIds, RequestContext requestContext) {
     String query = convertIdsToCqlQuery(new ArrayList<>(expenseClassIds));
     return this.getExpenseClasses(query, 0, expenseClassIds.size(), requestContext);
   }

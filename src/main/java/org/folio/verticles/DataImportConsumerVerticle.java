@@ -1,7 +1,7 @@
 package org.folio.verticles;
 
-import io.vertx.core.AbstractVerticle;
-import io.vertx.core.Promise;
+import static org.folio.DataImportEventTypes.DI_EDIFACT_RECORD_CREATED;
+
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.kafka.AsyncRecordHandler;
@@ -19,7 +19,8 @@ import org.springframework.context.annotation.Scope;
 import org.springframework.context.support.AbstractApplicationContext;
 import org.springframework.stereotype.Component;
 
-import static org.folio.DataImportEventTypes.DI_EDIFACT_RECORD_CREATED;
+import io.vertx.core.AbstractVerticle;
+import io.vertx.core.Promise;
 
 @Component
 @Scope(ConfigurableBeanFactory.SCOPE_PROTOTYPE)

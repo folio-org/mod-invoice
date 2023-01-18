@@ -18,14 +18,14 @@
     <jsonschema_paths>acq-models/mod-invoice-storage/schemas,raml-util/schemas,acq-models/common/schemas/</jsonschema_paths>
     <raml-module-builder.version>35.0.1</raml-module-builder.version>
     <vertx.version>4.3.4</vertx.version>
-    <junit.version>4.13.1</junit.version>
-    <rest-assured.version>5.1.1</rest-assured.version>
+    <junit.version>4.13.2</junit.version>
+    <rest-assured.version>5.3.0</rest-assured.version>
     <generated_sources_dir>${project.build.directory}/generated-sources</generated_sources_dir>
     <jsonschema2pojo_output_dir>${generated_sources_dir}/jsonschema2pojo</jsonschema2pojo_output_dir>
     <ramlfiles_path>${basedir}/ramls</ramlfiles_path>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <mod-configuration-client.version>5.9.1-SNAPSHOT</mod-configuration-client.version>
-    <spring.version>5.3.21</spring.version>
+    <spring.version>5.3.20</spring.version>
     <sonar.exclusions>**/models/*.java</sonar.exclusions>
     <sonar.test.exclusions>**/*Test.java</sonar.test.exclusions>
     <log4j.version>2.19.0</log4j.version>
@@ -97,6 +97,18 @@
       <scope>test</scope>
     </dependency>
     <dependency>
+      <groupId>com.github.rworsnop</groupId>
+      <artifactId>vertx-concurrent</artifactId>
+      <version>1.0.0</version>
+    </dependency>
+    <!--vertx-rx-java required for vertx-concurrent-1.0.0 -->
+    <dependency>
+      <groupId>io.vertx</groupId>
+      <artifactId>vertx-rx-java</artifactId>
+      <version>${vertx.version}</version>
+      <scope>provided</scope>
+    </dependency>
+    <dependency>
       <groupId>io.vertx</groupId>
       <artifactId>vertx-junit5</artifactId>
       <version>${vertx.version}</version>
@@ -145,7 +157,7 @@
     <dependency>
       <groupId>commons-net</groupId>
       <artifactId>commons-net</artifactId>
-      <version>3.6</version>
+      <version>3.8.0</version>
     </dependency>
     <dependency>
       <groupId>commons-lang</groupId>

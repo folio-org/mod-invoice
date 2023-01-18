@@ -22,6 +22,8 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.folio.HttpStatus;
 import org.folio.rest.acq.model.units.AcquisitionsUnit;
 import org.folio.rest.acq.model.units.AcquisitionsUnitCollection;
@@ -34,8 +36,6 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import io.restassured.http.Headers;
-import org.apache.logging.log4j.Logger;
-import org.apache.logging.log4j.LogManager;
 
 public class InvoicesProtectionTest extends ProtectedEntityTestBase {
 
@@ -173,7 +173,7 @@ public class InvoicesProtectionTest extends ProtectedEntityTestBase {
     // Verify number of sub-requests
     validateNumberOfRequests(1, 0);
 
-    List<String> ids = (List<String>) error.getAdditionalProperties().get(ACQUISITIONS_UNIT_IDS);
+    List<?> ids = (List<?>) error.getAdditionalProperties().get(ACQUISITIONS_UNIT_IDS);
     if (operation == UPDATE) {
       assertThat(ids, contains(unit3.getId()));
     } else {

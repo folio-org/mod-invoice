@@ -1,5 +1,6 @@
 package org.folio.services.finance.transaction;
 
+import static io.vertx.core.Future.succeededFuture;
 import static org.folio.rest.impl.AbstractHelper.DEFAULT_SYSTEM_CURRENCY;
 import static org.folio.services.exchange.ExchangeRateProviderResolver.RATE_KEY;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -20,7 +21,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
 
 import javax.money.convert.ConversionQuery;
 import javax.money.convert.ConversionQueryBuilder;
@@ -160,8 +160,8 @@ public class PendingPaymentWorkflowServiceTest {
 
 
     doNothing().when(fundAvailabilityValidator).validate(anyList());
-    when(invoiceTransactionSummaryService.updateInvoiceTransactionSummary(any(), any())).thenReturn(CompletableFuture.completedFuture(null));
-    when(baseTransactionService.updateTransaction(any(), any())).thenReturn(CompletableFuture.completedFuture(null));
+    when(invoiceTransactionSummaryService.updateInvoiceTransactionSummary(any(), any())).thenReturn(succeededFuture(null));
+    when(baseTransactionService.updateTransaction(any(), any())).thenReturn(succeededFuture(null));
 
     when(requestContext.getContext()).thenReturn(Vertx.vertx().getOrCreateContext());
 

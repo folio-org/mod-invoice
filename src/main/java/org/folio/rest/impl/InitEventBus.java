@@ -1,5 +1,7 @@
 package org.folio.rest.impl;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.folio.invoices.events.handlers.MessageAddress;
 import org.folio.rest.resource.interfaces.PostDeployVerticle;
 import org.folio.spring.SpringContextUtil;
@@ -16,8 +18,6 @@ import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.eventbus.Message;
 import io.vertx.core.eventbus.MessageConsumer;
 import io.vertx.core.json.JsonObject;
-import org.apache.logging.log4j.Logger;
-import org.apache.logging.log4j.LogManager;
 
 /**
  * The class initializes event bus handlers

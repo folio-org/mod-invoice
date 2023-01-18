@@ -1,34 +1,5 @@
 package org.folio.verticles;
 
-import io.vertx.core.json.Json;
-import io.vertx.core.json.JsonObject;
-import net.mguenther.kafka.junit.KeyValue;
-import net.mguenther.kafka.junit.ObserveKeyValues;
-import net.mguenther.kafka.junit.SendKeyValues;
-import org.apache.kafka.clients.consumer.ConsumerConfig;
-import org.folio.ActionProfile;
-import org.folio.ApiTestSuite;
-import org.folio.DataImportEventPayload;
-import org.folio.JobProfile;
-import org.folio.MappingProfile;
-import org.folio.kafka.KafkaTopicNameHelper;
-import org.folio.processing.events.EventManager;
-import org.folio.processing.events.services.handler.EventHandler;
-import org.folio.processing.exceptions.EventProcessingException;
-import org.folio.rest.impl.ApiTestBase;
-import org.folio.rest.jaxrs.model.Event;
-import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-
-import java.io.UnsupportedEncodingException;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.TimeUnit;
-
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.folio.ActionProfile.Action.CREATE;
 import static org.folio.ApiTestSuite.KAFKA_ENV_VALUE;
@@ -49,6 +20,35 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+
+import java.io.UnsupportedEncodingException;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
+
+import org.folio.ActionProfile;
+import org.folio.ApiTestSuite;
+import org.folio.DataImportEventPayload;
+import org.folio.JobProfile;
+import org.folio.MappingProfile;
+import org.folio.kafka.KafkaTopicNameHelper;
+import org.folio.processing.events.EventManager;
+import org.folio.processing.events.services.handler.EventHandler;
+import org.folio.processing.exceptions.EventProcessingException;
+import org.folio.rest.impl.ApiTestBase;
+import org.folio.rest.jaxrs.model.Event;
+import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
+import io.vertx.core.json.Json;
+import io.vertx.core.json.JsonObject;
+import net.mguenther.kafka.junit.KeyValue;
+import net.mguenther.kafka.junit.ObserveKeyValues;
+import net.mguenther.kafka.junit.SendKeyValues;
 
 public class DataImportConsumerVerticleTest extends ApiTestBase {
 
@@ -130,7 +130,7 @@ public class DataImportConsumerVerticleTest extends ApiTestBase {
       .observeFor(30, TimeUnit.SECONDS)
       .build());
 
-    assertEquals(recordId, new String(observedRecords.get(0).getHeaders().lastHeader(RECORD_ID_HEADER).value(), UTF_8.name()));
+    assertEquals(recordId, new String(observedRecords.get(0).getHeaders().lastHeader(RECORD_ID_HEADER).value(), UTF_8));
   }
 
   @Test

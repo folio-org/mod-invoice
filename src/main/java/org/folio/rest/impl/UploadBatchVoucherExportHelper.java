@@ -1,0 +1,168 @@
+package org.folio.rest.impl;
+
+import java.net.URISyntaxException;
+import java.util.Map;
+
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.folio.invoices.rest.exceptions.HttpException;
+import org.folio.models.BatchVoucherUploadHolder;
+import org.folio.rest.core.models.RequestContext;
+import org.folio.rest.jaxrs.model.BatchVoucher;
+import org.folio.rest.jaxrs.model.BatchVoucherExport;
+import org.folio.services.ftp.FtpUploadService;
+import org.folio.services.voucher.BatchVoucherExportConfigService;
+import org.folio.services.voucher.BatchVoucherExportsService;
+import org.folio.services.voucher.BatchVoucherService;
+import org.springframework.beans.factory.annotation.Autowired;
+
+import io.vertx.core.Context;
+import io.vertx.core.Future;
+import io.vertx.core.json.JsonObject;
+
+public class UploadBatchVoucherExportHelper extends AbstractHelper {
+  private static final Logger log = LogManager.getLogger(UploadBatchVoucherExportHelper.class);
+  public static final String DATE_TIME_DELIMITER = "T";
+  public static final String DELIMITER = "_";
+
+  @Autowired
+  private BatchVoucherService batchVoucherService;
+  @Autowired
+  private BatchVoucherExportConfigService batchVoucherExportConfigService;
+  @Autowired
+  private BatchVoucherExportsService batchVoucherExportsService;
+  private final String CREDENTIALS_NOT_FOUND = "Credentials for FTP upload were not found";
+
+  private final RequestContext requestContext;
+
+  public UploadBatchVoucherExportHelper(Map<String, String> okapiHeaders, Context ctx) {
+    super(okapiHeaders, ctx);
+    this.requestContext = new RequestContext(ctx, okapiHeaders);
+  }
+
+  public Future<Void> uploadBatchVoucherExport(String batchVoucherExportId) {
+    BatchVoucherUploadHolder uploadHolder = new BatchVoucherUploadHolder();
+    return batchVoucherExportsService.getBatchVoucherExportById(batchVoucherExportId, requestContext)
+      .map(bve -> {
+        uploadHolder.setBatchVoucherExport(bve);
+        return null;
+      })
+      .compose(ok -> updateHolderWithExportConfig(uploadHolder)
+        .onSuccess(v -> updateHolderWithFileFormat(uploadHolder))
+        .compose(v -> updateHolderWithCredentials(uploadHolder))
+        .compose(v -> updateHolderWithBatchVoucher(uploadHolder))
+        .compose(v -> uploadBatchVoucher(uploadHolder))
+        .onSuccess(v -> successfulUploadUpdate(uploadHolder))
+        .onFailure(t -> failUploadUpdate(uploadHolder.getBatchVoucherExport(), t)));
+  }
+
+  public Future<Void> uploadBatchVoucherExport(BatchVoucherExport batchVoucherExport) {
+    BatchVoucherUploadHolder uploadHolder = new BatchVoucherUploadHolder();
+    uploadHolder.setBatchVoucherExport(batchVoucherExport);
+    return updateHolderWithExportConfig(uploadHolder)
+      .onSuccess(v -> updateHolderWithFileFormat(uploadHolder))
+      .compose(v -> updateHolderWithCredentials(uploadHolder))
+      .compose(v -> updateHolderWithBatchVoucher(uploadHolder))
+      .compose(v -> uploadBatchVoucher(uploadHolder))
+      .compose(v -> successfulUploadUpdate(uploadHolder),
+        t -> failUploadUpdate(uploadHolder.getBatchVoucherExport(), t));
+  }
+
+  public Future<Void> uploadBatchVoucher(BatchVoucherUploadHolder uploadHolder) {
+    try {
+      FtpUploadService ftpUploadService = new FtpUploadService(ctx, uploadHolder.getExportConfig().getUploadURI());
+      return ftpUploadService.login(uploadHolder.getCredentials().getUsername(), uploadHolder.getCredentials().getPassword())
+        .onSuccess(log::info)
+        .compose(v -> {
+          String fileName = generateFileName(uploadHolder.getBatchVoucher(), uploadHolder.getFileFormat());
+          BatchVoucher batchVoucher = uploadHolder.getBatchVoucher();
+          String format = uploadHolder.getExportConfig().getFormat().value();
+          String content = batchVoucherService.convertBatchVoucher(batchVoucher, format);
+
+          return ftpUploadService.upload(ctx, fileName, content);
+        })
+        .mapEmpty();
+    } catch (URISyntaxException e) {
+      log.error("FtpUploadService creation failed");
+      return Future.failedFuture(e);
+    }
+  }
+
+  public String generateFileName(BatchVoucher batchVoucher, String fileFormat) {
+    JsonObject voucherJSON = JsonObject.mapFrom(batchVoucher);
+    String bvShortUUID = batchVoucher.getId().substring(batchVoucher.getId().lastIndexOf('-') + 1);
+    String voucherGroup = voucherJSON.getString("batchGroup");
+    String voucherStart = voucherJSON.getString("start").split(DATE_TIME_DELIMITER)[0];
+    String voucherEnd = voucherJSON.getString("end").split(DATE_TIME_DELIMITER)[0];
+    return "bv" + DELIMITER + bvShortUUID + DELIMITER + voucherGroup + DELIMITER + voucherStart + DELIMITER + voucherEnd + "." + fileFormat;
+  }
+
+  private Future<Void> updateHolderWithExportConfig(BatchVoucherUploadHolder uploadHolder) {
+    var query = buildExportConfigQuery(uploadHolder.getBatchVoucherExport().getBatchGroupId());
+    return batchVoucherExportConfigService.getExportConfigs(1, 0, query, requestContext)
+      .map(exportConfigs -> {
+        if (!exportConfigs.getExportConfigs().isEmpty()) {
+          uploadHolder.setExportConfig(exportConfigs.getExportConfigs().get(0));
+          return null;
+        }
+
+        throw new HttpException(404, "Batch export configuration was not found");
+      });
+  }
+
+  private void updateHolderWithFileFormat(BatchVoucherUploadHolder uploadHolder) {
+    String fileFormat = uploadHolder.getExportConfig().getFormat().value().split("/")[1];
+    uploadHolder.setFileFormat(fileFormat);
+  }
+
+  private Future<Void> updateHolderWithCredentials(BatchVoucherUploadHolder uploadHolder) {
+    return batchVoucherExportConfigService.getExportConfigCredentials(uploadHolder.getExportConfig().getId(), requestContext)
+      .onSuccess(uploadHolder::setCredentials)
+      .recover(t -> {
+        throw new HttpException(404, CREDENTIALS_NOT_FOUND);
+      })
+      .mapEmpty();
+  }
+
+  private Future<Void> updateHolderWithBatchVoucher(BatchVoucherUploadHolder uploadHolder) {
+     return batchVoucherService.getBatchVoucherById(uploadHolder.getBatchVoucherExport().getBatchVoucherId(), buildRequestContext())
+       .onSuccess(uploadHolder::setBatchVoucher)
+       .recover(t -> {
+         throw new HttpException(404, "Batch voucher was not found");
+       })
+       .mapEmpty();
+   }
+
+  private Future<Void> failUploadUpdate(BatchVoucherExport bvExport, Throwable t) {
+    if (bvExport != null) {
+      if (!CREDENTIALS_NOT_FOUND.equals(t.getMessage())
+                      && !(t instanceof URISyntaxException)) {
+        bvExport.setStatus(BatchVoucherExport.Status.ERROR);
+      }
+      bvExport.setMessage(t.getMessage());
+      return batchVoucherExportsService.updateBatchVoucherExportRecord(bvExport, buildRequestContext());
+    }
+    log.error("Exception occurs, when uploading batch voucher", t);
+    return Future.failedFuture(t);
+  }
+
+  private Future<Void> successfulUploadUpdate(BatchVoucherUploadHolder uploadHolder) {
+    BatchVoucherExport bvExport = uploadHolder.getBatchVoucherExport();
+    if (bvExport != null) {
+      bvExport.setStatus(BatchVoucherExport.Status.UPLOADED);
+      bvExport.setMessage(generateFileName(uploadHolder.getBatchVoucher(), uploadHolder.getFileFormat()));
+      log.debug("Batch voucher uploaded on FTP");
+      return updateBatchVoucher(bvExport);
+
+    }
+    return Future.succeededFuture();
+  }
+
+  private Future<Void> updateBatchVoucher(BatchVoucherExport bvExport) {
+    return batchVoucherExportsService.updateBatchVoucherExportRecord(bvExport, buildRequestContext());
+  }
+
+  private String buildExportConfigQuery(String groupId) {
+    return "batchGroupId==" + groupId;
+  }
+}

@@ -8,8 +8,6 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
 
 import org.folio.rest.core.RestClient;
 import org.folio.rest.core.models.RequestContext;
@@ -22,12 +20,17 @@ import org.folio.services.invoice.InvoiceLineService;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import io.vertx.core.Context;
+import io.vertx.core.Future;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
+import io.vertx.junit5.VertxExtension;
+import io.vertx.junit5.VertxTestContext;
 
+@ExtendWith(VertxExtension.class)
 public class InvoiceLinesRetrieveServiceTest extends ApiTestBase {
   private static Context context;
   private static Map<String, String> okapiHeaders;
@@ -48,7 +51,7 @@ public class InvoiceLinesRetrieveServiceTest extends ApiTestBase {
   }
 
   @Test
-  public void positiveGetInvoiceLinesByChunksTest() throws IOException, ExecutionException, InterruptedException {
+  public void positiveGetInvoiceLinesByChunksTest(VertxTestContext vertxTestContext) throws IOException {
     RestClient restClient = new RestClient();
     InvoiceLinesRetrieveService service = new InvoiceLinesRetrieveService(new InvoiceLineService(restClient));
     JsonObject vouchersList = new JsonObject(getMockData(VOUCHERS_LIST_PATH));
@@ -57,13 +60,16 @@ public class InvoiceLinesRetrieveServiceTest extends ApiTestBase {
       .collect(toList());
 
     vouchers.remove(1);
-    CompletableFuture<List<InvoiceLineCollection>> future = service.getInvoiceLineByChunks(vouchers, new RequestContext(context, okapiHeaders));
-    List<InvoiceLineCollection> lineCollections = future.get();
-    Assertions.assertEquals(3, lineCollections.get(0).getInvoiceLines().size());
+    Future<List<InvoiceLineCollection>> future = service.getInvoiceLineByChunks(vouchers, new RequestContext(context, okapiHeaders));
+    vertxTestContext.assertComplete(future)
+      .onComplete(result -> {
+        Assertions.assertEquals(3, result.result().get(0).getInvoiceLines().size());
+        vertxTestContext.completeNow();
+      });
   }
 
   @Test
-  public void positiveGetInvoiceMapTest() throws IOException, ExecutionException, InterruptedException {
+  public void positiveGetInvoiceMapTest(VertxTestContext vertxTestContext) throws IOException {
     RestClient restClient = new RestClient();
     InvoiceLinesRetrieveService service = new InvoiceLinesRetrieveService(new InvoiceLineService(restClient));
     JsonObject vouchersList = new JsonObject(getMockData(VOUCHERS_LIST_PATH));
@@ -75,8 +81,11 @@ public class InvoiceLinesRetrieveServiceTest extends ApiTestBase {
     VoucherCollection voucherCollection = new VoucherCollection();
     voucherCollection.setVouchers(vouchers);
 
-    CompletableFuture<Map<String, List<InvoiceLine>>> future = service.getInvoiceLineMap(voucherCollection, new RequestContext(context, okapiHeaders));
-    Map<String, List<InvoiceLine>> listMap = future.get();
-    Assertions.assertEquals(1, listMap.values().size());
+    Future<Map<String, List<InvoiceLine>>> future = service.getInvoiceLineMap(voucherCollection, new RequestContext(context, okapiHeaders));
+    vertxTestContext.assertComplete(future)
+      .onComplete(result -> {
+        Assertions.assertEquals(1, result.result().values().size());
+        vertxTestContext.completeNow();
+      });
   }
 }

@@ -6,19 +6,20 @@ import java.io.InputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Optional;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.net.ftp.FTP;
 import org.apache.commons.net.ftp.FTPClient;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.folio.exceptions.FtpException;
 
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Context;
+import io.vertx.core.Future;
 import io.vertx.core.Handler;
-import org.apache.logging.log4j.Logger;
-import org.apache.logging.log4j.LogManager;
+import io.vertx.core.Promise;
 
 public class FtpUploadService implements UploadService {
 
@@ -51,8 +52,8 @@ public class FtpUploadService implements UploadService {
     return StringUtils.isEmpty(proto) || proto.equalsIgnoreCase("FTP");
   }
 
-  public CompletableFuture<String> login(String username, String password) {
-    CompletableFuture<String> future = new CompletableFuture<>();
+  public Future<String> login(String username, String password) {
+    Promise<String> promise = Promise.promise();
     ctx.owner().executeBlocking(blockingFeature -> {
       try {
         ftp.connect(server, port);
@@ -64,18 +65,18 @@ public class FtpUploadService implements UploadService {
         }
       } catch (Exception e) {
         logger.error("Error Connecting", e);
+        blockingFeature.fail(e);
         disconnect();
-        blockingFeature.fail(new CompletionException(e));
       }
         blockingFeature.complete();
       },
       false,
-      asyncResultHandler(future, "Success login to FTP", "Failed login to FTP"));
-    return future;
+      asyncResultHandler(promise, "Success login to FTP", "Failed login to FTP"));
+    return promise.future();
   }
 
-  public CompletableFuture<String> logout() {
-    CompletableFuture<String> future = new CompletableFuture<>();
+  public Future<String> logout() {
+    Promise<String> promise = Promise.promise();
     ctx.owner().executeBlocking(blockingFeature -> {
         try {
           if (ftp != null && ftp.isConnected()) {
@@ -91,28 +92,28 @@ public class FtpUploadService implements UploadService {
         }
       },
         false,
-        asyncResultHandler(future, "Success logout from FTP", "Failed logout from FTP")
+        asyncResultHandler(promise, "Success logout from FTP", "Failed logout from FTP")
       );
-      return future;
+      return promise.future();
   }
 
-  private Handler<AsyncResult<Object>> asyncResultHandler(CompletableFuture<String> future, String s, String s2) {
+  private Handler<AsyncResult<Object>> asyncResultHandler(Promise<String> promise, String s, String s2) {
     return result -> {
       if (result.succeeded()) {
         logger.debug(s);
-        future.complete(result.result().toString());
+        promise.complete(result.result().toString());
       } else {
         String message = Optional.ofNullable(result.cause())
           .map(Throwable::getMessage)
           .orElse(s2);
         logger.error(message);
-        future.completeExceptionally(result.cause());
+        promise.fail(result.cause());
       }
     };
   }
 
-  public CompletableFuture<String> upload(Context ctx, String filename, String content) {
-    CompletableFuture<String> future = new CompletableFuture<>();
+  public Future<String> upload(Context ctx, String filename, String content) {
+    Promise<String> promise = Promise.promise();
     ctx.owner().executeBlocking(blockingFeature -> {
       try (InputStream is = new ByteArrayInputStream(content.getBytes())) {
         ftp.setFileType(FTP.BINARY_FILE_TYPE);
@@ -138,8 +139,8 @@ public class FtpUploadService implements UploadService {
       }
     },
       false,
-      asyncResultHandler(future, "Success upload to FTP", "Failed upload to FTP"));
-    return future;
+      asyncResultHandler(promise, "Success upload to FTP", "Failed upload to FTP"));
+    return promise.future();
   }
 
   private void changeWorkingDirectory() throws IOException {

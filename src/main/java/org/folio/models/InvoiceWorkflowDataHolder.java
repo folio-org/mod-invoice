@@ -1,5 +1,12 @@
 package org.folio.models;
 
+import static org.folio.invoices.utils.HelperUtils.calculateAdjustment;
+
+import java.util.Objects;
+import java.util.Optional;
+
+import javax.money.convert.CurrencyConversion;
+
 import org.folio.rest.acq.model.Organization;
 import org.folio.rest.acq.model.finance.Budget;
 import org.folio.rest.acq.model.finance.ExpenseClass;
@@ -10,12 +17,6 @@ import org.folio.rest.jaxrs.model.Adjustment;
 import org.folio.rest.jaxrs.model.FundDistribution;
 import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.jaxrs.model.InvoiceLine;
-
-import javax.money.convert.CurrencyConversion;
-import java.util.Objects;
-import java.util.Optional;
-
-import static org.folio.invoices.utils.HelperUtils.calculateAdjustment;
 
 public class InvoiceWorkflowDataHolder {
 

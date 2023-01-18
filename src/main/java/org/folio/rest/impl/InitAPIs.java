@@ -1,9 +1,16 @@
 package org.folio.rest.impl;
 
+import javax.money.convert.MonetaryConversions;
+
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.folio.config.ApplicationConfig;
-import org.folio.rest.resource.interfaces.InitAPI;
 import org.folio.dbschema.ObjectMapperTool;
+import org.folio.rest.resource.interfaces.InitAPI;
 import org.folio.spring.SpringContextUtil;
+import org.folio.verticles.DataImportConsumerVerticle;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.support.AbstractApplicationContext;
 
 import com.fasterxml.jackson.databind.DeserializationConfig;
 import com.fasterxml.jackson.databind.SerializationConfig;
@@ -16,14 +23,6 @@ import io.vertx.core.Handler;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.jackson.DatabindCodec;
-import org.apache.logging.log4j.Logger;
-import org.apache.logging.log4j.LogManager;
-
-import org.folio.verticles.DataImportConsumerVerticle;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.support.AbstractApplicationContext;
-
-import javax.money.convert.MonetaryConversions;
 
 /**
  * The class initializes vertx context adding spring context

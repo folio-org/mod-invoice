@@ -1,13 +1,13 @@
 package org.folio.invoices.rest.exceptions;
 
+import java.util.Collections;
+import java.util.List;
+
 import org.apache.commons.lang3.StringUtils;
 import org.folio.invoices.utils.ErrorCodes;
 import org.folio.rest.jaxrs.model.Error;
 import org.folio.rest.jaxrs.model.Errors;
 import org.folio.rest.jaxrs.model.Parameter;
-
-import java.util.Collections;
-import java.util.List;
 
 public class HttpException extends RuntimeException {
   private static final long serialVersionUID = 8109197948434861504L;

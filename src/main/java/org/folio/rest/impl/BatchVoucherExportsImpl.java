@@ -10,7 +10,6 @@ import javax.ws.rs.core.Response;
 import org.folio.rest.annotations.Validate;
 import org.folio.rest.jaxrs.model.BatchVoucherExport;
 import org.folio.rest.jaxrs.resource.BatchVoucherBatchVoucherExports;
-import org.folio.services.voucher.UploadBatchVoucherExportService;
 
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Context;
@@ -19,68 +18,67 @@ import io.vertx.core.Handler;
 public class BatchVoucherExportsImpl implements BatchVoucherBatchVoucherExports {
   private static final String BATCH_VOUCHER_EXPORTS_LOCATION_PREFIX = "/batch-voucher/batch-voucher-exports/%s";
   private static final String NOT_SUPPORTED = "Not supported";  // To overcome sonarcloud warning
-
   @Validate
   @Override
   public void postBatchVoucherBatchVoucherExports(String lang, BatchVoucherExport entity, Map<String, String> okapiHeaders,
       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
-    BatchVoucherExportsHelper helper = new BatchVoucherExportsHelper(okapiHeaders, vertxContext, lang);
+    BatchVoucherExportsHelper helper = new BatchVoucherExportsHelper(okapiHeaders, vertxContext);
     helper.createBatchVoucherExports(entity)
-      .thenAccept(bve -> asyncResultHandler.handle(succeededFuture(
+      .onSuccess(bve -> asyncResultHandler.handle(succeededFuture(
           helper.buildResponseWithLocation(String.format(BATCH_VOUCHER_EXPORTS_LOCATION_PREFIX, bve.getId()), bve))))
-      .exceptionally(t -> handleErrorResponse(asyncResultHandler, helper, t));
+      .onFailure(t -> handleErrorResponse(asyncResultHandler, helper, t));
   }
 
   @Validate
   @Override
   public void getBatchVoucherBatchVoucherExports(int offset, int limit, String query, String lang, Map<String, String> okapiHeaders,
       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
-    BatchVoucherExportsHelper helper = new BatchVoucherExportsHelper(okapiHeaders, vertxContext, lang);
+    BatchVoucherExportsHelper helper = new BatchVoucherExportsHelper(okapiHeaders, vertxContext);
     helper.getBatchVoucherExports(limit, offset, query)
-      .thenAccept(batchVoucherExports -> asyncResultHandler.handle(succeededFuture(helper.buildOkResponse(batchVoucherExports))))
-      .exceptionally(t -> handleErrorResponse(asyncResultHandler, helper, t));
+      .onSuccess(batchVoucherExports -> asyncResultHandler.handle(succeededFuture(helper.buildOkResponse(batchVoucherExports))))
+      .onFailure(t -> handleErrorResponse(asyncResultHandler, helper, t));
   }
 
   @Validate
   @Override
   public void putBatchVoucherBatchVoucherExportsById(String id, String lang, BatchVoucherExport batchVoucherExport,
       Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
-    BatchVoucherExportsHelper helper = new BatchVoucherExportsHelper(okapiHeaders, vertxContext, lang);
+    BatchVoucherExportsHelper helper = new BatchVoucherExportsHelper(okapiHeaders, vertxContext);
 
     helper.updateBatchVoucherExportRecord(batchVoucherExport)
-      .thenAccept(ok -> asyncResultHandler.handle(succeededFuture(helper.buildNoContentResponse())))
-      .exceptionally(ex -> handleErrorResponse(asyncResultHandler, helper, ex));
+      .onSuccess(ok -> asyncResultHandler.handle(succeededFuture(helper.buildNoContentResponse())))
+      .onFailure(ex -> handleErrorResponse(asyncResultHandler, helper, ex));
   }
 
   @Validate
   @Override
   public void deleteBatchVoucherBatchVoucherExportsById(String id, String lang, Map<String, String> okapiHeaders,
       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
-    BatchVoucherExportsHelper helper = new BatchVoucherExportsHelper(okapiHeaders, vertxContext, lang);
+    BatchVoucherExportsHelper helper = new BatchVoucherExportsHelper(okapiHeaders, vertxContext);
 
     helper.deleteBatchVoucherExportById(id)
-      .thenAccept(ok -> asyncResultHandler.handle(succeededFuture(helper.buildNoContentResponse())))
-      .exceptionally(fail -> handleErrorResponse(asyncResultHandler, helper, fail));
+      .onSuccess(ok -> asyncResultHandler.handle(succeededFuture(helper.buildNoContentResponse())))
+      .onFailure(fail -> handleErrorResponse(asyncResultHandler, helper, fail));
   }
 
   @Validate
   @Override
   public void getBatchVoucherBatchVoucherExportsById(String id, String lang, Map<String, String> okapiHeaders,
       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
-    BatchVoucherExportsHelper helper = new BatchVoucherExportsHelper(okapiHeaders, vertxContext, lang);
+    BatchVoucherExportsHelper helper = new BatchVoucherExportsHelper(okapiHeaders, vertxContext);
     helper.getBatchVoucherExportById(id)
-      .thenAccept(batchVoucherExport -> asyncResultHandler.handle(succeededFuture(helper.buildOkResponse(batchVoucherExport))))
-      .exceptionally(t -> handleErrorResponse(asyncResultHandler, helper, t));
+      .onSuccess(batchVoucherExport -> asyncResultHandler.handle(succeededFuture(helper.buildOkResponse(batchVoucherExport))))
+      .onFailure(t -> handleErrorResponse(asyncResultHandler, helper, t));
   }
 
   @Validate
   @Override
   public void postBatchVoucherBatchVoucherExportsUploadById(String id, String lang, Map<String, String> okapiHeaders,
       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
-    UploadBatchVoucherExportService uploadService = new UploadBatchVoucherExportService(okapiHeaders, vertxContext, lang);
+    UploadBatchVoucherExportHelper uploadService = new UploadBatchVoucherExportHelper(okapiHeaders, vertxContext);
     uploadService.uploadBatchVoucherExport(id)
-      .thenAccept(v -> asyncResultHandler.handle(succeededFuture(respond202WithApplicationJson(v))))
-      .exceptionally(t -> handleErrorResponse(asyncResultHandler));
+      .onSuccess(v -> asyncResultHandler.handle(succeededFuture(respond202WithApplicationJson(v))))
+      .onFailure(t -> handleErrorResponse(asyncResultHandler, uploadService, t));
   }
 
   @Validate

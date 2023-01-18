@@ -19,12 +19,10 @@ public class BatchVoucherImpl implements  BatchVoucherBatchVouchers {
   @Override
   public void getBatchVoucherBatchVouchersById(String id, String lang, String contentType, Map<String, String> okapiHeaders,
       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
-    BatchVoucherHelper helper = new BatchVoucherHelper(okapiHeaders, vertxContext, lang);
-    helper.getBatchVoucherById(id)
-      .thenApply(batchVoucher -> helper.convertBatchVoucher(batchVoucher, contentType))
-      .thenAccept(response -> asyncResultHandler
-        .handle(succeededFuture(helper.buildSuccessResponse(response, contentType))))
-      .exceptionally(t -> handleErrorResponse(asyncResultHandler, helper, t));
+    BatchVoucherHelper helper = new BatchVoucherHelper(okapiHeaders, vertxContext);
+    helper.getBatchVoucherById(id, contentType)
+      .onSuccess(response -> asyncResultHandler.handle(succeededFuture(helper.buildSuccessResponse(response, contentType))))
+      .onFailure(t -> handleErrorResponse(asyncResultHandler, helper, t));
   }
 
   private Void handleErrorResponse(Handler<AsyncResult<Response>> asyncResultHandler, AbstractHelper helper, Throwable t) {

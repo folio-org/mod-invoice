@@ -6,30 +6,23 @@ import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 import static javax.ws.rs.core.Response.Status.CREATED;
 import static javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
 import static org.folio.invoices.utils.ErrorCodes.GENERIC_ERROR_CODE;
-import static org.folio.invoices.utils.HelperUtils.LANG;
-import static org.folio.invoices.utils.HelperUtils.getHttpClient;
-import static org.folio.invoices.utils.HelperUtils.verifyAndExtractBody;
 import static org.folio.rest.RestConstants.OKAPI_URL;
 import static org.folio.rest.RestVerticle.OKAPI_USERID_HEADER;
 
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Map;
-import java.util.concurrent.CompletableFuture;
 
 import javax.ws.rs.core.Response;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.folio.completablefuture.FolioVertxCompletableFuture;
 import org.folio.invoices.events.handlers.MessageAddress;
 import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.rest.core.models.RequestContext;
-import org.folio.rest.tools.client.interfaces.HttpClientInterface;
 
 import io.vertx.core.Context;
 import io.vertx.core.eventbus.DeliveryOptions;
-import io.vertx.core.http.HttpMethod;
 import io.vertx.core.json.JsonObject;
 
 public abstract class AbstractHelper {
@@ -43,62 +36,16 @@ public abstract class AbstractHelper {
   public static final String SYSTEM_CONFIG_MODULE_NAME = "ORG";
   public static final String INVOICE_CONFIG_MODULE_NAME = "INVOICE";
   public static final String CONFIG_QUERY = "module==%s and configName==%s";
-  public static final String SEARCH_PARAMS = "?limit=%s&offset=%s%s&lang=%s";
+  public static final String SEARCH_PARAMS = "?limit=%s&offset=%s%s";
   public static final String SYSTEM_CONFIG_QUERY = String.format(CONFIG_QUERY, SYSTEM_CONFIG_MODULE_NAME, LOCALE_SETTINGS);
 
-  protected final HttpClientInterface httpClient;
   protected final Map<String, String> okapiHeaders;
   protected final Context ctx;
-  protected final String lang;
 
-  public AbstractHelper(HttpClientInterface httpClient, Map<String, String> okapiHeaders, Context ctx, String lang) {
-    this.httpClient = httpClient;
+
+  public AbstractHelper(Map<String, String> okapiHeaders, Context ctx) {
     this.okapiHeaders = okapiHeaders;
     this.ctx = ctx;
-    this.lang = lang;
-  }
-
-  public AbstractHelper(Map<String, String> okapiHeaders, Context ctx, String lang) {
-    this(getHttpClient(okapiHeaders), okapiHeaders, ctx, lang);
-  }
-
-  protected CompletableFuture<String> createRecordInStorage(JsonObject recordData, String endpoint) {
-    CompletableFuture<String> future = new FolioVertxCompletableFuture<>(ctx);
-    try {
-      if (logger.isDebugEnabled()) {
-        logger.debug("Sending 'POST {}' with body: {}", endpoint, recordData.encodePrettily());
-      }
-      httpClient
-        .request(HttpMethod.POST, recordData.toBuffer(), endpoint, okapiHeaders)
-        .thenApply(this::verifyAndExtractRecordId)
-        .thenAccept(id -> {
-          future.complete(id);
-          logger.debug("'POST {}' request successfully processed. Record with '{}' id has been created", endpoint, id);
-        })
-        .exceptionally(throwable -> {
-          future.completeExceptionally(throwable);
-          logger.error("'POST {}' request failed. Request body: {}", endpoint, recordData.encodePrettily(), throwable);
-          return null;
-        });
-    } catch (Exception e) {
-      future.completeExceptionally(e);
-    }
-    return future;
-  }
-
-  private String verifyAndExtractRecordId(org.folio.rest.tools.client.Response response) {
-    logger.debug("Validating received response");
-
-    JsonObject body = verifyAndExtractBody(response);
-
-    String id;
-    if (body != null && !body.isEmpty() && body.containsKey(ID)) {
-      id = body.getString(ID);
-    } else {
-      String location = response.getHeaders().get(LOCATION);
-      id = location.substring(location.lastIndexOf('/') + 1);
-    }
-    return id;
   }
 
   public Response buildErrorResponse(Throwable throwable) {
@@ -106,13 +53,12 @@ public abstract class AbstractHelper {
   }
 
   protected HttpException handleProcessingError(Throwable throwable) {
-    final Throwable cause = throwable.getCause();
-    logger.error("Exception encountered", cause);
+    logger.error("Exception encountered", throwable);
 
-    if (cause instanceof HttpException) {
-      return ((HttpException) cause);
+    if (throwable instanceof HttpException) {
+      return ((HttpException) throwable);
     } else {
-      return new HttpException(INTERNAL_SERVER_ERROR.getStatusCode(), GENERIC_ERROR_CODE.toError().withAdditionalProperty(ERROR_CAUSE, cause.getMessage()));
+      return new HttpException(INTERNAL_SERVER_ERROR.getStatusCode(), GENERIC_ERROR_CODE.toError().withAdditionalProperty(ERROR_CAUSE, throwable.getMessage()));
     }
 
   }
@@ -131,7 +77,6 @@ public abstract class AbstractHelper {
       default:
         responseBuilder = Response.status(INTERNAL_SERVER_ERROR);
     }
-    closeHttpClient();
 
     return responseBuilder
       .header(CONTENT_TYPE, APPLICATION_JSON)
@@ -140,26 +85,19 @@ public abstract class AbstractHelper {
   }
 
   public Response buildOkResponse(Object body) {
-    closeHttpClient();
     return Response.ok(body, APPLICATION_JSON).build();
   }
 
   public <T> Response buildSuccessResponse(T body, String contentType) {
-    closeHttpClient();
     return Response.ok(body, contentType).build();
   }
 
   public Response buildNoContentResponse() {
-    closeHttpClient();
     return Response.noContent().build();
   }
 
-  public void closeHttpClient() {
-    httpClient.closeClient();
-  }
 
   public Response buildResponseWithLocation(String endpoint, Object body) {
-    closeHttpClient();
     try {
       return Response.created(new URI(okapiHeaders.get(OKAPI_URL) + endpoint))
         .header(CONTENT_TYPE, APPLICATION_JSON).entity(body).build();
@@ -175,8 +113,6 @@ public abstract class AbstractHelper {
 
     // Add okapi headers
     okapiHeaders.forEach(deliveryOptions::addHeader);
-
-    data.put(LANG, lang);
 
     ctx.owner()
       .eventBus()
