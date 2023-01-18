@@ -286,7 +286,7 @@ public class InvoiceCancelServiceTest {
     String poLineIdsQuery = poLines.stream()
       .map(PoLine::getId)
       .collect(joining(" or "));
-    String poLineQuery = "paymentStatus==(\"Awaiting Payment\" OR \"Partially Paid\" OR \"Fully Paid\") AND id==(" +
+    String poLineQuery = "paymentStatus==(\"Awaiting Payment\" OR \"Partially Paid\" OR \"Fully Paid\" OR \"Ongoing\") AND id==(" +
       poLineIdsQuery + ")";
     PoLineCollection poLineCollection = new PoLineCollection()
       .withPoLines(poLines)
