@@ -62,8 +62,6 @@ public class HelperUtils {
   public static final String ALL_UNITS_CQL = IS_DELETED_PROP + "=*";
   public static final String BATCH_VOUCHER_EXPORT = "batchVoucherExport";
 
-  private static final String EXCEPTION_CALLING_ENDPOINT_MSG = "Exception calling {} {}";
-  private static final String CALLING_ENDPOINT_MSG = "Sending {} {}";
   private static final Pattern CQL_SORT_BY_PATTERN = Pattern.compile("(.*)(\\ssortBy\\s.*)", Pattern.CASE_INSENSITIVE);
 
 

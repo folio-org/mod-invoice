@@ -37,9 +37,6 @@ public class InvoicePaymentService {
   @Autowired
   private OrderLineService orderLineService;
 
-  public InvoicePaymentService() {
-  }
-
   /**
    * Handles transition of given invoice to PAID status.
    *

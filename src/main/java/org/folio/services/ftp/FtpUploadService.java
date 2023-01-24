@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.time.Duration;
 import java.util.Optional;
 import java.util.concurrent.CompletionException;
 
@@ -38,7 +39,7 @@ public class FtpUploadService implements UploadService {
     this.ftp = new FTPClient();
     this.ftp.setDefaultTimeout(30000);
     this.ftp.addProtocolCommandListener(FTPVertxCommandLogger.getDefListener(logger));
-    this.ftp.setControlKeepAliveTimeout(30);
+    this.ftp.setControlKeepAliveTimeout(Duration.ofSeconds(30));
     this.ftp.setBufferSize(1024 * 1024);
     this.ftp.setPassiveNatWorkaroundStrategy(new DefaultServerResolver(ftp));
     URI u = new URI(uri);

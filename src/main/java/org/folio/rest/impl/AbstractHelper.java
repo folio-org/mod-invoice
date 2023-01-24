@@ -31,7 +31,6 @@ public abstract class AbstractHelper {
   public static final String ID = "id";
   public static final String ERROR_CAUSE = "cause";
   public static final String DEFAULT_SYSTEM_CURRENCY = "USD";
-  public static final String SYSTEM_CURRENCY_PROPERTY_NAME = "currency";
   public static final String LOCALE_SETTINGS = "localeSettings";
   public static final String SYSTEM_CONFIG_MODULE_NAME = "ORG";
   public static final String INVOICE_CONFIG_MODULE_NAME = "INVOICE";

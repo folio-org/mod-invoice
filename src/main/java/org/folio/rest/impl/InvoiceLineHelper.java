@@ -190,8 +190,8 @@ public class InvoiceLineHelper extends AbstractHelper {
     var invoiceLineFuture = getInvoiceLine(invoiceLine.getId());
     var invoiceFuture = invoiceLineFuture.compose(invLine -> invoiceService.getInvoiceById(invoiceLine.getInvoiceId(), requestContext));
 
-    return CompositeFuture.join(invoiceFuture, invoiceLineFuture)
-      .compose(cf -> getInvoiceWorkflowDataHolders(invoiceFuture.result(), invoiceLine, requestContext))
+    return invoiceFuture
+      .compose(invoice -> getInvoiceWorkflowDataHolders(invoice, invoiceLine, requestContext))
       .compose(holders -> budgetExpenseClassService.checkExpenseClasses(holders, requestContext))
       .map(holders -> {
         var invoice = invoiceFuture.result();

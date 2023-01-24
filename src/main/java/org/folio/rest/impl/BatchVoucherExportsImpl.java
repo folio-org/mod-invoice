@@ -92,8 +92,4 @@ public class BatchVoucherExportsImpl implements BatchVoucherBatchVoucherExports 
     asyncResultHandler.handle(succeededFuture(helper.buildErrorResponse(t)));
     return null;
   }
-  private Void handleErrorResponse(Handler<AsyncResult<Response>> asyncResultHandler) {
-    asyncResultHandler.handle(succeededFuture(PostBatchVoucherBatchVoucherExportsScheduledResponse.respond500WithApplicationJson(NOT_SUPPORTED)));
-    return null;
-  }
 }

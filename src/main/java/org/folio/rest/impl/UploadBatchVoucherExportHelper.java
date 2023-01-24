@@ -31,7 +31,7 @@ public class UploadBatchVoucherExportHelper extends AbstractHelper {
   private BatchVoucherExportConfigService batchVoucherExportConfigService;
   @Autowired
   private BatchVoucherExportsService batchVoucherExportsService;
-  private final String CREDENTIALS_NOT_FOUND = "Credentials for FTP upload were not found";
+  private static final String CREDENTIALS_NOT_FOUND = "Credentials for FTP upload were not found";
 
   private final RequestContext requestContext;
 

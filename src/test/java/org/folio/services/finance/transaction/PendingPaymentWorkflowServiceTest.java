@@ -199,7 +199,7 @@ public class PendingPaymentWorkflowServiceTest {
     InvoiceTransactionSummary expectedSummary = new InvoiceTransactionSummary().withId(invoiceId)
       .withNumPaymentsCredits(2)
       .withNumPendingPayments(2);
-    verify(invoiceTransactionSummaryService).updateInvoiceTransactionSummary(eq(expectedSummary), eq(requestContext));
+    verify(invoiceTransactionSummaryService).updateInvoiceTransactionSummary(expectedSummary, requestContext);
 
 
     ArgumentCaptor<Transaction> transactionArgumentCaptor = ArgumentCaptor.forClass(Transaction.class);

@@ -184,7 +184,6 @@ public class InvoiceHelper extends AbstractHelper {
    * @return completable future with {@link Invoice} on success or an exception if processing fails
    */
   public Future<Invoice> getInvoice(String id) {
-    RequestContext requestContext = new RequestContext(ctx, okapiHeaders);
     var invoiceFuture = getInvoiceRecord(id);
     return invoiceFuture
       .compose(invoice -> protectionHelper.isOperationRestricted(invoice.getAcqUnitIds(), ProtectedOperationType.READ))
@@ -212,7 +211,6 @@ public class InvoiceHelper extends AbstractHelper {
    * @return completable future with {@link InvoiceCollection} on success or an exception if processing fails
    */
   public Future<InvoiceCollection> getInvoices(int limit, int offset, String query) {
-    RequestContext requestContext = new RequestContext(ctx, okapiHeaders);
       return buildGetInvoicesQuery(query)
         .compose(getInvoicesQuery -> invoiceService.getInvoices(getInvoicesQuery, offset, limit, requestContext))
         .onSuccess(invoiceCollection -> logger.info("Successfully retrieved invoices: {}", invoiceCollection))
@@ -267,7 +265,6 @@ public class InvoiceHelper extends AbstractHelper {
   }
 
   private Future<Void> handleExchangeRateChange(Invoice invoice, List<InvoiceLine> invoiceLines) {
-    RequestContext requestContext = new RequestContext(ctx, okapiHeaders);
     return getInvoiceWorkflowDataHolders(invoice, invoiceLines, requestContext)
             .compose(holders -> holderBuilder.withExistingTransactions(holders, requestContext))
             .compose(holders ->  pendingPaymentWorkflowService.handlePendingPaymentsUpdate(holders, requestContext))
@@ -275,10 +272,10 @@ public class InvoiceHelper extends AbstractHelper {
   }
 
   private Future<Void> updateVoucher(Invoice invoice, List<InvoiceLine> invoiceLines) {
-    return voucherService.getVoucherByInvoiceId(invoice.getId(), new RequestContext(ctx, okapiHeaders))
+    return voucherService.getVoucherByInvoiceId(invoice.getId(), requestContext)
       .compose(voucher -> {
         if (voucher != null) {
-          return voucherCommandService.updateVoucherWithExchangeRate(voucher, invoice, new RequestContext(ctx, okapiHeaders))
+          return voucherCommandService.updateVoucherWithExchangeRate(voucher, invoice, requestContext)
             .compose(voucherP ->  getAllFundDistributions(invoiceLines, invoice)
                                             .compose(fundDistributions -> handleVoucherWithLines(fundDistributions, voucherP)));
         }
@@ -294,7 +291,7 @@ public class InvoiceHelper extends AbstractHelper {
         setSystemGeneratedData(invoiceFromStorage, invoice);
         return null;
       })
-      .compose(v -> invoiceLineService.getInvoiceLinesWithTotals(invoice, new RequestContext(ctx, okapiHeaders)))
+      .compose(v -> invoiceLineService.getInvoiceLinesWithTotals(invoice, requestContext))
       .compose(invoiceLines -> Future.succeededFuture()
         .map(v -> {
           List<InvoiceLine> updatedInvoiceLines = invoiceLines.stream()
@@ -310,7 +307,7 @@ public class InvoiceHelper extends AbstractHelper {
             return null;
           })
           .map(aVoid -> filterUpdatedLines(invoiceLines, updatedInvoiceLines))
-          .compose(lines -> invoiceLineService.persistInvoiceLines(lines, new RequestContext(ctx, okapiHeaders)))));
+          .compose(lines -> invoiceLineService.persistInvoiceLines(lines, requestContext))));
   }
 
   private List<InvoiceLine> filterUpdatedLines(List<InvoiceLine> invoiceLines, List<InvoiceLine> updatedInvoiceLines) {
@@ -383,7 +380,6 @@ public class InvoiceHelper extends AbstractHelper {
     } else if (isAfterApprove(invoice, invoiceFromStorage) && isExchangeRateChanged(invoice, invoiceFromStorage)) {
       return handleExchangeRateChange(invoice, invoiceLines);
     } else if (isTransitionToPaid(invoiceFromStorage, invoice)) {
-      RequestContext requestContext = new RequestContext(ctx, okapiHeaders);
       if (isExchangeRateChanged(invoice, invoiceFromStorage)) {
         return handleExchangeRateChange(invoice, invoiceLines)
           .compose(aVoid1 -> invoicePaymentService.payInvoice(invoice, invoiceLines, requestContext));
@@ -391,7 +387,6 @@ public class InvoiceHelper extends AbstractHelper {
       invoice.setExchangeRate(invoiceFromStorage.getExchangeRate());
       return invoicePaymentService.payInvoice(invoice, invoiceLines, requestContext);
     } else if (isTransitionToCancelled(invoiceFromStorage, invoice)) {
-      RequestContext requestContext = new RequestContext(ctx, okapiHeaders);
       return invoiceCancelService.cancelInvoice(invoiceFromStorage, invoiceLines, requestContext);
     }
     return succeededFuture(null);
@@ -437,7 +432,6 @@ public class InvoiceHelper extends AbstractHelper {
   private Future<Void> approveInvoice(Invoice invoice, List<InvoiceLine> lines) {
     invoice.setApprovalDate(new Date());
     invoice.setApprovedBy(invoice.getMetadata().getUpdatedByUserId());
-    RequestContext requestContext = new RequestContext(ctx, okapiHeaders);
 
     return configurationService.getConfigurationsEntries(requestContext, SYSTEM_CONFIG_QUERY, VOUCHER_NUMBER_PREFIX_CONFIG_QUERY)
       .compose(ok -> updateInvoiceLinesWithEncumbrances(lines, requestContext))
@@ -488,7 +482,7 @@ public class InvoiceHelper extends AbstractHelper {
       return currentFiscalYearService.getCurrentFiscalYearByFund(fundId, new RequestContext(ctx, okapiHeaders))
         .map(fiscalYear -> voucher.withSystemCurrency(fiscalYear.getCurrency()));
     }
-    return configurationService.getSystemCurrency(new RequestContext(ctx, okapiHeaders))
+    return configurationService.getSystemCurrency(requestContext)
                                .map(systemCurrency -> voucher.withSystemCurrency(systemCurrency));
   }
 

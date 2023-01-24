@@ -595,7 +595,7 @@ public class InvoicesApiTest extends ApiTestBase {
     assertThat(getInvoiceRetrievals(), hasSize(1));
     assertThat(getInvoiceLineSearches(), hasSize(1));
     Invoice updatedInvoice = serverRqRs.get(INVOICES, HttpMethod.PUT).get(0).mapTo(Invoice.class);
-    assertEquals(updatedInvoice.getStatus(), Status.PAID);
+    assertEquals(Status.PAID, updatedInvoice.getStatus());
   }
 
   @Test

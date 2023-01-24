@@ -86,8 +86,6 @@ public class VendorRetrieveService {
   public Future<Organization> getVendor(String vendorId, RequestContext requestContext) {
     RequestEntry requestEntry = new RequestEntry(ORGANIZATIONS_STORAGE_VENDOR).withId(vendorId);
     return restClient.get(requestEntry, Organization.class, requestContext)
-      .onFailure(throwable -> {
-        logger.error("Failed to retrieve organization with id {}", vendorId, throwable);
-      });
+      .onFailure(throwable -> logger.error("Failed to retrieve organization with id {}", vendorId, throwable));
   }
 }

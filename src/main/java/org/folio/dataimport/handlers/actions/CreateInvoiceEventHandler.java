@@ -82,8 +82,7 @@ public class CreateInvoiceEventHandler implements EventHandler {
   private static final String POL_EXPENSE_CLASS_KEY = "POL_EXPENSE_CLASS_%s";
   private static final String POL_FUND_DISTRIBUTIONS_KEY = "POL_FUND_DISTRIBUTIONS_%s";
   private static final Pattern SEGMENT_QUERY_PATTERN = Pattern.compile("([A-Z]{3}((\\+|<)\\w*)(\\2*\\w*)*(\\?\\w+)?\\[[1-9](-[1-9])?\\])");
-  private static final String DEFAULT_LANG = "en";
-  private static final int MAX_PARALLEL_SEARCHES = 5;
+  private static final int MAX_PARALLEL_SEARCHES = 10;
   private static final int MAX_CHUNK_SIZE = 15;
 
   private final RestClient restClient;
@@ -134,7 +133,8 @@ public class CreateInvoiceEventHandler implements EventHandler {
           } else {
             preparePayloadWithMappedInvoiceLines(dataImportEventPayload);
             logger.error("Error during invoice creation", result.cause());
-            future.completeExceptionally(result.cause());          }
+            future.completeExceptionally(result.cause());
+          }
         });
     } catch (Exception e) {
       logger.error("Error during creation invoice and invoice lines", e);
@@ -244,7 +244,6 @@ public class CreateInvoiceEventHandler implements EventHandler {
       .map(this::prepareQueryGetPoLinesByNumber)
       .map(cqlQuery -> new RequestEntry(resourcesPath(ORDER_LINES)).withQuery(cqlQuery).withOffset(0).withLimit(Integer.MAX_VALUE))
       .map(requestEntry -> restClient.get(requestEntry, PoLineCollection.class, new RequestContext(Vertx.currentContext(), okapiHeaders)))
-      .map(a->a)
       .collect(Collectors.toList());
 
     return collectResultsOnSuccess(polineCollectionsFuture)
@@ -261,17 +260,22 @@ public class CreateInvoiceEventHandler implements EventHandler {
 
   private Future<Map<Integer, PoLine>> getAssociatedPoLinesByRefNumbers(Map<Integer, List<String>> refNumberList, RequestContext requestContext) {
     List<Future<Pair<Integer, PoLine>>> futures = new ArrayList<>();
-    Future<Pair<Integer, PoLine>> future = succeededFuture(null);
+    Semaphore semaphore = new Semaphore(MAX_PARALLEL_SEARCHES, Vertx.currentContext().owner());
 
-    for (Map.Entry<Integer, List<String>> entry : refNumberList.entrySet()) {
-      // TODO fix with semaphors
-      future = future.compose(v -> getLinePair(entry, requestContext));
-      futures.add(future);
-    }
-
-    return collectResultsOnSuccess(futures).map(poLinePairs -> poLinePairs.stream()
-      .filter(Objects::nonNull)
-      .collect(Collectors.toMap(Pair::getKey, Pair::getValue)));
+    return requestContext.getContext()
+      .executeBlocking(promise -> {
+        for (Map.Entry<Integer, List<String>> entry : refNumberList.entrySet()) {
+          var future = getLinePair(entry, requestContext);
+          futures.add(future);
+          semaphore.acquire(() ->
+            future.onComplete(asyncResult -> semaphore.release()));
+        }
+        promise.complete();
+      })
+      .compose(v -> collectResultsOnSuccess(futures))
+      .map(poLinePairs -> poLinePairs.stream()
+        .filter(Objects::nonNull)
+        .collect(Collectors.toMap(Pair::getKey, Pair::getValue)));
   }
 
   private Future<Pair<Integer, PoLine>> getLinePair(Map.Entry<Integer, List<String>> refNumbers, RequestContext requestContext) {
@@ -359,7 +363,7 @@ public class CreateInvoiceEventHandler implements EventHandler {
               Pair<InvoiceLine, String> invoiceLineToMsg = Pair.of(createdInvoiceLine, null);
               return Future.succeededFuture(invoiceLineToMsg);
             }, err -> {
-              logger.error("Error to create invoice line", invoiceLine, err);
+              logger.error("Failed to create invoice line {}, {}", invoiceLine, err);
               Pair<InvoiceLine, String> invoiceLineToMsg = Pair.of(invoiceLine, err.getMessage());
               return Future.succeededFuture(invoiceLineToMsg);
             });

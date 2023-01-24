@@ -178,7 +178,7 @@ public class OrderService {
       futures.add(deleteOrderInvoiceRelationshipById(id, requestContext))
     );
     return collectResultsOnSuccess(futures)
-      .onSuccess(v -> log.debug("Number of deleted relations between order and invoices: " + relationIds.size()))
+      .onSuccess(v -> log.debug("Number of deleted relations between order and invoices: {}", relationIds.size()))
       .mapEmpty();
   }
 }

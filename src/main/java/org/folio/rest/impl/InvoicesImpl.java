@@ -48,10 +48,6 @@ public class InvoicesImpl extends BaseApi implements org.folio.rest.jaxrs.resour
   private byte[] requestBytesArray = new byte[0];
   private static final long MAX_DOCUMENT_SIZE = 7 * ONE_MB;
 
-  public InvoicesImpl() {
-
-  }
-
   @Validate
   @Override
   public void postInvoiceInvoices(String lang, Invoice invoice, Map<String, String> okapiHeaders,

@@ -51,7 +51,7 @@ public class BatchVoucherProcessHandler implements Handler<Message<JsonObject>> 
         isBatchVoucherCreated(bvExport);
         return null;
       })
-      .compose(id -> uploadService.uploadBatchVoucherExport(bvExport))
+      .compose(v -> uploadService.uploadBatchVoucherExport(bvExport))
       .onComplete(asyncResult -> {
         // Sending reply message just in case some logic requires it
         if (asyncResult.succeeded()) {

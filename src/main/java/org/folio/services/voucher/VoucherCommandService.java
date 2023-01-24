@@ -3,8 +3,6 @@ package org.folio.services.voucher;
 import static org.apache.commons.lang3.StringUtils.EMPTY;
 import static org.apache.commons.lang3.StringUtils.isAlpha;
 import static org.folio.invoices.utils.ErrorCodes.VOUCHER_NUMBER_PREFIX_NOT_ALPHA;
-import static org.folio.invoices.utils.ResourcePathResolver.VOUCHERS_STORAGE;
-import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
 import static org.folio.rest.impl.AbstractHelper.CONFIG_QUERY;
 import static org.folio.rest.impl.AbstractHelper.INVOICE_CONFIG_MODULE_NAME;
 import static org.folio.rest.impl.AbstractHelper.SYSTEM_CONFIG_QUERY;
@@ -29,9 +27,6 @@ import io.vertx.core.Future;
 import io.vertx.core.json.JsonObject;
 
 public class VoucherCommandService {
-
-  private static final String VOUCHER_ENDPOINT = resourcesPath(VOUCHERS_STORAGE);
-  private static final String VOUCHER_BY_ID_ENDPOINT = resourcesPath(VOUCHERS_STORAGE) + "/{id}";
 
   public static final String VOUCHER_NUMBER_CONFIG_NAME = "voucherNumber";
   public static final String VOUCHER_NUMBER_PREFIX_CONFIG = "voucherNumberPrefix";
