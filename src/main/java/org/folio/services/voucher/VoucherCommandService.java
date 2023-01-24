@@ -38,9 +38,6 @@ public class VoucherCommandService {
   @Autowired
   private ExchangeRateProviderResolver exchangeRateProviderResolver;
 
-  public VoucherCommandService() {
-  }
-
   /**
    * Build new {@link Voucher} based on processed {@link Invoice}
    *

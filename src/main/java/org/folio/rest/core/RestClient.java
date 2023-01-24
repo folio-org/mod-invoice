@@ -262,37 +262,4 @@ public class RestClient {
     return okapiURL + endpoint;
   }
 
-  public Future<String> postJsonObjectAndGetId(RequestEntry requestEntry, JsonObject entity, RequestContext requestContext) {
-    if (log.isDebugEnabled()) {
-      log.debug(REQUEST_MESSAGE_LOG_DEBUG, HttpMethod.POST, entity.encodePrettily());
-    }
-    var caseInsensitiveHeader = convertToCaseInsensitiveMap(requestContext.getHeaders());
-
-    return getVertxWebClient(requestContext.getContext())
-      .postAbs(buildAbsEndpoint(caseInsensitiveHeader, requestEntry.buildEndpoint()))
-      .putHeaders(caseInsensitiveHeader)
-      .expect(SUCCESS_RESPONSE_PREDICATE)
-      .sendJsonObject(entity)
-      .map(this::extractRecordId)
-      .onFailure(t -> log.error("error occurred invoking POST {}", requestEntry.buildEndpoint()));
-  }
-
-  public Future<JsonObject> postJsonObject(RequestEntry requestEntry, JsonObject jsonObject, RequestContext requestContext) {
-    if (log.isDebugEnabled()) {
-      log.debug(REQUEST_MESSAGE_LOG_DEBUG, HttpMethod.POST, jsonObject.encodePrettily());
-    }
-    var endpoint = requestEntry.buildEndpoint();
-    var caseInsensitiveHeader = convertToCaseInsensitiveMap(requestContext.getHeaders());
-    return getVertxWebClient(requestContext.getContext()).postAbs(buildAbsEndpoint(caseInsensitiveHeader, requestEntry.buildEndpoint()))
-      .putHeaders(caseInsensitiveHeader)
-      .expect(SUCCESS_RESPONSE_PREDICATE)
-      .sendJsonObject(jsonObject)
-      .map(bufferHttpResponse -> {
-        var id = extractRecordId(bufferHttpResponse);
-        return bufferHttpResponse
-          .bodyAsJsonObject()
-          .put(ID, id);
-      })
-      .onFailure(t -> log.error("error occurred invoking POST {}", endpoint));
-  }
 }
