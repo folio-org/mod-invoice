@@ -45,7 +45,7 @@ import static org.folio.rest.acq.model.finance.Transaction.TransactionType.PENDI
 
 public class InvoiceCancelService {
   private static final String PO_LINES_WITH_RIGHT_PAYMENT_STATUS_QUERY =
-    "paymentStatus==(\"Awaiting Payment\" OR \"Partially Paid\" OR \"Fully Paid\")";
+    "paymentStatus==(\"Awaiting Payment\" OR \"Partially Paid\" OR \"Fully Paid\" OR \"Ongoing\")";
   private static final String OPEN_ORDERS_QUERY = "workflowStatus==\"Open\"";
 
   private static final Logger logger = LogManager.getLogger(InvoiceCancelService.class);
