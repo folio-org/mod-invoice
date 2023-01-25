@@ -1,9 +1,7 @@
 package org.folio.rest.core;
 
-import static javax.ws.rs.core.HttpHeaders.LOCATION;
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 import static javax.ws.rs.core.MediaType.TEXT_PLAIN;
-import static org.folio.rest.RestConstants.ID;
 import static org.folio.rest.RestConstants.OKAPI_URL;
 
 import java.util.Map;
@@ -19,7 +17,6 @@ import io.vertx.core.Context;
 import io.vertx.core.Future;
 import io.vertx.core.MultiMap;
 import io.vertx.core.Promise;
-import io.vertx.core.buffer.Buffer;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.client.HttpResponse;
@@ -31,7 +28,6 @@ import io.vertx.ext.web.client.predicate.ResponsePredicate;
 public class RestClient {
 
   private static final Logger log = LogManager.getLogger(RestClient.class);
-  private static final String CALLING_ENDPOINT_MSG = "Sending {} {}";
   private static final ErrorConverter ERROR_CONVERTER = ErrorConverter.createFullBody(
     result -> new HttpException(result.response().statusCode(), result.response().bodyAsString()));
   protected static final ResponsePredicate SUCCESS_RESPONSE_PREDICATE =
@@ -101,38 +97,13 @@ public class RestClient {
       .mapEmpty();
   }
 
-  public <T>Future<Void> patch(RequestEntry requestEntry, T dataObject, RequestContext requestContext ) {
-    String endpoint = requestEntry.buildEndpoint();
-    return patch(endpoint, dataObject, requestContext);
-  }
-
-  public <T>Future<Void> patch(String endpoint, T dataObject, RequestContext requestContext) {
-    log.info(REQUEST_MESSAGE_LOG_INFO, HttpMethod.PATCH, endpoint);
-    var recordData = JsonObject.mapFrom(dataObject);
-    if (log.isDebugEnabled()) {
-      log.debug(REQUEST_MESSAGE_LOG_DEBUG, HttpMethod.PUT, JsonObject.mapFrom(recordData).encodePrettily());
-    }
-    var caseInsensitiveHeader = convertToCaseInsensitiveMap(requestContext.getHeaders());
-
-    Promise<Void> promise = Promise.promise();
-
-    return getVertxWebClient(requestContext.getContext())
-      .patchAbs(buildAbsEndpoint(caseInsensitiveHeader, endpoint))
-      .putHeaders(caseInsensitiveHeader)
-      .expect(SUCCESS_RESPONSE_PREDICATE)
-      .sendJson(dataObject)
-      .onSuccess(json -> promise.complete())
-      .onFailure(log::error)
-      .mapEmpty();
-  }
-
 
   public Future<Void> delete(RequestEntry requestEntry, boolean skipError404, RequestContext requestContext) {
     return delete(requestEntry.buildEndpoint(), skipError404, requestContext);
   }
 
   public Future<Void> delete(String endpointById, boolean skipError404, RequestContext requestContext) {
-    log.info(CALLING_ENDPOINT_MSG, HttpMethod.DELETE, endpointById);
+    log.info(REQUEST_MESSAGE_LOG_INFO, HttpMethod.DELETE, endpointById);
 
     var caseInsensitiveHeader = convertToCaseInsensitiveMap(requestContext.getHeaders());
     Promise<Void> promise = Promise.promise();
@@ -184,7 +155,7 @@ public class RestClient {
   }
 
   public <T> Future<T> get(String endpoint, boolean skipError404, Class<T> responseType,  RequestContext requestContext) {
-    log.info(CALLING_ENDPOINT_MSG, HttpMethod.GET, endpoint);
+    log.info(REQUEST_MESSAGE_LOG_INFO, HttpMethod.GET, endpoint);
     var caseInsensitiveHeader = convertToCaseInsensitiveMap(requestContext.getHeaders());
 
     Promise<T> promise = Promise.promise();
@@ -204,48 +175,6 @@ public class RestClient {
       .onFailure(t -> handleGetMethodErrorResponse(promise, t, skipError404));
 
     return promise.future();
-  }
-
-
-  public Future<JsonObject> getAsJsonObject(String endpoint, boolean skipError404, RequestContext requestContext) {
-    log.info(CALLING_ENDPOINT_MSG, HttpMethod.GET, endpoint);
-    Promise<JsonObject> promise = Promise.promise();
-    var caseInsensitiveHeader = convertToCaseInsensitiveMap(requestContext.getHeaders());
-    var webClient = getVertxWebClient(requestContext.getContext());
-
-    webClient.getAbs(buildAbsEndpoint(caseInsensitiveHeader, endpoint))
-      .putHeaders(caseInsensitiveHeader)
-      .expect(SUCCESS_RESPONSE_PREDICATE)
-      .send()
-      .map(HttpResponse::bodyAsJsonObject)
-      .onSuccess(jsonObject -> {
-        if (log.isDebugEnabled()) {
-          log.debug("Successfully retrieved: {}", jsonObject.encodePrettily());
-        }
-        promise.complete(jsonObject);
-      })
-      .onFailure(t -> handleGetMethodErrorResponse(promise, t, skipError404));
-    return promise.future();
-  }
-
-  public Future<JsonObject> getAsJsonObject(RequestEntry requestEntry, boolean skipError404, RequestContext requestContext) {
-    return getAsJsonObject(requestEntry.buildEndpoint(), skipError404, requestContext);
-  }
-
-  public Future<JsonObject> getAsJsonObject(RequestEntry requestEntry, RequestContext requestContext) {
-    return getAsJsonObject(requestEntry.buildEndpoint(), false, requestContext);
-  }
-
-  public String extractRecordId(HttpResponse<Buffer> response) {
-    JsonObject body = response.bodyAsJsonObject();
-    String id;
-    if (body != null && !body.isEmpty() && body.containsKey(ID)) {
-      id = body.getString(ID);
-    } else {
-      String location = response.getHeader(LOCATION);
-      id = location.substring(location.lastIndexOf('/') + 1);
-    }
-    return id;
   }
 
   protected WebClient getVertxWebClient(Context context) {
