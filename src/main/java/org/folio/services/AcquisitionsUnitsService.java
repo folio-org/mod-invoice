@@ -31,10 +31,4 @@ public class AcquisitionsUnitsService {
     return restClient.get(endpoint, AcquisitionsUnitMembershipCollection.class, requestContext);
   }
 
-  /**
-   * Check whether the user is a member of at least one group from which the related invoice belongs.
-   *
-   * @return list of unit ids associated with user.
-   */
-
 }

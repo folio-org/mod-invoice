@@ -7,6 +7,7 @@ import org.folio.rest.jaxrs.model.BatchVoucherExport;
 import org.folio.services.voucher.BatchVoucherExportsService;
 import org.folio.services.voucher.BatchVoucherGenerateService;
 import org.folio.services.voucher.BatchVoucherService;
+import org.folio.spring.SpringContextUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import io.vertx.core.Context;
@@ -25,6 +26,7 @@ public class BatchVoucherPersistHelper extends AbstractHelper {
   public BatchVoucherPersistHelper(Map<String, String> okapiHeaders, Context ctx) {
     super(okapiHeaders, ctx);
     this.requestContext = new RequestContext(ctx, okapiHeaders);
+    SpringContextUtil.autowireDependencies(this, ctx);
   }
 
   public Future<String> persistBatchVoucher(BatchVoucherExport batchVoucherExport) {

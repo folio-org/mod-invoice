@@ -83,7 +83,7 @@ public class UploadBatchVoucherExportHelper extends AbstractHelper {
         })
         .mapEmpty();
     } catch (URISyntaxException e) {
-      log.error("FtpUploadService creation failed");
+      log.error("FtpUploadService creation failed", e);
       return Future.failedFuture(e);
     }
   }

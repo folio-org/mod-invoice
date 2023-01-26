@@ -100,10 +100,8 @@ public class InvoiceLineHelper extends AbstractHelper {
   }
 
   public Future<List<InvoiceLine>> getInvoiceLinesByInvoiceId(String invoiceId) {
-    String query = getEndpointWithQuery(String.format(QUERY_BY_INVOICE_ID, invoiceId));
-    // Assuming that the invoice will never contain more than Integer.MAX_VALUE invoiceLines.
-    String endpoint = String.format(GET_INVOICE_LINES_BY_QUERY, Integer.MAX_VALUE, 0, query);
-    return getInvoiceLineCollection(endpoint).map(InvoiceLineCollection::getInvoiceLines);
+    return invoiceLineService.getInvoiceLinesByInvoiceId(invoiceId, buildRequestContext())
+      .map(InvoiceLineCollection::getInvoiceLines);
   }
 
   Future<InvoiceLineCollection> getInvoiceLineCollection(String endpoint) {
