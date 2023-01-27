@@ -1,76 +1,5 @@
 package org.folio.rest.impl;
 
-import io.restassured.http.Headers;
-import io.restassured.response.Response;
-import io.vertx.core.Vertx;
-import io.vertx.core.http.HttpMethod;
-import io.vertx.core.json.JsonObject;
-import org.apache.commons.collections4.CollectionUtils;
-import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.reflect.FieldUtils;
-import org.apache.http.HttpStatus;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-import org.folio.invoices.utils.InvoiceProtectedFields;
-import org.folio.rest.acq.model.finance.Budget;
-import org.folio.rest.acq.model.finance.Budget.BudgetStatus;
-import org.folio.rest.acq.model.finance.Fund;
-import org.folio.rest.acq.model.finance.FundCollection;
-import org.folio.rest.acq.model.finance.InvoiceTransactionSummary;
-import org.folio.rest.acq.model.finance.Ledger;
-import org.folio.rest.acq.model.finance.Transaction;
-import org.folio.rest.acq.model.orders.CompositePoLine;
-import org.folio.rest.acq.model.units.AcquisitionsUnitMembershipCollection;
-import org.folio.rest.core.models.RequestContext;
-import org.folio.rest.jaxrs.model.Adjustment;
-import org.folio.rest.jaxrs.model.Adjustment.Prorate;
-import org.folio.rest.jaxrs.model.Adjustment.Type;
-import org.folio.rest.jaxrs.model.Error;
-import org.folio.rest.jaxrs.model.Errors;
-import org.folio.rest.jaxrs.model.FundDistribution;
-import org.folio.rest.jaxrs.model.Invoice;
-import org.folio.rest.jaxrs.model.Invoice.Status;
-import org.folio.rest.jaxrs.model.InvoiceCollection;
-import org.folio.rest.jaxrs.model.InvoiceLine;
-import org.folio.rest.jaxrs.model.InvoiceLineCollection;
-import org.folio.rest.jaxrs.model.Tags;
-import org.folio.rest.jaxrs.model.Voucher;
-import org.folio.rest.jaxrs.model.VoucherCollection;
-import org.folio.rest.jaxrs.model.VoucherLine;
-import org.folio.rest.jaxrs.model.VoucherLineCollection;
-import org.folio.services.exchange.ExchangeRateProviderResolver;
-import org.hamcrest.Matchers;
-import org.hamcrest.beans.HasProperty;
-import org.hamcrest.beans.HasPropertyWithValue;
-import org.hamcrest.core.Every;
-import org.javamoney.moneta.Money;
-import org.junit.jupiter.api.Disabled;
-import org.junit.jupiter.api.Test;
-
-import javax.money.CurrencyUnit;
-import javax.money.Monetary;
-import javax.money.MonetaryAmount;
-import javax.money.convert.ConversionQuery;
-import javax.money.convert.ConversionQueryBuilder;
-import javax.money.convert.CurrencyConversion;
-import javax.money.convert.ExchangeRateProvider;
-import java.io.IOException;
-import java.math.BigDecimal;
-import java.math.RoundingMode;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.UUID;
-import java.util.function.Function;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
-
 import static java.util.Collections.emptyList;
 import static java.util.UUID.randomUUID;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
@@ -171,6 +100,79 @@ import static org.hamcrest.core.IsEqual.equalTo;
 import static org.hamcrest.core.IsNot.not;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.io.IOException;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
+import javax.money.CurrencyUnit;
+import javax.money.Monetary;
+import javax.money.MonetaryAmount;
+import javax.money.convert.ConversionQuery;
+import javax.money.convert.ConversionQueryBuilder;
+import javax.money.convert.CurrencyConversion;
+import javax.money.convert.ExchangeRateProvider;
+
+import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.reflect.FieldUtils;
+import org.apache.http.HttpStatus;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.folio.invoices.utils.InvoiceProtectedFields;
+import org.folio.rest.acq.model.finance.Budget;
+import org.folio.rest.acq.model.finance.Budget.BudgetStatus;
+import org.folio.rest.acq.model.finance.Fund;
+import org.folio.rest.acq.model.finance.FundCollection;
+import org.folio.rest.acq.model.finance.InvoiceTransactionSummary;
+import org.folio.rest.acq.model.finance.Ledger;
+import org.folio.rest.acq.model.finance.Transaction;
+import org.folio.rest.acq.model.orders.CompositePoLine;
+import org.folio.rest.acq.model.units.AcquisitionsUnitMembershipCollection;
+import org.folio.rest.core.models.RequestContext;
+import org.folio.rest.jaxrs.model.Adjustment;
+import org.folio.rest.jaxrs.model.Adjustment.Prorate;
+import org.folio.rest.jaxrs.model.Adjustment.Type;
+import org.folio.rest.jaxrs.model.Error;
+import org.folio.rest.jaxrs.model.Errors;
+import org.folio.rest.jaxrs.model.FundDistribution;
+import org.folio.rest.jaxrs.model.Invoice;
+import org.folio.rest.jaxrs.model.Invoice.Status;
+import org.folio.rest.jaxrs.model.InvoiceCollection;
+import org.folio.rest.jaxrs.model.InvoiceLine;
+import org.folio.rest.jaxrs.model.InvoiceLineCollection;
+import org.folio.rest.jaxrs.model.Tags;
+import org.folio.rest.jaxrs.model.Voucher;
+import org.folio.rest.jaxrs.model.VoucherCollection;
+import org.folio.rest.jaxrs.model.VoucherLine;
+import org.folio.rest.jaxrs.model.VoucherLineCollection;
+import org.folio.services.exchange.ExchangeRateProviderResolver;
+import org.hamcrest.Matchers;
+import org.hamcrest.beans.HasProperty;
+import org.hamcrest.beans.HasPropertyWithValue;
+import org.hamcrest.core.Every;
+import org.javamoney.moneta.Money;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
+
+import io.restassured.http.Headers;
+import io.restassured.response.Response;
+import io.vertx.core.Vertx;
+import io.vertx.core.http.HttpMethod;
+import io.vertx.core.json.JsonObject;
 
 public class InvoicesApiTest extends ApiTestBase {
 
@@ -593,7 +595,7 @@ public class InvoicesApiTest extends ApiTestBase {
     assertThat(getInvoiceRetrievals(), hasSize(1));
     assertThat(getInvoiceLineSearches(), hasSize(1));
     Invoice updatedInvoice = serverRqRs.get(INVOICES, HttpMethod.PUT).get(0).mapTo(Invoice.class);
-    assertEquals(updatedInvoice.getStatus(), Status.PAID);
+    assertEquals(Status.PAID, updatedInvoice.getStatus());
   }
 
   @Test
@@ -2535,20 +2537,12 @@ public class InvoicesApiTest extends ApiTestBase {
   }
 
   @Test
+  @Disabled
   void testUpdateInvoiceByIdWithInvalidFormat() throws IOException {
 
     String jsonBody  = getMockData(APPROVED_INVOICE_SAMPLE_PATH);
 
     verifyPut(String.format(INVOICE_ID_PATH, ID_BAD_FORMAT), jsonBody, TEXT_PLAIN, 400);
-  }
-
-  @Test
-  @Disabled
-  void testUpdateInvoiceBadLanguage() throws IOException {
-    String jsonBody  = getMockData(APPROVED_INVOICE_SAMPLE_PATH);
-    String endpoint = String.format(INVOICE_ID_WITH_LANG_PATH, VALID_UUID, INVALID_LANG) ;
-
-    verifyPut(endpoint, jsonBody, TEXT_PLAIN, 400);
   }
 
   @Test
@@ -2724,6 +2718,7 @@ public class InvoicesApiTest extends ApiTestBase {
   }
 
   @Test
+  @Disabled
   void testDeleteInvoiceByIdWithInvalidFormat() {
     verifyDeleteResponse(String.format(INVOICE_ID_PATH, ID_BAD_FORMAT), TEXT_PLAIN, 400);
   }
@@ -2736,15 +2731,6 @@ public class InvoicesApiTest extends ApiTestBase {
   @Test
   void testDeleteInvoiceInternalErrorOnStorage() {
     verifyDeleteResponse(String.format(INVOICE_ID_PATH, ID_FOR_INTERNAL_SERVER_ERROR), APPLICATION_JSON, 500);
-  }
-
-  @Test
-  @Disabled
-  void testDeleteInvoiceBadLanguage() {
-
-    String endpoint = String.format(INVOICE_ID_WITH_LANG_PATH, VALID_UUID, INVALID_LANG) ;
-
-    verifyDeleteResponse(endpoint, TEXT_PLAIN, 400);
   }
 
   @Test

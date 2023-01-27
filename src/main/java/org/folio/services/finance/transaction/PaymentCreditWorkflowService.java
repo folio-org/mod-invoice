@@ -1,6 +1,6 @@
 package org.folio.services.finance.transaction;
 
-import static java.util.concurrent.CompletableFuture.completedFuture;
+import static io.vertx.core.Future.succeededFuture;
 import static java.util.stream.Collectors.toList;
 import static org.folio.invoices.utils.ErrorCodes.TRANSACTION_CREATION_FAILURE;
 import static org.folio.invoices.utils.HelperUtils.convertToDoubleWithRounding;
@@ -9,8 +9,6 @@ import static org.folio.services.FundsDistributionService.distributeFunds;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
 
 import javax.money.MonetaryAmount;
 
@@ -21,6 +19,8 @@ import org.folio.models.InvoiceWorkflowDataHolder;
 import org.folio.rest.acq.model.finance.Transaction;
 import org.folio.rest.core.models.RequestContext;
 import org.folio.rest.jaxrs.model.Parameter;
+
+import io.vertx.core.Future;
 
 public class PaymentCreditWorkflowService {
 
@@ -37,47 +37,46 @@ public class PaymentCreditWorkflowService {
   /**
    * This method processes payment&credit transactions based on information from invoice (invoice lines & fund distributions)
    * @param dataHolders {@link List<InvoiceWorkflowDataHolder>} that should be processed
-   * @return {@link CompletableFuture <List<InvoiceWorkflowDataHolder>>}
+   * @return {@link Future <List<InvoiceWorkflowDataHolder>>}
    */
-  public CompletableFuture<List<InvoiceWorkflowDataHolder>> handlePaymentsAndCreditsCreation(
+  public Future<List<InvoiceWorkflowDataHolder>> handlePaymentsAndCreditsCreation(
       List<InvoiceWorkflowDataHolder> dataHolders, RequestContext requestContext) {
     List<InvoiceWorkflowDataHolder> holders = withNewPaymentsCredits(dataHolders);
     return holders.stream()
       .findFirst()
       .map(holder -> isPaymentsAlreadyProcessed(holder.getInvoice().getId(), requestContext)
-        .thenCompose(isProcessed -> {
+        .compose(isProcessed -> {
           if (Boolean.TRUE.equals(isProcessed)) {
-            return completedFuture(holders);
+            return succeededFuture(holders);
           }
 
           distributeFunds(holders);
-          return createTransactions(holders, requestContext).thenApply(aVoid -> holders);
+          return createTransactions(holders, requestContext).map(aVoid -> holders);
         }))
-      .orElseGet(() -> completedFuture(holders));
+      .orElseGet(() -> succeededFuture(holders));
   }
 
   /**
    * This method check if the payments or credits have already been processed
    * @param invoiceId id of invoice for which payments and credits are verifying
-   * @return {@link CompletableFuture<Boolean>} with true if payments or credits have already processed otherwise - with false
+   * @return {@link Future<Boolean>} with true if payments or credits have already processed otherwise - with false
    */
-  private CompletableFuture<Boolean> isPaymentsAlreadyProcessed(String invoiceId, RequestContext requestContext) {
+  private Future<Boolean> isPaymentsAlreadyProcessed(String invoiceId, RequestContext requestContext) {
     String query = String.format("sourceInvoiceId==%s and (transactionType==Payment or transactionType==Credit)", invoiceId);
     return baseTransactionService.getTransactions(query, 0, 0, requestContext)
-      .thenApply(transactionCollection -> transactionCollection.getTotalRecords() > 0);
+      .map(transactionCollection -> transactionCollection.getTotalRecords() > 0);
   }
 
   private List<InvoiceWorkflowDataHolder> withNewPaymentsCredits(List<InvoiceWorkflowDataHolder> dataHolders) {
     return dataHolders.stream().map(holder -> holder.withNewTransaction(buildTransaction(holder))).collect(toList());
   }
 
-  private CompletionStage<Void> createTransactions(List<InvoiceWorkflowDataHolder> holders, RequestContext requestContext) {
-    CompletableFuture<Void> future = completedFuture(null);
+  private Future<Void> createTransactions(List<InvoiceWorkflowDataHolder> holders, RequestContext requestContext) {
+    Future<Void> future = succeededFuture(null);
     for (InvoiceWorkflowDataHolder holder : holders) {
       Transaction tr = holder.getNewTransaction();
-      future = future.thenCompose(v -> baseTransactionService.createTransaction(tr, requestContext)
-        .thenAccept(t -> {})
-        .exceptionally(t -> {
+      future = future.compose(v -> baseTransactionService.createTransaction(tr, requestContext)
+        .recover(t -> {
           logger.error("Failed to create transaction for invoice with id - {}", tr.getSourceInvoiceId(), t);
           List<Parameter> parameters = new ArrayList<>();
           parameters.add(new Parameter().withKey("invoiceLineId").withValue(tr.getSourceInvoiceLineId()));
@@ -85,6 +84,7 @@ public class PaymentCreditWorkflowService {
             .withValue((tr.getTransactionType() == Transaction.TransactionType.PAYMENT) ? tr.getFromFundId() : tr.getToFundId()));
           throw new HttpException(500, TRANSACTION_CREATION_FAILURE.toError().withParameters(parameters));
         })
+        .mapEmpty()
       );
     }
     return future;

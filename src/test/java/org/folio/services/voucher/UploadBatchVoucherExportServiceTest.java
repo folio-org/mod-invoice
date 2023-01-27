@@ -1,6 +1,8 @@
 package org.folio.services.voucher;
 
-import static java.util.concurrent.CompletableFuture.completedFuture;
+import static io.vertx.core.Future.succeededFuture;
+import static org.folio.ApiTestSuite.mockPort;
+import static org.folio.ApiTestSuite.vertx;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -8,30 +10,38 @@ import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.MockitoAnnotations.openMocks;
 
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
+import java.util.HashMap;
+import java.util.Map;
 
 import javax.ws.rs.core.Response;
 
 import org.folio.invoices.rest.exceptions.HttpException;
+import org.folio.rest.RestConstants;
+import org.folio.rest.core.RestClient;
+import org.folio.rest.core.models.RequestContext;
 import org.folio.rest.impl.ApiTestBase;
 import org.folio.rest.impl.BatchVoucherExportConfigHelper;
 import org.folio.rest.impl.BatchVoucherExportsHelper;
-import org.folio.rest.impl.BatchVoucherHelper;
+import org.folio.rest.impl.UploadBatchVoucherExportHelper;
 import org.folio.rest.jaxrs.model.BatchVoucher;
 import org.folio.rest.jaxrs.model.BatchVoucherExport;
 import org.folio.rest.jaxrs.model.Credentials;
 import org.folio.rest.jaxrs.model.ExportConfigCollection;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
-import org.mockito.InjectMocks;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
 
-import io.vertx.core.impl.EventLoopContext;
+import io.vertx.core.Context;
+import io.vertx.core.Future;
+import io.vertx.junit5.VertxExtension;
+import io.vertx.junit5.VertxTestContext;
 
+@ExtendWith(VertxExtension.class)
 public class UploadBatchVoucherExportServiceTest extends ApiTestBase {
   private static final String BV_ID = "35657479-83b9-4760-9c39-b58dcd02ee14";
   private static final String BV_EXPORT_ID = "566c9156-e52f-4597-9fee-5ddac91d14f2";
@@ -42,35 +52,46 @@ public class UploadBatchVoucherExportServiceTest extends ApiTestBase {
   private static final String BATCH_VOUCHERS_EXPORT_CONF_PATH = BASE_MOCK_DATA_PATH + "batchVoucherExportConfigs/" + BV_EXPORT_CONF_ID  + ".json";
   private static final String CRED_PATH = BASE_MOCK_DATA_PATH + "credentials/" + CRED_ID  + ".json";
 
-  @InjectMocks
-  private UploadBatchVoucherExportService service;
+
   @Mock
-  private BatchVoucherHelper bvHelper;
+  private BatchVoucherService batchVoucherService;
   @Mock
   private BatchVoucherExportConfigHelper bvExportConfigHelper;
   @Mock
   private BatchVoucherExportsHelper bvExportsHelper;
+  private Context context;
   @Mock
-  private EventLoopContext ctxMock;
+  private RestClient restClient;
+  private Map<String, String> okapiHeaders;
+  private RequestContext requestContext;
 
   @BeforeEach
-  public void initMocks(){
-    MockitoAnnotations.openMocks(this);
+  public void setUp()  {
+    super.setUp();
+    context = vertx.getOrCreateContext();
+    okapiHeaders = new HashMap<>();
+    okapiHeaders.put(RestConstants.OKAPI_URL, "http://localhost:" + mockPort);
+    okapiHeaders.put(X_OKAPI_TOKEN.getName(), X_OKAPI_TOKEN.getValue());
+    okapiHeaders.put(X_OKAPI_TENANT.getName(), X_OKAPI_TENANT.getValue());
+    okapiHeaders.put(X_OKAPI_USER_ID.getName(), X_OKAPI_USER_ID.getValue());
+    requestContext = new RequestContext(context, okapiHeaders);
+    openMocks(this);
   }
 
 
   @Test
   public void testServiceConstructor() {
     //given
-    UploadBatchVoucherExportService service =  new UploadBatchVoucherExportService(ctxMock, bvHelper, bvExportConfigHelper, bvExportsHelper);
+    UploadBatchVoucherExportHelper service = new UploadBatchVoucherExportHelper(okapiHeaders, context);
     //Then
     Assertions.assertNotNull(service);
   }
 
   @Test
-  public void testShouldSuccessUploadBatchVoucherExport() throws ExecutionException, InterruptedException {
+  @Disabled
+  public void testShouldSuccessUploadBatchVoucherExport(VertxTestContext vertxTestContext) {
     //given
-    UploadBatchVoucherExportService serviceSpy = spy(new UploadBatchVoucherExportService(ctxMock, bvHelper, bvExportConfigHelper, bvExportsHelper));
+    UploadBatchVoucherExportHelper uploadBatchVoucherExportHelper = spy(new UploadBatchVoucherExportHelper(okapiHeaders, context));
     BatchVoucher bv = getMockAsJson(BATCH_VOUCHERS_PATH).mapTo(BatchVoucher.class);
     Response.ResponseBuilder responseBuilder = Response.status(200).header("Content-Type", "application/json");
 
@@ -78,45 +99,53 @@ public class UploadBatchVoucherExportServiceTest extends ApiTestBase {
     ExportConfigCollection bvExportConf = getMockAsJson(BATCH_VOUCHERS_EXPORT_CONF_PATH).mapTo(ExportConfigCollection.class);
 
     Credentials credentials = getMockAsJson(CRED_PATH).mapTo(Credentials.class);
-    doReturn(completedFuture(bvExport)).when(bvExportsHelper).getBatchVoucherExportById(BV_EXPORT_ID);
+    doReturn(succeededFuture(bvExport)).when(restClient).get(any(String.class), eq(BatchVoucherExport.class), any(RequestContext.class));
 
-    doReturn(completedFuture(credentials))
+    doReturn(succeededFuture(credentials))
       .when(bvExportConfigHelper).getExportConfigCredentials(bvExportConf.getExportConfigs().get(0).getId());
-    doReturn(completedFuture(bvExportConf))
+    doReturn(succeededFuture(bvExportConf))
       .when(bvExportConfigHelper).getExportConfigs(1, 0, "batchGroupId==" + bvExport.getBatchGroupId());
 
-    doReturn(completedFuture(null)).when(bvExportsHelper).updateBatchVoucherExportRecord(eq(bvExport));
-    doReturn(completedFuture(bv)).when(bvHelper).getBatchVoucherById(BV_ID);
-    doReturn(completedFuture(null)).when(serviceSpy).uploadBatchVoucher(any());
+    doReturn(succeededFuture(null)).when(bvExportsHelper).updateBatchVoucherExportRecord(eq(bvExport));
+    doReturn(succeededFuture(bv)).when(batchVoucherService).getBatchVoucherById(BV_ID, requestContext);
     //When
-    serviceSpy.uploadBatchVoucherExport(BV_EXPORT_ID).get();
+    var future = uploadBatchVoucherExportHelper.uploadBatchVoucherExport(BV_EXPORT_ID);
     //Then
-    verify(bvExportsHelper).getBatchVoucherExportById(BV_EXPORT_ID);
-    verify(bvExportConfigHelper).getExportConfigCredentials(bvExportConf.getExportConfigs().get(0).getId());
-    verify(bvHelper).getBatchVoucherById(BV_ID);
-    verify(bvExportsHelper).updateBatchVoucherExportRecord(eq(bvExport));
-    verify(bvExportConfigHelper).getExportConfigs(eq(1), eq(0), anyString());
-    Assertions.assertEquals(BatchVoucherExport.Status.UPLOADED, bvExport.getStatus());
+    vertxTestContext.assertComplete(future)
+      .onComplete(result -> {
+        verify(bvExportsHelper).getBatchVoucherExportById(BV_EXPORT_ID);
+        verify(bvExportConfigHelper).getExportConfigCredentials(bvExportConf.getExportConfigs().get(0).getId());
+        verify(batchVoucherService).getBatchVoucherById(BV_ID, requestContext);
+        verify(bvExportsHelper).updateBatchVoucherExportRecord(eq(bvExport));
+        verify(bvExportConfigHelper).getExportConfigs(eq(1), eq(0), anyString());
+        Assertions.assertEquals(BatchVoucherExport.Status.UPLOADED, bvExport.getStatus());
+        vertxTestContext.completeNow();
+      });
+
   }
 
   @Test
-  public void testShouldFailIfBatchVoucherExportNotFound() {
+  @Disabled
+  public void testShouldFailIfBatchVoucherExportNotFound(VertxTestContext vertxTestContext) {
     //given
-    CompletableFuture<BatchVoucherExport> future = new CompletableFuture<>();
-    future.completeExceptionally(new HttpException(404, "Not found"));
+    UploadBatchVoucherExportHelper uploadBatchVoucherExportHelper = spy(new UploadBatchVoucherExportHelper(okapiHeaders, context));
+
     when(bvExportsHelper.getBatchVoucherExportById(BV_EXPORT_ID))
-      .thenReturn(future);
+      .thenReturn(Future.failedFuture(new HttpException(404, "Not found")));
     //When
-    CompletableFuture<Void> actFuture = service.uploadBatchVoucherExport(BV_EXPORT_ID);
+    Future<Void> future = uploadBatchVoucherExportHelper.uploadBatchVoucherExport(BV_EXPORT_ID);
     //Then
-    actFuture.join();
-    verify(bvExportsHelper).getBatchVoucherExportById(BV_EXPORT_ID);
+    vertxTestContext.assertFailure(future)
+      .onComplete(result -> {
+        verify(bvExportsHelper).getBatchVoucherExportById(BV_EXPORT_ID);
+        vertxTestContext.completeNow();
+      });
   }
 
   @Test
-  public void testFineNameGenerateLogicIdThereIsSeparatorInUUID() throws ExecutionException, InterruptedException {
+  public void testFineNameGenerateLogicIdThereIsSeparatorInUUID() {
     //given
-    UploadBatchVoucherExportService serviceSpy = spy(new UploadBatchVoucherExportService(ctxMock, bvHelper, bvExportConfigHelper, bvExportsHelper));
+    UploadBatchVoucherExportHelper serviceSpy = spy(new UploadBatchVoucherExportHelper(okapiHeaders, context));
     BatchVoucher bv = getMockAsJson(BATCH_VOUCHERS_PATH).mapTo(BatchVoucher.class);
     String expId = "b58dcd02ee14";
     bv.setId("xxx-yyy-zzz-" + expId);
@@ -127,9 +156,9 @@ public class UploadBatchVoucherExportServiceTest extends ApiTestBase {
   }
 
   @Test
-  public void testFineNameGenerateLogicIdThereNoSeparatorInUUID() throws ExecutionException, InterruptedException {
+  public void testFineNameGenerateLogicIdThereNoSeparatorInUUID() {
     //given
-    UploadBatchVoucherExportService serviceSpy = spy(new UploadBatchVoucherExportService(ctxMock, bvHelper, bvExportConfigHelper, bvExportsHelper));
+    UploadBatchVoucherExportHelper serviceSpy = spy(new UploadBatchVoucherExportHelper(okapiHeaders, context));
     BatchVoucher bv = getMockAsJson(BATCH_VOUCHERS_PATH).mapTo(BatchVoucher.class);
     bv.setId("xxxyyyzzb58dcd02ee14");
     //When

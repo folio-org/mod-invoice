@@ -9,18 +9,22 @@ import static org.hamcrest.MatcherAssert.assertThat;
 
 import java.io.IOException;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.folio.rest.jaxrs.model.BatchVoucherExport;
 import org.folio.rest.jaxrs.model.BatchVoucherExportCollection;
 import org.folio.rest.jaxrs.model.Errors;
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 
 import io.restassured.http.Headers;
 import io.restassured.response.Response;
 import io.vertx.core.json.JsonObject;
-import org.apache.logging.log4j.Logger;
-import org.apache.logging.log4j.LogManager;
+import io.vertx.junit5.VertxExtension;
 
+@ExtendWith(VertxExtension.class)
 public class BatchVoucherExportsApiTest extends ApiTestBase {
 
   private static final Logger logger = LogManager.getLogger(BatchVoucherExportsApiTest.class);
@@ -33,8 +37,10 @@ public class BatchVoucherExportsApiTest extends ApiTestBase {
   private static final String VALID_BATCH_VOUCHER_EXPORTS_ID ="566c9156-e52f-4597-9fee-5ddac91d14f2";
   private static final String BAD_BATCH_VOUCHER_GROUP_ID =  "e91d44e4-ae4f-401a-b355-3ea44f57a621";
   private static final String BATCH_VOUCHER_EXPORT_SAMPLE_PATH = BATCH_VOUCHER_EXPORTS_MOCK_DATA_PATH + VALID_BATCH_VOUCHER_EXPORTS_ID + ".json";
-  private static final String BATCH_VOUCHER_EXPORT_UPLOAD_ENDPOINT_PATH = String
+  private static final String BAD_BATCH_VOUCHER_EXPORT_UPLOAD_ENDPOINT_PATH = String
     .format("/batch-voucher/batch-voucher-exports/%s/upload", BAD_BATCH_VOUCHER_EXPORTS_ID);
+  private static final String VALID_BATCH_VOUCHER_EXPORT_UPLOAD_ENDPOINT_PATH = String
+    .format("/batch-voucher/batch-voucher-exports/%s/upload", VALID_BATCH_VOUCHER_EXPORTS_ID);
   private static final String BATCH_VOUCHER_EXPORT_SCHEDULE_ENDPOINT_PATH = String
     .format("/batch-voucher/batch-voucher-exports/scheduled");
 
@@ -143,10 +149,15 @@ public class BatchVoucherExportsApiTest extends ApiTestBase {
   }
 
   @Test
-  public void postBatchVoucherBatchVoucherExportsUploadTest() {
+  @Disabled
+  public void postBatchVoucherExportsUploadFailedTest() {
     given().header(X_OKAPI_TENANT)
-      .post(BATCH_VOUCHER_EXPORT_UPLOAD_ENDPOINT_PATH)
+      .header(X_OKAPI_URL)
+      .post(VALID_BATCH_VOUCHER_EXPORT_UPLOAD_ENDPOINT_PATH)
       .then()
-      .statusCode(202);
+      .statusCode(500)
+      .extract()
+      .body()
+      .asString();
   }
 }

@@ -1,20 +1,20 @@
 package org.folio.dataimport.handlers.events;
 
-import java.io.IOException;
+import static java.lang.String.format;
+import static org.folio.DataImportEventTypes.DI_ERROR;
 
-import io.vertx.core.json.Json;
-import io.vertx.kafka.client.producer.KafkaHeader;
-import io.vertx.core.Future;
-import io.vertx.core.Promise;
-import io.vertx.core.json.jackson.DatabindCodec;
-import io.vertx.kafka.client.consumer.KafkaConsumerRecord;
+import java.io.IOException;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.DataImportEventPayload;
-import org.folio.dataimport.utils.DataImportUtils;
 import org.folio.dataimport.InvoiceWriterFactory;
 import org.folio.dataimport.cache.JobProfileSnapshotCache;
 import org.folio.dataimport.handlers.actions.CreateInvoiceEventHandler;
+import org.folio.dataimport.utils.DataImportUtils;
 import org.folio.kafka.AsyncRecordHandler;
 import org.folio.processing.events.EventManager;
 import org.folio.processing.exceptions.EventProcessingException;
@@ -27,12 +27,12 @@ import org.folio.utils.UserPermissionsUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.CompletableFuture;
-
-import static java.lang.String.format;
-import static org.folio.DataImportEventTypes.DI_ERROR;
+import io.vertx.core.Future;
+import io.vertx.core.Promise;
+import io.vertx.core.json.Json;
+import io.vertx.core.json.jackson.DatabindCodec;
+import io.vertx.kafka.client.consumer.KafkaConsumerRecord;
+import io.vertx.kafka.client.producer.KafkaHeader;
 
 @Component
 public class DataImportKafkaHandler implements AsyncRecordHandler<String, String> {

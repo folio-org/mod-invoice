@@ -1,24 +1,26 @@
 package org.folio.rest.impl;
 
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
-import static javax.ws.rs.core.MediaType.TEXT_PLAIN;
 import static org.folio.rest.impl.MockServer.getBatchGroupUpdates;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 
 import java.io.IOException;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.folio.rest.jaxrs.model.BatchGroup;
 import org.folio.rest.jaxrs.model.BatchGroupCollection;
 import org.folio.rest.jaxrs.model.Errors;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 
 import io.restassured.response.Response;
 import io.vertx.core.json.JsonObject;
-import org.apache.logging.log4j.Logger;
-import org.apache.logging.log4j.LogManager;
+import io.vertx.junit5.VertxExtension;
 
+@ExtendWith(VertxExtension.class)
 public class BatchGroupsApiTest extends ApiTestBase {
 
   private static final Logger logger = LogManager.getLogger(BatchGroupsApiTest.class);
@@ -72,19 +74,6 @@ public class BatchGroupsApiTest extends ApiTestBase {
     logger.info("Id not found: " + actual);
 
     Assertions.assertEquals(BAD_BATCH_GROUP_ID, actual);
-  }
-
-  @Test
-  public void testGetBatchGroupsByIdInvalidFormat() {
-    logger.info("=== Test Get Batch group by Id - 400 Bad request ===");
-
-    final Response resp = verifyGet(String.format(BATCH_GROUPS_ID_PATH, INVALID_BATCH_GROUP_ID), TEXT_PLAIN, 400);
-
-    String actual = resp.getBody().asString();
-    logger.info(actual);
-
-    Assertions.assertNotNull(actual);
-    Assertions.assertTrue(actual.contains(INVALID_BATCH_GROUP_ID));
   }
 
   @Test

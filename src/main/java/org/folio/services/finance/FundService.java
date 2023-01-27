@@ -16,7 +16,6 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.stream.Collectors;
 
@@ -32,6 +31,8 @@ import org.folio.rest.core.models.RequestEntry;
 import org.folio.rest.jaxrs.model.Error;
 import org.folio.rest.jaxrs.model.Parameter;
 
+import io.vertx.core.Future;
+
 public class FundService {
 
   private static final String FUNDS_ENDPOINT = resourcesPath(FUNDS);
@@ -43,30 +44,30 @@ public class FundService {
     this.restClient = restClient;
   }
 
-  public CompletableFuture<List<Fund>> getFunds(Collection<String> fundIds, RequestContext requestContext) {
+  public Future<List<Fund>> getFunds(Collection<String> fundIds, RequestContext requestContext) {
     return collectResultsOnSuccess(ofSubLists(new ArrayList<>(fundIds), MAX_IDS_FOR_GET_RQ)
       .map(ids -> getFundsByIds(ids, requestContext))
       .toList())
-      .thenApply(lists -> lists.stream().flatMap(Collection::stream)
+      .map(lists -> lists.stream().flatMap(Collection::stream)
       .collect(Collectors.toList()));
   }
 
 
-  private CompletableFuture<List<Fund>> getFundsByIds(Collection<String> ids, RequestContext requestContext) {
+  private Future<List<Fund>> getFundsByIds(Collection<String> ids, RequestContext requestContext) {
     String query = convertIdsToCqlQuery(ids);
     RequestEntry requestEntry = new RequestEntry(FUNDS_ENDPOINT)
         .withQuery(query)
         .withOffset(0)
         .withLimit(MAX_IDS_FOR_GET_RQ);
-    return restClient.get(requestEntry, requestContext, FundCollection.class)
-      .thenApply(fundCollection -> verifyThatAllFundsFound(fundCollection.getFunds(), ids));
+    return restClient.get(requestEntry, FundCollection.class, requestContext)
+      .map(fundCollection -> verifyThatAllFundsFound(fundCollection.getFunds(), ids));
   }
 
-  public CompletableFuture<Fund> getFundById(String fundId, RequestContext requestContext) {
+  public Future<Fund> getFundById(String fundId, RequestContext requestContext) {
     RequestEntry requestEntry = new RequestEntry(FUNDS_BY_ID_ENDPOINT).withId(fundId);
-    return restClient.get(requestEntry, requestContext, CompositeFund.class)
-      .thenApply(CompositeFund::getFund)
-      .exceptionally(t -> {
+    return restClient.get(requestEntry, CompositeFund.class, requestContext)
+      .map(CompositeFund::getFund)
+      .recover(t -> {
         Throwable cause = t.getCause() == null ? t : t.getCause();
         if (HelperUtils.isNotFound(cause)) {
           List<Parameter> parameters = Collections.singletonList(new Parameter().withValue(fundId).withKey("funds"));

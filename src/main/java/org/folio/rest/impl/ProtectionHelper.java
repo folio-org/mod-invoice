@@ -1,19 +1,15 @@
 package org.folio.rest.impl;
 
+import static io.vertx.core.Future.succeededFuture;
 import static org.folio.invoices.utils.ErrorCodes.ACQ_UNITS_NOT_FOUND;
 import static org.folio.invoices.utils.ErrorCodes.USER_HAS_NO_PERMISSIONS;
 import static org.folio.invoices.utils.HelperUtils.ALL_UNITS_CQL;
 import static org.folio.invoices.utils.HelperUtils.convertIdsToCqlQuery;
-import static org.folio.invoices.utils.HelperUtils.getEndpointWithQuery;
-import static org.folio.invoices.utils.HelperUtils.handleGetRequest;
-import static org.folio.invoices.utils.ResourcePathResolver.ACQUISITIONS_MEMBERSHIPS;
-import static org.folio.invoices.utils.ResourcePathResolver.ACQUISITIONS_UNITS;
-import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
+import static org.folio.services.AcquisitionsUnitsService.ACQUISITIONS_UNIT_ID;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 import org.apache.commons.collections4.CollectionUtils;
@@ -23,28 +19,31 @@ import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.invoices.utils.HelperUtils;
 import org.folio.invoices.utils.ProtectedOperationType;
 import org.folio.rest.acq.model.units.AcquisitionsUnit;
-import org.folio.rest.acq.model.units.AcquisitionsUnitCollection;
 import org.folio.rest.acq.model.units.AcquisitionsUnitMembership;
-import org.folio.rest.acq.model.units.AcquisitionsUnitMembershipCollection;
+import org.folio.rest.core.models.RequestContext;
 import org.folio.rest.jaxrs.model.Error;
-import org.folio.rest.tools.client.interfaces.HttpClientInterface;
+import org.folio.services.AcquisitionsUnitsService;
+import org.folio.spring.SpringContextUtil;
+import org.springframework.beans.factory.annotation.Autowired;
 
+import io.vertx.core.CompositeFuture;
 import io.vertx.core.Context;
-import org.folio.completablefuture.FolioVertxCompletableFuture;
+import io.vertx.core.Future;
 import one.util.streamex.StreamEx;
 
 public class ProtectionHelper extends AbstractHelper {
 
-  public static final String ACQUISITIONS_UNIT_ID = "acquisitionsUnitId";
   public static final String ACQUISITIONS_UNIT_IDS = "acqUnitIds";
-  public static final String NO_ACQ_UNIT_ASSIGNED_CQL = "cql.allRecords=1 not %s <> []";
-  static final String GET_UNITS_BY_QUERY = resourcesPath(ACQUISITIONS_UNITS) + SEARCH_PARAMS;
-  static final String GET_UNITS_MEMBERSHIPS_BY_QUERY = resourcesPath(ACQUISITIONS_MEMBERSHIPS) + SEARCH_PARAMS;
 
+  public static final String NO_ACQ_UNIT_ASSIGNED_CQL = "cql.allRecords=1 not %s <> []";
+
+  @Autowired
+  AcquisitionsUnitsService acquisitionsUnitsService;
   private List<AcquisitionsUnit> fetchedUnits = new ArrayList<>();
 
-  public ProtectionHelper(HttpClientInterface httpClient, Map<String, String> okapiHeaders, Context ctx, String lang) {
-    super(httpClient, okapiHeaders, ctx, lang);
+  public ProtectionHelper(Map<String, String> okapiHeaders, Context ctx) {
+    super(okapiHeaders, ctx);
+    SpringContextUtil.autowireDependencies(this, ctx);
 }
 
   /**
@@ -55,9 +54,9 @@ public class ProtectionHelper extends AbstractHelper {
    * @return completable future completed exceptionally if user does not have rights to perform operation or any unit does not
    *         exist; successfully otherwise
    */
-  public CompletableFuture<Void> isOperationRestricted(List<String> unitIds, ProtectedOperationType operation) {
+  public Future<Void> isOperationRestricted(List<String> unitIds, ProtectedOperationType operation) {
     if (CollectionUtils.isNotEmpty(unitIds)) {
-      return getUnitsByIds(unitIds).thenCompose(units -> {
+      return getUnitsByIds(unitIds).compose(units -> {
         if (unitIds.size() == units.size()) {
           // In case any unit is "soft deleted", just skip it (refer to MODINVOICE-89)
           List<AcquisitionsUnit> activeUnits = units.stream()
@@ -65,9 +64,9 @@ public class ProtectionHelper extends AbstractHelper {
             .collect(Collectors.toList());
 
           if (!activeUnits.isEmpty() && Boolean.TRUE.equals(applyMergingStrategy(activeUnits, operation))) {
-            return verifyUserIsMemberOfAcqUnits(extractUnitIds(activeUnits));
+            return verifyUserIsMemberOfAcqUnits(extractUnitIds(activeUnits), buildRequestContext());
           }
-          return CompletableFuture.completedFuture(null);
+          return succeededFuture(null);
         } else {
           // In case any unit "hard deleted" or never existed by specified uuid
           throw new HttpException(HttpStatus.HTTP_UNPROCESSABLE_ENTITY.toInt(),
@@ -75,7 +74,7 @@ public class ProtectionHelper extends AbstractHelper {
         }
       });
     } else {
-      return CompletableFuture.completedFuture(null);
+      return succeededFuture(null);
     }
   }
 
@@ -89,12 +88,12 @@ public class ProtectionHelper extends AbstractHelper {
    * @param acqUnitIds list of unit IDs.
    * @return completable future completed successfully if all units exist and active or exceptionally otherwise
    */
-  public CompletableFuture<Void> verifyIfUnitsAreActive(List<String> acqUnitIds) {
+  public Future<Void> verifyIfUnitsAreActive(List<String> acqUnitIds) {
     if (acqUnitIds.isEmpty()) {
-      return CompletableFuture.completedFuture(null);
+      return succeededFuture(null);
     }
 
-    return getUnitsByIds(acqUnitIds).thenAccept(units -> {
+    return getUnitsByIds(acqUnitIds).map(units -> {
       List<String> activeUnitIds = units.stream()
         .filter(unit -> !unit.getIsDeleted())
         .map(AcquisitionsUnit::getId)
@@ -103,6 +102,7 @@ public class ProtectionHelper extends AbstractHelper {
       if (acqUnitIds.size() != activeUnitIds.size()) {
         throw new HttpException(HttpStatus.HTTP_UNPROCESSABLE_ENTITY.toInt(), buildUnitsNotFoundError(acqUnitIds, activeUnitIds));
       }
+      return null;
     });
   }
 
@@ -111,21 +111,7 @@ public class ProtectionHelper extends AbstractHelper {
     return ACQ_UNITS_NOT_FOUND.toError().withAdditionalProperty(ACQUISITIONS_UNIT_IDS, missingUnitIds);
   }
 
-  /**
-   * Check whether the user is a member of at least one group from which the related invoice belongs.
-   *
-   * @return list of unit ids associated with user.
-   */
-  private CompletableFuture<Void> verifyUserIsMemberOfAcqUnits(List<String> unitIds) {
-    String query = String.format("userId==%s AND %s", getCurrentUserId(),
-        convertIdsToCqlQuery(unitIds, ACQUISITIONS_UNIT_ID, true));
-    return getAcquisitionsUnitsMemberships(query, 0, 0)
-      .thenAccept(unit -> {
-        if (unit.getTotalRecords() == 0) {
-          throw new HttpException(HttpStatus.HTTP_FORBIDDEN.toInt(), USER_HAS_NO_PERMISSIONS);
-        }
-      });
-  }
+
 
   /**
    * This method returns list of {@link AcquisitionsUnit} based on list of unit ids
@@ -134,7 +120,7 @@ public class ProtectionHelper extends AbstractHelper {
    *
    * @return list of {@link AcquisitionsUnit}
    */
-  private CompletableFuture<List<AcquisitionsUnit>> getUnitsByIds(List<String> unitIds) {
+  private Future<List<AcquisitionsUnit>> getUnitsByIds(List<String> unitIds) {
     // Check if all required units are already available
     List<AcquisitionsUnit> units = fetchedUnits.stream()
       .filter(unit -> unitIds.contains(unit.getId()))
@@ -142,15 +128,16 @@ public class ProtectionHelper extends AbstractHelper {
       .collect(Collectors.toList());
 
     if (units.size() == unitIds.size()) {
-      return CompletableFuture.completedFuture(units);
+      return succeededFuture(units);
     }
 
     String query = ALL_UNITS_CQL + " and " + convertIdsToCqlQuery(unitIds);
-    return getAcquisitionsUnits(query, 0, Integer.MAX_VALUE).thenApply(acquisitionsUnitCollection -> {
-      List<AcquisitionsUnit> acquisitionsUnits = acquisitionsUnitCollection.getAcquisitionsUnits();
-      fetchedUnits.addAll(acquisitionsUnits);
-      return acquisitionsUnits;
-    });
+    return acquisitionsUnitsService.getAcquisitionsUnits(query, 0, Integer.MAX_VALUE, buildRequestContext())
+      .map(acquisitionsUnitCollection -> {
+        List<AcquisitionsUnit> acquisitionsUnits = acquisitionsUnitCollection.getAcquisitionsUnits();
+        fetchedUnits.addAll(acquisitionsUnits);
+        return acquisitionsUnits;
+      });
   }
 
   /**
@@ -163,28 +150,10 @@ public class ProtectionHelper extends AbstractHelper {
     return units.stream().allMatch(operation::isProtected);
   }
 
-  CompletableFuture<AcquisitionsUnitCollection> getAcquisitionsUnits(String query, int offset, int limit) {
-    CompletableFuture<AcquisitionsUnitCollection> future = new FolioVertxCompletableFuture<>(ctx);
 
-    try {
-      String endpoint = String.format(ProtectionHelper.GET_UNITS_BY_QUERY, limit, offset, getEndpointWithQuery(query, logger), lang);
 
-      handleGetRequest(endpoint, httpClient, ctx, okapiHeaders, logger)
-        .thenApply(jsonUnits -> jsonUnits.mapTo(AcquisitionsUnitCollection.class))
-        .thenAccept(future::complete)
-        .exceptionally(t -> {
-          future.completeExceptionally(t.getCause());
-          return null;
-        });
-    } catch (Exception e) {
-      future.completeExceptionally(e);
-    }
-
-    return future;
-  }
-
-  CompletableFuture<String> buildAcqUnitsCqlExprToSearchRecords(String entity) {
-    return getAcqUnitIdsForSearch().thenApply(ids -> {
+  Future<String> buildAcqUnitsCqlExprToSearchRecords(String entity) {
+    return getAcqUnitIdsForSearch(getCurrentUserId()).map(ids -> {
       if (ids.isEmpty()) {
         return HelperUtils.getNoAcqUnitCQL(entity);
       }
@@ -193,34 +162,21 @@ public class ProtectionHelper extends AbstractHelper {
     });
   }
 
-  CompletableFuture<List<String>> getAcqUnitIdsForSearch() {
-    return getAcqUnitIdsForUser(getCurrentUserId())
-      .thenCombine(getOpenForReadAcqUnitIds(), (unitsForUser, unitsAllowRead) -> StreamEx.of(unitsForUser, unitsAllowRead)
+  Future<List<String>> getAcqUnitIdsForSearch(String userId) {
+    var unitsForUser = getAcqUnitIdsForUser(userId);
+    var unitsAllowRead = getOpenForReadAcqUnitIds();
+    return CompositeFuture.join(unitsForUser, unitsAllowRead)
+      .map(cf -> StreamEx.of(unitsForUser.result(), unitsAllowRead.result())
         .flatCollection(strings -> strings)
         .distinct()
         .toList());
   }
 
-  CompletableFuture<AcquisitionsUnitMembershipCollection> getAcquisitionsUnitsMemberships(String query, int offset, int limit) {
-    CompletableFuture<AcquisitionsUnitMembershipCollection> future = new FolioVertxCompletableFuture<>(ctx);
-    try {
-      String endpoint = String.format(ProtectionHelper.GET_UNITS_MEMBERSHIPS_BY_QUERY, limit, offset, getEndpointWithQuery(query, logger), lang);
-      handleGetRequest(endpoint, httpClient, ctx, okapiHeaders, logger)
-        .thenApply(jsonUnitsMembership -> jsonUnitsMembership.mapTo(AcquisitionsUnitMembershipCollection.class))
-        .thenAccept(future::complete)
-        .exceptionally(t -> {
-          future.completeExceptionally(t.getCause());
-          return null;
-        });
-    } catch (Exception e) {
-      future.completeExceptionally(e);
-    }
-    return future;
-  }
 
-  CompletableFuture<List<String>> getAcqUnitIdsForUser(String userId) {
-    return getAcquisitionsUnitsMemberships("userId==" + userId, 0, Integer.MAX_VALUE)
-      .thenApply(memberships -> {
+
+  Future<List<String>> getAcqUnitIdsForUser(String userId) {
+    return acquisitionsUnitsService.getAcquisitionsUnitsMemberships("userId==" + userId, 0, Integer.MAX_VALUE, buildRequestContext())
+      .map(memberships -> {
         List<String> ids = memberships.getAcquisitionsUnitMemberships()
           .stream()
           .map(AcquisitionsUnitMembership::getAcquisitionsUnitId)
@@ -234,18 +190,31 @@ public class ProtectionHelper extends AbstractHelper {
       });
   }
 
-  private CompletableFuture<List<String>> getOpenForReadAcqUnitIds() {
-    return getAcquisitionsUnits("protectRead==false", 0, Integer.MAX_VALUE).thenApply(units -> {
-      List<String> ids = units.getAcquisitionsUnits()
-        .stream()
-        .map(AcquisitionsUnit::getId)
-        .collect(Collectors.toList());
+  private Future<List<String>> getOpenForReadAcqUnitIds() {
+    return acquisitionsUnitsService.getAcquisitionsUnits("protectRead==false", 0, Integer.MAX_VALUE, buildRequestContext())
+      .map(units -> {
+        List<String> ids = units.getAcquisitionsUnits()
+          .stream()
+          .map(AcquisitionsUnit::getId)
+          .collect(Collectors.toList());
 
-      if (logger.isDebugEnabled()) {
-        logger.debug("{} acq units with 'protectRead==false' are found: {}", ids.size(), StreamEx.of(ids).joining(", "));
-      }
+        if (logger.isDebugEnabled()) {
+          logger.debug("{} acq units with 'protectRead==false' are found: {}", ids.size(), StreamEx.of(ids)
+            .joining(", "));
+        }
+        return ids;
+      });
+  }
 
-      return ids;
-    });
+  private Future<Void> verifyUserIsMemberOfAcqUnits(List<String> unitIds, RequestContext requestContext) {
+    String query = String.format("userId==%s AND %s", getCurrentUserId(),
+      convertIdsToCqlQuery(unitIds, ACQUISITIONS_UNIT_ID, true));
+    return acquisitionsUnitsService.getAcquisitionsUnitsMemberships(query, 0, 0, requestContext)
+      .map(unit -> {
+        if (unit.getTotalRecords() == 0) {
+          throw new HttpException(HttpStatus.HTTP_FORBIDDEN.toInt(), USER_HAS_NO_PERMISSIONS);
+        }
+        return null;
+      });
   }
 }

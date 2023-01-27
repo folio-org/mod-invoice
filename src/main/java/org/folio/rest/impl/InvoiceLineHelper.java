@@ -1,48 +1,6 @@
 package org.folio.rest.impl;
 
-import io.vertx.core.Context;
-import io.vertx.core.Vertx;
-import io.vertx.core.json.JsonObject;
-import org.apache.commons.lang3.StringUtils;
-import org.folio.InvoiceWorkflowDataHolderBuilder;
-import org.folio.completablefuture.FolioVertxCompletableFuture;
-import org.folio.invoices.rest.exceptions.HttpException;
-import org.folio.invoices.utils.InvoiceRestrictionsUtil;
-import org.folio.invoices.utils.ProtectedOperationType;
-import org.folio.rest.acq.model.orders.CompositePoLine;
-import org.folio.rest.acq.model.orders.CompositePurchaseOrder;
-import org.folio.rest.acq.model.orders.OrderInvoiceRelationship;
-import org.folio.rest.core.RestClient;
-import org.folio.rest.core.models.RequestContext;
-import org.folio.rest.core.models.RequestEntry;
-import org.folio.rest.jaxrs.model.Adjustment;
-import org.folio.rest.jaxrs.model.Error;
-import org.folio.rest.jaxrs.model.Invoice;
-import org.folio.rest.jaxrs.model.InvoiceLine;
-import org.folio.rest.jaxrs.model.InvoiceLineCollection;
-import org.folio.rest.jaxrs.model.Parameter;
-import org.folio.rest.jaxrs.model.SequenceNumber;
-import org.folio.rest.tools.client.interfaces.HttpClientInterface;
-import org.folio.models.InvoiceHolder;
-import org.folio.models.InvoiceWorkflowDataHolder;
-import org.folio.services.adjusment.AdjustmentsService;
-import org.folio.services.finance.budget.BudgetExpenseClassService;
-import org.folio.services.invoice.InvoiceLineService;
-import org.folio.services.invoice.InvoiceService;
-import org.folio.services.order.OrderService;
-import org.folio.services.order.OrderLineService;
-import org.folio.services.validator.InvoiceLineValidator;
-import org.folio.spring.SpringContextUtil;
-import org.springframework.beans.factory.annotation.Autowired;
-
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.concurrent.CompletableFuture;
-
-import static java.util.concurrent.CompletableFuture.completedFuture;
+import static io.vertx.core.Future.succeededFuture;
 import static java.util.stream.Collectors.toList;
 import static org.apache.commons.lang3.StringUtils.isEmpty;
 import static org.folio.invoices.utils.ErrorCodes.CANNOT_DELETE_INVOICE_LINE;
@@ -50,38 +8,62 @@ import static org.folio.invoices.utils.ErrorCodes.FAILED_TO_UPDATE_INVOICE_AND_O
 import static org.folio.invoices.utils.ErrorCodes.FAILED_TO_UPDATE_PONUMBERS;
 import static org.folio.invoices.utils.ErrorCodes.ORDER_INVOICE_RELATION_CREATE_FAILED;
 import static org.folio.invoices.utils.ErrorCodes.PROHIBITED_INVOICE_LINE_CREATION;
-import static org.folio.invoices.utils.HelperUtils.INVOICE_ID;
 import static org.folio.invoices.utils.HelperUtils.QUERY_PARAM_START_WITH;
 import static org.folio.invoices.utils.HelperUtils.calculateInvoiceLineTotals;
 import static org.folio.invoices.utils.HelperUtils.combineCqlExpressions;
 import static org.folio.invoices.utils.HelperUtils.getEndpointWithQuery;
-import static org.folio.invoices.utils.HelperUtils.getHttpClient;
-import static org.folio.invoices.utils.HelperUtils.getInvoiceById;
-import static org.folio.invoices.utils.HelperUtils.getInvoices;
-import static org.folio.invoices.utils.HelperUtils.handleDeleteRequest;
-import static org.folio.invoices.utils.HelperUtils.handleGetRequest;
-import static org.folio.invoices.utils.HelperUtils.handlePutRequest;
 import static org.folio.invoices.utils.HelperUtils.isPostApproval;
 import static org.folio.invoices.utils.ProtectedOperationType.DELETE;
 import static org.folio.invoices.utils.ProtectedOperationType.READ;
 import static org.folio.invoices.utils.ProtectedOperationType.UPDATE;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_LINES;
-import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_LINE_NUMBER;
-import static org.folio.invoices.utils.ResourcePathResolver.resourceByIdPath;
 import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
-import static org.folio.services.voucher.VoucherRetrieveService.QUERY_BY_INVOICE_ID;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+
+import org.apache.commons.lang3.StringUtils;
+import org.folio.InvoiceWorkflowDataHolderBuilder;
+import org.folio.invoices.rest.exceptions.HttpException;
+import org.folio.invoices.utils.InvoiceRestrictionsUtil;
+import org.folio.invoices.utils.ProtectedOperationType;
+import org.folio.models.InvoiceWorkflowDataHolder;
+import org.folio.okapi.common.GenericCompositeFuture;
+import org.folio.rest.acq.model.orders.CompositePoLine;
+import org.folio.rest.acq.model.orders.CompositePurchaseOrder;
+import org.folio.rest.acq.model.orders.OrderInvoiceRelationship;
+import org.folio.rest.core.models.RequestContext;
+import org.folio.rest.jaxrs.model.Adjustment;
+import org.folio.rest.jaxrs.model.Error;
+import org.folio.rest.jaxrs.model.Invoice;
+import org.folio.rest.jaxrs.model.InvoiceLine;
+import org.folio.rest.jaxrs.model.InvoiceLineCollection;
+import org.folio.rest.jaxrs.model.Parameter;
+import org.folio.services.adjusment.AdjustmentsService;
+import org.folio.services.finance.budget.BudgetExpenseClassService;
+import org.folio.services.invoice.InvoiceLineService;
+import org.folio.services.invoice.InvoiceService;
+import org.folio.services.order.OrderLineService;
+import org.folio.services.order.OrderService;
+import org.folio.services.validator.InvoiceLineValidator;
+import org.folio.spring.SpringContextUtil;
+import org.springframework.beans.factory.annotation.Autowired;
+
+import io.vertx.core.CompositeFuture;
+import io.vertx.core.Context;
+import io.vertx.core.Future;
 
 public class InvoiceLineHelper extends AbstractHelper {
-
-  private static final String INVOICE_LINE_NUMBER_ENDPOINT = resourcesPath(INVOICE_LINE_NUMBER) + "?" + INVOICE_ID + "=";
+  public static final String QUERY_BY_INVOICE_ID = "invoiceId==%s";
   public static final String GET_INVOICE_LINES_BY_QUERY = resourcesPath(INVOICE_LINES) + SEARCH_PARAMS;
   public static final String HYPHEN_SEPARATOR = "-";
 
   private final ProtectionHelper protectionHelper;
   private final AdjustmentsService adjustmentsService;
   private final InvoiceLineValidator validator;
-  private final RestClient restClient;
-
   @Autowired
   private OrderService orderService;
   @Autowired
@@ -95,71 +77,46 @@ public class InvoiceLineHelper extends AbstractHelper {
   @Autowired
   private BudgetExpenseClassService budgetExpenseClassService;
 
-  public InvoiceLineHelper(Map<String, String> okapiHeaders, Context ctx, String lang) {
-    this(getHttpClient(okapiHeaders), okapiHeaders, ctx, lang);
-    SpringContextUtil.autowireDependencies(this, Vertx.currentContext());
-  }
-
-  public InvoiceLineHelper(HttpClientInterface httpClient, Map<String, String> okapiHeaders, Context ctx, String lang) {
-    super(httpClient, okapiHeaders, ctx, lang);
-    this.protectionHelper = new ProtectionHelper(httpClient, okapiHeaders, ctx, lang);
+  public InvoiceLineHelper(Map<String, String> okapiHeaders, Context ctx) {
+    super(okapiHeaders, ctx);
+    this.protectionHelper = new ProtectionHelper(okapiHeaders, ctx);
     this.adjustmentsService = new AdjustmentsService();
     this.validator = new InvoiceLineValidator();
-    this.restClient = new RestClient();
+    SpringContextUtil.autowireDependencies(this, ctx);
   }
 
-  public CompletableFuture<InvoiceLineCollection> getInvoiceLines(int limit, int offset, String query) {
+  public Future<InvoiceLineCollection> getInvoiceLines(int limit, int offset, String query) {
     return protectionHelper.buildAcqUnitsCqlExprToSearchRecords(INVOICE_LINES)
-      .thenCompose(acqUnitsCqlExpr -> {
+      .compose(acqUnitsCqlExpr -> {
         String queryParam;
         if (isEmpty(query)) {
-          queryParam = getEndpointWithQuery(acqUnitsCqlExpr, logger);
+          queryParam = getEndpointWithQuery(acqUnitsCqlExpr);
         } else {
-          queryParam = getEndpointWithQuery(combineCqlExpressions("and", acqUnitsCqlExpr, query), logger);
+          queryParam = getEndpointWithQuery(combineCqlExpressions("and", acqUnitsCqlExpr, query));
         }
-        String endpoint = String.format(GET_INVOICE_LINES_BY_QUERY, limit, offset, queryParam, lang);
-        return getInvoiceLineCollection(endpoint);
+        String endpoint = String.format(GET_INVOICE_LINES_BY_QUERY, limit, offset, queryParam);
+        return invoiceLineService.getInvoiceLines(endpoint, buildRequestContext());
       });
   }
 
-  public CompletableFuture<List<InvoiceLine>> getInvoiceLinesByInvoiceId(String invoiceId) {
-    String query = getEndpointWithQuery(String.format(QUERY_BY_INVOICE_ID, invoiceId), logger);
-    // Assuming that the invoice will never contain more than Integer.MAX_VALUE invoiceLines.
-    String endpoint = String.format(GET_INVOICE_LINES_BY_QUERY, Integer.MAX_VALUE, 0, query, lang);
-    return getInvoiceLineCollection(endpoint).thenApply(InvoiceLineCollection::getInvoiceLines);
+  public Future<List<InvoiceLine>> getInvoiceLinesByInvoiceId(String invoiceId) {
+    return invoiceLineService.getInvoiceLinesByInvoiceId(invoiceId, buildRequestContext())
+      .map(InvoiceLineCollection::getInvoiceLines);
   }
 
-  CompletableFuture<InvoiceLineCollection> getInvoiceLineCollection(String endpoint) {
-    return handleGetRequest(endpoint, httpClient, ctx, okapiHeaders, logger)
-      .thenCompose(json -> FolioVertxCompletableFuture.supplyBlockingAsync(ctx, () -> json.mapTo(InvoiceLineCollection.class)));
+  Future<InvoiceLineCollection> getInvoiceLineCollection(String endpoint) {
+    return invoiceLineService.getInvoiceLines(endpoint, buildRequestContext());
   }
 
-  public CompletableFuture<InvoiceLine> getInvoiceLine(String id) {
-    CompletableFuture<InvoiceLine> future = new FolioVertxCompletableFuture<>(ctx);
-
-    try {
-      handleGetRequest(resourceByIdPath(INVOICE_LINES, id, lang), httpClient, ctx, okapiHeaders, logger)
-        .thenAccept(jsonInvoiceLine -> {
-          logger.info("Successfully retrieved invoice line: {}", jsonInvoiceLine.encodePrettily());
-          future.complete(jsonInvoiceLine.mapTo(InvoiceLine.class));
-        })
-        .exceptionally(t -> {
-          logger.error("Error getting invoice line by id {}", id);
-          future.completeExceptionally(t);
-          return null;
-        });
-    } catch (Exception e) {
-      future.completeExceptionally(e);
-    }
-
-    return future;
+  public Future<InvoiceLine> getInvoiceLine(String id) {
+    return invoiceLineService.getInvoiceLine(id, buildRequestContext());
   }
 
-  private CompletableFuture<Void> updateOutOfSyncInvoiceLine(InvoiceLine invoiceLine, Invoice invoice) {
+  private Future<Void> updateOutOfSyncInvoiceLine(InvoiceLine invoiceLine, Invoice invoice) {
     logger.info("Invoice line with id={} is out of date in storage and going to be updated", invoiceLine.getId());
-    InvoiceLineHelper helper = new InvoiceLineHelper(okapiHeaders, ctx, lang);
+    InvoiceLineHelper helper = new InvoiceLineHelper(okapiHeaders, ctx);
     return helper.updateInvoiceLineToStorage(invoiceLine)
-      .thenCompose(v -> updateInvoice(invoice, buildRequestContext()));
+      .compose(v -> updateInvoice(invoice, buildRequestContext()));
   }
 
   /**
@@ -206,54 +163,47 @@ public class InvoiceLineHelper extends AbstractHelper {
    * @param id invoice line uuid
    * @return completable future with {@link InvoiceLine} on success or an exception if processing fails
    */
-  public CompletableFuture<InvoiceLine> getInvoiceLinePersistTotal(String id) {
-    CompletableFuture<InvoiceLine> future = new FolioVertxCompletableFuture<>(ctx);
-
+  public Future<InvoiceLine> getInvoiceLinePersistTotal(String id) {
     // GET invoice-line from storage
-    getInvoiceLine(id)
-      .thenCompose(invoiceLineFromStorage ->
+   return getInvoiceLine(id)
+      .compose(invoiceLineFromStorage ->
         getInvoiceAndCheckProtection(invoiceLineFromStorage)
-          .thenCompose(invoice -> {
+          .compose(invoice -> {
             boolean isTotalOutOfSync = reCalculateInvoiceLineTotals(invoiceLineFromStorage, invoice);
             if (!isTotalOutOfSync) {
-              return CompletableFuture.completedFuture(invoiceLineFromStorage);
+              return succeededFuture(invoiceLineFromStorage);
             }
             return updateOutOfSyncInvoiceLine(invoiceLineFromStorage, invoice)
-              .thenApply(v -> invoiceLineFromStorage);
+              .map(v -> invoiceLineFromStorage);
           })
       )
-      .thenAccept(future::complete)
-      .exceptionally(t -> {
-        logger.error("Failed to get an Invoice Line by id={}", id, t.getCause());
-        future.completeExceptionally(t);
-        return null;
-      });
-    return future;
+      .onFailure(t -> logger.error("Failed to get an Invoice Line by id={}", id, t.getCause()));
   }
 
-  public CompletableFuture<Void> updateInvoiceLineToStorage(InvoiceLine invoiceLine) {
-    return handlePutRequest(resourceByIdPath(INVOICE_LINES, invoiceLine.getId(), lang), JsonObject.mapFrom(invoiceLine), httpClient,
-        ctx, okapiHeaders, logger);
+  public Future<Void> updateInvoiceLineToStorage(InvoiceLine invoiceLine) {
+    return invoiceLineService.updateInvoiceLine(invoiceLine, buildRequestContext());
   }
 
-  public CompletableFuture<Void> updateInvoiceLine(InvoiceLine invoiceLine, RequestContext requestContext) {
-    return getInvoiceLine(invoiceLine.getId())
-      .thenCompose(invoiceLineFromStorage -> getInvoice(invoiceLineFromStorage)
-          .thenCompose(invoice -> getInvoiceWorkflowDataHolders(invoice, invoiceLine, requestContext)
-              .thenCompose(holders -> budgetExpenseClassService.checkExpenseClasses(holders, requestContext))
-              .thenApply(v -> invoice))
-          .thenCompose(invoice -> {
+  public Future<Void> updateInvoiceLine(InvoiceLine invoiceLine, RequestContext requestContext) {
+    var invoiceLineFuture = getInvoiceLine(invoiceLine.getId());
+    var invoiceFuture = invoiceLineFuture.compose(invLine -> invoiceService.getInvoiceById(invoiceLine.getInvoiceId(), requestContext));
+
+    return invoiceFuture
+      .compose(invoice -> getInvoiceWorkflowDataHolders(invoice, invoiceLine, requestContext))
+      .compose(holders -> budgetExpenseClassService.checkExpenseClasses(holders, requestContext))
+      .map(holders -> {
+        var invoice = invoiceFuture.result();
         // Validate if invoice line update is allowed
-        validator.validateProtectedFields(invoice, invoiceLine, invoiceLineFromStorage);
+        validator.validateProtectedFields(invoice, invoiceLine, invoiceLineFuture.result());
         validator.validateLineAdjustmentsOnUpdate(invoiceLine, invoice);
-        invoiceLine.setInvoiceLineNumber(invoiceLineFromStorage.getInvoiceLineNumber());
-        unlinkEncumbranceFromChangedFunds(invoiceLine, invoiceLineFromStorage);
-
-        return protectionHelper.isOperationRestricted(invoice.getAcqUnitIds(), UPDATE)
-          .thenCompose(ok -> applyAdjustmentsAndUpdateLine(invoiceLine, invoiceLineFromStorage, invoice))
-          .thenCompose(ok -> updateOrderInvoiceRelationship(invoiceLine, invoiceLineFromStorage, requestContext))
-          .thenCompose(ok -> updateInvoicePoNumbers(invoice, invoiceLine, invoiceLineFromStorage, requestContext));
-      }));
+        invoiceLine.setInvoiceLineNumber(invoiceLineFuture.result().getInvoiceLineNumber());
+        unlinkEncumbranceFromChangedFunds(invoiceLine, invoiceLineFuture.result());
+        return null;
+      })
+      .compose(v -> protectionHelper.isOperationRestricted(invoiceFuture.result().getAcqUnitIds(), UPDATE))
+      .compose(ok -> applyAdjustmentsAndUpdateLine(invoiceLine, invoiceLineFuture.result(), invoiceFuture.result()))
+      .compose(ok -> updateOrderInvoiceRelationship(invoiceLine, invoiceLineFuture.result(), requestContext))
+      .compose(ok -> updateInvoicePoNumbers(invoiceFuture.result(), invoiceLine, invoiceLineFuture.result(), requestContext));
   }
 
   private void unlinkEncumbranceFromChangedFunds(InvoiceLine invoiceLine, InvoiceLine invoiceLineFromStorage) {
@@ -266,43 +216,43 @@ public class InvoiceLineHelper extends AbstractHelper {
       .forEach(distribution -> distribution.setEncumbrance(null));
   }
 
-  private CompletableFuture<Void> updateOrderInvoiceRelationship(InvoiceLine invoiceLine, InvoiceLine invoiceLineFromStorage, RequestContext requestContext) {
+  private Future<Void> updateOrderInvoiceRelationship(InvoiceLine invoiceLine, InvoiceLine invoiceLineFromStorage, RequestContext requestContext) {
     if (invoiceLine.getPoLineId() == null) {
       return deleteOrderInvoiceRelationshipIfNeeded(invoiceLine, invoiceLineFromStorage, requestContext);
     }
     if (!StringUtils.equals(invoiceLine.getPoLineId(), invoiceLineFromStorage.getPoLineId())) {
-      return orderLineService.getPoLine(invoiceLine.getPoLineId(), requestContext).thenCompose(
+      return orderLineService.getPoLine(invoiceLine.getPoLineId(), requestContext).compose(
         poLine -> orderService.getOrderInvoiceRelationshipByOrderIdAndInvoiceId(poLine.getPurchaseOrderId(), invoiceLine.getInvoiceId(), requestContext)
-          .thenCompose(relationships -> {
+          .compose(relationships -> {
             if (relationships.getTotalRecords() == 0) {
 
               OrderInvoiceRelationship orderInvoiceRelationship = new OrderInvoiceRelationship();
               orderInvoiceRelationship.withInvoiceId(invoiceLine.getInvoiceId()).withPurchaseOrderId(poLine.getPurchaseOrderId());
 
               return deleteOrderInvoiceRelationshipIfNeeded(invoiceLine, invoiceLineFromStorage, requestContext)
-                .thenCompose(v -> orderService.createOrderInvoiceRelationship(orderInvoiceRelationship, requestContext)
-                  .thenCompose(relationship -> CompletableFuture.completedFuture(null))
+                .compose(v -> orderService.createOrderInvoiceRelationship(orderInvoiceRelationship, requestContext)
+                  .compose(relationship -> succeededFuture(null))
                 );
             }
-            return CompletableFuture.completedFuture(null);
+            return succeededFuture(null);
           }));
     }
 
     //  Don't create/update the relationship in case ids match
-    return CompletableFuture.completedFuture(null);
+    return succeededFuture(null);
   }
 
-  private CompletableFuture<Void> deleteOrderInvoiceRelationshipIfNeeded(InvoiceLine invoiceLine,
+  private Future<Void> deleteOrderInvoiceRelationshipIfNeeded(InvoiceLine invoiceLine,
       InvoiceLine invoiceLineFromStorage, RequestContext requestContext) {
     // if the stored invoice line does not have a link, there is no relationship to delete
     if (invoiceLineFromStorage.getPoLineId() == null) {
-      return CompletableFuture.completedFuture(null);
+      return succeededFuture(null);
     }
     return orderService.deleteOrderInvoiceRelationshipByInvoiceIdAndLineId(invoiceLine.getInvoiceId(),
       invoiceLineFromStorage.getPoLineId(), requestContext);
   }
 
-  private CompletableFuture<Void> applyAdjustmentsAndUpdateLine(InvoiceLine invoiceLine, InvoiceLine invoiceLineFromStorage,
+  private Future<Void> applyAdjustmentsAndUpdateLine(InvoiceLine invoiceLine, InvoiceLine invoiceLineFromStorage,
       Invoice invoice) {
     // Just persist updates if invoice is already finalized
     if (isPostApproval(invoice)) {
@@ -310,16 +260,16 @@ public class InvoiceLineHelper extends AbstractHelper {
     }
 
     // Re-apply prorated adjustments if available
-    return applyProratedAdjustments(invoiceLine, invoice).thenCompose(affectedLines -> {
+    return applyProratedAdjustments(invoiceLine, invoice).compose(affectedLines -> {
       // Recalculate totals before update which also indicates if invoice requires update
       calculateInvoiceLineTotals(invoiceLine, invoice);
       // Update invoice line in storage
-      return updateInvoiceLineToStorage(invoiceLine).thenCompose(v -> {
+      return updateInvoiceLineToStorage(invoiceLine).compose(v -> {
         // Trigger invoice update event only if this is required
         if (!affectedLines.isEmpty() || !areTotalsEqual(invoiceLine, invoiceLineFromStorage)) {
           return updateInvoiceAndAffectedLines(invoice, affectedLines);
         } else {
-          return CompletableFuture.completedFuture(null);
+          return succeededFuture(null);
         }
       });
     });
@@ -332,41 +282,28 @@ public class InvoiceLineHelper extends AbstractHelper {
    *
    * @param lineId invoiceLine id to be deleted
    */
-  public CompletableFuture<Void> deleteInvoiceLine(String lineId) {
-    InvoiceHolder invoiceHolder = new InvoiceHolder();
-    return getInvoicesIfExists(lineId)
-      .thenApply(invoiceHolder::setInvoice)
-      .thenCompose(invHolder -> protectionHelper.isOperationRestricted(invHolder.getInvoice().getAcqUnitIds(), DELETE)
-        .thenApply(vVoid -> invHolder.getInvoice()))
-      .thenCompose(InvoiceRestrictionsUtil::checkIfInvoiceDeletionPermitted)
-      .thenCompose(v -> invoiceLineService.getInvoiceLine(lineId, buildRequestContext())
-        .thenApply(invoiceHolder::setInvoiceLine))
-      .thenCompose(invoiceHold -> orderService.deleteOrderInvoiceRelationIfLastInvoice(lineId, buildRequestContext())
-        .exceptionally(throwable -> {
-          logger.error("Can't delete Order Invoice relation for lineId: {}", lineId, throwable);
-          List<Parameter> parameters = Collections.singletonList(new Parameter().withKey("lineId")
-            .withValue(lineId));
-          Error error = CANNOT_DELETE_INVOICE_LINE.toError()
-            .withParameters(parameters);
-          throw new HttpException(404, error);
-        })
-        .thenCompose(v -> handleDeleteRequest(resourceByIdPath(INVOICE_LINES, lineId, lang), httpClient, ctx, okapiHeaders, logger))
-        .thenCompose(v -> updateInvoiceAndLines(invoiceHold.getInvoice(), buildRequestContext()))
-        .thenCompose(invoiceLine -> deleteInvoicePoNumbers(invoiceHold.getInvoice(), invoiceHolder.getInvoiceLine(), buildRequestContext())));
+  public Future<Void> deleteInvoiceLine(String lineId) {
+    var invoiceFuture = getInvoicesIfExists(lineId);
+    var invoiceLineFuture = invoiceLineService.getInvoiceLine(lineId, buildRequestContext());
+
+    return CompositeFuture.join(invoiceFuture, invoiceLineFuture)
+      .compose(cf -> protectionHelper.isOperationRestricted(invoiceFuture.result().getAcqUnitIds(), DELETE)
+      .compose(v -> InvoiceRestrictionsUtil.checkIfInvoiceDeletionPermitted(invoiceFuture.result())))
+      .compose(invoiceHold -> orderService.deleteOrderInvoiceRelationIfLastInvoice(lineId, buildRequestContext())
+        .compose(v -> invoiceLineService.deleteInvoiceLine(lineId, buildRequestContext()))
+        .compose(v -> updateInvoiceAndLines(invoiceFuture.result(), buildRequestContext()))
+        .compose(v -> deleteInvoicePoNumbers(invoiceFuture.result(), invoiceLineFuture.result(), buildRequestContext())));
   }
 
-  private CompletableFuture<Invoice> getInvoicesIfExists(String lineId) {
+  private Future<Invoice> getInvoicesIfExists(String lineId) {
     String query = QUERY_PARAM_START_WITH + lineId;
-    return getInvoices(query, httpClient, ctx, okapiHeaders, logger, lang).thenCompose(invoiceCollection -> {
-      if (!invoiceCollection.getInvoices()
-        .isEmpty()) {
-        return CompletableFuture.completedFuture(invoiceCollection.getInvoices()
-          .get(0));
+    return invoiceService.getInvoices(query, 0, Integer.MAX_VALUE, buildRequestContext())
+      .compose(invoiceCollection -> {
+      if (!invoiceCollection.getInvoices().isEmpty()) {
+        return succeededFuture(invoiceCollection.getInvoices().get(0));
       }
-      List<Parameter> parameters = Collections.singletonList(new Parameter().withKey("invoiceLineId")
-        .withValue(lineId));
-      Error error = CANNOT_DELETE_INVOICE_LINE.toError()
-        .withParameters(parameters);
+      List<Parameter> parameters = Collections.singletonList(new Parameter().withKey("invoiceLineId").withValue(lineId));
+      Error error = CANNOT_DELETE_INVOICE_LINE.toError().withParameters(parameters);
       throw new HttpException(404, error);
     });
   }
@@ -378,25 +315,26 @@ public class InvoiceLineHelper extends AbstractHelper {
    * @return completable future which might hold {@link InvoiceLine} on success, {@code null} if validation fails or an exception if
    *         any issue happens
    */
-  public CompletableFuture<InvoiceLine> createInvoiceLine(InvoiceLine invoiceLine) {
+  public Future<InvoiceLine> createInvoiceLine(InvoiceLine invoiceLine) {
     RequestContext requestContext = new RequestContext(ctx, okapiHeaders);
-    return getInvoice(invoiceLine).thenApply(invoice -> {
+    return invoiceService.getInvoiceById(invoiceLine.getInvoiceId(), requestContext)
+      .map(invoice -> {
       validator.validateLineAdjustmentsOnCreate(invoiceLine, invoice);
       return invoice;
     })
-      .thenApply(this::checkIfInvoiceLineCreationAllowed)
-      .thenCompose(invoice -> getInvoiceWorkflowDataHolders(invoice, invoiceLine, requestContext)
-        .thenCompose(holders -> budgetExpenseClassService.checkExpenseClasses(holders, requestContext))
-        .thenApply(v -> invoice))
-      .thenCompose(invoice -> protectionHelper.isOperationRestricted(invoice.getAcqUnitIds(), ProtectedOperationType.CREATE)
-        .thenApply(v -> invoice))
-      .thenCompose(invoice -> createInvoiceLine(invoiceLine, invoice)
-        .thenCompose(line -> orderService.createInvoiceOrderRelation(line, buildRequestContext())
-          .exceptionally(throwable -> {
+      .map(this::checkIfInvoiceLineCreationAllowed)
+      .compose(invoice -> getInvoiceWorkflowDataHolders(invoice, invoiceLine, requestContext)
+        .compose(holders -> budgetExpenseClassService.checkExpenseClasses(holders, requestContext))
+        .map(v -> invoice))
+      .compose(invoice -> protectionHelper.isOperationRestricted(invoice.getAcqUnitIds(), ProtectedOperationType.CREATE)
+        .map(v -> invoice))
+      .compose(invoice -> createInvoiceLine(invoiceLine, invoice)
+        .compose(line -> orderService.createInvoiceOrderRelation(line, buildRequestContext())
+          .recover(throwable -> {
             throw new HttpException(500, ORDER_INVOICE_RELATION_CREATE_FAILED.toError());
           })
-          .thenCompose(v -> updateInvoicePoNumbers(invoice, line, null, buildRequestContext()))
-          .thenApply(v -> line)));
+          .compose(v -> updateInvoicePoNumbers(invoice, line, null, buildRequestContext()))
+          .map(v -> line)));
   }
 
   private Invoice checkIfInvoiceLineCreationAllowed(Invoice invoice) {
@@ -406,14 +344,10 @@ public class InvoiceLineHelper extends AbstractHelper {
     return invoice;
   }
 
-  private CompletableFuture<Invoice> getInvoice(InvoiceLine invoiceLine) {
-    return getInvoiceById(invoiceLine.getInvoiceId(), lang, httpClient, ctx, okapiHeaders, logger);
-  }
-
-  private CompletableFuture<Invoice> getInvoiceAndCheckProtection(InvoiceLine invoiceLineFromStorage) {
-    return getInvoice(invoiceLineFromStorage)
-      .thenCompose(invoice -> protectionHelper.isOperationRestricted(invoice.getAcqUnitIds(), READ)
-        .thenApply(aVoid -> invoice));
+  private Future<Invoice> getInvoiceAndCheckProtection(InvoiceLine invoiceLineFromStorage) {
+    return invoiceService.getInvoiceById(invoiceLineFromStorage.getInvoiceId(), buildRequestContext())
+      .compose(invoice -> protectionHelper.isOperationRestricted(invoice.getAcqUnitIds(), READ)
+        .map(aVoid -> invoice));
   }
 
   /**
@@ -423,27 +357,21 @@ public class InvoiceLineHelper extends AbstractHelper {
    * @param invoice     associated {@link Invoice} object
    * @return completable future which might hold {@link InvoiceLine} on success or an exception if any issue happens
    */
-  private CompletableFuture<InvoiceLine> createInvoiceLine(InvoiceLine invoiceLine, Invoice invoice) {
-    return generateLineNumber(invoice).thenAccept(invoiceLine::setInvoiceLineNumber)
+  private Future<InvoiceLine> createInvoiceLine(InvoiceLine invoiceLine, Invoice invoice) {
+    return invoiceLineService.generateLineNumber(invoice.getId(), buildRequestContext())
+      .onSuccess(invoiceLine::setInvoiceLineNumber)
       // First the prorated adjustments should be applied. In case there is any, it might require to update other lines
-      .thenCompose(ok -> applyProratedAdjustments(invoiceLine, invoice).thenCompose(affectedLines -> {
+      .compose(ok -> applyProratedAdjustments(invoiceLine, invoice))
+      .compose(affectedLines -> {
         calculateInvoiceLineTotals(invoiceLine, invoice);
-        RequestEntry requestEntry = new RequestEntry(resourcesPath(INVOICE_LINES));
-        return restClient.post(requestEntry, invoiceLine, buildRequestContext(), InvoiceLine.class)
-          .thenCompose(createdInvoiceLine -> updateInvoiceAndAffectedLines(invoice, affectedLines)
-            .thenApply(v -> invoiceLine.withId(createdInvoiceLine.getId())));
-      }));
+        return invoiceLineService.createInvoiceLine(invoiceLine, buildRequestContext())
+          .compose(createdInvoiceLine -> updateInvoiceAndAffectedLines(invoice, affectedLines).map(v -> createdInvoiceLine));
+      });
   }
 
-  private CompletableFuture<String> generateLineNumber(Invoice invoice) {
-    return handleGetRequest(getInvoiceLineNumberEndpoint(invoice.getId()), httpClient, ctx, okapiHeaders, logger)
-      .thenApply(sequenceNumberJson -> sequenceNumberJson.mapTo(SequenceNumber.class)
-        .getSequenceNumber());
-  }
 
-  private String getInvoiceLineNumberEndpoint(String id) {
-    return INVOICE_LINE_NUMBER_ENDPOINT + id;
-  }
+
+
 
   /**
    * Applies prorated adjustments to {@code invoiceLine}. In case there is any, other lines might be affected as well
@@ -452,16 +380,16 @@ public class InvoiceLineHelper extends AbstractHelper {
    * @param invoice     associated {@link Invoice} record
    * @return list of other lines which are updated after applying prorated adjustment(s)
    */
-  private CompletableFuture<List<InvoiceLine>> applyProratedAdjustments(InvoiceLine invoiceLine, Invoice invoice) {
+  private Future<List<InvoiceLine>> applyProratedAdjustments(InvoiceLine invoiceLine, Invoice invoice) {
 
     if (adjustmentsService.getProratedAdjustments(invoice)
       .isEmpty()) {
-      return CompletableFuture.completedFuture(Collections.emptyList());
+      return succeededFuture(Collections.emptyList());
     }
     invoiceLine.getAdjustments()
       .forEach(adjustment -> adjustment.setProrate(Adjustment.Prorate.NOT_PRORATED));
 
-    return getRelatedLines(invoiceLine).thenApply(lines -> {
+    return getRelatedLines(invoiceLine).map(lines -> {
       // Create new list adding current line as well
       List<InvoiceLine> allLines = new ArrayList<>(lines);
       allLines.add(invoiceLine);
@@ -481,49 +409,51 @@ public class InvoiceLineHelper extends AbstractHelper {
    * @param invoiceLine {@link InvoiceLine} record
    * @return list of all other invoice lines associated with the same invoice
    */
-  private CompletableFuture<List<InvoiceLine>> getRelatedLines(InvoiceLine invoiceLine) {
+  private Future<List<InvoiceLine>> getRelatedLines(InvoiceLine invoiceLine) {
     String cql = String.format(QUERY_BY_INVOICE_ID, invoiceLine.getInvoiceId());
     if (invoiceLine.getId() != null) {
       cql = combineCqlExpressions("and", cql, "id<>" + invoiceLine.getId());
     }
-    String endpoint = String.format(GET_INVOICE_LINES_BY_QUERY, Integer.MAX_VALUE, 0, getEndpointWithQuery(cql, logger), lang);
+    String endpoint = String.format(GET_INVOICE_LINES_BY_QUERY, Integer.MAX_VALUE, 0, getEndpointWithQuery(cql));
 
-    return getInvoiceLineCollection(endpoint).thenApply(InvoiceLineCollection::getInvoiceLines);
+    return getInvoiceLineCollection(endpoint).map(InvoiceLineCollection::getInvoiceLines);
   }
 
-  private CompletableFuture<Void> updateInvoiceAndAffectedLines(Invoice invoice, List<InvoiceLine> lines) {
+  private Future<Void> updateInvoiceAndAffectedLines(Invoice invoice, List<InvoiceLine> lines) {
     return persistInvoiceLines(invoice, lines)
-      .thenCompose(v -> updateInvoice(invoice, buildRequestContext()))
-      .exceptionally(t -> {
+      .compose(v -> updateInvoice(invoice, buildRequestContext()))
+      .recover(t -> {
         logger.error("Failed to update the invoice and other lines", t);
         throw new HttpException(500, FAILED_TO_UPDATE_INVOICE_AND_OTHER_LINES.toError());
       });
   }
 
-  private CompletableFuture<Void> persistInvoiceLines(Invoice invoice, List<InvoiceLine> lines) {
-    return FolioVertxCompletableFuture.allOf(ctx, lines.stream()
+  private Future<Void> persistInvoiceLines(Invoice invoice, List<InvoiceLine> lines) {
+    var futures = lines.stream()
       .map(invoiceLine -> {
         calculateInvoiceLineTotals(invoiceLine, invoice);
         return this.updateInvoiceLineToStorage(invoiceLine);
       })
-      .toArray(CompletableFuture[]::new));
+      .collect(toList());
+
+    return GenericCompositeFuture.join(futures).mapEmpty();
   }
 
-  private CompletableFuture<Void> updateInvoice(Invoice invoice, RequestContext requestContext) {
+  private Future<Void> updateInvoice(Invoice invoice, RequestContext requestContext) {
     return invoiceService.recalculateTotals(invoice, requestContext)
-      .thenCompose(isOutOfSync -> {
+      .compose(isOutOfSync -> {
         if (Boolean.TRUE.equals(isOutOfSync)) {
           logger.info("The invoice with id={} is out of sync in storage and requires updates", invoice.getId());
-          InvoiceHelper helper = new InvoiceHelper(okapiHeaders, ctx, lang);
+          InvoiceHelper helper = new InvoiceHelper(okapiHeaders, ctx);
           return helper.updateInvoiceRecord(invoice);
         } else {
           logger.info("The invoice with id={} is up to date in storage", invoice.getId());
-          return completedFuture(null);
+          return succeededFuture(null);
         }
       });
   }
 
-  public CompletableFuture<Void> updateInvoiceAndLines(Invoice invoice, RequestContext requestContext) {
+  public Future<Void> updateInvoiceAndLines(Invoice invoice, RequestContext requestContext) {
 
     // If no prorated adjustments, just update invoice details
     if (adjustmentsService.getProratedAdjustments(invoice).isEmpty()) {
@@ -531,9 +461,9 @@ public class InvoiceLineHelper extends AbstractHelper {
     }
 
     return getInvoiceLinesByInvoiceId(invoice.getId())
-      .thenApply(lines -> adjustmentsService.applyProratedAdjustments(lines, invoice))
-      .thenCompose(lines -> persistInvoiceLines(invoice, lines))
-      .thenCompose(ok -> updateInvoice(invoice, requestContext));
+      .map(lines -> adjustmentsService.applyProratedAdjustments(lines, invoice))
+      .compose(lines -> persistInvoiceLines(invoice, lines))
+      .compose(ok -> updateInvoice(invoice, requestContext));
 
   }
 
@@ -544,22 +474,22 @@ public class InvoiceLineHelper extends AbstractHelper {
    * @param invoiceLineFromStorage - the old version of the invoice line
    * @param requestContext - used to start new requests
    */
-  private CompletableFuture<Void> updateInvoicePoNumbers(Invoice invoice, InvoiceLine invoiceLine,
+  private Future<Void> updateInvoicePoNumbers(Invoice invoice, InvoiceLine invoiceLine,
       InvoiceLine invoiceLineFromStorage, RequestContext requestContext) {
 
     if (!isPoNumbersUpdateNeeded(invoiceLineFromStorage, invoiceLine))
-      return CompletableFuture.completedFuture(null);
+      return succeededFuture(null);
     String poLineId = (invoiceLineFromStorage == null || invoiceLine.getPoLineId() != null) ? invoiceLine.getPoLineId() :
       invoiceLineFromStorage.getPoLineId();
     return orderLineService.getPoLine(poLineId, requestContext)
-      .thenCompose(poLine -> orderService.getOrder(poLine.getPurchaseOrderId(), requestContext))
-      .thenCompose(order -> {
+      .compose(poLine -> orderService.getOrder(poLine.getPurchaseOrderId(), requestContext))
+      .compose(order -> {
         if (invoiceLineFromStorage != null && invoiceLineFromStorage.getPoLineId() != null && invoiceLine.getPoLineId() == null) {
           return removeInvoicePoNumber(order.getPoNumber(), order, invoice, invoiceLine, requestContext);
         }
         return addInvoicePoNumber(order.getPoNumber(), invoice, requestContext);
       })
-      .exceptionally(throwable -> {
+      .recover(throwable -> {
         logger.error("Failed to update invoice poNumbers", throwable);
         throw new HttpException(500, FAILED_TO_UPDATE_PONUMBERS.toError());
       });
@@ -572,14 +502,14 @@ public class InvoiceLineHelper extends AbstractHelper {
    * @param invoiceLine - the modified invoice line
    * @param requestContext - used to start new requests
    */
-  private CompletableFuture<Void> deleteInvoicePoNumbers(Invoice invoice, InvoiceLine invoiceLine, RequestContext requestContext) {
+  private Future<Void> deleteInvoicePoNumbers(Invoice invoice, InvoiceLine invoiceLine, RequestContext requestContext) {
 
     if (invoiceLine.getPoLineId() == null)
-      return CompletableFuture.completedFuture(null);
+      return succeededFuture(null);
     return orderLineService.getPoLine(invoiceLine.getPoLineId(), requestContext)
-      .thenCompose(poLine -> orderService.getOrder(poLine.getPurchaseOrderId(), requestContext))
-      .thenCompose(order -> removeInvoicePoNumber(order.getPoNumber(), order, invoice, invoiceLine, requestContext))
-      .exceptionally(throwable -> {
+      .compose(poLine -> orderService.getOrder(poLine.getPurchaseOrderId(), requestContext))
+      .compose(order -> removeInvoicePoNumber(order.getPoNumber(), order, invoice, invoiceLine, requestContext))
+      .recover(throwable -> {
         logger.error("Failed to update invoice poNumbers", throwable);
         throw new HttpException(500, FAILED_TO_UPDATE_PONUMBERS.toError());
       });
@@ -596,17 +526,17 @@ public class InvoiceLineHelper extends AbstractHelper {
   /**
    * Removes orderPoNumber from the invoice's poNumbers field if needed.
    */
-  private CompletableFuture<Void> removeInvoicePoNumber(String orderPoNumber, CompositePurchaseOrder order,
+  private Future<Void> removeInvoicePoNumber(String orderPoNumber, CompositePurchaseOrder order,
       Invoice invoice, InvoiceLine invoiceLine, RequestContext requestContext) {
 
     List<String> invoicePoNumbers = invoice.getPoNumbers();
     if (!invoicePoNumbers.contains(orderPoNumber))
-      return CompletableFuture.completedFuture(null);
+      return succeededFuture(null);
     // check the other invoice lines to see if one of them is linking to the same order
     List<String> orderLineIds = order.getCompositePoLines().stream().map(CompositePoLine::getId).collect(toList());
-    return getRelatedLines(invoiceLine).thenCompose(lines -> {
+    return getRelatedLines(invoiceLine).compose(lines -> {
       if (lines.stream().anyMatch(line -> orderLineIds.contains(line.getPoLineId()))) {
-        return CompletableFuture.completedFuture(null);
+        return succeededFuture(null);
       } else {
         List<String> newNumbers = invoicePoNumbers.stream().filter(n -> !n.equals(orderPoNumber)).collect(toList());
         return invoiceService.updateInvoice(invoice.withPoNumbers(newNumbers), requestContext);
@@ -617,10 +547,10 @@ public class InvoiceLineHelper extends AbstractHelper {
   /**
    * Adds orderPoNumber to the invoice's poNumbers field if needed.
    */
-  private CompletableFuture<Void> addInvoicePoNumber(String orderPoNumber, Invoice invoice, RequestContext requestContext) {
+  private Future<Void> addInvoicePoNumber(String orderPoNumber, Invoice invoice, RequestContext requestContext) {
     List<String> invoicePoNumbers = invoice.getPoNumbers();
     if (invoicePoNumbers.contains(orderPoNumber))
-      return CompletableFuture.completedFuture(null);
+      return succeededFuture(null);
     return invoiceService.updateInvoice(invoice.withPoNumbers(addPoNumberToList(invoicePoNumbers, orderPoNumber)),
       requestContext);
   }
@@ -637,17 +567,17 @@ public class InvoiceLineHelper extends AbstractHelper {
     return newNumbers;
   }
 
-  private CompletableFuture<List<InvoiceWorkflowDataHolder>> getInvoiceWorkflowDataHolders(Invoice invoice, InvoiceLine invoiceLine, RequestContext requestContext) {
+  private Future<List<InvoiceWorkflowDataHolder>> getInvoiceWorkflowDataHolders(Invoice invoice, InvoiceLine invoiceLine, RequestContext requestContext) {
     List<InvoiceLine> lines = new ArrayList<>();
     lines.add(invoiceLine);
 
     List<InvoiceWorkflowDataHolder> dataHolders = holderBuilder.buildHoldersSkeleton(lines, invoice);
     return holderBuilder.withFunds(dataHolders, requestContext)
-        .thenCompose(holders -> holderBuilder.withLedgers(holders, requestContext))
-        .thenCompose(holders -> holderBuilder.withBudgets(holders, requestContext))
-        .thenCompose(holders -> holderBuilder.withFiscalYear(holders, requestContext))
-        .thenCompose(holders -> holderBuilder.withEncumbrances(holders, requestContext))
-        .thenCompose(holders -> holderBuilder.withExpenseClasses(holders, requestContext))
-        .thenCompose(holders -> holderBuilder.withExchangeRate(holders, requestContext));
+        .compose(holders -> holderBuilder.withLedgers(holders, requestContext))
+        .compose(holders -> holderBuilder.withBudgets(holders, requestContext))
+        .compose(holders -> holderBuilder.withFiscalYear(holders, requestContext))
+        .compose(holders -> holderBuilder.withEncumbrances(holders, requestContext))
+        .compose(holders -> holderBuilder.withExpenseClasses(holders, requestContext))
+        .compose(holders -> holderBuilder.withExchangeRate(holders, requestContext));
   }
 }

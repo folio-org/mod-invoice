@@ -10,13 +10,14 @@ import static org.folio.rest.RestConstants.MAX_IDS_FOR_GET_RQ;
 
 import java.util.Collection;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
 
 import org.folio.rest.acq.model.finance.Ledger;
 import org.folio.rest.acq.model.finance.LedgerCollection;
 import org.folio.rest.core.RestClient;
 import org.folio.rest.core.models.RequestContext;
 import org.folio.rest.core.models.RequestEntry;
+
+import io.vertx.core.Future;
 
 public class LedgerService {
 
@@ -28,23 +29,23 @@ public class LedgerService {
     this.restClient = restClient;
   }
 
-  public CompletableFuture<List<Ledger>> retrieveRestrictedLedgersByIds(List<String> ledgerIds, RequestContext requestContext) {
+  public Future<List<Ledger>> retrieveRestrictedLedgersByIds(List<String> ledgerIds, RequestContext requestContext) {
 
     return collectResultsOnSuccess(ofSubLists(ledgerIds, MAX_IDS_FOR_GET_RQ)
       .map(ids1 -> getRestrictedLedgersChunk(ids1, requestContext)).toList())
-      .thenApply(lists -> lists.stream()
+      .map(lists -> lists.stream()
         .flatMap(Collection::stream)
         .collect(toList()));
   }
 
-  public CompletableFuture<List<Ledger>> getRestrictedLedgersChunk(List<String> ids, RequestContext requestContext) {
+  public Future<List<Ledger>> getRestrictedLedgersChunk(List<String> ids, RequestContext requestContext) {
 
     String query = convertIdsToCqlQuery(ids) + " AND restrictExpenditures==true";
     RequestEntry requestEntry = new RequestEntry(LEDGERS_ENDPOINT)
         .withQuery(query)
         .withOffset(0)
         .withLimit(MAX_IDS_FOR_GET_RQ);
-    return restClient.get(requestEntry, requestContext, LedgerCollection.class)
-      .thenApply(LedgerCollection::getLedgers);
+    return restClient.get(requestEntry, LedgerCollection.class, requestContext)
+      .map(LedgerCollection::getLedgers);
   }
 }

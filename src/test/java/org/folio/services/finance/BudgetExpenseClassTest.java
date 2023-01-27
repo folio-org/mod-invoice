@@ -1,5 +1,6 @@
 package org.folio.services.finance;
 
+import static io.vertx.core.Future.succeededFuture;
 import static org.folio.invoices.utils.ErrorCodes.BUDGET_EXPENSE_CLASS_NOT_FOUND;
 import static org.folio.invoices.utils.ErrorCodes.INACTIVE_EXPENSE_CLASS;
 import static org.folio.services.finance.budget.BudgetExpenseClassService.EXPENSE_CLASS_NAME;
@@ -7,7 +8,6 @@ import static org.folio.services.finance.budget.BudgetExpenseClassService.FUND_C
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.instanceOf;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
@@ -16,8 +16,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
 
 import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.models.InvoiceWorkflowDataHolder;
@@ -38,11 +36,16 @@ import org.folio.rest.jaxrs.model.InvoiceLine;
 import org.folio.services.finance.budget.BudgetExpenseClassService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
+import io.vertx.core.Future;
 import io.vertx.core.Vertx;
+import io.vertx.junit5.VertxExtension;
+import io.vertx.junit5.VertxTestContext;
 
+@ExtendWith(VertxExtension.class)
 public class BudgetExpenseClassTest {
 
     private BudgetExpenseClassService budgetExpenseClassService;
@@ -60,7 +63,7 @@ public class BudgetExpenseClassTest {
     }
 
     @Test
-    void shouldThrowExceptionWithInactiveExpenseClassCodeWhenCheckExpenseClassesWithInactiveExpenseClass() {
+    void shouldThrowExceptionWithInactiveExpenseClassCodeWhenCheckExpenseClassesWithInactiveExpenseClass(VertxTestContext vertxTestContext) {
         String inactiveExpenseClassId = UUID.randomUUID().toString();
         String activeExpenseClassId = UUID.randomUUID().toString();
 
@@ -125,33 +128,36 @@ public class BudgetExpenseClassTest {
                 .thenAnswer(invocation -> {
                     RequestEntry requestEntry = invocation.getArgument(0);
                     BudgetExpenseClass bec = requestEntry.buildEndpoint().contains(activeExpenseClassId) ? active : inactive;
-                    return CompletableFuture.completedFuture(new BudgetExpenseClassCollection()
+                    return succeededFuture(new BudgetExpenseClassCollection()
                                                           .withBudgetExpenseClasses(Collections.singletonList(bec)).withTotalRecords(1));
                 });
 
         when(requestContext.getContext()).thenReturn(Vertx.vertx().getOrCreateContext());
 
-        CompletableFuture<List<InvoiceWorkflowDataHolder>> future = budgetExpenseClassService.checkExpenseClasses(holders, requestContext);
+        Future<List<InvoiceWorkflowDataHolder>> future = budgetExpenseClassService.checkExpenseClasses(holders, requestContext);
+      vertxTestContext.assertFailure(future)
+        .onComplete(result -> {
+          assertThat(result.cause(), instanceOf(HttpException.class));
 
-        ExecutionException executionException = assertThrows(ExecutionException.class, future::get);
+          HttpException exception = (HttpException) result.cause();
 
-        assertThat(executionException.getCause(), instanceOf(HttpException.class));
+          assertEquals(400, exception.getCode());
 
-        HttpException exception = (HttpException) executionException.getCause();
+          Errors errors = exception.getErrors();
+          Error error = errors.getErrors().get(0);
 
-        assertEquals(400, exception.getCode());
-        Errors errors = exception.getErrors();
+          assertEquals(INACTIVE_EXPENSE_CLASS.getCode(), error.getCode());
+          String expenseClassNameFromError = error.getParameters().stream().filter(parameter -> parameter.getKey().equals(EXPENSE_CLASS_NAME)).findFirst().get().getValue();
+          assertEquals(inactiveExpenseClass.getName(), expenseClassNameFromError);
+          String fundCodeFromError = error.getParameters().stream().filter(parameter -> parameter.getKey().equals(FUND_CODE)).findFirst().get().getValue();
+          assertEquals(inactiveExpenseClassFund.getCode(), fundCodeFromError);
+          vertxTestContext.completeNow();
+        });
 
-        Error error = errors.getErrors().get(0);
-        assertEquals(INACTIVE_EXPENSE_CLASS.getCode(), error.getCode());
-        String expenseClassNameFromError = error.getParameters().stream().filter(parameter -> parameter.getKey().equals(EXPENSE_CLASS_NAME)).findFirst().get().getValue();
-        assertEquals(inactiveExpenseClass.getName(), expenseClassNameFromError);
-        String fundCodeFromError = error.getParameters().stream().filter(parameter -> parameter.getKey().equals(FUND_CODE)).findFirst().get().getValue();
-        assertEquals(inactiveExpenseClassFund.getCode(), fundCodeFromError);
     }
 
     @Test
-    void shouldThrowExceptionWithBudgetExpenseClassNotFoundCodeWhenCheckExpenseClassesWithoutExpenseClasses() {
+    void shouldThrowExceptionWithBudgetExpenseClassNotFoundCodeWhenCheckExpenseClassesWithoutExpenseClasses(VertxTestContext vertxTestContext) {
         String notAssignedExpenseClassId = UUID.randomUUID().toString();
         String activeExpenseClassId = UUID.randomUUID().toString();
 
@@ -213,29 +219,30 @@ public class BudgetExpenseClassTest {
                 RequestEntry requestEntry = invocation.getArgument(0);
                 List<BudgetExpenseClass> budgetExpenseClasses = requestEntry.buildEndpoint().contains(notAssignedExpenseClassId)
                     ? Collections.emptyList() : Collections.singletonList(active);
-                return CompletableFuture.completedFuture(new BudgetExpenseClassCollection()
+                return succeededFuture(new BudgetExpenseClassCollection()
                                                              .withBudgetExpenseClasses(budgetExpenseClasses).withTotalRecords(1));
             });
         when(requestContext.getContext()).thenReturn(Vertx.vertx().getOrCreateContext());
 
 
-        CompletableFuture<List<InvoiceWorkflowDataHolder>> future = budgetExpenseClassService.checkExpenseClasses(holders, requestContext);
+        Future<List<InvoiceWorkflowDataHolder>> future = budgetExpenseClassService.checkExpenseClasses(holders, requestContext);
+        vertxTestContext.assertFailure(future)
+          .onComplete(result -> {
+            assertThat(result.cause(), instanceOf(HttpException.class));
 
-        ExecutionException executionException = assertThrows(ExecutionException.class, future::get);
+            HttpException exception = (HttpException) result.cause();
 
-        assertThat(executionException.getCause(), instanceOf(HttpException.class));
+            assertEquals(400, exception.getCode());
+            Errors errors = exception.getErrors();
 
-        HttpException exception = (HttpException) executionException.getCause();
-
-        assertEquals(400, exception.getCode());
-        Errors errors = exception.getErrors();
-
-        Error error = errors.getErrors().get(0);
-        assertEquals(BUDGET_EXPENSE_CLASS_NOT_FOUND.getCode(), error.getCode());
-        String expenseClassNameFromError = error.getParameters().stream().filter(parameter -> parameter.getKey().equals(EXPENSE_CLASS_NAME)).findFirst().get().getValue();
-        assertEquals(notAssignedExpenseClass.getName(), expenseClassNameFromError);
-        String fundCodeFromError = error.getParameters().stream().filter(parameter -> parameter.getKey().equals(FUND_CODE)).findFirst().get().getValue();
-        assertEquals(noExpenseClassFund.getCode(), fundCodeFromError);
+            Error error = errors.getErrors().get(0);
+            assertEquals(BUDGET_EXPENSE_CLASS_NOT_FOUND.getCode(), error.getCode());
+            String expenseClassNameFromError = error.getParameters().stream().filter(parameter -> parameter.getKey().equals(EXPENSE_CLASS_NAME)).findFirst().get().getValue();
+            assertEquals(notAssignedExpenseClass.getName(), expenseClassNameFromError);
+            String fundCodeFromError = error.getParameters().stream().filter(parameter -> parameter.getKey().equals(FUND_CODE)).findFirst().get().getValue();
+            assertEquals(noExpenseClassFund.getCode(), fundCodeFromError);
+            vertxTestContext.completeNow();
+          });
     }
 
 }

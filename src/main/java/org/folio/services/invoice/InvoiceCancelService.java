@@ -1,5 +1,24 @@
 package org.folio.services.invoice;
 
+import static io.vertx.core.Future.succeededFuture;
+import static java.util.Collections.emptyList;
+import static java.util.Objects.requireNonNullElse;
+import static java.util.stream.Collectors.toList;
+import static org.folio.invoices.utils.ErrorCodes.CANCEL_TRANSACTIONS_ERROR;
+import static org.folio.invoices.utils.ErrorCodes.CANNOT_CANCEL_INVOICE;
+import static org.folio.invoices.utils.ErrorCodes.ERROR_UNRELEASING_ENCUMBRANCES;
+import static org.folio.invoices.utils.HelperUtils.collectResultsOnSuccess;
+import static org.folio.invoices.utils.HelperUtils.convertIdsToCqlQuery;
+import static org.folio.rest.RestConstants.MAX_IDS_FOR_GET_RQ;
+import static org.folio.rest.acq.model.finance.Encumbrance.Status.RELEASED;
+import static org.folio.rest.acq.model.finance.Encumbrance.Status.UNRELEASED;
+import static org.folio.rest.acq.model.finance.Transaction.TransactionType.CREDIT;
+import static org.folio.rest.acq.model.finance.Transaction.TransactionType.PAYMENT;
+import static org.folio.rest.acq.model.finance.Transaction.TransactionType.PENDING_PAYMENT;
+
+import java.util.Collections;
+import java.util.List;
+
 import one.util.streamex.StreamEx;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -20,28 +39,9 @@ import org.folio.services.finance.transaction.EncumbranceService;
 import org.folio.services.finance.transaction.InvoiceTransactionSummaryService;
 import org.folio.services.order.OrderLineService;
 import org.folio.services.order.OrderService;
-import org.folio.services.voucher.VoucherCommandService;
+import org.folio.services.voucher.VoucherService;
 
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
-import java.util.concurrent.CompletableFuture;
-
-import static java.util.Collections.emptyList;
-import static java.util.Objects.requireNonNullElse;
-import static java.util.concurrent.CompletableFuture.completedFuture;
-import static java.util.stream.Collectors.toList;
-import static org.folio.invoices.utils.ErrorCodes.CANCEL_TRANSACTIONS_ERROR;
-import static org.folio.invoices.utils.ErrorCodes.CANNOT_CANCEL_INVOICE;
-import static org.folio.invoices.utils.ErrorCodes.ERROR_UNRELEASING_ENCUMBRANCES;
-import static org.folio.invoices.utils.HelperUtils.collectResultsOnSuccess;
-import static org.folio.invoices.utils.HelperUtils.convertIdsToCqlQuery;
-import static org.folio.rest.RestConstants.MAX_IDS_FOR_GET_RQ;
-import static org.folio.rest.acq.model.finance.Encumbrance.Status.RELEASED;
-import static org.folio.rest.acq.model.finance.Encumbrance.Status.UNRELEASED;
-import static org.folio.rest.acq.model.finance.Transaction.TransactionType.CREDIT;
-import static org.folio.rest.acq.model.finance.Transaction.TransactionType.PAYMENT;
-import static org.folio.rest.acq.model.finance.Transaction.TransactionType.PENDING_PAYMENT;
+import io.vertx.core.Future;
 
 public class InvoiceCancelService {
   private static final String PO_LINES_WITH_RIGHT_PAYMENT_STATUS_QUERY =
@@ -53,20 +53,20 @@ public class InvoiceCancelService {
   private final BaseTransactionService baseTransactionService;
   private final EncumbranceService encumbranceService;
   private final InvoiceTransactionSummaryService invoiceTransactionSummaryService;
-  private final VoucherCommandService voucherCommandService;
+  private final VoucherService voucherService;
   private final OrderLineService orderLineService;
   private final OrderService orderService;
 
   public InvoiceCancelService(BaseTransactionService baseTransactionService,
       EncumbranceService encumbranceService,
       InvoiceTransactionSummaryService invoiceTransactionSummaryService,
-      VoucherCommandService voucherCommandService,
+      VoucherService voucherService,
       OrderLineService orderLineService,
       OrderService orderService) {
     this.baseTransactionService = baseTransactionService;
     this.encumbranceService = encumbranceService;
     this.invoiceTransactionSummaryService = invoiceTransactionSummaryService;
-    this.voucherCommandService = voucherCommandService;
+    this.voucherService = voucherService;
     this.orderLineService = orderLineService;
     this.orderService = orderService;
   }
@@ -82,15 +82,22 @@ public class InvoiceCancelService {
    * @param lines lines from the new invoice
    * @return CompletableFuture that indicates when the transition is completed
    */
-  public CompletableFuture<Void> cancelInvoice(Invoice invoiceFromStorage, List<InvoiceLine> lines,
-      RequestContext requestContext) {
-    validateCancelInvoice(invoiceFromStorage);
+  public Future<Void> cancelInvoice(Invoice invoiceFromStorage, List<InvoiceLine> lines, RequestContext requestContext) {
     String invoiceId = invoiceFromStorage.getId();
-    return getTransactions(invoiceId, requestContext)
-      .thenCompose(transactions -> cancelTransactions(invoiceId, transactions, requestContext))
-      .thenAccept(v -> cancelInvoiceLines(lines))
-      .thenCompose(v -> cancelVoucher(invoiceId, requestContext))
-      .thenCompose(v -> unreleaseEncumbrances(lines, requestContext));
+
+    return Future.succeededFuture()
+      .map(v -> {
+        validateCancelInvoice(invoiceFromStorage);
+        return null;
+      })
+      .compose(v -> getTransactions(invoiceId, requestContext))
+      .compose(transactions -> cancelTransactions(invoiceId, transactions, requestContext))
+      .map(v -> {
+        cancelInvoiceLines(lines);
+        return null;
+      })
+      .compose(v -> cancelVoucher(invoiceId, requestContext))
+      .compose(v -> unreleaseEncumbrances(lines, requestContext));
   }
 
   private void validateCancelInvoice(Invoice invoiceFromStorage) {
@@ -104,24 +111,24 @@ public class InvoiceCancelService {
     }
   }
 
-  private CompletableFuture<List<Transaction>> getTransactions(String invoiceId, RequestContext requestContext) {
+  private Future<List<Transaction>> getTransactions(String invoiceId, RequestContext requestContext) {
     String query = String.format("sourceInvoiceId==%s", invoiceId);
     List<TransactionType> relevantTransactionTypes = List.of(PENDING_PAYMENT, PAYMENT, CREDIT);
     return baseTransactionService.getTransactions(query, 0, Integer.MAX_VALUE, requestContext)
-      .thenApply(TransactionCollection::getTransactions)
-      .thenApply(transactions -> transactions.stream()
+      .map(TransactionCollection::getTransactions)
+      .map(transactions -> transactions.stream()
         .filter(tr -> relevantTransactionTypes.contains(tr.getTransactionType())).collect(toList()));
   }
 
-  private CompletableFuture<Void> cancelTransactions(String invoiceId, List<Transaction> transactions,
+  private Future<Void> cancelTransactions(String invoiceId, List<Transaction> transactions,
       RequestContext requestContext) {
-    if (transactions.size() == 0)
-      return completedFuture(null);
+    if (transactions.isEmpty())
+      return succeededFuture(null);
     transactions.forEach(tr -> tr.setInvoiceCancelled(true));
     InvoiceTransactionSummary summary = buildInvoiceTransactionsSummary(invoiceId, transactions);
     return invoiceTransactionSummaryService.updateInvoiceTransactionSummary(summary, requestContext)
-      .thenCompose(s -> baseTransactionService.updateTransactions(transactions, requestContext))
-      .exceptionally(t -> {
+      .compose(s -> baseTransactionService.updateTransactions(transactions, requestContext))
+      .recover(t -> {
         logger.error("Failed to cancel transactions for invoice with id {}", invoiceId, t);
         List<Parameter> parameters = Collections.singletonList(
           new Parameter().withKey("invoiceId").withValue(invoiceId));
@@ -141,30 +148,30 @@ public class InvoiceCancelService {
     lines.forEach(line -> line.setInvoiceLineStatus(InvoiceLine.InvoiceLineStatus.CANCELLED));
   }
 
-  private CompletableFuture<Void> cancelVoucher(String invoiceId, RequestContext requestContext) {
-    return voucherCommandService.cancelInvoiceVoucher(invoiceId, requestContext);
+  private Future<Void> cancelVoucher(String invoiceId, RequestContext requestContext) {
+    return voucherService.cancelInvoiceVoucher(invoiceId, requestContext);
   }
 
-  private CompletableFuture<Void> unreleaseEncumbrances(List<InvoiceLine> invoiceLines, RequestContext requestContext) {
+  private Future<Void> unreleaseEncumbrances(List<InvoiceLine> invoiceLines, RequestContext requestContext) {
     List<String> poLineIds = invoiceLines.stream()
       .filter(InvoiceLine::getReleaseEncumbrance)
       .map(InvoiceLine::getPoLineId)
       .distinct()
       .collect(toList());
     if (poLineIds.isEmpty())
-      return completedFuture(null);
-    List<CompletableFuture<List<PoLine>>> futureList = StreamEx
+      return succeededFuture();
+    List<Future<List<PoLine>>> futureList = StreamEx
       .ofSubLists(poLineIds, MAX_IDS_FOR_GET_RQ)
       .map(this::queryToGetPoLinesWithRightPaymentStatusByIds)
       .map(query -> orderLineService.getPoLines(query, requestContext))
       .collect(toList());
 
-    CompletableFuture<List<PoLine>> poLinesFuture = collectResultsOnSuccess(futureList)
-      .thenApply(col -> col.stream().flatMap(Collection::stream).collect(toList()));
+    Future<List<PoLine>> poLinesFuture = collectResultsOnSuccess(futureList)
+      .map(col -> col.stream().flatMap(List::stream).collect(toList()));
 
-    return poLinesFuture.thenCompose(poLines -> selectPoLinesWithOpenOrders(poLines, requestContext))
-      .thenCompose(poLines -> unreleaseEncumbrancesForPoLines(poLines, requestContext))
-      .exceptionally(t -> {
+    return poLinesFuture.compose(poLines -> selectPoLinesWithOpenOrders(poLines, requestContext))
+      .compose(poLines -> unreleaseEncumbrancesForPoLines(poLines, requestContext))
+      .recover(t -> {
         Throwable cause = requireNonNullElse(t.getCause(), t);
         List<Parameter> parameters = Collections.singletonList(
           new Parameter().withKey("cause").withValue(cause.toString()));
@@ -178,15 +185,15 @@ public class InvoiceCancelService {
     return PO_LINES_WITH_RIGHT_PAYMENT_STATUS_QUERY + " AND " + convertIdsToCqlQuery(poLineIds);
   }
 
-  private CompletableFuture<List<PoLine>> selectPoLinesWithOpenOrders(List<PoLine> poLines, RequestContext requestContext) {
+  private Future<List<PoLine>> selectPoLinesWithOpenOrders(List<PoLine> poLines, RequestContext requestContext) {
     if (poLines.isEmpty())
-      return completedFuture(emptyList());
+      return succeededFuture(emptyList());
     List<String> orderIds = poLines.stream()
       .map(PoLine::getPurchaseOrderId)
       .distinct()
       .collect(toList());
     return orderService.getOrders(queryToGetOpenOrdersByIds(orderIds), requestContext)
-      .thenApply(orders -> {
+      .map(orders -> {
         List<String> openOrderIds = orders.stream().map(PurchaseOrder::getId).collect(toList());
         return poLines.stream()
           .filter(poLine -> openOrderIds.contains(poLine.getPurchaseOrderId()))
@@ -198,18 +205,18 @@ public class InvoiceCancelService {
     return OPEN_ORDERS_QUERY + " AND " + convertIdsToCqlQuery(orderIds);
   }
 
-  private CompletableFuture<Void> unreleaseEncumbrancesForPoLines(List<PoLine> poLines, RequestContext requestContext) {
+  private Future<Void> unreleaseEncumbrancesForPoLines(List<PoLine> poLines, RequestContext requestContext) {
     if (poLines.isEmpty())
-      return completedFuture(null);
+      return succeededFuture(null);
     List<String> poLineIds = poLines.stream().map(PoLine::getId).collect(toList());
     return encumbranceService.getEncumbrancesByPoLineIds(poLineIds, requestContext)
-      .thenApply(transactions -> transactions.stream()
+      .map(transactions -> transactions.stream()
         .filter(tr -> RELEASED.equals(tr.getEncumbrance().getStatus()))
         .peek(tr -> tr.getEncumbrance().setStatus(UNRELEASED))
         .collect(toList()))
-      .thenCompose(transactions -> {
+      .compose(transactions -> {
         if (transactions.isEmpty())
-          return completedFuture(null);
+          return succeededFuture(null);
         return encumbranceService.unreleaseEncumbrances(transactions, requestContext);
       });
   }

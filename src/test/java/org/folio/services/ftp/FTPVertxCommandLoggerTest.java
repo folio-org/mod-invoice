@@ -6,11 +6,9 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
-
+import org.apache.logging.log4j.Logger;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-
-import org.apache.logging.log4j.Logger;
 
 public class FTPVertxCommandLoggerTest {
   Logger log = mock(Logger.class);

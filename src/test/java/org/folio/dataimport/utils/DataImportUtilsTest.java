@@ -1,16 +1,17 @@
 package org.folio.dataimport.utils;
 
-import com.google.common.collect.Maps;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
+import java.util.HashMap;
+import java.util.Map;
+
 import org.folio.DataImportEventPayload;
 import org.folio.rest.RestConstants;
 import org.folio.rest.RestVerticle;
 import org.folio.utils.UserPermissionsUtil;
 import org.junit.jupiter.api.Test;
 
-import java.util.HashMap;
-import java.util.Map;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import com.google.common.collect.Maps;
 
 public class DataImportUtilsTest {
 

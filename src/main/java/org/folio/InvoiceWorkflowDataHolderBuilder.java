@@ -1,5 +1,6 @@
 package org.folio;
 
+import static io.vertx.core.Future.succeededFuture;
 import static java.util.stream.Collectors.groupingBy;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toMap;
@@ -10,15 +11,14 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
 
 import javax.money.convert.ConversionQuery;
+import javax.money.convert.CurrencyConversion;
 import javax.money.convert.ExchangeRateProvider;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.folio.completablefuture.FolioVertxCompletableFuture;
 import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.invoices.utils.HelperUtils;
 import org.folio.models.InvoiceWorkflowDataHolder;
@@ -41,6 +41,8 @@ import org.folio.services.finance.budget.BudgetService;
 import org.folio.services.finance.expence.ExpenseClassRetrieveService;
 import org.folio.services.finance.fiscalyear.FiscalYearService;
 import org.folio.services.finance.transaction.BaseTransactionService;
+
+import io.vertx.core.Future;
 
 public class InvoiceWorkflowDataHolderBuilder {
 
@@ -91,29 +93,29 @@ public class InvoiceWorkflowDataHolderBuilder {
     }
 
 
-    public CompletableFuture<List<InvoiceWorkflowDataHolder>> withFunds(List<InvoiceWorkflowDataHolder> holders, RequestContext requestContext) {
+    public Future<List<InvoiceWorkflowDataHolder>> withFunds(List<InvoiceWorkflowDataHolder> holders, RequestContext requestContext) {
         List<String> fundIds = holders.stream().map(InvoiceWorkflowDataHolder::getFundId).distinct().collect(toList());
         return fundService.getFunds(fundIds, requestContext)
-                .thenApply(funds -> funds.stream().collect(toMap(Fund::getId, Function.identity())))
-                .thenApply(idFundMap -> holders.stream()
+                .map(funds -> funds.stream().collect(toMap(Fund::getId, Function.identity())))
+                .map(idFundMap -> holders.stream()
                         .map(holder -> holder.withFund(idFundMap.get(holder.getFundId())))
                         .collect(toList()));
     }
 
-    public CompletableFuture<List<InvoiceWorkflowDataHolder>> withLedgers(List<InvoiceWorkflowDataHolder> holders, RequestContext requestContext) {
+    public Future<List<InvoiceWorkflowDataHolder>> withLedgers(List<InvoiceWorkflowDataHolder> holders, RequestContext requestContext) {
         List<String> ledgerIds = holders.stream().map(InvoiceWorkflowDataHolder::getLedgerId).distinct().collect(toList());
         return ledgerService.retrieveRestrictedLedgersByIds(ledgerIds, requestContext)
-                .thenApply(ledgers -> ledgers.stream().map(Ledger::getId).collect(toSet()))
-                .thenApply(ids -> holders.stream()
+                .map(ledgers -> ledgers.stream().map(Ledger::getId).collect(toSet()))
+                .map(ids -> holders.stream()
                         .map(holder -> holder.withRestrictExpenditures(ids.contains(holder.getLedgerId())))
                         .collect(toList()));
     }
 
-    public CompletableFuture<List<InvoiceWorkflowDataHolder>> withBudgets(List<InvoiceWorkflowDataHolder> holders, RequestContext requestContext) {
+    public Future<List<InvoiceWorkflowDataHolder>> withBudgets(List<InvoiceWorkflowDataHolder> holders, RequestContext requestContext) {
         List<String> fundIds = holders.stream().map(InvoiceWorkflowDataHolder::getFundId).distinct().collect(toList());
         return budgetService.fetchBudgetsByFundIds(fundIds, requestContext)
-                .thenApply(budgets -> budgets.stream().collect(toMap(Budget::getFundId, Function.identity())))
-                .thenApply(fundIdBudgetMap -> holders.stream()
+                .map(budgets -> budgets.stream().collect(toMap(Budget::getFundId, Function.identity())))
+                .map(fundIdBudgetMap -> holders.stream()
                         .map(holder -> holder.withBudget(fundIdBudgetMap.get(holder.getFundId())))
                         .collect(toList()));
     }
@@ -135,62 +137,61 @@ public class InvoiceWorkflowDataHolderBuilder {
     return holders;
   }
 
-  public CompletableFuture<List<InvoiceWorkflowDataHolder>> withFiscalYear(List<InvoiceWorkflowDataHolder> holders, RequestContext requestContext) {
+  public Future<List<InvoiceWorkflowDataHolder>> withFiscalYear(List<InvoiceWorkflowDataHolder> holders, RequestContext requestContext) {
         return holders.stream().map(InvoiceWorkflowDataHolder::getBudget).map(Budget::getFiscalYearId).findFirst()
                 .map(s -> fiscalYearService.getFiscalYear(s, requestContext)
-                        .thenApply(fiscalYear -> holders.stream().map(holder -> holder.withFiscalYear(fiscalYear)).collect(toList())))
-                .orElseGet(() -> CompletableFuture.completedFuture(holders));
+                        .map(fiscalYear -> holders.stream().map(holder -> holder.withFiscalYear(fiscalYear)).collect(toList())))
+                .orElseGet(() -> succeededFuture(holders));
 
     }
 
-    public CompletableFuture<List<InvoiceWorkflowDataHolder>> withEncumbrances(List<InvoiceWorkflowDataHolder> holders, RequestContext requestContext) {
+    public Future<List<InvoiceWorkflowDataHolder>> withEncumbrances(List<InvoiceWorkflowDataHolder> holders, RequestContext requestContext) {
         List<String> trIds = holders.stream().map(InvoiceWorkflowDataHolder::getFundDistribution).map(FundDistribution::getEncumbrance).distinct().filter(Objects::nonNull).collect(toList());
         return baseTransactionService.getTransactions(trIds, requestContext)
-                .thenApply(transactions -> transactions.stream().collect(toMap(Transaction::getId, Function.identity())))
-                .thenApply(idTransactionMap -> holders.stream()
+                .map(transactions -> transactions.stream().collect(toMap(Transaction::getId, Function.identity())))
+                .map(idTransactionMap -> holders.stream()
                         .map(holder -> holder.withEncumbrance(idTransactionMap.get(holder.getFundDistribution().getEncumbrance())))
                         .collect(toList()));
     }
 
-    public CompletableFuture<List<InvoiceWorkflowDataHolder>> withExpenseClasses(List<InvoiceWorkflowDataHolder> holders, RequestContext requestContext) {
+    public Future<List<InvoiceWorkflowDataHolder>> withExpenseClasses(List<InvoiceWorkflowDataHolder> holders, RequestContext requestContext) {
         List<String> expenseClassIds = holders.stream()
                 .map(InvoiceWorkflowDataHolder::getExpenseClassId)
                 .filter(Objects::nonNull)
                 .distinct()
                 .collect(toList());
         return expenseClassRetrieveService.getExpenseClasses(expenseClassIds, requestContext)
-                .thenApply(expenseClasses -> expenseClasses.stream().collect(toMap(ExpenseClass::getId, Function.identity())))
-                .thenApply(idExpenseClassMap -> holders.stream()
+                .map(expenseClasses -> expenseClasses.stream().collect(toMap(ExpenseClass::getId, Function.identity())))
+                .map(idExpenseClassMap -> holders.stream()
                         .map(holder -> holder.withExpenseClass(idExpenseClassMap.get(holder.getExpenseClassId())))
                         .collect(toList()));
     }
 
-    public CompletableFuture<List<InvoiceWorkflowDataHolder>> withExchangeRate(List<InvoiceWorkflowDataHolder> holders,
-        RequestContext requestContext) {
+    public Future<List<InvoiceWorkflowDataHolder>> withExchangeRate(List<InvoiceWorkflowDataHolder> holders, RequestContext requestContext) {
       return holders.stream()
         .findFirst()
-        .map(holder -> FolioVertxCompletableFuture.supplyBlockingAsync(requestContext.getContext(), () -> {
+        .map(holder -> requestContext.getContext().<CurrencyConversion>executeBlocking(event -> {
           Invoice invoice = holder.getInvoice();
           FiscalYear fiscalYear = holder.getFiscalYear();
           ConversionQuery conversionQuery = HelperUtils.buildConversionQuery(invoice, fiscalYear.getCurrency());
           ExchangeRateProvider exchangeRateProvider = exchangeRateProviderResolver.resolve(conversionQuery, requestContext);
           invoice.setExchangeRate(exchangeRateProvider.getExchangeRate(conversionQuery).getFactor().doubleValue());
-          return exchangeRateProvider.getCurrencyConversion(conversionQuery);
+          event.complete(exchangeRateProvider.getCurrencyConversion(conversionQuery));
         })
-          .thenApply(conversion -> holders.stream()
+          .map(conversion -> holders.stream()
             .map(h -> h.withConversion(conversion))
             .collect(toList())))
-        .orElseGet(() -> CompletableFuture.completedFuture(holders));
+        .orElseGet(() -> succeededFuture(holders));
 
     }
 
-    public CompletableFuture<List<InvoiceWorkflowDataHolder>> withExistingTransactions(List<InvoiceWorkflowDataHolder> holders, RequestContext requestContext) {
+    public Future<List<InvoiceWorkflowDataHolder>> withExistingTransactions(List<InvoiceWorkflowDataHolder> holders, RequestContext requestContext) {
         return holders.stream().findFirst().map(holder -> {
             String query = String.format("sourceInvoiceId==%s AND transactionType==Pending payment", holder.getInvoice().getId());
             return baseTransactionService.getTransactions(query, 0, holders.size(), requestContext)
-                    .thenApply(TransactionCollection::getTransactions)
-                    .thenApply(transactions -> mapTransactionsToHolders(transactions, holders));
-        }).orElseGet(() -> CompletableFuture.completedFuture(holders));
+                    .map(TransactionCollection::getTransactions)
+                    .map(transactions -> mapTransactionsToHolders(transactions, holders));
+        }).orElseGet(() -> succeededFuture(holders));
 
     }
 

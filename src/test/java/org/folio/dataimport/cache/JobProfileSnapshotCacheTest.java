@@ -1,8 +1,18 @@
 package org.folio.dataimport.cache;
 
-import io.vertx.core.Vertx;
-import io.vertx.ext.unit.junit.RunTestOnContext;
-import io.vertx.junit5.VertxExtension;
+import static org.folio.rest.impl.MockServer.addMockEntry;
+import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.ACTION_PROFILE;
+import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.JOB_PROFILE;
+
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+
 import org.folio.ApiTestSuite;
 import org.folio.rest.RestConstants;
 import org.folio.rest.RestVerticle;
@@ -14,18 +24,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
-
-import static org.folio.rest.impl.MockServer.addMockEntry;
-import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.ACTION_PROFILE;
-import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.JOB_PROFILE;
+import io.vertx.core.Vertx;
+import io.vertx.ext.unit.junit.RunTestOnContext;
+import io.vertx.junit5.VertxExtension;
 
 @ExtendWith(VertxExtension.class)
 public class JobProfileSnapshotCacheTest extends ApiTestBase {

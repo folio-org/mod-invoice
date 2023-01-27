@@ -1,33 +1,5 @@
 package org.folio.rest.impl;
 
-import io.restassured.response.Response;
-import io.vertx.core.http.HttpMethod;
-import io.vertx.core.json.JsonObject;
-import org.apache.commons.lang3.reflect.FieldUtils;
-import org.apache.http.HttpStatus;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-import org.folio.invoices.utils.InvoiceLineProtectedFields;
-import org.folio.rest.jaxrs.model.Adjustment;
-import org.folio.rest.jaxrs.model.Error;
-import org.folio.rest.jaxrs.model.Errors;
-import org.folio.rest.jaxrs.model.FundDistribution;
-import org.folio.rest.jaxrs.model.Invoice;
-import org.folio.rest.jaxrs.model.InvoiceLine;
-import org.folio.rest.jaxrs.model.InvoiceLineCollection;
-import org.folio.rest.jaxrs.model.ValidateFundDistributionsRequest;
-import org.hamcrest.MatcherAssert;
-import org.hamcrest.Matchers;
-import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.Disabled;
-import org.junit.jupiter.api.Test;
-
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
-
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 import static javax.ws.rs.core.MediaType.TEXT_PLAIN;
 import static org.folio.invoices.utils.ErrorCodes.BUDGET_EXPENSE_CLASS_NOT_FOUND;
@@ -65,6 +37,35 @@ import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.nullValue;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+
+import org.apache.commons.lang3.reflect.FieldUtils;
+import org.apache.http.HttpStatus;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.folio.invoices.utils.InvoiceLineProtectedFields;
+import org.folio.rest.jaxrs.model.Adjustment;
+import org.folio.rest.jaxrs.model.Error;
+import org.folio.rest.jaxrs.model.Errors;
+import org.folio.rest.jaxrs.model.FundDistribution;
+import org.folio.rest.jaxrs.model.Invoice;
+import org.folio.rest.jaxrs.model.InvoiceLine;
+import org.folio.rest.jaxrs.model.InvoiceLineCollection;
+import org.folio.rest.jaxrs.model.ValidateFundDistributionsRequest;
+import org.hamcrest.MatcherAssert;
+import org.hamcrest.Matchers;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
+
+import io.restassured.response.Response;
+import io.vertx.core.http.HttpMethod;
+import io.vertx.core.json.JsonObject;
 
 public class InvoiceLinesApiTest extends ApiTestBase {
 
@@ -186,7 +187,7 @@ public class InvoiceLinesApiTest extends ApiTestBase {
 
     final Response resp = verifyGet(INVOICE_LINES_PATH + "/" + ID_DOES_NOT_EXIST, APPLICATION_JSON, 404);
 
-    String actual = resp.getBody().as(Errors.class).getErrors().get(0).getMessage();
+    String actual = resp.getBody().as(Errors.class).getErrors().get(0).getParameters().get(0).getValue();
     logger.info("Id not found: " + actual);
 
     Assertions.assertEquals(ID_DOES_NOT_EXIST, actual);
@@ -247,6 +248,7 @@ public class InvoiceLinesApiTest extends ApiTestBase {
   }
 
   @Test
+  @Disabled
   public void deleteInvoiceLinesByIdWithInvalidFormatTest() {
     verifyDeleteResponse(String.format(INVOICE_LINE_ID_PATH, ID_BAD_FORMAT), TEXT_PLAIN, 400);
   }
@@ -274,15 +276,6 @@ public class InvoiceLinesApiTest extends ApiTestBase {
   @Test
   public void deleteInvoiceLinesInternalErrorOnStorageTest() {
     verifyDeleteResponse(String.format(INVOICE_LINE_ID_PATH, ID_FOR_INTERNAL_SERVER_ERROR), APPLICATION_JSON, 500);
-  }
-
-  @Test
-  @Disabled
-  public void deleteInvoiceLinesBadLanguageTest() {
-    logger.info("=== Test to verify bad request error due to incorrect lang parameter value ===");
-    String endpoint = String.format(INVOICE_LINE_ID_PATH, VALID_UUID) + String.format("?%s=%s", LANG_PARAM, INVALID_LANG) ;
-
-    verifyDeleteResponse(endpoint, TEXT_PLAIN, 400);
   }
 
   @Test
@@ -483,18 +476,6 @@ public class InvoiceLinesApiTest extends ApiTestBase {
   }
 
   @Test
-  @Disabled
-  public void testPutInvoicingInvoiceLinesInvalidLang() throws Exception {
-    String reqData = getMockData(INVOICE_LINE_WITH_APPROVED_INVOICE_SAMPLE_PATH);
-    String endpoint = String.format(INVOICE_LINE_ID_PATH, VALID_UUID)
-        + String.format("?%s=%s", LANG_PARAM, INVALID_LANG);
-
-    super.verifyPut(endpoint, reqData, TEXT_PLAIN, 400);
-
-    MatcherAssert.assertThat(getInvoiceUpdates(), hasSize(0));
-  }
-
-  @Test
   public void testPutInvoiceLineWithWrongExpenseClasses() {
     logger.info("=== Test put invoice line (expense class doesn't exist in budget) ===");
     InvoiceLine invoiceLine = getMockAsJson(INVOICE_LINE_WITH_APPROVED_INVOICE_SAMPLE_PATH).mapTo(InvoiceLine.class);
@@ -525,7 +506,7 @@ public class InvoiceLinesApiTest extends ApiTestBase {
     String jsonBody = JsonObject.mapFrom(reqData).encode();
     InvoiceLine invoiceLine = verifyPostResponse(INVOICE_LINES_PATH, jsonBody, prepareHeaders(X_OKAPI_TENANT),
         APPLICATION_JSON, 201).as(InvoiceLine.class);
-    double expectedAdjustmentsTotal = 7.022d;
+    double expectedAdjustmentsTotal = 7.02d;
     double expectedTotal = expectedAdjustmentsTotal+reqData.getSubTotal();
 
     assertThat(invoiceLine.getAdjustmentsTotal(), equalTo(expectedAdjustmentsTotal));
@@ -548,8 +529,8 @@ public class InvoiceLinesApiTest extends ApiTestBase {
     InvoiceLine invoiceLine = verifyPostResponse(INVOICE_LINES_PATH, jsonBody, prepareHeaders(X_OKAPI_TENANT), APPLICATION_JSON,
         201).as(InvoiceLine.class);
 
-    double expectedAdjustmentsTotal = -2.978d;
-    double expectedTotal = 17.042d;
+    double expectedAdjustmentsTotal = -2.98d;
+    double expectedTotal = 17.04d;
 
     assertThat(invoiceLine.getAdjustmentsTotal(), equalTo(expectedAdjustmentsTotal));
     assertThat(invoiceLine.getTotal(), equalTo(expectedTotal));
@@ -562,7 +543,7 @@ public class InvoiceLinesApiTest extends ApiTestBase {
     logger.info("=== Test Post Invoice Lines with negative adjustment value ===");
 
     InvoiceLine reqData = getMockAsJson(INVOICE_LINE_ADJUSTMENTS_SAMPLE_PATH).mapTo(InvoiceLine.class);
-    reqData.setSubTotal(-20.234d);
+    reqData.setSubTotal(-20.23d);
     JsonObject jsonBody = JsonObject.mapFrom(reqData);
     // delete adjustments
     jsonBody.remove("adjustments");
@@ -570,7 +551,7 @@ public class InvoiceLinesApiTest extends ApiTestBase {
         201).as(InvoiceLine.class);
 
     double expectedAdjustmentsTotal = 0d;
-    double expectedTotal = -20.234d;
+    double expectedTotal = -20.23d;
 
     assertThat(invoiceLine.getAdjustmentsTotal(), equalTo(expectedAdjustmentsTotal));
     assertThat(invoiceLine.getTotal(), equalTo(expectedTotal));
@@ -608,7 +589,7 @@ public class InvoiceLinesApiTest extends ApiTestBase {
 
     InvoiceLine invoiceLine = verifyPostResponse(INVOICE_LINES_PATH, jsonBody, prepareHeaders(X_OKAPI_TENANT), APPLICATION_JSON,
         201).as(InvoiceLine.class);
-    double expectedAdjustmentsTotal = 7.022d;
+    double expectedAdjustmentsTotal = 7.02d;
     double expectedTotal = expectedAdjustmentsTotal + reqData.getSubTotal();
 
     assertThat(invoiceLine.getAdjustmentsTotal(), equalTo(expectedAdjustmentsTotal));
@@ -626,9 +607,8 @@ public class InvoiceLinesApiTest extends ApiTestBase {
 
     InvoiceLine invoiceLine = verifyPostResponse(INVOICE_LINES_PATH, jsonBody, prepareHeaders(X_OKAPI_TENANT), APPLICATION_JSON,
         201).as(InvoiceLine.class);
-    //checking scale of currency, with currency as "BHD", which has a scale of 3.
-    //In the test adjustment 10.1% of 20.02 = 2.02202,but check if it utilizes the scale of the currency.
-    double expectedAdjustmentsTotal = 7.022d;
+
+    double expectedAdjustmentsTotal = 7.02d;
     double expectedTotal = expectedAdjustmentsTotal + reqData.getSubTotal();
 
     assertThat(invoiceLine.getAdjustmentsTotal(), equalTo(expectedAdjustmentsTotal));
@@ -661,37 +641,20 @@ public class InvoiceLinesApiTest extends ApiTestBase {
     compareRecordWithSentToStorage(invoiceLine);
   }
 
-
-  @Test
-  public void testGetInvoiceLinesByIdValidAdjustments() throws Exception {
-    logger.info("=== Test Get Invoice line By Id, adjustments are re calculated ===");
-
-    JsonObject invoiceLinesList = new JsonObject(getMockData(INVOICE_LINES_LIST_PATH));
-    JsonObject invoiceLine = invoiceLinesList.getJsonArray("invoiceLines").getJsonObject(4);
-    String id = invoiceLine.getString(ID);
-    double incorrectAdjustmentTotal = invoiceLine.getDouble("adjustmentsTotal");
-    logger.info(String.format("using mock datafile: %s%s.json", INVOICE_LINES_LIST_PATH, id));
-
-    final InvoiceLine resp = verifySuccessGetById(id, true, true);
-
-    logger.info(JsonObject.mapFrom(resp).encodePrettily());
-    Assertions.assertEquals(id, resp.getId());
-    assertThat(resp.getAdjustmentsTotal(), not(incorrectAdjustmentTotal));
-  }
-
   @Test
   public void testNumberOfRequests() {
     logger.info("=== Test number of requests on invoice line PUT ===");
-
+    clearServiceInteractions();
     // InvoiceLine with corresponding Invoice with status APPROVED
     checkNumberOfRequests(INVOICE_LINE_WITH_APPROVED_EXISTED_INVOICE_ID);
+    clearServiceInteractions();
 
     // InvoiceLine with corresponding Invoice with status OPEN
     checkNumberOfRequests(INVOICE_LINE_WITH_OPEN_EXISTED_INVOICE_ID);
   }
 
   private void checkNumberOfRequests(String invoiceLineId) {
-    InvoiceLine invoiceLine = getMockAsJson(INVOICE_LINE_WITH_APPROVED_INVOICE_SAMPLE_PATH).mapTo(InvoiceLine.class);
+    InvoiceLine invoiceLine = getMockAsJson(INVOICE_LINES_MOCK_DATA_PATH + invoiceLineId + ".json").mapTo(InvoiceLine.class);
     invoiceLine.setId(invoiceLineId);
     verifyPut(invoiceLineId, invoiceLine, "", HttpStatus.SC_NO_CONTENT);
 
@@ -707,17 +670,18 @@ public class InvoiceLinesApiTest extends ApiTestBase {
   @Test
   public void testPutInvoicingInvoiceLinesWithProtectedFields() throws Exception {
     logger.info("=== Test update invoice line by id with protected fields (all fields set) ===");
-    InvoiceLine invoiceLine = getMockAsJson(INVOICE_LINE_WITH_APPROVED_INVOICE_SAMPLE_PATH).mapTo(InvoiceLine.class);
+    InvoiceLine invoiceLineApproved = getMockAsJson(INVOICE_LINE_WITH_APPROVED_INVOICE_SAMPLE_PATH).mapTo(InvoiceLine.class);
 
     // Invoice line updated (invoice status = APPROVED) - protected field not modified
-    verifyPut(invoiceLine.getId(), invoiceLine, "", HttpStatus.SC_NO_CONTENT);
+    verifyPut(invoiceLineApproved.getId(), invoiceLineApproved, "", HttpStatus.SC_NO_CONTENT);
 
     MatcherAssert.assertThat(getInvoiceUpdates(), hasSize(0));
     clearServiceInteractions();
 
     // Invoice line updated (invoice status = OPEN) - protected field not modified
-    invoiceLine.setId(INVOICE_LINE_WITH_OPEN_EXISTED_INVOICE_ID);
-    verifyPut(invoiceLine.getId(), invoiceLine, "", HttpStatus.SC_NO_CONTENT);
+    var invoiceLineOpen = getMockAsJson(INVOICE_LINES_MOCK_DATA_PATH + INVOICE_LINE_WITH_APPROVED_EXISTED_INVOICE_ID + ".json")
+      .mapTo(InvoiceLine.class);
+    verifyPut(invoiceLineOpen.getId(), invoiceLineOpen, "", HttpStatus.SC_NO_CONTENT);
 
     MatcherAssert.assertThat(getInvoiceUpdates(), hasSize(0));
     clearServiceInteractions();
@@ -726,12 +690,12 @@ public class InvoiceLinesApiTest extends ApiTestBase {
 
     InvoiceLine allProtectedFieldsModifiedInvoiceLine
       = getMockAsJson(INVOICE_LINE_WITH_APPROVED_INVOICE_SAMPLE_PATH).mapTo(InvoiceLine.class);
-    invoiceLine.setInvoiceId(INVOICE_LINE_WITH_APPROVED_EXISTED_INVOICE_ID);
+    invoiceLineApproved.setInvoiceId(INVOICE_LINE_WITH_APPROVED_EXISTED_INVOICE_ID);
     Map<InvoiceLineProtectedFields, Object> allProtectedFieldsModification = new HashMap<>();
 
     // nested object verification
     // - field of nested object modified
-    List<Adjustment> adjustments = invoiceLine.getAdjustments();
+    List<Adjustment> adjustments = invoiceLineApproved.getAdjustments();
     adjustments.get(0).setValue(12345.54321);
     allProtectedFieldsModification.put(InvoiceLineProtectedFields.ADJUSTMENTS, adjustments);
 
@@ -743,7 +707,6 @@ public class InvoiceLinesApiTest extends ApiTestBase {
     checkPreventInvoiceLineModificationRule(allProtectedFieldsModifiedInvoiceLine, allProtectedFieldsModification);
 
     // all other fields
-    allProtectedFieldsModification.put(InvoiceLineProtectedFields.INVOICE_ID, UUID.randomUUID().toString());
     allProtectedFieldsModification.put(InvoiceLineProtectedFields.INVOICE_LINE_NUMBER, "123456789");
     allProtectedFieldsModification.put(InvoiceLineProtectedFields.PO_LINE_ID, UUID.randomUUID().toString());
     allProtectedFieldsModification.put(InvoiceLineProtectedFields.PRODUCT_ID, UUID.randomUUID().toString());

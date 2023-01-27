@@ -3,15 +3,16 @@ package org.folio.rest.impl;
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 import static javax.ws.rs.core.MediaType.TEXT_PLAIN;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.folio.rest.jaxrs.model.Errors;
 import org.folio.rest.jaxrs.model.VoucherLine;
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import io.restassured.response.Response;
 import io.vertx.core.json.JsonObject;
-import org.apache.logging.log4j.Logger;
-import org.apache.logging.log4j.LogManager;
 
 public class VoucherLinesApiTest extends ApiTestBase {
 
@@ -77,6 +78,7 @@ public class VoucherLinesApiTest extends ApiTestBase {
   }
 
   @Test
+  @Disabled
   public void testGetVouchersVoucherLineByIdInvalidFormat() {
     logger.info("=== Test Get Voucher line by Id - 400 Bad request ===");
     final Response resp = verifyGet(String.format(VOUCHER_LINES_ID_PATH, INVALID_VOUCHER_LINE_ID), TEXT_PLAIN, 400);

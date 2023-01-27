@@ -1,6 +1,6 @@
 package org.folio.services.finance.transaction;
 
-import static java.util.concurrent.CompletableFuture.completedFuture;
+import static io.vertx.core.Future.succeededFuture;
 import static java.util.stream.Collectors.toList;
 import static org.folio.invoices.utils.HelperUtils.collectResultsOnSuccess;
 import static org.folio.invoices.utils.HelperUtils.convertIdsToCqlQuery;
@@ -14,9 +14,9 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.CompletableFuture;
 
 import org.apache.commons.collections4.CollectionUtils;
+import org.folio.okapi.common.GenericCompositeFuture;
 import org.folio.rest.acq.model.finance.Transaction;
 import org.folio.rest.acq.model.finance.Transaction.TransactionType;
 import org.folio.rest.acq.model.finance.TransactionCollection;
@@ -24,6 +24,9 @@ import org.folio.rest.core.RestClient;
 import org.folio.rest.core.models.RequestContext;
 import org.folio.rest.core.models.RequestEntry;
 
+import io.vertx.core.Future;
+import io.vertx.core.Promise;
+import io.vertxconcurrent.Semaphore;
 import one.util.streamex.StreamEx;
 
 public class BaseTransactionService {
@@ -43,42 +46,42 @@ public class BaseTransactionService {
     this.restClient = restClient;
   }
 
-  public CompletableFuture<TransactionCollection> getTransactions(String query, int offset, int limit, RequestContext requestContext) {
+  public Future<TransactionCollection> getTransactions(String query, int offset, int limit, RequestContext requestContext) {
     RequestEntry requestEntry = new RequestEntry(TRANSACTIONS_ENDPOINT)
         .withQuery(query)
         .withOffset(offset)
         .withLimit(limit);
-    return restClient.get(requestEntry, requestContext, TransactionCollection.class);
+    return restClient.get(requestEntry, TransactionCollection.class, requestContext);
   }
 
-  public CompletableFuture<List<Transaction>> getTransactions(List<String> transactionIds, RequestContext requestContext) {
+  public Future<List<Transaction>> getTransactions(List<String> transactionIds, RequestContext requestContext) {
     if (!CollectionUtils.isEmpty(transactionIds)) {
-      List<CompletableFuture<TransactionCollection>> expenseClassesFutureList = StreamEx
+      List<Future<TransactionCollection>> expenseClassesFutureList = StreamEx
         .ofSubLists(transactionIds, MAX_IDS_FOR_GET_RQ)
         .map(ids -> getTransactionsChunk(ids, requestContext))
         .collect(toList());
 
       return collectResultsOnSuccess(expenseClassesFutureList)
-        .thenApply(expenseClassCollections ->
+        .map(expenseClassCollections ->
           expenseClassCollections.stream().flatMap(col -> col.getTransactions().stream()).collect(toList())
         );
     }
-    return CompletableFuture.completedFuture(Collections.emptyList());
+    return succeededFuture(Collections.emptyList());
   }
 
-  private CompletableFuture<TransactionCollection> getTransactionsChunk(List<String> transactionIds, RequestContext requestContext) {
+  private Future<TransactionCollection> getTransactionsChunk(List<String> transactionIds, RequestContext requestContext) {
     String query = convertIdsToCqlQuery(new ArrayList<>(transactionIds));
     return this.getTransactions(query, 0, transactionIds.size(), requestContext);
   }
 
-  public CompletableFuture<Transaction> createTransaction(Transaction transaction, RequestContext requestContext) {
+  public Future<Transaction> createTransaction(Transaction transaction, RequestContext requestContext) {
     return Optional.ofNullable(getEndpoint(transaction))
         .map(RequestEntry::new)
-        .map(requestEntry -> restClient.post(requestEntry, transaction, requestContext, Transaction.class))
+        .map(requestEntry -> restClient.post(requestEntry, transaction, Transaction.class, requestContext))
         .orElseGet(this::unsupportedOperation);
   }
 
-  public CompletableFuture<Void> updateTransaction(Transaction transaction, RequestContext requestContext) {
+  public Future<Void> updateTransaction(Transaction transaction, RequestContext requestContext) {
     return Optional.ofNullable(getByIdEndpoint(transaction))
         .map(RequestEntry::new)
         .map(requestEntry -> requestEntry.withId(transaction.getId()))
@@ -86,19 +89,28 @@ public class BaseTransactionService {
         .orElseGet(this::unsupportedOperation);
   }
 
-  public CompletableFuture<Void> updateTransactions(List<Transaction> transactions, RequestContext requestContext) {
-    // currently done sequentially, this could be done in parallel in the future
-    CompletableFuture<Void> future = completedFuture(null);
-    for (Transaction tr : transactions) {
-      future = future.thenCompose(v -> updateTransaction(tr, requestContext));
-    }
-    return future;
+  public Future<Void> updateTransactions(List<Transaction> transactions, RequestContext requestContext) {
+    var semaphore = new Semaphore(5, requestContext.getContext().owner());
+    List<Future<Void>> futures = new ArrayList<>();
+
+    return requestContext.getContext()
+      .executeBlocking(promise -> {
+        for (Transaction tr : transactions) {
+          var future = updateTransaction(tr, requestContext);
+          futures.add(future);
+          semaphore.acquire(() ->
+            future.onComplete(asyncResult -> semaphore.release()));
+        }
+        promise.complete();
+      })
+      .compose(v -> GenericCompositeFuture.join(futures))
+      .mapEmpty();
   }
 
-  public <T> CompletableFuture<T> unsupportedOperation() {
-    CompletableFuture<T> future = new CompletableFuture<>();
-    future.completeExceptionally(new UnsupportedOperationException());
-    return future;
+  public <T> Future<T> unsupportedOperation() {
+    Promise<T> promise = Promise.promise();
+    promise.fail(new UnsupportedOperationException());
+    return promise.future();
   }
 
 
@@ -110,9 +122,9 @@ public class BaseTransactionService {
     return TRANSACTION_ENDPOINTS.get(transaction.getTransactionType()) + "/{id}";
   }
 
-  public CompletableFuture<Void> releaseEncumbrance(Transaction transaction, RequestContext requestContext) {
+  public Future<Void> releaseEncumbrance(Transaction transaction, RequestContext requestContext) {
     RequestEntry requestEntry = new RequestEntry(resourcesPath(FINANCE_RELEASE_ENCUMBRANCE) + "/{id}").withId(transaction.getId());
-    return restClient.post(requestEntry, null, requestContext, Void.class);
+    return restClient.post(requestEntry, null, Void.class, requestContext);
   }
 
 }

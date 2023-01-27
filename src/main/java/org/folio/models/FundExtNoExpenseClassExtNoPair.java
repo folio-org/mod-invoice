@@ -1,7 +1,8 @@
 package org.folio.models;
 
-import java.util.Objects;
 import static org.apache.commons.lang3.StringUtils.EMPTY;
+
+import java.util.Objects;
 
 public class FundExtNoExpenseClassExtNoPair {
   public static final String DASH = "-";

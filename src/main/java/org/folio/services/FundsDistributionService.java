@@ -7,10 +7,12 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
+
 import javax.money.CurrencyUnit;
 import javax.money.Monetary;
 import javax.money.MonetaryAmount;
 import javax.money.convert.CurrencyConversion;
+
 import org.folio.models.InvoiceWorkflowDataHolder;
 import org.folio.rest.acq.model.finance.Transaction;
 import org.folio.rest.acq.model.finance.Transaction.TransactionType;

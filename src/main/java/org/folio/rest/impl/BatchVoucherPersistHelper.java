@@ -1,55 +1,50 @@
 package org.folio.rest.impl;
 
-import static org.folio.invoices.utils.ResourcePathResolver.BATCH_VOUCHER_STORAGE;
-import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
-
 import java.util.Map;
-import java.util.concurrent.CompletableFuture;
 
 import org.folio.rest.core.models.RequestContext;
 import org.folio.rest.jaxrs.model.BatchVoucherExport;
+import org.folio.services.voucher.BatchVoucherExportsService;
 import org.folio.services.voucher.BatchVoucherGenerateService;
+import org.folio.services.voucher.BatchVoucherService;
+import org.folio.spring.SpringContextUtil;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import io.vertx.core.Context;
-import io.vertx.core.json.JsonObject;
+import io.vertx.core.Future;
 
 public class BatchVoucherPersistHelper extends AbstractHelper {
-  private final BatchVoucherGenerateService batchVoucherGenerateService;
-  private final BatchVoucherExportsHelper batchVoucherExportsHelper;
 
-  public BatchVoucherPersistHelper(Map<String, String> okapiHeaders, Context ctx, String lang) {
-    super(okapiHeaders, ctx, lang);
-    this.batchVoucherGenerateService = new BatchVoucherGenerateService(okapiHeaders, ctx, lang);
-    this.batchVoucherExportsHelper = new BatchVoucherExportsHelper(okapiHeaders, ctx, lang);
+  @Autowired
+  private BatchVoucherGenerateService batchVoucherGenerateService;
+  @Autowired
+  private BatchVoucherExportsService batchVoucherExportsService;
+  @Autowired
+  private BatchVoucherService batchVoucherService;
+  private final RequestContext requestContext;
+
+  public BatchVoucherPersistHelper(Map<String, String> okapiHeaders, Context ctx) {
+    super(okapiHeaders, ctx);
+    this.requestContext = new RequestContext(ctx, okapiHeaders);
+    SpringContextUtil.autowireDependencies(this, ctx);
   }
 
-  public CompletableFuture<String> persistBatchVoucher(BatchVoucherExport batchVoucherExport) {
-    return batchVoucherGenerateService.generateBatchVoucher(batchVoucherExport, new RequestContext(ctx, okapiHeaders))
-      .thenApply(JsonObject::mapFrom)
-      .thenCompose(jsonInvoice -> createRecordInStorage(jsonInvoice, resourcesPath(BATCH_VOUCHER_STORAGE)))
-      .thenApply(batchVoucherId -> {
+  public Future<String> persistBatchVoucher(BatchVoucherExport batchVoucherExport) {
+    return batchVoucherGenerateService.buildBatchVoucherObject(batchVoucherExport, new RequestContext(ctx, okapiHeaders))
+      .compose(batchVoucher -> batchVoucherService.createBatchVoucher(batchVoucher, requestContext))
+      .compose(batchVoucher -> {
         batchVoucherExport.setMessage("Batch voucher was generated");
         batchVoucherExport.setStatus(BatchVoucherExport.Status.GENERATED);
-        batchVoucherExport.setBatchVoucherId(batchVoucherId);
-        return batchVoucherId;
+        batchVoucherExport.setBatchVoucherId(batchVoucher.getId());
+        return batchVoucherExportsService.updateBatchVoucherExportRecord(batchVoucherExport, requestContext)
+          .map(batchVoucher.getId());
       })
-      .thenCompose(batchVoucherId -> batchVoucherExportsHelper.updateBatchVoucherExportRecord(batchVoucherExport)
-        .thenAccept(v -> logger.debug("Batch voucher generated and batch voucher export updated"))
-        .thenAccept(v -> closeHttpClient())
-        .thenApply(v -> batchVoucherId))
-      .exceptionally(t -> {
+      .onSuccess(v -> logger.debug("Batch voucher generated and batch voucher export updated"))
+      .onFailure(t -> {
         batchVoucherExport.setMessage(t.getCause().getMessage());
         batchVoucherExport.setStatus(BatchVoucherExport.Status.ERROR);
-        batchVoucherExportsHelper.updateBatchVoucherExportRecord(batchVoucherExport)
-          .thenAccept(v -> closeHttpClient());
+        batchVoucherExportsService.updateBatchVoucherExportRecord(batchVoucherExport, requestContext);
         logger.error("Exception occurs, when generating batch voucher", t);
-        return null;
       });
-  }
-
-  @Override
-  public void closeHttpClient(){
-    httpClient.closeClient();
-    batchVoucherExportsHelper.closeHttpClient();
   }
 }

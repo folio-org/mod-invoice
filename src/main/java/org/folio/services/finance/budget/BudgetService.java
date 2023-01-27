@@ -1,6 +1,15 @@
 package org.folio.services.finance.budget;
 
-import org.folio.completablefuture.FolioVertxCompletableFuture;
+import static java.util.stream.Collectors.toList;
+import static org.folio.invoices.utils.ErrorCodes.BUDGET_NOT_FOUND;
+import static org.folio.invoices.utils.HelperUtils.collectResultsOnSuccess;
+
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
+import java.util.Objects;
+import java.util.concurrent.CompletionException;
+
 import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.rest.acq.model.finance.Budget;
 import org.folio.rest.core.RestClient;
@@ -8,16 +17,7 @@ import org.folio.rest.core.models.RequestContext;
 import org.folio.rest.core.models.RequestEntry;
 import org.folio.rest.jaxrs.model.Parameter;
 
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
-import java.util.Objects;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionException;
-import java.util.stream.Collectors;
-
-import static java.util.stream.Collectors.toList;
-import static org.folio.invoices.utils.ErrorCodes.BUDGET_NOT_FOUND;
+import io.vertx.core.Future;
 
 public class BudgetService {
 
@@ -29,21 +29,20 @@ public class BudgetService {
       this.restClient = restClient;
   }
 
-  public CompletableFuture<List<Budget>> fetchBudgetsByFundIds(Collection<String> fundIds, RequestContext requestContext) {
-    List<CompletableFuture<Budget>> futureList = fundIds.stream()
+  public Future<List<Budget>> fetchBudgetsByFundIds(Collection<String> fundIds, RequestContext requestContext) {
+    List<Future<Budget>> futures = fundIds.stream()
             .distinct()
             .map(fundId -> getActiveBudgetByFundId(fundId, requestContext))
             .collect(toList());
 
-    return FolioVertxCompletableFuture.allOf(requestContext.getContext(), futureList.toArray(new CompletableFuture[0]))
-            .thenApply(v -> futureList.stream().map(CompletableFuture::join).collect(Collectors.toList()));
+    return collectResultsOnSuccess(futures);
   }
 
-  private CompletableFuture<Budget> getActiveBudgetByFundId(String fundId, RequestContext requestContext) {
+  private Future<Budget> getActiveBudgetByFundId(String fundId, RequestContext requestContext) {
     RequestEntry requestEntry = new RequestEntry(ACTIVE_BUDGET_ENDPOINT)
         .withId(fundId);
-    return restClient.get(requestEntry, requestContext, Budget.class)
-            .exceptionally(t -> {
+    return restClient.get(requestEntry, Budget.class, requestContext)
+            .recover(t -> {
                 Throwable cause = Objects.isNull(t.getCause()) ? t : t.getCause();
                 if (cause instanceof HttpException) {
                     throw new HttpException(404, BUDGET_NOT_FOUND
