@@ -1,6 +1,6 @@
 package org.folio.services.finance.transaction;
 
-import static java.util.concurrent.CompletableFuture.completedFuture;
+import static io.vertx.core.Future.succeededFuture;
 import static java.util.stream.Collectors.toList;
 import static org.folio.TestMockDataConstants.MOCK_ENCUMBRANCES_LIST;
 import static org.folio.rest.RestConstants.OKAPI_URL;
@@ -27,6 +27,7 @@ import org.folio.rest.core.models.RequestEntry;
 import org.folio.rest.impl.ApiTestBase;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.mockito.internal.verification.Times;
@@ -34,7 +35,10 @@ import org.mockito.internal.verification.Times;
 import io.restassured.http.Header;
 import io.vertx.core.impl.EventLoopContext;
 import io.vertx.core.json.JsonObject;
+import io.vertx.junit5.VertxExtension;
+import io.vertx.junit5.VertxTestContext;
 
+@ExtendWith(VertxExtension.class)
 public class BaseTransactionServiceTest extends ApiTestBase {
   @Mock
   private EventLoopContext ctxMock;
@@ -55,7 +59,7 @@ public class BaseTransactionServiceTest extends ApiTestBase {
   }
 
   @Test
-  public void testShouldSuccessRetrieveExistedTransactions() throws Exception {
+  public void testShouldSuccessRetrieveExistedTransactions(VertxTestContext vertxTestContext) throws Exception {
     //given
     BaseTransactionService service = spy(new BaseTransactionService(restClient));
 
@@ -66,27 +70,35 @@ public class BaseTransactionServiceTest extends ApiTestBase {
     TransactionCollection trCollection = new TransactionCollection().withTransactions(encumbrances);
 
     RequestContext requestContext = new RequestContext(ctxMock, okapiHeaders);
-    doReturn(completedFuture(trCollection)).when(restClient).get(any(RequestEntry.class), any(RequestContext.class), eq(TransactionCollection.class));
+    doReturn(succeededFuture(trCollection)).when(restClient).get(any(RequestEntry.class), eq(TransactionCollection.class), any(RequestContext.class));
     //When
 
     List<String> transactionIds = encumbrances.stream().map(Transaction::getId).collect(toList());
-    List<Transaction> actEncumbrances = service.getTransactions(transactionIds, requestContext).join();
-    //Then
-    assertThat(actEncumbrances, hasSize(1));
-    assertThat(actEncumbrances.get(0).getId(), equalTo(encumbrances.get(0).getId()));
-    verify(restClient).get(any(RequestEntry.class), any(RequestContext.class), eq(TransactionCollection.class));
+    var future = service.getTransactions(transactionIds, requestContext);
+    vertxTestContext.assertComplete(future)
+      .onComplete(result -> {
+        assertThat(result.result(), hasSize(1));
+        assertThat(result.result().get(0).getId(), equalTo(encumbrances.get(0).getId()));
+        verify(restClient).get(any(RequestEntry.class), eq(TransactionCollection.class), any(RequestContext.class));
+        vertxTestContext.completeNow();
+      });
   }
 
   @Test
-  public void testShouldSuccessRetrieveEmptyListIfIdListIsEmpty() throws Exception {
+  public void testShouldSuccessRetrieveEmptyListIfIdListIsEmpty(VertxTestContext vertxTestContext) {
     //given
     BaseTransactionService service = spy(new BaseTransactionService(restClient));
     RequestContext requestContext = new RequestContext(ctxMock, okapiHeaders);
      //When
     List<String> transactionIds = new ArrayList<>();
-    List<Transaction> actEncumbrances = service.getTransactions(transactionIds, requestContext).join();
+    var future = service.getTransactions(transactionIds, requestContext);
     //Then
-    assertThat(actEncumbrances, hasSize(0));
-    verify(restClient, new Times(0)).get(any(RequestEntry.class), any(RequestContext.class), eq(TransactionCollection.class));
+    vertxTestContext.assertComplete(future)
+      .onComplete(result -> {
+        assertThat(result.result(), hasSize(0));
+        verify(restClient, new Times(0)).get(any(RequestEntry.class), eq(TransactionCollection.class), any(RequestContext.class));
+        vertxTestContext.completeNow();
+      });
+
   }
 }

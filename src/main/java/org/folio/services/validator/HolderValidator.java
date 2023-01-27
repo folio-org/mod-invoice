@@ -1,8 +1,8 @@
 package org.folio.services.validator;
 
-import org.folio.models.InvoiceWorkflowDataHolder;
-
 import java.util.List;
+
+import org.folio.models.InvoiceWorkflowDataHolder;
 
 public interface HolderValidator {
 

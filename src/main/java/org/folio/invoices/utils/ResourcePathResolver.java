@@ -95,19 +95,19 @@ public class ResourcePathResolver {
     SUB_OBJECT_ITEM_APIS = Collections.unmodifiableMap(
         apis.entrySet()
             .stream()
-            .collect(Collectors.toMap(Map.Entry::getKey, v -> v.getValue() + "/%s?lang=%s"))
+            .collect(Collectors.toMap(Map.Entry::getKey, v -> v.getValue() + "/%s"))
       );
   }
 
-  public static String resourceByIdPath(String field, String id, String lang) {
-    return String.format(SUB_OBJECT_ITEM_APIS.get(field), id, lang);
+  public static String resourceByIdPath(String field, String id) {
+    return String.format(SUB_OBJECT_ITEM_APIS.get(field), id);
   }
 
   public static String resourcesPath(String field) {
     return SUB_OBJECT_COLLECTION_APIS.get(field);
   }
 
-  public static String resourceByParentIdAndIdPath(String field, String parentId, String id, String lang) {
-    return String.format(SUB_OBJECT_ITEM_APIS.get(field), parentId, id, lang);
+  public static String resourceByParentIdAndIdPath(String field, String parentId, String id) {
+    return String.format(SUB_OBJECT_ITEM_APIS.get(field), parentId, id);
   }
 }

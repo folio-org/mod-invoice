@@ -1,8 +1,12 @@
 package org.folio.dataimport.cache;
 
-import com.github.benmanes.caffeine.cache.AsyncCache;
-import com.github.benmanes.caffeine.cache.Caffeine;
-import io.vertx.core.Vertx;
+import static org.folio.rest.RestVerticle.OKAPI_HEADER_TOKEN;
+
+import java.util.Map;
+import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
+
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.HttpStatus;
@@ -14,12 +18,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
-import java.util.Map;
-import java.util.Optional;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.TimeUnit;
+import com.github.benmanes.caffeine.cache.AsyncCache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 
-import static org.folio.rest.RestVerticle.OKAPI_HEADER_TOKEN;
+import io.vertx.core.Vertx;
 
 @Component
 public class JobProfileSnapshotCache {

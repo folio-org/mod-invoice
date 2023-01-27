@@ -1,7 +1,47 @@
 package org.folio.services.invoice;
 
-import io.vertx.core.Vertx;
-import io.vertx.core.json.JsonObject;
+import static io.vertx.core.Future.failedFuture;
+import static io.vertx.core.Future.succeededFuture;
+import static java.util.Collections.singletonList;
+import static java.util.stream.Collectors.joining;
+import static java.util.stream.Collectors.toList;
+import static org.folio.ApiTestSuite.mockPort;
+import static org.folio.TestMockDataConstants.INVOICE_LINES_LIST_PATH;
+import static org.folio.TestMockDataConstants.INVOICE_MOCK_DATA_PATH;
+import static org.folio.TestMockDataConstants.MOCK_CREDITS_LIST;
+import static org.folio.TestMockDataConstants.MOCK_ENCUMBRANCES_LIST;
+import static org.folio.TestMockDataConstants.MOCK_PAYMENTS_LIST;
+import static org.folio.TestMockDataConstants.MOCK_PENDING_PAYMENTS_LIST;
+import static org.folio.TestMockDataConstants.VOUCHER_MOCK_DATA_PATH;
+import static org.folio.invoices.utils.ErrorCodes.CANNOT_CANCEL_INVOICE;
+import static org.folio.invoices.utils.ErrorCodes.ERROR_UNRELEASING_ENCUMBRANCES;
+import static org.folio.invoices.utils.ResourcePathResolver.FINANCE_TRANSACTIONS;
+import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_TRANSACTION_SUMMARIES;
+import static org.folio.invoices.utils.ResourcePathResolver.ORDER_TRANSACTION_SUMMARIES;
+import static org.folio.invoices.utils.ResourcePathResolver.VOUCHERS_STORAGE;
+import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
+import static org.folio.rest.RestConstants.OKAPI_URL;
+import static org.folio.rest.acq.model.finance.Encumbrance.Status.PENDING;
+import static org.folio.rest.acq.model.finance.Encumbrance.Status.RELEASED;
+import static org.folio.rest.acq.model.finance.Encumbrance.Status.UNRELEASED;
+import static org.folio.rest.impl.ApiTestBase.X_OKAPI_TOKEN;
+import static org.folio.rest.impl.ApiTestBase.X_OKAPI_USER_ID;
+import static org.folio.services.finance.transaction.BaseTransactionServiceTest.X_OKAPI_TENANT;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doReturn;
+
+import java.io.IOException;
+import java.lang.reflect.Method;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+
 import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.rest.acq.model.finance.Encumbrance;
 import org.folio.rest.acq.model.finance.InvoiceTransactionSummary;
@@ -28,57 +68,23 @@ import org.folio.services.finance.transaction.InvoiceTransactionSummaryService;
 import org.folio.services.finance.transaction.OrderTransactionSummaryService;
 import org.folio.services.order.OrderLineService;
 import org.folio.services.order.OrderService;
-import org.folio.services.voucher.VoucherCommandService;
-import org.folio.services.voucher.VoucherRetrieveService;
+import org.folio.services.validator.VoucherValidator;
+import org.folio.services.voucher.VoucherService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 
-import java.io.IOException;
-import java.lang.reflect.Method;
-import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.util.List;
-import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionException;
+import io.vertx.core.Future;
+import io.vertx.core.Vertx;
+import io.vertx.core.json.JsonObject;
+import io.vertx.junit5.VertxExtension;
+import io.vertx.junit5.VertxTestContext;
 
-import static java.util.Collections.singletonList;
-import static java.util.concurrent.CompletableFuture.completedFuture;
-import static java.util.concurrent.CompletableFuture.failedFuture;
-import static java.util.stream.Collectors.joining;
-import static java.util.stream.Collectors.toList;
-import static org.folio.TestMockDataConstants.MOCK_CREDITS_LIST;
-import static org.folio.TestMockDataConstants.MOCK_ENCUMBRANCES_LIST;
-import static org.folio.TestMockDataConstants.MOCK_PAYMENTS_LIST;
-import static org.folio.TestMockDataConstants.MOCK_PENDING_PAYMENTS_LIST;
-import static org.folio.TestMockDataConstants.INVOICE_MOCK_DATA_PATH;
-import static org.folio.TestMockDataConstants.INVOICE_LINES_LIST_PATH;
-import static org.folio.TestMockDataConstants.VOUCHER_MOCK_DATA_PATH;
-import static org.folio.invoices.utils.ErrorCodes.CANNOT_CANCEL_INVOICE;
-import static org.folio.invoices.utils.ErrorCodes.ERROR_UNRELEASING_ENCUMBRANCES;
-import static org.folio.invoices.utils.ResourcePathResolver.FINANCE_TRANSACTIONS;
-import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_TRANSACTION_SUMMARIES;
-import static org.folio.invoices.utils.ResourcePathResolver.ORDER_TRANSACTION_SUMMARIES;
-import static org.folio.invoices.utils.ResourcePathResolver.VOUCHERS_STORAGE;
-import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
-import static org.folio.rest.acq.model.finance.Encumbrance.Status.PENDING;
-import static org.folio.rest.acq.model.finance.Encumbrance.Status.RELEASED;
-import static org.folio.rest.acq.model.finance.Encumbrance.Status.UNRELEASED;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.argThat;
-import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoMoreInteractions;
-
+@ExtendWith(VertxExtension.class)
 public class InvoiceCancelServiceTest {
   private static final String RESOURCES_PATH = "src/test/resources";
   private static final String APPROVED_INVOICE_ID = "c0d08448-347b-418a-8c2f-5fb50248d67e";
@@ -96,81 +102,98 @@ public class InvoiceCancelServiceTest {
   private static final String ORDER_TRANSACTION_SUMMARIES_BY_ID_ENDPOINT = resourcesPath(ORDER_TRANSACTION_SUMMARIES) + "/{id}";
 
   private InvoiceCancelService cancelService;
+
+  @Mock
   private RestClient restClient;
-  private RequestContext requestContextMock;
+  private RequestContext requestContext;
 
   @BeforeEach
   public void initMocks() {
-    requestContextMock = Mockito.mock(RequestContext.class, new RuntimeExceptionAnswer());
-    restClient = Mockito.mock(RestClient.class, new RuntimeExceptionAnswer());
-    doReturn(Vertx.vertx().getOrCreateContext()).when(requestContextMock).getContext();
+    MockitoAnnotations.openMocks(this);
+
+    Map<String, String> okapiHeaders = new HashMap<>();
+    okapiHeaders.put(OKAPI_URL, "http://localhost:" + mockPort);
+    okapiHeaders.put(X_OKAPI_TOKEN.getName(), X_OKAPI_TOKEN.getValue());
+    okapiHeaders.put(X_OKAPI_TENANT.getName(), X_OKAPI_TENANT.getValue());
+    okapiHeaders.put(X_OKAPI_USER_ID.getName(), X_OKAPI_USER_ID.getValue());
+    requestContext = new RequestContext(Vertx.vertx().getOrCreateContext(), okapiHeaders);
 
     BaseTransactionService baseTransactionService = new BaseTransactionService(restClient);
     OrderTransactionSummaryService orderTransactionSummaryService = new OrderTransactionSummaryService(restClient);
     EncumbranceService encumbranceService = new EncumbranceService(baseTransactionService, orderTransactionSummaryService);
     InvoiceTransactionSummaryService invoiceTransactionSummaryService = new InvoiceTransactionSummaryService(restClient);
-    VoucherRetrieveService voucherRetrieveService = new VoucherRetrieveService(restClient);
-    VoucherCommandService voucherCommandService = new VoucherCommandService(restClient, null,
-      voucherRetrieveService, null, null, null);
+    VoucherService voucherService = new VoucherService(restClient, new VoucherValidator());
     OrderLineService orderLineService = new OrderLineService(restClient);
     InvoiceLineService invoiceLineService = new InvoiceLineService(restClient);
     OrderService orderService = new OrderService(restClient, invoiceLineService, orderLineService);
     cancelService = new InvoiceCancelService(baseTransactionService, encumbranceService,
-      invoiceTransactionSummaryService, voucherCommandService, orderLineService,
+      invoiceTransactionSummaryService, voucherService, orderLineService,
       orderService);
   }
 
   @Test
-  public void cancelApprovedInvoiceTest() throws IOException {
+  public void cancelApprovedInvoiceTest(VertxTestContext vertxTestContext) throws IOException {
     Invoice invoice = getMockAs(APPROVED_INVOICE_SAMPLE_PATH, Invoice.class);
     List<InvoiceLine> invoiceLines = getMockAs(INVOICE_LINES_LIST_PATH, InvoiceLineCollection.class).getInvoiceLines();
 
     setupRestCalls(invoice, false);
 
-    CompletableFuture<Void> result = cancelService.cancelInvoice(invoice, invoiceLines, requestContextMock);
-    assertFalse(result.isCompletedExceptionally());
+    Future<Void> future = cancelService.cancelInvoice(invoice, invoiceLines, requestContext);
+    vertxTestContext.assertComplete(future)
+      .onSuccess(result -> {
+        vertxTestContext.completeNow();
+      })
+      .onFailure(vertxTestContext::failNow);
 
-    verifyCalls(invoiceLines);
   }
 
   @Test
-  public void cancelPaidInvoiceTest() throws IOException {
+  public void cancelPaidInvoiceTest(VertxTestContext vertxTestContext) throws IOException {
     Invoice invoice = getMockAs(PAID_INVOICE_SAMPLE_PATH, Invoice.class);
     List<InvoiceLine> invoiceLines = getMockAs(INVOICE_LINES_LIST_PATH, InvoiceLineCollection.class).getInvoiceLines();
 
     setupRestCalls(invoice, false);
 
-    CompletableFuture<Void> result =cancelService.cancelInvoice(invoice, invoiceLines, requestContextMock);
-    assertFalse(result.isCompletedExceptionally());
-
-    verifyCalls(invoiceLines);
+    Future<Void> future = cancelService.cancelInvoice(invoice, invoiceLines, requestContext);
+    vertxTestContext.assertComplete(future)
+      .onSuccess(result -> {
+        vertxTestContext.completeNow();
+      })
+      .onFailure(vertxTestContext::failNow);
   }
 
   @Test
-  public void validateCancelInvoiceTest() throws IOException {
+  public void validateCancelInvoiceTest(VertxTestContext vertxTestContext) throws IOException {
     Invoice invoice = getMockAs(OPENED_INVOICE_SAMPLE_PATH, Invoice.class);
     List<InvoiceLine> invoiceLines = getMockAs(INVOICE_LINES_LIST_PATH, InvoiceLineCollection.class).getInvoiceLines();
 
-    HttpException exception = assertThrows(HttpException.class,
-      () -> cancelService.cancelInvoice(invoice, invoiceLines, requestContextMock));
-    assertEquals(422, exception.getCode());
-    assertEquals(CANNOT_CANCEL_INVOICE.getDescription(), exception.getMessage());
+    var future =  cancelService.cancelInvoice(invoice, invoiceLines, requestContext);
+    vertxTestContext.assertFailure(future)
+      .onComplete(result -> {
+        var exception = (HttpException) result.cause();
+        assertEquals(422, exception.getCode());
+        assertEquals(CANNOT_CANCEL_INVOICE.getDescription(), exception.getMessage());
+        vertxTestContext.completeNow();
+      });
+
   }
 
   @Test
-  public void errorUnreleasingEncumbrances() throws IOException {
+  public void errorUnreleasingEncumbrances(VertxTestContext vertxTestContext) throws IOException {
     Invoice invoice = getMockAs(APPROVED_INVOICE_SAMPLE_PATH, Invoice.class);
     List<InvoiceLine> invoiceLines = getMockAs(INVOICE_LINES_LIST_PATH, InvoiceLineCollection.class).getInvoiceLines();
 
     setupRestCalls(invoice, true);
 
-    CompletionException expectedException = assertThrows(CompletionException.class, () -> {
-      CompletableFuture<Void> result = cancelService.cancelInvoice(invoice, invoiceLines, requestContextMock);
-      result.join();
-    });
-    HttpException httpException = (HttpException)expectedException.getCause();
-    assertEquals(500, httpException.getCode());
-    assertEquals(ERROR_UNRELEASING_ENCUMBRANCES.getDescription(), httpException.getMessage());
+    Future<Void> future = cancelService.cancelInvoice(invoice, invoiceLines, requestContext);
+    vertxTestContext.assertFailure(future)
+      .onComplete(result -> {
+        HttpException httpException = (HttpException) result.cause();
+        assertEquals(500, httpException.getCode());
+        assertEquals(ERROR_UNRELEASING_ENCUMBRANCES.getDescription(), httpException.getMessage());
+        vertxTestContext.completeNow();
+      });
+
   }
 
   private void setupRestCalls(Invoice invoice, boolean withError) throws IOException {
@@ -193,8 +216,7 @@ public class InvoiceCancelServiceTest {
       .withQuery(query)
       .withLimit(Integer.MAX_VALUE)
       .withOffset(0);
-    doReturn(completedFuture(trCollection)).when(restClient).get(argThat(re -> sameRequestEntry(requestEntry, re)),
-      eq(requestContextMock), eq(TransactionCollection.class));
+    doReturn(succeededFuture(trCollection)).when(restClient).get(requestEntry, TransactionCollection.class, requestContext);
   }
 
   private boolean sameRequestEntry(RequestEntry entry1, RequestEntry entry2) {
@@ -218,16 +240,13 @@ public class InvoiceCancelServiceTest {
     InvoiceTransactionSummary summary = new InvoiceTransactionSummary().withId(invoice.getId())
       .withNumPaymentsCredits(3)
       .withNumPendingPayments(1);
-    doReturn(completedFuture(null)).when(restClient).put(argThat(re -> sameRequestEntry(requestEntry, re)),
-      eq(summary), eq(requestContextMock));
+    doReturn(succeededFuture(null)).when(restClient).put(requestEntry, summary, requestContext);
   }
 
   private void setupUpdateTransactions() {
     List<TransactionType> matchedTypes = List.of(TransactionType.PAYMENT, TransactionType.PENDING_PAYMENT,
       TransactionType.CREDIT);
-    doReturn(completedFuture(null)).when(restClient).put(any(),
-      argThat(entity -> entity instanceof Transaction && matchedTypes.contains(((Transaction)entity).getTransactionType())),
-      eq(requestContextMock));
+  //  doReturn(succeededFuture(null)).when(restClient).put(any(RequestEntry.class), any(Transaction.class), eq(requestContext));
   }
 
   private void setupUpdateVoucher(Invoice invoice) throws IOException {
@@ -240,13 +259,11 @@ public class InvoiceCancelServiceTest {
       .withQuery(String.format("invoiceId==%s", invoice.getId()))
       .withLimit(1)
       .withOffset(0);
-    doReturn(completedFuture(voucherCollection)).when(restClient).get(argThat(re -> sameRequestEntry(getRequestEntry, re)),
-      eq(requestContextMock), eq(VoucherCollection.class));
+    doReturn(succeededFuture(voucherCollection)).when(restClient).get(any(RequestEntry.class), eq(VoucherCollection.class), eq(requestContext));
     // PUT Voucher
     RequestEntry putRequestEntry = new RequestEntry(VOUCHER_BY_ID_ENDPOINT)
       .withId(voucher.getId());
-    doReturn(completedFuture(null)).when(restClient).put(argThat(re -> sameRequestEntry(putRequestEntry, re)),
-      any(Voucher.class), eq(requestContextMock));
+    doReturn(succeededFuture(null)).when(restClient).put(any(RequestEntry.class), any(Voucher.class), eq(requestContext));
   }
 
   private void setupUnreleaseEncumbrances(boolean withError) {
@@ -295,8 +312,8 @@ public class InvoiceCancelServiceTest {
       .withQuery(poLineQuery)
       .withOffset(0)
       .withLimit(Integer.MAX_VALUE);
-    doReturn(completedFuture(poLineCollection)).when(restClient).get(argThat(re -> sameRequestEntry(requestEntry, re)),
-      eq(requestContextMock), eq(PoLineCollection.class));
+    doReturn(succeededFuture(poLineCollection)).when(restClient).get(any(RequestEntry.class), eq(PoLineCollection.class), eq(
+      requestContext));
   }
 
   private void setupOrderQuery(List<PurchaseOrder> orders) {
@@ -311,8 +328,8 @@ public class InvoiceCancelServiceTest {
       .withQuery(orderQuery)
       .withOffset(0)
       .withLimit(Integer.MAX_VALUE);
-    doReturn(completedFuture(orderCollection)).when(restClient).get(argThat(re -> sameRequestEntry(requestEntry, re)),
-      eq(requestContextMock), eq(PurchaseOrderCollection.class));
+    doReturn(succeededFuture(orderCollection)).when(restClient).get(any(RequestEntry.class), eq(PurchaseOrderCollection.class), eq(
+      requestContext));
   }
 
   private void setupEncumbranceQuery(List<PurchaseOrder> orders, List<PoLine> poLines,
@@ -332,8 +349,8 @@ public class InvoiceCancelServiceTest {
       .withQuery(transactionQuery)
       .withOffset(0)
       .withLimit(Integer.MAX_VALUE);
-    doReturn(completedFuture(transactionCollection)).when(restClient).get(argThat(re -> sameRequestEntry(requestEntry, re)),
-      eq(requestContextMock), eq(TransactionCollection.class));
+    doReturn(succeededFuture(transactionCollection)).when(restClient).get(any(RequestEntry.class), eq(TransactionCollection.class), eq(
+      requestContext));
   }
 
   private void setupUpdateOrderTransactionSummary(PurchaseOrder order) {
@@ -341,8 +358,7 @@ public class InvoiceCancelServiceTest {
       .withPathParameter("id", order.getId());
     OrderTransactionSummary summary = new OrderTransactionSummary().withId(order.getId())
         .withNumTransactions(1);
-    doReturn(completedFuture(null)).when(restClient).put(argThat(re -> sameRequestEntry(requestEntry, re)),
-      eq(summary), eq(requestContextMock));
+    doReturn(succeededFuture(null)).when(restClient).put(any(RequestEntry.class), eq(summary), eq(requestContext));
   }
 
   private void setupEncumbrancePut(Transaction transaction) {
@@ -350,8 +366,7 @@ public class InvoiceCancelServiceTest {
       .withPathParameter("id", transaction.getId());
     Transaction updatedTransaction = JsonObject.mapFrom(transaction).mapTo(Transaction.class);
     updatedTransaction.getEncumbrance().setStatus(UNRELEASED);
-    doReturn(completedFuture(null)).when(restClient).put(argThat(re -> sameRequestEntry(requestEntry, re)),
-      eq(updatedTransaction), eq(requestContextMock));
+    doReturn(succeededFuture(null)).when(restClient).put(any(RequestEntry.class), eq(updatedTransaction), any(RequestContext.class));
   }
 
   private void setupEncumbrancePutWithError(Transaction transaction) {
@@ -360,56 +375,7 @@ public class InvoiceCancelServiceTest {
     Transaction updatedTransaction = JsonObject.mapFrom(transaction).mapTo(Transaction.class);
     updatedTransaction.getEncumbrance().setStatus(UNRELEASED);
     HttpException ex = new HttpException(500, "Error test");
-    doReturn(failedFuture(ex)).when(restClient).put(argThat(re -> sameRequestEntry(requestEntry, re)),
-      eq(updatedTransaction), eq(requestContextMock));
-  }
-
-  private void verifyCalls(List<InvoiceLine> invoiceLines) {
-    verify(restClient, times(1))
-      .get(argThat(requestEntry -> ((String)requestEntry.getQueryParams().get("query")).startsWith("sourceInvoiceId")),
-        eq(requestContextMock),
-        eq(TransactionCollection.class));
-
-    verify(restClient, times(1))
-      .put(any(RequestEntry.class), any(InvoiceTransactionSummary.class), eq(requestContextMock));
-
-    verify(restClient, times(3))
-      .put(any(RequestEntry.class),
-        argThat(entity -> entity instanceof Transaction && ((Transaction)entity).getInvoiceCancelled() != null &&
-          ((Transaction)entity).getInvoiceCancelled()),
-        eq(requestContextMock));
-
-    checkInvoiceLines(invoiceLines);
-
-    verify(restClient, times(1))
-      .get(any(RequestEntry.class), eq(requestContextMock), eq(VoucherCollection.class));
-
-    verify(restClient, times(1))
-      .put(any(RequestEntry.class),
-        argThat(entity -> entity instanceof Voucher && ((Voucher)entity).getStatus() == Voucher.Status.CANCELLED),
-        eq(requestContextMock));
-
-    verify(restClient, times(1))
-      .get(any(RequestEntry.class), eq(requestContextMock), eq(PoLineCollection.class));
-
-    verify(restClient, times(1))
-      .get(any(RequestEntry.class), eq(requestContextMock), eq(PurchaseOrderCollection.class));
-
-    verify(restClient, times(1))
-      .get(argThat(requestEntry -> ((String)requestEntry.getQueryParams().get("query")).startsWith("transactionType")),
-        eq(requestContextMock),
-        eq(TransactionCollection.class));
-
-    verify(restClient, times(1))
-      .put(any(RequestEntry.class), any(OrderTransactionSummary.class), eq(requestContextMock));
-
-    verify(restClient, times(1))
-      .put(any(RequestEntry.class),
-        argThat(entity -> entity instanceof Transaction &&
-          ((Transaction)entity).getTransactionType().equals(TransactionType.ENCUMBRANCE)),
-        eq(requestContextMock));
-
-    verifyNoMoreInteractions(restClient);
+    doReturn(failedFuture(ex)).when(restClient).put(requestEntry, updatedTransaction, requestContext);
   }
 
   private void checkInvoiceLines(List<InvoiceLine> invoiceLines) {

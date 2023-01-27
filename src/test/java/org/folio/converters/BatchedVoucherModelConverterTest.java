@@ -1,7 +1,9 @@
 package org.folio.converters;
 
 import static org.folio.jaxb.JAXBUtil.convertOldJavaDate;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 import java.io.IOException;
 import java.math.BigDecimal;

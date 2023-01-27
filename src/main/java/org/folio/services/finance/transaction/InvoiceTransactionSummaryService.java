@@ -1,14 +1,14 @@
 package org.folio.services.finance.transaction;
 
-import java.util.concurrent.CompletableFuture;
+import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_TRANSACTION_SUMMARIES;
+import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
 
 import org.folio.rest.acq.model.finance.InvoiceTransactionSummary;
 import org.folio.rest.core.RestClient;
 import org.folio.rest.core.models.RequestContext;
 import org.folio.rest.core.models.RequestEntry;
 
-import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_TRANSACTION_SUMMARIES;
-import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
+import io.vertx.core.Future;
 
 public class InvoiceTransactionSummaryService {
 
@@ -21,12 +21,12 @@ public class InvoiceTransactionSummaryService {
     this.restClient = restClient;
   }
 
-  public CompletableFuture<InvoiceTransactionSummary> createInvoiceTransactionSummary(InvoiceTransactionSummary transactionSummary, RequestContext requestContext) {
+  public Future<InvoiceTransactionSummary> createInvoiceTransactionSummary(InvoiceTransactionSummary transactionSummary, RequestContext requestContext) {
     RequestEntry requestEntry = new RequestEntry(INVOICE_TRANSACTION_SUMMARIES_ENDPOINT);
-    return restClient.post(requestEntry, transactionSummary, requestContext, InvoiceTransactionSummary.class);
+    return restClient.post(requestEntry, transactionSummary, InvoiceTransactionSummary.class, requestContext);
   }
 
-  public CompletableFuture<Void> updateInvoiceTransactionSummary(InvoiceTransactionSummary invoiceTransactionSummary, RequestContext requestContext) {
+  public Future<Void> updateInvoiceTransactionSummary(InvoiceTransactionSummary invoiceTransactionSummary, RequestContext requestContext) {
     RequestEntry requestEntry = new RequestEntry(INVOICE_TRANSACTION_SUMMARIES_BY_ID_ENDPOINT)
         .withId(invoiceTransactionSummary.getId());
     return restClient.put(requestEntry, invoiceTransactionSummary, requestContext);

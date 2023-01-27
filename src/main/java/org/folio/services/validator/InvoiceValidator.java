@@ -1,25 +1,5 @@
 package org.folio.services.validator;
 
-import com.google.common.collect.Lists;
-import org.apache.commons.collections4.CollectionUtils;
-import org.apache.commons.lang3.StringUtils;
-import org.folio.invoices.rest.exceptions.HttpException;
-import org.folio.invoices.utils.InvoiceProtectedFields;
-import org.folio.rest.jaxrs.model.Adjustment;
-import org.folio.rest.jaxrs.model.Error;
-import org.folio.rest.jaxrs.model.Errors;
-import org.folio.rest.jaxrs.model.FundDistribution;
-import org.folio.rest.jaxrs.model.Invoice;
-import org.folio.rest.jaxrs.model.InvoiceLine;
-import org.folio.rest.jaxrs.model.Parameter;
-import org.folio.services.adjusment.AdjustmentsService;
-
-import java.math.BigDecimal;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.stream.Collectors;
-
 import static java.math.RoundingMode.HALF_EVEN;
 import static org.folio.invoices.utils.ErrorCodes.ACCOUNTING_CODE_NOT_PRESENT;
 import static org.folio.invoices.utils.ErrorCodes.ADJUSTMENT_FUND_DISTRIBUTIONS_NOT_PRESENT;
@@ -34,6 +14,27 @@ import static org.folio.invoices.utils.HelperUtils.isPostApproval;
 import static org.folio.rest.jaxrs.model.FundDistribution.DistributionType.AMOUNT;
 import static org.folio.rest.jaxrs.model.FundDistribution.DistributionType.PERCENTAGE;
 
+import java.math.BigDecimal;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
+
+import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.lang3.StringUtils;
+import org.folio.invoices.rest.exceptions.HttpException;
+import org.folio.invoices.utils.InvoiceProtectedFields;
+import org.folio.rest.jaxrs.model.Adjustment;
+import org.folio.rest.jaxrs.model.Error;
+import org.folio.rest.jaxrs.model.Errors;
+import org.folio.rest.jaxrs.model.FundDistribution;
+import org.folio.rest.jaxrs.model.Invoice;
+import org.folio.rest.jaxrs.model.InvoiceLine;
+import org.folio.rest.jaxrs.model.Parameter;
+import org.folio.services.adjusment.AdjustmentsService;
+
+import com.google.common.collect.Lists;
+
 public class InvoiceValidator extends BaseValidator {
 
   public static final String TOTAL = "total";
@@ -43,7 +44,7 @@ public class InvoiceValidator extends BaseValidator {
   private static final BigDecimal ZERO_REMAINING_AMOUNT = BigDecimal.ZERO.setScale(2, HALF_EVEN);
   private static final BigDecimal ONE_HUNDRED_PERCENT = BigDecimal.valueOf(100);
 
-  private AdjustmentsService adjustmentsService = new AdjustmentsService();
+  private final AdjustmentsService adjustmentsService = new AdjustmentsService();
 
   public void validateInvoiceProtectedFields(Invoice invoice, Invoice invoiceFromStorage) {
     if(isPostApproval(invoiceFromStorage)) {

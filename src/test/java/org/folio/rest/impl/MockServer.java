@@ -11,7 +11,39 @@ import static org.folio.invoices.utils.HelperUtils.ALL_UNITS_CQL;
 import static org.folio.invoices.utils.HelperUtils.INVOICE_ID;
 import static org.folio.invoices.utils.HelperUtils.IS_DELETED_PROP;
 import static org.folio.invoices.utils.HelperUtils.QUERY_PARAM_START_WITH;
-import static org.folio.invoices.utils.ResourcePathResolver.*;
+import static org.folio.invoices.utils.ResourcePathResolver.ACQUISITIONS_MEMBERSHIPS;
+import static org.folio.invoices.utils.ResourcePathResolver.ACQUISITIONS_UNITS;
+import static org.folio.invoices.utils.ResourcePathResolver.BATCH_GROUPS;
+import static org.folio.invoices.utils.ResourcePathResolver.BATCH_VOUCHER_EXPORTS_STORAGE;
+import static org.folio.invoices.utils.ResourcePathResolver.BATCH_VOUCHER_EXPORT_CONFIGS;
+import static org.folio.invoices.utils.ResourcePathResolver.BATCH_VOUCHER_EXPORT_CONFIGS_CREDENTIALS;
+import static org.folio.invoices.utils.ResourcePathResolver.BATCH_VOUCHER_STORAGE;
+import static org.folio.invoices.utils.ResourcePathResolver.BUDGETS;
+import static org.folio.invoices.utils.ResourcePathResolver.BUDGET_EXPENSE_CLASSES;
+import static org.folio.invoices.utils.ResourcePathResolver.COMPOSITE_ORDER;
+import static org.folio.invoices.utils.ResourcePathResolver.CURRENT_BUDGET;
+import static org.folio.invoices.utils.ResourcePathResolver.EXPENSE_CLASSES_URL;
+import static org.folio.invoices.utils.ResourcePathResolver.FINANCE_CREDITS;
+import static org.folio.invoices.utils.ResourcePathResolver.FINANCE_EXCHANGE_RATE;
+import static org.folio.invoices.utils.ResourcePathResolver.FINANCE_PAYMENTS;
+import static org.folio.invoices.utils.ResourcePathResolver.FINANCE_PENDING_PAYMENTS;
+import static org.folio.invoices.utils.ResourcePathResolver.FINANCE_TRANSACTIONS;
+import static org.folio.invoices.utils.ResourcePathResolver.FISCAL_YEARS;
+import static org.folio.invoices.utils.ResourcePathResolver.FOLIO_INVOICE_NUMBER;
+import static org.folio.invoices.utils.ResourcePathResolver.FUNDS;
+import static org.folio.invoices.utils.ResourcePathResolver.INVOICES;
+import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_DOCUMENTS;
+import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_LINES;
+import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_LINE_NUMBER;
+import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_TRANSACTION_SUMMARIES;
+import static org.folio.invoices.utils.ResourcePathResolver.LEDGERS;
+import static org.folio.invoices.utils.ResourcePathResolver.ORDER_INVOICE_RELATIONSHIP;
+import static org.folio.invoices.utils.ResourcePathResolver.ORDER_LINES;
+import static org.folio.invoices.utils.ResourcePathResolver.VOUCHERS_STORAGE;
+import static org.folio.invoices.utils.ResourcePathResolver.VOUCHER_LINES;
+import static org.folio.invoices.utils.ResourcePathResolver.VOUCHER_NUMBER_START;
+import static org.folio.invoices.utils.ResourcePathResolver.VOUCHER_NUMBER_STORAGE;
+import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
 import static org.folio.rest.RestVerticle.OKAPI_HEADER_TENANT;
 import static org.folio.rest.impl.ApiTestBase.BASE_MOCK_DATA_PATH;
 import static org.folio.rest.impl.ApiTestBase.FOLIO_INVOICE_NUMBER_VALUE;
@@ -45,10 +77,10 @@ import static org.folio.rest.impl.InvoicesApiTest.EXPENSE_CLASSES_LIST_PATH;
 import static org.folio.rest.impl.InvoicesApiTest.EXPENSE_CLASSES_MOCK_DATA_PATH;
 import static org.folio.rest.impl.InvoicesApiTest.FUND_ID_WITH_NOT_ACTIVE_BUDGET;
 import static org.folio.rest.impl.InvoicesApiTest.INVOICE_MOCK_DATA_PATH;
-import static org.folio.rest.impl.ProtectionHelper.ACQUISITIONS_UNIT_ID;
 import static org.folio.rest.impl.VoucherLinesApiTest.VOUCHER_LINES_MOCK_DATA_PATH;
 import static org.folio.rest.impl.VouchersApiTest.VOUCHERS_LIST_PATH;
 import static org.folio.rest.impl.VouchersApiTest.VOUCHER_MOCK_DATA_PATH;
+import static org.folio.services.AcquisitionsUnitsService.ACQUISITIONS_UNIT_ID;
 import static org.folio.services.voucher.VoucherCommandService.VOUCHER_NUMBER_CONFIG_NAME;
 import static org.folio.services.voucher.VoucherCommandService.VOUCHER_NUMBER_PREFIX_CONFIG;
 import static org.junit.Assert.fail;
@@ -63,7 +95,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -74,8 +105,9 @@ import java.util.regex.Pattern;
 
 import javax.ws.rs.core.Response;
 
-import io.vertx.core.json.Json;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.folio.HttpStatus;
 import org.folio.invoices.utils.ResourcePathResolver;
 import org.folio.rest.acq.model.BatchGroup;
@@ -132,13 +164,13 @@ import com.google.common.collect.HashBasedTable;
 import com.google.common.collect.Table;
 
 import io.restassured.http.Header;
+import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.core.http.HttpHeaders;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.core.http.HttpServer;
+import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
-import org.apache.logging.log4j.Logger;
-import org.apache.logging.log4j.LogManager;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
 import io.vertx.ext.web.handler.BodyHandler;
@@ -246,12 +278,12 @@ public class MockServer {
   public void start() throws InterruptedException, ExecutionException, TimeoutException {
     // Setup Mock Server...
     HttpServer server = vertx.createHttpServer();
-    CompletableFuture<HttpServer> deploymentComplete = new CompletableFuture<>();
+    Promise<HttpServer> deploymentComplete = Promise.promise();
     server.requestHandler(defineRoutes()).listen(port, result -> {
       if (result.succeeded()) {
         deploymentComplete.complete(result.result());
       } else {
-        deploymentComplete.completeExceptionally(result.cause());
+        deploymentComplete.fail(result.cause());
       }
     });
 
@@ -271,7 +303,7 @@ public class MockServer {
     ftpUri = "ftp://localhost:" + fakeFtpServer.getServerControlPort() + "/";
     logger.info("Mock FTP server running at: " + ftpUri);
 
-    deploymentComplete.get(60, TimeUnit.SECONDS);
+    deploymentComplete.future().toCompletionStage().toCompletableFuture().get(60, TimeUnit.SECONDS);
   }
 
   public void close() {
@@ -588,7 +620,9 @@ public class MockServer {
     logger.info("handlePostOrderInvoiceRelations got: " + ctx.request().path());
     String tenant = ctx.request().getHeader(OKAPI_HEADER_TENANT);
 
-    JsonObject body = ctx.getBodyAsJson();
+    JsonObject body = ctx.body().asJsonObject();
+    body.put("id", UUID.randomUUID().toString());
+
     addServerRqRsData(HttpMethod.POST, ORDER_INVOICE_RELATIONSHIP, body);
     serverResponse(ctx, 201, APPLICATION_JSON, body.encodePrettily());
   }
@@ -599,7 +633,9 @@ public class MockServer {
     if (POST_PENDING_PAYMENT_ERROR_TENANT.equals(tenant)) {
       serverResponse(ctx, 500, TEXT_PLAIN, INTERNAL_SERVER_ERROR.getReasonPhrase());
     } else {
-      JsonObject body = ctx.getBodyAsJson();
+      JsonObject body = ctx.body().asJsonObject();
+      body.put("id", UUID.randomUUID().toString());
+
       addServerRqRsData(HttpMethod.POST, FINANCE_PENDING_PAYMENTS, body);
       serverResponse(ctx, 201, APPLICATION_JSON, body.encodePrettily());
     }
@@ -611,7 +647,7 @@ public class MockServer {
     if (CREATE_INVOICE_TRANSACTION_SUMMARY_ERROR_TENANT.equals(tenant)) {
       serverResponse(ctx, 500, TEXT_PLAIN, INTERNAL_SERVER_ERROR.getReasonPhrase());
     } else {
-      JsonObject body = ctx.getBodyAsJson();
+      JsonObject body = ctx.body().asJsonObject();
       addServerRqRsData(HttpMethod.POST, INVOICE_TRANSACTION_SUMMARIES, body);
       serverResponse(ctx, 201, APPLICATION_JSON, JsonObject.mapFrom(body).encodePrettily());
     }
@@ -867,7 +903,7 @@ public class MockServer {
   }
 
   private void handlePostInvoiceDocument(RoutingContext ctx) {
-    InvoiceDocument invoiceDocument = ctx.getBodyAsJson().mapTo(InvoiceDocument.class);
+    InvoiceDocument invoiceDocument = ctx.body().asJsonObject().mapTo(InvoiceDocument.class);
     String id = UUID.randomUUID().toString();
     invoiceDocument.getDocumentMetadata().setId(id);
     JsonObject jsonDocument = JsonObject.mapFrom(invoiceDocument);
@@ -879,7 +915,7 @@ public class MockServer {
   }
 
   private void handlePostCredentials(RoutingContext ctx) {
-    Credentials credentials = ctx.getBodyAsJson().mapTo(Credentials.class);
+    Credentials credentials = ctx.body().asJsonObject().mapTo(Credentials.class);
     String id = credentials.getId();
     JsonObject jsonObject = JsonObject.mapFrom(credentials);
     addServerRqRsData(HttpMethod.POST, BATCH_VOUCHER_EXPORT_CONFIGS_CREDENTIALS, jsonObject);
@@ -1010,12 +1046,12 @@ public class MockServer {
   }
 
   private <T> void handlePost(RoutingContext ctx, Class<T> tClass, String entryName, boolean generateId) {
-    logger.info("got: " + ctx.getBodyAsString());
+    logger.info("got: " + ctx.body().asString());
     String tenant = ctx.request().getHeader(OKAPI_HEADER_TENANT);
     if (ERROR_TENANT.equals(tenant) || CREATE_VOUCHER_ERROR_TENANT.equals(tenant) || CREATE_VOUCHER_LINES_ERROR_TENANT.equals(tenant)) {
       serverResponse(ctx, 500, TEXT_PLAIN, INTERNAL_SERVER_ERROR.getReasonPhrase());
     } else {
-      JsonObject body = ctx.getBodyAsJson();
+      JsonObject body = ctx.body().asJsonObject();
       if (generateId) {
         String id = UUID.randomUUID().toString();
         body.put(AbstractHelper.ID, id);
@@ -1184,7 +1220,7 @@ public class MockServer {
   }
 
   private void handlePostVoucherStartValue(RoutingContext ctx) {
-    logger.info("got: " + ctx.getBodyAsString());
+    logger.info("got: " + ctx.body().asString());
     String startValue = ctx.request().getParam("value");
     if (ERROR_TENANT.equals(ctx.request().getHeader(OKAPI_HEADER_TENANT))) {
       serverResponse(ctx, 500, TEXT_PLAIN, INTERNAL_SERVER_ERROR.getReasonPhrase());
@@ -1312,7 +1348,7 @@ public class MockServer {
     logger.info("handlePutGenericSubObj got: PUT " + ctx.request().path());
     String id = ctx.request().getParam(AbstractHelper.ID);
     String tenant = ctx.request().getHeader(OKAPI_HEADER_TENANT);
-    addServerRqRsData(HttpMethod.PUT, subObj, ctx.getBodyAsJson());
+    addServerRqRsData(HttpMethod.PUT, subObj, ctx.body().asJsonObject());
 
     if (ID_DOES_NOT_EXIST.equals(id)) {
       serverResponse(ctx, 404, APPLICATION_JSON, id);

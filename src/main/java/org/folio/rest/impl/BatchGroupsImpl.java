@@ -6,6 +6,8 @@ import java.util.Map;
 
 import javax.ws.rs.core.Response;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.folio.rest.annotations.Validate;
 import org.folio.rest.jaxrs.model.BatchGroup;
 import org.folio.rest.jaxrs.resource.BatchGroups;
@@ -14,8 +16,6 @@ import io.vertx.core.AsyncResult;
 import io.vertx.core.Context;
 import io.vertx.core.Handler;
 import io.vertx.core.json.JsonObject;
-import org.apache.logging.log4j.Logger;
-import org.apache.logging.log4j.LogManager;
 
 public class BatchGroupsImpl implements BatchGroups {
 
@@ -26,14 +26,14 @@ public class BatchGroupsImpl implements BatchGroups {
   @Override
   public void postBatchGroups(String lang, BatchGroup batchGroup, Map<String, String> okapiHeaders,
     Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
-    BatchGroupHelper helper = new BatchGroupHelper(okapiHeaders, vertxContext, lang);
+    BatchGroupHelper helper = new BatchGroupHelper(okapiHeaders, vertxContext);
 
     helper.createBatchGroup(batchGroup)
-      .thenAccept(bg -> asyncResultHandler.handle(succeededFuture(
+      .onSuccess(bg -> asyncResultHandler.handle(succeededFuture(
         helper.buildResponseWithLocation(String.format(BATCH_GROUP_LOCATION_PREFIX, bg.getId()), bg))))
-      .exceptionally(t -> {
+      .onFailure(t -> {
         logger.error("Failed to create batch group ", t);
-        return handleErrorResponse(asyncResultHandler, helper, t);
+        handleErrorResponse(asyncResultHandler, helper, t);
       });
   }
 
@@ -41,38 +41,38 @@ public class BatchGroupsImpl implements BatchGroups {
   @Override
   public void getBatchGroups(int offset, int limit, String query, String lang, Map<String, String> okapiHeaders,
     Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
-    BatchGroupHelper helper = new BatchGroupHelper(okapiHeaders, vertxContext, lang);
+    BatchGroupHelper helper = new BatchGroupHelper(okapiHeaders, vertxContext);
 
     helper.getBatchGroups(limit, offset, query)
-      .thenAccept(batchGroups -> {
+      .onSuccess(batchGroups -> {
         logInfo("Successfully retrieved batch groups: {}", batchGroups);
         asyncResultHandler.handle(succeededFuture(helper.buildOkResponse(batchGroups)));
       })
-      .exceptionally(t -> handleErrorResponse(asyncResultHandler, helper, t));
+      .onFailure(t -> handleErrorResponse(asyncResultHandler, helper, t));
   }
 
   @Validate
   @Override
   public void getBatchGroupsById(String id, String lang, Map<String, String> okapiHeaders,
     Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
-    BatchGroupHelper helper = new BatchGroupHelper(okapiHeaders, vertxContext, lang);
+    BatchGroupHelper helper = new BatchGroupHelper(okapiHeaders, vertxContext);
 
     helper.getBatchGroup(id)
-      .thenAccept(batchGroup -> asyncResultHandler.handle(succeededFuture(helper.buildOkResponse(batchGroup))))
-      .exceptionally(t -> handleErrorResponse(asyncResultHandler, helper, t));
+      .onSuccess(batchGroup -> asyncResultHandler.handle(succeededFuture(helper.buildOkResponse(batchGroup))))
+      .onFailure(t -> handleErrorResponse(asyncResultHandler, helper, t));
   }
 
   @Validate
   @Override
   public void putBatchGroupsById(String id, String lang, BatchGroup batchGroup, Map<String, String> okapiHeaders,
     Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
-    BatchGroupHelper helper = new BatchGroupHelper(okapiHeaders, vertxContext, lang);
+    BatchGroupHelper helper = new BatchGroupHelper(okapiHeaders, vertxContext);
 
     helper.updateBatchGroupRecord(batchGroup)
-      .thenAccept(ok -> asyncResultHandler.handle(succeededFuture(helper.buildNoContentResponse())))
-      .exceptionally(ex -> {
+      .onSuccess(ok -> asyncResultHandler.handle(succeededFuture(helper.buildNoContentResponse())))
+      .onFailure(ex -> {
         logger.error("Failed to update batch group with id={}", batchGroup.getId(), ex);
-        return handleErrorResponse(asyncResultHandler, helper, ex);
+        handleErrorResponse(asyncResultHandler, helper, ex);
       });
   }
 
@@ -80,11 +80,11 @@ public class BatchGroupsImpl implements BatchGroups {
   @Override
   public void deleteBatchGroupsById(String id, String lang, Map<String, String> okapiHeaders,
     Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
-    BatchGroupHelper helper = new BatchGroupHelper(okapiHeaders, vertxContext, lang);
+    BatchGroupHelper helper = new BatchGroupHelper(okapiHeaders, vertxContext);
 
     helper.deleteBatchGroup(id)
-      .thenAccept(ok -> asyncResultHandler.handle(succeededFuture(helper.buildNoContentResponse())))
-      .exceptionally(fail -> handleErrorResponse(asyncResultHandler, helper, fail));
+      .onSuccess(ok -> asyncResultHandler.handle(succeededFuture(helper.buildNoContentResponse())))
+      .onFailure(fail -> handleErrorResponse(asyncResultHandler, helper, fail));
   }
 
   private void logInfo(String message, Object entry) {

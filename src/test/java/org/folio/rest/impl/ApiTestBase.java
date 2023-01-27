@@ -23,6 +23,8 @@ import java.util.stream.Stream;
 import javax.ws.rs.core.HttpHeaders;
 
 import org.apache.commons.io.IOUtils;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.folio.ApiTestSuite;
 import org.folio.rest.core.RestClient;
 import org.folio.rest.jaxrs.model.Adjustment;
@@ -32,8 +34,8 @@ import org.folio.rest.jaxrs.model.InvoiceLine;
 import org.folio.services.invoice.BaseInvoiceService;
 import org.folio.services.invoice.InvoiceLineService;
 import org.folio.services.invoice.InvoiceService;
-import org.folio.services.order.OrderService;
 import org.folio.services.order.OrderLineService;
+import org.folio.services.order.OrderService;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
@@ -46,8 +48,6 @@ import io.restassured.http.Header;
 import io.restassured.http.Headers;
 import io.restassured.response.Response;
 import io.vertx.core.json.JsonObject;
-import org.apache.logging.log4j.Logger;
-import org.apache.logging.log4j.LogManager;
 
 public class ApiTestBase {
 
@@ -74,7 +74,6 @@ public class ApiTestBase {
   static final String INVOICE_LINE_NUMBER_VALUE = "1";
   static final String VOUCHER_NUMBER_VALUE = "1";
   static final String LANG_PARAM = "lang";
-  static final String INVALID_LANG = "english";
   static final String ID_FOR_INTERNAL_SERVER_ERROR = "168f8a86-d26c-406e-813f-c7527f241ac3";
   static final String ID_FOR_INTERNAL_SERVER_ERROR_PUT = "bad500bb-bbbb-500b-bbbb-bbbbbbbbbbbb";
 
@@ -189,6 +188,7 @@ public class ApiTestBase {
           .extract()
             .response();
     // sleep needed to avoid some issues with async processing - otherwise some tests start running in parallel and fail randomly (see MODINVOICE-265)
+    // FIXME : apply async approach
     try {
       Thread.sleep(100);
     } catch (InterruptedException e) {

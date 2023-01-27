@@ -1,6 +1,5 @@
 package org.folio.services.finance.transaction;
 
-import static java.util.concurrent.CompletableFuture.completedFuture;
 import static java.util.stream.Collectors.toList;
 import static org.folio.invoices.utils.ErrorCodes.PENDING_PAYMENT_ERROR;
 import static org.folio.invoices.utils.HelperUtils.collectResultsOnSuccess;
@@ -11,15 +10,15 @@ import static org.folio.services.FundsDistributionService.distributeFunds;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import java.util.concurrent.CompletableFuture;
+import java.util.stream.Collectors;
 
 import javax.money.MonetaryAmount;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.folio.completablefuture.FolioVertxCompletableFuture;
 import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.models.InvoiceWorkflowDataHolder;
+import org.folio.okapi.common.GenericCompositeFuture;
 import org.folio.rest.acq.model.finance.AwaitingPayment;
 import org.folio.rest.acq.model.finance.InvoiceTransactionSummary;
 import org.folio.rest.acq.model.finance.Transaction;
@@ -28,6 +27,10 @@ import org.folio.rest.jaxrs.model.FundDistribution;
 import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.jaxrs.model.InvoiceLine;
 import org.folio.services.validator.HolderValidator;
+
+import io.vertx.core.Future;
+import io.vertx.core.Vertx;
+import io.vertxconcurrent.Semaphore;
 
 public class PendingPaymentWorkflowService {
 
@@ -50,21 +53,21 @@ public class PendingPaymentWorkflowService {
 
   }
 
-  public CompletableFuture<Void> handlePendingPaymentsCreation(List<InvoiceWorkflowDataHolder> dataHolders, RequestContext requestContext) {
+  public Future<Void> handlePendingPaymentsCreation(List<InvoiceWorkflowDataHolder> dataHolders, RequestContext requestContext) {
     List<InvoiceWorkflowDataHolder> holders = withNewPendingPayments(dataHolders);
     holderValidator.validate(holders);
     InvoiceTransactionSummary summary = buildInvoiceTransactionsSummary(holders);
     return invoiceTransactionSummaryService.createInvoiceTransactionSummary(summary, requestContext)
-      .thenCompose(s -> createPendingPayments(holders, requestContext))
-      .thenCompose(s -> cleanupOldEncumbrances(holders, requestContext));
+      .compose(s -> createPendingPayments(holders, requestContext))
+      .compose(s -> cleanupOldEncumbrances(holders, requestContext));
   }
 
-  public CompletableFuture<Void> handlePendingPaymentsUpdate(List<InvoiceWorkflowDataHolder> dataHolders, RequestContext requestContext) {
+  public Future<Void> handlePendingPaymentsUpdate(List<InvoiceWorkflowDataHolder> dataHolders, RequestContext requestContext) {
     List<InvoiceWorkflowDataHolder> holders = withNewPendingPayments(dataHolders);
     holderValidator.validate(holders);
     InvoiceTransactionSummary invoiceTransactionSummary = buildInvoiceTransactionsSummary(holders);
     return invoiceTransactionSummaryService.updateInvoiceTransactionSummary(invoiceTransactionSummary, requestContext)
-      .thenCompose(aVoid -> updateTransactions(holders, requestContext));
+      .compose(aVoid -> updateTransactions(holders, requestContext));
   }
 
   private InvoiceTransactionSummary buildInvoiceTransactionsSummary(List<InvoiceWorkflowDataHolder> holders) {
@@ -76,29 +79,39 @@ public class PendingPaymentWorkflowService {
             .orElse(null);
   }
 
-  private CompletableFuture<Void> createPendingPayments(List<InvoiceWorkflowDataHolder> holders, RequestContext requestContext) {
-    CompletableFuture<Void> future = completedFuture(null);
-    for (InvoiceWorkflowDataHolder holder : holders) {
-      Transaction pendingPayment = holder.getNewTransaction();
-      future = future.thenCompose(v -> baseTransactionService.createTransaction(pendingPayment, requestContext)
-        .thenAccept(t -> {})
-        .exceptionally(t -> {
-          logger.error("Failed to create pending payment with id {}", pendingPayment.getId(), t);
-          throw new HttpException(500, PENDING_PAYMENT_ERROR.toError());
-        })
-      );
-    }
-    return future;
+  private Future<Void> createPendingPayments(List<InvoiceWorkflowDataHolder> holders, RequestContext requestContext) {
+    List<Future<Void>> futures = new ArrayList<>();
+
+    return requestContext.getContext()
+      .executeBlocking(promise -> {
+        Semaphore semaphore = new Semaphore(5, Vertx.currentContext().owner());
+
+        for (InvoiceWorkflowDataHolder holder : holders) {
+          Transaction pendingPayment = holder.getNewTransaction();
+          Future<Void> future = baseTransactionService.createTransaction(pendingPayment, requestContext)
+            .recover(t -> {
+              logger.error("Failed to create pending payment with id {}", pendingPayment.getId(), t);
+              throw new HttpException(500, PENDING_PAYMENT_ERROR.toError());
+            })
+            .mapEmpty();
+          futures.add(future);
+          semaphore.acquire(() ->
+            future.onComplete(asyncResult -> semaphore.release()));
+        }
+        promise.complete();
+      })
+      .compose(v-> GenericCompositeFuture.join(futures))
+      .mapEmpty();
   }
 
-  private CompletableFuture<Void> cleanupOldEncumbrances(List<InvoiceWorkflowDataHolder> holders, RequestContext requestContext) {
+  private Future<Void> cleanupOldEncumbrances(List<InvoiceWorkflowDataHolder> holders, RequestContext requestContext) {
     List<String> poLineIds = holders.stream().filter(holder -> holder.getInvoiceLine() != null).map(holder -> holder.getInvoiceLine().getPoLineId()).collect(toList());
     return encumbranceService.getEncumbrancesByPoLineIds(poLineIds, requestContext)
-      .thenCompose(transactions -> cleanupOldEncumbrances(transactions, holders, requestContext));
+      .compose(transactions -> cleanupOldEncumbrances(transactions, holders, requestContext));
   }
 
-  private CompletableFuture<Void> cleanupOldEncumbrances(List<Transaction> poLineTransactions, List<InvoiceWorkflowDataHolder> holders, RequestContext requestContext) {
-    List<CompletableFuture<Void>> futures = new ArrayList<>();
+  private Future<Void> cleanupOldEncumbrances(List<Transaction> poLineTransactions, List<InvoiceWorkflowDataHolder> holders, RequestContext requestContext) {
+    List<Future<Void>> futures = new ArrayList<>();
 
     for (Transaction transaction : poLineTransactions) {
       boolean encumbranceIsNoLongerRelevant = holders.stream().noneMatch(holder -> sameFundAndPoLine(transaction, holder));
@@ -107,9 +120,9 @@ public class PendingPaymentWorkflowService {
       }
     }
 
-    return collectResultsOnSuccess(futures)
-      .thenAccept(result -> logger.debug(
-          "Number of encumbrances released due to invoice lines fund distributions being different from PO lines fund distributions: {}", result.size()));
+    return collectResultsOnSuccess(futures).onSuccess(result ->
+        logger.debug("Number of encumbrances released due to invoice lines fund distributions being different from PO lines fund distributions: {}", result.size()))
+      .mapEmpty();
   }
 
   private boolean sameFundAndPoLine(Transaction transaction, InvoiceWorkflowDataHolder holder) {
@@ -123,11 +136,12 @@ public class PendingPaymentWorkflowService {
     return distributeFunds(invoiceWorkflowDataHolders);
   }
 
-  private CompletableFuture<Void> updateTransactions(List<InvoiceWorkflowDataHolder> holders, RequestContext requestContext) {
-    return FolioVertxCompletableFuture.allOf(requestContext.getContext(), holders.stream()
-    .map(InvoiceWorkflowDataHolder::getNewTransaction)
-    .map(transaction -> baseTransactionService.updateTransaction(transaction, requestContext))
-    .toArray(CompletableFuture[]::new));
+  private Future<Void> updateTransactions(List<InvoiceWorkflowDataHolder> holders, RequestContext requestContext) {
+    var futures = holders.stream()
+      .map(InvoiceWorkflowDataHolder::getNewTransaction)
+      .map(transaction -> baseTransactionService.updateTransaction(transaction, requestContext))
+      .collect(Collectors.toList());
+    return GenericCompositeFuture.join(futures).mapEmpty();
   }
 
   private Transaction buildTransaction(InvoiceWorkflowDataHolder holder)  {

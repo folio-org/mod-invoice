@@ -4,12 +4,12 @@ import static org.folio.invoices.utils.ResourcePathResolver.VOUCHER_NUMBER_START
 import static org.folio.invoices.utils.ResourcePathResolver.VOUCHER_NUMBER_STORAGE;
 import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
 
-import java.util.concurrent.CompletableFuture;
-
 import org.folio.rest.core.RestClient;
 import org.folio.rest.core.models.RequestContext;
 import org.folio.rest.core.models.RequestEntry;
 import org.folio.rest.jaxrs.model.SequenceNumber;
+
+import io.vertx.core.Future;
 
 public class VoucherNumberService {
 
@@ -19,14 +19,14 @@ public class VoucherNumberService {
     this.restClient = restClient;
   }
 
-  public CompletableFuture<SequenceNumber> getNextNumber(RequestContext requestContext) {
+  public Future<SequenceNumber> getNextNumber(RequestContext requestContext) {
     RequestEntry requestEntry = new RequestEntry(resourcesPath(VOUCHER_NUMBER_STORAGE));
-    return restClient.get(requestEntry, requestContext, SequenceNumber.class);
+    return restClient.get(requestEntry, SequenceNumber.class, requestContext);
   }
 
-  public CompletableFuture<SequenceNumber> getStartValue(RequestContext requestContext) {
+  public Future<SequenceNumber> getStartValue(RequestContext requestContext) {
     RequestEntry requestEntry = new RequestEntry(resourcesPath(VOUCHER_NUMBER_START));
-    return restClient.get(requestEntry, requestContext, SequenceNumber.class);
+    return restClient.get(requestEntry, SequenceNumber.class, requestContext);
   }
 
   /**
@@ -34,11 +34,10 @@ public class VoucherNumberService {
    * @param value start value to be set/reset
    * @return completable future on success or {@code null} if validation fails or an exception if any issue happens
    */
-  public CompletableFuture<Void> setStartValue(String value, RequestContext requestContext) {
+  public Future<Void> setStartValue(String value, RequestContext requestContext) {
     RequestEntry requestEntry = new RequestEntry(resourcesPath(VOUCHER_NUMBER_START) + "/{startNumber}");
     requestEntry.withPathParameter("startNumber", value);
-    return restClient.post(requestEntry, null, requestContext, SequenceNumber.class)
-        .thenAccept(sequenceNumber -> {});
+    return restClient.postEmptyBody(requestEntry, requestContext);
   }
 
 }

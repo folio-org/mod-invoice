@@ -18,15 +18,14 @@ import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamWriter;
 
 import org.apache.commons.lang3.time.StopWatch;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.folio.exceptions.ClassInitializationException;
 import org.folio.rest.jaxrs.model.jaxb.BatchVoucherType;
 import org.xml.sax.SAXException;
 
-import org.apache.logging.log4j.Logger;
-import org.apache.logging.log4j.LogManager;
-
 public final class XMLConverter {
-  private static final Logger LOG = LogManager.getLogger(XMLConverter.class);
+  private static final Logger log = LogManager.getLogger(XMLConverter.class);
   private JAXBContextWrapper jaxbContextWrapper;
   private final JAXBRootElementNameResolver rootElementNameResolver;
   private final Class<?>[] rootClassNames = new Class<?>[] { BatchVoucherType.class };
@@ -58,7 +57,7 @@ public final class XMLConverter {
    */
   public <T> String marshal(Class<T> clazz, T xmlObject, Map<String, String> nameSpaces, boolean isValidationNeeded)
       throws XMLStreamException {
-    StopWatch timer = LOG.isDebugEnabled() ? StopWatch.createStarted() : null;
+    StopWatch timer = log.isDebugEnabled() ? StopWatch.createStarted() : null;
     XMLStreamWriter xmlOut = null;
     try (StringWriter writer = new StringWriter()) {
       xmlOut = XMLOutputFactory.newFactory()
@@ -101,7 +100,7 @@ public final class XMLConverter {
    * @return the {@link T} object based on passed string
    */
   public <T> T unmarshal(Class<T> clazz, String xmlStr, boolean isValidationNeeded) {
-    StopWatch timer = LOG.isDebugEnabled() ? StopWatch.createStarted() : null;
+    StopWatch timer = log.isDebugEnabled() ? StopWatch.createStarted() : null;
     try (StringReader reader = new StringReader(xmlStr)) {
       // Unmarshaller is not thread-safe, so we should create every time a new one
       Unmarshaller jaxbUnmarshaller = jaxbContextWrapper.createUnmarshaller(isValidationNeeded);
@@ -124,7 +123,7 @@ public final class XMLConverter {
    * @return the {@link T} object based on passed string
    */
   public <T> T unmarshal(Class<T> clazz, byte[] byteSource, boolean isValidationNeeded) {
-    StopWatch timer = LOG.isDebugEnabled() ? StopWatch.createStarted() : null;
+    StopWatch timer = log.isDebugEnabled() ? StopWatch.createStarted() : null;
     try (ByteArrayInputStream inputStream = new ByteArrayInputStream(byteSource)) {
       Unmarshaller jaxbUnmarshaller = jaxbContextWrapper.createUnmarshaller(isValidationNeeded);
       Object response = jaxbUnmarshaller.unmarshal(inputStream);
@@ -140,7 +139,7 @@ public final class XMLConverter {
   private void logExecutionTime(final String msg, StopWatch timer) {
     if (timer != null) {
       timer.stop();
-      LOG.debug("{} after {} ms", msg, timer.getTime());
+      log.debug("{} after {} ms", msg, timer.getTime());
     }
   }
 

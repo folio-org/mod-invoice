@@ -11,6 +11,7 @@ import static org.hamcrest.Matchers.hasSize;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
@@ -51,7 +52,7 @@ public abstract class ProtectedEntityTestBase extends ApiTestBase {
     assertThat(MockServer.getAcqMembershipsSearches(), getMatcher(numOfMembershipRqs));
   }
 
-  static Matcher getMatcher(int value) {
+  static Matcher<Collection<?>> getMatcher(Integer value) {
     return value > 0 ? hasSize(value) : empty();
   }
 

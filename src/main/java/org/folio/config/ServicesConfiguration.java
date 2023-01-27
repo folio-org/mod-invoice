@@ -3,13 +3,15 @@ package org.folio.config;
 import org.folio.InvoiceWorkflowDataHolderBuilder;
 import org.folio.converters.AddressConverter;
 import org.folio.rest.core.RestClient;
-import org.folio.rest.impl.VoucherService;
+import org.folio.services.AcquisitionsUnitsService;
+import org.folio.services.BatchGroupService;
 import org.folio.services.InvoiceLinesRetrieveService;
 import org.folio.services.InvoiceRetrieveService;
 import org.folio.services.VendorRetrieveService;
+import org.folio.services.VoucherLineService;
+import org.folio.services.adjusment.AdjustmentsService;
 import org.folio.services.configuration.ConfigurationService;
 import org.folio.services.exchange.ExchangeRateProviderResolver;
-import org.folio.services.exchange.FinanceExchangeRateService;
 import org.folio.services.finance.FundService;
 import org.folio.services.finance.LedgerService;
 import org.folio.services.finance.budget.BudgetExpenseClassService;
@@ -28,13 +30,18 @@ import org.folio.services.invoice.InvoiceCancelService;
 import org.folio.services.invoice.InvoiceLineService;
 import org.folio.services.invoice.InvoicePaymentService;
 import org.folio.services.invoice.InvoiceService;
-import org.folio.services.order.OrderService;
 import org.folio.services.order.OrderLineService;
+import org.folio.services.order.OrderService;
 import org.folio.services.validator.FundAvailabilityHolderValidator;
+import org.folio.services.validator.InvoiceValidator;
 import org.folio.services.validator.VoucherValidator;
+import org.folio.services.voucher.BatchVoucherExportConfigService;
+import org.folio.services.voucher.BatchVoucherExportsService;
+import org.folio.services.voucher.BatchVoucherGenerateService;
+import org.folio.services.voucher.BatchVoucherService;
 import org.folio.services.voucher.VoucherCommandService;
 import org.folio.services.voucher.VoucherNumberService;
-import org.folio.services.voucher.VoucherRetrieveService;
+import org.folio.services.voucher.VoucherService;
 import org.springframework.context.annotation.Bean;
 
 public class ServicesConfiguration {
@@ -50,28 +57,12 @@ public class ServicesConfiguration {
   }
 
   @Bean
-  FinanceExchangeRateService rateOfExchangeService(RestClient restClient) {
-    return new FinanceExchangeRateService(restClient);
-  }
-
-  @Bean
-  VoucherRetrieveService voucherRetrieveService(RestClient restClient) {
-    return new VoucherRetrieveService(restClient);
-  }
-
-  @Bean
   VoucherValidator voucherValidator() {
     return new VoucherValidator();
   }
 
-  @Bean
-  VoucherCommandService voucherCommandService(RestClient restClient,
-                                              VoucherNumberService voucherNumberService,
-                                              VoucherRetrieveService voucherRetrieveService,
-                                              VoucherValidator voucherValidator,
-                                              ConfigurationService configurationService, ExchangeRateProviderResolver exchangeRateProviderResolver) {
-    return new VoucherCommandService(restClient, voucherNumberService,
-      voucherRetrieveService, voucherValidator, configurationService, exchangeRateProviderResolver);
+  @Bean VoucherCommandService voucherCommandService() {
+    return new VoucherCommandService();
   }
 
   @Bean
@@ -181,10 +172,8 @@ public class ServicesConfiguration {
   }
 
   @Bean
-  VoucherService voucherService(VoucherRetrieveService voucherRetrieveService,
-      VoucherCommandService voucherCommandService, VendorRetrieveService vendorRetrieveService,
-      AddressConverter addressConverter) {
-    return new VoucherService(voucherRetrieveService, voucherCommandService, vendorRetrieveService, addressConverter);
+  VoucherService voucherService(RestClient restClient, VoucherValidator voucherValidator) {
+    return new VoucherService(restClient, voucherValidator);
   }
 
   @Bean
@@ -208,12 +197,8 @@ public class ServicesConfiguration {
   }
 
   @Bean
-  InvoicePaymentService invoicePaymentService(InvoiceWorkflowDataHolderBuilder holderBuilder,
-                                              PaymentCreditWorkflowService paymentCreditWorkflowService,
-                                              VoucherCommandService voucherCommandService,
-                                              OrderLineService orderLineService) {
-    return new InvoicePaymentService(holderBuilder, paymentCreditWorkflowService,
-      voucherCommandService, orderLineService);
+  InvoicePaymentService invoicePaymentService() {
+    return new InvoicePaymentService();
   }
 
   @Bean
@@ -225,10 +210,56 @@ public class ServicesConfiguration {
   InvoiceCancelService invoiceCancelService(BaseTransactionService baseTransactionService,
                                             EncumbranceService encumbranceService,
                                             InvoiceTransactionSummaryService invoiceTransactionSummaryService,
-                                            VoucherCommandService voucherCommandService,
+                                            VoucherService voucherService,
                                             OrderLineService orderLineService,
                                             OrderService orderService) {
     return new InvoiceCancelService(baseTransactionService, encumbranceService, invoiceTransactionSummaryService,
-      voucherCommandService, orderLineService, orderService);
+      voucherService, orderLineService, orderService);
+  }
+  @Bean
+  BatchVoucherService batchVoucherService(RestClient restClient) {
+    return new BatchVoucherService(restClient);
+  }
+
+  @Bean
+  BatchVoucherExportConfigService batchVoucherExportConfigService (RestClient restClient) {
+    return new BatchVoucherExportConfigService(restClient);
+  }
+
+  @Bean
+  BatchVoucherGenerateService batchVoucherGenerateService(VoucherService voucherService,
+      InvoiceRetrieveService invoiceRetrieveService, InvoiceLinesRetrieveService invoiceLinesRetrieveService,
+      VoucherLineService voucherLineService, VendorRetrieveService vendorRetrieveService,
+      AddressConverter addressConverter, BatchGroupService batchGroupService) {
+    return new BatchVoucherGenerateService(voucherService, invoiceRetrieveService, invoiceLinesRetrieveService,
+        voucherLineService, vendorRetrieveService, addressConverter, batchGroupService);
+  }
+
+  @Bean
+  VoucherLineService voucherLineService(RestClient restClient) {
+    return new VoucherLineService(restClient);
+  }
+
+  @Bean
+  BatchGroupService batchGroupService(RestClient restClient) {
+    return new BatchGroupService(restClient);
+  }
+  @Bean
+  BatchVoucherExportsService batchVoucherExportsService(RestClient restClient) {
+    return new BatchVoucherExportsService(restClient);
+  }
+  @Bean
+  AdjustmentsService adjustmentsService() {
+    return new AdjustmentsService();
+  }
+
+  @Bean
+  InvoiceValidator invoiceValidator() {
+    return new InvoiceValidator();
+  }
+
+  @Bean
+  AcquisitionsUnitsService acquisitionsUnitsService(RestClient restClient) {
+    return new AcquisitionsUnitsService(restClient);
   }
 }

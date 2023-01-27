@@ -1,32 +1,28 @@
 package org.folio.rest.impl;
 
 import static org.folio.invoices.utils.HelperUtils.BATCH_VOUCHER_EXPORT;
-import static org.folio.invoices.utils.HelperUtils.getEndpointWithQuery;
-import static org.folio.invoices.utils.HelperUtils.handleDeleteRequest;
-import static org.folio.invoices.utils.HelperUtils.handleGetRequest;
-import static org.folio.invoices.utils.HelperUtils.handlePutRequest;
-import static org.folio.invoices.utils.ResourcePathResolver.BATCH_VOUCHER_EXPORTS_STORAGE;
-import static org.folio.invoices.utils.ResourcePathResolver.resourceByIdPath;
-import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
 
 import java.util.Map;
-import java.util.concurrent.CompletableFuture;
 
 import org.folio.invoices.events.handlers.MessageAddress;
+import org.folio.rest.core.models.RequestContext;
 import org.folio.rest.jaxrs.model.BatchVoucherExport;
 import org.folio.rest.jaxrs.model.BatchVoucherExportCollection;
-import org.folio.rest.tools.client.interfaces.HttpClientInterface;
+import org.folio.services.voucher.BatchVoucherExportsService;
+import org.folio.spring.SpringContextUtil;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import io.vertx.core.Context;
+import io.vertx.core.Future;
 import io.vertx.core.json.JsonObject;
-import org.apache.logging.log4j.Logger;
-import org.folio.completablefuture.FolioVertxCompletableFuture;
 
 public class BatchVoucherExportsHelper extends AbstractHelper {
-  private static final String GET_BATCH_VOUCHER_EXPORTS_BY_QUERY = resourcesPath(BATCH_VOUCHER_EXPORTS_STORAGE) + SEARCH_PARAMS;
+  @Autowired
+  private BatchVoucherExportsService batchVoucherExportsService;
 
-  public BatchVoucherExportsHelper(Map<String, String> okapiHeaders, Context ctx, String lang) {
-    super(okapiHeaders, ctx, lang);
+  public BatchVoucherExportsHelper(Map<String, String> okapiHeaders, Context ctx) {
+    super(okapiHeaders, ctx);
+    SpringContextUtil.autowireDependencies(this, ctx);
   }
 
   /**
@@ -37,11 +33,8 @@ public class BatchVoucherExportsHelper extends AbstractHelper {
    * @param query  A query expressed as a CQL string using valid searchable fields
    * @return completable future with {@link BatchVoucherExportCollection} on success or an exception if processing fails
    */
-  public CompletableFuture<BatchVoucherExportCollection> getBatchVoucherExports(int limit, int offset, String query) {
-    String queryParam = getEndpointWithQuery(query, logger);
-    String endpoint = String.format(GET_BATCH_VOUCHER_EXPORTS_BY_QUERY, limit, offset, queryParam, lang);
-    return handleGetRequest(endpoint, httpClient, ctx, okapiHeaders, logger).thenCompose(jsonVouchers -> FolioVertxCompletableFuture
-      .supplyBlockingAsync(ctx, () -> jsonVouchers.mapTo(BatchVoucherExportCollection.class)));
+  public Future<BatchVoucherExportCollection> getBatchVoucherExports(int limit, int offset, String query) {
+    return batchVoucherExportsService.getBatchVoucherExports(limit, offset, query, new RequestContext(ctx, okapiHeaders));
   }
 
   /**
@@ -50,23 +43,8 @@ public class BatchVoucherExportsHelper extends AbstractHelper {
    * @param id batch voucher export uuid
    * @return completable future with {@link BatchVoucherExport} on success or an exception if processing fails
    */
-  public CompletableFuture<BatchVoucherExport> getBatchVoucherExportById(String id) {
-    CompletableFuture<BatchVoucherExport> future = new FolioVertxCompletableFuture<>(ctx);
-    getBatchVoucherExportById(id, lang, httpClient, ctx, okapiHeaders, logger)
-      .thenAccept(future::complete)
-      .exceptionally(t -> {
-        logger.error("Failed to retrieve batch voucher export ", t.getCause());
-        future.completeExceptionally(t);
-        return null;
-      });
-    return future;
-  }
-
-  private static CompletableFuture<BatchVoucherExport> getBatchVoucherExportById(String id, String lang,
-      HttpClientInterface httpClient, Context ctx, Map<String, String> okapiHeaders, Logger logger) {
-    String endpoint = resourceByIdPath(BATCH_VOUCHER_EXPORTS_STORAGE, id, lang);
-    return handleGetRequest(endpoint, httpClient, ctx, okapiHeaders, logger)
-      .thenApplyAsync(json -> json.mapTo(BatchVoucherExport.class));
+  public Future<BatchVoucherExport> getBatchVoucherExportById(String id) {
+    return batchVoucherExportsService.getBatchVoucherExportById(id, new RequestContext(ctx, okapiHeaders));
   }
 
   /**
@@ -75,27 +53,15 @@ public class BatchVoucherExportsHelper extends AbstractHelper {
    * @param batchVoucherExport {@link BatchVoucherExport} to be created
    * @return completable future with {@link BatchVoucherExport} on success or an exception if processing fails
    */
-  public CompletableFuture<BatchVoucherExport> createBatchVoucherExports(BatchVoucherExport batchVoucherExport) {
-    CompletableFuture<BatchVoucherExport> future = new CompletableFuture<>();
-    createRecordInStorage(JsonObject.mapFrom(batchVoucherExport), resourcesPath(BATCH_VOUCHER_EXPORTS_STORAGE))
-                  .thenApply(batchVoucherExportId -> {
-                    BatchVoucherExport batchVoucherExportWitId = batchVoucherExport.withId(batchVoucherExportId);
-                    future.complete(batchVoucherExportWitId);
-                    return batchVoucherExportWitId;
-                  })
-                  .thenAccept(this::persistBatchVoucher)
-                  .exceptionally(t -> {
-                    logger.error("Create batch voucher export error.");
-                    future.completeExceptionally(t);
-                    return null;
-                  });
-    return future;
+  public Future<BatchVoucherExport> createBatchVoucherExports(BatchVoucherExport batchVoucherExport) {
+    return batchVoucherExportsService.createBatchVoucherExports(batchVoucherExport, new RequestContext(ctx,okapiHeaders))
+      .onSuccess(this::persistBatchVoucher);
   }
 
   private void persistBatchVoucher(BatchVoucherExport batchVoucherExport) {
-    FolioVertxCompletableFuture.runAsync(ctx,
-      () -> sendEvent(MessageAddress.BATCH_VOUCHER_PERSIST_TOPIC
-              , new JsonObject().put(BATCH_VOUCHER_EXPORT, JsonObject.mapFrom(batchVoucherExport))));
+    buildRequestContext().getContext()
+      .runOnContext(v -> sendEvent(MessageAddress.BATCH_VOUCHER_PERSIST_TOPIC,
+        new JsonObject().put(BATCH_VOUCHER_EXPORT, JsonObject.mapFrom(batchVoucherExport))));
   }
 
   /**
@@ -104,17 +70,15 @@ public class BatchVoucherExportsHelper extends AbstractHelper {
    * @param batchVoucherExport updated {@link BatchVoucherExport} batchVoucherExport
    * @return completable future holding response indicating success (204 No Content) or error if failed
    */
-  public CompletableFuture<Void> updateBatchVoucherExportRecord(BatchVoucherExport batchVoucherExport) {
-    JsonObject jsonBatchVoucherExport = JsonObject.mapFrom(batchVoucherExport);
-    String path = resourceByIdPath(BATCH_VOUCHER_EXPORTS_STORAGE, batchVoucherExport.getId(), lang);
-    return handlePutRequest(path, jsonBatchVoucherExport, httpClient, ctx, okapiHeaders, logger);
+  public Future<Void> updateBatchVoucherExportRecord(BatchVoucherExport batchVoucherExport) {
+    return batchVoucherExportsService.updateBatchVoucherExportRecord(batchVoucherExport, new RequestContext(ctx, okapiHeaders));
   }
 
   /**
    * Delete Batch voucher export
    * @param id batch voucher export id to be deleted
    */
-  public CompletableFuture<Void> deleteBatchVoucherExportById(String id) {
-    return handleDeleteRequest(resourceByIdPath(BATCH_VOUCHER_EXPORTS_STORAGE, id, lang), httpClient, ctx, okapiHeaders, logger);
+  public Future<Void> deleteBatchVoucherExportById(String id) {
+    return batchVoucherExportsService.deleteBatchVoucherExportById(id, buildRequestContext());
   }
 }

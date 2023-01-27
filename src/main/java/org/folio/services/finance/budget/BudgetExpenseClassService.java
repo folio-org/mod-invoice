@@ -1,6 +1,5 @@
 package org.folio.services.finance.budget;
 
-import static org.folio.completablefuture.FolioVertxCompletableFuture.allOf;
 import static org.folio.invoices.utils.ErrorCodes.BUDGET_EXPENSE_CLASS_NOT_FOUND;
 import static org.folio.invoices.utils.ErrorCodes.INACTIVE_EXPENSE_CLASS;
 import static org.folio.invoices.utils.ResourcePathResolver.BUDGET_EXPENSE_CLASSES;
@@ -9,10 +8,11 @@ import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
-import java.util.concurrent.CompletableFuture;
+import java.util.stream.Collectors;
 
 import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.models.InvoiceWorkflowDataHolder;
+import org.folio.okapi.common.GenericCompositeFuture;
 import org.folio.rest.acq.model.finance.Budget;
 import org.folio.rest.acq.model.finance.BudgetExpenseClass;
 import org.folio.rest.acq.model.finance.BudgetExpenseClassCollection;
@@ -23,6 +23,8 @@ import org.folio.rest.core.models.RequestContext;
 import org.folio.rest.core.models.RequestEntry;
 import org.folio.rest.jaxrs.model.FundDistribution;
 import org.folio.rest.jaxrs.model.Parameter;
+
+import io.vertx.core.Future;
 
 public class BudgetExpenseClassService {
 
@@ -37,16 +39,18 @@ public class BudgetExpenseClassService {
     this.restClient = restClient;
   }
 
-  public CompletableFuture<List<InvoiceWorkflowDataHolder>> checkExpenseClasses(List<InvoiceWorkflowDataHolder> holders, RequestContext requestContext) {
-
-    return allOf(requestContext.getContext(), holders.stream()
+  public Future<List<InvoiceWorkflowDataHolder>> checkExpenseClasses(List<InvoiceWorkflowDataHolder> holders,
+      RequestContext requestContext) {
+    var futures = holders.stream()
       .filter(holder -> Objects.nonNull(holder.getFundDistribution().getExpenseClassId()))
       .map(holder -> checkExpenseClass(holder, requestContext))
-      .toArray(CompletableFuture[]::new)).thenApply(aVoid -> holders);
+      .collect(Collectors.toList());
+    return GenericCompositeFuture.join(futures)
+      .map(aVoid -> holders);
 
   }
 
-  private CompletableFuture<Void> checkExpenseClass(InvoiceWorkflowDataHolder holder, RequestContext requestContext) {
+  private Future<Void> checkExpenseClass(InvoiceWorkflowDataHolder holder, RequestContext requestContext) {
     Budget budget = holder.getBudget();
     FundDistribution fundDistribution = holder.getFundDistribution();
     String query = String.format("budgetId==%s and expenseClassId==%s", budget.getId(), fundDistribution.getExpenseClassId());
@@ -54,10 +58,11 @@ public class BudgetExpenseClassService {
         .withQuery(query)
         .withOffset(0)
         .withLimit(1);
-    return restClient.get(requestEntry, requestContext, BudgetExpenseClassCollection.class)
-      .thenAccept(budgetExpenseClasses -> {
+    return restClient.get(requestEntry, BudgetExpenseClassCollection.class, requestContext)
+      .map(budgetExpenseClasses -> {
         checkExpenseClassAssignedToBudget(holder, budgetExpenseClasses);
         checkExpenseClassActive(holder, budgetExpenseClasses);
+        return null;
       });
   }
 

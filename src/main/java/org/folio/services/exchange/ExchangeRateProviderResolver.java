@@ -1,10 +1,12 @@
 package org.folio.services.exchange;
 
-import org.apache.logging.log4j.Logger;
-import org.apache.logging.log4j.LogManager;
 import java.util.Optional;
+
 import javax.money.convert.ConversionQuery;
 import javax.money.convert.ExchangeRateProvider;
+
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.folio.rest.core.models.RequestContext;
 
 public class ExchangeRateProviderResolver {

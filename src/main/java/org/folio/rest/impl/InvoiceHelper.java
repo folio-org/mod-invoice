@@ -1,15 +1,14 @@
 package org.folio.rest.impl;
 
+import static io.vertx.core.Future.succeededFuture;
 import static java.util.Objects.nonNull;
 import static java.util.UUID.randomUUID;
-import static java.util.concurrent.CompletableFuture.allOf;
 import static java.util.stream.Collectors.groupingBy;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toMap;
 import static javax.money.Monetary.getDefaultRounding;
 import static org.apache.commons.lang3.StringUtils.EMPTY;
 import static org.apache.commons.lang3.StringUtils.isEmpty;
-import static org.folio.completablefuture.FolioVertxCompletableFuture.completedFuture;
 import static org.folio.invoices.utils.ErrorCodes.INVALID_INVOICE_TRANSITION_ON_PAID_STATUS;
 import static org.folio.invoices.utils.ErrorCodes.ORG_IS_NOT_VENDOR;
 import static org.folio.invoices.utils.ErrorCodes.ORG_NOT_FOUND;
@@ -17,12 +16,9 @@ import static org.folio.invoices.utils.HelperUtils.calculateVoucherLineAmount;
 import static org.folio.invoices.utils.HelperUtils.combineCqlExpressions;
 import static org.folio.invoices.utils.HelperUtils.getAdjustmentFundDistributionAmount;
 import static org.folio.invoices.utils.HelperUtils.getFundDistributionAmount;
-import static org.folio.invoices.utils.HelperUtils.getHttpClient;
 import static org.folio.invoices.utils.HelperUtils.isPostApproval;
 import static org.folio.invoices.utils.ProtectedOperationType.UPDATE;
-import static org.folio.invoices.utils.ResourcePathResolver.FOLIO_INVOICE_NUMBER;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICES;
-import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
 import static org.folio.services.voucher.VoucherCommandService.VOUCHER_NUMBER_PREFIX_CONFIG_QUERY;
 import static org.folio.utils.UserPermissionsUtil.verifyUserHasAssignPermission;
 import static org.folio.utils.UserPermissionsUtil.verifyUserHasManagePermission;
@@ -35,8 +31,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -50,13 +44,13 @@ import org.apache.commons.collections4.ListUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.folio.InvoiceWorkflowDataHolderBuilder;
-import org.folio.completablefuture.FolioVertxCompletableFuture;
 import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.invoices.utils.HelperUtils;
 import org.folio.invoices.utils.InvoiceRestrictionsUtil;
 import org.folio.invoices.utils.ProtectedOperationType;
 import org.folio.models.FundExtNoExpenseClassExtNoPair;
 import org.folio.models.InvoiceWorkflowDataHolder;
+import org.folio.okapi.common.GenericCompositeFuture;
 import org.folio.rest.acq.model.Organization;
 import org.folio.rest.acq.model.finance.ExpenseClass;
 import org.folio.rest.acq.model.finance.Fund;
@@ -70,10 +64,10 @@ import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.jaxrs.model.InvoiceCollection;
 import org.folio.rest.jaxrs.model.InvoiceLine;
 import org.folio.rest.jaxrs.model.Parameter;
-import org.folio.rest.jaxrs.model.SequenceNumber;
 import org.folio.rest.jaxrs.model.Voucher;
 import org.folio.rest.jaxrs.model.VoucherLine;
 import org.folio.services.VendorRetrieveService;
+import org.folio.services.VoucherLineService;
 import org.folio.services.adjusment.AdjustmentsService;
 import org.folio.services.configuration.ConfigurationService;
 import org.folio.services.exchange.ExchangeRateProviderResolver;
@@ -89,22 +83,25 @@ import org.folio.services.invoice.InvoicePaymentService;
 import org.folio.services.invoice.InvoiceService;
 import org.folio.services.validator.InvoiceValidator;
 import org.folio.services.voucher.VoucherCommandService;
-import org.folio.services.voucher.VoucherRetrieveService;
+import org.folio.services.voucher.VoucherService;
 import org.folio.spring.SpringContextUtil;
 import org.javamoney.moneta.Money;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import com.google.common.annotations.VisibleForTesting;
 
+import io.vertx.core.CompositeFuture;
 import io.vertx.core.Context;
+import io.vertx.core.Future;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
 
 public class InvoiceHelper extends AbstractHelper {
-  private final VoucherLineHelper voucherLineHelper;
   private final ProtectionHelper protectionHelper;
-  private final AdjustmentsService adjustmentsService;
-  private final InvoiceValidator validator;
+  @Autowired
+  private AdjustmentsService adjustmentsService;
+  @Autowired
+  private InvoiceValidator validator;
   @Autowired
   private InvoiceLineService invoiceLineService;
   @Autowired
@@ -117,8 +114,6 @@ public class InvoiceHelper extends AbstractHelper {
   private EncumbranceService encumbranceService;
   @Autowired
   private VoucherCommandService voucherCommandService;
-  @Autowired
-  private VoucherRetrieveService voucherRetrieveService;
   @Autowired
   private CurrentFiscalYearService currentFiscalYearService;
   @Autowired
@@ -137,23 +132,30 @@ public class InvoiceHelper extends AbstractHelper {
   private InvoicePaymentService invoicePaymentService;
   @Autowired
   private InvoiceCancelService invoiceCancelService;
+  @Autowired
+  private VoucherService voucherService;
+  @Autowired
+  private VoucherLineService voucherLineService;
+  private RequestContext requestContext;
 
-  public InvoiceHelper(Map<String, String> okapiHeaders, Context ctx, String lang) {
-    super(getHttpClient(okapiHeaders), okapiHeaders, ctx, lang);
+  public InvoiceHelper(Map<String, String> okapiHeaders, Context ctx) {
+    super(okapiHeaders, ctx);
+    this.protectionHelper = new ProtectionHelper(okapiHeaders, ctx);
+    this.requestContext = new RequestContext(ctx, okapiHeaders);
     SpringContextUtil.autowireDependencies(this, Vertx.currentContext());
-    this.voucherLineHelper = new VoucherLineHelper(getHttpClient(okapiHeaders), okapiHeaders, ctx, lang);
-    this.protectionHelper = new ProtectionHelper(httpClient, okapiHeaders, ctx, lang);
-    this.adjustmentsService = new AdjustmentsService();
-    this.validator = new InvoiceValidator();
   }
 
-  public CompletableFuture<Invoice> createInvoice(Invoice invoice) {
-    return CompletableFuture.completedFuture(null).thenRun(() -> validator.validateIncomingInvoice(invoice))
-      .thenCompose(aVoid -> validateAcqUnitsOnCreate(invoice.getAcqUnitIds()))
-      .thenCompose(v -> updateWithSystemGeneratedData(invoice))
-      .thenCompose(v -> invoiceService.createInvoice(invoice, new RequestContext(ctx, okapiHeaders)))
-      .thenApply(Invoice::getId)
-      .thenApply(invoice::withId);
+  public Future<Invoice> createInvoice(Invoice invoice, RequestContext requestContext) {
+    return Future.succeededFuture()
+      .map(v -> {
+        validator.validateIncomingInvoice(invoice);
+        return null;
+      })
+      .compose(v -> validateAcqUnitsOnCreate(invoice.getAcqUnitIds()))
+      .compose(v -> updateWithSystemGeneratedData(invoice))
+      .compose(v -> invoiceService.createInvoice(invoice, requestContext))
+      .map(Invoice::getId)
+      .map(invoice::withId);
   }
 
   /**
@@ -161,14 +163,17 @@ public class InvoiceHelper extends AbstractHelper {
    * @return completable future completed successfully if all checks pass or exceptionally in case of error/restriction caused by
    *         acquisitions units
    */
-  private CompletableFuture<Void> validateAcqUnitsOnCreate(List<String> acqUnitIds) {
+  private Future<Void> validateAcqUnitsOnCreate(List<String> acqUnitIds) {
     if (acqUnitIds.isEmpty()) {
-      return completedFuture(null);
+      return succeededFuture(null);
     }
-
-    return FolioVertxCompletableFuture.runAsync(ctx, () -> verifyUserHasAssignPermission(acqUnitIds, okapiHeaders))
-      .thenCompose(ok -> protectionHelper.verifyIfUnitsAreActive(acqUnitIds))
-      .thenCompose(ok -> protectionHelper.isOperationRestricted(acqUnitIds, ProtectedOperationType.CREATE));
+    return Future.succeededFuture()
+      .map(v -> {
+        verifyUserHasAssignPermission(acqUnitIds, okapiHeaders);
+        return null;
+      })
+      .compose(v -> protectionHelper.verifyIfUnitsAreActive(acqUnitIds))
+      .compose(ok -> protectionHelper.isOperationRestricted(acqUnitIds, ProtectedOperationType.CREATE));
   }
 
 
@@ -178,20 +183,13 @@ public class InvoiceHelper extends AbstractHelper {
    * @param id invoice uuid
    * @return completable future with {@link Invoice} on success or an exception if processing fails
    */
-  public CompletableFuture<Invoice> getInvoice(String id) {
-    CompletableFuture<Invoice> future = new FolioVertxCompletableFuture<>(ctx);
-    RequestContext requestContext = new RequestContext(ctx, okapiHeaders);
-    getInvoiceRecord(id)
-      .thenCompose(invoice -> protectionHelper.isOperationRestricted(invoice.getAcqUnitIds(), ProtectedOperationType.READ)
-        .thenApply(aVoid -> invoice))
-      .thenCompose(invoice -> invoiceService.recalculateTotals(invoice, requestContext).thenApply(b -> invoice))
-      .thenAccept(future::complete)
-      .exceptionally(t -> {
-        logger.error("Failed to get an Invoice by id={}", id, t.getCause());
-        future.completeExceptionally(t);
-        return null;
-      });
-    return future;
+  public Future<Invoice> getInvoice(String id) {
+    var invoiceFuture = getInvoiceRecord(id);
+    return invoiceFuture
+      .compose(invoice -> protectionHelper.isOperationRestricted(invoice.getAcqUnitIds(), ProtectedOperationType.READ))
+      .compose(v -> invoiceService.recalculateTotals(invoiceFuture.result(), requestContext))
+      .map(v -> invoiceFuture.result())
+      .onFailure(t -> logger.error("Failed to get an Invoice by id={}", id, t.getCause()));
   }
 
   /**
@@ -200,7 +198,7 @@ public class InvoiceHelper extends AbstractHelper {
    * @param id invoice uuid
    * @return completable future with {@link Invoice} on success or an exception if processing fails
    */
-  public CompletableFuture<Invoice> getInvoiceRecord(String id) {
+  public Future<Invoice> getInvoiceRecord(String id) {
     return invoiceService.getInvoiceById(id, new RequestContext(ctx, okapiHeaders));
   }
 
@@ -212,31 +210,17 @@ public class InvoiceHelper extends AbstractHelper {
    * @param query A query expressed as a CQL string using valid searchable fields
    * @return completable future with {@link InvoiceCollection} on success or an exception if processing fails
    */
-  public CompletableFuture<InvoiceCollection> getInvoices(int limit, int offset, String query) {
-    CompletableFuture<InvoiceCollection> future = new FolioVertxCompletableFuture<>(ctx);
-    RequestContext requestContext = new RequestContext(ctx, okapiHeaders);
-    try {
-      buildGetInvoicesQuery(query)
-        .thenCompose(getInvoicesQuery -> invoiceService.getInvoices(getInvoicesQuery, offset, limit, requestContext))
-        .thenCompose(invoiceCollection -> invoiceService.updateInvoicesTotals(invoiceCollection, requestContext)
-                                                .thenAccept(v -> {
-                                                  logger.info("Successfully retrieved invoices: {}", invoiceCollection);
-                                                  future.complete(invoiceCollection);
-                                                }))
-        .exceptionally(t -> {
-          logger.error("Error getting invoices", t);
-          future.completeExceptionally(t);
-          return null;
-        });
-    } catch (Exception e) {
-        future.completeExceptionally(e);
-    }
-    return future;
+  public Future<InvoiceCollection> getInvoices(int limit, int offset, String query) {
+      return buildGetInvoicesQuery(query)
+        .compose(getInvoicesQuery -> invoiceService.getInvoices(getInvoicesQuery, offset, limit, requestContext))
+        .onSuccess(invoiceCollection -> logger.info("Successfully retrieved invoices: {}", invoiceCollection))
+        .compose(invoiceCollection -> invoiceService.updateInvoicesTotals(invoiceCollection, requestContext).map(invoiceCollection))
+        .onFailure(t -> logger.error("Error getting invoices", t));
   }
 
-  private CompletableFuture<String> buildGetInvoicesQuery(String query) {
+  private Future<String> buildGetInvoicesQuery(String query) {
     return protectionHelper.buildAcqUnitsCqlExprToSearchRecords(INVOICES)
-      .thenApply(acqUnitsCqlExpr -> {
+      .map(acqUnitsCqlExpr -> {
         if (isEmpty(query)) {
           return acqUnitsCqlExpr;
         } else {
@@ -253,12 +237,12 @@ public class InvoiceHelper extends AbstractHelper {
    * 4. If user has permission to delete and invoice is not approved or paid then delete invoiceLine
    * @param id invoiceLine id to be deleted
    */
-  public CompletableFuture<Void> deleteInvoice(String id, RequestContext requestContext) {
+  public Future<Void> deleteInvoice(String id, RequestContext requestContext) {
     return getInvoiceRecord(id)
-    .thenCompose(invoice -> protectionHelper.isOperationRestricted(invoice.getAcqUnitIds(), ProtectedOperationType.DELETE)
-      .thenApply(vVoid -> invoice))
-    .thenCompose(InvoiceRestrictionsUtil::checkIfInvoiceDeletionPermitted)
-    .thenCompose(invoice -> invoiceService.deleteInvoice(id, requestContext));
+    .compose(invoice -> protectionHelper.isOperationRestricted(invoice.getAcqUnitIds(), ProtectedOperationType.DELETE)
+      .map(vVoid -> invoice))
+    .compose(InvoiceRestrictionsUtil::checkIfInvoiceDeletionPermitted)
+    .compose(invoice -> invoiceService.deleteInvoice(id, requestContext));
   }
 
   /**
@@ -268,53 +252,62 @@ public class InvoiceHelper extends AbstractHelper {
    * @param invoice updated {@link Invoice} invoice
    * @return completable future holding response indicating success (204 No Content) or error if failed
    */
-  public CompletableFuture<Void> updateInvoice(Invoice invoice) {
+  public Future<Void> updateInvoice(Invoice invoice) {
     logger.debug("Updating invoice...");
-    return CompletableFuture.completedFuture(null).thenRun(() -> validator.validateIncomingInvoice(invoice))
-      .thenCompose(aVoid -> getInvoiceRecord(invoice.getId()))
-      .thenCompose(invoiceFromStorage -> validateAndHandleInvoiceStatusTransition(invoice, invoiceFromStorage))
-      .thenCompose(aVoid -> updateInvoiceRecord(invoice));
+    return Future.succeededFuture()
+      .map(v-> {
+        validator.validateIncomingInvoice(invoice);
+        return null;
+      })
+      .compose(v -> getInvoiceRecord(invoice.getId()))
+      .compose(invoiceFromStorage -> validateAndHandleInvoiceStatusTransition(invoice, invoiceFromStorage))
+      .compose(v -> updateInvoiceRecord(invoice));
   }
 
-  private CompletableFuture<Void> handleExchangeRateChange(Invoice invoice, List<InvoiceLine> invoiceLines) {
-    RequestContext requestContext = new RequestContext(ctx, okapiHeaders);
+  private Future<Void> handleExchangeRateChange(Invoice invoice, List<InvoiceLine> invoiceLines) {
     return getInvoiceWorkflowDataHolders(invoice, invoiceLines, requestContext)
-            .thenCompose(holders -> holderBuilder.withExistingTransactions(holders, requestContext))
-            .thenCompose(holders ->  pendingPaymentWorkflowService.handlePendingPaymentsUpdate(holders, requestContext))
-            .thenCompose(aVoid -> updateVoucher(invoice, invoiceLines));
+            .compose(holders -> holderBuilder.withExistingTransactions(holders, requestContext))
+            .compose(holders ->  pendingPaymentWorkflowService.handlePendingPaymentsUpdate(holders, requestContext))
+            .compose(aVoid -> updateVoucher(invoice, invoiceLines));
   }
 
-  private CompletableFuture<Void> updateVoucher(Invoice invoice, List<InvoiceLine> invoiceLines) {
-    return voucherRetrieveService.getVoucherByInvoiceId(invoice.getId(), new RequestContext(ctx, okapiHeaders))
-      .thenCompose(voucher -> {
+  private Future<Void> updateVoucher(Invoice invoice, List<InvoiceLine> invoiceLines) {
+    return voucherService.getVoucherByInvoiceId(invoice.getId(), requestContext)
+      .compose(voucher -> {
         if (voucher != null) {
-          return voucherCommandService.updateVoucherWithExchangeRate(voucher, invoice, new RequestContext(ctx, okapiHeaders))
-            .thenCompose(voucherP ->  getAllFundDistributions(invoiceLines, invoice)
-                                            .thenCompose(fundDistributions -> handleVoucherWithLines(fundDistributions, voucherP)));
+          return voucherCommandService.updateVoucherWithExchangeRate(voucher, invoice, requestContext)
+            .compose(voucherP ->  getAllFundDistributions(invoiceLines, invoice)
+                                            .compose(fundDistributions -> handleVoucherWithLines(fundDistributions, voucherP)));
         }
-        return CompletableFuture.completedFuture(null);
+        return succeededFuture(null);
       });
   }
 
-  private CompletableFuture<Void> validateAndHandleInvoiceStatusTransition(Invoice invoice, Invoice invoiceFromStorage) {
+  private Future<Void> validateAndHandleInvoiceStatusTransition(Invoice invoice, Invoice invoiceFromStorage) {
     return validateAcqUnitsOnUpdate(invoice, invoiceFromStorage)
-    .thenCompose(ok -> {
-      validator.validateInvoice(invoice, invoiceFromStorage);
-      verifyUserHasManagePermission(invoice.getAcqUnitIds(), invoiceFromStorage.getAcqUnitIds(), okapiHeaders);
-      setSystemGeneratedData(invoiceFromStorage, invoice);
-      return invoiceLineService.getInvoiceLinesWithTotals(invoice, new RequestContext(ctx, okapiHeaders))
-        .thenCompose(invoiceLines -> {
+      .map(ok -> {
+        validator.validateInvoice(invoice, invoiceFromStorage);
+        verifyUserHasManagePermission(invoice.getAcqUnitIds(), invoiceFromStorage.getAcqUnitIds(), okapiHeaders);
+        setSystemGeneratedData(invoiceFromStorage, invoice);
+        return null;
+      })
+      .compose(v -> invoiceLineService.getInvoiceLinesWithTotals(invoice, requestContext))
+      .compose(invoiceLines -> Future.succeededFuture()
+        .map(v -> {
           List<InvoiceLine> updatedInvoiceLines = invoiceLines.stream()
             .map(invoiceLine -> JsonObject.mapFrom(invoiceLine).mapTo(InvoiceLine.class))
             .collect(toList());
           recalculateAdjustmentData(invoice, invoiceFromStorage, updatedInvoiceLines);
           invoiceService.recalculateTotals(invoice, updatedInvoiceLines);
-          return handleInvoiceStatusTransition(invoice, invoiceFromStorage, updatedInvoiceLines)
-            .thenAccept(aVoid -> updateInvoiceLinesStatus(invoice, updatedInvoiceLines))
-            .thenApply(aVoid -> filterUpdatedLines(invoiceLines, updatedInvoiceLines))
-            .thenCompose(lines -> invoiceLineService.persistInvoiceLines(lines, new RequestContext(ctx, okapiHeaders)));
-        });
-    });
+          return updatedInvoiceLines;
+        })
+        .compose(updatedInvoiceLines -> handleInvoiceStatusTransition(invoice, invoiceFromStorage, updatedInvoiceLines)
+          .map(aVoid -> {
+            updateInvoiceLinesStatus(invoice, updatedInvoiceLines);
+            return null;
+          })
+          .map(aVoid -> filterUpdatedLines(invoiceLines, updatedInvoiceLines))
+          .compose(lines -> invoiceLineService.persistInvoiceLines(lines, requestContext))));
   }
 
   private List<InvoiceLine> filterUpdatedLines(List<InvoiceLine> invoiceLines, List<InvoiceLine> updatedInvoiceLines) {
@@ -328,22 +321,24 @@ public class InvoiceHelper extends AbstractHelper {
    * @return completable future completed successfully if all checks pass or exceptionally in case of error/restriction caused by
    *         acquisitions units
    */
-  private CompletableFuture<Void> validateAcqUnitsOnUpdate(Invoice updatedInvoice, Invoice persistedInvoice) {
+  private Future<Void> validateAcqUnitsOnUpdate(Invoice updatedInvoice, Invoice persistedInvoice) {
     List<String> updatedAcqUnitIds = updatedInvoice.getAcqUnitIds();
     List<String> currentAcqUnitIds = persistedInvoice.getAcqUnitIds();
-
-    return FolioVertxCompletableFuture.runAsync(ctx, () -> verifyUserHasManagePermission(updatedAcqUnitIds, currentAcqUnitIds, okapiHeaders))
-      // Check that all newly assigned units are active/exist
-      .thenCompose(ok -> protectionHelper.verifyIfUnitsAreActive(ListUtils.subtract(updatedAcqUnitIds, currentAcqUnitIds)))
+    verifyUserHasManagePermission(updatedAcqUnitIds, currentAcqUnitIds, okapiHeaders);
+    // Check that all newly assigned units are active/exist
+    return protectionHelper.verifyIfUnitsAreActive(ListUtils.subtract(updatedAcqUnitIds, currentAcqUnitIds))
       // The check should be done against currently assigned (persisted in storage) units
-      .thenCompose(protectedOperationTypes -> protectionHelper.isOperationRestricted(currentAcqUnitIds, UPDATE));
+      .compose(protectedOperationTypes -> protectionHelper.isOperationRestricted(currentAcqUnitIds, UPDATE));
   }
 
-  private CompletableFuture<Void> updateWithSystemGeneratedData(Invoice invoice) {
-    return generateFolioInvoiceNumber()
-      .thenApply(invoice::withFolioInvoiceNo)
-      .thenAccept(invoiceWithNo -> invoiceService.calculateTotals(invoiceWithNo))
-      .thenAccept(ok -> generateAdjustmentsIds(invoice));
+  private Future<Void> updateWithSystemGeneratedData(Invoice invoice) {
+    return invoiceService.generateFolioInvoiceNumber(buildRequestContext())
+      .map(invoice::withFolioInvoiceNo)
+      .map(invoiceWithNo -> {
+        invoiceService.calculateTotals(invoiceWithNo);
+        generateAdjustmentsIds(invoice);
+        return null;
+      });
   }
 
   private void generateAdjustmentsIds(Invoice invoice) {
@@ -379,24 +374,22 @@ public class InvoiceHelper extends AbstractHelper {
     generateAdjustmentsIds(invoice);
   }
 
-  private CompletionStage<Void> handleInvoiceStatusTransition(Invoice invoice, Invoice invoiceFromStorage, List<InvoiceLine> invoiceLines) {
+  private Future<Void> handleInvoiceStatusTransition(Invoice invoice, Invoice invoiceFromStorage, List<InvoiceLine> invoiceLines) {
     if (isTransitionToApproved(invoiceFromStorage, invoice)) {
       return approveInvoice(invoice, invoiceLines);
     } else if (isAfterApprove(invoice, invoiceFromStorage) && isExchangeRateChanged(invoice, invoiceFromStorage)) {
       return handleExchangeRateChange(invoice, invoiceLines);
     } else if (isTransitionToPaid(invoiceFromStorage, invoice)) {
-      RequestContext requestContext = new RequestContext(ctx, okapiHeaders);
       if (isExchangeRateChanged(invoice, invoiceFromStorage)) {
         return handleExchangeRateChange(invoice, invoiceLines)
-          .thenCompose(aVoid1 -> invoicePaymentService.payInvoice(invoice, invoiceLines, requestContext));
+          .compose(aVoid1 -> invoicePaymentService.payInvoice(invoice, invoiceLines, requestContext));
       }
       invoice.setExchangeRate(invoiceFromStorage.getExchangeRate());
       return invoicePaymentService.payInvoice(invoice, invoiceLines, requestContext);
     } else if (isTransitionToCancelled(invoiceFromStorage, invoice)) {
-      RequestContext requestContext = new RequestContext(ctx, okapiHeaders);
       return invoiceCancelService.cancelInvoice(invoiceFromStorage, invoiceLines, requestContext);
     }
-    return CompletableFuture.completedFuture(null);
+    return succeededFuture(null);
   }
 
   private boolean isAfterApprove(Invoice invoice, Invoice invoiceFromStorage) {
@@ -436,24 +429,26 @@ public class InvoiceHelper extends AbstractHelper {
    * @param invoice {@link Invoice}to be approved
    * @return CompletableFuture that indicates when transition is completed
    */
-  private CompletableFuture<Void> approveInvoice(Invoice invoice, List<InvoiceLine> lines) {
+  private Future<Void> approveInvoice(Invoice invoice, List<InvoiceLine> lines) {
     invoice.setApprovalDate(new Date());
     invoice.setApprovedBy(invoice.getMetadata().getUpdatedByUserId());
-    RequestContext requestContext = new RequestContext(ctx, okapiHeaders);
 
     return configurationService.getConfigurationsEntries(requestContext, SYSTEM_CONFIG_QUERY, VOUCHER_NUMBER_PREFIX_CONFIG_QUERY)
-      .thenCompose(ok -> updateInvoiceLinesWithEncumbrances(lines, requestContext))
-      .thenCompose(v -> invoiceLineService.persistInvoiceLines(lines, requestContext))
-      .thenCompose(v -> vendorService.getVendor(invoice.getVendorId(), requestContext))
-      .thenAccept(organization -> validateBeforeApproval(organization, invoice, lines))
-      .thenCompose(aVoid -> getInvoiceWorkflowDataHolders(invoice, lines, requestContext))
-      .thenCompose(holders -> budgetExpenseClassService.checkExpenseClasses(holders, requestContext))
-      .thenCompose(holders -> pendingPaymentWorkflowService.handlePendingPaymentsCreation(holders, requestContext))
-      .thenCompose(v -> prepareVoucher(invoice))
-      .thenCompose(voucher -> updateVoucherWithSystemCurrency(voucher, lines))
-      .thenCompose(voucher -> voucherCommandService.updateVoucherWithExchangeRate(voucher, invoice, requestContext))
-      .thenCompose(voucher -> getAllFundDistributions(lines, invoice)
-                                  .thenCompose(fundDistributions -> handleVoucherWithLines(fundDistributions, voucher))
+      .compose(ok -> updateInvoiceLinesWithEncumbrances(lines, requestContext))
+      .compose(v -> invoiceLineService.persistInvoiceLines(lines, requestContext))
+      .compose(v -> vendorService.getVendor(invoice.getVendorId(), requestContext))
+      .map(organization -> {
+        validateBeforeApproval(organization, invoice, lines);
+        return null;
+      })
+      .compose(aVoid -> getInvoiceWorkflowDataHolders(invoice, lines, requestContext))
+      .compose(holders -> budgetExpenseClassService.checkExpenseClasses(holders, requestContext))
+      .compose(holders -> pendingPaymentWorkflowService.handlePendingPaymentsCreation(holders, requestContext))
+      .compose(v -> prepareVoucher(invoice))
+      .compose(voucher -> updateVoucherWithSystemCurrency(voucher, lines))
+      .compose(voucher -> voucherCommandService.updateVoucherWithExchangeRate(voucher, invoice, requestContext))
+      .compose(voucher -> getAllFundDistributions(lines, invoice)
+                                  .compose(fundDistributions -> handleVoucherWithLines(fundDistributions, voucher))
       );
 
   }
@@ -469,31 +464,31 @@ public class InvoiceHelper extends AbstractHelper {
     validator.validateBeforeApproval(invoice, lines);
   }
 
-  private CompletableFuture<List<InvoiceWorkflowDataHolder>> getInvoiceWorkflowDataHolders(Invoice invoice, List<InvoiceLine> lines, RequestContext requestContext) {
+  private Future<List<InvoiceWorkflowDataHolder>> getInvoiceWorkflowDataHolders(Invoice invoice, List<InvoiceLine> lines, RequestContext requestContext) {
     List<InvoiceWorkflowDataHolder> dataHolders = holderBuilder.buildHoldersSkeleton(lines, invoice);
     return holderBuilder.withFunds(dataHolders, requestContext)
-            .thenCompose(holders -> holderBuilder.withLedgers(holders, requestContext))
-            .thenCompose(holders -> holderBuilder.withBudgets(holders, requestContext))
-            .thenApply(holderBuilder::checkMultipleFiscalYears)
-            .thenCompose(holders -> holderBuilder.withFiscalYear(holders, requestContext))
-            .thenCompose(holders -> holderBuilder.withEncumbrances(holders, requestContext))
-            .thenCompose(holders -> holderBuilder.withExpenseClasses(holders, requestContext))
-            .thenCompose(holders -> holderBuilder.withExchangeRate(holders, requestContext));
+            .compose(holders -> holderBuilder.withLedgers(holders, requestContext))
+            .compose(holders -> holderBuilder.withBudgets(holders, requestContext))
+            .map(holderBuilder::checkMultipleFiscalYears)
+            .compose(holders -> holderBuilder.withFiscalYear(holders, requestContext))
+            .compose(holders -> holderBuilder.withEncumbrances(holders, requestContext))
+            .compose(holders -> holderBuilder.withExpenseClasses(holders, requestContext))
+            .compose(holders -> holderBuilder.withExchangeRate(holders, requestContext));
   }
 
-  private CompletableFuture<Voucher> updateVoucherWithSystemCurrency(Voucher voucher, List<InvoiceLine> lines) {
+  private Future<Voucher> updateVoucherWithSystemCurrency(Voucher voucher, List<InvoiceLine> lines) {
     if (!CollectionUtils.isEmpty(lines) && !CollectionUtils.isEmpty(lines.get(0).getFundDistributions())) {
       String fundId = lines.get(0).getFundDistributions().get(0).getFundId();
       return currentFiscalYearService.getCurrentFiscalYearByFund(fundId, new RequestContext(ctx, okapiHeaders))
-        .thenApply(fiscalYear -> voucher.withSystemCurrency(fiscalYear.getCurrency()));
+        .map(fiscalYear -> voucher.withSystemCurrency(fiscalYear.getCurrency()));
     }
-    return configurationService.getSystemCurrency(new RequestContext(ctx, okapiHeaders))
-                               .thenApply(systemCurrency -> voucher.withSystemCurrency(systemCurrency));
+    return configurationService.getSystemCurrency(requestContext)
+                               .map(systemCurrency -> voucher.withSystemCurrency(systemCurrency));
   }
 
-  private CompletableFuture<List<FundDistribution>> getAllFundDistributions(List<InvoiceLine> invoiceLines, Invoice invoice) {
+  private Future<List<FundDistribution>> getAllFundDistributions(List<InvoiceLine> invoiceLines, Invoice invoice) {
     return configurationService.getSystemCurrency(new RequestContext(ctx, okapiHeaders))
-      .thenApply(systemCurrency -> {
+      .map(systemCurrency -> {
         ConversionQuery conversionQuery = HelperUtils.buildConversionQuery(invoice, systemCurrency);
         ExchangeRateProvider exchangeRateProvider = exchangeRateProviderResolver.resolve(conversionQuery, new RequestContext(ctx, okapiHeaders));
         CurrencyConversion conversion =  exchangeRateProvider.getCurrencyConversion(conversionQuery);
@@ -577,15 +572,15 @@ public class InvoiceHelper extends AbstractHelper {
    * @param invoice {@link Invoice} to be approved on the basis of which the voucher is prepared
    * @return completable future with {@link Voucher} on success
    */
-  private CompletableFuture<Voucher> prepareVoucher(Invoice invoice) {
-    return voucherRetrieveService.getVoucherByInvoiceId(invoice.getId(), new RequestContext(ctx, okapiHeaders))
-      .thenCompose(voucher -> {
+  private Future<Voucher> prepareVoucher(Invoice invoice) {
+    return voucherService.getVoucherByInvoiceId(invoice.getId(), new RequestContext(ctx, okapiHeaders))
+      .compose(voucher -> {
         if (nonNull(voucher)) {
-          return completedFuture(voucher);
+          return succeededFuture(voucher);
         }
         return voucherCommandService.buildNewVoucher(invoice, new RequestContext(ctx, okapiHeaders));
       })
-      .thenApply(voucher -> {
+      .map(voucher -> {
         invoice.setVoucherNumber(voucher.getVoucherNumber());
         voucher.setAcqUnitIds(invoice.getAcqUnitIds());
         return withRequiredFields(voucher, invoice);
@@ -621,15 +616,15 @@ public class InvoiceHelper extends AbstractHelper {
    * @param voucher associated with processed invoice
    * @return CompletableFuture that indicates when handling is completed
    */
-  private CompletableFuture<Void> handleVoucherWithLines(List<FundDistribution> fundDistributions, Voucher voucher) {
+  private Future<Void> handleVoucherWithLines(List<FundDistribution> fundDistributions, Voucher voucher) {
     return groupFundDistrosByExternalAcctNo(fundDistributions)
-      .thenApply(fundDistrosGroupedByExternalAcctNo -> buildVoucherLineRecords(fundDistrosGroupedByExternalAcctNo, voucher))
-      .thenCompose(voucherLines -> {
+      .map(fundDistrosGroupedByExternalAcctNo -> buildVoucherLineRecords(fundDistrosGroupedByExternalAcctNo, voucher))
+      .compose(voucherLines -> {
         Double calculatedAmount = HelperUtils.calculateVoucherAmount(voucher, voucherLines);
         voucher.setAmount(calculatedAmount);
         return handleVoucher(voucher)
-          .thenAccept(voucherWithId -> populateVoucherId(voucherLines, voucher))
-          .thenCompose(v -> createVoucherLinesRecords(voucherLines));
+          .onSuccess(voucherWithId -> populateVoucherId(voucherLines, voucherWithId))
+          .compose(v -> createVoucherLinesRecords(voucherLines));
       });
   }
 
@@ -639,15 +634,15 @@ public class InvoiceHelper extends AbstractHelper {
    * @param fundDistributions {@link List<InvoiceLine>} associated with processed {@link Invoice}
    * @return {@link InvoiceLine#fundDistributions} grouped by {@link Fund#externalAccountNo}
    */
-  private CompletableFuture<Map<FundExtNoExpenseClassExtNoPair,  List<FundDistribution>>> groupFundDistrosByExternalAcctNo(List<FundDistribution> fundDistributions) {
+  private Future<Map<FundExtNoExpenseClassExtNoPair,  List<FundDistribution>>> groupFundDistrosByExternalAcctNo(List<FundDistribution> fundDistributions) {
 
     Map<String, List<FundDistribution>> fundDistrosGroupedByFundId = groupFundDistrosByFundId(fundDistributions);
+    var groupedFundDistrosFuture = fundService.getFunds(fundDistrosGroupedByFundId.keySet(), new RequestContext(ctx, okapiHeaders))
+      .map(this::groupFundsByExternalAcctNo);
+    var fundsGroupedByExternalAcctNoFuture = groupFundDistrByFundIdByExpenseClassExtNo(fundDistributions);
 
-    return fundService.getFunds(fundDistrosGroupedByFundId.keySet(), new RequestContext(ctx, okapiHeaders))
-      .thenApply(this::groupFundsByExternalAcctNo)
-      .thenCombine(groupFundDistrByFundIdByExpenseClassExtNo(fundDistributions), (fundsGroupedByExternalAcctNo, groupedFundDistros) ->
-        mapExternalAcctNoToFundDistros(groupedFundDistros, fundsGroupedByExternalAcctNo)
-      );
+    return CompositeFuture.join(groupedFundDistrosFuture, fundsGroupedByExternalAcctNoFuture)
+      .map(cf -> mapExternalAcctNoToFundDistros(fundsGroupedByExternalAcctNoFuture.result(), groupedFundDistrosFuture.result()));
   }
 
   private Map<String, List<Fund>> groupFundsByExternalAcctNo(List<Fund> funds) {
@@ -680,15 +675,15 @@ public class InvoiceHelper extends AbstractHelper {
       .collect(groupingBy(FundDistribution::getFundId));
   }
 
-  private CompletableFuture<Map<String, Map<String, List<FundDistribution>>>> groupFundDistrByFundIdByExpenseClassExtNo(List<FundDistribution> fundDistrs) {
+  private Future<Map<String, Map<String, List<FundDistribution>>>> groupFundDistrByFundIdByExpenseClassExtNo(List<FundDistribution> fundDistrs) {
     List<String> expenseClassIds = fundDistrs.stream()
       .map(FundDistribution::getExpenseClassId)
       .filter(Objects::nonNull)
       .distinct()
       .collect(toList());
     return expenseClassRetrieveService.getExpenseClasses(expenseClassIds, new RequestContext(ctx, okapiHeaders))
-                               .thenApply(expenseClasses -> expenseClasses.stream().collect(toMap(ExpenseClass::getId, Function.identity())))
-                               .thenApply(expenseClassByIds ->
+                               .map(expenseClasses -> expenseClasses.stream().collect(toMap(ExpenseClass::getId, Function.identity())))
+                               .map(expenseClassByIds ->
                                  fundDistrs.stream()
                                    .map(fd -> updateWithExpenseClassCode(fd, expenseClassByIds))
                                    .collect(groupingBy(FundDistribution::getFundId,
@@ -759,13 +754,13 @@ public class InvoiceHelper extends AbstractHelper {
    * @param voucher Voucher for handling
    * @return {@link Voucher} with id
    */
-  private CompletableFuture<Voucher> handleVoucher(Voucher voucher) {
+  private Future<Voucher> handleVoucher(Voucher voucher) {
     if (nonNull(voucher.getId())) {
-      return voucherCommandService.updateVoucher(voucher.getId(), voucher, new RequestContext(ctx, okapiHeaders))
-        .thenCompose(aVoid -> deleteVoucherLinesIfExist(voucher.getId()))
-        .thenApply(aVoid -> voucher);
+      return voucherService.updateVoucher(voucher.getId(), voucher, new RequestContext(ctx, okapiHeaders))
+        .compose(aVoid -> deleteVoucherLinesIfExist(voucher.getId()))
+        .map(aVoid -> voucher);
     } else {
-      return voucherCommandService.createVoucher(voucher, new RequestContext(ctx, okapiHeaders));
+      return voucherService.createVoucher(voucher, new RequestContext(ctx, okapiHeaders));
     }
   }
 
@@ -775,17 +770,19 @@ public class InvoiceHelper extends AbstractHelper {
    * @param voucherId Id of {@link Voucher} used to find the voucher lines.
    * @return CompletableFuture that indicates when deletion is completed
    */
-  private CompletableFuture<Void> deleteVoucherLinesIfExist(String voucherId) {
+  private Future<Void> deleteVoucherLinesIfExist(String voucherId) {
     return getVoucherLineIdsByVoucherId(voucherId)
-      .thenCompose(ids -> allOf(ids.stream()
-        .map(voucherLineHelper::deleteVoucherLine)
-        .toArray(CompletableFuture[]::new)));
+      .compose(ids -> GenericCompositeFuture.join(ids.stream()
+        .map(lineId-> voucherLineService.deleteVoucherLine(lineId, requestContext))
+        .collect(toList())))
+      .mapEmpty();
+
   }
 
-  private CompletableFuture<List<String>> getVoucherLineIdsByVoucherId(String voucherId) {
+  private Future<List<String>> getVoucherLineIdsByVoucherId(String voucherId) {
     String query = "voucherId==" + voucherId;
-    return voucherLineHelper.getVoucherLines(Integer.MAX_VALUE, 0, query)
-      .thenApply(voucherLineCollection ->  voucherLineCollection.getVoucherLines().
+    return voucherLineService.getVoucherLines(Integer.MAX_VALUE, 0, query, requestContext)
+      .map(voucherLineCollection ->  voucherLineCollection.getVoucherLines().
         stream()
         .map(org.folio.rest.acq.model.VoucherLine::getId)
         .collect(toList())
@@ -796,13 +793,14 @@ public class InvoiceHelper extends AbstractHelper {
     voucherLines.forEach(voucherLine -> voucherLine.setVoucherId(voucher.getId()));
   }
 
-  private CompletableFuture<Void> createVoucherLinesRecords(List<VoucherLine> voucherLines) {
-    return allOf(voucherLines.stream()
-      .map(voucherLineHelper::createVoucherLine)
-      .toArray(CompletableFuture[]::new));
+  private Future<Void> createVoucherLinesRecords(List<VoucherLine> voucherLines) {
+    var futures = voucherLines.stream()
+      .map(lineId-> voucherLineService.createVoucherLine(lineId, requestContext))
+      .collect(toList());
+    return GenericCompositeFuture.join(futures).mapEmpty();
   }
 
-  public CompletableFuture<Void> updateInvoiceRecord(Invoice updatedInvoice) {
+  public Future<Void> updateInvoiceRecord(Invoice updatedInvoice) {
     return invoiceService.updateInvoice(updatedInvoice, new RequestContext(ctx, okapiHeaders));
   }
 
@@ -810,20 +808,18 @@ public class InvoiceHelper extends AbstractHelper {
     return invoiceFromStorage.getStatus() == Invoice.Status.APPROVED && invoice.getStatus() == Invoice.Status.PAID;
   }
 
-  private CompletableFuture<String> generateFolioInvoiceNumber() {
-    return HelperUtils.handleGetRequest(resourcesPath(FOLIO_INVOICE_NUMBER), httpClient, ctx, okapiHeaders, logger)
-      .thenApply(seqNumber -> seqNumber.mapTo(SequenceNumber.class).getSequenceNumber());
-  }
-
-  private CompletableFuture<Void> updateInvoiceLinesWithEncumbrances(List<InvoiceLine> invoiceLines, RequestContext requestContext) {
+  private Future<Void> updateInvoiceLinesWithEncumbrances(List<InvoiceLine> invoiceLines, RequestContext requestContext) {
     List<String> poLineIds = getPoLineIds(invoiceLines);
     if (!poLineIds.isEmpty()) {
       return encumbranceService.getEncumbrancesByPoLineIds(poLineIds, requestContext)
-        .thenApply(encumbrances -> encumbrances.stream()
+        .map(encumbrances -> encumbrances.stream()
           .collect(groupingBy(encumbr -> Pair.of(encumbr.getEncumbrance().getSourcePoLineId(), encumbr.getFromFundId()))))
-        .thenAccept(encumbrByPoLineAndFundIdMap -> updateFundDistributionsWithEncumbrances(invoiceLines, encumbrByPoLineAndFundIdMap));
+        .map(encumbrByPoLineAndFundIdMap -> {
+          updateFundDistributionsWithEncumbrances(invoiceLines, encumbrByPoLineAndFundIdMap);
+          return null;
+        });
     }
-    return CompletableFuture.completedFuture(null);
+    return succeededFuture(null);
   }
 
   private List<String> getPoLineIds(List<InvoiceLine> invoiceLines) {

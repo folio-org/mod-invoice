@@ -10,7 +10,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -22,6 +21,8 @@ import org.folio.rest.core.RestClient;
 import org.folio.rest.core.models.RequestContext;
 import org.folio.rest.core.models.RequestEntry;
 import org.folio.rest.jaxrs.model.Invoice;
+
+import io.vertx.core.Future;
 
 public class VendorRetrieveService {
 
@@ -39,25 +40,20 @@ public class VendorRetrieveService {
   static final int MAX_IDS_FOR_GET_RQ = 15;
 
 
-  public CompletableFuture<Map<String, Organization>> getVendorsMap(List<Invoice> invoices, RequestContext requestContext) {
-    CompletableFuture<Map<String, Organization>> future = new CompletableFuture<>();
-    getVendorsByChunks(invoices, requestContext)
-      .thenApply(organizationCollections ->
-        organizationCollections.stream()
-          .map(OrganizationCollection::getOrganizations)
-          .collect(toList()).stream()
-          .flatMap(List::stream)
-          .collect(Collectors.toList()))
-      .thenAccept(organizations -> future.complete(organizations.stream().distinct().collect(toMap(Organization::getId, Function.identity()))))
-      .exceptionally(t -> {
-        future.completeExceptionally(t);
-        return null;
-      });
-    return future;
+  public Future<Map<String, Organization>> getVendorsMap(List<Invoice> invoices, RequestContext requestContext) {
+    return getVendorsByChunks(invoices, requestContext).map(organizationCollections -> organizationCollections.stream()
+      .map(OrganizationCollection::getOrganizations)
+      .collect(toList())
+      .stream()
+      .flatMap(List::stream)
+      .collect(Collectors.toList()))
+      .map(organizations -> organizations.stream()
+        .distinct()
+        .collect(toMap(Organization::getId, Function.identity())));
   }
 
-  public CompletableFuture<List<OrganizationCollection>> getVendorsByChunks(List<Invoice> invoices,  RequestContext requestContext) {
-    List<CompletableFuture<OrganizationCollection>> invoiceFutureList = buildIdsChunks(invoices, MAX_IDS_FOR_GET_RQ).values()
+  public Future<List<OrganizationCollection>> getVendorsByChunks(List<Invoice> invoices,  RequestContext requestContext) {
+    List<Future<OrganizationCollection>> invoiceFutureList = buildIdsChunks(invoices, MAX_IDS_FOR_GET_RQ).values()
       .stream()
       .map(this::getVendorIds)
       .map(ids -> getVendors(ids, requestContext))
@@ -78,22 +74,18 @@ public class VendorRetrieveService {
    * @param vendorIds - {@link Set<String>} of access providers id
    * @return CompletableFuture with {@link List<Organization>} of vendors
    */
-  public CompletableFuture<OrganizationCollection> getVendors(Set<String> vendorIds, RequestContext requestContext) {
+  public Future<OrganizationCollection> getVendors(Set<String> vendorIds, RequestContext requestContext) {
     String query = convertIdsToCqlQuery(new ArrayList<>(vendorIds));
     RequestEntry requestEntry = new RequestEntry(ORGANIZATIONS_STORAGE_VENDORS)
         .withQuery(query)
         .withLimit(vendorIds.size())
         .withOffset(0);
-    return restClient.get(requestEntry, requestContext, OrganizationCollection.class);
+    return restClient.get(requestEntry, OrganizationCollection.class, requestContext);
   }
 
-  public CompletableFuture<Organization> getVendor(String vendorId, RequestContext requestContext) {
-    RequestEntry requestEntry = new RequestEntry(ORGANIZATIONS_STORAGE_VENDOR)
-        .withId(vendorId);
-    return restClient.get(requestEntry, requestContext, Organization.class)
-        .exceptionally(throwable -> {
-          logger.error("Failed to retrieve organization with id {}", vendorId, throwable);
-          return null;
-        });
+  public Future<Organization> getVendor(String vendorId, RequestContext requestContext) {
+    RequestEntry requestEntry = new RequestEntry(ORGANIZATIONS_STORAGE_VENDOR).withId(vendorId);
+    return restClient.get(requestEntry, Organization.class, requestContext)
+      .onFailure(throwable -> logger.error("Failed to retrieve organization with id {}", vendorId, throwable));
   }
 }

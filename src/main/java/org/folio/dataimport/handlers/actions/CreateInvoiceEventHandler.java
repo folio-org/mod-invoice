@@ -1,7 +1,7 @@
 package org.folio.dataimport.handlers.actions;
 
+import static io.vertx.core.Future.succeededFuture;
 import static java.lang.String.format;
-import static java.util.concurrent.CompletableFuture.completedFuture;
 import static one.util.streamex.StreamEx.ofSubLists;
 import static org.apache.commons.collections4.CollectionUtils.isNotEmpty;
 import static org.apache.commons.lang3.StringUtils.isBlank;
@@ -36,6 +36,7 @@ import org.folio.MappingProfile;
 import org.folio.ParsedRecord;
 import org.folio.Record;
 import org.folio.dataimport.utils.DataImportUtils;
+import org.folio.invoices.utils.HelperUtils;
 import org.folio.processing.events.services.handler.EventHandler;
 import org.folio.processing.exceptions.EventProcessingException;
 import org.folio.processing.mapping.MappingManager;
@@ -53,10 +54,12 @@ import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.jaxrs.model.InvoiceLine;
 import org.folio.rest.jaxrs.model.InvoiceLineCollection;
 
+import io.vertx.core.Future;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
+import io.vertxconcurrent.Semaphore;
 
 public class CreateInvoiceEventHandler implements EventHandler {
 
@@ -79,8 +82,7 @@ public class CreateInvoiceEventHandler implements EventHandler {
   private static final String POL_EXPENSE_CLASS_KEY = "POL_EXPENSE_CLASS_%s";
   private static final String POL_FUND_DISTRIBUTIONS_KEY = "POL_FUND_DISTRIBUTIONS_%s";
   private static final Pattern SEGMENT_QUERY_PATTERN = Pattern.compile("([A-Z]{3}((\\+|<)\\w*)(\\2*\\w*)*(\\?\\w+)?\\[[1-9](-[1-9])?\\])");
-  private static final String DEFAULT_LANG = "en";
-  private static final int MAX_PARALLEL_SEARCHES = 5;
+  private static final int MAX_PARALLEL_SEARCHES = 10;
   private static final int MAX_CHUNK_SIZE = 15;
 
   private final RestClient restClient;
@@ -101,24 +103,27 @@ public class CreateInvoiceEventHandler implements EventHandler {
       }
 
       Map<String, String> okapiHeaders = DataImportUtils.getOkapiHeaders(dataImportEventPayload);
-      CompletableFuture<Map<Integer, PoLine>> poLinesFuture = getAssociatedPoLines(dataImportEventPayload, okapiHeaders);
+      Future<Map<Integer, PoLine>> poLinesFuture = getAssociatedPoLines(dataImportEventPayload, okapiHeaders);
 
       poLinesFuture
-        .thenAccept(invLineNoToPoLine -> ensureAdditionalData(dataImportEventPayload, invLineNoToPoLine))
-        .thenAccept(v -> prepareEventPayloadForMapping(dataImportEventPayload))
-        .thenAccept(v -> MappingManager.map(dataImportEventPayload, new MappingContext()))
-        .thenAccept(v -> prepareMappingResult(dataImportEventPayload))
-        .thenCompose(v -> saveInvoice(dataImportEventPayload, okapiHeaders))
-        .thenApply(savedInvoice -> prepareInvoiceLinesToSave(savedInvoice.getId(), dataImportEventPayload, poLinesFuture.join()))
-        .thenCompose(preparedInvoiceLines -> saveInvoiceLines(preparedInvoiceLines, okapiHeaders))
-        .whenComplete((savedInvoiceLines, throwable) -> {
+        .map(invLineNoToPoLine -> {
+          ensureAdditionalData(dataImportEventPayload, invLineNoToPoLine);
+          prepareEventPayloadForMapping(dataImportEventPayload);
+          MappingManager.map(dataImportEventPayload, new MappingContext());
+          prepareMappingResult(dataImportEventPayload);
+          return null;
+        })
+        .compose(v -> saveInvoice(dataImportEventPayload, okapiHeaders))
+        .map(savedInvoice -> prepareInvoiceLinesToSave(savedInvoice.getId(), dataImportEventPayload, poLinesFuture.result()))
+        .compose(preparedInvoiceLines -> saveInvoiceLines(preparedInvoiceLines, okapiHeaders))
+        .onComplete(result -> {
           makeLightweightReturnPayload(dataImportEventPayload);
 
-          if (throwable == null) {
-            List<InvoiceLine> invoiceLines = savedInvoiceLines.stream().map(Pair::getLeft).collect(Collectors.toList());
+          if (result.succeeded()) {
+            List<InvoiceLine> invoiceLines = result.result().stream().map(Pair::getLeft).collect(Collectors.toList());
             InvoiceLineCollection invoiceLineCollection = new InvoiceLineCollection().withInvoiceLines(invoiceLines).withTotalRecords(invoiceLines.size());
             dataImportEventPayload.getContext().put(INVOICE_LINES_KEY, Json.encode(invoiceLineCollection));
-            Map<Integer, String> invoiceLinesErrors = prepareInvoiceLinesErrors(savedInvoiceLines);
+            Map<Integer, String> invoiceLinesErrors = prepareInvoiceLinesErrors(result.result());
             if (!invoiceLinesErrors.isEmpty()) {
               dataImportEventPayload.getContext().put(INVOICE_LINES_ERRORS_KEY, Json.encode(invoiceLinesErrors));
               future.completeExceptionally(new EventProcessingException("Error during invoice lines creation"));
@@ -127,8 +132,8 @@ public class CreateInvoiceEventHandler implements EventHandler {
             future.complete(dataImportEventPayload);
           } else {
             preparePayloadWithMappedInvoiceLines(dataImportEventPayload);
-            logger.error("Error during invoice creation", throwable);
-            future.completeExceptionally(throwable);
+            logger.error("Error during invoice creation", result.cause());
+            future.completeExceptionally(result.cause());
           }
         });
     } catch (Exception e) {
@@ -149,7 +154,7 @@ public class CreateInvoiceEventHandler implements EventHandler {
     return invoiceLinesErrors;
   }
 
-  private CompletableFuture<Map<Integer, PoLine>> getAssociatedPoLines(DataImportEventPayload eventPayload, Map<String, String> okapiHeaders) {
+  private Future<Map<Integer, PoLine>> getAssociatedPoLines(DataImportEventPayload eventPayload, Map<String, String> okapiHeaders) {
     String recordAsString = eventPayload.getContext().get(EDIFACT_INVOICE.value());
     Record sourceRecord = Json.decodeValue(recordAsString, Record.class);
     ParsedRecord parsedRecord = sourceRecord.getParsedRecord();
@@ -160,20 +165,20 @@ public class CreateInvoiceEventHandler implements EventHandler {
       .map(expression -> EdifactRecordReader.getInvoiceLinesSegmentsValues(parsedRecord, expression))
       .orElse(Collections.emptyMap());
 
-    List<String> ReferenceNumberExpressions = getPoLineRefNumberMappingExpressions(eventPayload);
-    Map<Integer, List<String>> invoiceLineNoToRefNo2 = ReferenceNumberExpressions.isEmpty()
-      ? Collections.emptyMap() : retrieveInvoiceLinesReferenceNumbers(parsedRecord, ReferenceNumberExpressions);
+    List<String> referenceNumberExpressions = getPoLineRefNumberMappingExpressions(eventPayload);
+    Map<Integer, List<String>> invoiceLineNoToRefNo2 = referenceNumberExpressions.isEmpty()
+      ? Collections.emptyMap() : retrieveInvoiceLinesReferenceNumbers(parsedRecord, referenceNumberExpressions);
 
     return getAssociatedPoLinesByPoLineNumber(invoiceLineNoToPoLineNo, okapiHeaders)
-      .thenCompose(associatedPoLineMap -> {
+      .compose(associatedPoLineMap -> {
         if (associatedPoLineMap.size() < invoiceLinesAmount) {
           associatedPoLineMap.keySet().forEach(invoiceLineNoToRefNo2::remove);
-          return getAssociatedPoLinesByRefNumbers(invoiceLineNoToRefNo2, new RequestContext(Vertx.currentContext(), okapiHeaders)).thenApply(poLinesMap -> {
+          return getAssociatedPoLinesByRefNumbers(invoiceLineNoToRefNo2, new RequestContext(Vertx.currentContext(), okapiHeaders)).map(poLinesMap -> {
               associatedPoLineMap.putAll(poLinesMap);
               return associatedPoLineMap;
           });
         }
-        return CompletableFuture.completedFuture(associatedPoLineMap);
+        return succeededFuture(associatedPoLineMap);
       });
   }
 
@@ -229,42 +234,51 @@ public class CreateInvoiceEventHandler implements EventHandler {
     return invoiceLinesToRefNumbers;
   }
 
-  private CompletableFuture<Map<Integer, PoLine>> getAssociatedPoLinesByPoLineNumber(Map<Integer, String> invoiceLineNoToPoLineNo, Map<String, String> okapiHeaders) {
+  private Future<Map<Integer, PoLine>> getAssociatedPoLinesByPoLineNumber(Map<Integer, String> invoiceLineNoToPoLineNo, Map<String, String> okapiHeaders) {
     Map<Integer, PoLine> invoiceLineNoToPoLine = new HashMap<>();
     if (invoiceLineNoToPoLineNo.isEmpty()) {
-      return completedFuture(invoiceLineNoToPoLine);
+      return succeededFuture(invoiceLineNoToPoLine);
     }
 
-    List<CompletableFuture<PoLineCollection>> polineCollectionsFuture = ofSubLists(List.copyOf(invoiceLineNoToPoLineNo.values()), MAX_CHUNK_SIZE)
+    List<Future<PoLineCollection>> polineCollectionsFuture = ofSubLists(List.copyOf(invoiceLineNoToPoLineNo.values()), MAX_CHUNK_SIZE)
       .map(this::prepareQueryGetPoLinesByNumber)
       .map(cqlQuery -> new RequestEntry(resourcesPath(ORDER_LINES)).withQuery(cqlQuery).withOffset(0).withLimit(Integer.MAX_VALUE))
-      .map(requestEntry -> restClient.get(requestEntry, new RequestContext(Vertx.currentContext(), okapiHeaders), PoLineCollection.class))
+      .map(requestEntry -> restClient.get(requestEntry, PoLineCollection.class, new RequestContext(Vertx.currentContext(), okapiHeaders)))
       .collect(Collectors.toList());
 
     return collectResultsOnSuccess(polineCollectionsFuture)
-      .thenApply(lists -> lists.stream().flatMap(polCollection -> polCollection.getPoLines().stream()).distinct().collect(Collectors.toList()))
-      .thenApply(poLines -> poLines.stream().collect(Collectors.toMap(PoLine::getPoLineNumber, poLine -> poLine)))
-      .thenAccept(poLineNumberToPoLine -> invoiceLineNoToPoLineNo
-        .forEach((key, value) -> poLineNumberToPoLine.computeIfPresent(value, (polNo, poLine) -> invoiceLineNoToPoLine.put(key, poLine))))
-      .thenApply(v -> invoiceLineNoToPoLine);
+      .map(lists -> lists.stream().flatMap(polCollection -> polCollection.getPoLines().stream()).distinct().collect(Collectors.toList()))
+      .map(poLines -> poLines.stream().collect(Collectors.toMap(PoLine::getPoLineNumber, poLine -> poLine)))
+      .map(poLineNumberToPoLine -> {
+        invoiceLineNoToPoLineNo.forEach((key, value) ->
+          poLineNumberToPoLine.computeIfPresent(value, (polNo, poLine) -> invoiceLineNoToPoLine.put(key, poLine)));
+        return null;
+      })
+      .map(v -> invoiceLineNoToPoLine);
   }
 
 
-  private CompletableFuture<Map<Integer, PoLine>> getAssociatedPoLinesByRefNumbers(Map<Integer, List<String>> refNumberList, RequestContext requestContext) {
-    List<CompletableFuture<Pair<Integer, PoLine>>> futures = new ArrayList<>();
-    CompletableFuture<Pair<Integer, PoLine>> future = completedFuture(null);
+  private Future<Map<Integer, PoLine>> getAssociatedPoLinesByRefNumbers(Map<Integer, List<String>> refNumberList, RequestContext requestContext) {
+    List<Future<Pair<Integer, PoLine>>> futures = new ArrayList<>();
+    Semaphore semaphore = new Semaphore(MAX_PARALLEL_SEARCHES, Vertx.currentContext().owner());
 
-    for (Map.Entry<Integer, List<String>> entry : refNumberList.entrySet()) {
-      future = future.thenCompose(v -> getLinePair(entry, requestContext));
-      futures.add(future);
-    }
-
-    return collectResultsOnSuccess(futures).thenApply(poLinePairs -> poLinePairs.stream()
-      .filter(Objects::nonNull)
-      .collect(Collectors.toMap(Pair::getKey, Pair::getValue)));
+    return requestContext.getContext()
+      .executeBlocking(promise -> {
+        for (Map.Entry<Integer, List<String>> entry : refNumberList.entrySet()) {
+          var future = getLinePair(entry, requestContext);
+          futures.add(future);
+          semaphore.acquire(() ->
+            future.onComplete(asyncResult -> semaphore.release()));
+        }
+        promise.complete();
+      })
+      .compose(v -> collectResultsOnSuccess(futures))
+      .map(poLinePairs -> poLinePairs.stream()
+        .filter(Objects::nonNull)
+        .collect(Collectors.toMap(Pair::getKey, Pair::getValue)));
   }
 
-  private CompletableFuture<Pair<Integer, PoLine>> getLinePair(Map.Entry<Integer, List<String>> refNumbers, RequestContext requestContext) {
+  private Future<Pair<Integer, PoLine>> getLinePair(Map.Entry<Integer, List<String>> refNumbers, RequestContext requestContext) {
     String cqlGetPoLinesByRefNo = prepareQueryGetPoLinesByRefNumber(refNumbers.getValue());
 
     RequestEntry requestEntry = new RequestEntry(resourcesPath(ORDER_LINES)).withQuery(cqlGetPoLinesByRefNo)
@@ -272,13 +286,14 @@ public class CreateInvoiceEventHandler implements EventHandler {
       .withOffset(0)
       .withLimit(Integer.MAX_VALUE);
 
-    return restClient.get(requestEntry, requestContext, PoLineCollection.class)
-      .handle((polines, error) -> {
-        if (error == null && polines.getPoLines().size() == 1) {
+    return restClient.get(requestEntry, PoLineCollection.class, requestContext)
+      .map(polines -> {
+        if (polines.getPoLines().size() == 1) {
           return Pair.of(refNumbers.getKey(), polines.getPoLines().get(0));
         }
         return null;
-      });
+      })
+      .otherwise(t -> null);
   }
 
   private String prepareQueryGetPoLinesByNumber(List<String> poLineNumbers) {
@@ -297,18 +312,20 @@ public class CreateInvoiceEventHandler implements EventHandler {
     return format(PO_LINES_BY_REF_NUMBER_CQL, valueString);
   }
 
-  private CompletableFuture<Invoice> saveInvoice(DataImportEventPayload dataImportEventPayload, Map<String, String> okapiHeaders) {
+  private Future<Invoice> saveInvoice(DataImportEventPayload dataImportEventPayload, Map<String, String> okapiHeaders) {
     Invoice invoiceToSave = Json.decodeValue(dataImportEventPayload.getContext().get(INVOICE.value()), Invoice.class);
     invoiceToSave.setSource(Invoice.Source.EDI);
-    InvoiceHelper invoiceHelper = new InvoiceHelper(okapiHeaders, Vertx.currentContext(), DEFAULT_LANG);
+    InvoiceHelper invoiceHelper = new InvoiceHelper(okapiHeaders, Vertx.currentContext());
+    RequestContext requestContext = new RequestContext(Vertx.currentContext(), okapiHeaders);
 
-    return invoiceHelper.createInvoice(invoiceToSave).whenComplete((invoice, throwable) -> {
-      if (throwable == null) {
-        dataImportEventPayload.getContext().put(INVOICE.value(), Json.encode(invoice));
-        return;
-      }
-      logger.error("Error during creation invoice in the storage", throwable);
-    });
+    return invoiceHelper.createInvoice(invoiceToSave, requestContext)
+      .onComplete(result -> {
+        if (result.succeeded()) {
+          dataImportEventPayload.getContext().put(INVOICE.value(), Json.encode(result.result()));
+          return;
+        }
+        logger.error("Error during creation invoice in the storage", result.cause());
+      });
   }
 
   private List<InvoiceLine> prepareInvoiceLinesToSave(String invoiceId, DataImportEventPayload dataImportEventPayload, Map<Integer, PoLine> associatedPoLines) {
@@ -333,31 +350,30 @@ public class CreateInvoiceEventHandler implements EventHandler {
     }
   }
 
-  private CompletableFuture<List<Pair<InvoiceLine, String>>> saveInvoiceLines(List<InvoiceLine> invoiceLines, Map<String, String> okapiHeaders) {
-    ArrayList<CompletableFuture<InvoiceLine>> futures = new ArrayList<>();
+  private Future<List<Pair<InvoiceLine, String>>> saveInvoiceLines(List<InvoiceLine> invoiceLines, Map<String, String> okapiHeaders) {
+    List<Future<Pair<InvoiceLine, String>>> futures = new ArrayList<>();
+    Semaphore semaphore = new Semaphore(5, Vertx.currentContext().owner());
 
-    CompletableFuture<InvoiceLine> future = completedFuture(null);
-    InvoiceLineHelper helper = new InvoiceLineHelper(okapiHeaders, Vertx.currentContext(), DEFAULT_LANG);
-    for (InvoiceLine invoiceLine : invoiceLines) {
-      future = future.thenCompose(v -> helper.createInvoiceLine(invoiceLine));
-      futures.add(future);
-    }
-
-    List<Pair<InvoiceLine, String>> savingResults = new ArrayList<>();
-    return CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).handle((v, throwable) -> {
-      for (int i = 0; i < futures.size(); i++) {
-        InvoiceLine mappedInvoiceLine = invoiceLines.get(i);
-        int invLineNumber = i + 1;
-        futures.get(i).whenComplete((savedInvLine, e) -> {
-          if (e != null) {
-            logger.error("Error to create invoice line with number {}", invLineNumber, e);
-          }
-          Pair<InvoiceLine, String> invoiceLineToMsg = e == null ? Pair.of(savedInvLine, null) : Pair.of(mappedInvoiceLine, e.getMessage());
-          savingResults.add(invoiceLineToMsg);
-        });
-      }
-      return savingResults;
-    });
+    InvoiceLineHelper helper = new InvoiceLineHelper(okapiHeaders, Vertx.currentContext());
+    return Vertx.currentContext()
+      .<List<Future<Pair<InvoiceLine, String>>>>executeBlocking(promise -> {
+        for (InvoiceLine invoiceLine : invoiceLines) {
+          var future = helper.createInvoiceLine(invoiceLine)
+            .compose(createdInvoiceLine -> {
+              Pair<InvoiceLine, String> invoiceLineToMsg = Pair.of(createdInvoiceLine, null);
+              return Future.succeededFuture(invoiceLineToMsg);
+            }, err -> {
+              logger.error("Failed to create invoice line {}, {}", invoiceLine, err);
+              Pair<InvoiceLine, String> invoiceLineToMsg = Pair.of(invoiceLine, err.getMessage());
+              return Future.succeededFuture(invoiceLineToMsg);
+            });
+          futures.add(future);
+          semaphore.acquire(() ->
+            future.onComplete(asyncResult -> semaphore.release()));
+        }
+        promise.complete(futures);
+      })
+      .compose(HelperUtils::collectResultsOnSuccess);
   }
 
   private List<InvoiceLine> mapInvoiceLinesArrayToList(JsonArray invoiceLinesArray) {

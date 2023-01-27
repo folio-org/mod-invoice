@@ -2,7 +2,6 @@ package org.folio;
 
 import static net.mguenther.kafka.junit.EmbeddedKafkaClusterConfig.useDefaults;
 
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -17,12 +16,10 @@ import org.folio.jaxb.DefaultJAXBRootElementNameResolverTest;
 import org.folio.jaxb.JAXBUtilTest;
 import org.folio.jaxb.XMLConverterTest;
 import org.folio.rest.RestVerticle;
-import org.folio.rest.core.RestClientTest;
 import org.folio.rest.impl.BatchGroupsApiTest;
 import org.folio.rest.impl.BatchVoucherExportConfigCredentialsTest;
 import org.folio.rest.impl.BatchVoucherExportConfigTest;
 import org.folio.rest.impl.BatchVoucherExportsApiTest;
-import org.folio.rest.impl.BatchVoucherExportsHelperTest;
 import org.folio.rest.impl.BatchVoucherImplTest;
 import org.folio.rest.impl.DocumentsApiTest;
 import org.folio.rest.impl.InvoiceLinesApiTest;
@@ -38,7 +35,7 @@ import org.folio.rest.tools.utils.NetworkUtils;
 import org.folio.schemas.xsd.BatchVoucherSchemaXSDTest;
 import org.folio.services.InvoiceLinesRetrieveServiceTest;
 import org.folio.services.InvoiceRetrieveServiceTest;
-import org.folio.services.VoucherLinesRetrieveServiceTest;
+import org.folio.services.VoucherLineServiceTest;
 import org.folio.services.finance.BudgetExpenseClassTest;
 import org.folio.services.finance.CurrentFiscalYearServiceTest;
 import org.folio.services.finance.ManualCurrencyConversionTest;
@@ -61,6 +58,7 @@ import org.junit.jupiter.api.Nested;
 
 import io.restassured.RestAssured;
 import io.vertx.core.DeploymentOptions;
+import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
 import net.mguenther.kafka.junit.EmbeddedKafkaCluster;
@@ -77,7 +75,7 @@ public class ApiTestSuite {
 
   public static EmbeddedKafkaCluster kafkaCluster;
   private static MockServer mockServer;
-  private static Vertx vertx;
+  public static Vertx vertx;
   private static boolean initialised;
 
   @BeforeAll
@@ -105,15 +103,15 @@ public class ApiTestSuite {
     conf.put("http.port", okapiPort);
 
     final DeploymentOptions opt = new DeploymentOptions().setConfig(conf);
-    CompletableFuture<String> deploymentComplete = new CompletableFuture<>();
+    Promise<String> deploymentComplete = Promise.promise();
     vertx.deployVerticle(RestVerticle.class.getName(), opt, res -> {
       if (res.succeeded()) {
         deploymentComplete.complete(res.result());
       } else {
-        deploymentComplete.completeExceptionally(res.cause());
+        deploymentComplete.fail(res.cause());
       }
     });
-    deploymentComplete.get(60, TimeUnit.SECONDS);
+    deploymentComplete.future().toCompletionStage().toCompletableFuture().get(60, TimeUnit.SECONDS);
     initialised = true;
   }
 
@@ -230,15 +228,11 @@ public class ApiTestSuite {
   }
 
   @Nested
-  class VoucherLinesRetrieveServiceTestNested extends VoucherLinesRetrieveServiceTest {
+  class VoucherLinesRetrieveServiceTestNested extends VoucherLineServiceTest {
   }
 
   @Nested
   class BatchVoucherGenerateServiceTestNested extends BatchVoucherGenerateServiceTest {
-  }
-
-  @Nested
-  class BatchVoucherExportsHelperTestNested extends BatchVoucherExportsHelperTest {
   }
 
   @Nested
@@ -255,10 +249,6 @@ public class ApiTestSuite {
 
   @Nested
   class BaseTransactionServiceTestNested extends BaseTransactionServiceTest {
-  }
-
-  @Nested
-  class RestClientTestNested extends RestClientTest {
   }
 
   @Nested
