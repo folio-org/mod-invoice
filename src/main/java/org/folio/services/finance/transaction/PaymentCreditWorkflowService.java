@@ -5,7 +5,6 @@ import static java.util.stream.Collectors.toList;
 import static org.folio.invoices.utils.ErrorCodes.TRANSACTION_CREATION_FAILURE;
 import static org.folio.invoices.utils.HelperUtils.convertToDoubleWithRounding;
 import static org.folio.invoices.utils.HelperUtils.getFundDistributionAmount;
-import static org.folio.rest.RestConstants.SEMAPHORE_MAX_ACTIVE_THREADS;
 import static org.folio.services.FundsDistributionService.distributeFunds;
 
 import java.util.ArrayList;
@@ -17,13 +16,11 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.models.InvoiceWorkflowDataHolder;
-import org.folio.okapi.common.GenericCompositeFuture;
 import org.folio.rest.acq.model.finance.Transaction;
 import org.folio.rest.core.models.RequestContext;
 import org.folio.rest.jaxrs.model.Parameter;
 
 import io.vertx.core.Future;
-import io.vertxconcurrent.Semaphore;
 
 public class PaymentCreditWorkflowService {
 
