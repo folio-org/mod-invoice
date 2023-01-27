@@ -64,8 +64,8 @@ public class UploadBatchVoucherExportHelper extends AbstractHelper {
       .compose(v -> updateHolderWithCredentials(uploadHolder))
       .compose(v -> updateHolderWithBatchVoucher(uploadHolder))
       .compose(v -> uploadBatchVoucher(uploadHolder))
-      .compose(v -> successfulUploadUpdate(uploadHolder),
-        t -> failUploadUpdate(uploadHolder.getBatchVoucherExport(), t));
+      .onSuccess(v -> successfulUploadUpdate(uploadHolder))
+      .onFailure(t -> failUploadUpdate(uploadHolder.getBatchVoucherExport(), t));
   }
 
   public Future<Void> uploadBatchVoucher(BatchVoucherUploadHolder uploadHolder) {
