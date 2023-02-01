@@ -181,7 +181,7 @@ public class InvoicesImpl extends BaseApi implements org.folio.rest.jaxrs.resour
   public void putInvoiceInvoiceLinesFundDistributionsValidate(ValidateFundDistributionsRequest request,
       Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     FundDistributionsValidationHelper helper = new FundDistributionsValidationHelper(okapiHeaders, vertxContext);
-    helper.validateFundDistributions(request, vertxContext)
+    helper.validateFundDistributions(request)
       .onSuccess(invoiceLine -> asyncResultHandler.handle(succeededFuture(helper.buildNoContentResponse())))
       .onFailure(t -> handleErrorResponse(asyncResultHandler, helper, t));
   }

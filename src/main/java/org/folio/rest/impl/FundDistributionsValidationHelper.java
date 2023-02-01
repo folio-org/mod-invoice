@@ -1,7 +1,6 @@
 package org.folio.rest.impl;
 
 import static org.folio.invoices.utils.ErrorCodes.ADJUSTMENT_IDS_NOT_UNIQUE;
-import static org.folio.services.adjusment.AdjustmentsService.NOT_PRORATED_ADJUSTMENTS_PREDICATE;
 
 import java.util.List;
 import java.util.Map;
@@ -13,7 +12,6 @@ import javax.money.MonetaryAmount;
 import org.apache.commons.collections4.CollectionUtils;
 import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.invoices.utils.HelperUtils;
-import org.folio.rest.jaxrs.model.Adjustment;
 import org.folio.rest.jaxrs.model.FundDistribution;
 import org.folio.rest.jaxrs.model.ValidateFundDistributionsRequest;
 import org.folio.services.adjusment.AdjustmentsService;
@@ -37,7 +35,7 @@ public class FundDistributionsValidationHelper extends AbstractHelper {
     SpringContextUtil.autowireDependencies(this, ctx);
   }
 
-  public Future<Void> validateFundDistributions(ValidateFundDistributionsRequest request, Context ctx) {
+  public Future<Void> validateFundDistributions(ValidateFundDistributionsRequest request) {
     return Future.succeededFuture()
       .map(v -> {
         MonetaryAmount subTotal;
@@ -50,11 +48,6 @@ public class FundDistributionsValidationHelper extends AbstractHelper {
           subTotal = Money.of(request.getSubTotal(), currencyUnit);
           MonetaryAmount adjustmentAndFundTotals = HelperUtils.calculateAdjustmentsTotal(request.getAdjustments(), subTotal);
           Double total = HelperUtils.convertToDoubleWithRounding(adjustmentAndFundTotals.add(subTotal));
-          List<Adjustment> notProratedAdjustmentList = adjustmentsService.filterAdjustments(request.getAdjustments(),
-              NOT_PRORATED_ADJUSTMENTS_PREDICATE);
-          if (CollectionUtils.isNotEmpty(notProratedAdjustmentList)) {
-            validator.validateAdjustments(notProratedAdjustmentList);
-          }
           validator.validateFundDistributions(total, fundDistributionList);
         } else {
           validator.validateFundDistributions(request.getSubTotal(), fundDistributionList);
