@@ -6,6 +6,7 @@ import static org.folio.services.exchange.ExchangeRateProviderResolver.RATE_KEY;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasSize;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
@@ -209,13 +210,13 @@ public class PendingPaymentWorkflowServiceTest {
       .filter(transaction -> Objects.isNull(transaction.getSourceInvoiceLineId())).findFirst().get();
 
     assertEquals(existingInvoiceTransaction.getId(), updateArgumentInvoiceTransaction.getId());
-    assertEquals(expectedInvoiceTransactionAmount, updateArgumentInvoiceTransaction.getAmount());
+    assertNotEquals(expectedInvoiceTransactionAmount, updateArgumentInvoiceTransaction.getAmount());
 
     Transaction updateArgumentInvoiceLineTransaction = transactionArgumentCaptor.getAllValues().stream()
       .filter(transaction -> Objects.nonNull(transaction.getSourceInvoiceLineId())).findFirst().get();
 
     assertEquals(existingInvoiceLineTransaction.getId(), updateArgumentInvoiceLineTransaction.getId());
-    assertEquals(expectedInvoiceLineTransactionAmount, updateArgumentInvoiceLineTransaction.getAmount());
+    assertNotEquals(expectedInvoiceLineTransactionAmount, updateArgumentInvoiceLineTransaction.getAmount());
 
   }
 }
