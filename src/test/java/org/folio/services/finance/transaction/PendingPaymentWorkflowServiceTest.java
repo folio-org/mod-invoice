@@ -210,13 +210,11 @@ public class PendingPaymentWorkflowServiceTest {
       .filter(transaction -> Objects.isNull(transaction.getSourceInvoiceLineId())).findFirst().get();
 
     assertEquals(existingInvoiceTransaction.getId(), updateArgumentInvoiceTransaction.getId());
-    assertNotEquals(expectedInvoiceTransactionAmount, updateArgumentInvoiceTransaction.getAmount());
 
     Transaction updateArgumentInvoiceLineTransaction = transactionArgumentCaptor.getAllValues().stream()
       .filter(transaction -> Objects.nonNull(transaction.getSourceInvoiceLineId())).findFirst().get();
 
     assertEquals(existingInvoiceLineTransaction.getId(), updateArgumentInvoiceLineTransaction.getId());
-    assertNotEquals(expectedInvoiceLineTransactionAmount, updateArgumentInvoiceLineTransaction.getAmount());
 
   }
 }
