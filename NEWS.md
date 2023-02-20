@@ -6,8 +6,6 @@ The focus of this release was to migrate to Vertx future and improve logging
 [Full Changelog](https://github.com/folio-org/mod-invoice/compare/v5.5.0...v5.6.0)
 
 ### Stories
-* [FOLIO-1021](https://issues.folio.org/browse/FOLIO-1021) - Update each README to use range of years in the copyright statement
-* [FOLIO-3678](https://issues.folio.org/browse/FOLIO-3678) - Ensure API-related GitHub Workflows are used for relevant backend repositories
 * [MODINVOICE-428](https://issues.folio.org/browse/MODINVOICE-428) - Correct http response codes for invoice validation
 * [MODINVOICE-431](https://issues.folio.org/browse/MODINVOICE-431) - Replace FolioVertxCompletableFuture usage
 * [MODINVOICE-434](https://issues.folio.org/browse/MODINVOICE-434) - Logging improvement - Configuration
