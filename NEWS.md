@@ -1,4 +1,20 @@
-## 5.6.0 - Unreleased
+## 5.7.0 - Unreleased
+
+## 5.6.0 - Orchid R1 2023
+The focus of this release was to migrate to Vertx future and improve logging 
+
+[Full Changelog](https://github.com/folio-org/mod-invoice/compare/v5.5.0...v5.6.0)
+
+### Stories
+* [MODINVOICE-428](https://issues.folio.org/browse/MODINVOICE-428) - Correct http response codes for invoice validation
+* [MODINVOICE-431](https://issues.folio.org/browse/MODINVOICE-431) - Replace FolioVertxCompletableFuture usage
+* [MODINVOICE-434](https://issues.folio.org/browse/MODINVOICE-434) - Logging improvement - Configuration
+
+### Bug Fixes
+* [MODINVOICE-440](https://issues.folio.org/browse/MODINVOICE-440) - Invoice in Reviewed status but payments already created
+* [MODINVOICE-442](https://issues.folio.org/browse/MODINVOICE-442) - Request-URI Too Long when trying to cancel invoice with more than 40 invoice lines
+* [MODINVOICE-446](https://issues.folio.org/browse/MODINVOICE-446) - Encumbrance for Ongoing order remains "Released" after cancelling related invoice
+* [MODINVOICE-449](https://issues.folio.org/browse/MODINVOICE-449) - Adjustments cause blocker on invoices
 
 ## 5.5.0 - Nolana R3 2022
 The focus of this release was to Upgrade RMB up to 35.0.1
