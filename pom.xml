@@ -24,7 +24,7 @@
     <jsonschema2pojo_output_dir>${generated_sources_dir}/jsonschema2pojo</jsonschema2pojo_output_dir>
     <ramlfiles_path>${basedir}/ramls</ramlfiles_path>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <mod-configuration-client.version>5.9.1-SNAPSHOT</mod-configuration-client.version>
+    <mod-configuration-client.version>5.9.1</mod-configuration-client.version>
     <spring.version>5.3.20</spring.version>
     <sonar.exclusions>**/models/*.java</sonar.exclusions>
     <sonar.test.exclusions>**/*Test.java</sonar.test.exclusions>
