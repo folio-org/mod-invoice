@@ -2,6 +2,7 @@ package org.folio.services.finance.transaction;
 
 import static java.util.stream.Collectors.toList;
 import static org.folio.invoices.utils.ErrorCodes.PENDING_PAYMENT_ERROR;
+import static org.folio.invoices.utils.ErrorCodes.PENDING_PAYMENT_UPDATE_ERROR;
 import static org.folio.invoices.utils.HelperUtils.collectResultsOnSuccess;
 import static org.folio.invoices.utils.HelperUtils.convertToDoubleWithRounding;
 import static org.folio.invoices.utils.HelperUtils.getFundDistributionAmount;
@@ -10,7 +11,6 @@ import static org.folio.services.FundsDistributionService.distributeFunds;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 import javax.money.MonetaryAmount;
 
@@ -137,11 +137,14 @@ public class PendingPaymentWorkflowService {
   }
 
   private Future<Void> updateTransactions(List<InvoiceWorkflowDataHolder> holders, RequestContext requestContext) {
-    var futures = holders.stream()
-      .map(InvoiceWorkflowDataHolder::getExistingTransaction)
-      .map(transaction -> baseTransactionService.updateTransaction(transaction, requestContext))
-      .collect(Collectors.toList());
-    return GenericCompositeFuture.join(futures).mapEmpty();
+    for (InvoiceWorkflowDataHolder holder : holders) {
+      Transaction pendingPayment = holder.getNewTransaction();
+      baseTransactionService.updateTransaction(pendingPayment, requestContext).recover(t -> {
+          logger.error("Failed to update pending payment with id {}", pendingPayment.getId(), t);
+          throw new HttpException(500, PENDING_PAYMENT_UPDATE_ERROR.toError());
+        });
+    }
+    return Future.succeededFuture();
   }
 
   private Transaction buildTransaction(InvoiceWorkflowDataHolder holder)  {
