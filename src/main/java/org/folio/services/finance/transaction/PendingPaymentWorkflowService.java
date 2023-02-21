@@ -137,14 +137,28 @@ public class PendingPaymentWorkflowService {
   }
 
   private Future<Void> updateTransactions(List<InvoiceWorkflowDataHolder> holders, RequestContext requestContext) {
-    for (InvoiceWorkflowDataHolder holder : holders) {
-      Transaction pendingPayment = holder.getNewTransaction();
-      baseTransactionService.updateTransaction(pendingPayment, requestContext).recover(t -> {
-          logger.error("Failed to update pending payment with id {}", pendingPayment.getId(), t);
-          throw new HttpException(500, PENDING_PAYMENT_UPDATE_ERROR.toError());
-        });
-    }
-    return Future.succeededFuture();
+    List<Future<Void>> futures = new ArrayList<>();
+
+    return requestContext.getContext()
+      .executeBlocking(promise -> {
+        Semaphore semaphore = new Semaphore(5, Vertx.currentContext().owner());
+
+        for (InvoiceWorkflowDataHolder holder : holders) {
+          Transaction pendingPayment = holder.getNewTransaction();
+          Future<Void> future = baseTransactionService.updateTransaction(pendingPayment, requestContext)
+            .recover(t -> {
+              logger.error("Failed to update pending payment with id {}", pendingPayment.getId(), t);
+              throw new HttpException(500, PENDING_PAYMENT_UPDATE_ERROR.toError());
+            })
+            .mapEmpty();
+          futures.add(future);
+          semaphore.acquire(() ->
+            future.onComplete(asyncResult -> semaphore.release()));
+        }
+        promise.complete();
+      })
+      .compose(v-> GenericCompositeFuture.join(futures))
+      .mapEmpty();
   }
 
   private Transaction buildTransaction(InvoiceWorkflowDataHolder holder)  {
