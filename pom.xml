@@ -17,7 +17,7 @@
     <aspectj.version>1.9.7</aspectj.version>
     <jsonschema_paths>acq-models/mod-invoice-storage/schemas,raml-util/schemas,acq-models/common/schemas/</jsonschema_paths>
     <raml-module-builder.version>35.0.1</raml-module-builder.version>
-    <vertx.version>4.3.4</vertx.version>
+    <vertx.version>4.3.8</vertx.version>
     <junit.version>4.13.2</junit.version>
     <rest-assured.version>5.3.0</rest-assured.version>
     <generated_sources_dir>${project.build.directory}/generated-sources</generated_sources_dir>
