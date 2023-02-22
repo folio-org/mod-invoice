@@ -66,8 +66,8 @@ public class PendingPaymentWorkflowService {
     List<InvoiceWorkflowDataHolder> holders = withNewPendingPayments(dataHolders);
     holderValidator.validate(holders);
     InvoiceTransactionSummary invoiceTransactionSummary = buildInvoiceTransactionsSummary(holders);
-    invoiceTransactionSummaryService.updateInvoiceTransactionSummary(invoiceTransactionSummary, requestContext);
-    return updateTransactions(holders, requestContext);
+    return invoiceTransactionSummaryService.updateInvoiceTransactionSummary(invoiceTransactionSummary, requestContext)
+      .compose(aVoid -> updateTransactions(holders, requestContext));
   }
 
   private InvoiceTransactionSummary buildInvoiceTransactionsSummary(List<InvoiceWorkflowDataHolder> holders) {
@@ -137,11 +137,11 @@ public class PendingPaymentWorkflowService {
   }
 
   private Future<Void> updateTransactions(List<InvoiceWorkflowDataHolder> holders, RequestContext requestContext) {
-    var futures = holders.stream()
+    return GenericCompositeFuture.join(holders.stream()
       .map(InvoiceWorkflowDataHolder::getNewTransaction)
       .map(transaction -> baseTransactionService.updateTransaction(transaction, requestContext))
-      .collect(Collectors.toList());
-    return GenericCompositeFuture.join(futures).mapEmpty();
+      .collect(Collectors.toList()))
+      .mapEmpty();
   }
 
   private Transaction buildTransaction(InvoiceWorkflowDataHolder holder)  {
