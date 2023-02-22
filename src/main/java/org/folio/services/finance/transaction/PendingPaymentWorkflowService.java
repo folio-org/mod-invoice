@@ -2,7 +2,6 @@ package org.folio.services.finance.transaction;
 
 import static java.util.stream.Collectors.toList;
 import static org.folio.invoices.utils.ErrorCodes.PENDING_PAYMENT_ERROR;
-import static org.folio.invoices.utils.ErrorCodes.PENDING_PAYMENT_UPDATE_ERROR;
 import static org.folio.invoices.utils.HelperUtils.collectResultsOnSuccess;
 import static org.folio.invoices.utils.HelperUtils.convertToDoubleWithRounding;
 import static org.folio.invoices.utils.HelperUtils.getFundDistributionAmount;
@@ -11,6 +10,7 @@ import static org.folio.services.FundsDistributionService.distributeFunds;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 import javax.money.MonetaryAmount;
 
@@ -66,8 +66,8 @@ public class PendingPaymentWorkflowService {
     List<InvoiceWorkflowDataHolder> holders = withNewPendingPayments(dataHolders);
     holderValidator.validate(holders);
     InvoiceTransactionSummary invoiceTransactionSummary = buildInvoiceTransactionsSummary(holders);
-    return invoiceTransactionSummaryService.updateInvoiceTransactionSummary(invoiceTransactionSummary, requestContext)
-      .compose(aVoid -> updateTransactions(holders, requestContext));
+    invoiceTransactionSummaryService.updateInvoiceTransactionSummary(invoiceTransactionSummary, requestContext);
+    return updateTransactions(holders, requestContext);
   }
 
   private InvoiceTransactionSummary buildInvoiceTransactionsSummary(List<InvoiceWorkflowDataHolder> holders) {
@@ -137,28 +137,11 @@ public class PendingPaymentWorkflowService {
   }
 
   private Future<Void> updateTransactions(List<InvoiceWorkflowDataHolder> holders, RequestContext requestContext) {
-    List<Future<Void>> futures = new ArrayList<>();
-
-    return requestContext.getContext()
-      .executeBlocking(promise -> {
-        Semaphore semaphore = new Semaphore(5, Vertx.currentContext().owner());
-
-        for (InvoiceWorkflowDataHolder holder : holders) {
-          Transaction pendingPayment = holder.getNewTransaction();
-          Future<Void> future = baseTransactionService.updateTransaction(pendingPayment, requestContext)
-            .recover(t -> {
-              logger.error("Failed to update pending payment with id {}", pendingPayment.getId(), t);
-              throw new HttpException(500, PENDING_PAYMENT_UPDATE_ERROR.toError());
-            })
-            .mapEmpty();
-          futures.add(future);
-          semaphore.acquire(() ->
-            future.onComplete(asyncResult -> semaphore.release()));
-        }
-        promise.complete();
-      })
-      .compose(v-> GenericCompositeFuture.join(futures))
-      .mapEmpty();
+    var futures = holders.stream()
+      .map(InvoiceWorkflowDataHolder::getNewTransaction)
+      .map(transaction -> baseTransactionService.updateTransaction(transaction, requestContext))
+      .collect(Collectors.toList());
+    return GenericCompositeFuture.join(futures).mapEmpty();
   }
 
   private Transaction buildTransaction(InvoiceWorkflowDataHolder holder)  {

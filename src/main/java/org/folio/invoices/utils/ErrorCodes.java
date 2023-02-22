@@ -32,7 +32,6 @@ public enum ErrorCodes {
   USER_HAS_NO_ACQ_PERMISSIONS("userHasNoAcqUnitsPermission", "User does not have permissions to manage acquisition units assignments - operation is restricted"),
   ACQ_UNITS_NOT_FOUND("acqUnitsNotFound", "Acquisitions units assigned to the record not found"),
   PENDING_PAYMENT_ERROR("pendingPaymentError", "Failed to create pending payment"),
-  PENDING_PAYMENT_UPDATE_ERROR("pendingPaymentUpdateError", "Failed to Update pending payment"),
   INVOICE_PAYMENT_FAILURE("invoicePaymentFailure", "Invoice payment failure"),
   CURRENT_FISCAL_YEAR_NOT_FOUND("currentFYearNotFound", "Current fiscal year not found for ledger"),
   TRANSACTION_CREATION_FAILURE("transactionCreationFailure", "One or more transactions record(s) failed to be created"),
