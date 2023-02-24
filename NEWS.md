@@ -1,5 +1,13 @@
 ## 5.7.0 - Unreleased
 
+## 5.6.1 - Orchid R1 2023 Bug Fix
+The focus of this release was to update mod-di-converter-storage-client and data-import-processing-core dependencies
+
+[Full Changelog](https://github.com/folio-org/mod-invoice/compare/v5.6.0...v5.6.1)
+
+### Bug Fixes
+* [MODDICORE-306](https://issues.folio.org/browse/MODDICORE-306) - Update mod-di-converter-storage-client and data-import-processing-core dependencies
+
 ## 5.6.0 - Orchid R1 2023
 The focus of this release was to migrate to Vertx future and improve logging 
 
