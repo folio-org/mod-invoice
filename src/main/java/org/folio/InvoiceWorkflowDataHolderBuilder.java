@@ -186,35 +186,26 @@ public class InvoiceWorkflowDataHolderBuilder {
     }
 
     public Future<List<InvoiceWorkflowDataHolder>> withExistingTransactions(List<InvoiceWorkflowDataHolder> holders, RequestContext requestContext) {
-        return holders.stream().findFirst().map(holder -> {
-            String query = String.format("sourceInvoiceId==%s AND transactionType==Pending payment", holder.getInvoice().getId());
-            return baseTransactionService.getTransactions(query, 0, holders.size(), requestContext)
-                    .map(TransactionCollection::getTransactions)
-                    .map(transactions -> mapTransactionsToHolders(transactions, holders));
+      return holders.stream().findFirst().map(holder -> {
+        String query = String.format("sourceInvoiceId==%s AND transactionType==Pending payment", holder.getInvoice().getId());
+          return baseTransactionService.getTransactions(query, 0, holders.size(), requestContext)
+            .map(TransactionCollection::getTransactions)
+            .map(transactions -> mapTransactionsToHolders(transactions, holders));
         }).orElseGet(() -> succeededFuture(holders));
-
     }
 
     private List<InvoiceWorkflowDataHolder> mapTransactionsToHolders(List<Transaction> transactions, List<InvoiceWorkflowDataHolder> holders) {
-      List<InvoiceWorkflowDataHolder> invoiceWorkflowDataHolderList = new ArrayList<>();
+      return holders.stream().map(holder -> holder.withExistingTransaction(mapTransactionToHolder(holder, transactions))).collect(toList());
+    }
 
-      for (InvoiceWorkflowDataHolder holder : holders)
-      {
-        for (Transaction transaction : transactions) {
-          if (isTransactionRefersToHolder(transaction, holder)) {
-            holder.withExistingTransaction(transaction);
-            transactions.remove(transaction);
-            break;
-          }
-          else {
-            holder.withExistingTransaction(new Transaction().withAmount(0d).withCurrency(holder.getFyCurrency()));
-            break;
-          }
+    private Transaction mapTransactionToHolder(InvoiceWorkflowDataHolder holder, List<Transaction> transactions) {
+      Transaction transaction = transactions.stream()
+        .filter(tr -> isTransactionRefersToHolder(tr, holder))
+        .findFirst()
+        .orElseGet(() -> new Transaction().withAmount(0d).withCurrency(holder.getFyCurrency()));
+      transactions.remove(transaction);
 
-        }
-        invoiceWorkflowDataHolderList.add(holder);
-      }
-      return invoiceWorkflowDataHolderList;
+    return transaction;
     }
 
     private boolean isTransactionRefersToHolder(Transaction transaction, InvoiceWorkflowDataHolder holder) {
