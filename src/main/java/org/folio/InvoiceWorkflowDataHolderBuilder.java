@@ -201,7 +201,7 @@ public class InvoiceWorkflowDataHolderBuilder {
       for (InvoiceWorkflowDataHolder holder : holders)
       {
         for (Transaction transaction : transactions) {
-          if(isTransactionRefersToHolder(transaction, holder)) {
+          if (isTransactionRefersToHolder(transaction, holder)) {
             holder.withExistingTransaction(transaction);
             transactions.remove(transaction);
             break;
@@ -210,6 +210,7 @@ public class InvoiceWorkflowDataHolderBuilder {
             holder.withExistingTransaction(new Transaction().withAmount(0d).withCurrency(holder.getFyCurrency()));
             break;
           }
+
         }
         invoiceWorkflowDataHolderList.add(holder);
       }
