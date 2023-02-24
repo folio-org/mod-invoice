@@ -137,11 +137,11 @@ public class PendingPaymentWorkflowService {
   }
 
   private Future<Void> updateTransactions(List<InvoiceWorkflowDataHolder> holders, RequestContext requestContext) {
-    return GenericCompositeFuture.join(holders.stream()
+    var futures = holders.stream()
       .map(InvoiceWorkflowDataHolder::getNewTransaction)
       .map(transaction -> baseTransactionService.updateTransaction(transaction, requestContext))
-      .collect(Collectors.toList()))
-      .mapEmpty();
+      .collect(Collectors.toList());
+    return GenericCompositeFuture.join(futures).mapEmpty();
   }
 
   private Transaction buildTransaction(InvoiceWorkflowDataHolder holder)  {
