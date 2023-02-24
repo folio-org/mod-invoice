@@ -204,8 +204,7 @@ public class InvoiceWorkflowDataHolderBuilder {
         .findFirst()
         .orElseGet(() -> new Transaction().withAmount(0d).withCurrency(holder.getFyCurrency()));
       transactions.remove(transaction);
-
-    return transaction;
+      return transaction;
     }
 
     private boolean isTransactionRefersToHolder(Transaction transaction, InvoiceWorkflowDataHolder holder) {
