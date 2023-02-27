@@ -188,7 +188,7 @@ public class InvoiceWorkflowDataHolderBuilder {
     public Future<List<InvoiceWorkflowDataHolder>> withExistingTransactions(List<InvoiceWorkflowDataHolder> holders, RequestContext requestContext) {
       return holders.stream().findFirst().map(holder -> {
         String query = String.format("sourceInvoiceId==%s AND transactionType==Pending payment", holder.getInvoice().getId());
-          return baseTransactionService.getTransactions(query, 0, holders.size(), requestContext)
+        return baseTransactionService.getTransactions(query, 0, holders.size(), requestContext)
             .map(TransactionCollection::getTransactions)
             .map(transactions -> mapTransactionsToHolders(transactions, holders));
         }).orElseGet(() -> succeededFuture(holders));
