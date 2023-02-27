@@ -203,6 +203,8 @@ public class InvoiceWorkflowDataHolderBuilder {
         .filter(tr -> isTransactionRefersToHolder(tr, holder))
         .findFirst()
         .orElseGet(() -> new Transaction().withAmount(0d).withCurrency(holder.getFyCurrency()));
+      //Added remove so that in case of multiple transaction update our holder wont hold the same transaction because of findFirst().
+      //And in this case we can avoid "Primary Key Violation" when working with invoice summaries.
       transactions.remove(transaction);
       return transaction;
     }
