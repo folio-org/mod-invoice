@@ -186,24 +186,27 @@ public class InvoiceWorkflowDataHolderBuilder {
     }
 
     public Future<List<InvoiceWorkflowDataHolder>> withExistingTransactions(List<InvoiceWorkflowDataHolder> holders, RequestContext requestContext) {
-        return holders.stream().findFirst().map(holder -> {
-            String query = String.format("sourceInvoiceId==%s AND transactionType==Pending payment", holder.getInvoice().getId());
-            return baseTransactionService.getTransactions(query, 0, holders.size(), requestContext)
-                    .map(TransactionCollection::getTransactions)
-                    .map(transactions -> mapTransactionsToHolders(transactions, holders));
+      return holders.stream().findFirst().map(holder -> {
+        String query = String.format("sourceInvoiceId==%s AND transactionType==Pending payment", holder.getInvoice().getId());
+        return baseTransactionService.getTransactions(query, 0, holders.size(), requestContext)
+            .map(TransactionCollection::getTransactions)
+            .map(transactions -> mapTransactionsToHolders(transactions, holders));
         }).orElseGet(() -> succeededFuture(holders));
-
     }
 
     private List<InvoiceWorkflowDataHolder> mapTransactionsToHolders(List<Transaction> transactions, List<InvoiceWorkflowDataHolder> holders) {
-        return holders.stream().map(holder -> holder.withExistingTransaction(mapTransactionToHolder(holder, transactions))).collect(toList());
+      return holders.stream().map(holder -> holder.withExistingTransaction(mapTransactionToHolder(holder, transactions))).collect(toList());
     }
 
     private Transaction mapTransactionToHolder(InvoiceWorkflowDataHolder holder, List<Transaction> transactions) {
-        return transactions.stream()
-                .filter(transaction -> isTransactionRefersToHolder(transaction, holder))
-                .findFirst()
-                .orElseGet(() -> new Transaction().withAmount(0d).withCurrency(holder.getFyCurrency()));
+      Transaction transaction = transactions.stream()
+        .filter(tr -> isTransactionRefersToHolder(tr, holder))
+        .findFirst()
+        .orElseGet(() -> new Transaction().withAmount(0d).withCurrency(holder.getFyCurrency()));
+      //Added remove so that in case of multiple transaction update our holder wont hold the same transaction because of findFirst().
+      //And in this case we can avoid "Primary Key Violation" when working with invoice summaries.
+      transactions.remove(transaction);
+      return transaction;
     }
 
     private boolean isTransactionRefersToHolder(Transaction transaction, InvoiceWorkflowDataHolder holder) {
