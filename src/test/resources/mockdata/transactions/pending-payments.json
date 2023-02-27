@@ -15,6 +15,22 @@
       "sourceInvoiceId": "5925e966-f242-4842-9d5e-b33a651bb390",
       "sourceInvoiceLineId": "ee60ee78-f487-4940-adcf-fa0726989823",
       "transactionType": "Pending payment"
+    },
+    {
+      "id": "c6732efb-9536-4a49-a22e-1ec6ca8a7922",
+      "amount": 25,
+      "awaitingPayment": {
+        "encumbranceId": "12ac70a4-5c9d-112f-9acb-852adf67d7e1",
+        "releaseEncumbrance": "true"
+      },
+      "currency": "USD",
+      "description": "PO_Line: History of Incas",
+      "fiscalYearId": "684b5dc5-92f6-4db7-b996-b549d88f5e4e",
+      "fromFundId": "7fbd5d84-62d1-44c6-9c45-6cb173998bbd",
+      "source": "Invoice",
+      "sourceInvoiceId": "5925e966-f242-4842-9d5e-b33a651bb390",
+      "sourceInvoiceLineId": "ee60ee78-f487-4940-adcf-fa0726989823",
+      "transactionType": "Pending payment"
     }
   ],
   "totalRecords": 1
