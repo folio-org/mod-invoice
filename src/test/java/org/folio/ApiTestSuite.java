@@ -6,6 +6,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
+import org.folio.builders.InvoiceWorkFlowDataHolderBuilderTest;
 import org.folio.converters.BatchVoucherModelConverterTest;
 import org.folio.converters.BatchedVoucherLinesModelConverterTest;
 import org.folio.converters.BatchedVoucherModelConverterTest;
@@ -269,6 +270,10 @@ public class ApiTestSuite {
 
   @Nested
   class PendingPaymentWorkflowServiceTestNested extends PendingPaymentWorkflowServiceTest {
+  }
+
+  @Nested
+  class InvoiceWorkFlowDataHolderBuilderTestNested extends InvoiceWorkFlowDataHolderBuilderTest {
   }
 
   @Nested
