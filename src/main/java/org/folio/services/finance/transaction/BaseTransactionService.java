@@ -90,20 +90,26 @@ public class BaseTransactionService {
   }
 
   public Future<Void> updateTransactions(List<Transaction> transactions, RequestContext requestContext) {
-    var semaphore = new Semaphore(5, requestContext.getContext().owner());
-    List<Future<Void>> futures = new ArrayList<>();
-
+    if (transactions.isEmpty()) {
+      return Future.succeededFuture();
+    }
     return requestContext.getContext()
-      .executeBlocking(promise -> {
+      .<List<Future<Void>>>executeBlocking(promise -> {
+        List<Future<Void>> futures = new ArrayList<>();
+        var semaphore = new Semaphore(1, requestContext.getContext().owner());
         for (Transaction tr : transactions) {
-          var future = updateTransaction(tr, requestContext);
-          futures.add(future);
-          semaphore.acquire(() ->
-            future.onComplete(asyncResult -> semaphore.release()));
+          semaphore.acquire(() -> {
+            var future = updateTransaction(tr, requestContext)
+              .onComplete(asyncResult -> semaphore.release());
+
+            futures.add(future);
+            if (futures.size() == transactions.size()) {
+              promise.complete(futures);
+            }
+          });
         }
-        promise.complete();
       })
-      .compose(v -> GenericCompositeFuture.join(futures))
+      .compose(GenericCompositeFuture::join)
       .mapEmpty();
   }
 

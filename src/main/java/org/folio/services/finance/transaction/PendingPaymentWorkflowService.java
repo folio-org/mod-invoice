@@ -80,27 +80,35 @@ public class PendingPaymentWorkflowService {
   }
 
   private Future<Void> createPendingPayments(List<InvoiceWorkflowDataHolder> holders, RequestContext requestContext) {
-    List<Future<Void>> futures = new ArrayList<>();
+    if (holders.isEmpty()) {
+      return Future.succeededFuture();
+    }
 
     return requestContext.getContext()
-      .executeBlocking(promise -> {
-        Semaphore semaphore = new Semaphore(5, Vertx.currentContext().owner());
+      .<List<Future<Void>>>executeBlocking(promise -> {
+        Semaphore semaphore = new Semaphore(1, Vertx.currentContext().owner());
+        List<Future<Void>> futures = new ArrayList<>();
 
         for (InvoiceWorkflowDataHolder holder : holders) {
           Transaction pendingPayment = holder.getNewTransaction();
-          Future<Void> future = baseTransactionService.createTransaction(pendingPayment, requestContext)
-            .recover(t -> {
-              logger.error("Failed to create pending payment with id {}", pendingPayment.getId(), t);
-              throw new HttpException(500, PENDING_PAYMENT_ERROR.toError());
-            })
-            .mapEmpty();
-          futures.add(future);
-          semaphore.acquire(() ->
-            future.onComplete(asyncResult -> semaphore.release()));
+          semaphore.acquire(() -> {
+            Future<Void> future = baseTransactionService.createTransaction(pendingPayment, requestContext)
+              .recover(t -> {
+                logger.error("Failed to create pending payment with id {}", pendingPayment.getId(), t);
+                throw new HttpException(500, PENDING_PAYMENT_ERROR.toError());
+              })
+              .onComplete(asyncResult -> semaphore.release())
+              .mapEmpty();
+
+            futures.add(future);
+            // complete executeBlocking promise when all operations started
+            if (futures.size() == holders.size()) {
+              promise.complete(futures);
+            }
+          });
         }
-        promise.complete();
       })
-      .compose(v-> GenericCompositeFuture.join(futures))
+      .compose(GenericCompositeFuture::join)
       .mapEmpty();
   }
 

@@ -11,6 +11,7 @@ import static org.folio.DataImportEventTypes.DI_INVOICE_CREATED;
 import static org.folio.invoices.utils.HelperUtils.collectResultsOnSuccess;
 import static org.folio.invoices.utils.ResourcePathResolver.ORDER_LINES;
 import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
+import static org.folio.rest.RestConstants.SEMAPHORE_MAX_ACTIVE_THREADS;
 import static org.folio.rest.jaxrs.model.EntityType.EDIFACT_INVOICE;
 import static org.folio.rest.jaxrs.model.InvoiceLine.InvoiceLineStatus.OPEN;
 import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.ACTION_PROFILE;
@@ -82,7 +83,6 @@ public class CreateInvoiceEventHandler implements EventHandler {
   private static final String POL_EXPENSE_CLASS_KEY = "POL_EXPENSE_CLASS_%s";
   private static final String POL_FUND_DISTRIBUTIONS_KEY = "POL_FUND_DISTRIBUTIONS_%s";
   private static final Pattern SEGMENT_QUERY_PATTERN = Pattern.compile("([A-Z]{3}((\\+|<)\\w*)(\\2*\\w*)*(\\?\\w+)?\\[[1-9](-[1-9])?\\])");
-  private static final int MAX_PARALLEL_SEARCHES = 10;
   private static final int MAX_CHUNK_SIZE = 15;
 
   private final RestClient restClient;
@@ -259,20 +259,26 @@ public class CreateInvoiceEventHandler implements EventHandler {
 
 
   private Future<Map<Integer, PoLine>> getAssociatedPoLinesByRefNumbers(Map<Integer, List<String>> refNumberList, RequestContext requestContext) {
-    List<Future<Pair<Integer, PoLine>>> futures = new ArrayList<>();
-    Semaphore semaphore = new Semaphore(MAX_PARALLEL_SEARCHES, Vertx.currentContext().owner());
-
+    if (refNumberList.isEmpty()) {
+      return Future.succeededFuture(new HashMap<>());
+    }
     return requestContext.getContext()
-      .executeBlocking(promise -> {
+      .<List<Future<Pair<Integer, PoLine>>>>executeBlocking(promise -> {
+        List<Future<Pair<Integer, PoLine>>> futures = new ArrayList<>();
+        Semaphore semaphore = new Semaphore(SEMAPHORE_MAX_ACTIVE_THREADS, Vertx.currentContext().owner());
         for (Map.Entry<Integer, List<String>> entry : refNumberList.entrySet()) {
-          var future = getLinePair(entry, requestContext);
-          futures.add(future);
-          semaphore.acquire(() ->
-            future.onComplete(asyncResult -> semaphore.release()));
+          semaphore.acquire(() -> {
+            var future = getLinePair(entry, requestContext)
+              .onComplete(asyncResult -> semaphore.release());
+            futures.add(future);
+            // complete executeBlocking promise when all operations started
+            if (futures.size() == refNumberList.size()) {
+              promise.complete(futures);
+            }
+          });
         }
-        promise.complete();
       })
-      .compose(v -> collectResultsOnSuccess(futures))
+      .compose(HelperUtils::collectResultsOnSuccess)
       .map(poLinePairs -> poLinePairs.stream()
         .filter(Objects::nonNull)
         .collect(Collectors.toMap(Pair::getKey, Pair::getValue)));
@@ -352,26 +358,34 @@ public class CreateInvoiceEventHandler implements EventHandler {
 
   private Future<List<Pair<InvoiceLine, String>>> saveInvoiceLines(List<InvoiceLine> invoiceLines, Map<String, String> okapiHeaders) {
     List<Future<Pair<InvoiceLine, String>>> futures = new ArrayList<>();
-    Semaphore semaphore = new Semaphore(5, Vertx.currentContext().owner());
+
+    if (invoiceLines.isEmpty()) {
+      return Future.succeededFuture(new ArrayList<>());
+    }
 
     InvoiceLineHelper helper = new InvoiceLineHelper(okapiHeaders, Vertx.currentContext());
     return Vertx.currentContext()
       .<List<Future<Pair<InvoiceLine, String>>>>executeBlocking(promise -> {
+        Semaphore semaphore = new Semaphore(SEMAPHORE_MAX_ACTIVE_THREADS, Vertx.currentContext().owner());
         for (InvoiceLine invoiceLine : invoiceLines) {
-          var future = helper.createInvoiceLine(invoiceLine)
-            .compose(createdInvoiceLine -> {
-              Pair<InvoiceLine, String> invoiceLineToMsg = Pair.of(createdInvoiceLine, null);
-              return Future.succeededFuture(invoiceLineToMsg);
-            }, err -> {
-              logger.error("Failed to create invoice line {}, {}", invoiceLine, err);
-              Pair<InvoiceLine, String> invoiceLineToMsg = Pair.of(invoiceLine, err.getMessage());
-              return Future.succeededFuture(invoiceLineToMsg);
-            });
-          futures.add(future);
-          semaphore.acquire(() ->
-            future.onComplete(asyncResult -> semaphore.release()));
+          semaphore.acquire(() -> {
+            var future = helper.createInvoiceLine(invoiceLine)
+              .compose(createdInvoiceLine -> {
+                Pair<InvoiceLine, String> invoiceLineToMsg = Pair.of(createdInvoiceLine, null);
+                return Future.succeededFuture(invoiceLineToMsg);
+              }, err -> {
+                logger.error("Failed to create invoice line {}, {}", invoiceLine, err);
+                Pair<InvoiceLine, String> invoiceLineToMsg = Pair.of(invoiceLine, err.getMessage());
+                return Future.succeededFuture(invoiceLineToMsg);
+              })
+              .onComplete(asyncResult -> semaphore.release());
+            futures.add(future);
+            // complete executeBlocking promise when all operations processed
+            if (futures.size() == invoiceLines.size()) {
+              promise.complete(futures);
+            }
+          });
         }
-        promise.complete(futures);
       })
       .compose(HelperUtils::collectResultsOnSuccess);
   }
