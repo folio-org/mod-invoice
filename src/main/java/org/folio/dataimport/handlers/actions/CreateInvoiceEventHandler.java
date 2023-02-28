@@ -27,6 +27,8 @@ import java.util.concurrent.CompletableFuture;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.collections4.MapUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -259,7 +261,7 @@ public class CreateInvoiceEventHandler implements EventHandler {
 
 
   private Future<Map<Integer, PoLine>> getAssociatedPoLinesByRefNumbers(Map<Integer, List<String>> refNumberList, RequestContext requestContext) {
-    if (refNumberList.isEmpty()) {
+    if (MapUtils.isNotEmpty(refNumberList)) {
       return Future.succeededFuture(new HashMap<>());
     }
     return requestContext.getContext()
@@ -359,7 +361,7 @@ public class CreateInvoiceEventHandler implements EventHandler {
   private Future<List<Pair<InvoiceLine, String>>> saveInvoiceLines(List<InvoiceLine> invoiceLines, Map<String, String> okapiHeaders) {
     List<Future<Pair<InvoiceLine, String>>> futures = new ArrayList<>();
 
-    if (invoiceLines.isEmpty()) {
+    if (CollectionUtils.isNotEmpty(invoiceLines)) {
       return Future.succeededFuture(new ArrayList<>());
     }
 

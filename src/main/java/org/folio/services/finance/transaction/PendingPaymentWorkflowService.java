@@ -14,6 +14,7 @@ import java.util.stream.Collectors;
 
 import javax.money.MonetaryAmount;
 
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.invoices.rest.exceptions.HttpException;
@@ -80,7 +81,7 @@ public class PendingPaymentWorkflowService {
   }
 
   private Future<Void> createPendingPayments(List<InvoiceWorkflowDataHolder> holders, RequestContext requestContext) {
-    if (holders.isEmpty()) {
+    if (CollectionUtils.isNotEmpty(holders)) {
       return Future.succeededFuture();
     }
 
