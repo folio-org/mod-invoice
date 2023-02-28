@@ -261,7 +261,7 @@ public class CreateInvoiceEventHandler implements EventHandler {
 
 
   private Future<Map<Integer, PoLine>> getAssociatedPoLinesByRefNumbers(Map<Integer, List<String>> refNumberList, RequestContext requestContext) {
-    if (MapUtils.isNotEmpty(refNumberList)) {
+    if (MapUtils.isEmpty(refNumberList)) {
       return Future.succeededFuture(new HashMap<>());
     }
     return requestContext.getContext()
@@ -361,7 +361,7 @@ public class CreateInvoiceEventHandler implements EventHandler {
   private Future<List<Pair<InvoiceLine, String>>> saveInvoiceLines(List<InvoiceLine> invoiceLines, Map<String, String> okapiHeaders) {
     List<Future<Pair<InvoiceLine, String>>> futures = new ArrayList<>();
 
-    if (CollectionUtils.isNotEmpty(invoiceLines)) {
+    if (CollectionUtils.isEmpty(invoiceLines)) {
       return Future.succeededFuture(new ArrayList<>());
     }
 

@@ -90,7 +90,7 @@ public class BaseTransactionService {
   }
 
   public Future<Void> updateTransactions(List<Transaction> transactions, RequestContext requestContext) {
-    if (CollectionUtils.isNotEmpty(transactions)) {
+    if (CollectionUtils.isEmpty(transactions)) {
       return Future.succeededFuture();
     }
     return requestContext.getContext()

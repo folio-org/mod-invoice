@@ -81,7 +81,7 @@ public class PendingPaymentWorkflowService {
   }
 
   private Future<Void> createPendingPayments(List<InvoiceWorkflowDataHolder> holders, RequestContext requestContext) {
-    if (CollectionUtils.isNotEmpty(holders)) {
+    if (CollectionUtils.isEmpty(holders)) {
       return Future.succeededFuture();
     }
 
