@@ -129,8 +129,9 @@ public class PendingPaymentWorkflowService {
       }
     }
 
-    return collectResultsOnSuccess(futures).onSuccess(result ->
-        logger.debug("Number of encumbrances released due to invoice lines fund distributions being different from PO lines fund distributions: {}", result.size()))
+    return collectResultsOnSuccess(futures)
+      .onSuccess(result -> logger.debug("Number of encumbrances released due to invoice lines fund distributions being different from PO lines fund distributions: {}", result.size()))
+      .onFailure(result -> logger.error("Failed cleaning up unlinked encumbrances", result.getCause()))
       .mapEmpty();
   }
 

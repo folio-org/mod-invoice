@@ -130,7 +130,7 @@ public class BaseTransactionService {
 
   public Future<Void> releaseEncumbrance(Transaction transaction, RequestContext requestContext) {
     RequestEntry requestEntry = new RequestEntry(resourcesPath(FINANCE_RELEASE_ENCUMBRANCE) + "/{id}").withId(transaction.getId());
-    return restClient.post(requestEntry, null, Void.class, requestContext);
+    return restClient.postEmptyBody(requestEntry,  requestContext);
   }
 
 }
