@@ -53,8 +53,8 @@ public class ResourcePathResolver {
 
   static {
     Map<String, String> apis = new HashMap<>();
-    apis.put(ACQUISITIONS_UNITS, "/acquisitions-units/units");
-    apis.put(ACQUISITIONS_MEMBERSHIPS, "/acquisitions-units/memberships");
+    apis.put(ACQUISITIONS_UNITS, "/acquisitions-units-storage/units");
+    apis.put(ACQUISITIONS_MEMBERSHIPS, "/acquisitions-units-storage/memberships");
     apis.put(INVOICES, "/invoice-storage/invoices");
     apis.put(COMPOSITE_ORDER, "/orders/composite-orders");
     apis.put(INVOICE_LINES, "/invoice-storage/invoice-lines");

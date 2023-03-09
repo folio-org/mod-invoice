@@ -13,8 +13,8 @@
           "modulePermissions": [
             "invoice-storage.invoices.collection.get",
             "invoice-storage.invoice-lines.collection.get",
-            "acquisitions-units.units.collection.get",
-            "acquisitions-units.memberships.collection.get"
+            "acquisitions-units-storage.units.collection.get",
+            "acquisitions-units-storage.memberships.collection.get"
           ]
         },
         {
@@ -25,8 +25,8 @@
           "modulePermissions": [
             "invoice-storage.invoices.item.post",
             "invoice-storage.invoice-number.get",
-            "acquisitions-units.units.collection.get",
-            "acquisitions-units.memberships.collection.get",
+            "acquisitions-units-storage.units.collection.get",
+            "acquisitions-units-storage.memberships.collection.get",
             "organizations-storage.organizations.item.get"
           ]
         },
@@ -39,8 +39,8 @@
           "modulePermissions": [
             "invoice-storage.invoices.item.get",
             "invoice-storage.invoice-lines.collection.get",
-            "acquisitions-units.units.collection.get",
-            "acquisitions-units.memberships.collection.get"
+            "acquisitions-units-storage.units.collection.get",
+            "acquisitions-units-storage.memberships.collection.get"
           ]
         },
         {
@@ -65,8 +65,8 @@
             "voucher-storage.voucher-lines.item.post",
             "voucher-storage.voucher-lines.item.delete",
             "voucher-storage.voucher-number.get",
-            "acquisitions-units.units.collection.get",
-            "acquisitions-units.memberships.collection.get",
+            "acquisitions-units-storage.units.collection.get",
+            "acquisitions-units-storage.memberships.collection.get",
             "finance.invoice-transaction-summaries.item.post",
             "finance.invoice-transaction-summaries.item.put",
             "finance.order-transaction-summaries.item.put",
@@ -102,8 +102,8 @@
           "modulePermissions": [
             "invoice-storage.invoices.item.get",
             "invoice-storage.invoices.item.delete",
-            "acquisitions-units.units.collection.get",
-            "acquisitions-units.memberships.collection.get",
+            "acquisitions-units-storage.units.collection.get",
+            "acquisitions-units-storage.memberships.collection.get",
             "orders-storage.order-invoice-relationships.collection.get",
             "orders-storage.order-invoice-relationships.item.delete"
           ]
@@ -114,8 +114,8 @@
           "permissionsRequired": ["invoice.invoice-lines.collection.get"],
           "modulePermissions": [
             "invoice-storage.invoice-lines.collection.get",
-            "acquisitions-units.units.collection.get",
-            "acquisitions-units.memberships.collection.get",
+            "acquisitions-units-storage.units.collection.get",
+            "acquisitions-units-storage.memberships.collection.get",
             "finance.exchange-rate.item.get"
           ]
         },
@@ -130,8 +130,8 @@
             "invoice-storage.invoice-lines.item.post",
             "invoice-storage.invoice-lines.item.put",
             "invoice-storage.invoice-lines.collection.get",
-            "acquisitions-units.units.collection.get",
-            "acquisitions-units.memberships.collection.get",
+            "acquisitions-units-storage.units.collection.get",
+            "acquisitions-units-storage.memberships.collection.get",
             "orders.item.get",
             "orders.po-lines.item.get",
             "orders-storage.order-invoice-relationships.collection.get",
@@ -157,8 +157,8 @@
             "invoice-storage.invoice-lines.collection.get",
             "invoice-storage.invoices.item.get",
             "invoice-storage.invoices.item.put",
-            "acquisitions-units.units.collection.get",
-            "acquisitions-units.memberships.collection.get",
+            "acquisitions-units-storage.units.collection.get",
+            "acquisitions-units-storage.memberships.collection.get",
             "finance.exchange-rate.item.get"
           ]
         },
@@ -172,8 +172,8 @@
             "invoice-storage.invoice-lines.collection.get",
             "invoice-storage.invoices.item.get",
             "invoice-storage.invoices.item.put",
-            "acquisitions-units.units.collection.get",
-            "acquisitions-units.memberships.collection.get",
+            "acquisitions-units-storage.units.collection.get",
+            "acquisitions-units-storage.memberships.collection.get",
             "finance.exchange-rate.item.get",
             "orders-storage.order-invoice-relationships.collection.get",
             "orders-storage.order-invoice-relationships.item.delete",
@@ -202,8 +202,8 @@
             "invoice-storage.invoices.item.get",
             "invoice-storage.invoices.item.put",
             "invoice-storage.invoices.collection.get",
-            "acquisitions-units.units.collection.get",
-            "acquisitions-units.memberships.collection.get",
+            "acquisitions-units-storage.units.collection.get",
+            "acquisitions-units-storage.memberships.collection.get",
             "orders.po-lines.item.get",
             "orders.item.get",
             "orders-storage.order-invoice-relationships.collection.get",
@@ -569,8 +569,12 @@
       "version": "1.0"
     },
     {
-      "id": "acquisitions-units",
+      "id": "acquisitions-units-storage.units",
       "version": "1.1"
+    },
+    {
+      "id": "acquisitions-units-storage.memberships",
+      "version": "1.0"
     },
     {
       "id": "batch-voucher-storage.export-configurations",
