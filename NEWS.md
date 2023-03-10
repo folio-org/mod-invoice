@@ -1,5 +1,16 @@
 ## 5.7.0 - Unreleased
 
+## 5.6.2 - Orchid R1 2023 Bug Fix
+The focus of this release was to fix memory issues and processing finance data
+
+[Full Changelog](https://github.com/folio-org/mod-invoice/compare/v5.6.1...v5.6.2)
+
+### Bug Fixes
+* [MODDICORE-467](https://issues.folio.org/browse/MODDICORE-467) - Break circular module invocations
+* [MODDICORE-464](https://issues.folio.org/browse/MODDICORE-464) - Error when approving an invoice with a different fund than in po line
+* [MODDICORE-460](https://issues.folio.org/browse/MODDICORE-460) - Invalid usage of semaphores ignores limit of active threads
+* [MODDICORE-453](https://issues.folio.org/browse/MODDICORE-453) - Exchange rates cannot be updated on invoice lines with multiple funds
+
 ## 5.6.1 - Orchid R1 2023 Bug Fix
 The focus of this release was to update mod-di-converter-storage-client and data-import-processing-core dependencies
 
