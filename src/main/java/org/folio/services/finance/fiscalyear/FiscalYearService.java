@@ -36,7 +36,7 @@ public class FiscalYearService {
       .withOffset(0)
       .withLimit(Integer.MAX_VALUE);
     return restClient.get(requestEntry, FiscalYearCollection.class, requestContext)
-      .onFailure(t -> log.error("Failed to get fiscal year collection, query=" + query));
+      .onFailure(t -> log.error("Failed to get fiscal year collection, query={}", query));
   }
 
 }

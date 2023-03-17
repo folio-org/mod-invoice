@@ -58,7 +58,8 @@ public enum ErrorCodes {
   CANCEL_TRANSACTIONS_ERROR("cancelTransactionsError", "Failed to cancel transactions"),
   ERROR_UNRELEASING_ENCUMBRANCES("errorUnreleasingEncumbrances", "Error unreleasing encumbrances after cancelling the invoice"),
   MULTIPLE_FISCAL_YEARS("multipleFiscalYears", "Multiple fiscal years are used with the funds %s and %s."),
-  COULD_NOT_FIND_VALID_FISCAL_YEAR("couldNotFindValidFiscalYear", "Could not find any valid fiscal year with a budget for all funds in the invoice");
+  COULD_NOT_FIND_VALID_FISCAL_YEAR("couldNotFindValidFiscalYear", "Could not find any valid fiscal year with a budget for all funds in the invoice"),
+  MORE_THAN_ONE_FISCAL_YEAR_SERIES("moreThanOneFiscalYearSeries", "Fund distributions cannot reference more than one fiscal year series. Please edit fund distributions so they all come from the same fiscal year series.");
 
   private final String code;
   private final String description;

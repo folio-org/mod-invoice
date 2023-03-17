@@ -35,12 +35,16 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.mockito.internal.verification.Times;
 
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.UUID;
 
 import static io.vertx.core.Future.succeededFuture;
 import static java.util.Collections.emptyList;
 import static org.folio.invoices.utils.ErrorCodes.COULD_NOT_FIND_VALID_FISCAL_YEAR;
+import static org.folio.invoices.utils.ErrorCodes.MORE_THAN_ONE_FISCAL_YEAR_SERIES;
 import static org.folio.invoices.utils.HelperUtils.convertIdsToCqlQuery;
 import static org.folio.invoices.utils.HelperUtils.encodeQuery;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -89,11 +93,14 @@ public class InvoiceFiscalYearsServiceTest {
   @DisplayName("return only fiscal years with budgets for all the funds")
   void shouldReturnOnlyFiscalYearsWithBudgetsForAllTheFunds(VertxTestContext vertxTestContext) {
     FiscalYear fy1 = new FiscalYear()
-      .withId(UUID.randomUUID().toString());
+      .withId(UUID.randomUUID().toString())
+      .withSeries("FY");
     FiscalYear fy2 = new FiscalYear()
-      .withId(UUID.randomUUID().toString());
+      .withId(UUID.randomUUID().toString())
+      .withSeries("FY");
     FiscalYear fy3 = new FiscalYear()
-      .withId(UUID.randomUUID().toString());
+      .withId(UUID.randomUUID().toString())
+      .withSeries("FY");
 
     Fund fund1 = new Fund()
       .withId(UUID.randomUUID().toString());
@@ -146,12 +153,15 @@ public class InvoiceFiscalYearsServiceTest {
       .withTotalRecords(1);
 
     // The query that should be used to get the budgets, using the two fund ids
-    String budgetQuery = convertIdsToCqlQuery(List.of(fund1.getId(), fund2.getId()), "fundId", true);
+    String budgetQueryIds = convertIdsToCqlQuery(List.of(fund1.getId(), fund2.getId()), "fundId", true);
+    String budgetQueryActive = "budgetStatus==Active";
+    String budgetQuery = String.format("%s AND %s", budgetQueryIds, budgetQueryActive);
 
     // The query that should be used to get the fiscal years, using only fy1
     String queryIds = convertIdsToCqlQuery(List.of(fy1.getId()));
-    String queryDate = "periodStart<=\"date.now()\" sortby periodStart/sort.descending";
-    String fyQuery = String.format("(%s) AND %s", queryIds, queryDate);
+    LocalDate now = Instant.now().atOffset(ZoneOffset.UTC).toLocalDate();
+    String queryDate = "periodStart<=\"" + now + "\" sortby periodStart/sort.descending";
+    String fyQuery = String.format("%s AND %s", queryIds, queryDate);
 
     doReturn(succeededFuture(budgetCollection))
       .when(restClient).get(any(RequestEntry.class), eq(BudgetCollection.class), eq(requestContext));
@@ -183,7 +193,8 @@ public class InvoiceFiscalYearsServiceTest {
   @DisplayName("fail when no valid fiscal year was found")
   void shouldFailWhenNoValidFiscalYearWasFound(VertxTestContext vertxTestContext) {
     FiscalYear fy1 = new FiscalYear()
-      .withId(UUID.randomUUID().toString());
+      .withId(UUID.randomUUID().toString())
+      .withSeries("FY");
 
     Fund fund1 = new Fund()
       .withId(UUID.randomUUID().toString());
@@ -243,7 +254,8 @@ public class InvoiceFiscalYearsServiceTest {
   @DisplayName("fail when only a future fiscal year matches")
   void shouldFailWhenOnlyAFutureFiscalYearMatches(VertxTestContext vertxTestContext) {
     FiscalYear fy1 = new FiscalYear()
-      .withId(UUID.randomUUID().toString());
+      .withId(UUID.randomUUID().toString())
+      .withSeries("FY");
 
     Fund fund1 = new Fund()
       .withId(UUID.randomUUID().toString());
@@ -308,4 +320,68 @@ public class InvoiceFiscalYearsServiceTest {
       });
   }
 
+  @Test
+  @DisplayName("fail with multiple fiscal year series")
+  void shouldFailWithMultipleFiscalYearSeries(VertxTestContext vertxTestContext) {
+    FiscalYear fy1 = new FiscalYear()
+      .withSeries("FY")
+      .withId(UUID.randomUUID().toString());
+    FiscalYear fy2 = new FiscalYear()
+      .withSeries("FYTEST")
+      .withId(UUID.randomUUID().toString());
+
+    Fund fund1 = new Fund()
+      .withId(UUID.randomUUID().toString());
+
+    Invoice invoice = new Invoice()
+      .withId(UUID.randomUUID().toString())
+      .withAcqUnitIds(emptyList());
+
+    FundDistribution fd1 = new FundDistribution()
+      .withFundId(fund1.getId());
+    InvoiceLine invoiceLine1 = new InvoiceLine()
+      .withId(UUID.randomUUID().toString())
+      .withInvoiceId(invoice.getId())
+      .withFundDistributions(List.of(fd1));
+    List<InvoiceLine> invoiceLines = List.of(invoiceLine1);
+
+    // fy1 has budgets for fund 1
+    // fy2 has budget for fund 1
+    Budget fy1Budget1 = new Budget()
+      .withId(UUID.randomUUID().toString())
+      .withFiscalYearId(fy1.getId())
+      .withFundId(fund1.getId());
+    Budget fy2Budget1 = new Budget()
+      .withId(UUID.randomUUID().toString())
+      .withFiscalYearId(fy2.getId());
+    BudgetCollection budgetCollection = new BudgetCollection()
+      .withBudgets(List.of(fy1Budget1, fy2Budget1))
+      .withTotalRecords(2);
+
+    FiscalYearCollection fiscalYearCollection = new FiscalYearCollection()
+      .withFiscalYears(List.of(fy1, fy2))
+      .withTotalRecords(2);
+
+    doReturn(succeededFuture(budgetCollection))
+      .when(restClient).get(any(RequestEntry.class), eq(BudgetCollection.class), eq(requestContext));
+    doReturn(succeededFuture(fiscalYearCollection))
+      .when(restClient).get(any(RequestEntry.class), eq(FiscalYearCollection.class), eq(requestContext));
+
+    Future<FiscalYearCollection> future = invoiceFiscalYearsService.getFiscalYearsByInvoiceAndLines(invoice,
+      invoiceLines, requestContext);
+
+    vertxTestContext.assertFailure(future)
+      .onComplete(result -> {
+        assertThat(result.cause(), instanceOf(HttpException.class));
+        HttpException exception = (HttpException) result.cause();
+        assertEquals(422, exception.getCode());
+
+        Errors errors = exception.getErrors();
+        Error error = errors.getErrors().get(0);
+        assertEquals(MORE_THAN_ONE_FISCAL_YEAR_SERIES.getCode(), error.getCode());
+        assertEquals(error.getParameters().get(0).getValue(), invoice.getId());
+        assertEquals(error.getParameters().get(1).getValue(), List.of("FY", "FYTEST").toString());
+        vertxTestContext.completeNow();
+      });
+  }
 }

@@ -60,14 +60,16 @@ public class BudgetService {
             });
   }
 
-  public Future<List<Budget>> getBudgetListByFundIds(List<String> fundIds, RequestContext requestContext) {
-    String query = convertIdsToCqlQuery(fundIds, "fundId", true);
+  public Future<List<Budget>> getActiveBudgetListByFundIds(List<String> fundIds, RequestContext requestContext) {
+    String queryIds = convertIdsToCqlQuery(fundIds, "fundId", true);
+    String queryActive = "budgetStatus==Active";
+    String query = String.format("%s AND %s", queryIds, queryActive);
     RequestEntry requestEntry = new RequestEntry(BUDGETS_ENDPOINT)
       .withQuery(query)
       .withOffset(0)
       .withLimit(Integer.MAX_VALUE);
     return restClient.get(requestEntry, BudgetCollection.class, requestContext)
       .map(BudgetCollection::getBudgets)
-      .onFailure(t -> log.error("Failed to get budget list by fund ids, query=" + query));
+      .onFailure(t -> log.error("Failed to get budget list by fund ids, query={}", query));
   }
 }

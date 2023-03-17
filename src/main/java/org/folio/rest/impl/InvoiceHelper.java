@@ -270,7 +270,6 @@ public class InvoiceHelper extends AbstractHelper {
   }
 
   public Future<FiscalYearCollection> getFiscalYearsByInvoiceId(String invoiceId) {
-    RequestContext requestContext = buildRequestContext();
     return getInvoiceRecord(invoiceId)
       .compose(invoice ->
         protectionHelper.isOperationRestricted(invoice.getAcqUnitIds(), ProtectedOperationType.READ)
