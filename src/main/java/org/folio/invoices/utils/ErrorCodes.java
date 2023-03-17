@@ -57,7 +57,8 @@ public enum ErrorCodes {
   CANNOT_CANCEL_INVOICE("cannotCancelInvoice" ,"Only approved and paid invoices can be cancelled"),
   CANCEL_TRANSACTIONS_ERROR("cancelTransactionsError", "Failed to cancel transactions"),
   ERROR_UNRELEASING_ENCUMBRANCES("errorUnreleasingEncumbrances", "Error unreleasing encumbrances after cancelling the invoice"),
-  MULTIPLE_FISCAL_YEARS("multipleFiscalYears", "Multiple fiscal years are used with the funds %s and %s.");
+  MULTIPLE_FISCAL_YEARS("multipleFiscalYears", "Multiple fiscal years are used with the funds %s and %s."),
+  COULD_NOT_FIND_VALID_FISCAL_YEAR("couldNotFindValidFiscalYear", "Could not find any valid fiscal year with a budget for all funds in the invoice");
 
   private final String code;
   private final String description;

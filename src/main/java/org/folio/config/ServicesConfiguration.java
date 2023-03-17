@@ -27,6 +27,7 @@ import org.folio.services.finance.transaction.PaymentCreditWorkflowService;
 import org.folio.services.finance.transaction.PendingPaymentWorkflowService;
 import org.folio.services.invoice.BaseInvoiceService;
 import org.folio.services.invoice.InvoiceCancelService;
+import org.folio.services.invoice.InvoiceFiscalYearsService;
 import org.folio.services.invoice.InvoiceLineService;
 import org.folio.services.invoice.InvoicePaymentService;
 import org.folio.services.invoice.InvoiceService;
@@ -261,5 +262,11 @@ public class ServicesConfiguration {
   @Bean
   AcquisitionsUnitsService acquisitionsUnitsService(RestClient restClient) {
     return new AcquisitionsUnitsService(restClient);
+  }
+
+  @Bean
+  InvoiceFiscalYearsService invoiceFiscalYearsService(InvoiceWorkflowDataHolderBuilder holderBuilder,
+      BudgetService budgetService, FiscalYearService fiscalYearService) {
+    return new InvoiceFiscalYearsService(holderBuilder, budgetService, fiscalYearService);
   }
 }

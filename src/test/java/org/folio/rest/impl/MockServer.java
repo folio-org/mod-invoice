@@ -503,7 +503,9 @@ public class MockServer {
     fiscalYear.setSeries("FY");
     fiscalYear.setPeriodStart(Date.from(Instant.now().minus(365, DAYS)));
     fiscalYear.setPeriodEnd(Date.from(Instant.now().plus(365, DAYS)));
-    FiscalYearCollection fiscalYearCollection = new FiscalYearCollection().withFiscalYears(Collections.singletonList(fiscalYear));
+    FiscalYearCollection fiscalYearCollection = new FiscalYearCollection()
+      .withFiscalYears(Collections.singletonList(fiscalYear))
+      .withTotalRecords(1);
     serverResponse(ctx, 200, APPLICATION_JSON, JsonObject.mapFrom(fiscalYearCollection).encodePrettily());
   }
 

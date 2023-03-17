@@ -59,10 +59,12 @@ import org.folio.rest.acq.model.orders.CompositePoLine;
 import org.folio.rest.core.models.RequestContext;
 import org.folio.rest.jaxrs.model.Adjustment;
 import org.folio.rest.jaxrs.model.Error;
+import org.folio.rest.jaxrs.model.FiscalYearCollection;
 import org.folio.rest.jaxrs.model.FundDistribution;
 import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.jaxrs.model.InvoiceCollection;
 import org.folio.rest.jaxrs.model.InvoiceLine;
+import org.folio.rest.jaxrs.model.InvoiceLineCollection;
 import org.folio.rest.jaxrs.model.Parameter;
 import org.folio.rest.jaxrs.model.Voucher;
 import org.folio.rest.jaxrs.model.VoucherLine;
@@ -78,6 +80,7 @@ import org.folio.services.finance.fiscalyear.CurrentFiscalYearService;
 import org.folio.services.finance.transaction.EncumbranceService;
 import org.folio.services.finance.transaction.PendingPaymentWorkflowService;
 import org.folio.services.invoice.InvoiceCancelService;
+import org.folio.services.invoice.InvoiceFiscalYearsService;
 import org.folio.services.invoice.InvoiceLineService;
 import org.folio.services.invoice.InvoicePaymentService;
 import org.folio.services.invoice.InvoiceService;
@@ -136,6 +139,8 @@ public class InvoiceHelper extends AbstractHelper {
   private VoucherService voucherService;
   @Autowired
   private VoucherLineService voucherLineService;
+  @Autowired
+  private InvoiceFiscalYearsService invoiceFiscalYearsService;
   private RequestContext requestContext;
 
   public InvoiceHelper(Map<String, String> okapiHeaders, Context ctx) {
@@ -263,6 +268,18 @@ public class InvoiceHelper extends AbstractHelper {
       .compose(invoiceFromStorage -> validateAndHandleInvoiceStatusTransition(invoice, invoiceFromStorage))
       .compose(v -> updateInvoiceRecord(invoice));
   }
+
+  public Future<FiscalYearCollection> getFiscalYearsByInvoiceId(String invoiceId) {
+    RequestContext requestContext = buildRequestContext();
+    return getInvoiceRecord(invoiceId)
+      .compose(invoice ->
+        protectionHelper.isOperationRestricted(invoice.getAcqUnitIds(), ProtectedOperationType.READ)
+          .compose(v -> invoiceLineService.getInvoiceLinesByInvoiceId(invoiceId, requestContext))
+          .map(InvoiceLineCollection::getInvoiceLines)
+          .compose(lines -> invoiceFiscalYearsService.getFiscalYearsByInvoiceAndLines(invoice, lines, requestContext)))
+      .onFailure(t -> logger.error("Error getting fiscal years for invoice {}", invoiceId, t));
+  }
+
 
   private Future<Void> handleExchangeRateChange(Invoice invoice, List<InvoiceLine> invoiceLines) {
     return getInvoiceWorkflowDataHolders(invoice, invoiceLines, requestContext)
