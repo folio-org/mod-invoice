@@ -53,8 +53,10 @@ public class InvoiceFiscalYearsService {
       RequestContext requestContext) {
     List<InvoiceWorkflowDataHolder> dataHolders = holderBuilder.buildHoldersSkeleton(lines, invoice);
     List<String> fundIds = dataHolders.stream().map(InvoiceWorkflowDataHolder::getFundId).distinct().collect(toList());
-    if (fundIds.isEmpty())
+    if (fundIds.isEmpty()) {
+      log.error("getFiscalYearsByInvoiceAndLines(): no fund related to the invoice with id {}", invoice.getId());
       throwCouldNotFindValidFiscalYearError(invoice.getId(), fundIds);
+    }
     return budgetService.getActiveBudgetListByFundIds(fundIds, requestContext)
       .compose(budgets -> getFiscalYearsByFundIdsAndBudgets(fundIds, budgets, invoice.getId(), requestContext));
   }
@@ -77,16 +79,21 @@ public class InvoiceFiscalYearsService {
     List<String> possibleFiscalYearIds = fiscalYearIds.stream()
       .filter(fiscalYearId -> fundIdsByFiscalYearId.get(fiscalYearId).size() == fundIds.size())
       .collect(toList());
-    if (possibleFiscalYearIds.isEmpty())
+    if (possibleFiscalYearIds.isEmpty()) {
+      log.error("getFiscalYearsByFundIdsAndBudgets(): no fiscal year matching all funds in invoice {}", invoiceId);
       throwCouldNotFindValidFiscalYearError(invoiceId, fundIds);
+    }
     String queryIds = convertIdsToCqlQuery(possibleFiscalYearIds);
     LocalDate now = Instant.now().atOffset(ZoneOffset.UTC).toLocalDate();
     String queryDate = "periodStart<=\"" + now + "\" sortby periodStart/sort.descending";
     String query = String.format("%s AND %s", queryIds, queryDate);
     return fiscalYearService.getFiscalYearCollectionByQuery(query, requestContext)
       .map(fyCollection -> {
-        if (fyCollection.getTotalRecords() == 0)
+        if (fyCollection.getTotalRecords() == 0) {
+          log.error("getFiscalYearsByFundIdsAndBudgets(): no fiscal year left after filtering by date in invoice {}",
+            invoiceId);
           throwCouldNotFindValidFiscalYearError(invoiceId, fundIds);
+        }
         checkUniqueSeries(invoiceId, fyCollection.getFiscalYears());
         return fyCollection;
       });

@@ -70,6 +70,6 @@ public class BudgetService {
       .withLimit(Integer.MAX_VALUE);
     return restClient.get(requestEntry, BudgetCollection.class, requestContext)
       .map(BudgetCollection::getBudgets)
-      .onFailure(t -> log.error("Failed to get budget list by fund ids, query={}", query));
+      .onFailure(t -> log.error("Failed to get budget list by fund ids, query={}", query, t));
   }
 }
