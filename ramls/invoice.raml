@@ -14,6 +14,7 @@ types:
   invoiceCollection: !include acq-models/mod-invoice-storage/schemas/invoice_collection.json
   invoiceDocument: !include acq-models/mod-invoice-storage/schemas/document.json
   documentCollection: !include acq-models/mod-invoice-storage/schemas/document_collection.json
+  fiscalYearCollection: !include acq-models/mod-finance/schemas/fiscal_year_collection.json
   invoiceLine: !include acq-models/mod-invoice-storage/schemas/invoice_line.json
   invoiceLineCollection: !include acq-models/mod-invoice-storage/schemas/invoice_line_collection.json
 
@@ -143,6 +144,16 @@ resourceTypes:
             get-delete:
               schema: invoiceDocument
               exampleItem: !include acq-models/mod-invoice-storage/examples/document.sample
+
+      /fiscal-years:
+        displayName: Fiscal Years
+        description: Past and present fiscal years associated with the invoice
+        type:
+          get-only:
+            schema: fiscalYearCollection
+            exampleCollection: !include acq-models/mod-finance/examples/fiscal_year_collection.sample
+        get:
+          description: Get a list of fiscal years to approve or pay the invoice
 
   /invoice-lines:
     displayName: Invoice Lines

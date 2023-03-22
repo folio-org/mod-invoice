@@ -240,6 +240,21 @@
           "modulePermissions": ["invoice-storage.invoices.documents.item.delete"]
         },
         {
+          "methods": ["GET"],
+          "pathPattern": "/invoice/invoices/{id}/fiscal-years",
+          "permissionsRequired": [
+            "invoice.invoices.fiscal-years.collection.get"
+          ],
+          "modulePermissions": [
+            "acquisitions-units-storage.memberships.collection.get",
+            "acquisitions-units-storage.units.collection.get",
+            "finance.budgets.collection.get",
+            "finance.fiscal-years.collection.get",
+            "invoice-storage.invoice-lines.collection.get",
+            "invoice-storage.invoices.item.get"
+          ]
+        },
+        {
           "methods": ["PUT"],
           "pathPattern": "/invoice/invoice-lines/fund-distributions/validate",
           "permissionsRequired": [
@@ -794,6 +809,11 @@
       ]
     },
     {
+      "permissionName": "invoice.invoices.fiscal-years.collection.get",
+      "displayName": "Get an invoice fiscal years",
+      "description": "Get the past and present fiscal years associated with an invoice"
+    },
+    {
       "permissionName": "batch-voucher.export-configurations.collection.get",
       "displayName": "Batch voucher - get batch voucher export configuration collection",
       "description": "Get batch voucher export configuration collection"
@@ -996,6 +1016,7 @@
         "voucher-number.start.get",
         "voucher.all",
         "invoice.invoices.documents.all",
+        "invoice.invoices.fiscal-years.collection.get",
         "invoices.acquisitions-units-assignments.all",
         "batch-voucher.export-configurations.all",
         "batch-groups.all",

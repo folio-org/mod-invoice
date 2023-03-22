@@ -250,6 +250,17 @@ public class InvoicesImpl extends BaseApi implements org.folio.rest.jaxrs.resour
       .onFailure(t -> handleErrorResponse(asyncResultHandler, documentHelper, t));
   }
 
+  @Validate
+  @Override
+  public void getInvoiceInvoicesFiscalYearsById(String id, String lang, Map<String, String> okapiHeaders,
+      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+    InvoiceHelper helper = new InvoiceHelper(okapiHeaders, vertxContext);
+    helper.getFiscalYearsByInvoiceId(id)
+      .onSuccess(fiscalYearCollection -> asyncResultHandler.handle(
+        succeededFuture(helper.buildOkResponse(fiscalYearCollection))))
+      .onFailure(t -> handleErrorResponse(asyncResultHandler, helper, t));
+  }
+
   private void logInfo(String message, Object entry) {
     if (logger.isInfoEnabled()) {
       logger.info(message, JsonObject.mapFrom(entry).encodePrettily());
