@@ -35,12 +35,9 @@ import static org.folio.invoices.utils.HelperUtils.convertIdsToCqlQuery;
 public class InvoiceFiscalYearsService {
   private static final Logger log = LogManager.getLogger();
 
-  @Autowired
-  private InvoiceWorkflowDataHolderBuilder holderBuilder;
-  @Autowired
-  private BudgetService budgetService;
-  @Autowired
-  private FiscalYearService fiscalYearService;
+  private final InvoiceWorkflowDataHolderBuilder holderBuilder;
+  private final BudgetService budgetService;
+  private final FiscalYearService fiscalYearService;
 
   public InvoiceFiscalYearsService(InvoiceWorkflowDataHolderBuilder holderBuilder, BudgetService budgetService,
       FiscalYearService fiscalYearService) {
