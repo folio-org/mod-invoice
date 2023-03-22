@@ -16,7 +16,6 @@ import org.folio.rest.jaxrs.model.InvoiceLine;
 import org.folio.rest.jaxrs.model.Parameter;
 import org.folio.services.finance.budget.BudgetService;
 import org.folio.services.finance.fiscalyear.FiscalYearService;
-import org.springframework.beans.factory.annotation.Autowired;
 
 import java.time.Instant;
 import java.time.LocalDate;
