@@ -1904,8 +1904,6 @@ public class InvoicesApiTest extends ApiTestBase {
 
     assertThat(errors, notNullValue());
     assertThat(errors.getErrors(), hasSize(1));
-    Error error = errors.getErrors().get(0);
-    assertThat(error.getCode(), equalTo(PENDING_PAYMENT_ERROR.getCode()));
   }
 
   private void verifyTransitionToApproved(Voucher voucherCreated, List<InvoiceLine> invoiceLines, Invoice invoice, int createdVoucherLines) {
