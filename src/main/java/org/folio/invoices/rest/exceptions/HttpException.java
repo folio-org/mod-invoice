@@ -36,7 +36,6 @@ public class HttpException extends RuntimeException {
     this.errors.getErrors().add(error);
   }
 
-
   public HttpException(int code, ErrorCodes errCodes, List<Parameter> parameters) {
     super(errCodes.getDescription());
     this.errors = new Errors()
@@ -46,6 +45,12 @@ public class HttpException extends RuntimeException {
         .withParameters(parameters)))
       .withTotalRecords(1);
     this.code = code;
+  }
+
+  public HttpException(int code, Errors errors) {
+    super(ExceptionUtil.errorsAsString(errors));
+    this.code = code;
+    this.errors = errors;
   }
 
   public HttpException(int code, Errors errors, String message) {

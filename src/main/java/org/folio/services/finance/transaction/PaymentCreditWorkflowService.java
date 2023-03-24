@@ -77,6 +77,10 @@ public class PaymentCreditWorkflowService {
       Transaction tr = holder.getNewTransaction();
       future = future.compose(v -> baseTransactionService.createTransaction(tr, requestContext)
         .recover(t -> {
+          if (t instanceof HttpException) {
+            HttpException exception = (HttpException) t;
+            throw new HttpException(exception.getCode(), exception.getErrors());
+          }
           logger.error("Failed to create transaction for invoice with id - {}", tr.getSourceInvoiceId(), t);
           List<Parameter> parameters = new ArrayList<>();
           parameters.add(new Parameter().withKey("invoiceLineId").withValue(tr.getSourceInvoiceLineId()));
