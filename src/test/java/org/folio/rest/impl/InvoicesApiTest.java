@@ -22,7 +22,6 @@ import static org.folio.invoices.utils.ErrorCodes.GENERIC_ERROR_CODE;
 import static org.folio.invoices.utils.ErrorCodes.INCORRECT_FUND_DISTRIBUTION_TOTAL;
 import static org.folio.invoices.utils.ErrorCodes.INVALID_INVOICE_TRANSITION_ON_PAID_STATUS;
 import static org.folio.invoices.utils.ErrorCodes.LOCK_AND_CALCULATED_TOTAL_MISMATCH;
-import static org.folio.invoices.utils.ErrorCodes.PENDING_PAYMENT_ERROR;
 import static org.folio.invoices.utils.ErrorCodes.PO_LINE_NOT_FOUND;
 import static org.folio.invoices.utils.ErrorCodes.PO_LINE_UPDATE_FAILURE;
 import static org.folio.invoices.utils.ErrorCodes.PROHIBITED_FIELD_CHANGING;
@@ -1914,11 +1913,33 @@ public class InvoicesApiTest extends ApiTestBase {
   }
 
   @Test
+  void testTransitionToApprovedWithInternalErrorFromCreatePendingPayment() {
+    logger.info("=== Test transition invoice to Approved with internal server error when creating AwaitingPayment  ===");
+
+    Headers headers = prepareHeaders(X_OKAPI_URL, MockServer.POST_PENDING_PAYMENT_INTERNAL_SERVER_ERROR_X_OKAPI_TENANT, X_OKAPI_TOKEN);
+    Errors errors = transitionToApprovedWithError(REVIEWED_INVOICE_SAMPLE_PATH, headers, 500);
+
+    assertThat(errors, notNullValue());
+    assertThat(errors.getErrors(), hasSize(1));
+  }
+
+  @Test
   void testTransitionToApprovedWithErrorFromCreatePendingPayment() {
     logger.info("=== Test transition invoice to Approved with error when creating AwaitingPayment  ===");
 
     Headers headers = prepareHeaders(X_OKAPI_URL, MockServer.POST_PENDING_PAYMENT_ERROR_X_OKAPI_TENANT, X_OKAPI_TOKEN);
-    Errors errors = transitionToApprovedWithError(REVIEWED_INVOICE_SAMPLE_PATH, headers, 500);
+    Errors errors = transitionToApprovedWithError(REVIEWED_INVOICE_SAMPLE_PATH, headers, 422);
+
+    assertThat(errors, notNullValue());
+    assertThat(errors.getErrors(), hasSize(1));
+  }
+
+  @Test
+  void testTransitionToApprovedWithInternalErrorFromCreateCreditPayment() {
+    logger.info("=== Test transition invoice to Approved with internal server error when creating payment credit  ===");
+
+    Headers headers = prepareHeaders(X_OKAPI_URL, MockServer.POST_CREDIT_PAYMENT_INTERNAL_SERVER_ERROR_X_OKAPI_TENANT, X_OKAPI_TOKEN);
+    Errors errors = transitionToPaymentWithError(APPROVED_INVOICE_SAMPLE_PATH, headers, 500);
 
     assertThat(errors, notNullValue());
     assertThat(errors.getErrors(), hasSize(1));
@@ -1929,7 +1950,7 @@ public class InvoicesApiTest extends ApiTestBase {
     logger.info("=== Test transition invoice to Approved with error when creating payment credit  ===");
 
     Headers headers = prepareHeaders(X_OKAPI_URL, MockServer.POST_CREDIT_PAYMENT_ERROR_X_OKAPI_TENANT, X_OKAPI_TOKEN);
-    Errors errors = transitionToPaymentWithError(APPROVED_INVOICE_SAMPLE_PATH, headers, 500);
+    Errors errors = transitionToPaymentWithError(APPROVED_INVOICE_SAMPLE_PATH, headers, 422);
 
     assertThat(errors, notNullValue());
     assertThat(errors.getErrors(), hasSize(1));
