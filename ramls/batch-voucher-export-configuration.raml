@@ -21,7 +21,6 @@ types:
 
 traits:
   validate: !include raml-util/traits/validation.raml
-  language: !include raml-util/traits/language.raml
   pageable:  !include raml-util/traits/pageable.raml
   searchable: !include raml-util/traits/searchable.raml
 
@@ -52,7 +51,6 @@ resourceTypes:
           schema: exportConfig
           exampleItem: !include acq-models/mod-invoice-storage/examples/export_configuration.sample
       /credentials:
-        is: [language]
         post:
           description: Create a credentials record
           body:
@@ -167,7 +165,6 @@ resourceTypes:
                     strict: false
                     value: !include raml-util/examples/errors.sample
         /test:
-          is: [language]
           post:
             description: "Test that you can connect to and log into the uploadURI with the configured credentials"
             responses:

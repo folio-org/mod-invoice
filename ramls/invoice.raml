@@ -25,7 +25,6 @@ types:
   validate_fund_distributions_request: !include acq-models/mod-invoice/schemas/validate_fund_distributions_request.json
 traits:
   validate: !include raml-util/traits/validation.raml
-  language: !include raml-util/traits/language.raml
   pageable:  !include raml-util/traits/pageable.raml
   searchable: !include raml-util/traits/searchable.raml
 
@@ -85,7 +84,7 @@ resourceTypes:
           ]
         post:
           description: Post document attachment/link;
-          is: [validate, language]
+          is: [validate]
           body:
             application/octet-stream:
           responses:
