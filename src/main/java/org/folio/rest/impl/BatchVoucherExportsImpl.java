@@ -20,7 +20,7 @@ public class BatchVoucherExportsImpl implements BatchVoucherBatchVoucherExports 
   private static final String NOT_SUPPORTED = "Not supported";  // To overcome sonarcloud warning
   @Validate
   @Override
-  public void postBatchVoucherBatchVoucherExports(String lang, BatchVoucherExport entity, Map<String, String> okapiHeaders,
+  public void postBatchVoucherBatchVoucherExports(BatchVoucherExport entity, Map<String, String> okapiHeaders,
       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     BatchVoucherExportsHelper helper = new BatchVoucherExportsHelper(okapiHeaders, vertxContext);
     helper.createBatchVoucherExports(entity)
@@ -31,7 +31,7 @@ public class BatchVoucherExportsImpl implements BatchVoucherBatchVoucherExports 
 
   @Validate
   @Override
-  public void getBatchVoucherBatchVoucherExports(int offset, int limit, String query, String lang, Map<String, String> okapiHeaders,
+  public void getBatchVoucherBatchVoucherExports(String totalRecords, int offset, int limit, String query, Map<String, String> okapiHeaders,
       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     BatchVoucherExportsHelper helper = new BatchVoucherExportsHelper(okapiHeaders, vertxContext);
     helper.getBatchVoucherExports(limit, offset, query)
@@ -41,7 +41,7 @@ public class BatchVoucherExportsImpl implements BatchVoucherBatchVoucherExports 
 
   @Validate
   @Override
-  public void putBatchVoucherBatchVoucherExportsById(String id, String lang, BatchVoucherExport batchVoucherExport,
+  public void putBatchVoucherBatchVoucherExportsById(String id, BatchVoucherExport batchVoucherExport,
       Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     BatchVoucherExportsHelper helper = new BatchVoucherExportsHelper(okapiHeaders, vertxContext);
 
@@ -52,7 +52,7 @@ public class BatchVoucherExportsImpl implements BatchVoucherBatchVoucherExports 
 
   @Validate
   @Override
-  public void deleteBatchVoucherBatchVoucherExportsById(String id, String lang, Map<String, String> okapiHeaders,
+  public void deleteBatchVoucherBatchVoucherExportsById(String id, Map<String, String> okapiHeaders,
       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     BatchVoucherExportsHelper helper = new BatchVoucherExportsHelper(okapiHeaders, vertxContext);
 
@@ -63,7 +63,7 @@ public class BatchVoucherExportsImpl implements BatchVoucherBatchVoucherExports 
 
   @Validate
   @Override
-  public void getBatchVoucherBatchVoucherExportsById(String id, String lang, Map<String, String> okapiHeaders,
+  public void getBatchVoucherBatchVoucherExportsById(String id, Map<String, String> okapiHeaders,
       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     BatchVoucherExportsHelper helper = new BatchVoucherExportsHelper(okapiHeaders, vertxContext);
     helper.getBatchVoucherExportById(id)
@@ -73,7 +73,7 @@ public class BatchVoucherExportsImpl implements BatchVoucherBatchVoucherExports 
 
   @Validate
   @Override
-  public void postBatchVoucherBatchVoucherExportsUploadById(String id, String lang, Map<String, String> okapiHeaders,
+  public void postBatchVoucherBatchVoucherExportsUploadById(String id, Map<String, String> okapiHeaders,
       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     UploadBatchVoucherExportHelper uploadService = new UploadBatchVoucherExportHelper(okapiHeaders, vertxContext);
     uploadService.uploadBatchVoucherExport(id)
@@ -83,7 +83,7 @@ public class BatchVoucherExportsImpl implements BatchVoucherBatchVoucherExports 
 
   @Validate
   @Override
-  public void postBatchVoucherBatchVoucherExportsScheduled(String lang, Map<String, String> okapiHeaders,
+  public void postBatchVoucherBatchVoucherExportsScheduled(Map<String, String> okapiHeaders,
       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     asyncResultHandler.handle(succeededFuture(PostBatchVoucherBatchVoucherExportsScheduledResponse.respond500WithApplicationJson(NOT_SUPPORTED)));
   }

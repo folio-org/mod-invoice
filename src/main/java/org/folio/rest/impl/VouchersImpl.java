@@ -31,7 +31,7 @@ public class VouchersImpl extends BaseApi implements org.folio.rest.jaxrs.resour
 
   @Override
   @Validate
-  public void getVoucherVouchersById(String id, String lang, Map<String, String> okapiHeaders,
+  public void getVoucherVouchersById(String id, Map<String, String> okapiHeaders,
                                      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     VoucherHelper voucherHelper = new VoucherHelper(okapiHeaders, vertxContext);
     voucherHelper.getVoucher(id, new RequestContext(vertxContext, okapiHeaders))
@@ -41,7 +41,7 @@ public class VouchersImpl extends BaseApi implements org.folio.rest.jaxrs.resour
 
   @Override
   @Validate
-  public void putVoucherVouchersById(String id, String lang, Voucher entity, Map<String, String> okapiHeaders,
+  public void putVoucherVouchersById(String id, Voucher entity, Map<String, String> okapiHeaders,
     Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
 
     VoucherHelper voucherHelper = new VoucherHelper(okapiHeaders, vertxContext);
@@ -52,7 +52,7 @@ public class VouchersImpl extends BaseApi implements org.folio.rest.jaxrs.resour
 
   @Override
   @Validate
-  public void getVoucherVoucherLines(int offset, int limit, String query, String lang, Map<String, String> okapiHeaders,
+  public void getVoucherVoucherLines(String totalRecords, int offset, int limit, String query, Map<String, String> okapiHeaders,
       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     VoucherLineHelper voucherLineHelper = new VoucherLineHelper(okapiHeaders, vertxContext);
     voucherLineHelper.getVoucherLines(limit, offset, query)
@@ -62,7 +62,7 @@ public class VouchersImpl extends BaseApi implements org.folio.rest.jaxrs.resour
 
   @Validate
   @Override
-  public void getVoucherVoucherLinesById(String id, String lang, Map<String, String> okapiHeaders,
+  public void getVoucherVoucherLinesById(String id, Map<String, String> okapiHeaders,
                                          Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     logger.info("== Get Voucher Line by Id for an existing Voucher ==");
     VoucherLineHelper voucherLineHelper = new VoucherLineHelper(okapiHeaders, vertxContext);
@@ -73,7 +73,7 @@ public class VouchersImpl extends BaseApi implements org.folio.rest.jaxrs.resour
 
   @Override
   @Validate
-  public void putVoucherVoucherLinesById(String voucherLineId, String lang, VoucherLine voucherLine, Map<String, String> okapiHeaders,
+  public void putVoucherVoucherLinesById(String voucherLineId, VoucherLine voucherLine, Map<String, String> okapiHeaders,
       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     logger.info("== Update Voucher Line by Id for an existing Voucher ==");
     VoucherLineHelper voucherLinesHelper = new VoucherLineHelper(okapiHeaders, vertxContext);
@@ -88,7 +88,7 @@ public class VouchersImpl extends BaseApi implements org.folio.rest.jaxrs.resour
 
   @Validate
   @Override
-  public void postVoucherVoucherNumberStartByValue(String value, String lang, Map<String, String> okapiHeaders,
+  public void postVoucherVoucherNumberStartByValue(String value, Map<String, String> okapiHeaders,
       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     logger.info("== Re(set) the current start value of the voucher number sequence ==");
     VoucherHelper voucherHelper = new VoucherHelper(okapiHeaders, vertxContext);
@@ -100,7 +100,7 @@ public class VouchersImpl extends BaseApi implements org.folio.rest.jaxrs.resour
 
   @Override
   @Validate
-  public void getVoucherVoucherNumberStart(String lang, Map<String, String> okapiHeaders,
+  public void getVoucherVoucherNumberStart(Map<String, String> okapiHeaders,
       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     logger.info("== Getting the current start value of the voucher number sequence ==");
     VoucherHelper voucherHelper = new VoucherHelper(okapiHeaders, vertxContext);
@@ -112,7 +112,7 @@ public class VouchersImpl extends BaseApi implements org.folio.rest.jaxrs.resour
 
   @Validate
   @Override
-  public void getVoucherVouchers(int offset, int limit, String query, String lang, Map<String, String> okapiHeaders,
+  public void getVoucherVouchers(String totalRecords, int offset, int limit, String query, Map<String, String> okapiHeaders,
       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     VoucherHelper voucherHelper = new VoucherHelper(okapiHeaders, vertxContext);
 

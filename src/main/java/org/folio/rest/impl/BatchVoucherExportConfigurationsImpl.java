@@ -22,7 +22,7 @@ public class BatchVoucherExportConfigurationsImpl implements BatchVoucherExportC
 
   @Validate
   @Override
-  public void getBatchVoucherExportConfigurations(int offset, int limit, String query, String lang,
+  public void getBatchVoucherExportConfigurations(String totalRecords, int offset, int limit, String query,
                                                   Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     BatchVoucherExportConfigHelper helper = new BatchVoucherExportConfigHelper(okapiHeaders, vertxContext);
 
@@ -33,7 +33,7 @@ public class BatchVoucherExportConfigurationsImpl implements BatchVoucherExportC
 
   @Validate
   @Override
-  public void postBatchVoucherExportConfigurations(String lang, ExportConfig entity, Map<String, String> okapiHeaders,
+  public void postBatchVoucherExportConfigurations(ExportConfig entity, Map<String, String> okapiHeaders,
                                                    Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     BatchVoucherExportConfigHelper helper = new BatchVoucherExportConfigHelper(okapiHeaders, vertxContext);
 
@@ -45,7 +45,7 @@ public class BatchVoucherExportConfigurationsImpl implements BatchVoucherExportC
 
   @Validate
   @Override
-  public void getBatchVoucherExportConfigurationsById(String id, String lang, Map<String, String> okapiHeaders,
+  public void getBatchVoucherExportConfigurationsById(String id, Map<String, String> okapiHeaders,
                                                       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     BatchVoucherExportConfigHelper helper = new BatchVoucherExportConfigHelper(okapiHeaders, vertxContext);
 
@@ -56,7 +56,7 @@ public class BatchVoucherExportConfigurationsImpl implements BatchVoucherExportC
 
   @Validate
   @Override
-  public void deleteBatchVoucherExportConfigurationsById(String id, String lang, Map<String, String> okapiHeaders,
+  public void deleteBatchVoucherExportConfigurationsById(String id, Map<String, String> okapiHeaders,
                                                          Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     BatchVoucherExportConfigHelper helper = new BatchVoucherExportConfigHelper(okapiHeaders, vertxContext);
 
@@ -67,7 +67,7 @@ public class BatchVoucherExportConfigurationsImpl implements BatchVoucherExportC
 
   @Validate
   @Override
-  public void putBatchVoucherExportConfigurationsById(String id, String lang, ExportConfig exportConfig,
+  public void putBatchVoucherExportConfigurationsById(String id, ExportConfig exportConfig,
                                                       Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     BatchVoucherExportConfigHelper helper = new BatchVoucherExportConfigHelper(okapiHeaders, vertxContext);
 
@@ -80,7 +80,7 @@ public class BatchVoucherExportConfigurationsImpl implements BatchVoucherExportC
 
   @Validate
   @Override
-  public void postBatchVoucherExportConfigurationsCredentialsById(String id, String lang, Credentials entity,
+  public void postBatchVoucherExportConfigurationsCredentialsById(String id, Credentials entity,
                                                                   Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     BatchVoucherExportConfigHelper helper = new BatchVoucherExportConfigHelper(okapiHeaders, vertxContext);
 
@@ -92,7 +92,7 @@ public class BatchVoucherExportConfigurationsImpl implements BatchVoucherExportC
 
   @Validate
   @Override
-  public void getBatchVoucherExportConfigurationsCredentialsById(String id, String lang, Map<String, String> okapiHeaders,
+  public void getBatchVoucherExportConfigurationsCredentialsById(String id, Map<String, String> okapiHeaders,
                                                                  Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     BatchVoucherExportConfigHelper helper = new BatchVoucherExportConfigHelper(okapiHeaders, vertxContext);
 
@@ -103,7 +103,7 @@ public class BatchVoucherExportConfigurationsImpl implements BatchVoucherExportC
 
   @Validate
   @Override
-  public void putBatchVoucherExportConfigurationsCredentialsById(String id, String lang, Credentials entity,
+  public void putBatchVoucherExportConfigurationsCredentialsById(String id, Credentials entity,
                                                                  Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     BatchVoucherExportConfigHelper helper = new BatchVoucherExportConfigHelper(okapiHeaders, vertxContext);
 
@@ -114,7 +114,7 @@ public class BatchVoucherExportConfigurationsImpl implements BatchVoucherExportC
 
   @Validate
   @Override
-  public void postBatchVoucherExportConfigurationsCredentialsTestById(String id, String lang, Map<String, String> okapiHeaders,
+  public void postBatchVoucherExportConfigurationsCredentialsTestById(String id, Map<String, String> okapiHeaders,
                                                                       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     BatchVoucherExportConfigHelper helper = new BatchVoucherExportConfigHelper(okapiHeaders, vertxContext);
     helper.testUploadUri(id)
