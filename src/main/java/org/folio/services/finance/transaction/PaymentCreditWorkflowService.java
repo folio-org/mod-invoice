@@ -79,14 +79,14 @@ public class PaymentCreditWorkflowService {
         .recover(t -> {
           if (t instanceof HttpException) {
             HttpException exception = (HttpException) t;
-            throw new HttpException(exception.getCode(), exception.getErrors());
+            return Future.failedFuture(new HttpException(exception.getCode(), exception.getErrors()));
           }
           logger.error("Failed to create transaction for invoice with id - {}", tr.getSourceInvoiceId(), t);
           List<Parameter> parameters = new ArrayList<>();
           parameters.add(new Parameter().withKey("invoiceLineId").withValue(tr.getSourceInvoiceLineId()));
           parameters.add(new Parameter().withKey(FUND_ID)
             .withValue((tr.getTransactionType() == Transaction.TransactionType.PAYMENT) ? tr.getFromFundId() : tr.getToFundId()));
-          throw new HttpException(500, TRANSACTION_CREATION_FAILURE.toError().withParameters(parameters));
+          return Future.failedFuture(new HttpException(500, TRANSACTION_CREATION_FAILURE.toError().withParameters(parameters)));
         })
         .mapEmpty()
       );
