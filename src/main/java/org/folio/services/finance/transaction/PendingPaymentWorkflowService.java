@@ -98,9 +98,9 @@ public class PendingPaymentWorkflowService {
                 logger.error("Failed to create pending payment with id {}", pendingPayment.getId(), t);
                 if (t instanceof HttpException) {
                   HttpException exception = (HttpException) t;
-                  throw new HttpException(exception.getCode(), exception.getErrors());
+                  return Future.failedFuture(new HttpException(exception.getCode(), exception.getErrors()));
                 }
-                throw new HttpException(500, PENDING_PAYMENT_ERROR.toError());
+                return Future.failedFuture(new HttpException(500, PENDING_PAYMENT_ERROR.toError()));
               })
               .onComplete(asyncResult -> semaphore.release())
               .mapEmpty();
