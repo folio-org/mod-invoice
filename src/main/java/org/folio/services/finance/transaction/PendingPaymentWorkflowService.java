@@ -96,7 +96,11 @@ public class PendingPaymentWorkflowService {
             Future<Void> future = baseTransactionService.createTransaction(pendingPayment, requestContext)
               .recover(t -> {
                 logger.error("Failed to create pending payment with id {}", pendingPayment.getId(), t);
-                throw new HttpException(500, PENDING_PAYMENT_ERROR.toError());
+                if (t instanceof HttpException) {
+                  HttpException exception = (HttpException) t;
+                  return Future.failedFuture(new HttpException(exception.getCode(), exception.getErrors()));
+                }
+                return Future.failedFuture(new HttpException(500, PENDING_PAYMENT_ERROR.toError()));
               })
               .onComplete(asyncResult -> semaphore.release())
               .mapEmpty();
