@@ -22,7 +22,6 @@ import static org.folio.invoices.utils.ErrorCodes.GENERIC_ERROR_CODE;
 import static org.folio.invoices.utils.ErrorCodes.INCORRECT_FUND_DISTRIBUTION_TOTAL;
 import static org.folio.invoices.utils.ErrorCodes.INVALID_INVOICE_TRANSITION_ON_PAID_STATUS;
 import static org.folio.invoices.utils.ErrorCodes.LOCK_AND_CALCULATED_TOTAL_MISMATCH;
-import static org.folio.invoices.utils.ErrorCodes.PENDING_PAYMENT_ERROR;
 import static org.folio.invoices.utils.ErrorCodes.PO_LINE_NOT_FOUND;
 import static org.folio.invoices.utils.ErrorCodes.PO_LINE_UPDATE_FAILURE;
 import static org.folio.invoices.utils.ErrorCodes.PROHIBITED_FIELD_CHANGING;
@@ -56,6 +55,7 @@ import static org.folio.rest.impl.AbstractHelper.DEFAULT_SYSTEM_CURRENCY;
 import static org.folio.rest.impl.InvoiceLinesApiTest.INVOICE_LINES_LIST_PATH;
 import static org.folio.rest.impl.InvoiceLinesApiTest.INVOICE_LINES_MOCK_DATA_PATH;
 import static org.folio.rest.impl.InvoiceLinesApiTest.INVOICE_LINE_WITH_APPROVED_INVOICE_SAMPLE_PATH;
+import static org.folio.rest.impl.InvoiceLinesApiTest.APPROVED_INVOICE_LINE_WITH_APPROVED_INVOICE_SAMPLE_PATH;
 import static org.folio.rest.impl.InvoicesImpl.PROTECTED_AND_MODIFIED_FIELDS;
 import static org.folio.rest.impl.MockServer.CURRENT_FISCAL_YEAR;
 import static org.folio.rest.impl.MockServer.ERROR_CONFIG_X_OKAPI_TENANT;
@@ -1400,8 +1400,25 @@ public class InvoicesApiTest extends ApiTestBase {
     invoiceLine.setInvoiceId(reqData.getId());
     addMockEntry(INVOICE_LINES, JsonObject.mapFrom(invoiceLine));
 
-
     reqData.setStatus(Invoice.Status.APPROVED);
+
+    String id = reqData.getId();
+    String jsonBody = JsonObject.mapFrom(reqData).encode();
+    return verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, headers, APPLICATION_JSON, expectedCode)
+      .then()
+      .extract()
+      .body().as(Errors.class);
+  }
+
+  private Errors transitionToPaymentWithError(String invoiceSamplePath, Headers headers, int expectedCode) {
+    InvoiceLine invoiceLine = getMockAsJson(APPROVED_INVOICE_LINE_WITH_APPROVED_INVOICE_SAMPLE_PATH).mapTo(InvoiceLine.class);
+
+    Invoice reqData = getMockAsJson(invoiceSamplePath).mapTo(Invoice.class);
+    invoiceLine.setId(UUID.randomUUID().toString());
+    invoiceLine.setInvoiceId(reqData.getId());
+    addMockEntry(INVOICE_LINES, JsonObject.mapFrom(invoiceLine));
+
+    reqData.setStatus(Status.PAID);
 
     String id = reqData.getId();
     String jsonBody = JsonObject.mapFrom(reqData).encode();
@@ -1896,16 +1913,47 @@ public class InvoicesApiTest extends ApiTestBase {
   }
 
   @Test
-  void testTransitionToApprovedWithErrorFromCreatePendingPayment() {
-    logger.info("=== Test transition invoice to Approved with error when creating AwaitingPayment  ===");
+  void testTransitionToApprovedWithInternalErrorFromCreatePendingPayment() {
+    logger.info("=== Test transition invoice to Approved with internal server error when creating AwaitingPayment  ===");
 
-    Headers headers = prepareHeaders(X_OKAPI_URL, MockServer.POST_PENDING_PAYMENT_ERROR_X_OKAPI_TENANT, X_OKAPI_TOKEN);
+    Headers headers = prepareHeaders(X_OKAPI_URL, MockServer.POST_PENDING_PAYMENT_INTERNAL_SERVER_ERROR_X_OKAPI_TENANT, X_OKAPI_TOKEN);
     Errors errors = transitionToApprovedWithError(REVIEWED_INVOICE_SAMPLE_PATH, headers, 500);
 
     assertThat(errors, notNullValue());
     assertThat(errors.getErrors(), hasSize(1));
-    Error error = errors.getErrors().get(0);
-    assertThat(error.getCode(), equalTo(PENDING_PAYMENT_ERROR.getCode()));
+  }
+
+  @Test
+  void testTransitionToApprovedWithErrorFromCreatePendingPayment() {
+    logger.info("=== Test transition invoice to Approved with error when creating AwaitingPayment  ===");
+
+    Headers headers = prepareHeaders(X_OKAPI_URL, MockServer.POST_PENDING_PAYMENT_ERROR_X_OKAPI_TENANT, X_OKAPI_TOKEN);
+    Errors errors = transitionToApprovedWithError(REVIEWED_INVOICE_SAMPLE_PATH, headers, 422);
+
+    assertThat(errors, notNullValue());
+    assertThat(errors.getErrors(), hasSize(1));
+  }
+
+  @Test
+  void testTransitionToApprovedWithInternalErrorFromCreateCreditPayment() {
+    logger.info("=== Test transition invoice to Approved with internal server error when creating payment credit  ===");
+
+    Headers headers = prepareHeaders(X_OKAPI_URL, MockServer.POST_CREDIT_PAYMENT_INTERNAL_SERVER_ERROR_X_OKAPI_TENANT, X_OKAPI_TOKEN);
+    Errors errors = transitionToPaymentWithError(APPROVED_INVOICE_SAMPLE_PATH, headers, 500);
+
+    assertThat(errors, notNullValue());
+    assertThat(errors.getErrors(), hasSize(1));
+  }
+
+  @Test
+  void testTransitionToApprovedWithErrorFromCreateCreditPayment() {
+    logger.info("=== Test transition invoice to Approved with error when creating payment credit  ===");
+
+    Headers headers = prepareHeaders(X_OKAPI_URL, MockServer.POST_CREDIT_PAYMENT_ERROR_X_OKAPI_TENANT, X_OKAPI_TOKEN);
+    Errors errors = transitionToPaymentWithError(APPROVED_INVOICE_SAMPLE_PATH, headers, 422);
+
+    assertThat(errors, notNullValue());
+    assertThat(errors.getErrors(), hasSize(1));
   }
 
   private void verifyTransitionToApproved(Voucher voucherCreated, List<InvoiceLine> invoiceLines, Invoice invoice, int createdVoucherLines) {

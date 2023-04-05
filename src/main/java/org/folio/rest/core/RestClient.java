@@ -2,6 +2,8 @@ package org.folio.rest.core;
 
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 import static javax.ws.rs.core.MediaType.TEXT_PLAIN;
+import static org.folio.invoices.rest.exceptions.ExceptionUtil.isErrorsMessageJson;
+import static org.folio.invoices.rest.exceptions.ExceptionUtil.mapToErrors;
 import static org.folio.rest.RestConstants.OKAPI_URL;
 
 import java.util.Map;
@@ -29,7 +31,13 @@ public class RestClient {
 
   private static final Logger log = LogManager.getLogger(RestClient.class);
   private static final ErrorConverter ERROR_CONVERTER = ErrorConverter.createFullBody(
-    result -> new HttpException(result.response().statusCode(), result.response().bodyAsString()));
+    result -> {
+      String error = result.response().bodyAsString();
+      if (isErrorsMessageJson(error)) {
+        return new HttpException(result.response().statusCode(), mapToErrors(error));
+      }
+      return new HttpException(result.response().statusCode(), error);
+    });
   protected static final ResponsePredicate SUCCESS_RESPONSE_PREDICATE =
     ResponsePredicate.create(ResponsePredicate.SC_SUCCESS, ERROR_CONVERTER);
   public static final String REQUEST_MESSAGE_LOG_INFO = "Calling {} {}";
