@@ -22,7 +22,6 @@ types:
 
 traits:
   validate: !include raml-util/traits/validation.raml
-  language: !include raml-util/traits/language.raml
   pageable:  !include raml-util/traits/pageable.raml
   searchable: !include raml-util/traits/searchable.raml
 
@@ -56,7 +55,6 @@ resourceTypes:
       get:
         description: Return a voucher with given {id}
       put:
-        is: [language]
         description: Update a voucher with given {Id}
         body:
           application/json:
@@ -113,7 +111,7 @@ resourceTypes:
           type: UUID
       displayName: Voucher Lines
       description: Get specific voucher lines
-      is: [validate, language]
+      is: [validate]
       type:
         get-only:
           schema: voucherLine
@@ -132,7 +130,7 @@ resourceTypes:
   /voucher-number/start/{value}:
     displayName: Voucher Number
     description: Manage voucher number
-    is: [validate, language]
+    is: [validate]
     post:
       description: (Re)set the start value of the voucher number sequence
       responses:
@@ -159,7 +157,7 @@ resourceTypes:
   /voucher-number/start:
     displayName: Voucher number sequence
     description: Get or set the start value of the voucher number sequence
-    is: [validate, language]
+    is: [validate]
     get:
       description: Get the current start value of the voucher number sequence
       responses:

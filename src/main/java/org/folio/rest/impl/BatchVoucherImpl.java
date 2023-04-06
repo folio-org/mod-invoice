@@ -17,7 +17,7 @@ public class BatchVoucherImpl implements  BatchVoucherBatchVouchers {
 
   @Validate
   @Override
-  public void getBatchVoucherBatchVouchersById(String id, String lang, String contentType, Map<String, String> okapiHeaders,
+  public void getBatchVoucherBatchVouchersById(String id, String contentType, Map<String, String> okapiHeaders,
       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     BatchVoucherHelper helper = new BatchVoucherHelper(okapiHeaders, vertxContext);
     helper.getBatchVoucherById(id, contentType)

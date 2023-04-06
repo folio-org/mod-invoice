@@ -19,7 +19,6 @@ types:
 
 traits:
   validate: !include raml-util/traits/validation.raml
-  language: !include raml-util/traits/language.raml
   pageable:  !include raml-util/traits/pageable.raml
   searchable: !include raml-util/traits/searchable.raml
 
@@ -57,7 +56,6 @@ resourceTypes:
         schema: batchVoucherExport
         exampleItem: !include acq-models/mod-invoice-storage/examples/batch_voucher_export.sample
     /upload:
-      is: [language]
       post:
         description: (Re)upload the batch voucher associated with this voucher export to the configured URI, using the configured credentials
         responses:
@@ -104,7 +102,6 @@ resourceTypes:
       is: [validate]
 
   /scheduled:
-    is: [language]
     post:
       description: Conditionally creates a batch voucher export
       responses:

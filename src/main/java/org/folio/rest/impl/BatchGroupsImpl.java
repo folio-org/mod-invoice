@@ -24,7 +24,7 @@ public class BatchGroupsImpl implements BatchGroups {
 
   @Validate
   @Override
-  public void postBatchGroups(String lang, BatchGroup batchGroup, Map<String, String> okapiHeaders,
+  public void postBatchGroups(BatchGroup batchGroup, Map<String, String> okapiHeaders,
     Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     BatchGroupHelper helper = new BatchGroupHelper(okapiHeaders, vertxContext);
 
@@ -39,7 +39,7 @@ public class BatchGroupsImpl implements BatchGroups {
 
   @Validate
   @Override
-  public void getBatchGroups(int offset, int limit, String query, String lang, Map<String, String> okapiHeaders,
+  public void getBatchGroups(String totalRecords, int offset, int limit, String query, Map<String, String> okapiHeaders,
     Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     BatchGroupHelper helper = new BatchGroupHelper(okapiHeaders, vertxContext);
 
@@ -53,7 +53,7 @@ public class BatchGroupsImpl implements BatchGroups {
 
   @Validate
   @Override
-  public void getBatchGroupsById(String id, String lang, Map<String, String> okapiHeaders,
+  public void getBatchGroupsById(String id, Map<String, String> okapiHeaders,
     Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     BatchGroupHelper helper = new BatchGroupHelper(okapiHeaders, vertxContext);
 
@@ -64,7 +64,7 @@ public class BatchGroupsImpl implements BatchGroups {
 
   @Validate
   @Override
-  public void putBatchGroupsById(String id, String lang, BatchGroup batchGroup, Map<String, String> okapiHeaders,
+  public void putBatchGroupsById(String id, BatchGroup batchGroup, Map<String, String> okapiHeaders,
     Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     BatchGroupHelper helper = new BatchGroupHelper(okapiHeaders, vertxContext);
 
@@ -78,7 +78,7 @@ public class BatchGroupsImpl implements BatchGroups {
 
   @Validate
   @Override
-  public void deleteBatchGroupsById(String id, String lang, Map<String, String> okapiHeaders,
+  public void deleteBatchGroupsById(String id, Map<String, String> okapiHeaders,
     Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     BatchGroupHelper helper = new BatchGroupHelper(okapiHeaders, vertxContext);
 
