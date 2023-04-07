@@ -42,6 +42,7 @@ public class InvoicePaymentService {
   private OrderLineService orderLineService;
   @Autowired
   private CurrentFiscalYearService currentFiscalYearService;
+
   public static final String INVOICE_LINE_MUST_HAVE_FUND = "The invoice line must contain the fund for payment";
 
   /**
