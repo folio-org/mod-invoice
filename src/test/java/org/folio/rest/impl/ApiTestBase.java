@@ -7,6 +7,7 @@ import static org.folio.rest.RestConstants.OKAPI_URL;
 import static org.folio.rest.RestVerticle.OKAPI_HEADER_TENANT;
 import static org.folio.rest.RestVerticle.OKAPI_HEADER_TOKEN;
 import static org.folio.rest.RestVerticle.OKAPI_USERID_HEADER;
+import static org.folio.rest.jaxrs.model.FundDistribution.DistributionType.PERCENTAGE;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -27,10 +28,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.ApiTestSuite;
 import org.folio.rest.core.RestClient;
-import org.folio.rest.jaxrs.model.Adjustment;
-import org.folio.rest.jaxrs.model.BatchVoucher;
-import org.folio.rest.jaxrs.model.Invoice;
-import org.folio.rest.jaxrs.model.InvoiceLine;
+import org.folio.rest.jaxrs.model.*;
 import org.folio.services.invoice.BaseInvoiceService;
 import org.folio.services.invoice.InvoiceLineService;
 import org.folio.services.invoice.InvoiceService;
@@ -322,6 +320,16 @@ public class ApiTestBase {
       .withAdjustmentsTotal(0.0)
       .withTotal(1.0)
       .withReleaseEncumbrance(true);
+  }
+
+  public static FundDistribution getFundDistribution() {
+    return new FundDistribution()
+      .withCode("USHIST")
+      .withFundId("1d1574f1-9196-4a57-8d1f-3b2e4309eb81")
+      .withEncumbrance("388c0f7b-9fff-451c-b300-6509e443bef5")
+      .withExpenseClassId("6e6ed3c9-d959-4c91-a436-6076fb373816")
+      .withDistributionType(PERCENTAGE)
+      .withValue(100.0);
   }
 
   public static InvoiceLine getMinimalContentInvoiceLineWithZeroAmount(String invoiceId) {

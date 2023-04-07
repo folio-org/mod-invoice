@@ -31,6 +31,7 @@
       "paymentTerms": "Payment in Advance",
       "paymentMethod": "EFT",
       "status": "Approved",
+      "fiscalYearId": "78110b4e-2f8e-4eef-81ee-3058c0c7a9ee",
       "source": "User",
       "vendorInvoiceNo": "YK75851",
       "voucherNumber": "478",

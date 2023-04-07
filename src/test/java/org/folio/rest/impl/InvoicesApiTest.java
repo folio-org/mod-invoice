@@ -2170,10 +2170,10 @@ public class InvoicesApiTest extends ApiTestBase {
     String id = reqData.getId();
 
     prepareMockVoucher(id);
-    InvoiceLine invoiceLine1 = getMinimalContentInvoiceLine(id).withPoLineId(null);
+    InvoiceLine invoiceLine1 = getMinimalContentInvoiceLine(id).withPoLineId(null).withFundDistributions(List.of(getFundDistribution()));
     addMockEntry(INVOICE_LINES, JsonObject.mapFrom(invoiceLine1));
 
-    InvoiceLine invoiceLine2 = getMinimalContentInvoiceLine(id).withPoLineId(null);
+    InvoiceLine invoiceLine2 = getMinimalContentInvoiceLine(id).withPoLineId(null).withFundDistributions(List.of(getFundDistribution()));
     addMockEntry(INVOICE_LINES, JsonObject.mapFrom(invoiceLine2));
 
     CompositePoLine poLine = getMockAsJson(String.format("%s%s.json", PO_LINE_MOCK_DATA_PATH, EXISTENT_PO_LINE_ID))
@@ -2195,7 +2195,53 @@ public class InvoicesApiTest extends ApiTestBase {
 
     assertThat(updatedPoLines, hasSize(1));
     assertThatVoucherPaid();
+  }
 
+  @Test
+  void testUpdateInvoiceTransitionToPaidForPreviousFiscalYear() {
+    logger.info("=== Test transition invoice to paid, for previous fiscal year ===");
+
+    Invoice reqData = getMockAsJson(APPROVED_INVOICE_SAMPLE_PATH).mapTo(Invoice.class).withStatus(Invoice.Status.PAID);
+    reqData.setFiscalYearId(UUID.randomUUID().toString());
+    String id = reqData.getId();
+
+    prepareMockVoucher(id);
+    InvoiceLine invoiceLine1 = getMinimalContentInvoiceLine(id).withPoLineId(EXISTENT_PO_LINE_ID).withFundDistributions(List.of(getFundDistribution()));
+    addMockEntry(INVOICE_LINES, JsonObject.mapFrom(invoiceLine1));
+
+
+    CompositePoLine poLine = getMockAsJson(String.format("%s%s.json", PO_LINE_MOCK_DATA_PATH, EXISTENT_PO_LINE_ID))
+      .mapTo(CompositePoLine.class)
+      .withPaymentStatus(CompositePoLine.PaymentStatus.AWAITING_PAYMENT);
+    addMockEntry(ORDER_LINES, JsonObject.mapFrom(poLine));
+
+    String jsonBody = JsonObject.mapFrom(reqData).encode();
+
+    verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, "", 204);
+    assertThat(serverRqRs.get(INVOICES, HttpMethod.PUT).get(0).getString(STATUS), is(Invoice.Status.PAID.value()));
+
+    final List<CompositePoLine> updatedPoLines = getRqRsEntries(HttpMethod.PUT, ORDER_LINES).stream()
+      .map(line -> line.mapTo(CompositePoLine.class))
+      .collect(Collectors.toList());
+
+    assertThat(updatedPoLines, hasSize(0));
+    assertThatVoucherPaid();
+  }
+
+  @Test
+  void testShouldFailInvoiceLineDoesNotHaveFund() {
+    logger.info("=== Test should fail because invoice line doesn't have fund ===");
+
+    Invoice reqData = getMockAsJson(APPROVED_INVOICE_SAMPLE_PATH).mapTo(Invoice.class).withStatus(Invoice.Status.PAID);
+    String id = reqData.getId();
+
+    prepareMockVoucher(id);
+    InvoiceLine invoiceLine = getMinimalContentInvoiceLine(id);
+    addMockEntry(INVOICE_LINES, JsonObject.mapFrom(invoiceLine));
+
+    String jsonBody = JsonObject.mapFrom(reqData).encode();
+
+    verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, "", 400);
   }
 
   @Test
@@ -2466,8 +2512,8 @@ public class InvoicesApiTest extends ApiTestBase {
     verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, "", 204);
 
     assertThat(getRqRsEntries(HttpMethod.GET, FINANCE_TRANSACTIONS), hasSize(2));
-    assertThat(getRqRsEntries(HttpMethod.GET, FUNDS), hasSize(1));
-    assertThat(getRqRsEntries(HttpMethod.GET, CURRENT_FISCAL_YEAR), hasSize(0));
+    assertThat(getRqRsEntries(HttpMethod.GET, FUNDS), hasSize(2));
+    assertThat(getRqRsEntries(HttpMethod.GET, CURRENT_FISCAL_YEAR), hasSize(1));
     assertThat(getRqRsEntries(HttpMethod.POST, FINANCE_PAYMENTS), hasSize(0));
     assertThat(getRqRsEntries(HttpMethod.POST, FINANCE_CREDITS), hasSize(0));
 
@@ -3015,7 +3061,7 @@ public class InvoicesApiTest extends ApiTestBase {
 
 
     assertThat(getRqRsEntries(HttpMethod.GET, FINANCE_TRANSACTIONS), hasSize(2));
-    assertThat(getRqRsEntries(HttpMethod.GET, FUNDS), hasSize(1));
+    assertThat(getRqRsEntries(HttpMethod.GET, FUNDS), hasSize(2));
 
     assertThat(getRqRsEntries(HttpMethod.POST, FINANCE_PAYMENTS), hasSize(invoiceLinePaymentsCount + adjustmentPaymentsCount));
     assertThat(getRqRsEntries(HttpMethod.POST, FINANCE_CREDITS), hasSize(invoiceLineCreditsCount + adjustmentCreditsCount));
