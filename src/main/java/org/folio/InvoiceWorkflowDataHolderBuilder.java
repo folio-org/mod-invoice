@@ -113,7 +113,7 @@ public class InvoiceWorkflowDataHolderBuilder {
   }
 
   public Future<List<InvoiceWorkflowDataHolder>> withBudgets(List<InvoiceWorkflowDataHolder> holders, RequestContext requestContext) {
-    if (holders.size() == 0)
+    if (holders.isEmpty())
       return succeededFuture(holders);
     List<String> fundIds = holders.stream().map(InvoiceWorkflowDataHolder::getFundId).distinct().collect(toList());
     String invoiceFiscalYearId = holders.get(0).getInvoice().getFiscalYearId();
@@ -142,7 +142,7 @@ public class InvoiceWorkflowDataHolderBuilder {
   }
 
   public Future<List<InvoiceWorkflowDataHolder>> withFiscalYear(List<InvoiceWorkflowDataHolder> holders, RequestContext requestContext) {
-    if (holders.size() == 0)
+    if (holders.isEmpty())
       return succeededFuture(holders);
     String fiscalYearId = holders.get(0).getBudget().getFiscalYearId();
     return fiscalYearService.getFiscalYear(fiscalYearId, requestContext)

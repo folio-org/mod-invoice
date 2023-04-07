@@ -61,7 +61,7 @@ public class BudgetService {
       .withQuery(String.format(QUERY_BY_FUND_ID_AND_FISCAL_YEAR_ID, fundId, fiscalYearId));
     return restClient.get(requestEntry, BudgetCollection.class, requestContext)
       .map(budgetCollection -> {
-        if (budgetCollection.getBudgets().size() < 1) {
+        if (budgetCollection.getBudgets().isEmpty()) {
           List<Parameter> parameters = List.of(
             new Parameter().withKey("fundId").withValue(fundId),
             new Parameter().withKey("fiscalYearId").withValue(fiscalYearId)
