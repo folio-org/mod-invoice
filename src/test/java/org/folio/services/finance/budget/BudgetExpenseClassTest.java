@@ -1,4 +1,4 @@
-package org.folio.services.finance;
+package org.folio.services.finance.budget;
 
 import static io.vertx.core.Future.succeededFuture;
 import static org.folio.invoices.utils.ErrorCodes.BUDGET_EXPENSE_CLASS_NOT_FOUND;
