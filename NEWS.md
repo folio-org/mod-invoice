@@ -1,5 +1,13 @@
 ## 5.6.0 - Unreleased
 
+## 5.5.1 - Nolana R3 2022 Hot Fix
+The focus of this release was to fix the behavior of adding adjustments to invoices.
+
+[Full Changelog](https://github.com/folio-org/mod-invoice/compare/v5.5.0...v5.5.1)
+
+### Bug Fixes
+* [MODINVOICE-449](https://issues.folio.org/browse/MODINVOICE-449) Adjustments cause blocker on invoices
+
 ## 5.5.0 - Nolana R3 2022
 The focus of this release was to Upgrade RMB up to 35.0.1
 
