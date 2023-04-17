@@ -15,7 +15,6 @@ import org.folio.invoices.utils.HelperUtils;
 import org.folio.rest.annotations.Stream;
 import org.folio.rest.annotations.Validate;
 import org.folio.rest.core.models.RequestContext;
-import org.folio.rest.jaxrs.model.Adjustment;
 import org.folio.rest.jaxrs.model.Errors;
 import org.folio.rest.jaxrs.model.FundDistribution;
 import org.folio.rest.jaxrs.model.Invoice;
@@ -46,7 +45,6 @@ import static org.folio.invoices.utils.ErrorCodes.DOCUMENT_IS_TOO_LARGE;
 import static org.folio.invoices.utils.ErrorCodes.MISMATCH_BETWEEN_ID_IN_PATH_AND_BODY;
 import static org.folio.rest.RestVerticle.STREAM_ABORT;
 import static org.folio.rest.RestVerticle.STREAM_COMPLETE;
-import static org.folio.services.adjusment.AdjustmentsService.NOT_PRORATED_ADJUSTMENTS_PREDICATE;
 
 public class InvoicesImpl extends BaseApi implements org.folio.rest.jaxrs.resource.Invoice {
 
@@ -209,10 +207,6 @@ public class InvoicesImpl extends BaseApi implements org.folio.rest.jaxrs.resour
         subTotal = Money.of(request.getSubTotal(), currencyUnit);
         MonetaryAmount adjustmentAndFundTotals = HelperUtils.calculateAdjustmentsTotal(request.getAdjustments(), subTotal);
         Double total = HelperUtils.convertToDoubleWithRounding(adjustmentAndFundTotals.add(subTotal));
-        List<Adjustment> notProratedAdjustmentList = adjustmentsService.filterAdjustments(request.getAdjustments(), NOT_PRORATED_ADJUSTMENTS_PREDICATE);
-        if (CollectionUtils.isNotEmpty(notProratedAdjustmentList)) {
-          validator.validateAdjustments(notProratedAdjustmentList);
-        }
         validator.validateFundDistributions(total, fundDistributionList);
       } else {
         validator.validateFundDistributions(request.getSubTotal(), fundDistributionList);
