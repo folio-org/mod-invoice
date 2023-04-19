@@ -883,8 +883,8 @@ public class MockServer {
     logger.info("handleGetInvoiceDocumentById got: GET " + ctx.request().path());
     String fundId = ctx.request().getParam("id");
 
-    JsonObject collection = getBudgetsByFundIds(Collections.singletonList(fundId));
-    BudgetCollection budgetCollection = collection.mapTo(BudgetCollection.class);
+    BudgetCollection budgetCollection = getBudgetsByFundIds(Collections.singletonList(fundId));
+    JsonObject collection = JsonObject.mapFrom(budgetCollection);
     if (fundId.equals(FUND_ID_WITH_NOT_ACTIVE_BUDGET)) {
       ctx.response()
               .setStatusCode(404)
@@ -1765,11 +1765,25 @@ public class MockServer {
       try {
 
         List<String> ids = Collections.emptyList();
+        String fiscalYearId = "";
+        if (query.contains("fiscalYearId==")) {
+          fiscalYearId = extractIdsFromQuery("fiscalYearId", "==", query).get(0);
+        }
+
         if (query.startsWith("fundId==")) {
           ids = extractIdsFromQuery("fundId", "==", query);
         }
 
-        JsonObject collection = getBudgetsByFundIds(ids);
+        BudgetCollection budgetCollection;
+
+        if (StringUtils.isNotBlank(fiscalYearId)) {
+          budgetCollection = getBudgetsByFundIdsAndFiscalYearId(ids, fiscalYearId);
+        } else {
+          budgetCollection = getBudgetsByFundIds(ids);
+        }
+
+        JsonObject collection = JsonObject.mapFrom(budgetCollection);
+
         addServerRqRsData(HttpMethod.GET, BUDGETS, collection);
 
         ctx.response()
@@ -1782,7 +1796,13 @@ public class MockServer {
     }
   }
 
-  private JsonObject getBudgetsByFundIds(List<String> budgetByFundIds) {
+  private BudgetCollection getBudgetsByFundIdsAndFiscalYearId(List<String> budgetByFundIds, String fiscalYearId) {
+    List<Budget> budgets = getBudgetsByFundIds(budgetByFundIds).getBudgets();
+    budgets.removeIf(item -> !fiscalYearId.contains(item.getFiscalYearId()));
+    return new BudgetCollection().withBudgets(budgets).withTotalRecords(budgets.size());
+  }
+
+  private BudgetCollection getBudgetsByFundIds(List<String> budgetByFundIds) {
     Supplier<List<Budget>> getFromFile = () -> {
       try {
         return new JsonObject(getMockData(BUDGETS_PATH)).mapTo(BudgetCollection.class).getBudgets();
@@ -1797,10 +1817,7 @@ public class MockServer {
       budgets.removeIf(item -> !budgetByFundIds.contains(item.getFundId()));
     }
 
-    Object record = new BudgetCollection().withBudgets(budgets).withTotalRecords(budgets.size());
-
-
-    return JsonObject.mapFrom(record);
+    return new BudgetCollection().withBudgets(budgets).withTotalRecords(budgets.size());
   }
 
   private void handleGetLedgerRecords(RoutingContext ctx) {
@@ -2025,9 +2042,12 @@ public class MockServer {
   }
 
   private List<String> extractIdsFromQuery(String fieldName, String relation, String query) {
-    Matcher matcher = Pattern.compile(".*" + fieldName + relation + "\\(?(.+)\\).*").matcher(query);
-    if (matcher.find()) {
-      return StreamEx.split(matcher.group(1), " or ").toList();
+    Matcher matcherIds = Pattern.compile(".*" + fieldName + relation + "\\(?(.+)\\).*").matcher(query);
+    Matcher matcherId = Pattern.compile(".*" + fieldName + relation + "([a-f\\d-]+)").matcher(query);
+    if (matcherIds.find()) {
+      return StreamEx.split(matcherIds.group(1), " or ").toList();
+    } else if (matcherId.find()) {
+      return List.of(matcherId.group(1));
     } else {
       return Collections.emptyList();
     }
