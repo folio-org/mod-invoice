@@ -62,6 +62,10 @@ public class InvoicePaymentService {
   }
 
   private Future<Void> updatePoLinesStatus(Invoice invoice, List<InvoiceLine> invoiceLines, RequestContext requestContext) {
+    if (StringUtils.isBlank(invoice.getFiscalYearId())) {
+      return updatePoLinesToPaidStatus(invoiceLines, requestContext);
+    }
+
     String fundID = invoiceLines.stream()
       .flatMap(invoiceLine -> invoiceLine.getFundDistributions().stream())
       .map(FundDistribution::getFundId)

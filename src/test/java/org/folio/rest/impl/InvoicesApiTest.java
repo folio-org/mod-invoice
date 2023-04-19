@@ -2516,7 +2516,35 @@ public class InvoicesApiTest extends ApiTestBase {
     assertThat(getRqRsEntries(HttpMethod.GET, CURRENT_FISCAL_YEAR), hasSize(1));
     assertThat(getRqRsEntries(HttpMethod.POST, FINANCE_PAYMENTS), hasSize(0));
     assertThat(getRqRsEntries(HttpMethod.POST, FINANCE_CREDITS), hasSize(0));
+  }
 
+  @Test
+  void testUpdateInvoiceTransitionToPaidWithNullFiscalYearIdTransactionsAlreadyExists() {
+    logger.info("=== Test transition invoice to paid with null fiscalYearId - transactions already exist in finance storage ===");
+
+    Invoice reqData = getMockAsJson(APPROVED_INVOICE_SAMPLE_PATH).mapTo(Invoice.class).withStatus(Invoice.Status.PAID);
+    reqData.setFiscalYearId(null);
+    String id = reqData.getId();
+
+    // Prepare existing transaction
+    Transaction transaction = new Transaction()
+      .withSourceInvoiceId(id)
+      .withFiscalYearId(FISCAL_YEAR_ID)
+      .withTransactionType(Transaction.TransactionType.PAYMENT)
+      .withAmount(1.00)
+      .withToFundId(EXISTING_FUND_ID);
+
+    addMockEntry(FINANCE_TRANSACTIONS, transaction);
+
+    String jsonBody = JsonObject.mapFrom(reqData).encode();
+
+    verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, "", 204);
+
+    assertThat(getRqRsEntries(HttpMethod.GET, FINANCE_TRANSACTIONS), hasSize(2));
+    assertThat(getRqRsEntries(HttpMethod.GET, FUNDS), hasSize(1));
+    assertThat(getRqRsEntries(HttpMethod.GET, CURRENT_FISCAL_YEAR), hasSize(0));
+    assertThat(getRqRsEntries(HttpMethod.POST, FINANCE_PAYMENTS), hasSize(0));
+    assertThat(getRqRsEntries(HttpMethod.POST, FINANCE_CREDITS), hasSize(0));
   }
 
   @Test
