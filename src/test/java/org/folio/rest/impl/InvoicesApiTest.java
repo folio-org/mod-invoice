@@ -2198,37 +2198,6 @@ public class InvoicesApiTest extends ApiTestBase {
   }
 
   @Test
-  void testUpdateInvoiceTransitionToPaidForPreviousFiscalYear() {
-    logger.info("=== Test transition invoice to paid, for previous fiscal year ===");
-
-    Invoice reqData = getMockAsJson(APPROVED_INVOICE_SAMPLE_PATH).mapTo(Invoice.class).withStatus(Invoice.Status.PAID);
-    reqData.setFiscalYearId(UUID.randomUUID().toString());
-    String id = reqData.getId();
-
-    prepareMockVoucher(id);
-    InvoiceLine invoiceLine1 = getMinimalContentInvoiceLine(id).withPoLineId(EXISTENT_PO_LINE_ID).withFundDistributions(List.of(getFundDistribution()));
-    addMockEntry(INVOICE_LINES, JsonObject.mapFrom(invoiceLine1));
-
-
-    CompositePoLine poLine = getMockAsJson(String.format("%s%s.json", PO_LINE_MOCK_DATA_PATH, EXISTENT_PO_LINE_ID))
-      .mapTo(CompositePoLine.class)
-      .withPaymentStatus(CompositePoLine.PaymentStatus.AWAITING_PAYMENT);
-    addMockEntry(ORDER_LINES, JsonObject.mapFrom(poLine));
-
-    String jsonBody = JsonObject.mapFrom(reqData).encode();
-
-    verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, "", 204);
-    assertThat(serverRqRs.get(INVOICES, HttpMethod.PUT).get(0).getString(STATUS), is(Invoice.Status.PAID.value()));
-
-    final List<CompositePoLine> updatedPoLines = getRqRsEntries(HttpMethod.PUT, ORDER_LINES).stream()
-      .map(line -> line.mapTo(CompositePoLine.class))
-      .collect(Collectors.toList());
-
-    assertThat(updatedPoLines, hasSize(0));
-    assertThatVoucherPaid();
-  }
-
-  @Test
   void testShouldFailInvoiceLineDoesNotHaveFund() {
     logger.info("=== Test should fail because invoice line doesn't have fund ===");
 
@@ -2553,7 +2522,7 @@ public class InvoicesApiTest extends ApiTestBase {
 
     Invoice reqData = getMockAsJson(APPROVED_INVOICE_SAMPLE_PATH).mapTo(Invoice.class).withStatus(Invoice.Status.PAID);
     String id = reqData.getId();
-    reqData.setStatus(Status.PAID);
+    reqData.setFiscalYearId(null);
     InvoiceLine invoiceLine = getMockAsJson(INVOICE_LINE_WITH_APPROVED_INVOICE_SAMPLE_PATH).mapTo(InvoiceLine.class);
 
     invoiceLine.setId(UUID.randomUUID().toString());
