@@ -112,10 +112,7 @@ public class EncumbranceService {
     }
     List<String> poLineIds = getPoLineIds(relevantHolders);
     return getEncumbrancesByPoLineIds(poLineIds, fiscalYearId, requestContext)
-      .map(encumbrances -> encumbrances.stream()
-        .collect(groupingBy(encumbr -> Pair.of(encumbr.getEncumbrance().getSourcePoLineId(), encumbr.getFromFundId()))))
-      .map(poLineIdAndFundIdToEncumbrances -> updateFundDistributionsWithEncumbrances(relevantHolders,
-        poLineIdAndFundIdToEncumbrances))
+      .map(encumbrances -> updateFundDistributionsWithEncumbrances(relevantHolders, encumbrances))
       .onFailure(t -> log.error(String.format("Error updating invoice lines encumbrance links, invoiceId=%s, fiscalYearId=%s",
         relevantHolders.get(0).getInvoice().getId(), fiscalYearId), t));
   }
@@ -128,13 +125,16 @@ public class EncumbranceService {
   }
 
   private List<InvoiceLine> updateFundDistributionsWithEncumbrances(List<InvoiceWorkflowDataHolder> holders,
-      Map<Pair<String, String>, List<Transaction>> poLineIdAndFundIdToEncumbrances) {
+      List<Transaction> encumbrances) {
     List<InvoiceLine> linesToUpdate = new ArrayList<>();
     for (InvoiceWorkflowDataHolder holder : holders) {
-      Pair<String, String> poLineIdAndFundId = Pair.of(holder.getInvoiceLine().getPoLineId(), holder.getFundId());
-      List<Transaction> encumbrances = poLineIdAndFundIdToEncumbrances.get(poLineIdAndFundId);
+      List<Transaction> matchingEncumbrances = encumbrances.stream()
+        .filter(enc -> enc.getEncumbrance().getSourcePoLineId().equals(holder.getInvoiceLine().getPoLineId()) &&
+          enc.getFromFundId().equals(holder.getFundId()) &&
+          Objects.equals(enc.getExpenseClassId(), holder.getFundDistribution().getExpenseClassId()))
+        .collect(toList());
       FundDistribution fundDistribution = holder.getFundDistribution();
-      if (encumbrances == null || encumbrances.isEmpty()) {
+      if (matchingEncumbrances.isEmpty()) {
         if (fundDistribution.getEncumbrance() != null) {
           fundDistribution.withEncumbrance(null);
           holder.withEncumbrance(null);
@@ -143,7 +143,7 @@ public class EncumbranceService {
           }
         }
       } else {
-        Transaction encumbrance = encumbrances.get(0);
+        Transaction encumbrance = matchingEncumbrances.get(0);
         if (!encumbrance.getId().equals(fundDistribution.getEncumbrance())) {
           fundDistribution.withEncumbrance(encumbrance.getId());
           holder.withEncumbrance(encumbrance);
