@@ -44,6 +44,7 @@ import org.folio.services.finance.ManualExchangeRateProviderTest;
 import org.folio.services.finance.budget.BudgetServiceTest;
 import org.folio.services.finance.expense.ExpenseClassRetrieveServiceTest;
 import org.folio.services.finance.transaction.BaseTransactionServiceTest;
+import org.folio.services.finance.transaction.EncumbranceServiceTest;
 import org.folio.services.finance.transaction.PendingPaymentWorkflowServiceTest;
 import org.folio.services.ftp.FTPVertxCommandLoggerTest;
 import org.folio.services.ftp.FtpUploadServiceTest;
@@ -252,6 +253,10 @@ public class ApiTestSuite {
 
   @Nested
   class BaseTransactionServiceTestNested extends BaseTransactionServiceTest {
+  }
+
+  @Nested
+  class EncumbranceServiceTestNested extends EncumbranceServiceTest {
   }
 
   @Nested

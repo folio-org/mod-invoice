@@ -97,7 +97,7 @@ public class InvoiceCancelService {
         return null;
       })
       .compose(v -> cancelVoucher(invoiceId, requestContext))
-      .compose(v -> unreleaseEncumbrances(lines, requestContext));
+      .compose(v -> unreleaseEncumbrances(lines, invoiceFromStorage, requestContext));
   }
 
   private void validateCancelInvoice(Invoice invoiceFromStorage) {
@@ -152,7 +152,8 @@ public class InvoiceCancelService {
     return voucherService.cancelInvoiceVoucher(invoiceId, requestContext);
   }
 
-  private Future<Void> unreleaseEncumbrances(List<InvoiceLine> invoiceLines, RequestContext requestContext) {
+  private Future<Void> unreleaseEncumbrances(List<InvoiceLine> invoiceLines, Invoice invoiceFromStorage,
+      RequestContext requestContext) {
     List<String> poLineIds = invoiceLines.stream()
       .filter(InvoiceLine::getReleaseEncumbrance)
       .map(InvoiceLine::getPoLineId)
@@ -170,7 +171,7 @@ public class InvoiceCancelService {
       .map(col -> col.stream().flatMap(List::stream).collect(toList()));
 
     return poLinesFuture.compose(poLines -> selectPoLinesWithOpenOrders(poLines, requestContext))
-      .compose(poLines -> unreleaseEncumbrancesForPoLines(poLines, requestContext))
+      .compose(poLines -> unreleaseEncumbrancesForPoLines(poLines, invoiceFromStorage, requestContext))
       .recover(t -> {
         Throwable cause = requireNonNullElse(t.getCause(), t);
         List<Parameter> parameters = Collections.singletonList(
@@ -205,11 +206,13 @@ public class InvoiceCancelService {
     return OPEN_ORDERS_QUERY + " AND " + convertIdsToCqlQuery(orderIds);
   }
 
-  private Future<Void> unreleaseEncumbrancesForPoLines(List<PoLine> poLines, RequestContext requestContext) {
+  private Future<Void> unreleaseEncumbrancesForPoLines(List<PoLine> poLines, Invoice invoiceFromStorage,
+      RequestContext requestContext) {
     if (poLines.isEmpty())
       return succeededFuture(null);
     List<String> poLineIds = poLines.stream().map(PoLine::getId).collect(toList());
-    return encumbranceService.getEncumbrancesByPoLineIds(poLineIds, requestContext)
+    String fiscalYearId = invoiceFromStorage.getFiscalYearId();
+    return encumbranceService.getEncumbrancesByPoLineIds(poLineIds, fiscalYearId, requestContext)
       .map(transactions -> transactions.stream()
         .filter(tr -> RELEASED.equals(tr.getEncumbrance().getStatus()))
         .peek(tr -> tr.getEncumbrance().setStatus(UNRELEASED))

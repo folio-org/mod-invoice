@@ -44,6 +44,7 @@ import org.folio.rest.jaxrs.model.InvoiceLineCollection;
 import org.folio.rest.jaxrs.model.Parameter;
 import org.folio.services.adjusment.AdjustmentsService;
 import org.folio.services.finance.budget.BudgetExpenseClassService;
+import org.folio.services.finance.transaction.EncumbranceService;
 import org.folio.services.invoice.InvoiceLineService;
 import org.folio.services.invoice.InvoiceService;
 import org.folio.services.order.OrderLineService;
@@ -76,6 +77,8 @@ public class InvoiceLineHelper extends AbstractHelper {
   private InvoiceWorkflowDataHolderBuilder holderBuilder;
   @Autowired
   private BudgetExpenseClassService budgetExpenseClassService;
+  @Autowired
+  private EncumbranceService encumbranceService;
 
   public InvoiceLineHelper(Map<String, String> okapiHeaders, Context ctx) {
     super(okapiHeaders, ctx);
@@ -325,7 +328,8 @@ public class InvoiceLineHelper extends AbstractHelper {
       .map(this::checkIfInvoiceLineCreationAllowed)
       .compose(invoice -> getInvoiceWorkflowDataHolders(invoice, invoiceLine, requestContext)
         .compose(holders -> budgetExpenseClassService.checkExpenseClasses(holders, requestContext))
-        .map(v -> invoice))
+        .compose(holders -> encumbranceService.updateEncumbranceLinksForFiscalYear(invoice, holders, requestContext))
+        .map(holders -> invoice))
       .compose(invoice -> protectionHelper.isOperationRestricted(invoice.getAcqUnitIds(), ProtectedOperationType.CREATE)
         .map(v -> invoice))
       .compose(invoice -> createInvoiceLine(invoiceLine, invoice)
