@@ -135,6 +135,7 @@ import org.apache.logging.log4j.Logger;
 import org.folio.invoices.utils.InvoiceProtectedFields;
 import org.folio.rest.acq.model.finance.Budget;
 import org.folio.rest.acq.model.finance.Budget.BudgetStatus;
+import org.folio.rest.acq.model.finance.Encumbrance;
 import org.folio.rest.acq.model.finance.Fund;
 import org.folio.rest.acq.model.finance.FundCollection;
 import org.folio.rest.acq.model.finance.InvoiceTransactionSummary;
@@ -214,6 +215,8 @@ public class InvoicesApiTest extends ApiTestBase {
   private static final String STATUS = "status";
   private static final String INVALID_CURRENCY = "ABC";
   public static final String EXISTING_FUND_ID = "1d1574f1-9196-4a57-8d1f-3b2e4309eb81";
+  public static final String EXISTING_FUND_ID_2 = "2d1574f1-919cc4a57-8d1f-3b2e4619eb81";
+  public static final String EXISTING_FUND_ID_3 = "7fbd5d84-62d1-44c6-9c45-6cb173998bbd";
   private static final String FUND_ID_WITH_NOT_ENOUGH_AMOUNT_IN_BUDGET = "2d1574f1-919cc4a57-8d1f-3b2e4619eb81";
   public static final String FUND_ID_WITH_NOT_ACTIVE_BUDGET = "3d1574f1-919cc4a57-8d1f-3b2e4619eb81";
   public static final String EXISTING_LEDGER_ID = "a3ec5552-c4a4-4a15-a57c-0046db536369";
@@ -1708,22 +1711,56 @@ public class InvoicesApiTest extends ApiTestBase {
     invoiceLine.setAdjustmentsTotal(0d);
     invoiceLine.setAdjustments(emptyList());
 
+    Transaction enc1 = new Transaction()
+      .withId(UUID.randomUUID().toString())
+      .withFiscalYearId(FISCAL_YEAR_ID)
+      .withTransactionType(Transaction.TransactionType.ENCUMBRANCE)
+      .withAmount(1.00)
+      .withCurrency("USD")
+      .withFromFundId(EXISTING_FUND_ID)
+      .withToFundId(EXISTING_FUND_ID)
+      .withEncumbrance(new Encumbrance()
+        .withSourcePoLineId("0610be6d-0ddd-494b-b867-19f63d8b5d6d"));
+    addMockEntry(FINANCE_TRANSACTIONS, enc1);
+    Transaction enc2 = new Transaction()
+      .withId(UUID.randomUUID().toString())
+      .withFiscalYearId(FISCAL_YEAR_ID)
+      .withTransactionType(Transaction.TransactionType.ENCUMBRANCE)
+      .withAmount(1.00)
+      .withCurrency("USD")
+      .withFromFundId(EXISTING_FUND_ID_2)
+      .withToFundId(EXISTING_FUND_ID_2)
+      .withEncumbrance(new Encumbrance()
+        .withSourcePoLineId("0610be6d-0ddd-494b-b867-19f63d8b5d6d"));
+    addMockEntry(FINANCE_TRANSACTIONS, enc2);
+    Transaction enc3 = new Transaction()
+      .withId(UUID.randomUUID().toString())
+      .withFiscalYearId(FISCAL_YEAR_ID)
+      .withTransactionType(Transaction.TransactionType.ENCUMBRANCE)
+      .withAmount(1.00)
+      .withCurrency("USD")
+      .withFromFundId(EXISTING_FUND_ID_3)
+      .withToFundId(EXISTING_FUND_ID_3)
+      .withEncumbrance(new Encumbrance()
+        .withSourcePoLineId("0610be6d-0ddd-494b-b867-19f63d8b5d6d"));
+    addMockEntry(FINANCE_TRANSACTIONS, enc3);
+
     invoiceLine.setSubTotal(10d);
     FundDistribution fd1 = new FundDistribution()
       .withDistributionType(FundDistribution.DistributionType.PERCENTAGE)
       .withFundId(EXISTING_FUND_ID)
       .withValue(50d)
-      .withEncumbrance(UUID.randomUUID().toString());
+      .withEncumbrance(enc1.getId());
     FundDistribution fd2 = new FundDistribution()
       .withDistributionType(AMOUNT)
-      .withFundId(EXISTING_FUND_ID)
+      .withFundId(EXISTING_FUND_ID_2)
       .withValue(3d)
-      .withEncumbrance(UUID.randomUUID().toString());
+      .withEncumbrance(enc2.getId());
     FundDistribution fd3 = new FundDistribution()
       .withDistributionType(AMOUNT)
-      .withFundId(EXISTING_FUND_ID)
+      .withFundId(EXISTING_FUND_ID_3)
       .withValue(2d)
-      .withEncumbrance(UUID.randomUUID().toString());
+      .withEncumbrance(enc3.getId());
 
     List<FundDistribution> fundDistributions = Arrays.asList(fd1, fd2, fd3);
     invoiceLine.setFundDistributions(fundDistributions);
