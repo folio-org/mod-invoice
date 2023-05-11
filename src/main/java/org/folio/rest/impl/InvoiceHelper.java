@@ -9,6 +9,7 @@ import static java.util.stream.Collectors.toMap;
 import static javax.money.Monetary.getDefaultRounding;
 import static org.apache.commons.lang3.StringUtils.EMPTY;
 import static org.apache.commons.lang3.StringUtils.isEmpty;
+import static org.folio.invoices.utils.ErrorCodes.CANNOT_RESET_INVOICE_FISCAL_YEAR;
 import static org.folio.invoices.utils.ErrorCodes.INVALID_INVOICE_TRANSITION_ON_PAID_STATUS;
 import static org.folio.invoices.utils.ErrorCodes.ORG_IS_NOT_VENDOR;
 import static org.folio.invoices.utils.ErrorCodes.ORG_NOT_FOUND;
@@ -829,8 +830,16 @@ public class InvoiceHelper extends AbstractHelper {
       List<InvoiceLine> lines) {
     String previousFiscalYearId = invoiceFromStorage.getFiscalYearId();
     String newFiscalYearId = invoice.getFiscalYearId();
-    if (newFiscalYearId == null || newFiscalYearId.equals(previousFiscalYearId)) {
+    if (Objects.equals(newFiscalYearId, previousFiscalYearId)) {
       return succeededFuture(null);
+    }
+    if (newFiscalYearId == null) {
+      Parameter invoiceIdParam = new Parameter()
+        .withKey("invoiceId")
+        .withValue(invoice.getId());
+      Error error = CANNOT_RESET_INVOICE_FISCAL_YEAR.toError()
+        .withParameters(List.of(invoiceIdParam));
+      throw new HttpException(422, error);
     }
     List<InvoiceWorkflowDataHolder> dataHolders = holderBuilder.buildHoldersSkeleton(lines, invoice);
     return holderBuilder.withEncumbrances(dataHolders, requestContext)

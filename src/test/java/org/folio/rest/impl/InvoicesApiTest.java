@@ -2528,8 +2528,10 @@ public class InvoicesApiTest extends ApiTestBase {
   void testUpdateInvoiceTransitionToPaidWithNullFiscalYearIdTransactionsAlreadyExists() {
     logger.info("=== Test transition invoice to paid with null fiscalYearId - transactions already exist in finance storage ===");
 
-    Invoice reqData = getMockAsJson(APPROVED_INVOICE_SAMPLE_PATH).mapTo(Invoice.class).withStatus(Invoice.Status.PAID);
-    reqData.setFiscalYearId(null);
+    JsonObject initialData = getMockAsJson(APPROVED_INVOICE_SAMPLE_PATH);
+    initialData.putNull("fiscalYearId");
+    addMockEntry(INVOICES, initialData);
+    Invoice reqData = initialData.mapTo(Invoice.class).withStatus(Invoice.Status.PAID);
     String id = reqData.getId();
 
     // Prepare existing transaction
