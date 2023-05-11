@@ -9,6 +9,7 @@ import static java.util.stream.Collectors.toMap;
 import static javax.money.Monetary.getDefaultRounding;
 import static org.apache.commons.lang3.StringUtils.EMPTY;
 import static org.apache.commons.lang3.StringUtils.isEmpty;
+import static org.folio.invoices.utils.ErrorCodes.CANNOT_RESET_INVOICE_FISCAL_YEAR;
 import static org.folio.invoices.utils.ErrorCodes.INVALID_INVOICE_TRANSITION_ON_PAID_STATUS;
 import static org.folio.invoices.utils.ErrorCodes.ORG_IS_NOT_VENDOR;
 import static org.folio.invoices.utils.ErrorCodes.ORG_NOT_FOUND;
@@ -42,7 +43,6 @@ import javax.money.convert.ExchangeRateProvider;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.collections4.ListUtils;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.tuple.Pair;
 import org.folio.InvoiceWorkflowDataHolderBuilder;
 import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.invoices.utils.HelperUtils;
@@ -54,7 +54,6 @@ import org.folio.okapi.common.GenericCompositeFuture;
 import org.folio.rest.acq.model.Organization;
 import org.folio.rest.acq.model.finance.ExpenseClass;
 import org.folio.rest.acq.model.finance.Fund;
-import org.folio.rest.acq.model.finance.Transaction;
 import org.folio.rest.acq.model.orders.CompositePoLine;
 import org.folio.rest.core.models.RequestContext;
 import org.folio.rest.jaxrs.model.Adjustment;
@@ -323,7 +322,8 @@ public class InvoiceHelper extends AbstractHelper {
             return null;
           })
           .map(aVoid -> filterUpdatedLines(invoiceLines, updatedInvoiceLines))
-          .compose(lines -> invoiceLineService.persistInvoiceLines(lines, requestContext))));
+          .compose(lines -> invoiceLineService.persistInvoiceLines(lines, requestContext)))
+        .compose(lines -> updateEncumbranceLinksWhenFiscalYearIsChanged(invoice, invoiceFromStorage, invoiceLines)));
   }
 
   private List<InvoiceLine> filterUpdatedLines(List<InvoiceLine> invoiceLines, List<InvoiceLine> updatedInvoiceLines) {
@@ -450,16 +450,18 @@ public class InvoiceHelper extends AbstractHelper {
     invoice.setApprovedBy(invoice.getMetadata().getUpdatedByUserId());
 
     return configurationService.getConfigurationsEntries(requestContext, SYSTEM_CONFIG_QUERY, VOUCHER_NUMBER_PREFIX_CONFIG_QUERY)
-      .compose(ok -> updateInvoiceLinesWithEncumbrances(lines, requestContext))
-      .compose(v -> invoiceLineService.persistInvoiceLines(lines, requestContext))
       .compose(v -> vendorService.getVendor(invoice.getVendorId(), requestContext))
       .map(organization -> {
         validateBeforeApproval(organization, invoice, lines);
         return null;
       })
-      .compose(aVoid -> getInvoiceWorkflowDataHolders(invoice, lines, requestContext))
+      .compose(v -> getInvoiceWorkflowDataHolders(invoice, lines, requestContext))
+      .compose(holders -> encumbranceService.updateInvoiceLinesEncumbranceLinks(holders,
+          holders.get(0).getFiscalYear().getId(), requestContext)
+        .compose(linesToUpdate -> invoiceLineService.persistInvoiceLines(linesToUpdate, requestContext))
+        .map(v -> holders))
       .compose(holders -> budgetExpenseClassService.checkExpenseClasses(holders, requestContext))
-      .compose(holders -> pendingPaymentWorkflowService.handlePendingPaymentsCreation(holders, requestContext))
+      .compose(holders -> pendingPaymentWorkflowService.handlePendingPaymentsCreation(holders, invoice, requestContext))
       .compose(v -> prepareVoucher(invoice))
       .compose(voucher -> updateVoucherWithSystemCurrency(voucher, lines))
       .compose(voucher -> voucherCommandService.updateVoucherWithExchangeRate(voucher, invoice, requestContext))
@@ -824,48 +826,25 @@ public class InvoiceHelper extends AbstractHelper {
     return invoiceFromStorage.getStatus() == Invoice.Status.APPROVED && invoice.getStatus() == Invoice.Status.PAID;
   }
 
-  private Future<Void> updateInvoiceLinesWithEncumbrances(List<InvoiceLine> invoiceLines, RequestContext requestContext) {
-    List<String> poLineIds = getPoLineIds(invoiceLines);
-    if (!poLineIds.isEmpty()) {
-      return encumbranceService.getEncumbrancesByPoLineIds(poLineIds, requestContext)
-        .map(encumbrances -> encumbrances.stream()
-          .collect(groupingBy(encumbr -> Pair.of(encumbr.getEncumbrance().getSourcePoLineId(), encumbr.getFromFundId()))))
-        .map(encumbrByPoLineAndFundIdMap -> {
-          updateFundDistributionsWithEncumbrances(invoiceLines, encumbrByPoLineAndFundIdMap);
-          return null;
-        });
+  private Future<Void> updateEncumbranceLinksWhenFiscalYearIsChanged(Invoice invoice, Invoice invoiceFromStorage,
+      List<InvoiceLine> lines) {
+    String previousFiscalYearId = invoiceFromStorage.getFiscalYearId();
+    String newFiscalYearId = invoice.getFiscalYearId();
+    if (Objects.equals(newFiscalYearId, previousFiscalYearId)) {
+      return succeededFuture(null);
     }
-    return succeededFuture(null);
-  }
-
-  private List<String> getPoLineIds(List<InvoiceLine> invoiceLines) {
-    return invoiceLines.stream()
-                      .filter(invoiceLine -> isEncumbrancePresent(invoiceLine.getFundDistributions()))
-                      .map(InvoiceLine::getPoLineId)
-                      .collect(toList());
-  }
-
-  private boolean isEncumbrancePresent(List<FundDistribution> fundDistributions) {
-    return fundDistributions.stream().anyMatch(fund -> Objects.isNull(fund.getEncumbrance()));
-  }
-
-  private void updateFundDistributionsWithEncumbrances(List<InvoiceLine> invoiceLines,
-      Map<Pair<String, String>, List<Transaction>> encumbrByPoLineAndFundIdMap) {
-
-    List<Map<Pair<String, String>, List<FundDistribution>>> fundDistrByPoLineAndFundIdMap = invoiceLines.stream()
-      .map(line -> line.getFundDistributions().stream().collect(groupingBy(fund -> Pair.of(line.getPoLineId(), fund.getFundId()))))
-      .collect(toList());
-
-    fundDistrByPoLineAndFundIdMap.forEach(fundDistrByPoLineAndFundId ->
-      fundDistrByPoLineAndFundId.forEach((key, value) -> {
-        List<Transaction> encumbrances = encumbrByPoLineAndFundIdMap.get(key);
-        if (!CollectionUtils.isEmpty(encumbrances)) {
-          Transaction encumbrance = encumbrances.get(0);
-          FundDistribution fundDistribution = value.get(0);
-          fundDistribution.withEncumbrance(encumbrance.getId());
-        }
-      })
-   );
+    if (newFiscalYearId == null) {
+      Parameter invoiceIdParam = new Parameter()
+        .withKey("invoiceId")
+        .withValue(invoice.getId());
+      Error error = CANNOT_RESET_INVOICE_FISCAL_YEAR.toError()
+        .withParameters(List.of(invoiceIdParam));
+      throw new HttpException(422, error);
+    }
+    List<InvoiceWorkflowDataHolder> dataHolders = holderBuilder.buildHoldersSkeleton(lines, invoice);
+    return holderBuilder.withEncumbrances(dataHolders, requestContext)
+      .compose(holders -> encumbranceService.updateInvoiceLinesEncumbranceLinks(holders, newFiscalYearId, requestContext))
+      .compose(linesToUpdate -> invoiceLineService.persistInvoiceLines(linesToUpdate, requestContext));
   }
 
   @VisibleForTesting

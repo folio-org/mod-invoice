@@ -54,13 +54,14 @@ public class PendingPaymentWorkflowService {
 
   }
 
-  public Future<Void> handlePendingPaymentsCreation(List<InvoiceWorkflowDataHolder> dataHolders, RequestContext requestContext) {
+  public Future<Void> handlePendingPaymentsCreation(List<InvoiceWorkflowDataHolder> dataHolders, Invoice invoice,
+      RequestContext requestContext) {
     List<InvoiceWorkflowDataHolder> holders = withNewPendingPayments(dataHolders);
     holderValidator.validate(holders);
     InvoiceTransactionSummary summary = buildInvoiceTransactionsSummary(holders);
     return invoiceTransactionSummaryService.createInvoiceTransactionSummary(summary, requestContext)
       .compose(s -> createPendingPayments(holders, requestContext))
-      .compose(s -> cleanupOldEncumbrances(holders, requestContext));
+      .compose(s -> cleanupOldEncumbrances(holders, invoice, requestContext));
   }
 
   public Future<Void> handlePendingPaymentsUpdate(List<InvoiceWorkflowDataHolder> dataHolders, RequestContext requestContext) {
@@ -117,9 +118,14 @@ public class PendingPaymentWorkflowService {
       .mapEmpty();
   }
 
-  private Future<Void> cleanupOldEncumbrances(List<InvoiceWorkflowDataHolder> holders, RequestContext requestContext) {
-    List<String> poLineIds = holders.stream().filter(holder -> holder.getInvoiceLine() != null).map(holder -> holder.getInvoiceLine().getPoLineId()).collect(toList());
-    return encumbranceService.getEncumbrancesByPoLineIds(poLineIds, requestContext)
+  private Future<Void> cleanupOldEncumbrances(List<InvoiceWorkflowDataHolder> holders, Invoice invoice,
+      RequestContext requestContext) {
+    List<String> poLineIds = holders.stream()
+      .filter(holder -> holder.getInvoiceLine() != null)
+      .map(holder -> holder.getInvoiceLine().getPoLineId())
+      .collect(toList());
+    String fiscalYearId = invoice.getFiscalYearId();
+    return encumbranceService.getEncumbrancesByPoLineIds(poLineIds, fiscalYearId, requestContext)
       .compose(transactions -> cleanupOldEncumbrances(transactions, holders, requestContext));
   }
 
