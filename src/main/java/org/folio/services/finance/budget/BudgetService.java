@@ -31,7 +31,7 @@ public class BudgetService {
 
   private static final String BUDGETS_ENDPOINT = resourcesPath(BUDGETS);
   private static final String ACTIVE_BUDGET_ENDPOINT = "/finance/funds/{id}/budget";
-  private static final String QUERY_BY_FUND_ID_AND_FISCAL_YEAR_ID = "fundId==%s and fiscalYearId==%s";
+  private static final String QUERY_BY_FUND_ID_AND_FISCAL_YEAR_ID = "budgetStatus==Active AND fundId==%s AND fiscalYearId==%s";
 
   private final RestClient restClient;
 

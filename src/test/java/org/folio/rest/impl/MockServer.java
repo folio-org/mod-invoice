@@ -1770,7 +1770,7 @@ public class MockServer {
           fiscalYearId = extractIdsFromQuery("fiscalYearId", "==", query).get(0);
         }
 
-        if (query.startsWith("fundId==")) {
+        if (query.contains("fundId==")) {
           ids = extractIdsFromQuery("fundId", "==", query);
         }
 
