@@ -93,7 +93,7 @@ public class BudgetServiceTest {
     BudgetCollection budgetCollection = new BudgetCollection()
       .withBudgets(List.of(budget))
       .withTotalRecords(1);
-    String query = String.format("fundId==%s and fiscalYearId==%s", fundId, invoiceFiscalYearId);
+    String query = String.format("budgetStatus==Active AND fundId==%s AND fiscalYearId==%s", fundId, invoiceFiscalYearId);
     ArgumentCaptor<RequestEntry> requestEntryCaptor = ArgumentCaptor.forClass(RequestEntry.class);
     when(restClient.get(requestEntryCaptor.capture(), any(), any()))
       .thenReturn(Future.succeededFuture(budgetCollection));

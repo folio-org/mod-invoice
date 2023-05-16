@@ -1068,8 +1068,9 @@ public class InvoicesApiTest extends ApiTestBase {
 
   @Test
   void testTransitionFromOpenToApprovedWithMultipleFiscalYears() {
-    Invoice reqData = getMockAsJson(OPEN_INVOICE_SAMPLE_PATH).mapTo(Invoice.class);
-    String invoiceId = reqData.getId();
+    Invoice invoice = getMockAsJson(OPEN_INVOICE_SAMPLE_PATH).mapTo(Invoice.class);
+    invoice.setFiscalYearId(null);
+    String invoiceId = invoice.getId();
 
     InvoiceLine invoiceLine1 = getMinimalContentInvoiceLine(invoiceId);
 
@@ -1128,9 +1129,9 @@ public class InvoicesApiTest extends ApiTestBase {
     addMockEntry(BUDGETS, JsonObject.mapFrom(budget2));
     addMockEntry(FUNDS, JsonObject.mapFrom(fund2));
 
-    reqData.setStatus(Invoice.Status.APPROVED);
+    invoice.setStatus(Invoice.Status.APPROVED);
 
-    String jsonBody = JsonObject.mapFrom(reqData).encode();
+    String jsonBody = JsonObject.mapFrom(invoice).encode();
     Headers headers = prepareHeaders(X_OKAPI_URL, X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID);
     Errors errors = verifyPut(String.format(INVOICE_ID_PATH, invoiceId), jsonBody, headers, "", 422)
       .as(Errors.class);

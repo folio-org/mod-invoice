@@ -12,6 +12,7 @@ import static org.folio.invoices.utils.ResourcePathResolver.INVOICES;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_LINES;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_LINE_NUMBER;
 import static org.folio.rest.impl.InvoicesApiTest.OPEN_INVOICE_ID;
+import static org.folio.rest.impl.InvoicesApiTest.OPEN_INVOICE_SAMPLE_PATH;
 import static org.folio.rest.impl.InvoicesApiTest.REVIEWED_INVOICE_ID;
 import static org.folio.rest.impl.InvoicesImpl.PROTECTED_AND_MODIFIED_FIELDS;
 import static org.folio.rest.impl.MockServer.INVOICE_LINE_NUMBER_ERROR_X_OKAPI_TENANT;
@@ -833,6 +834,52 @@ public class InvoiceLinesApiTest extends ApiTestBase {
     invoiceLine.setPoLineId(PO_LINE_WITH_NO_PO_ID);
     // updating poNumbers will fail because it cannot get the PO from the PO line
     verifyPut(INVOICE_LINE_WITH_PO_NUMBER, JsonObject.mapFrom(invoiceLine), "", 500);
+  }
+
+  @Test
+  public void updateInvoiceFiscalYearWhenCreatingInvoiceLine() {
+    logger.info("=== Test update of invoice fiscal year when creating an invoice line ===");
+
+    Invoice invoice = getMockAsJson(OPEN_INVOICE_SAMPLE_PATH).mapTo(Invoice.class);
+    invoice.setFiscalYearId(null);
+    String invoiceId = UUID.randomUUID().toString();
+    invoice.setId(invoiceId);
+    addMockEntry(INVOICES, JsonObject.mapFrom(invoice));
+
+    InvoiceLine invoiceLine = getMockAsJson(INVOICE_LINE_WITH_APPROVED_INVOICE_SAMPLE_PATH).mapTo(InvoiceLine.class);
+    invoiceLine.setInvoiceId(invoiceId);
+
+    String body = JsonObject.mapFrom(invoiceLine).encodePrettily();
+    verifyPostResponse(INVOICE_LINES_PATH, body, prepareHeaders(X_OKAPI_TENANT), APPLICATION_JSON, 201);
+
+    List<JsonObject> invoiceUpdates = getInvoiceUpdates();
+    assertThat(invoiceUpdates, hasSize(1));
+    assertThat(invoiceUpdates.get(0).getString("fiscalYearId"), is("78110b4e-2f8e-4eef-81ee-3058c0c7a9ee"));
+  }
+
+  @Test
+  public void updateInvoiceFiscalYearWhenUpdatingInvoiceLine() {
+    logger.info("=== Test update of invoice fiscal year when updating an invoice line ===");
+
+    Invoice invoice = getMockAsJson(OPEN_INVOICE_SAMPLE_PATH).mapTo(Invoice.class);
+    invoice.setFiscalYearId(null);
+    String invoiceId = UUID.randomUUID().toString();
+    invoice.setId(invoiceId);
+    addMockEntry(INVOICES, JsonObject.mapFrom(invoice));
+
+    InvoiceLine invoiceLine = getMockAsJson(INVOICE_LINE_WITH_APPROVED_INVOICE_SAMPLE_PATH).mapTo(InvoiceLine.class);
+    invoiceLine.setId(UUID.randomUUID().toString());
+    invoiceLine.setInvoiceId(invoiceId);
+    FundDistribution fd = invoiceLine.getFundDistributions().get(0);
+    invoiceLine.getFundDistributions().clear();
+    addMockEntry(INVOICE_LINES, JsonObject.mapFrom(invoiceLine));
+
+    invoiceLine.getFundDistributions().add(fd);
+    verifyPut(invoiceLine.getId(), invoiceLine,"", 204);
+
+    List<JsonObject> invoiceUpdates = getInvoiceUpdates();
+    assertThat(invoiceUpdates, hasSize(1));
+    assertThat(invoiceUpdates.get(0).getString("fiscalYearId"), is("78110b4e-2f8e-4eef-81ee-3058c0c7a9ee"));
   }
 
   private void checkPreventInvoiceLineModificationRule(InvoiceLine invoiceLine, Map<InvoiceLineProtectedFields, Object> updatedFields) throws IllegalAccessException {
