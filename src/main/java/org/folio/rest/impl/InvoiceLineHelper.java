@@ -658,7 +658,7 @@ public class InvoiceLineHelper extends AbstractHelper {
     }
   }
 
-  static private class ILProcessing {
+  private static class ILProcessing {
     private Invoice invoice;
     private InvoiceLine invoiceLine;
     private InvoiceLine invoiceLineFromStorage;
