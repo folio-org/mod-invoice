@@ -1,20 +1,24 @@
 package org.folio.services.order;
 
 import static io.vertx.core.Future.succeededFuture;
+import static java.util.stream.Collectors.toList;
+import static one.util.streamex.StreamEx.ofSubLists;
 import static org.folio.invoices.utils.ErrorCodes.CANNOT_DELETE_INVOICE_LINE;
 import static org.folio.invoices.utils.HelperUtils.collectResultsOnSuccess;
-import static org.folio.invoices.utils.ResourcePathResolver.COMPOSITE_ORDER;
+import static org.folio.invoices.utils.HelperUtils.convertIdsToCqlQuery;
+import static org.folio.invoices.utils.ResourcePathResolver.COMPOSITE_ORDERS;
 import static org.folio.invoices.utils.ResourcePathResolver.ORDER_INVOICE_RELATIONSHIP;
 import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
-import java.util.stream.Collectors;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.invoices.rest.exceptions.HttpException;
+import org.folio.okapi.common.GenericCompositeFuture;
 import org.folio.rest.acq.model.orders.CompositePoLine;
 import org.folio.rest.acq.model.orders.CompositePurchaseOrder;
 import org.folio.rest.acq.model.orders.OrderInvoiceRelationship;
@@ -34,9 +38,10 @@ import io.vertx.core.Future;
 public class OrderService {
   private static final Logger log = LogManager.getLogger(OrderService.class);
 
+  private static final int MAX_IDS_FOR_GET_RQ = 15;
   private static final String ORDER_INVOICE_RELATIONSHIP_QUERY = "purchaseOrderId==%s and invoiceId==%s";
   private static final String ORDER_INVOICE_RELATIONSHIP_BY_INVOICE_ID_QUERY = "invoiceId==%s";
-  private static final String ORDERS_ENDPOINT = resourcesPath(COMPOSITE_ORDER);
+  private static final String ORDERS_ENDPOINT = resourcesPath(COMPOSITE_ORDERS);
   private static final String ORDERS_BY_ID_ENDPOINT = ORDERS_ENDPOINT + "/{id}";
   private static final String ORDER_INVOICE_RELATIONSHIPS_ENDPOINT = resourcesPath(ORDER_INVOICE_RELATIONSHIP);
   private static final String ORDER_INVOICE_RELATIONSHIPS_BY_ID_ENDPOINT = ORDER_INVOICE_RELATIONSHIPS_ENDPOINT + "/{id}";
@@ -65,7 +70,16 @@ public class OrderService {
       .withOffset(0)
       .withLimit(Integer.MAX_VALUE);
     return restClient.get(requestEntry,  PurchaseOrderCollection.class, requestContext)
-      .map(PurchaseOrderCollection::getPurchaseOrders);
+      .map(PurchaseOrderCollection::getPurchaseOrders)
+      .onFailure(t -> log.error("Error getting orders by query, query={}", query, t));
+  }
+
+  public Future<List<PurchaseOrder>> getOrdersByIds(List<String> poIds, RequestContext requestContext) {
+    return collectResultsOnSuccess(ofSubLists(poIds, MAX_IDS_FOR_GET_RQ)
+      .map(ids -> getOrders(convertIdsToCqlQuery(ids), requestContext)).toList())
+      .map(lists -> lists.stream()
+        .flatMap(Collection::stream)
+        .collect(toList()));
   }
 
   public Future<CompositePurchaseOrder> getOrder(String orderId, RequestContext requestContext) {
@@ -91,6 +105,24 @@ public class OrderService {
         }));
   }
 
+  public Future<Void> createInvoiceOrderRelations(String invoiceId, List<String> poIds, RequestContext requestContext) {
+    return getOrderInvoiceRelationshipByInvoiceId(invoiceId, requestContext)
+      .compose(relationshipCollection -> {
+        List<OrderInvoiceRelationship> relationships = relationshipCollection.getOrderInvoiceRelationships();
+        List<OrderInvoiceRelationship> newRelationships = poIds.stream()
+          .filter(poId -> relationships.stream().noneMatch(r -> r.getInvoiceId().equals(invoiceId) &&
+            r.getPurchaseOrderId().equals(poId)))
+          .map(poId -> new OrderInvoiceRelationship()
+            .withInvoiceId(invoiceId)
+            .withPurchaseOrderId(poId))
+          .collect(toList());
+        if (newRelationships.isEmpty())
+          return succeededFuture(null);
+        return createOrderInvoiceRelationships(newRelationships, requestContext);
+      })
+      .onFailure(t -> log.error("Error creating invoice-order relations, invoiceId={}", invoiceId, t));
+  }
+
   public Future<OrderInvoiceRelationshipCollection> getOrderInvoiceRelationshipByOrderIdAndInvoiceId(String orderId, String invoiceId, RequestContext requestContext) {
     String query = String.format(ORDER_INVOICE_RELATIONSHIP_QUERY, orderId, invoiceId);
     RequestEntry requestEntry = new RequestEntry(ORDER_INVOICE_RELATIONSHIPS_ENDPOINT)
@@ -109,8 +141,16 @@ public class OrderService {
     return restClient.get(requestEntry, OrderInvoiceRelationshipCollection.class, requestContext);
   }
 
+  public Future<Void> createOrderInvoiceRelationships(List<OrderInvoiceRelationship> relationships,
+      RequestContext requestContext) {
+    List<Future<OrderInvoiceRelationship>> futures = relationships.stream()
+      .map(r -> createOrderInvoiceRelationship(r, requestContext))
+      .collect(toList());
+    return GenericCompositeFuture.join(futures).mapEmpty();
+  }
+
   public Future<OrderInvoiceRelationship> createOrderInvoiceRelationship(OrderInvoiceRelationship relationship,
-    RequestContext requestContext) {
+      RequestContext requestContext) {
     RequestEntry requestEntry = new RequestEntry(ORDER_INVOICE_RELATIONSHIPS_ENDPOINT);
     return restClient.post(requestEntry, relationship, OrderInvoiceRelationship.class, requestContext);
   }
@@ -135,7 +175,7 @@ public class OrderService {
     return getOrderInvoiceRelationshipByInvoiceId(invoiceId, requestContext)
       .compose(relation -> {
         if (relation.getTotalRecords() > 0) {
-          List<String> ids = relation.getOrderInvoiceRelationships().stream().map(OrderInvoiceRelationship::getId).collect(Collectors.toList());
+          List<String> ids = relation.getOrderInvoiceRelationships().stream().map(OrderInvoiceRelationship::getId).collect(toList());
           return deleteOrderInvoiceRelations(ids, requestContext);
         }
         return succeededFuture(null);
@@ -147,7 +187,7 @@ public class OrderService {
       .map(CompositePoLine::getPurchaseOrderId)
       .compose(orderId -> getOrderPoLines(orderId, requestContext)
         .map(compositePoLines -> compositePoLines.stream()
-          .map(CompositePoLine::getId).collect(Collectors.toList())))
+          .map(CompositePoLine::getId).collect(toList())))
       .compose(poLineIds -> invoiceLineService.getInvoiceLinesRelatedForOrder(poLineIds, invoiceLine.getInvoiceId(), requestContext))
       .map(invoiceLines -> invoiceLines.size() == 1);
   }

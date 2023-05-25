@@ -1,14 +1,21 @@
 package org.folio.services.order;
 
+import static java.util.stream.Collectors.toList;
+import static one.util.streamex.StreamEx.ofSubLists;
 import static org.folio.invoices.utils.ErrorCodes.PO_LINE_NOT_FOUND;
 import static org.folio.invoices.utils.ErrorCodes.PO_LINE_UPDATE_FAILURE;
+import static org.folio.invoices.utils.HelperUtils.collectResultsOnSuccess;
+import static org.folio.invoices.utils.HelperUtils.convertIdsToCqlQuery;
 import static org.folio.invoices.utils.ResourcePathResolver.ORDER_LINES;
 import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
 
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.okapi.common.GenericCompositeFuture;
 import org.folio.rest.acq.model.orders.CompositePoLine;
@@ -22,6 +29,8 @@ import org.folio.rest.jaxrs.model.Parameter;
 import io.vertx.core.Future;
 
 public class OrderLineService {
+  private static final Logger log = LogManager.getLogger();
+  private static final int MAX_IDS_FOR_GET_RQ = 15;
   private static final String ORDER_LINES_ENDPOINT = resourcesPath(ORDER_LINES);
   private static final String ORDER_LINES_BY_ID_ENDPOINT = ORDER_LINES_ENDPOINT + "/{id}";
 
@@ -37,7 +46,16 @@ public class OrderLineService {
       .withOffset(0)
       .withLimit(Integer.MAX_VALUE);
     return restClient.get(requestEntry, PoLineCollection.class, requestContext)
+      .onFailure(t -> log.error("Error getting order lines by query, query={}", query, t))
       .map(PoLineCollection::getPoLines);
+  }
+
+  public Future<List<PoLine>> getPoLinesByIds(List<String> poLineIds, RequestContext requestContext) {
+    return collectResultsOnSuccess(ofSubLists(poLineIds, MAX_IDS_FOR_GET_RQ)
+      .map(ids -> getPoLines(convertIdsToCqlQuery(ids), requestContext)).toList())
+      .map(lists -> lists.stream()
+        .flatMap(Collection::stream)
+        .collect(toList()));
   }
 
   public Future<CompositePoLine> getPoLine(String poLineId, RequestContext requestContext) {

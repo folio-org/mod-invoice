@@ -1,6 +1,7 @@
 package org.folio.services.invoice;
 
 import static java.util.stream.Collectors.toList;
+import static org.folio.invoices.utils.ErrorCodes.ERROR_CREATING_INVOICE_LINE;
 import static org.folio.invoices.utils.ErrorCodes.INVOICE_LINE_NOT_FOUND;
 import static org.folio.invoices.utils.HelperUtils.INVOICE_ID;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_LINES;
@@ -12,12 +13,17 @@ import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import io.vertx.core.CompositeFuture;
+import io.vertx.core.json.JsonObject;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.invoices.utils.HelperUtils;
 import org.folio.okapi.common.GenericCompositeFuture;
 import org.folio.rest.core.RestClient;
 import org.folio.rest.core.models.RequestContext;
 import org.folio.rest.core.models.RequestEntry;
+import org.folio.rest.jaxrs.model.Error;
 import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.jaxrs.model.InvoiceLine;
 import org.folio.rest.jaxrs.model.InvoiceLineCollection;
@@ -27,6 +33,8 @@ import org.folio.rest.jaxrs.model.SequenceNumber;
 import io.vertx.core.Future;
 
 public class InvoiceLineService {
+
+  private static final Logger log = LogManager.getLogger();
 
   private static final String INVOICE_LINES_ENDPOINT = resourcesPath(INVOICE_LINES);
   private static final String INVOICE_LINE_BY_ID_ENDPOINT = INVOICE_LINES_ENDPOINT + "/{id}";
@@ -71,12 +79,21 @@ public class InvoiceLineService {
         .filter(invoiceLine -> orderPoLineIds.contains(invoiceLine.getPoLineId())).collect(toList()));
   }
 
-  public Future<Void> persistInvoiceLines(List<InvoiceLine> lines,  RequestContext requestContext) {
+  public Future<List<InvoiceLine>> createInvoiceLines(List<InvoiceLine> lines,  RequestContext requestContext) {
+    List<Future<InvoiceLine>> futures = lines.stream()
+      .map(invoiceLine -> createInvoiceLine(invoiceLine, requestContext))
+      .collect(Collectors.toList());
+    return GenericCompositeFuture.join(futures)
+      .map(CompositeFuture::list);
+  }
+
+  public Future<Void> updateInvoiceLines(List<InvoiceLine> lines,  RequestContext requestContext) {
     var futures = lines.stream()
-      .map(invoiceLine -> persistInvoiceLine(invoiceLine, requestContext))
+      .map(invoiceLine -> updateInvoiceLine(invoiceLine, requestContext))
       .collect(Collectors.toList());
     return GenericCompositeFuture.join(futures).mapEmpty();
   }
+
   public Future<Void> updateInvoiceLine(InvoiceLine invoiceLine, RequestContext requestContext) {
     return restClient.put(resourceByIdPath(INVOICE_LINES, invoiceLine.getId()), invoiceLine, requestContext);
   }
@@ -90,14 +107,16 @@ public class InvoiceLineService {
       });
   }
 
-  private Future<Void> persistInvoiceLine(InvoiceLine invoiceLine,  RequestContext requestContext) {
-    RequestEntry requestEntry = new RequestEntry(INVOICE_LINE_BY_ID_ENDPOINT).withId(invoiceLine.getId());
-    return restClient.put(requestEntry, invoiceLine, requestContext);
-  }
-
   public Future<InvoiceLine> createInvoiceLine(InvoiceLine invoiceLine, RequestContext requestContext) {
     RequestEntry requestEntry = new RequestEntry(INVOICE_LINES_ENDPOINT);
-    return restClient.post(requestEntry, invoiceLine, InvoiceLine.class, requestContext);
+    return restClient.post(requestEntry, invoiceLine, InvoiceLine.class, requestContext)
+    .recover(throwable -> {
+      Parameter p1 = new Parameter().withKey("invoiceId").withValue(invoiceLine.getInvoiceId());
+      Parameter p2 = new Parameter().withKey("invoiceLineNumber").withValue(invoiceLine.getInvoiceLineNumber());
+      Error error = ERROR_CREATING_INVOICE_LINE.toError().withParameters(List.of(p1, p2));
+      log.error(JsonObject.mapFrom(error));
+      throw new HttpException(500, error);
+    });
   }
 
   public Future<Void> deleteInvoiceLine(String lineId, RequestContext requestContext) {

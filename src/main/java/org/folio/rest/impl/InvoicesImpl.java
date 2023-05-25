@@ -53,8 +53,7 @@ public class InvoicesImpl extends BaseApi implements org.folio.rest.jaxrs.resour
   public void postInvoiceInvoices(Invoice invoice, Map<String, String> okapiHeaders,
       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     InvoiceHelper helper = new InvoiceHelper(okapiHeaders, vertxContext);
-    RequestContext requestContext = new RequestContext(vertxContext, okapiHeaders);
-    helper.createInvoice(invoice, requestContext)
+    helper.createInvoice(invoice)
       .onSuccess(invoiceWithId -> asyncResultHandler.handle(succeededFuture(helper.buildResponseWithLocation(String.format(INVOICE_LOCATION_PREFIX, invoiceWithId.getId()), invoiceWithId))))
       .onFailure(t -> {
         logger.error("Failed to create invoice ", t);

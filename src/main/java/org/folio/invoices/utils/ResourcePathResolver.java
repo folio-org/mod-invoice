@@ -14,7 +14,7 @@ public class ResourcePathResolver {
   public static final String ACQUISITIONS_MEMBERSHIPS = "acquisitionsMemberships";
   public static final String INVOICES = "invoices";
   public static final String INVOICE_LINES = "invoiceLines";
-  public static final String COMPOSITE_ORDER = "compositeOrder";
+  public static final String COMPOSITE_ORDERS = "compositeOrders";
   public static final String ORDER_LINES = "orderLines";
   public static final String ORDER_INVOICE_RELATIONSHIP = "orderInvoiceRelationship";
   public static final String VOUCHER_LINES = "voucherLines";
@@ -56,7 +56,7 @@ public class ResourcePathResolver {
     apis.put(ACQUISITIONS_UNITS, "/acquisitions-units-storage/units");
     apis.put(ACQUISITIONS_MEMBERSHIPS, "/acquisitions-units-storage/memberships");
     apis.put(INVOICES, "/invoice-storage/invoices");
-    apis.put(COMPOSITE_ORDER, "/orders/composite-orders");
+    apis.put(COMPOSITE_ORDERS, "/orders/composite-orders");
     apis.put(INVOICE_LINES, "/invoice-storage/invoice-lines");
     apis.put(INVOICE_LINE_NUMBER, "/invoice-storage/invoice-line-number");
     apis.put(ORDER_LINES, "/orders/order-lines");

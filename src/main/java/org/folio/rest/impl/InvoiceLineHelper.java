@@ -340,6 +340,7 @@ public class InvoiceLineHelper extends AbstractHelper {
    * @return completable future which {@link InvoiceLine} on success
    */
   public Future<InvoiceLine> createInvoiceLine(InvoiceLine invoiceLine) {
+    // NOTE: this should be kept consistent with InvoiceHelper.createInvoiceLines()
     RequestContext requestContext = new RequestContext(ctx, okapiHeaders);
     ILProcessing ilProcessing = new ILProcessing();
     ilProcessing.setInvoiceLine(invoiceLine);

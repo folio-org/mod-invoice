@@ -136,7 +136,9 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
               new MappingRule().withPath("invoice.invoiceLines[].subTotal")
                 .withValue("MOA+203[2]"),
               new MappingRule().withPath("invoice.invoiceLines[].quantity")
-                .withValue("QTY+47[2]")
+                .withValue("QTY+47[2]"),
+              new MappingRule().withPath("invoice.invoiceLines[].description")
+                .withValue("{POL_title}; else IMD+L+050+[4]")
             )))))));
 
   private MappingProfile mappingProfileWithPoLineSyntax = new MappingProfile()
@@ -157,6 +159,8 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
               new MappingRule().withPath("invoice.invoiceLines[].poLineId")
                 .withName("poLineId")
                 .withValue("RFF+LI[2]; else {POL_NUMBER}"),
+              new MappingRule().withPath("invoice.invoiceLines[].quantity")
+                .withValue("QTY+47[2]"),
               new MappingRule().withPath("invoice.invoiceLines[].referenceNumbers[]")
                 .withRepeatableFieldAction(MappingRule.RepeatableFieldAction.EXTEND_EXISTING)
                 .withName("referenceNumbers")
@@ -193,6 +197,10 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
               new MappingRule().withPath("invoice.invoiceLines[].poLineId")
                 .withName("poLineId")
                 .withValue("RFF+LI[2]; else {POL_NUMBER}"),
+              new MappingRule().withPath("invoice.invoiceLines[].quantity")
+                .withValue("QTY+47[2]"),
+              new MappingRule().withPath("invoice.invoiceLines[].description")
+                .withValue("{POL_title}; else IMD+L+050+[4]"),
               new MappingRule().withPath("invoice.invoiceLines[].fundDistributions[]")
                 .withRepeatableFieldAction(MappingRule.RepeatableFieldAction.EXTEND_EXISTING)
                 .withValue("{POL_FUND_DISTRIBUTIONS}"),
@@ -219,6 +227,10 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
                 .withValue("RFF+LI[2]; else {POL_NUMBER}"),
               new MappingRule().withPath("invoice.invoiceLines[].subTotal")
                 .withValue("MOA+203[2]"),
+              new MappingRule().withPath("invoice.invoiceLines[].quantity")
+                .withValue("QTY+47[2]"),
+              new MappingRule().withPath("invoice.invoiceLines[].description")
+                .withValue("{POL_title}; else IMD+L+050+[4]"),
               new MappingRule().withPath("invoice.invoiceLines[].fundDistributions[]")
                 .withRepeatableFieldAction(MappingRule.RepeatableFieldAction.EXTEND_EXISTING)
                 .withSubfields(List.of(new RepeatableSubfieldMapping()
