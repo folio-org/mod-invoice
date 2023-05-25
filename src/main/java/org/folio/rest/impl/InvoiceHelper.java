@@ -310,24 +310,42 @@ public class InvoiceHelper extends AbstractHelper {
         invoiceLinesErrors.put(i+1, ex.getMessage() + ": " + JsonObject.mapFrom(ex.getErrors()));
       }
     }
-    result.invoiceLinesErrors = invoiceLinesErrors;
+    result.setInvoiceLinesErrors(invoiceLinesErrors);
     if (!invoiceLinesErrors.isEmpty()) {
       return succeededFuture(result);
     }
 
     return createInvoice(invoice)
       .map(newInvoice -> {
-        result.newInvoice = newInvoice;
+        result.setNewInvoice(newInvoice);
         return null;
       })
-      .compose(v -> createInvoiceLines(result.newInvoice, invoiceLines, result))
+      .compose(v -> createInvoiceLines(result.getNewInvoice(), invoiceLines, result))
       .map(v -> result);
   }
 
   public static class CreateInvoiceAndLinesResult {
-    public Invoice newInvoice;
-    public List<InvoiceLine> newInvoiceLines;
-    public Map<Integer, String> invoiceLinesErrors;
+    private Invoice newInvoice;
+    private List<InvoiceLine> newInvoiceLines;
+    private Map<Integer, String> invoiceLinesErrors;
+    public void setNewInvoice(Invoice newInvoice) {
+      this.newInvoice = newInvoice;
+    }
+    public void setNewInvoiceLines(List<InvoiceLine> newInvoiceLines) {
+      this.newInvoiceLines = newInvoiceLines;
+    }
+    public void setInvoiceLinesErrors(Map<Integer, String> invoiceLinesErrors) {
+      this.invoiceLinesErrors = invoiceLinesErrors;
+    }
+    public Invoice getNewInvoice() {
+      return newInvoice;
+    }
+    public List<InvoiceLine> getNewInvoiceLines() {
+      return newInvoiceLines;
+    }
+    public Map<Integer, String> getInvoiceLinesErrors() {
+      return invoiceLinesErrors;
+    }
   }
 
   private Future<CreateInvoiceAndLinesResult> createInvoiceLines(Invoice invoice, List<InvoiceLine> invoiceLines,
@@ -338,29 +356,30 @@ public class InvoiceHelper extends AbstractHelper {
       .compose(holders -> budgetExpenseClassService.checkExpenseClasses(holders, requestContext))
       .compose(holders -> generateNewInvoiceLineNumbers(invoice.getId(), invoiceLines)
         .map(newInvoice -> {
-          result.newInvoice = newInvoice;
+          result.setNewInvoice(newInvoice);
           updateInvoiceFiscalYear(newInvoice, holders);
           return holders;
         }))
-      .compose(holders -> encumbranceService.updateEncumbranceLinksForFiscalYear(result.newInvoice, holders, requestContext)
+      .compose(holders -> encumbranceService.updateEncumbranceLinksForFiscalYear(result.getNewInvoice(), holders,
+        requestContext))
       .map(v -> {
-        adjustmentsService.processProratedAdjustments(invoiceLines, result.newInvoice);
-        invoiceService.recalculateTotals(result.newInvoice, invoiceLines);
+        adjustmentsService.processProratedAdjustments(invoiceLines, result.getNewInvoice());
+        invoiceService.recalculateTotals(result.getNewInvoice(), invoiceLines);
         return null;
       })
       .compose(v -> invoiceLineService.createInvoiceLines(invoiceLines, requestContext))
       .map(newInvoiceLines -> {
-        result.newInvoiceLines = newInvoiceLines;
+        result.setNewInvoiceLines(newInvoiceLines);
         return null;
       })
-      .compose(v -> getPurchaseOrders(result.newInvoiceLines))
-      .compose(pos -> createInvoiceOrderRelations(result.newInvoice.getId(), pos)
+      .compose(v -> getPurchaseOrders(result.getNewInvoiceLines()))
+      .compose(pos -> createInvoiceOrderRelations(result.getNewInvoice().getId(), pos)
         .map(v -> {
-          updateInvoicePoNumbers(result.newInvoice, pos);
+          updateInvoicePoNumbers(result.getNewInvoice(), pos);
           return null;
         }))
-      .compose(v -> invoiceService.updateInvoice(result.newInvoice, requestContext))
-      .map(v -> result))
+      .compose(v -> invoiceService.updateInvoice(result.getNewInvoice(), requestContext))
+      .map(v -> result)
       .onFailure(t -> logger.error("Error when creating invoice lines", t));
   }
 

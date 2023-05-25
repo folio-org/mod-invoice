@@ -327,19 +327,19 @@ public class CreateInvoiceEventHandler implements EventHandler {
     return invoiceHelper.createInvoiceAndLines(invoiceAndLines.invoice, invoiceAndLines.invoiceLines)
       .onFailure(t -> logger.error("Error during creation of invoice and lines", t))
       .map(result -> {
-        Map<Integer, String> invoiceLinesErrors = result.invoiceLinesErrors;
+        Map<Integer, String> invoiceLinesErrors = result.getInvoiceLinesErrors();
         if (!invoiceLinesErrors.isEmpty()) {
           String errorsAsString = Json.encode(invoiceLinesErrors);
           dataImportEventPayload.getContext().put(INVOICE_LINES_ERRORS_KEY, errorsAsString);
           throw new EventProcessingException("Error during invoice lines creation: " + errorsAsString);
         }
-        if (result.newInvoice != null) {
-          dataImportEventPayload.getContext().put(INVOICE.value(), Json.encode(result.newInvoice));
+        if (result.getNewInvoice() != null) {
+          dataImportEventPayload.getContext().put(INVOICE.value(), Json.encode(result.getNewInvoice()));
         }
-        if (result.newInvoiceLines != null) {
+        if (result.getNewInvoiceLines() != null) {
           InvoiceLineCollection invoiceLineCollection = new InvoiceLineCollection()
-            .withInvoiceLines(result.newInvoiceLines)
-            .withTotalRecords(result.newInvoiceLines.size());
+            .withInvoiceLines(result.getNewInvoiceLines())
+            .withTotalRecords(result.getNewInvoiceLines().size());
           dataImportEventPayload.getContext().put(INVOICE_LINES_KEY, Json.encode(invoiceLineCollection));
         }
         return null;
