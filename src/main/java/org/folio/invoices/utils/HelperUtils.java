@@ -172,16 +172,16 @@ public class HelperUtils {
       .map(CompositeFuture::list);
   }
 
-  public static <IN, OUT> Future<List<OUT>> executeWithSemaphores(Collection<IN> collection,
-      FunctionReturningFuture<IN, OUT> f, RequestContext requestContext) {
-    if (collection.size() == 0)
+  public static <I, O> Future<List<O>> executeWithSemaphores(Collection<I> collection,
+      FunctionReturningFuture<I, O> f, RequestContext requestContext) {
+    if (collection.isEmpty())
       return Future.succeededFuture(List.of());
-    return requestContext.getContext().<List<Future<OUT>>>executeBlocking(promise -> {
+    return requestContext.getContext().<List<Future<O>>>executeBlocking(promise -> {
       Semaphore semaphore = new Semaphore(SEMAPHORE_MAX_ACTIVE_THREADS, Vertx.currentContext().owner());
-      List<Future<OUT>> futures = new ArrayList<>();
-      for (IN item : collection) {
+      List<Future<O>> futures = new ArrayList<>();
+      for (I item : collection) {
         semaphore.acquire(() -> {
-          Future<OUT> future = f.apply(item)
+          Future<O> future = f.apply(item)
             .onComplete(asyncResult -> semaphore.release());
           futures.add(future);
           if (futures.size() == collection.size()) {
@@ -192,8 +192,8 @@ public class HelperUtils {
     }).compose(HelperUtils::collectResultsOnSuccess);
   }
 
-  public interface FunctionReturningFuture<IN, OUT> {
-    Future<OUT> apply(IN item);
+  public interface FunctionReturningFuture<I, O> {
+    Future<O> apply(I item);
   }
 
   public static double calculateVoucherAmount(Voucher voucher, List<VoucherLine> voucherLines) {

@@ -24,7 +24,6 @@ import static org.folio.services.voucher.VoucherCommandService.VOUCHER_NUMBER_PR
 import static org.folio.utils.UserPermissionsUtil.verifyUserHasAssignPermission;
 import static org.folio.utils.UserPermissionsUtil.verifyUserHasManagePermission;
 
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
@@ -404,13 +403,9 @@ public class InvoiceHelper extends AbstractHelper {
   private Future<Invoice> generateNewInvoiceLineNumbers(String invoiceId, List<InvoiceLine> invoiceLines) {
     // NOTE: currently we don't have a way to generate several numbers at a time like with order lines,
     // and getting a new number saves the invoice each time; this could be optimized
-    List<Future<String>> futures = new ArrayList<>();
-    for (int i=0; i<invoiceLines.size(); i++) {
-      futures.add(invoiceLineService.generateLineNumber(invoiceId, requestContext));
-    }
-    Future<List<String>> futureNumbers = GenericCompositeFuture.join(futures)
-      .map(CompositeFuture::list);
-    return futureNumbers
+    return HelperUtils.executeWithSemaphores(invoiceLines,
+        invoiceLine -> invoiceLineService.generateLineNumber(invoiceId, requestContext),
+        requestContext)
       .map(numbers -> {
         numbers.sort(Comparator.comparing(Integer::valueOf));
         for (int i=0; i<invoiceLines.size(); i++) {
