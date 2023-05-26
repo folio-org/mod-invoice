@@ -11,7 +11,6 @@ import static org.folio.DataImportEventTypes.DI_INVOICE_CREATED;
 import static org.folio.invoices.utils.HelperUtils.collectResultsOnSuccess;
 import static org.folio.invoices.utils.ResourcePathResolver.ORDER_LINES;
 import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
-import static org.folio.rest.RestConstants.SEMAPHORE_MAX_ACTIVE_THREADS;
 import static org.folio.rest.jaxrs.model.EntityType.EDIFACT_INVOICE;
 import static org.folio.rest.jaxrs.model.InvoiceLine.InvoiceLineStatus.OPEN;
 import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.ACTION_PROFILE;
@@ -61,7 +60,6 @@ import io.vertx.core.Vertx;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
-import io.vertxconcurrent.Semaphore;
 
 public class CreateInvoiceEventHandler implements EventHandler {
 
@@ -243,23 +241,9 @@ public class CreateInvoiceEventHandler implements EventHandler {
     if (MapUtils.isEmpty(refNumberList)) {
       return Future.succeededFuture(new HashMap<>());
     }
-    return requestContext.getContext()
-      .<List<Future<Pair<Integer, PoLine>>>>executeBlocking(promise -> {
-        List<Future<Pair<Integer, PoLine>>> futures = new ArrayList<>();
-        Semaphore semaphore = new Semaphore(SEMAPHORE_MAX_ACTIVE_THREADS, Vertx.currentContext().owner());
-        for (Map.Entry<Integer, List<String>> entry : refNumberList.entrySet()) {
-          semaphore.acquire(() -> {
-            var future = getLinePair(entry, requestContext)
-              .onComplete(asyncResult -> semaphore.release());
-            futures.add(future);
-            // complete executeBlocking promise when all operations started
-            if (futures.size() == refNumberList.size()) {
-              promise.complete(futures);
-            }
-          });
-        }
-      })
-      .compose(HelperUtils::collectResultsOnSuccess)
+    return HelperUtils.executeWithSemaphores(refNumberList.entrySet(),
+        entry -> getLinePair(entry, requestContext),
+        requestContext)
       .map(poLinePairs -> poLinePairs.stream()
         .filter(Objects::nonNull)
         .collect(Collectors.toMap(Pair::getKey, Pair::getValue)));

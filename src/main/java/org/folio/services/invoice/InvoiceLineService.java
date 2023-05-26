@@ -11,15 +11,12 @@ import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
 
 import java.util.Collections;
 import java.util.List;
-import java.util.stream.Collectors;
 
-import io.vertx.core.CompositeFuture;
 import io.vertx.core.json.JsonObject;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.invoices.utils.HelperUtils;
-import org.folio.okapi.common.GenericCompositeFuture;
 import org.folio.rest.core.RestClient;
 import org.folio.rest.core.models.RequestContext;
 import org.folio.rest.core.models.RequestEntry;
@@ -79,19 +76,17 @@ public class InvoiceLineService {
         .filter(invoiceLine -> orderPoLineIds.contains(invoiceLine.getPoLineId())).collect(toList()));
   }
 
-  public Future<List<InvoiceLine>> createInvoiceLines(List<InvoiceLine> lines,  RequestContext requestContext) {
-    List<Future<InvoiceLine>> futures = lines.stream()
-      .map(invoiceLine -> createInvoiceLine(invoiceLine, requestContext))
-      .collect(Collectors.toList());
-    return GenericCompositeFuture.join(futures)
-      .map(CompositeFuture::list);
+  public Future<List<InvoiceLine>> createInvoiceLines(List<InvoiceLine> invoiceLines,  RequestContext requestContext) {
+    return HelperUtils.executeWithSemaphores(invoiceLines,
+      invoiceLine -> createInvoiceLine(invoiceLine, requestContext),
+      requestContext);
   }
 
-  public Future<Void> updateInvoiceLines(List<InvoiceLine> lines,  RequestContext requestContext) {
-    var futures = lines.stream()
-      .map(invoiceLine -> updateInvoiceLine(invoiceLine, requestContext))
-      .collect(Collectors.toList());
-    return GenericCompositeFuture.join(futures).mapEmpty();
+  public Future<Void> updateInvoiceLines(List<InvoiceLine> invoiceLines,  RequestContext requestContext) {
+    return HelperUtils.executeWithSemaphores(invoiceLines,
+        invoiceLine -> updateInvoiceLine(invoiceLine, requestContext),
+        requestContext)
+      .mapEmpty();
   }
 
   public Future<Void> updateInvoiceLine(InvoiceLine invoiceLine, RequestContext requestContext) {
