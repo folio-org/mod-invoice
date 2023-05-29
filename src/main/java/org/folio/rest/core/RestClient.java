@@ -157,10 +157,11 @@ public class RestClient {
   public <T> Future<T> get(String endpoint, boolean skipError404, Class<T> responseType,  RequestContext requestContext) {
     log.info(REQUEST_MESSAGE_LOG_INFO, HttpMethod.GET, endpoint);
     var caseInsensitiveHeader = convertToCaseInsensitiveMap(requestContext.getHeaders());
+    var absEndpoint = buildAbsEndpoint(caseInsensitiveHeader, endpoint);
 
     Promise<T> promise = Promise.promise();
     getVertxWebClient(requestContext.getContext())
-      .getAbs(buildAbsEndpoint(caseInsensitiveHeader, endpoint))
+      .getAbs(absEndpoint)
       .putHeaders(caseInsensitiveHeader)
       .expect(SUCCESS_RESPONSE_PREDICATE)
       .send()

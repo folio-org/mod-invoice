@@ -41,7 +41,7 @@ public class BatchVoucherPersistHelper extends AbstractHelper {
       })
       .onSuccess(v -> logger.debug("Batch voucher generated and batch voucher export updated"))
       .onFailure(t -> {
-        batchVoucherExport.setMessage(t.getCause().getMessage());
+        batchVoucherExport.setMessage(t.getMessage());
         batchVoucherExport.setStatus(BatchVoucherExport.Status.ERROR);
         batchVoucherExportsService.updateBatchVoucherExportRecord(batchVoucherExport, requestContext);
         logger.error("Exception occurs, when generating batch voucher", t);

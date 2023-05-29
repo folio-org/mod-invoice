@@ -24,12 +24,14 @@ import io.vertx.core.json.JsonObject;
 public class BatchVoucherService {
   private static final String HEADER_ERROR_MSG = "Accept header must be [\"application/xml\",\"application/json\"]";
   private static final String MARSHAL_ERROR_MSG = "Internal server error. Can't marshal response to XML";
-  private final XMLConverter xmlConverter = XMLConverter.getInstance();
-  private final BatchVoucherModelConverter batchVoucherModelConverter = BatchVoucherModelConverter.getInstance();
-  RestClient restClient;
+  private final XMLConverter xmlConverter;
+  private final BatchVoucherModelConverter batchVoucherModelConverter;
+  private final RestClient restClient;
 
   public BatchVoucherService(RestClient restClient) {
     this.restClient = restClient;
+    this.xmlConverter = XMLConverter.getInstance();
+    this.batchVoucherModelConverter = BatchVoucherModelConverter.getInstance();
   }
 
   public Future<BatchVoucher> getBatchVoucherById(String id, RequestContext requestContext) {
