@@ -27,7 +27,7 @@ public class BatchVoucherExportConfigurationsImpl implements BatchVoucherExportC
     BatchVoucherExportConfigHelper helper = new BatchVoucherExportConfigHelper(okapiHeaders, vertxContext);
 
     helper.getExportConfigs(limit, offset, query)
-      .onSuccess(lines -> asyncResultHandler.handle(succeededFuture(helper.buildOkResponse(lines))))
+      .onSuccess(exportConfigCollection -> asyncResultHandler.handle(succeededFuture(helper.buildOkResponse(exportConfigCollection))))
       .onFailure(t -> handleErrorResponse(asyncResultHandler, helper, t));
   }
 
