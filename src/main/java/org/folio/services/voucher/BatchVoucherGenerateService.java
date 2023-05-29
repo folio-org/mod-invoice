@@ -10,6 +10,8 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.folio.converters.AddressConverter;
 import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.rest.acq.model.Address;
@@ -37,6 +39,7 @@ import io.vertx.core.Future;
 import io.vertx.core.json.JsonObject;
 
 public class BatchVoucherGenerateService {
+  private static final Logger log = LogManager.getLogger(BatchVoucherGenerateService.class);
 
   private final VoucherService voucherService;
 
@@ -70,9 +73,12 @@ public class BatchVoucherGenerateService {
     return voucherService.getVouchers(voucherCQL, 0, Integer.MAX_VALUE, requestContext)
       .compose(vouchers -> {
         if (!vouchers.getVouchers().isEmpty()) {
-          Future<Map<String, List<VoucherLine>>> voucherLines = voucherLineService.getVoucherLinesMap(vouchers, requestContext);
-          Future<Map<String, Invoice>> invoices = invoiceRetrieveService.getInvoiceMap(vouchers, requestContext);
-          Future<Map<String, List<InvoiceLine>>> invoiceLines = invoiceLinesRetrieveService.getInvoiceLineMap(vouchers, requestContext);
+          Future<Map<String, List<VoucherLine>>> voucherLines = voucherLineService.getVoucherLinesMap(vouchers, requestContext)
+            .onFailure(t -> log.error("buildBatchVoucherObject:: Error retrieving voucher lines", t));
+          Future<Map<String, Invoice>> invoices = invoiceRetrieveService.getInvoiceMap(vouchers, requestContext)
+            .onFailure(t -> log.error("buildBatchVoucherObject:: Error retrieving invoices", t));
+          Future<Map<String, List<InvoiceLine>>> invoiceLines = invoiceLinesRetrieveService.getInvoiceLineMap(vouchers, requestContext)
+            .onFailure(t -> log.error("buildBatchVoucherObject:: Error retrieving invoice lines", t));
           return CompositeFuture.join(voucherLines, invoices, invoiceLines)
             .compose(v -> buildBatchVoucher(batchVoucherExport, vouchers, voucherLines.result(), invoices.result(), invoiceLines.result(), requestContext));
         }
