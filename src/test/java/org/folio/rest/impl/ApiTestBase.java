@@ -86,35 +86,6 @@ public class ApiTestBase {
 
   private static boolean runningOnOwn;
 
-  /**
-   * Define unit test specific beans to override actual ones
-   * FIXME: this class is not used - some cleanup needed
-   */
-  @Configuration
-  static class ContextConfiguration {
-
-    @Bean
-    InvoiceLineService invoiceLineService(RestClient restClient) {
-      return new InvoiceLineService(restClient);
-    }
-
-    @Bean
-    OrderLineService orderLineService(RestClient restClient) {
-      return new OrderLineService(restClient);
-    }
-
-    @Bean
-    OrderService orderService(RestClient restClient, InvoiceLineService invoiceLineService,
-                              OrderLineService orderLineService) {
-      return new OrderService(restClient, invoiceLineService, orderLineService);
-    }
-
-    @Bean
-    InvoiceService invoiceService(RestClient restClient, InvoiceLineService invoiceLineService, OrderService orderService) {
-      return new BaseInvoiceService(restClient, invoiceLineService, orderService);
-    }
-  }
-
   @BeforeAll
   public static void before() throws InterruptedException, ExecutionException, TimeoutException {
 

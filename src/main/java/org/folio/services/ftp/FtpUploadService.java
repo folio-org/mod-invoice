@@ -56,23 +56,20 @@ public class FtpUploadService implements UploadService {
   public Future<String> login(String username, String password) {
     Promise<String> promise = Promise.promise();
     ctx.owner().executeBlocking(blockingFeature -> {
-      try {
-        ftp.connect(server, port);
-        logger.info("Connected to {}:{}", server, port);
-        if (ftp.login(username, password)) {
-          blockingFeature.complete(ftp.getReplyString().trim());
-        } else {
-          blockingFeature.fail(new FtpException(ftp.getReplyCode(), ftp.getReplyString().trim()));
+        try {
+          ftp.connect(server, port);
+          logger.info("Connected to {}:{}", server, port);
+          if (ftp.login(username, password)) {
+            blockingFeature.complete(ftp.getReplyString().trim());
+          } else {
+            blockingFeature.fail(new FtpException(ftp.getReplyCode(), ftp.getReplyString().trim()));
+          }
+        } catch (Exception e) {
+          logger.error("Error Connecting", e);
+          blockingFeature.fail(e);
+          disconnect();
         }
-      } catch (Exception e) {
-        logger.error("Error Connecting", e);
-        blockingFeature.fail(e);
-        disconnect();
-      }
-        blockingFeature.complete();
-      },
-      false,
-      asyncResultHandler(promise, "Success login to FTP", "Failed login to FTP"));
+      }, false, asyncResultHandler(promise, "Success login to FTP", "Failed login to FTP"));
     return promise.future();
   }
 

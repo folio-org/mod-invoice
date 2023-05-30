@@ -26,13 +26,13 @@ import org.xml.sax.SAXException;
 
 public final class XMLConverter {
   private static final Logger log = LogManager.getLogger(XMLConverter.class);
-  private JAXBContextWrapper jaxbContextWrapper;
+  private final JAXBContextWrapper jaxbContextWrapper;
   private final JAXBRootElementNameResolver rootElementNameResolver;
-  private final Class<?>[] rootClassNames = new Class<?>[] { BatchVoucherType.class };
-  private final String[] schemas = new String[] { "batch_voucher.xsd" };
 
   private XMLConverter() {
     try {
+      Class<?>[] rootClassNames = new Class<?>[] { BatchVoucherType.class };
+      String[] schemas = new String[] { "batch_voucher.xsd" };
       this.jaxbContextWrapper = new JAXBContextWrapper(rootClassNames, schemas);
     } catch (JAXBException | SAXException e) {
       throw new ClassInitializationException(e.getMessage(), e);
