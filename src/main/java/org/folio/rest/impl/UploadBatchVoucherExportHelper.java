@@ -14,6 +14,7 @@ import org.folio.services.ftp.FtpUploadService;
 import org.folio.services.voucher.BatchVoucherExportConfigService;
 import org.folio.services.voucher.BatchVoucherExportsService;
 import org.folio.services.voucher.BatchVoucherService;
+import org.folio.spring.SpringContextUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import io.vertx.core.Context;
@@ -37,6 +38,7 @@ public class UploadBatchVoucherExportHelper extends AbstractHelper {
 
   public UploadBatchVoucherExportHelper(Map<String, String> okapiHeaders, Context ctx) {
     super(okapiHeaders, ctx);
+    SpringContextUtil.autowireDependencies(this, ctx);
     this.requestContext = new RequestContext(ctx, okapiHeaders);
   }
 

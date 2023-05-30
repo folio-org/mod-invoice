@@ -70,6 +70,10 @@ public class InvoiceLineService {
     return restClient.get(endpoint, InvoiceLineCollection.class, requestContext);
   }
 
+  public Future<InvoiceLineCollection> getInvoiceLines(RequestEntry requestEntry, RequestContext requestContext) {
+    return restClient.get(requestEntry.buildEndpoint(), InvoiceLineCollection.class, requestContext);
+  }
+
   public Future<List<InvoiceLine>> getInvoiceLinesRelatedForOrder(List<String> orderPoLineIds, String invoiceId, RequestContext requestContext) {
     return getInvoiceLinesByInvoiceId(invoiceId, requestContext)
       .map(invoiceLines -> invoiceLines.getInvoiceLines().stream()
