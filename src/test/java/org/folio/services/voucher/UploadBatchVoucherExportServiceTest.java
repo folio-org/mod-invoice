@@ -17,6 +17,8 @@ import java.util.Map;
 
 import javax.ws.rs.core.Response;
 
+import io.vertx.core.Vertx;
+import org.folio.config.ApplicationConfig;
 import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.rest.RestConstants;
 import org.folio.rest.core.RestClient;
@@ -29,6 +31,7 @@ import org.folio.rest.jaxrs.model.BatchVoucher;
 import org.folio.rest.jaxrs.model.BatchVoucherExport;
 import org.folio.rest.jaxrs.model.Credentials;
 import org.folio.rest.jaxrs.model.ExportConfigCollection;
+import org.folio.spring.SpringContextUtil;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
@@ -75,6 +78,7 @@ public class UploadBatchVoucherExportServiceTest extends ApiTestBase {
     okapiHeaders.put(X_OKAPI_TENANT.getName(), X_OKAPI_TENANT.getValue());
     okapiHeaders.put(X_OKAPI_USER_ID.getName(), X_OKAPI_USER_ID.getValue());
     requestContext = new RequestContext(context, okapiHeaders);
+    SpringContextUtil.init(vertx, context, ApplicationConfig.class);
     openMocks(this);
   }
 
