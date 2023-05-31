@@ -3,7 +3,7 @@ package org.folio.utils;
 import static org.folio.invoices.utils.AcqDesiredPermissions.ASSIGN;
 import static org.folio.invoices.utils.AcqDesiredPermissions.MANAGE;
 import static org.folio.invoices.utils.AcqDesiredPermissions.FISCAL_YEAR_UPDATE;
-import static org.folio.invoices.utils.ErrorCodes.USER_HAS_NO_ACQ_FISCAL_YEAR_UPDATE_PERMISSIONS;
+import static org.folio.invoices.utils.ErrorCodes.USER_HAS_NO_FISCAL_YEAR_UPDATE_PERMISSIONS;
 import static org.folio.invoices.utils.ErrorCodes.USER_HAS_NO_ACQ_PERMISSIONS;
 
 import java.util.HashSet;
@@ -69,7 +69,7 @@ public final class UserPermissionsUtil {
    */
   public static void verifyUserHasFiscalYearUpdatePermission(Map<String, String> okapiHeaders) {
     if (isUserDoesNotHaveDesiredPermission(FISCAL_YEAR_UPDATE, okapiHeaders)) {
-      throw new HttpException(HttpStatus.HTTP_FORBIDDEN.toInt(), USER_HAS_NO_ACQ_FISCAL_YEAR_UPDATE_PERMISSIONS);
+      throw new HttpException(HttpStatus.HTTP_FORBIDDEN.toInt(), USER_HAS_NO_FISCAL_YEAR_UPDATE_PERMISSIONS);
     }
   }
 

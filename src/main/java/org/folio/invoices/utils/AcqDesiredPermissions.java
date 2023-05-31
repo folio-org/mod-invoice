@@ -8,7 +8,7 @@ import java.util.stream.Collectors;
 public enum AcqDesiredPermissions {
   ASSIGN("invoices.acquisitions-units-assignments.assign"),
   MANAGE("invoices.acquisitions-units-assignments.manage"),
-  FISCAL_YEAR_UPDATE("invoices.acquisitions-units-assignments.fiscal-year.update");
+  FISCAL_YEAR_UPDATE("invoices.fiscal-year.update");
 
   private String permission;
   private static final List<String> values;

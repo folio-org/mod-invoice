@@ -49,7 +49,7 @@
           "permissionsRequired": ["invoice.invoices.item.put"],
           "permissionsDesired": [
             "invoices.acquisitions-units-assignments.manage",
-            "invoices.acquisitions-units-assignments.fiscal-year.update"
+            "invoices.fiscal-year.update"
           ],
           "modulePermissions": [
             "configuration.entries.collection.get",
