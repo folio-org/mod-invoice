@@ -2,6 +2,8 @@ package org.folio.utils;
 
 import static org.folio.invoices.utils.AcqDesiredPermissions.ASSIGN;
 import static org.folio.invoices.utils.AcqDesiredPermissions.MANAGE;
+import static org.folio.invoices.utils.AcqDesiredPermissions.FISCAL_YEAR_UPDATE;
+import static org.folio.invoices.utils.ErrorCodes.USER_HAS_NO_ACQ_FISCAL_YEAR_UPDATE_PERMISSIONS;
 import static org.folio.invoices.utils.ErrorCodes.USER_HAS_NO_ACQ_PERMISSIONS;
 
 import java.util.HashSet;
@@ -57,6 +59,17 @@ public final class UserPermissionsUtil {
 
     if (isManagePermissionRequired(newAcqUnits, acqUnitsFromStorage) && isUserDoesNotHaveDesiredPermission(MANAGE, okapiHeaders)) {
       throw new HttpException(HttpStatus.HTTP_FORBIDDEN.toInt(), USER_HAS_NO_ACQ_PERMISSIONS);
+    }
+  }
+
+  /**
+   * The method checks whether the user has the desired permission to update the fiscal year.
+   *
+   * @throws HttpException if user does not have fiscal year update permission
+   */
+  public static void verifyUserHasFiscalYearUpdatePermission(Map<String, String> okapiHeaders) {
+    if (isUserDoesNotHaveDesiredPermission(FISCAL_YEAR_UPDATE, okapiHeaders)) {
+      throw new HttpException(HttpStatus.HTTP_FORBIDDEN.toInt(), USER_HAS_NO_ACQ_FISCAL_YEAR_UPDATE_PERMISSIONS);
     }
   }
 

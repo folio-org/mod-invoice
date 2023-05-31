@@ -23,6 +23,7 @@ import static org.folio.invoices.utils.ResourcePathResolver.INVOICES;
 import static org.folio.services.voucher.VoucherCommandService.VOUCHER_NUMBER_PREFIX_CONFIG_QUERY;
 import static org.folio.utils.UserPermissionsUtil.verifyUserHasAssignPermission;
 import static org.folio.utils.UserPermissionsUtil.verifyUserHasManagePermission;
+import static org.folio.utils.UserPermissionsUtil.verifyUserHasFiscalYearUpdatePermission;
 
 import java.util.Collection;
 import java.util.Collections;
@@ -42,6 +43,7 @@ import javax.money.convert.ExchangeRateProvider;
 
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.collections4.ListUtils;
+import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.folio.InvoiceWorkflowDataHolderBuilder;
 import org.folio.invoices.rest.exceptions.HttpException;
@@ -303,6 +305,9 @@ public class InvoiceHelper extends AbstractHelper {
       .map(ok -> {
         validator.validateInvoice(invoice, invoiceFromStorage);
         verifyUserHasManagePermission(invoice.getAcqUnitIds(), invoiceFromStorage.getAcqUnitIds(), okapiHeaders);
+        if (ObjectUtils.notEqual(invoice.getFiscalYearId(), invoiceFromStorage.getFiscalYearId())) {
+          verifyUserHasFiscalYearUpdatePermission(okapiHeaders);
+        }
         setSystemGeneratedData(invoiceFromStorage, invoice);
         return null;
       })
