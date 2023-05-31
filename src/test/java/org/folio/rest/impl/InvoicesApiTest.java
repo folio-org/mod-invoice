@@ -3026,20 +3026,37 @@ public class InvoicesApiTest extends ApiTestBase {
   }
 
   @Test
-  void testApproveInvoiceWithUpdatedFiscalYear() {
-    Invoice reqData = getMockAsJson(OPEN_INVOICE_SAMPLE_PATH).mapTo(Invoice.class);
+  void testPaidInvoiceWithUpdatedFiscalYear() {
+    Invoice reqData = getMockAsJson(APPROVED_INVOICE_SAMPLE_PATH).mapTo(Invoice.class);
     reqData.setFiscalYearId(UUID.randomUUID().toString());
     String id = reqData.getId();
-    InvoiceLine invoiceLine = getMinimalContentInvoiceLine(id);
+    InvoiceLine invoiceLine = getMockAsJson(INVOICE_LINE_WITH_APPROVED_INVOICE_SAMPLE_PATH).mapTo(InvoiceLine.class);
 
     invoiceLine.setId(UUID.randomUUID().toString());
     invoiceLine.setInvoiceId(reqData.getId());
+    invoiceLine.getFundDistributions().get(0).withFundId(FUND_ID_WITH_NOT_ACTIVE_BUDGET);
+    invoiceLine.getFundDistributions().forEach(fundDistribution -> {
+      Fund fund = new Fund()
+        .withId(fundDistribution.getFundId())
+        .withExternalAccountNo("externalNo")
+        .withLedgerId(EXISTING_LEDGER_ID);
+      addMockEntry(FUNDS, fund);
+    });
 
-    addMockEntry(INVOICES, reqData);
-    addMockEntry(INVOICE_LINES, invoiceLine);
-    verifySuccessPut(String.format(INVOICE_ID_PATH, id), JsonObject.mapFrom(reqData));
+    reqData.getAdjustments().stream().flatMap(adjustment -> adjustment.getFundDistributions().stream())
+      .map(FundDistribution::getFundId).distinct().forEach(fundId -> {
+        Fund fund = new Fund()
+          .withId(fundId)
+          .withExternalAccountNo("externalNo")
+          .withLedgerId(EXISTING_LEDGER_ID);
+        addMockEntry(FUNDS, fund);
+      });
 
-    reqData.setStatus(Status.APPROVED);
+    addMockEntry(LEDGERS, JsonObject.mapFrom(new Ledger().withId(EXISTING_LEDGER_ID).withRestrictEncumbrance(true)));
+    addMockEntry(INVOICE_LINES, JsonObject.mapFrom(invoiceLine));
+    prepareMockVoucher(id);
+
+    reqData.setStatus(Status.PAID);
 
     Errors errors = verifyPut(String.format(INVOICE_ID_PATH, id), JsonObject.mapFrom(reqData), APPLICATION_JSON, 403).as(Errors.class);
 
