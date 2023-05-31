@@ -1,0 +1,22 @@
+{
+  "id": "8c92f2a1-67e3-4cfe-ba02-ba16404f7f1c",
+  "accountingCode": "1345",
+  "chkSubscriptionOverlap": false,
+  "currency": "USD",
+  "folioInvoiceNo": "123invoicenumber45",
+  "invoiceDate": "2018-07-20T00:00:00.000+0000",
+  "note": "Some note 1",
+  "paymentTerms": "Payment in Advance",
+  "paymentMethod": "EFT",
+  "status": "Open",
+  "source": "API",
+  "total": 5.0,
+  "vendorInvoiceNo": "YK75851",
+  "voucherNumber": "478",
+  "paymentId": "a5065f0d-fb88-4d23-b0c1-57e754fba40e",
+  "poNumbers": [
+    "228D126"
+  ],
+  "vendorId": "168f8a63-d612-406e-813f-c7527f241ac3",
+  "manualPayment": true
+}
