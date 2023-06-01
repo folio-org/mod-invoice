@@ -47,7 +47,10 @@
           "methods": ["PUT"],
           "pathPattern": "/invoice/invoices/{id}",
           "permissionsRequired": ["invoice.invoices.item.put"],
-          "permissionsDesired": ["invoices.acquisitions-units-assignments.manage"],
+          "permissionsDesired": [
+            "invoices.acquisitions-units-assignments.manage",
+            "invoices.fiscal-year.update"
+          ],
           "modulePermissions": [
             "configuration.entries.collection.get",
             "invoice-storage.invoices.item.put",

@@ -30,6 +30,7 @@ public enum ErrorCodes {
   MISMATCH_BETWEEN_ID_IN_PATH_AND_BODY("idMismatch", "Mismatch between id in path and request body"),
   USER_HAS_NO_PERMISSIONS("userHasNoPermission", "User does not have permissions - operation is restricted"),
   USER_HAS_NO_ACQ_PERMISSIONS("userHasNoAcqUnitsPermission", "User does not have permissions to manage acquisition units assignments - operation is restricted"),
+  USER_HAS_NO_FISCAL_YEAR_UPDATE_PERMISSIONS("userHasNoFiscalYearUpdatePermission", "User does not have permissions to update fiscal year - operation is restricted"),
   ACQ_UNITS_NOT_FOUND("acqUnitsNotFound", "Acquisitions units assigned to the record not found"),
   PENDING_PAYMENT_ERROR("pendingPaymentError", "Failed to create pending payment"),
   INVOICE_PAYMENT_FAILURE("invoicePaymentFailure", "Invoice payment failure"),

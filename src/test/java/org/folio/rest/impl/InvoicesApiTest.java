@@ -28,6 +28,7 @@ import static org.folio.invoices.utils.ErrorCodes.PROHIBITED_FIELD_CHANGING;
 import static org.folio.invoices.utils.ErrorCodes.VOUCHER_NOT_FOUND;
 import static org.folio.invoices.utils.ErrorCodes.VOUCHER_NUMBER_PREFIX_NOT_ALPHA;
 import static org.folio.invoices.utils.ErrorCodes.VOUCHER_UPDATE_FAILURE;
+import static org.folio.invoices.utils.ErrorCodes.USER_HAS_NO_FISCAL_YEAR_UPDATE_PERMISSIONS;
 import static org.folio.invoices.utils.HelperUtils.INVOICE;
 import static org.folio.invoices.utils.HelperUtils.calculateInvoiceLineTotals;
 import static org.folio.invoices.utils.HelperUtils.calculateVoucherAmount;
@@ -193,14 +194,17 @@ public class InvoicesApiTest extends ApiTestBase {
   private static final String PO_LINE_MOCK_DATA_PATH = BASE_MOCK_DATA_PATH + "poLines/";
   static final String REVIEWED_INVOICE_ID = "3773625a-dc0d-4a2d-959e-4a91ee265d67";
   public static final String OPEN_INVOICE_ID = "52fd6ec7-ddc3-4c53-bc26-2779afc27136";
+  public static final String OPEN_INVOICE_ID_WITHOUT_FISCAL_YEAR = "8c92f2a1-67e3-4cfe-ba02-ba16404f7f1c";
   private static final String INVOICE_LINE_WITH_OPEN_EXISTED_INVOICE_ID = "5cb6d270-a54c-4c38-b645-3ae7f249c606";
   private static final String APPROVED_INVOICE_SAMPLE_PATH = INVOICE_MOCK_DATA_PATH + APPROVED_INVOICE_ID + ".json";
+  private static final String APPROVED_INVOICE_SAMPLE_PATH_WITHOUT_FISCAL_YEAR = INVOICE_MOCK_DATA_PATH + APPROVED_INVOICE_ID_WITHOUT_FISCAL_YEAR + ".json";
   private static final String APPROVED_INVOICE_FOR_MOVE_PAYMENT_PATH = INVOICE_MOCK_DATA_PATH + "b8862151-6aa5-4301-aa1a-34096a03a5f7.json";
   private static final String REVIEWED_INVOICE_SAMPLE_PATH = INVOICE_MOCK_DATA_PATH + REVIEWED_INVOICE_ID + ".json";
   private static final String REVIEWED_INVOICE_WITH_EXISTING_VOUCHER_SAMPLE_PATH = INVOICE_MOCK_DATA_PATH + "402d0d32-7377-46a7-86ab-542b5684506e.json";
   private static final String VOUCHER_FOR_MOVE_PAYMENT_PATH = VOUCHER_MOCK_DATA_PATH + "9ebe5abc-1565-48e0-8531-ae03e83815ca.json";
 
   public static final String OPEN_INVOICE_SAMPLE_PATH = INVOICE_MOCK_DATA_PATH + OPEN_INVOICE_ID + ".json";
+  public static final String OPEN_INVOICE_SAMPLE_PATH_WITHOUT_FISCAL_YEAR = INVOICE_MOCK_DATA_PATH + OPEN_INVOICE_ID_WITHOUT_FISCAL_YEAR + ".json";
   private static final String OPEN_INVOICE_WITH_APPROVED_FILEDS_SAMPLE_PATH = INVOICE_MOCK_DATA_PATH + "d3e13ed1-59da-4f70-bba3-a140e11d30f3.json";
   private static final String INVOICE_LINE_WITH_OPEN_EXISTED_INVOICE_ID_PATH = INVOICE_LINES_MOCK_DATA_PATH +
     INVOICE_LINE_WITH_OPEN_EXISTED_INVOICE_ID + ".json";
@@ -1068,8 +1072,7 @@ public class InvoicesApiTest extends ApiTestBase {
 
   @Test
   void testTransitionFromOpenToApprovedWithMultipleFiscalYears() {
-    Invoice invoice = getMockAsJson(OPEN_INVOICE_SAMPLE_PATH).mapTo(Invoice.class);
-    invoice.setFiscalYearId(null);
+    Invoice invoice = getMockAsJson(OPEN_INVOICE_SAMPLE_PATH_WITHOUT_FISCAL_YEAR).mapTo(Invoice.class);
     String invoiceId = invoice.getId();
 
     InvoiceLine invoiceLine1 = getMinimalContentInvoiceLine(invoiceId);
@@ -2560,9 +2563,8 @@ public class InvoicesApiTest extends ApiTestBase {
   void testPutInvoiceByIdChangeStatusToPayedActiveBudgetNotFound() {
     logger.info("=== Test Put Invoice By Id, Current fiscal year not found ===");
 
-    Invoice reqData = getMockAsJson(APPROVED_INVOICE_SAMPLE_PATH).mapTo(Invoice.class).withStatus(Invoice.Status.PAID);
+    Invoice reqData = getMockAsJson(APPROVED_INVOICE_SAMPLE_PATH_WITHOUT_FISCAL_YEAR).mapTo(Invoice.class).withStatus(Invoice.Status.PAID);
     String id = reqData.getId();
-    reqData.setFiscalYearId(null);
     InvoiceLine invoiceLine = getMockAsJson(INVOICE_LINE_WITH_APPROVED_INVOICE_SAMPLE_PATH).mapTo(InvoiceLine.class);
 
     invoiceLine.setId(UUID.randomUUID().toString());
@@ -3021,6 +3023,46 @@ public class InvoicesApiTest extends ApiTestBase {
     FiscalYearCollection fyCollection = verifySuccessGet(String.format(INVOICE_FISCAL_YEARS_PATH, OPEN_INVOICE_ID),
       FiscalYearCollection.class);
     assertThat(fyCollection.getTotalRecords(), equalTo(1));
+  }
+
+  @Test
+  void testPaidInvoiceWithUpdatedFiscalYear() {
+    Invoice reqData = getMockAsJson(APPROVED_INVOICE_SAMPLE_PATH).mapTo(Invoice.class);
+    reqData.setFiscalYearId(UUID.randomUUID().toString());
+    String id = reqData.getId();
+    InvoiceLine invoiceLine = getMockAsJson(INVOICE_LINE_WITH_APPROVED_INVOICE_SAMPLE_PATH).mapTo(InvoiceLine.class);
+
+    invoiceLine.setId(UUID.randomUUID().toString());
+    invoiceLine.setInvoiceId(reqData.getId());
+    invoiceLine.getFundDistributions().get(0).withFundId(FUND_ID_WITH_NOT_ACTIVE_BUDGET);
+    invoiceLine.getFundDistributions().forEach(fundDistribution -> {
+      Fund fund = new Fund()
+        .withId(fundDistribution.getFundId())
+        .withExternalAccountNo("externalNo")
+        .withLedgerId(EXISTING_LEDGER_ID);
+      addMockEntry(FUNDS, fund);
+    });
+
+    reqData.getAdjustments().stream().flatMap(adjustment -> adjustment.getFundDistributions().stream())
+      .map(FundDistribution::getFundId).distinct().forEach(fundId -> {
+        Fund fund = new Fund()
+          .withId(fundId)
+          .withExternalAccountNo("externalNo")
+          .withLedgerId(EXISTING_LEDGER_ID);
+        addMockEntry(FUNDS, fund);
+      });
+
+    addMockEntry(LEDGERS, JsonObject.mapFrom(new Ledger().withId(EXISTING_LEDGER_ID).withRestrictEncumbrance(true)));
+    addMockEntry(INVOICE_LINES, JsonObject.mapFrom(invoiceLine));
+    prepareMockVoucher(id);
+
+    reqData.setStatus(Status.PAID);
+
+    Errors errors = verifyPut(String.format(INVOICE_ID_PATH, id), JsonObject.mapFrom(reqData), APPLICATION_JSON, 403).as(Errors.class);
+
+    assertThat(errors.getErrors(), hasSize(1));
+    Error error = errors.getErrors().get(0);
+    assertThat(error.getCode(), equalTo(USER_HAS_NO_FISCAL_YEAR_UPDATE_PERMISSIONS.getCode()));
   }
 
 

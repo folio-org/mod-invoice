@@ -2,6 +2,8 @@ package org.folio.utils;
 
 import static org.folio.invoices.utils.AcqDesiredPermissions.ASSIGN;
 import static org.folio.invoices.utils.AcqDesiredPermissions.MANAGE;
+import static org.folio.invoices.utils.AcqDesiredPermissions.FISCAL_YEAR_UPDATE;
+import static org.folio.invoices.utils.ErrorCodes.USER_HAS_NO_FISCAL_YEAR_UPDATE_PERMISSIONS;
 import static org.folio.invoices.utils.ErrorCodes.USER_HAS_NO_ACQ_PERMISSIONS;
 
 import java.util.HashSet;
@@ -11,6 +13,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.lang3.ObjectUtils;
 import org.folio.HttpStatus;
 import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.invoices.utils.AcqDesiredPermissions;
@@ -58,6 +61,23 @@ public final class UserPermissionsUtil {
     if (isManagePermissionRequired(newAcqUnits, acqUnitsFromStorage) && isUserDoesNotHaveDesiredPermission(MANAGE, okapiHeaders)) {
       throw new HttpException(HttpStatus.HTTP_FORBIDDEN.toInt(), USER_HAS_NO_ACQ_PERMISSIONS);
     }
+  }
+
+  /**
+   * The method checks whether the user has the desired permission to update the fiscal year.
+   *
+   * @throws HttpException if user does not have fiscal year update permission
+   * @param newFiscalYearId     fiscal year id coming from request
+   * @param fiscalYearIdFromStorage fiscal year id from storage
+   */
+  public static void verifyUserHasFiscalYearUpdatePermission(String newFiscalYearId, String fiscalYearIdFromStorage, Map<String, String> okapiHeaders) {
+    if (isFiscalYearUpdated(newFiscalYearId, fiscalYearIdFromStorage) && isUserDoesNotHaveDesiredPermission(FISCAL_YEAR_UPDATE, okapiHeaders)) {
+      throw new HttpException(HttpStatus.HTTP_FORBIDDEN.toInt(), USER_HAS_NO_FISCAL_YEAR_UPDATE_PERMISSIONS);
+    }
+  }
+
+  private static boolean isFiscalYearUpdated(String newFiscalYearId, String fiscalYearIdFromStorage) {
+    return ObjectUtils.notEqual(newFiscalYearId, fiscalYearIdFromStorage);
   }
 
   private static boolean isManagePermissionRequired(Set<String> newAcqUnits, Set<String> acqUnitsFromStorage) {

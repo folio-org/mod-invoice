@@ -55,6 +55,7 @@ public class ApiTestBase {
 
   public static final String VALID_UUID = "8d3881f6-dd93-46f0-b29d-1c36bdb5c9f9";
   public static final String APPROVED_INVOICE_ID = "c0d08448-347b-418a-8c2f-5fb50248d67e";
+  public static final String APPROVED_INVOICE_ID_WITHOUT_FISCAL_YEAR = "ff634ec9-67fd-4239-9f2b-91d15bb2a996";
   public static final String PAID_INVOICE_ID = "c15a6442-ba7d-4198-acf1-940ba99e6929";
   public static final String ID_BAD_FORMAT = "123-45-678-90-abc";
   public static final String FOLIO_INVOICE_NUMBER_VALUE = "228D126";
