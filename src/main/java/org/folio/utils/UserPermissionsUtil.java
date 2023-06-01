@@ -67,6 +67,8 @@ public final class UserPermissionsUtil {
    * The method checks whether the user has the desired permission to update the fiscal year.
    *
    * @throws HttpException if user does not have fiscal year update permission
+   * @param newFiscalYear     fiscal year coming from request
+   * @param fiscalYearFromStorage fiscal year from storage
    */
   public static void verifyUserHasFiscalYearUpdatePermission(String newFiscalYear, String fiscalYearFromStorage, Map<String, String> okapiHeaders) {
     if (isFiscalYearUpdated(newFiscalYear, fiscalYearFromStorage) && isUserDoesNotHaveDesiredPermission(FISCAL_YEAR_UPDATE, okapiHeaders)) {
