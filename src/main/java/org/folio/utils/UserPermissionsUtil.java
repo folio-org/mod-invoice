@@ -13,6 +13,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.lang3.ObjectUtils;
 import org.folio.HttpStatus;
 import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.invoices.utils.AcqDesiredPermissions;
@@ -67,10 +68,14 @@ public final class UserPermissionsUtil {
    *
    * @throws HttpException if user does not have fiscal year update permission
    */
-  public static void verifyUserHasFiscalYearUpdatePermission(Map<String, String> okapiHeaders) {
-    if (isUserDoesNotHaveDesiredPermission(FISCAL_YEAR_UPDATE, okapiHeaders)) {
+  public static void verifyUserHasFiscalYearUpdatePermission(String newFiscalYear, String fiscalYearFromStorage, Map<String, String> okapiHeaders) {
+    if (isFiscalYearUpdated(newFiscalYear, fiscalYearFromStorage) && isUserDoesNotHaveDesiredPermission(FISCAL_YEAR_UPDATE, okapiHeaders)) {
       throw new HttpException(HttpStatus.HTTP_FORBIDDEN.toInt(), USER_HAS_NO_FISCAL_YEAR_UPDATE_PERMISSIONS);
     }
+  }
+
+  private static boolean isFiscalYearUpdated(String newFiscalYear, String fiscalYearFromStorage) {
+    return ObjectUtils.notEqual(newFiscalYear, fiscalYearFromStorage);
   }
 
   private static boolean isManagePermissionRequired(Set<String> newAcqUnits, Set<String> acqUnitsFromStorage) {

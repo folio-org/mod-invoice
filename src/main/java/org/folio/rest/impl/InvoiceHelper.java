@@ -43,7 +43,6 @@ import javax.money.convert.ExchangeRateProvider;
 
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.collections4.ListUtils;
-import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.folio.InvoiceWorkflowDataHolderBuilder;
 import org.folio.invoices.rest.exceptions.HttpException;
@@ -305,9 +304,8 @@ public class InvoiceHelper extends AbstractHelper {
       .map(ok -> {
         validator.validateInvoice(invoice, invoiceFromStorage);
         verifyUserHasManagePermission(invoice.getAcqUnitIds(), invoiceFromStorage.getAcqUnitIds(), okapiHeaders);
-        if (ObjectUtils.notEqual(invoice.getFiscalYearId(), invoiceFromStorage.getFiscalYearId())) {
-          verifyUserHasFiscalYearUpdatePermission(okapiHeaders);
-        }
+        verifyUserHasFiscalYearUpdatePermission(invoice.getFiscalYearId(), invoiceFromStorage.getFiscalYearId(), okapiHeaders);
+
         setSystemGeneratedData(invoiceFromStorage, invoice);
         return null;
       })
