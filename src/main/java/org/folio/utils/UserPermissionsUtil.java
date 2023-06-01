@@ -67,17 +67,17 @@ public final class UserPermissionsUtil {
    * The method checks whether the user has the desired permission to update the fiscal year.
    *
    * @throws HttpException if user does not have fiscal year update permission
-   * @param newFiscalYear     fiscal year coming from request
-   * @param fiscalYearFromStorage fiscal year from storage
+   * @param newFiscalYearId     fiscal year id coming from request
+   * @param fiscalYearFromStorageId fiscal year id from storage
    */
-  public static void verifyUserHasFiscalYearUpdatePermission(String newFiscalYear, String fiscalYearFromStorage, Map<String, String> okapiHeaders) {
-    if (isFiscalYearUpdated(newFiscalYear, fiscalYearFromStorage) && isUserDoesNotHaveDesiredPermission(FISCAL_YEAR_UPDATE, okapiHeaders)) {
+  public static void verifyUserHasFiscalYearUpdatePermission(String newFiscalYearId, String fiscalYearFromStorageId, Map<String, String> okapiHeaders) {
+    if (isFiscalYearUpdated(newFiscalYearId, fiscalYearFromStorageId) && isUserDoesNotHaveDesiredPermission(FISCAL_YEAR_UPDATE, okapiHeaders)) {
       throw new HttpException(HttpStatus.HTTP_FORBIDDEN.toInt(), USER_HAS_NO_FISCAL_YEAR_UPDATE_PERMISSIONS);
     }
   }
 
-  private static boolean isFiscalYearUpdated(String newFiscalYear, String fiscalYearFromStorage) {
-    return ObjectUtils.notEqual(newFiscalYear, fiscalYearFromStorage);
+  private static boolean isFiscalYearUpdated(String newFiscalYearId, String fiscalYearFromStorageId) {
+    return ObjectUtils.notEqual(newFiscalYearId, fiscalYearFromStorageId);
   }
 
   private static boolean isManagePermissionRequired(Set<String> newAcqUnits, Set<String> acqUnitsFromStorage) {
