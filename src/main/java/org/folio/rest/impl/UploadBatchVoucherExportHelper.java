@@ -10,7 +10,9 @@ import org.folio.models.BatchVoucherUploadHolder;
 import org.folio.rest.core.models.RequestContext;
 import org.folio.rest.jaxrs.model.BatchVoucher;
 import org.folio.rest.jaxrs.model.BatchVoucherExport;
+import org.folio.rest.jaxrs.model.ExportConfig;
 import org.folio.services.ftp.FtpUploadService;
+import org.folio.services.ftp.SftpUploadService;
 import org.folio.services.voucher.BatchVoucherExportConfigService;
 import org.folio.services.voucher.BatchVoucherExportsService;
 import org.folio.services.voucher.BatchVoucherService;
@@ -72,19 +74,22 @@ public class UploadBatchVoucherExportHelper extends AbstractHelper {
 
   public Future<Void> uploadBatchVoucher(BatchVoucherUploadHolder uploadHolder) {
     try {
-      FtpUploadService ftpUploadService = new FtpUploadService(ctx, uploadHolder.getExportConfig().getUploadURI());
-      return ftpUploadService.login(uploadHolder.getCredentials().getUsername(), uploadHolder.getCredentials().getPassword())
-        .onSuccess(log::info)
-        .compose(v -> {
-          String fileName = generateFileName(uploadHolder.getBatchVoucher(), uploadHolder.getFileFormat());
-          BatchVoucher batchVoucher = uploadHolder.getBatchVoucher();
-          String format = uploadHolder.getExportConfig().getFormat().value();
-          String content = batchVoucherService.convertBatchVoucher(batchVoucher, format);
+      String fileName = generateFileName(uploadHolder.getBatchVoucher(), uploadHolder.getFileFormat());
+      BatchVoucher batchVoucher = uploadHolder.getBatchVoucher();
+      String format = uploadHolder.getExportConfig().getFormat().value();
+      String content = batchVoucherService.convertBatchVoucher(batchVoucher, format);
 
-          return ftpUploadService.upload(ctx, fileName, content);
-        })
-        .mapEmpty();
-    } catch (URISyntaxException e) {
+      if (uploadHolder.getExportConfig().getFtpFormat().equals(ExportConfig.FtpFormat.FTP)) {
+        FtpUploadService ftpUploadService = new FtpUploadService(ctx, uploadHolder.getExportConfig().getUploadURI());
+        return ftpUploadService.upload(ctx, uploadHolder.getCredentials().getUsername(), uploadHolder.getCredentials().getPassword(), fileName, content)
+          .mapEmpty();
+      } else {
+        return new SftpUploadService(ctx, uploadHolder.getExportConfig().getUploadURI())
+          .upload(uploadHolder.getCredentials().getUsername(), uploadHolder.getCredentials().getPassword(),
+            uploadHolder.getExportConfig().getUploadDirectory(), fileName, content).mapEmpty();
+      }
+
+    } catch (Exception e) {
       log.error("FtpUploadService creation failed", e);
       return Future.failedFuture(e);
     }

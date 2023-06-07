@@ -6,6 +6,7 @@ import static org.folio.invoices.utils.ResourcePathResolver.BATCH_VOUCHER_EXPORT
 import static org.folio.invoices.utils.ResourcePathResolver.resourceByIdPath;
 import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
 
+import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.Map;
 import java.util.concurrent.CompletionException;
@@ -91,7 +92,14 @@ public class BatchVoucherExportConfigHelper extends AbstractHelper {
       })
       .compose(helper -> {
         Credentials creds = credentialsFuture.result();
-        return helper.login(creds.getUsername(), creds.getPassword());
+        return helper.login(creds.getUsername(), creds.getPassword())
+          .compose(ftpClient -> {
+            try {
+              return Future.succeededFuture(ftpClient.getStatus());
+            } catch (IOException e) {
+              throw new IllegalArgumentException(e);
+            }
+          });
       });
   }
 }

@@ -101,6 +101,16 @@
       <artifactId>vertx-concurrent</artifactId>
       <version>1.0.0</version>
     </dependency>
+    <dependency>
+      <groupId>org.apache.sshd</groupId>
+      <artifactId>sshd-sftp</artifactId>
+      <version>2.9.2</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.sshd</groupId>
+      <artifactId>sshd-spring-sftp</artifactId>
+      <version>2.8.0</version>
+    </dependency>
     <!--vertx-rx-java required for vertx-concurrent-1.0.0 -->
     <dependency>
       <groupId>io.vertx</groupId>

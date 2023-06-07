@@ -1,13 +1,12 @@
 package org.folio.services.ftp;
 
+import java.io.IOException;
 import java.net.URISyntaxException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
 import java.util.TimeZone;
 import java.util.UUID;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeoutException;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -96,16 +95,14 @@ public class FtpUploadServiceTest {
         }
         logger.info(message);
       })
-      .onComplete(result -> helper.logout());
+      .onComplete(logger::info);
 
     vertxTestContext.assertFailure(future)
-      .onComplete(result -> {
-        vertxTestContext.completeNow();
-      });
+      .onComplete(result -> vertxTestContext.completeNow());
   }
 
   @Test
-  public void testSuccessfulLogin(VertxTestContext vertxTestContext) throws URISyntaxException, InterruptedException, ExecutionException, TimeoutException {
+  public void testSuccessfulLogin(VertxTestContext vertxTestContext) throws URISyntaxException {
     logger.info("=== Test successful login ===");
 
     FtpUploadService helper = new FtpUploadService(context, uri);
@@ -115,7 +112,13 @@ public class FtpUploadServiceTest {
         logger.error(t);
         Assertions.fail(t.getMessage());
       })
-      .onComplete(asyncResult -> helper.logout());
+      .onComplete(asyncResult -> {
+        try {
+          asyncResult.result().disconnect();
+        } catch (IOException e) {
+          throw new RuntimeException(e);
+        }
+      });
 
     vertxTestContext.assertComplete(future)
       .onSuccess(result -> vertxTestContext.completeNow());
@@ -139,9 +142,7 @@ public class FtpUploadServiceTest {
       });
 
     vertxTestContext.assertFailure(future)
-      .onComplete(result -> {
-        vertxTestContext.completeNow();
-      });
+      .onComplete(result -> vertxTestContext.completeNow());
   }
 
   @Test
@@ -159,16 +160,13 @@ public class FtpUploadServiceTest {
     batchVoucher.setCreated(new Date());
 
     FtpUploadService helper = new FtpUploadService(context, uri);
-    var future = helper.login(username_valid, password_valid)
-      .onSuccess(logger::info)
-      .compose(v -> helper.upload(context, filename, JsonObject.mapFrom(batchVoucher).encodePrettily()))
+    var future = helper.upload(context,username_valid, password_valid, filename, JsonObject.mapFrom(batchVoucher).encodePrettily())
       .onSuccess(logger::info)
       .onFailure(t -> {
         logger.error(t);
         Assertions.fail(t.getMessage());
       })
-      .onComplete(asyncResult -> helper.logout()
-        .onComplete(logger::info));
+        .onComplete(logger::info);
     vertxTestContext.assertComplete(future)
       .onSuccess(result -> vertxTestContext.completeNow());
   }
@@ -188,12 +186,10 @@ public class FtpUploadServiceTest {
     batchVoucher.setCreated(new Date());
 
     FtpUploadService helper = new FtpUploadService(context, uri);
-    var future = helper.login(username_valid, password_valid)
-      .onSuccess(logger::info)
-      .compose(v -> helper.upload(context,"/invalid/path/"+filename, JsonObject.mapFrom(batchVoucher).encodePrettily()))
+    var future = helper.upload(context,username_valid, password_valid,"/invalid/path/"+filename, JsonObject.mapFrom(batchVoucher).encodePrettily())
       .onSuccess(m -> Assertions.fail("Expected upload failure but got " + m))
       .onFailure(logger::info)
-      .onComplete(asyncResult -> helper.logout());
+      .onComplete(logger::info);
     vertxTestContext.assertFailure(future)
       .onComplete(result -> vertxTestContext.completeNow());
   }
