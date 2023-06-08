@@ -36,7 +36,7 @@ public class SftpUploadService {
     this.ctx = ctx;
   }
 
-  protected ApacheSshdSftpSessionFactory getSshdSessionFactory(String username, String password) throws Exception {
+  private ApacheSshdSftpSessionFactory getSshdSessionFactory(String username, String password) throws Exception {
     var ssh = SshClient.setUpDefaultClient();
     ssh.start();
     ApacheSshdSftpSessionFactory factory = new ApacheSshdSftpSessionFactory(false);
@@ -73,7 +73,7 @@ public class SftpUploadService {
       blockingFeature.complete();
     } catch (Exception e) {
       logger.info("Error uploading the file", e);
-      throw new IllegalStateException(String.format("Unable to upload to %s:%d%s. %s", server, port, folder, e.getMessage()));
+      blockingFeature.fail(e);
     }}, false, asyncResultHandler(promise));
     return promise.future();
   }
