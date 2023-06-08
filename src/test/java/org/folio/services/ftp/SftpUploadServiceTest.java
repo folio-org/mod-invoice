@@ -9,7 +9,6 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.rest.jaxrs.model.BatchVoucher;
 import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.testcontainers.containers.GenericContainer;
@@ -32,7 +31,7 @@ public class SftpUploadServiceTest {
   private static final String PASSWORD = "password";
   private static final String EXPORT_FOLDER_NAME = "upload";
   private static final Context context = Vertx.vertx().getOrCreateContext();
-  private static String uri;
+  private static String uri="ftp://localhost:22/";
 
 
   @Container
@@ -43,15 +42,8 @@ public class SftpUploadServiceTest {
           .from("atmoz/sftp:latest")
           .run("mkdir -p " + File.separator + EXPORT_FOLDER_NAME + "; chmod -R 777 " + File.separator + EXPORT_FOLDER_NAME)
           .build()))
-    .withExposedPorts(21)
+    .withExposedPorts(22)
     .withCommand(USERNAME + ":" + PASSWORD + ":::upload");
-
-
-  @BeforeAll
-  public static void staticSetup() {
-    uri = "ftp://localhost:" + sftp.getExposedPorts().get(0) + "/";
-  }
-
 
   @Test
   public void testSuccessfulUpload(VertxTestContext vertxTestContext) throws Exception {
@@ -67,7 +59,6 @@ public class SftpUploadServiceTest {
     batchVoucher.setBatchGroup(UUID.randomUUID().toString());
     batchVoucher.setCreated(new Date());
     SftpUploadService helper = new SftpUploadService(context, uri);
-
 
     var future = helper.upload(USERNAME, PASSWORD, FOLDER, FILENAME , JsonObject.mapFrom(batchVoucher).encodePrettily())
       .onSuccess(logger::info)

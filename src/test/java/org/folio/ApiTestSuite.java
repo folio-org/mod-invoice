@@ -48,6 +48,7 @@ import org.folio.services.finance.transaction.EncumbranceServiceTest;
 import org.folio.services.finance.transaction.PendingPaymentWorkflowServiceTest;
 import org.folio.services.ftp.FTPVertxCommandLoggerTest;
 import org.folio.services.ftp.FtpUploadServiceTest;
+import org.folio.services.ftp.SftpUploadServiceTest;
 import org.folio.services.invoice.InvoiceCancelServiceTest;
 import org.folio.services.invoice.InvoiceFiscalYearsServiceTest;
 import org.folio.services.order.OrderServiceTest;
@@ -317,6 +318,10 @@ public class ApiTestSuite {
 
   @Nested
   class InvoiceFiscalYearsServiceTestNested extends InvoiceFiscalYearsServiceTest {
+  }
+
+  @Nested
+  class SftpUploadServiceTestNested extends SftpUploadServiceTest {
   }
 
 }
