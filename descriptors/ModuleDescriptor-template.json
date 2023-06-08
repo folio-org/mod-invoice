@@ -897,6 +897,11 @@
       ]
     },
     {
+      "permissionName": "invoices.fiscal-year.update",
+      "displayName": "Invoice - update fiscal year",
+      "description": "Update a fiscal year"
+    },
+    {
       "permissionName": "batch-groups.collection.get",
       "displayName": "Batch-group - get collection of Batch-group",
       "description": "Get collection of Batch-group"
