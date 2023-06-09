@@ -44,7 +44,6 @@ public class SftpUploadServiceTest {
   @BeforeAll
   public static void staticSetup() {
     sftp.start();
-    sftp.setHostAccessible(true);
     uri = "ftp://localhost:"+sftp.getMappedPort(22)+"/";
   }
 
