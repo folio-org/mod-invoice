@@ -9,6 +9,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.rest.jaxrs.model.BatchVoucher;
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.testcontainers.containers.GenericContainer;
@@ -21,18 +22,14 @@ import java.util.UUID;
 
 @ExtendWith(VertxExtension.class)
 public class SftpUploadServiceTest {
-
   private static final Logger logger = LogManager.getLogger(SftpUploadServiceTest.class);
-
   private static final String FOLDER = "test";
   private static final String FILENAME = "batchVoucher.json";
-
   private static final String USERNAME = "user";
   private static final String PASSWORD = "password";
   private static final String EXPORT_FOLDER_NAME = "upload";
   private static final Context context = Vertx.vertx().getOrCreateContext();
-  private static String uri="ftp://localhost:22/";
-
+  private static String uri;
 
   @Container
   public static final GenericContainer sftp = new GenericContainer(
@@ -45,10 +42,15 @@ public class SftpUploadServiceTest {
     .withExposedPorts(22)
     .withCommand(USERNAME + ":" + PASSWORD + ":::upload");
 
+  @BeforeAll
+  public static void staticSetup() {
+    sftp.start();
+    uri = "ftp://localhost:"+sftp.getMappedPort(22)+"/";
+  }
+
   @Test
   public void testSuccessfulUpload(VertxTestContext vertxTestContext) throws Exception {
     logger.info("=== Test successful upload ===");
-
     Date end = new Date();
     end.setTime(System.currentTimeMillis() - 864000000);
 
@@ -58,8 +60,8 @@ public class SftpUploadServiceTest {
     batchVoucher.setEnd(end);
     batchVoucher.setBatchGroup(UUID.randomUUID().toString());
     batchVoucher.setCreated(new Date());
-    SftpUploadService helper = new SftpUploadService(context, uri);
 
+    SftpUploadService helper = new SftpUploadService(context, uri);
     var future = helper.upload(USERNAME, PASSWORD, FOLDER, FILENAME , JsonObject.mapFrom(batchVoucher).encodePrettily())
       .onSuccess(logger::info)
       .onFailure(t -> {

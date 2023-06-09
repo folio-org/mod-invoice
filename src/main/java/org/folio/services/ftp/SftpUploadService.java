@@ -77,6 +77,7 @@ public class SftpUploadService {
     }}, false, asyncResultHandler(promise));
     return promise.future();
   }
+
   private void createRemoteDirectoryIfAbsent(Session<SftpClient.DirEntry> session, String folder) throws IOException {
     if (!session.exists(folder)) {
       String[] folders = folder.split("/");

@@ -60,11 +60,8 @@ public class FtpUploadServiceTest {
     FileSystem fileSystem = new UnixFakeFileSystem();
     fileSystem.add(new DirectoryEntry(user_home_dir));
     fakeFtpServer.setFileSystem(fileSystem);
-
     UserAccount userAccount = new UserAccount(username_valid, password_valid, user_home_dir);
-
     fakeFtpServer.addUserAccount(userAccount);
-
     fakeFtpServer.start();
 
     uri = "ftp://localhost:" + fakeFtpServer.getServerControlPort() + "/";
