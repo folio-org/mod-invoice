@@ -85,7 +85,6 @@ import static org.folio.services.voucher.VoucherCommandService.VOUCHER_NUMBER_CO
 import static org.folio.services.voucher.VoucherCommandService.VOUCHER_NUMBER_PREFIX_CONFIG;
 import static org.junit.Assert.fail;
 
-import java.io.File;
 import java.io.IOException;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -160,9 +159,6 @@ import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
 import io.vertx.ext.web.handler.BodyHandler;
 import one.util.streamex.StreamEx;
-import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.images.builder.ImageFromDockerfile;
-import org.testcontainers.junit.jupiter.Container;
 
 public class MockServer {
 
@@ -270,22 +266,9 @@ public class MockServer {
 
   private static String ftpUri;
 
-  @Container
-  public static final GenericContainer sftp = new GenericContainer(
-    new ImageFromDockerfile()
-      .withDockerfileFromBuilder(builder ->
-        builder
-          .from("atmoz/sftp:latest")
-          .run("mkdir -p " + File.separator + "upload" + "; chmod -R 777 " + File.separator + "upload")
-          .build()))
-    .withExposedPorts(22)
-    .withCommand(username_valid + ":" + password_valid + ":::upload");
-
-
   public MockServer(int port) {
     this.port = port;
     this.vertx = Vertx.vertx();
-    sftp.start();
   }
 
   public void start() throws InterruptedException, ExecutionException, TimeoutException {

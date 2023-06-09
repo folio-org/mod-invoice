@@ -190,5 +190,4 @@ public class FtpUploadServiceTest {
     vertxTestContext.assertFailure(future)
       .onComplete(result -> vertxTestContext.completeNow());
   }
-
 }
