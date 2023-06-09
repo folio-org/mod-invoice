@@ -23,7 +23,6 @@ import java.util.UUID;
 @ExtendWith(VertxExtension.class)
 public class SftpUploadServiceTest {
   private static final Logger logger = LogManager.getLogger(SftpUploadServiceTest.class);
-  private static final String FOLDER = "test";
   private static final String FILENAME = "batchVoucher.json";
   private static final String USERNAME = "user";
   private static final String PASSWORD = "password";
@@ -45,6 +44,7 @@ public class SftpUploadServiceTest {
   @BeforeAll
   public static void staticSetup() {
     sftp.start();
+    sftp.setHostAccessible(true);
     uri = "ftp://localhost:"+sftp.getMappedPort(22)+"/";
   }
 
@@ -62,7 +62,7 @@ public class SftpUploadServiceTest {
     batchVoucher.setCreated(new Date());
 
     SftpUploadService helper = new SftpUploadService(context, uri);
-    var future = helper.upload(USERNAME, PASSWORD, FOLDER, FILENAME , JsonObject.mapFrom(batchVoucher).encodePrettily())
+    var future = helper.upload(USERNAME, PASSWORD, EXPORT_FOLDER_NAME, FILENAME , JsonObject.mapFrom(batchVoucher).encodePrettily())
       .onSuccess(logger::info)
       .onFailure(t -> {
         logger.error(t);
