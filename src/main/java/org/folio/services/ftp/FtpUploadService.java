@@ -44,6 +44,7 @@ public class FtpUploadService {
     return StringUtils.isEmpty(proto) || proto.equalsIgnoreCase("FTP");
   }
 
+  @SuppressWarnings("java:S5332")
   public Future<FTPClient> login(String username, String password) {
     FTPClient ftpClient = new FTPClient();
     Promise<FTPClient> promise = Promise.promise();
