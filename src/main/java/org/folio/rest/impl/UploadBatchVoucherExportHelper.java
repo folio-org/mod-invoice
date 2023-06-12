@@ -112,7 +112,6 @@ public class UploadBatchVoucherExportHelper extends AbstractHelper {
           uploadHolder.setExportConfig(exportConfigs.getExportConfigs().get(0));
           return null;
         }
-
         throw new HttpException(404, "Batch export configuration was not found");
       });
   }

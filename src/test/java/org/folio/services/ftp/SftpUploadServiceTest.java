@@ -29,6 +29,8 @@ public class SftpUploadServiceTest {
   private static final String EXPORT_FOLDER_NAME = "upload";
   private static final Context context = Vertx.vertx().getOrCreateContext();
   private static String uri;
+  private static final String INVALID_URI = "ftp://localhost:11/";
+
 
   @Container
   public static final GenericContainer sftp = new GenericContainer(
@@ -72,4 +74,49 @@ public class SftpUploadServiceTest {
       .onSuccess(result -> vertxTestContext.completeNow());
   }
 
+  @Test
+  void testSuccessfulUploadForLongPath(VertxTestContext vertxTestContext) throws Exception {
+    logger.info("=== Test successful upload ===");
+    Date end = new Date();
+    end.setTime(System.currentTimeMillis() - 864000000);
+
+    BatchVoucher batchVoucher = new BatchVoucher();
+    batchVoucher.setId(UUID.randomUUID().toString());
+    batchVoucher.setStart(end);
+    batchVoucher.setEnd(end);
+    batchVoucher.setBatchGroup(UUID.randomUUID().toString());
+    batchVoucher.setCreated(new Date());
+
+    SftpUploadService helper = new SftpUploadService(context, uri);
+    var future = helper.upload(USERNAME, PASSWORD, EXPORT_FOLDER_NAME+"/test/long/path", FILENAME , JsonObject.mapFrom(batchVoucher).encodePrettily())
+      .onSuccess(logger::info)
+      .onFailure(t -> {
+        logger.error(t);
+        Assertions.fail(t.getMessage());
+      })
+      .onComplete(logger::info);
+    vertxTestContext.assertComplete(future)
+      .onSuccess(result -> vertxTestContext.completeNow());
+  }
+
+  @Test
+  void testFailedConnect(VertxTestContext vertxTestContext) throws Exception {
+    logger.info("=== Test failed connect ===");
+    Date end = new Date();
+    end.setTime(System.currentTimeMillis() - 864000000);
+
+    BatchVoucher batchVoucher = new BatchVoucher();
+    batchVoucher.setId(UUID.randomUUID().toString());
+    batchVoucher.setStart(end);
+    batchVoucher.setEnd(end);
+    batchVoucher.setBatchGroup(UUID.randomUUID().toString());
+    batchVoucher.setCreated(new Date());
+
+    SftpUploadService helper = new SftpUploadService(context, INVALID_URI);
+    var future = helper.upload(USERNAME, PASSWORD, EXPORT_FOLDER_NAME+"/test/long/path", FILENAME , JsonObject.mapFrom(batchVoucher).encodePrettily())
+      .onFailure(logger::info)
+      .onComplete(logger::info);
+    vertxTestContext.assertFailure(future)
+      .onComplete(result -> vertxTestContext.completeNow());
+  }
 }

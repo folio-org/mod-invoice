@@ -20,6 +20,7 @@ import java.io.InputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Optional;
+import java.util.concurrent.CompletionException;
 import java.util.concurrent.TimeUnit;
 
 public class SftpUploadService {
@@ -70,10 +71,10 @@ public class SftpUploadService {
       createRemoteDirectoryIfAbsent(session, folder);
       session.write(inputStream, remoteAbsPath);
       logger.info("uploaded: {}", remoteAbsPath);
-      blockingFeature.complete();
+      blockingFeature.complete("Uploaded successfully");
     } catch (Exception e) {
       logger.info("Error uploading the file", e);
-      blockingFeature.fail(e);
+      blockingFeature.fail(new CompletionException(e));
     }}, false, asyncResultHandler(promise));
     return promise.future();
   }
@@ -87,8 +88,8 @@ public class SftpUploadService {
         if (!session.exists(path.toString())) {
           session.mkdir(path.toString());
         }
-        if (i == folders.length - 1)
-          path.append(folders[i + 1]).append("/");
+        if (i == folders.length - 1) return;
+        path.append(folders[i + 1]).append("/");
       }
       logger.info("A directory has been created: {}", folder);
     }
