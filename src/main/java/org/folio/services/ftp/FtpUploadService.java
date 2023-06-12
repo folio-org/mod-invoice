@@ -57,11 +57,13 @@ public class FtpUploadService {
         ftpClient.setBufferSize(1024 * 1024);
         ftpClient.setPassiveNatWorkaroundStrategy(new DefaultServerResolver(ftpClient));
         logger.info("Connected to {}:{}", server, port);
+
         if (ftpClient.login(username, password)) {
           blockingFeature.complete(ftpClient);
         } else {
           blockingFeature.fail(new FtpException(ftpClient.getReplyCode(), ftpClient.getReplyString().trim()));
         }
+
       } catch (Exception e) {
         logger.error("Error Connecting", e);
         blockingFeature.fail(e);
@@ -85,6 +87,7 @@ public class FtpUploadService {
       }
     };
   }
+
   private Handler<AsyncResult<String>> asyncResult(Promise<String> promise) {
     return result -> {
       if (result.succeeded()) {
@@ -126,6 +129,7 @@ public class FtpUploadService {
       }
     }
     return promise.future();
+
     }), false, asyncResult(promise));
     return promise.future();
   }

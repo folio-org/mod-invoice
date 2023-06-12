@@ -80,15 +80,12 @@ public class UploadBatchVoucherExportHelper extends AbstractHelper {
       String content = batchVoucherService.convertBatchVoucher(batchVoucher, format);
 
       if (uploadHolder.getExportConfig().getFtpFormat().equals(ExportConfig.FtpFormat.FTP)) {
-        FtpUploadService ftpUploadService = new FtpUploadService(ctx, uploadHolder.getExportConfig().getUploadURI());
-        return ftpUploadService.upload(ctx, uploadHolder.getCredentials().getUsername(), uploadHolder.getCredentials().getPassword(), fileName, content)
-          .mapEmpty();
+        return new FtpUploadService(ctx, uploadHolder.getExportConfig().getUploadURI())
+          .upload(ctx, uploadHolder.getCredentials().getUsername(), uploadHolder.getCredentials().getPassword(), fileName, content).mapEmpty();
       } else {
         return new SftpUploadService(ctx, uploadHolder.getExportConfig().getUploadURI())
-          .upload(uploadHolder.getCredentials().getUsername(), uploadHolder.getCredentials().getPassword(),
-            uploadHolder.getExportConfig().getUploadDirectory(), fileName, content).mapEmpty();
+          .upload(uploadHolder.getCredentials().getUsername(), uploadHolder.getCredentials().getPassword(), uploadHolder.getExportConfig().getUploadDirectory(), fileName, content).mapEmpty();
       }
-
     } catch (Exception e) {
       log.error("FtpUploadService creation failed", e);
       return Future.failedFuture(e);

@@ -65,17 +65,18 @@ public class SftpUploadService {
       throw new IllegalStateException(String.format("Unable to connect to %s:%d", server, port));
     }
     ctx.owner().executeBlocking(blockingFeature -> {
-    try (InputStream inputStream = new ByteArrayInputStream(content.getBytes()); var session = sshdFactory.getSession()) {
-      logger.info("Start uploading file to SFTP path: {}", remoteAbsPath);
+      try (InputStream inputStream = new ByteArrayInputStream(content.getBytes()); var session = sshdFactory.getSession()) {
+        logger.info("Start uploading file to SFTP path: {}", remoteAbsPath);
 
-      createRemoteDirectoryIfAbsent(session, folder);
-      session.write(inputStream, remoteAbsPath);
-      logger.info("uploaded: {}", remoteAbsPath);
-      blockingFeature.complete("Uploaded successfully");
-    } catch (Exception e) {
-      logger.info("Error uploading the file", e);
-      blockingFeature.fail(new CompletionException(e));
-    }}, false, asyncResultHandler(promise));
+        createRemoteDirectoryIfAbsent(session, folder);
+        session.write(inputStream, remoteAbsPath);
+        logger.info("uploaded: {}", remoteAbsPath);
+        blockingFeature.complete("Uploaded successfully");
+      } catch (Exception e) {
+        logger.info("Error uploading the file", e);
+        blockingFeature.fail(new CompletionException(e));
+      }
+    }, false, asyncResultHandler(promise));
     return promise.future();
   }
 
@@ -109,5 +110,4 @@ public class SftpUploadService {
       }
     };
   }
-
 }

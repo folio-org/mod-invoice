@@ -163,7 +163,7 @@ public class FtpUploadServiceTest {
         logger.error(t);
         Assertions.fail(t.getMessage());
       })
-        .onComplete(logger::info);
+      .onComplete(logger::info);
     vertxTestContext.assertComplete(future)
       .onSuccess(result -> vertxTestContext.completeNow());
   }

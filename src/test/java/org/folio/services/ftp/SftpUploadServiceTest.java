@@ -40,8 +40,8 @@ public class SftpUploadServiceTest {
           .from("atmoz/sftp:latest")
           .run("mkdir -p " + File.separator + EXPORT_FOLDER_NAME + "; chmod -R 777 " + File.separator + EXPORT_FOLDER_NAME)
           .build()))
-    .withExposedPorts(22)
-    .withCommand(USERNAME + ":" + PASSWORD + ":::upload");
+      .withExposedPorts(22)
+      .withCommand(USERNAME + ":" + PASSWORD + ":::upload");
 
   @BeforeAll
   public static void staticSetup() {
@@ -104,13 +104,7 @@ public class SftpUploadServiceTest {
     logger.info("=== Test failed connect ===");
     Date end = new Date();
     end.setTime(System.currentTimeMillis() - 864000000);
-
     BatchVoucher batchVoucher = new BatchVoucher();
-    batchVoucher.setId(UUID.randomUUID().toString());
-    batchVoucher.setStart(end);
-    batchVoucher.setEnd(end);
-    batchVoucher.setBatchGroup(UUID.randomUUID().toString());
-    batchVoucher.setCreated(new Date());
 
     SftpUploadService helper = new SftpUploadService(context, INVALID_URI);
     var future = helper.upload(USERNAME, PASSWORD, EXPORT_FOLDER_NAME+"/test/long/path", FILENAME , JsonObject.mapFrom(batchVoucher).encodePrettily())
