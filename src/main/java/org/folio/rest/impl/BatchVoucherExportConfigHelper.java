@@ -85,7 +85,7 @@ public class BatchVoucherExportConfigHelper extends AbstractHelper {
       .map(cf -> {
         try {
           ExportConfig config = exportConfigFuture.result();
-          return new FtpUploadService(ctx, config.getUploadURI());
+          return new FtpUploadService(ctx, config.getUploadURI(), config.getFtpPort());
         } catch (URISyntaxException e) {
           throw new CompletionException(e);
         }

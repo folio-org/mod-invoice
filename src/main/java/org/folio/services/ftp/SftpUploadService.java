@@ -11,6 +11,8 @@ import org.apache.logging.log4j.Logger;
 import org.apache.sshd.client.SshClient;
 import org.apache.sshd.sftp.client.SftpClient;
 import org.apache.sshd.sftp.spring.integration.ApacheSshdSftpSessionFactory;
+import org.folio.HttpStatus;
+import org.folio.exceptions.FtpException;
 import org.springframework.integration.file.remote.session.Session;
 import org.springframework.integration.file.remote.session.SessionFactory;
 
@@ -19,6 +21,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.TimeUnit;
@@ -27,14 +30,15 @@ public class SftpUploadService {
   private static final Logger logger = LogManager.getLogger(SftpUploadService.class);
   private final String server;
   private final int port;
-  private final Context ctx;
   private static final String FILE_SEPARATOR = "/";
 
-  public SftpUploadService(Context ctx, String uri) throws URISyntaxException {
+  public SftpUploadService(String uri, Integer portFromConfig) throws URISyntaxException {
     URI u = new URI(uri);
     this.server = u.getHost();
-    this.port = u.getPort() > 0 ? u.getPort() : 22;
-    this.ctx = ctx;
+    if (Objects.isNull(portFromConfig)) {
+      portFromConfig = 22;
+    }
+    this.port = u.getPort() > 0 ? u.getPort() : portFromConfig;
   }
 
   private ApacheSshdSftpSessionFactory getSshdSessionFactory(String username, String password) throws Exception {
@@ -52,7 +56,7 @@ public class SftpUploadService {
     return factory;
   }
 
-  public Future<String> upload(String username, String password, String folder, String filename, String content)
+  public Future<String> upload(Context ctx, String username, String password, String folder, String filename, String content)
       throws Exception {
     Promise<String> promise = Promise.promise();
     String folderPath = StringUtils.isEmpty(folder) ? "" : (folder + FILE_SEPARATOR);
@@ -62,7 +66,7 @@ public class SftpUploadService {
     try {
       sshdFactory = getSshdSessionFactory(username, password);
     } catch (Exception e) {
-      throw new IllegalStateException(String.format("Unable to connect to %s:%d", server, port));
+      throw new FtpException(HttpStatus.HTTP_FORBIDDEN.toInt(),String.format("Unable to connect to %s:%d", server, port));
     }
     ctx.owner().executeBlocking(blockingFeature -> {
       try (InputStream inputStream = new ByteArrayInputStream(content.getBytes()); var session = sshdFactory.getSession()) {
@@ -73,8 +77,11 @@ public class SftpUploadService {
         logger.info("uploaded: {}", remoteAbsPath);
         blockingFeature.complete("Uploaded successfully");
       } catch (Exception e) {
-        logger.info("Error uploading the file", e);
+        logger.info("Error uploading the file {}", remoteAbsPath, e);
         blockingFeature.fail(new CompletionException(e));
+      } finally {
+        logger.info("Session closed");
+        sshdFactory.getSession().close();
       }
     }, false, asyncResultHandler(promise));
     return promise.future();
@@ -102,9 +109,10 @@ public class SftpUploadService {
         logger.debug("Success upload to SFTP");
         promise.complete(result.result());
       } else {
+        logger.error("Failed upload to SFTP");
         String message = Optional.ofNullable(result.cause())
           .map(Throwable::getMessage)
-          .orElse("Failed upload to SFTP");
+          .orElse(result.cause().getMessage());
         logger.error(message);
         promise.fail(result.cause());
       }

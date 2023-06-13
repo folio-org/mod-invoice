@@ -78,13 +78,13 @@ public class UploadBatchVoucherExportHelper extends AbstractHelper {
       BatchVoucher batchVoucher = uploadHolder.getBatchVoucher();
       String format = uploadHolder.getExportConfig().getFormat().value();
       String content = batchVoucherService.convertBatchVoucher(batchVoucher, format);
-
-      if (uploadHolder.getExportConfig().getFtpFormat().equals(ExportConfig.FtpFormat.FTP)) {
-        return new FtpUploadService(ctx, uploadHolder.getExportConfig().getUploadURI())
-          .upload(ctx, uploadHolder.getCredentials().getUsername(), uploadHolder.getCredentials().getPassword(), fileName, content).mapEmpty();
+      int port = uploadHolder.getExportConfig().getFtpPort();
+      if (ExportConfig.FtpFormat.FTP == uploadHolder.getExportConfig().getFtpFormat()) {
+        return new FtpUploadService(ctx, uploadHolder.getExportConfig().getUploadURI(), port)
+          .upload(ctx, uploadHolder.getCredentials().getUsername(), uploadHolder.getCredentials().getPassword(), uploadHolder.getExportConfig().getUploadDirectory(), fileName, content).mapEmpty();
       } else {
-        return new SftpUploadService(ctx, uploadHolder.getExportConfig().getUploadURI())
-          .upload(uploadHolder.getCredentials().getUsername(), uploadHolder.getCredentials().getPassword(), uploadHolder.getExportConfig().getUploadDirectory(), fileName, content).mapEmpty();
+        return new SftpUploadService(uploadHolder.getExportConfig().getUploadURI(), port)
+          .upload(ctx, uploadHolder.getCredentials().getUsername(), uploadHolder.getCredentials().getPassword(), uploadHolder.getExportConfig().getUploadDirectory(), fileName, content).mapEmpty();
       }
     } catch (Exception e) {
       log.error("FtpUploadService creation failed", e);

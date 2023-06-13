@@ -80,7 +80,7 @@ public class FtpUploadServiceTest {
   public void testFailedConnect(VertxTestContext vertxTestContext) throws URISyntaxException {
     logger.info("=== Test unsuccessful login ===");
 
-    FtpUploadService helper = new FtpUploadService(context, "ftp://localhost:1");
+    FtpUploadService helper = new FtpUploadService(context, "ftp://localhost:1", null);
     var future = helper.login(username_valid, password_valid)
       .onSuccess(m -> Assertions.fail("Expected a connection failure but got: " + m))
       .onFailure(t -> {
@@ -102,7 +102,7 @@ public class FtpUploadServiceTest {
   public void testSuccessfulLogin(VertxTestContext vertxTestContext) throws URISyntaxException {
     logger.info("=== Test successful login ===");
 
-    FtpUploadService helper = new FtpUploadService(context, uri);
+    FtpUploadService helper = new FtpUploadService(context, uri, 0);
     var future = helper.login(username_valid, password_valid)
       .onSuccess(logger::info)
       .onFailure(t -> {
@@ -125,7 +125,7 @@ public class FtpUploadServiceTest {
   public void testFailedLogin(VertxTestContext vertxTestContext) throws URISyntaxException {
     logger.info("=== Test unsuccessful login ===");
 
-    FtpUploadService helper = new FtpUploadService(context, uri);
+    FtpUploadService helper = new FtpUploadService(context, uri, 0);
     var future = helper.login(username_valid, password_invalid)
       .onSuccess(m -> Assertions.fail("Expected a login failure but got: " + m))
       .onFailure(t -> {
@@ -156,8 +156,8 @@ public class FtpUploadServiceTest {
     batchVoucher.setBatchGroup(UUID.randomUUID().toString());
     batchVoucher.setCreated(new Date());
 
-    FtpUploadService helper = new FtpUploadService(context, uri);
-    var future = helper.upload(context,username_valid, password_valid, filename, JsonObject.mapFrom(batchVoucher).encodePrettily())
+    FtpUploadService helper = new FtpUploadService(context, uri, 0);
+    var future = helper.upload(context,username_valid, password_valid, user_home_dir, filename, JsonObject.mapFrom(batchVoucher).encodePrettily())
       .onSuccess(logger::info)
       .onFailure(t -> {
         logger.error(t);
@@ -182,8 +182,8 @@ public class FtpUploadServiceTest {
     batchVoucher.setBatchGroup(UUID.randomUUID().toString());
     batchVoucher.setCreated(new Date());
 
-    FtpUploadService helper = new FtpUploadService(context, uri);
-    var future = helper.upload(context,username_valid, password_valid,"/invalid/path/"+filename, JsonObject.mapFrom(batchVoucher).encodePrettily())
+    FtpUploadService helper = new FtpUploadService(context, uri, 0);
+    var future = helper.upload(context,username_valid, password_valid, user_home_dir, "/invalid/path/"+filename, JsonObject.mapFrom(batchVoucher).encodePrettily())
       .onSuccess(m -> Assertions.fail("Expected upload failure but got " + m))
       .onFailure(logger::info)
       .onComplete(logger::info);
