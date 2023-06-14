@@ -19,14 +19,17 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.images.builder.ImageFromDockerfile;
 import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.shaded.com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.Date;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 @ExtendWith(VertxExtension.class)
@@ -38,9 +41,10 @@ public class SftpUploadServiceTest {
   private static final String EXPORT_FOLDER_NAME = "upload";
   private static final Context context = Vertx.vertx().getOrCreateContext();
   private static String uri;
+  private static String id;
+  private static String batch_group;
   private static final String INVALID_URI = "ftp://localhost:11/";
   private SshSimpleClient sshClient;
-
 
   @Container
   public static final GenericContainer sftp = new GenericContainer(
@@ -64,12 +68,13 @@ public class SftpUploadServiceTest {
     logger.info("=== Test successful upload ===");
     Date end = new Date();
     end.setTime(System.currentTimeMillis() - 864000000);
-
+    id = UUID.randomUUID().toString();
+    batch_group = UUID.randomUUID().toString();
     BatchVoucher batchVoucher = new BatchVoucher();
-    batchVoucher.setId(UUID.randomUUID().toString());
+    batchVoucher.setId(id);
     batchVoucher.setStart(end);
     batchVoucher.setEnd(end);
-    batchVoucher.setBatchGroup(UUID.randomUUID().toString());
+    batchVoucher.setBatchGroup(batch_group);
     batchVoucher.setCreated(new Date());
 
     SftpUploadService helper = new SftpUploadService(uri, 22);
@@ -128,7 +133,13 @@ public class SftpUploadServiceTest {
   void testSuccessfulDownload() throws Exception {
     SftpClient sftpClient = getSftpClient(USERNAME, PASSWORD, sftp.getHost(), sftp.getMappedPort(22));
     byte[] fileBytes = download(sftpClient, EXPORT_FOLDER_NAME + "/" + FILENAME);
+    String s = new String(fileBytes, StandardCharsets.UTF_8);
+
+    BatchVoucher batchVoucher = new ObjectMapper().readValue(s, BatchVoucher.class);
+    assertEquals(id, batchVoucher.getId());
+    assertEquals(batch_group, batchVoucher.getBatchGroup());
     assertNotNull(fileBytes);
+
     sftpClient.close();
   }
 

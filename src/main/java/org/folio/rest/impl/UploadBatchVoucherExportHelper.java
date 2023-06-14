@@ -87,7 +87,7 @@ public class UploadBatchVoucherExportHelper extends AbstractHelper {
           .upload(ctx, uploadHolder.getCredentials().getUsername(), uploadHolder.getCredentials().getPassword(), uploadHolder.getExportConfig().getUploadDirectory(), fileName, content).mapEmpty();
       }
     } catch (Exception e) {
-      log.error("FtpUploadService creation failed", e);
+      log.error("Ftp OR Sftp UploadService creation failed", e);
       return Future.failedFuture(e);
     }
   }

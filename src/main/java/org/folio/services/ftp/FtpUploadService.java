@@ -70,6 +70,7 @@ public class FtpUploadService {
       } catch (Exception e) {
         logger.error("Error Connecting FTP server {} on port {}", server, port, e);
         blockingFeature.fail(e);
+      } finally {
         disconnect(ftpClient);
       }
     }, false, asyncResultHandler(promise, "Success login to FTP", "Failed login to FTP"));
@@ -97,11 +98,7 @@ public class FtpUploadService {
         logger.info("Success upload to FTP");
         promise.complete(result.result());
       } else {
-        logger.error("Failed upload to FTP");
-        String message = Optional.ofNullable(result.cause())
-          .map(Throwable::getMessage)
-          .orElse(result.cause().getMessage());
-        logger.error(message);
+        logger.error("Failed upload to FTP", result.cause());
         promise.fail(result.cause());
       }
     };

@@ -22,7 +22,6 @@ import java.io.InputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.TimeUnit;
 
@@ -74,13 +73,13 @@ public class SftpUploadService {
 
         createRemoteDirectoryIfAbsent(session, folder);
         session.write(inputStream, remoteAbsPath);
-        logger.info("uploaded: {}", remoteAbsPath);
+        logger.info("File was uploaded to SFTP successfully to path: {}", remoteAbsPath);
         blockingFeature.complete("Uploaded successfully");
       } catch (Exception e) {
         logger.info("Error uploading the file {}", remoteAbsPath, e);
         blockingFeature.fail(new CompletionException(e));
       } finally {
-        logger.info("Session closed");
+        logger.debug("Sftp session closed");
         sshdFactory.getSession().close();
       }
     }, false, asyncResultHandler(promise));
@@ -109,11 +108,7 @@ public class SftpUploadService {
         logger.debug("Success upload to SFTP");
         promise.complete(result.result());
       } else {
-        logger.error("Failed upload to SFTP");
-        String message = Optional.ofNullable(result.cause())
-          .map(Throwable::getMessage)
-          .orElse(result.cause().getMessage());
-        logger.error(message);
+        logger.error("Failed upload to Sftp", result.cause());
         promise.fail(result.cause());
       }
     };

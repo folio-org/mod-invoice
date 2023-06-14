@@ -11,6 +11,8 @@ import java.net.URISyntaxException;
 import java.util.Map;
 import java.util.concurrent.CompletionException;
 
+import org.folio.HttpStatus;
+import org.folio.exceptions.FtpException;
 import org.folio.rest.core.RestClient;
 import org.folio.rest.core.models.RequestContext;
 import org.folio.rest.jaxrs.model.Credentials;
@@ -97,7 +99,8 @@ public class BatchVoucherExportConfigHelper extends AbstractHelper {
             try {
               return Future.succeededFuture(ftpClient.getStatus());
             } catch (IOException e) {
-              throw new IllegalArgumentException(e);
+              logger.error("Could not login to FTP with username: {}", creds.getUsername(), e);
+              return Future.failedFuture(new FtpException(HttpStatus.HTTP_FORBIDDEN.toInt(), creds.getUsername()));
             }
           });
       });
