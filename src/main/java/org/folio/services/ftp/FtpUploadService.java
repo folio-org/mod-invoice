@@ -111,7 +111,7 @@ public class FtpUploadService {
         ftpClient.enterLocalPassiveMode();
         if (Objects.nonNull(folder)) {
           changeWorkingDirectory(folder, ftpClient);
-        }else {
+        } else {
           changeWorkingDirectory(DEFAULT_WORKING_DIR, ftpClient);
         }
         if (ftpClient.storeFile(filename, is)) {

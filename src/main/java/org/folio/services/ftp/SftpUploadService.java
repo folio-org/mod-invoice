@@ -76,11 +76,13 @@ public class SftpUploadService {
         logger.info("File was uploaded to SFTP successfully to path: {}", remoteAbsPath);
         blockingFeature.complete("Uploaded successfully");
       } catch (Exception e) {
-        logger.info("Error uploading the file {}", remoteAbsPath, e);
+        logger.error("Error uploading the file {}", remoteAbsPath, e);
         blockingFeature.fail(new CompletionException(e));
       } finally {
         logger.debug("Sftp session closed");
-        sshdFactory.getSession().close();
+        if (Objects.nonNull(sshdFactory.getSession())) {
+          sshdFactory.getSession().close();
+        }
       }
     }, false, asyncResultHandler(promise));
     return promise.future();

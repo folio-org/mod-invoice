@@ -81,10 +81,26 @@ public class SftpUploadServiceTest {
     var future = helper.upload(context, USERNAME, PASSWORD, EXPORT_FOLDER_NAME, FILENAME , JsonObject.mapFrom(batchVoucher).encodePrettily())
       .onSuccess(logger::info)
       .onFailure(t -> {
-        logger.error(t);
         Assertions.fail(t.getMessage());
       })
-      .onComplete(logger::info);
+      .onComplete(stringAsyncResult -> {
+        SftpClient sftpClient = null;
+        try {
+          sftpClient = getSftpClient(USERNAME, PASSWORD, sftp.getHost(), sftp.getMappedPort(22));
+          byte[] fileBytes = new byte[0];
+          fileBytes = download(sftpClient, EXPORT_FOLDER_NAME + "/" + FILENAME);
+          String s = new String(fileBytes, StandardCharsets.UTF_8);
+          BatchVoucher batchVoucher1 = new ObjectMapper().readValue(s, BatchVoucher.class);
+
+          assertEquals(id, batchVoucher1.getId());
+          assertEquals(batch_group, batchVoucher1.getBatchGroup());
+          assertNotNull(fileBytes);
+
+          sftpClient.close();
+        } catch (IOException e) {
+          throw new RuntimeException(e);
+        }
+      });
     vertxTestContext.assertComplete(future)
       .onSuccess(result -> vertxTestContext.completeNow());
   }
@@ -106,10 +122,26 @@ public class SftpUploadServiceTest {
     var future = helper.upload(context, USERNAME, PASSWORD, EXPORT_FOLDER_NAME+"/test/long/path", FILENAME , JsonObject.mapFrom(batchVoucher).encodePrettily())
       .onSuccess(logger::info)
       .onFailure(t -> {
-        logger.error(t);
         Assertions.fail(t.getMessage());
       })
-      .onComplete(logger::info);
+      .onComplete(stringAsyncResult -> {
+        SftpClient sftpClient = null;
+        try {
+          sftpClient = getSftpClient(USERNAME, PASSWORD, sftp.getHost(), sftp.getMappedPort(22));
+          byte[] fileBytes = new byte[0];
+          fileBytes = download(sftpClient, EXPORT_FOLDER_NAME + "/" + FILENAME);
+          String s = new String(fileBytes, StandardCharsets.UTF_8);
+          BatchVoucher batchVoucher1 = new ObjectMapper().readValue(s, BatchVoucher.class);
+
+          assertEquals(id, batchVoucher1.getId());
+          assertEquals(batch_group, batchVoucher1.getBatchGroup());
+          assertNotNull(fileBytes);
+
+          sftpClient.close();
+        } catch (IOException e) {
+          throw new RuntimeException(e);
+        }
+      });
     vertxTestContext.assertComplete(future)
       .onSuccess(result -> vertxTestContext.completeNow());
   }
@@ -129,28 +161,10 @@ public class SftpUploadServiceTest {
       .onComplete(result -> vertxTestContext.completeNow());
   }
 
-  @Test
-  void testSuccessfulDownload() throws Exception {
-    SftpClient sftpClient = getSftpClient(USERNAME, PASSWORD, sftp.getHost(), sftp.getMappedPort(22));
-    byte[] fileBytes = download(sftpClient, EXPORT_FOLDER_NAME + "/" + FILENAME);
-    String s = new String(fileBytes, StandardCharsets.UTF_8);
-
-    BatchVoucher batchVoucher = new ObjectMapper().readValue(s, BatchVoucher.class);
-    assertEquals(id, batchVoucher.getId());
-    assertEquals(batch_group, batchVoucher.getBatchGroup());
-    assertNotNull(fileBytes);
-
-    sftpClient.close();
-  }
-
   public byte[] download(SftpClient sftpClient, String path) throws IOException {
     byte[] fileBytes = null;
-    try {
-      InputStream stream = sftpClient.read(path);
+    try (InputStream stream = sftpClient.read(path)) {
       fileBytes = stream.readAllBytes();
-      stream.close();
-    } catch (IOException e) {
-      throw new IOException();
     }
     return fileBytes;
   }
