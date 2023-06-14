@@ -10,7 +10,9 @@ import org.folio.models.BatchVoucherUploadHolder;
 import org.folio.rest.core.models.RequestContext;
 import org.folio.rest.jaxrs.model.BatchVoucher;
 import org.folio.rest.jaxrs.model.BatchVoucherExport;
+import org.folio.rest.jaxrs.model.ExportConfig;
 import org.folio.services.ftp.FtpUploadService;
+import org.folio.services.ftp.SftpUploadService;
 import org.folio.services.voucher.BatchVoucherExportConfigService;
 import org.folio.services.voucher.BatchVoucherExportsService;
 import org.folio.services.voucher.BatchVoucherService;
@@ -72,20 +74,20 @@ public class UploadBatchVoucherExportHelper extends AbstractHelper {
 
   public Future<Void> uploadBatchVoucher(BatchVoucherUploadHolder uploadHolder) {
     try {
-      FtpUploadService ftpUploadService = new FtpUploadService(ctx, uploadHolder.getExportConfig().getUploadURI());
-      return ftpUploadService.login(uploadHolder.getCredentials().getUsername(), uploadHolder.getCredentials().getPassword())
-        .onSuccess(log::info)
-        .compose(v -> {
-          String fileName = generateFileName(uploadHolder.getBatchVoucher(), uploadHolder.getFileFormat());
-          BatchVoucher batchVoucher = uploadHolder.getBatchVoucher();
-          String format = uploadHolder.getExportConfig().getFormat().value();
-          String content = batchVoucherService.convertBatchVoucher(batchVoucher, format);
-
-          return ftpUploadService.upload(ctx, fileName, content);
-        })
-        .mapEmpty();
-    } catch (URISyntaxException e) {
-      log.error("FtpUploadService creation failed", e);
+      String fileName = generateFileName(uploadHolder.getBatchVoucher(), uploadHolder.getFileFormat());
+      BatchVoucher batchVoucher = uploadHolder.getBatchVoucher();
+      String format = uploadHolder.getExportConfig().getFormat().value();
+      String content = batchVoucherService.convertBatchVoucher(batchVoucher, format);
+      Integer port = uploadHolder.getExportConfig().getFtpPort();
+      if (ExportConfig.FtpFormat.FTP == uploadHolder.getExportConfig().getFtpFormat()) {
+        return new FtpUploadService(ctx, uploadHolder.getExportConfig().getUploadURI(), port)
+          .upload(ctx, uploadHolder.getCredentials().getUsername(), uploadHolder.getCredentials().getPassword(), uploadHolder.getExportConfig().getUploadDirectory(), fileName, content).mapEmpty();
+      } else {
+        return new SftpUploadService(uploadHolder.getExportConfig().getUploadURI(), port)
+          .upload(ctx, uploadHolder.getCredentials().getUsername(), uploadHolder.getCredentials().getPassword(), uploadHolder.getExportConfig().getUploadDirectory(), fileName, content).mapEmpty();
+      }
+    } catch (Exception e) {
+      log.error("Ftp OR Sftp UploadService creation failed", e);
       return Future.failedFuture(e);
     }
   }
@@ -107,7 +109,6 @@ public class UploadBatchVoucherExportHelper extends AbstractHelper {
           uploadHolder.setExportConfig(exportConfigs.getExportConfigs().get(0));
           return null;
         }
-
         throw new HttpException(404, "Batch export configuration was not found");
       });
   }

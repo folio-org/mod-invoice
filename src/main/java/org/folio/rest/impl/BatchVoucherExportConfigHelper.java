@@ -6,10 +6,13 @@ import static org.folio.invoices.utils.ResourcePathResolver.BATCH_VOUCHER_EXPORT
 import static org.folio.invoices.utils.ResourcePathResolver.resourceByIdPath;
 import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
 
+import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.Map;
 import java.util.concurrent.CompletionException;
 
+import org.folio.HttpStatus;
+import org.folio.exceptions.FtpException;
 import org.folio.rest.core.RestClient;
 import org.folio.rest.core.models.RequestContext;
 import org.folio.rest.jaxrs.model.Credentials;
@@ -84,14 +87,22 @@ public class BatchVoucherExportConfigHelper extends AbstractHelper {
       .map(cf -> {
         try {
           ExportConfig config = exportConfigFuture.result();
-          return new FtpUploadService(ctx, config.getUploadURI());
+          return new FtpUploadService(ctx, config.getUploadURI(), config.getFtpPort());
         } catch (URISyntaxException e) {
           throw new CompletionException(e);
         }
       })
       .compose(helper -> {
         Credentials creds = credentialsFuture.result();
-        return helper.login(creds.getUsername(), creds.getPassword());
+        return helper.login(creds.getUsername(), creds.getPassword())
+          .compose(ftpClient -> {
+            try {
+              return Future.succeededFuture(ftpClient.getStatus());
+            } catch (IOException e) {
+              logger.error("Could not login to FTP with username: {}", creds.getUsername(), e);
+              return Future.failedFuture(new FtpException(HttpStatus.HTTP_FORBIDDEN.toInt(), creds.getUsername()));
+            }
+          });
       });
   }
 }
