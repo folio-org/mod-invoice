@@ -158,9 +158,32 @@ public class InvoiceHelper extends AbstractHelper {
       })
       .compose(v -> validateAcqUnitsOnCreate(invoice.getAcqUnitIds()))
       .compose(v -> updateWithSystemGeneratedData(invoice))
+      .compose(v -> validateFiscalYearId(invoice, requestContext))
       .compose(v -> invoiceService.createInvoice(invoice, requestContext))
       .map(Invoice::getId)
       .map(invoice::withId);
+  }
+
+  private Future<Void> validateFiscalYearId(Invoice invoice, RequestContext requestContext) {
+    if (StringUtils.isNotEmpty(invoice.getFiscalYearId())) {
+      return succeededFuture(null);
+    }
+
+    String fundId = invoice.getAdjustments().stream()
+      .flatMap(adjustment -> adjustment.getFundDistributions().stream())
+      .map(FundDistribution::getFundId)
+      .findFirst()
+      .orElse(null);
+
+    if (StringUtils.isNotEmpty(fundId)) {
+      return currentFiscalYearService.getCurrentFiscalYearByFund(fundId, requestContext)
+        .map(fiscalYear -> {
+          invoice.setFiscalYearId(fiscalYear.getId());
+          return null;
+        });
+    }
+
+    return succeededFuture(null);
   }
 
   /**
