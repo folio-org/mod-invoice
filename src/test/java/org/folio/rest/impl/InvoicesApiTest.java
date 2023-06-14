@@ -197,6 +197,7 @@ public class InvoicesApiTest extends ApiTestBase {
   public static final String OPEN_INVOICE_ID_WITHOUT_FISCAL_YEAR = "8c92f2a1-67e3-4cfe-ba02-ba16404f7f1c";
   private static final String INVOICE_LINE_WITH_OPEN_EXISTED_INVOICE_ID = "5cb6d270-a54c-4c38-b645-3ae7f249c606";
   private static final String APPROVED_INVOICE_SAMPLE_PATH = INVOICE_MOCK_DATA_PATH + APPROVED_INVOICE_ID + ".json";
+  private static final String APPROVED_INVOICE_WITHOUT_FISCAL_YEAR_SAMPLE_PATH = INVOICE_MOCK_DATA_PATH + APPROVED_INVOICE_WITHOUT_FISCAL_YEAR_ID + ".json";
   private static final String APPROVED_INVOICE_SAMPLE_PATH_WITHOUT_FISCAL_YEAR = INVOICE_MOCK_DATA_PATH + APPROVED_INVOICE_ID_WITHOUT_FISCAL_YEAR + ".json";
   private static final String APPROVED_INVOICE_FOR_MOVE_PAYMENT_PATH = INVOICE_MOCK_DATA_PATH + "b8862151-6aa5-4301-aa1a-34096a03a5f7.json";
   private static final String REVIEWED_INVOICE_SAMPLE_PATH = INVOICE_MOCK_DATA_PATH + REVIEWED_INVOICE_ID + ".json";
@@ -2696,6 +2697,26 @@ public class InvoicesApiTest extends ApiTestBase {
 
     assertThat(poId, notNullValue());
     assertThat(folioInvoiceNo, notNullValue());
+    assertThat(getRqRsEntries(HttpMethod.GET, FOLIO_INVOICE_NUMBER), hasSize(1));
+
+    // Check that invoice in the response and the one in storage are the same
+    compareRecordWithSentToStorage(respData);
+  }
+
+  @Test
+  public void updateInvoiceFiscalYearUseAdjustmentFundFiscalYear() throws IOException {
+    logger.info("=== Update invoice fiscal year use adjustment fund fiscal year ===");
+    String body = getMockData(APPROVED_INVOICE_WITHOUT_FISCAL_YEAR_SAMPLE_PATH);
+
+    final Invoice respData = verifyPostResponse(INVOICE_PATH, body, prepareHeaders(X_OKAPI_TENANT), APPLICATION_JSON, 201).as(Invoice.class);
+
+    String poId = respData.getId();
+    String folioInvoiceNo = respData.getFolioInvoiceNo();
+    String fiscalYearId = respData.getFiscalYearId();
+
+    assertThat(poId, notNullValue());
+    assertThat(folioInvoiceNo, notNullValue());
+    assertThat(fiscalYearId, notNullValue());
     assertThat(getRqRsEntries(HttpMethod.GET, FOLIO_INVOICE_NUMBER), hasSize(1));
 
     // Check that invoice in the response and the one in storage are the same
