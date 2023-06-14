@@ -70,7 +70,6 @@ public class FtpUploadService {
       } catch (Exception e) {
         logger.error("Error Connecting FTP server {} on port {}", server, port, e);
         blockingFeature.fail(e);
-      } finally {
         disconnect(ftpClient);
       }
     }, false, asyncResultHandler(promise, "Success login to FTP", "Failed login to FTP"));
