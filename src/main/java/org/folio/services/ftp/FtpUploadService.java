@@ -124,7 +124,7 @@ public class FtpUploadService {
         logger.error("Error uploading file {}", filename, e);
         blockingFeature.fail(new CompletionException(e));
       } finally {
-          disconnect(ftpClient);
+        disconnect(ftpClient);
       }
       return promise.future();
     }), false, asyncResult(promise));

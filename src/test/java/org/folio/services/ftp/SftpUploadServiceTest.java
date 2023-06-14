@@ -90,10 +90,10 @@ public class SftpUploadServiceTest {
           byte[] fileBytes = new byte[0];
           fileBytes = download(sftpClient, EXPORT_FOLDER_NAME + "/" + FILENAME);
           String s = new String(fileBytes, StandardCharsets.UTF_8);
-          BatchVoucher batchVoucher1 = new ObjectMapper().readValue(s, BatchVoucher.class);
+          BatchVoucher downloadedBatchVoucher = new ObjectMapper().readValue(s, BatchVoucher.class);
 
-          assertEquals(id, batchVoucher1.getId());
-          assertEquals(batch_group, batchVoucher1.getBatchGroup());
+          assertEquals(id, downloadedBatchVoucher.getId());
+          assertEquals(batch_group, downloadedBatchVoucher.getBatchGroup());
           assertNotNull(fileBytes);
 
           sftpClient.close();
@@ -131,10 +131,10 @@ public class SftpUploadServiceTest {
           byte[] fileBytes = new byte[0];
           fileBytes = download(sftpClient, EXPORT_FOLDER_NAME + "/" + FILENAME);
           String s = new String(fileBytes, StandardCharsets.UTF_8);
-          BatchVoucher batchVoucher1 = new ObjectMapper().readValue(s, BatchVoucher.class);
+          BatchVoucher downloadedBatchVoucher = new ObjectMapper().readValue(s, BatchVoucher.class);
 
-          assertEquals(id, batchVoucher1.getId());
-          assertEquals(batch_group, batchVoucher1.getBatchGroup());
+          assertEquals(id, downloadedBatchVoucher.getId());
+          assertEquals(batch_group, downloadedBatchVoucher.getBatchGroup());
           assertNotNull(fileBytes);
 
           sftpClient.close();

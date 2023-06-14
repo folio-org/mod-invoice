@@ -78,11 +78,6 @@ public class SftpUploadService {
       } catch (Exception e) {
         logger.error("Error uploading the file {}", remoteAbsPath, e);
         blockingFeature.fail(new CompletionException(e));
-      } finally {
-        logger.debug("Sftp session closed");
-        if (Objects.nonNull(sshdFactory.getSession())) {
-          sshdFactory.getSession().close();
-        }
       }
     }, false, asyncResultHandler(promise));
     return promise.future();

@@ -78,7 +78,7 @@ public class UploadBatchVoucherExportHelper extends AbstractHelper {
       BatchVoucher batchVoucher = uploadHolder.getBatchVoucher();
       String format = uploadHolder.getExportConfig().getFormat().value();
       String content = batchVoucherService.convertBatchVoucher(batchVoucher, format);
-      int port = uploadHolder.getExportConfig().getFtpPort();
+      Integer port = uploadHolder.getExportConfig().getFtpPort();
       if (ExportConfig.FtpFormat.FTP == uploadHolder.getExportConfig().getFtpFormat()) {
         return new FtpUploadService(ctx, uploadHolder.getExportConfig().getUploadURI(), port)
           .upload(ctx, uploadHolder.getCredentials().getUsername(), uploadHolder.getCredentials().getPassword(), uploadHolder.getExportConfig().getUploadDirectory(), fileName, content).mapEmpty();
