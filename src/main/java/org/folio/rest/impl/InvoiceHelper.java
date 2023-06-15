@@ -166,7 +166,7 @@ public class InvoiceHelper extends AbstractHelper {
 
   private Future<Void> validateFiscalYearId(Invoice invoice, RequestContext requestContext) {
     if (StringUtils.isNotEmpty(invoice.getFiscalYearId())) {
-      return succeededFuture(null);
+      return succeededFuture();
     }
 
     String fundId = invoice.getAdjustments().stream()
@@ -183,7 +183,7 @@ public class InvoiceHelper extends AbstractHelper {
         });
     }
 
-    return succeededFuture(null);
+    return succeededFuture();
   }
 
   /**
