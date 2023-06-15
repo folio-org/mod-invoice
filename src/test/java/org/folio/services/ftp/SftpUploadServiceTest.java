@@ -38,7 +38,7 @@ public class SftpUploadServiceTest {
   private static final String FILENAME = "batchVoucher.json";
   private static final String USERNAME = "user";
   private static final String PASSWORD = "password";
-  private static final String EXPORT_FOLDER_NAME = "upload";
+  private static final String EXPORT_FOLDER_NAME = "ftp";
   private static final Context context = Vertx.vertx().getOrCreateContext();
   private static String uri;
   private static String id;
@@ -55,7 +55,7 @@ public class SftpUploadServiceTest {
           .run("mkdir -p " + File.separator + EXPORT_FOLDER_NAME + "; chmod -R 777 " + File.separator + EXPORT_FOLDER_NAME)
           .build()))
       .withExposedPorts(22)
-      .withCommand(USERNAME + ":" + PASSWORD + ":::upload");
+      .withCommand(USERNAME + ":" + PASSWORD + ":::ftp");
 
   @BeforeAll
   public static void staticSetup() {
@@ -145,6 +145,48 @@ public class SftpUploadServiceTest {
     vertxTestContext.assertComplete(future)
       .onSuccess(result -> vertxTestContext.completeNow());
   }
+
+  @Test
+  void testSuccessfulUploadWithDefaultPath(VertxTestContext vertxTestContext) throws Exception {
+    logger.info("=== Test successful upload for default location ===");
+    Date end = new Date();
+    end.setTime(System.currentTimeMillis() - 864000000);
+
+    BatchVoucher batchVoucher = new BatchVoucher();
+    batchVoucher.setId(UUID.randomUUID().toString());
+    batchVoucher.setStart(end);
+    batchVoucher.setEnd(end);
+    batchVoucher.setBatchGroup(UUID.randomUUID().toString());
+    batchVoucher.setCreated(new Date());
+
+    SftpUploadService helper = new SftpUploadService(uri, 22);
+    var future = helper.upload(context, USERNAME, PASSWORD, "", FILENAME , JsonObject.mapFrom(batchVoucher).encodePrettily())
+      .onSuccess(logger::info)
+      .onFailure(t -> {
+        Assertions.fail(t.getMessage());
+      })
+      .onComplete(stringAsyncResult -> {
+        SftpClient sftpClient = null;
+        try {
+          sftpClient = getSftpClient(USERNAME, PASSWORD, sftp.getHost(), sftp.getMappedPort(22));
+          byte[] fileBytes = new byte[0];
+          fileBytes = download(sftpClient, EXPORT_FOLDER_NAME + "/" + FILENAME);
+          String s = new String(fileBytes, StandardCharsets.UTF_8);
+          BatchVoucher downloadedBatchVoucher = new ObjectMapper().readValue(s, BatchVoucher.class);
+
+          assertEquals(id, downloadedBatchVoucher.getId());
+          assertEquals(batch_group, downloadedBatchVoucher.getBatchGroup());
+          assertNotNull(fileBytes);
+
+          sftpClient.close();
+        } catch (IOException e) {
+          throw new RuntimeException(e);
+        }
+      });
+    vertxTestContext.assertComplete(future)
+      .onSuccess(result -> vertxTestContext.completeNow());
+  }
+
 
   @Test
   void testFailedConnect(VertxTestContext vertxTestContext) throws Exception {
