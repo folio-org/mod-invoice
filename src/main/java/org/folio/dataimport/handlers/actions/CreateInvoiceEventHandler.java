@@ -11,7 +11,6 @@ import static org.folio.DataImportEventTypes.DI_INVOICE_CREATED;
 import static org.folio.invoices.utils.HelperUtils.collectResultsOnSuccess;
 import static org.folio.invoices.utils.ResourcePathResolver.ORDER_LINES;
 import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
-import static org.folio.rest.RestConstants.SEMAPHORE_MAX_ACTIVE_THREADS;
 import static org.folio.rest.jaxrs.model.EntityType.EDIFACT_INVOICE;
 import static org.folio.rest.jaxrs.model.InvoiceLine.InvoiceLineStatus.OPEN;
 import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.ACTION_PROFILE;
@@ -23,11 +22,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.collections4.MapUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
@@ -52,7 +51,6 @@ import org.folio.rest.core.RestClient;
 import org.folio.rest.core.models.RequestContext;
 import org.folio.rest.core.models.RequestEntry;
 import org.folio.rest.impl.InvoiceHelper;
-import org.folio.rest.impl.InvoiceLineHelper;
 import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.jaxrs.model.InvoiceLine;
 import org.folio.rest.jaxrs.model.InvoiceLineCollection;
@@ -62,7 +60,6 @@ import io.vertx.core.Vertx;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
-import io.vertxconcurrent.Semaphore;
 
 public class CreateInvoiceEventHandler implements EventHandler {
 
@@ -106,6 +103,7 @@ public class CreateInvoiceEventHandler implements EventHandler {
 
       Map<String, String> okapiHeaders = DataImportUtils.getOkapiHeaders(dataImportEventPayload);
       Future<Map<Integer, PoLine>> poLinesFuture = getAssociatedPoLines(dataImportEventPayload, okapiHeaders);
+      InvoiceHelper invoiceHelper = new InvoiceHelper(okapiHeaders, Vertx.currentContext());
 
       poLinesFuture
         .map(invLineNoToPoLine -> {
@@ -115,45 +113,24 @@ public class CreateInvoiceEventHandler implements EventHandler {
           prepareMappingResult(dataImportEventPayload);
           return null;
         })
-        .compose(v -> saveInvoice(dataImportEventPayload, okapiHeaders))
-        .map(savedInvoice -> prepareInvoiceLinesToSave(savedInvoice.getId(), dataImportEventPayload, poLinesFuture.result()))
-        .compose(preparedInvoiceLines -> saveInvoiceLines(preparedInvoiceLines, okapiHeaders))
+        .map(v -> prepareInvoiceAndLinesToSave(dataImportEventPayload, poLinesFuture.result()))
+        .compose(invoiceAndLines -> createInvoiceAndLines(dataImportEventPayload, invoiceAndLines, invoiceHelper))
         .onComplete(result -> {
           makeLightweightReturnPayload(dataImportEventPayload);
 
           if (result.succeeded()) {
-            List<InvoiceLine> invoiceLines = result.result().stream().map(Pair::getLeft).collect(Collectors.toList());
-            InvoiceLineCollection invoiceLineCollection = new InvoiceLineCollection().withInvoiceLines(invoiceLines).withTotalRecords(invoiceLines.size());
-            dataImportEventPayload.getContext().put(INVOICE_LINES_KEY, Json.encode(invoiceLineCollection));
-            Map<Integer, String> invoiceLinesErrors = prepareInvoiceLinesErrors(result.result());
-            if (!invoiceLinesErrors.isEmpty()) {
-              dataImportEventPayload.getContext().put(INVOICE_LINES_ERRORS_KEY, Json.encode(invoiceLinesErrors));
-              future.completeExceptionally(new EventProcessingException("Error during invoice lines creation"));
-              return;
-            }
             future.complete(dataImportEventPayload);
           } else {
             preparePayloadWithMappedInvoiceLines(dataImportEventPayload);
-            logger.error("Error during invoice creation", result.cause());
+            logger.error("Error when creating the invoice and lines", result.cause());
             future.completeExceptionally(result.cause());
           }
         });
     } catch (Exception e) {
-      logger.error("Error during creation invoice and invoice lines", e);
+      logger.error("Error when creating the invoice and lines", e);
       future.completeExceptionally(e);
     }
     return future;
-  }
-
-  private Map<Integer, String> prepareInvoiceLinesErrors(List<Pair<InvoiceLine, String>> invoiceLinesSavingResult) {
-    Map<Integer, String> invoiceLinesErrors = new HashMap<>();
-    for (int i = 0; i < invoiceLinesSavingResult.size(); i++) {
-      Pair<InvoiceLine, String> invLineResult = invoiceLinesSavingResult.get(i);
-      if (invLineResult.getRight() != null) {
-        invoiceLinesErrors.put(i + 1, invLineResult.getRight());
-      }
-    }
-    return invoiceLinesErrors;
   }
 
   private Future<Map<Integer, PoLine>> getAssociatedPoLines(DataImportEventPayload eventPayload, Map<String, String> okapiHeaders) {
@@ -264,23 +241,9 @@ public class CreateInvoiceEventHandler implements EventHandler {
     if (MapUtils.isEmpty(refNumberList)) {
       return Future.succeededFuture(new HashMap<>());
     }
-    return requestContext.getContext()
-      .<List<Future<Pair<Integer, PoLine>>>>executeBlocking(promise -> {
-        List<Future<Pair<Integer, PoLine>>> futures = new ArrayList<>();
-        Semaphore semaphore = new Semaphore(SEMAPHORE_MAX_ACTIVE_THREADS, Vertx.currentContext().owner());
-        for (Map.Entry<Integer, List<String>> entry : refNumberList.entrySet()) {
-          semaphore.acquire(() -> {
-            var future = getLinePair(entry, requestContext)
-              .onComplete(asyncResult -> semaphore.release());
-            futures.add(future);
-            // complete executeBlocking promise when all operations started
-            if (futures.size() == refNumberList.size()) {
-              promise.complete(futures);
-            }
-          });
-        }
-      })
-      .compose(HelperUtils::collectResultsOnSuccess)
+    return HelperUtils.executeWithSemaphores(refNumberList.entrySet(),
+        entry -> getLinePair(entry, requestContext),
+        requestContext)
       .map(poLinePairs -> poLinePairs.stream()
         .filter(Objects::nonNull)
         .collect(Collectors.toMap(Pair::getKey, Pair::getValue)));
@@ -320,32 +283,51 @@ public class CreateInvoiceEventHandler implements EventHandler {
     return format(PO_LINES_BY_REF_NUMBER_CQL, valueString);
   }
 
-  private Future<Invoice> saveInvoice(DataImportEventPayload dataImportEventPayload, Map<String, String> okapiHeaders) {
-    Invoice invoiceToSave = Json.decodeValue(dataImportEventPayload.getContext().get(INVOICE.value()), Invoice.class);
-    invoiceToSave.setSource(Invoice.Source.EDI);
-    InvoiceHelper invoiceHelper = new InvoiceHelper(okapiHeaders, Vertx.currentContext());
-    RequestContext requestContext = new RequestContext(Vertx.currentContext(), okapiHeaders);
-
-    return invoiceHelper.createInvoice(invoiceToSave, requestContext)
-      .onComplete(result -> {
-        if (result.succeeded()) {
-          dataImportEventPayload.getContext().put(INVOICE.value(), Json.encode(result.result()));
-          return;
-        }
-        logger.error("Error during creation invoice in the storage", result.cause());
-      });
-  }
-
-  private List<InvoiceLine> prepareInvoiceLinesToSave(String invoiceId, DataImportEventPayload dataImportEventPayload, Map<Integer, PoLine> associatedPoLines) {
+  private InvoiceAndLines prepareInvoiceAndLinesToSave(DataImportEventPayload dataImportEventPayload,
+      Map<Integer, PoLine> associatedPoLines) {
+    Invoice invoice = Json.decodeValue(dataImportEventPayload.getContext().get(INVOICE.value()), Invoice.class);
+    if (invoice.getId() == null) {
+      invoice.setId(UUID.randomUUID().toString());
+    }
+    invoice.setSource(Invoice.Source.EDI);
     List<InvoiceLine> invoiceLines = new JsonArray(dataImportEventPayload.getContext().get(INVOICE_LINES_KEY))
       .stream()
       .map(JsonObject.class::cast)
       .map(json -> json.mapTo(InvoiceLine.class))
-      .map(invoiceLine -> invoiceLine.withInvoiceId(invoiceId).withInvoiceLineStatus(OPEN))
+      .map(invoiceLine -> invoiceLine.withInvoiceLineStatus(OPEN)
+        .withInvoiceId(invoice.getId()))
       .collect(Collectors.toList());
 
     linkInvoiceLinesToPoLines(invoiceLines, associatedPoLines);
-    return invoiceLines;
+
+    InvoiceAndLines invoiceAndLines = new InvoiceAndLines();
+    invoiceAndLines.invoice = invoice;
+    invoiceAndLines.invoiceLines = invoiceLines;
+    return invoiceAndLines;
+  }
+
+  private Future<Void> createInvoiceAndLines(DataImportEventPayload dataImportEventPayload,
+      InvoiceAndLines invoiceAndLines, InvoiceHelper invoiceHelper) {
+    return invoiceHelper.createInvoiceAndLines(invoiceAndLines.invoice, invoiceAndLines.invoiceLines)
+      .onFailure(t -> logger.error("Error during creation of invoice and lines", t))
+      .map(result -> {
+        Map<Integer, String> invoiceLinesErrors = result.getInvoiceLinesErrors();
+        if (!invoiceLinesErrors.isEmpty()) {
+          String errorsAsString = Json.encode(invoiceLinesErrors);
+          dataImportEventPayload.getContext().put(INVOICE_LINES_ERRORS_KEY, errorsAsString);
+          throw new EventProcessingException("Error during invoice lines creation: " + errorsAsString);
+        }
+        if (result.getNewInvoice() != null) {
+          dataImportEventPayload.getContext().put(INVOICE.value(), Json.encode(result.getNewInvoice()));
+        }
+        if (result.getNewInvoiceLines() != null) {
+          InvoiceLineCollection invoiceLineCollection = new InvoiceLineCollection()
+            .withInvoiceLines(result.getNewInvoiceLines())
+            .withTotalRecords(result.getNewInvoiceLines().size());
+          dataImportEventPayload.getContext().put(INVOICE_LINES_KEY, Json.encode(invoiceLineCollection));
+        }
+        return null;
+      });
   }
 
   private void linkInvoiceLinesToPoLines(List<InvoiceLine> invoiceLines, Map<Integer, PoLine> associatedPoLines) {
@@ -356,40 +338,6 @@ public class CreateInvoiceEventHandler implements EventHandler {
         invoiceLines.get(i).setPoLineId(null);
       }
     }
-  }
-
-  private Future<List<Pair<InvoiceLine, String>>> saveInvoiceLines(List<InvoiceLine> invoiceLines, Map<String, String> okapiHeaders) {
-    List<Future<Pair<InvoiceLine, String>>> futures = new ArrayList<>();
-
-    if (CollectionUtils.isEmpty(invoiceLines)) {
-      return Future.succeededFuture(new ArrayList<>());
-    }
-
-    InvoiceLineHelper helper = new InvoiceLineHelper(okapiHeaders, Vertx.currentContext());
-    return Vertx.currentContext()
-      .<List<Future<Pair<InvoiceLine, String>>>>executeBlocking(promise -> {
-        Semaphore semaphore = new Semaphore(SEMAPHORE_MAX_ACTIVE_THREADS, Vertx.currentContext().owner());
-        for (InvoiceLine invoiceLine : invoiceLines) {
-          semaphore.acquire(() -> {
-            var future = helper.createInvoiceLine(invoiceLine)
-              .compose(createdInvoiceLine -> {
-                Pair<InvoiceLine, String> invoiceLineToMsg = Pair.of(createdInvoiceLine, null);
-                return Future.succeededFuture(invoiceLineToMsg);
-              }, err -> {
-                logger.error("Failed to create invoice line {}, {}", invoiceLine, err);
-                Pair<InvoiceLine, String> invoiceLineToMsg = Pair.of(invoiceLine, err.getMessage());
-                return Future.succeededFuture(invoiceLineToMsg);
-              })
-              .onComplete(asyncResult -> semaphore.release());
-            futures.add(future);
-            // complete executeBlocking promise when all operations processed
-            if (futures.size() == invoiceLines.size()) {
-              promise.complete(futures);
-            }
-          });
-        }
-      })
-      .compose(HelperUtils::collectResultsOnSuccess);
   }
 
   private List<InvoiceLine> mapInvoiceLinesArrayToList(JsonArray invoiceLinesArray) {
@@ -456,5 +404,10 @@ public class CreateInvoiceEventHandler implements EventHandler {
       return actionProfile.getAction() == CREATE && actionProfile.getFolioRecord() == INVOICE;
     }
     return false;
+  }
+
+  private static class InvoiceAndLines {
+    Invoice invoice;
+    List<InvoiceLine> invoiceLines;
   }
 }

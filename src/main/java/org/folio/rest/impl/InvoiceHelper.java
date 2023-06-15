@@ -27,12 +27,14 @@ import static org.folio.utils.UserPermissionsUtil.verifyUserHasFiscalYearUpdateP
 
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -40,6 +42,10 @@ import javax.money.MonetaryAmount;
 import javax.money.convert.ConversionQuery;
 import javax.money.convert.CurrencyConversion;
 import javax.money.convert.ExchangeRateProvider;
+import javax.validation.ConstraintViolation;
+import javax.validation.Validation;
+import javax.validation.Validator;
+import javax.validation.ValidatorFactory;
 
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.collections4.ListUtils;
@@ -54,8 +60,11 @@ import org.folio.models.InvoiceWorkflowDataHolder;
 import org.folio.okapi.common.GenericCompositeFuture;
 import org.folio.rest.acq.model.Organization;
 import org.folio.rest.acq.model.finance.ExpenseClass;
+import org.folio.rest.acq.model.finance.FiscalYear;
 import org.folio.rest.acq.model.finance.Fund;
 import org.folio.rest.acq.model.orders.CompositePoLine;
+import org.folio.rest.acq.model.orders.PoLine;
+import org.folio.rest.acq.model.orders.PurchaseOrder;
 import org.folio.rest.core.models.RequestContext;
 import org.folio.rest.jaxrs.model.Adjustment;
 import org.folio.rest.jaxrs.model.Error;
@@ -84,6 +93,9 @@ import org.folio.services.invoice.InvoiceFiscalYearsService;
 import org.folio.services.invoice.InvoiceLineService;
 import org.folio.services.invoice.InvoicePaymentService;
 import org.folio.services.invoice.InvoiceService;
+import org.folio.services.order.OrderLineService;
+import org.folio.services.order.OrderService;
+import org.folio.services.validator.InvoiceLineValidator;
 import org.folio.services.validator.InvoiceValidator;
 import org.folio.services.voucher.VoucherCommandService;
 import org.folio.services.voucher.VoucherService;
@@ -141,6 +153,10 @@ public class InvoiceHelper extends AbstractHelper {
   private VoucherLineService voucherLineService;
   @Autowired
   private InvoiceFiscalYearsService invoiceFiscalYearsService;
+  @Autowired
+  private OrderService orderService;
+  @Autowired
+  private OrderLineService orderLineService;
   private RequestContext requestContext;
 
   public InvoiceHelper(Map<String, String> okapiHeaders, Context ctx) {
@@ -150,7 +166,7 @@ public class InvoiceHelper extends AbstractHelper {
     SpringContextUtil.autowireDependencies(this, Vertx.currentContext());
   }
 
-  public Future<Invoice> createInvoice(Invoice invoice, RequestContext requestContext) {
+  public Future<Invoice> createInvoice(Invoice invoice) {
     return Future.succeededFuture()
       .map(v -> {
         validator.validateIncomingInvoice(invoice);
@@ -158,9 +174,7 @@ public class InvoiceHelper extends AbstractHelper {
       })
       .compose(v -> validateAcqUnitsOnCreate(invoice.getAcqUnitIds()))
       .compose(v -> updateWithSystemGeneratedData(invoice))
-      .compose(v -> invoiceService.createInvoice(invoice, requestContext))
-      .map(Invoice::getId)
-      .map(invoice::withId);
+      .compose(v -> invoiceService.createInvoice(invoice, requestContext));
   }
 
   /**
@@ -279,6 +293,172 @@ public class InvoiceHelper extends AbstractHelper {
       .onFailure(t -> logger.error("Error getting fiscal years for invoice {}", invoiceId, t));
   }
 
+  public Future<CreateInvoiceAndLinesResult> createInvoiceAndLines(Invoice invoice, List<InvoiceLine> invoiceLines) {
+    CreateInvoiceAndLinesResult result = new CreateInvoiceAndLinesResult();
+
+    // Validate the lines before creating the invoice
+    Map<Integer, String> invoiceLinesErrors = validateInvoiceLines(invoiceLines);
+    InvoiceLineValidator invoiceLineValidator = new InvoiceLineValidator();
+    for (int i=0; i<invoiceLines.size(); i++) {
+      if (invoiceLinesErrors.get(i) != null) {
+        continue;
+      }
+      InvoiceLine invoiceLine = invoiceLines.get(i);
+      try {
+        invoiceLineValidator.validateLineAdjustmentsOnCreate(invoiceLine, invoice);
+      } catch (HttpException ex) {
+        invoiceLinesErrors.put(i+1, ex.getMessage() + ": " + JsonObject.mapFrom(ex.getErrors()));
+      }
+    }
+    result.setInvoiceLinesErrors(invoiceLinesErrors);
+    if (!invoiceLinesErrors.isEmpty()) {
+      return succeededFuture(result);
+    }
+
+    return createInvoice(invoice)
+      .map(newInvoice -> {
+        result.setNewInvoice(newInvoice);
+        return null;
+      })
+      .compose(v -> createInvoiceLines(result.getNewInvoice(), invoiceLines, result))
+      .map(v -> result);
+  }
+
+  public static class CreateInvoiceAndLinesResult {
+    private Invoice newInvoice;
+    private List<InvoiceLine> newInvoiceLines;
+    private Map<Integer, String> invoiceLinesErrors;
+    public void setNewInvoice(Invoice newInvoice) {
+      this.newInvoice = newInvoice;
+    }
+    public void setNewInvoiceLines(List<InvoiceLine> newInvoiceLines) {
+      this.newInvoiceLines = newInvoiceLines;
+    }
+    public void setInvoiceLinesErrors(Map<Integer, String> invoiceLinesErrors) {
+      this.invoiceLinesErrors = invoiceLinesErrors;
+    }
+    public Invoice getNewInvoice() {
+      return newInvoice;
+    }
+    public List<InvoiceLine> getNewInvoiceLines() {
+      return newInvoiceLines;
+    }
+    public Map<Integer, String> getInvoiceLinesErrors() {
+      return invoiceLinesErrors;
+    }
+  }
+
+  private Future<CreateInvoiceAndLinesResult> createInvoiceLines(Invoice invoice, List<InvoiceLine> invoiceLines,
+      CreateInvoiceAndLinesResult result) {
+    // NOTE: this should be kept consistent with InvoiceLineHelper.createInvoiceLine()
+    // protectionHelper.isOperationRestricted(acqUnitIds, ProtectedOperationType.CREATE) has already been called at this point
+    return getInvoiceWorkflowDataHolders(invoice, invoiceLines, requestContext)
+      .compose(holders -> budgetExpenseClassService.checkExpenseClasses(holders, requestContext))
+      .compose(holders -> generateNewInvoiceLineNumbers(invoice.getId(), invoiceLines)
+        .map(newInvoice -> {
+          result.setNewInvoice(newInvoice);
+          updateInvoiceFiscalYear(newInvoice, holders);
+          return holders;
+        }))
+      .compose(holders -> encumbranceService.updateEncumbranceLinksForFiscalYear(result.getNewInvoice(), holders,
+        requestContext))
+      .map(v -> {
+        adjustmentsService.processProratedAdjustments(invoiceLines, result.getNewInvoice());
+        invoiceService.recalculateTotals(result.getNewInvoice(), invoiceLines);
+        return null;
+      })
+      .compose(v -> invoiceLineService.createInvoiceLines(invoiceLines, requestContext))
+      .map(newInvoiceLines -> {
+        result.setNewInvoiceLines(newInvoiceLines);
+        return null;
+      })
+      .compose(v -> getPurchaseOrders(result.getNewInvoiceLines()))
+      .compose(pos -> createInvoiceOrderRelations(result.getNewInvoice().getId(), pos)
+        .map(v -> {
+          updateInvoicePoNumbers(result.getNewInvoice(), pos);
+          return null;
+        }))
+      .compose(v -> invoiceService.updateInvoice(result.getNewInvoice(), requestContext))
+      .map(v -> result)
+      .onFailure(t -> logger.error("Error when creating invoice lines", t));
+  }
+
+  public Map<Integer, String> validateInvoiceLines(List<InvoiceLine> invoiceLines) {
+    Map<Integer, String> invoiceLinesErrors = new HashMap<>();
+    try (ValidatorFactory factory = Validation.buildDefaultValidatorFactory()) {
+      Validator schemaValidator = factory.getValidator();
+      for (int i = 0; i < invoiceLines.size(); i++) {
+        InvoiceLine invoiceLine = invoiceLines.get(i);
+        Set<ConstraintViolation<InvoiceLine>> violations = schemaValidator.validate(invoiceLine);
+        if (!violations.isEmpty()) {
+          String errorsAsString = violations.stream()
+            .map(v -> String.format("%s: %s", v.getPropertyPath().toString(), v.getMessage()))
+            .collect(Collectors.joining("; "));
+          invoiceLinesErrors.put(i + 1, errorsAsString);
+        }
+      }
+    }
+    return invoiceLinesErrors;
+  }
+
+  private Future<Invoice> generateNewInvoiceLineNumbers(String invoiceId, List<InvoiceLine> invoiceLines) {
+    // NOTE: currently we don't have a way to generate several numbers at a time like with order lines,
+    // and getting a new number saves the invoice each time; this could be optimized
+    return HelperUtils.executeWithSemaphores(invoiceLines,
+        invoiceLine -> invoiceLineService.generateLineNumber(invoiceId, requestContext),
+        requestContext)
+      .map(numbers -> {
+        numbers.sort(Comparator.comparing(Integer::valueOf));
+        for (int i=0; i<invoiceLines.size(); i++) {
+          invoiceLines.get(i).setInvoiceLineNumber(numbers.get(i));
+        }
+        return null;
+      })
+      .compose(v -> invoiceService.getInvoiceById(invoiceId, requestContext))
+      .onFailure(t -> logger.error("Error when generating new invoice line numbers", t));
+  }
+
+  private void updateInvoiceFiscalYear(Invoice invoice, List<InvoiceWorkflowDataHolder> holders) {
+    if (holders.isEmpty())
+      return;
+    if (invoice.getFiscalYearId() != null)
+      return;
+    holders.stream()
+      .map(InvoiceWorkflowDataHolder::getFiscalYear)
+      .filter(Objects::nonNull)
+      .map(FiscalYear::getId)
+      .filter(Objects::nonNull)
+      .findFirst()
+      .ifPresent(invoice::setFiscalYearId);
+  }
+
+  private Future<List<PurchaseOrder>> getPurchaseOrders(List<InvoiceLine> invoiceLines) {
+    List<String> poLineIds = invoiceLines.stream()
+      .map(InvoiceLine::getPoLineId)
+      .filter(Objects::nonNull)
+      .collect(toList());
+    if (poLineIds.isEmpty()) {
+      return succeededFuture(List.of());
+    }
+    return orderLineService.getPoLinesByIds(poLineIds, requestContext)
+      .map(poLines -> poLines.stream().map(PoLine::getPurchaseOrderId).distinct().collect(toList()))
+      .compose(poIds -> orderService.getOrdersByIds(poIds, requestContext))
+      .onFailure(t -> logger.error("Error when getting order lines and orders", t));
+  }
+
+  private Future<Void> createInvoiceOrderRelations(String invoiceId, List<PurchaseOrder> pos) {
+    if (pos.isEmpty())
+      return succeededFuture(null);
+    List<String> poIds = pos.stream().map(PurchaseOrder::getId).collect(toList());
+    return orderService.createInvoiceOrderRelations(invoiceId, poIds, requestContext)
+      .onFailure(t -> logger.error("Error when creating invoice order relations", t));
+  }
+
+  private void updateInvoicePoNumbers(Invoice invoice, List<PurchaseOrder> pos) {
+    List<String> numbers = pos.stream().map(PurchaseOrder::getPoNumber).collect(toList());
+    invoice.setPoNumbers(numbers);
+  }
+
 
   private Future<Void> handleExchangeRateChange(Invoice invoice, List<InvoiceLine> invoiceLines) {
     return getInvoiceWorkflowDataHolders(invoice, invoiceLines, requestContext)
@@ -325,7 +505,7 @@ public class InvoiceHelper extends AbstractHelper {
             return null;
           })
           .map(aVoid -> filterUpdatedLines(invoiceLines, updatedInvoiceLines))
-          .compose(lines -> invoiceLineService.persistInvoiceLines(lines, requestContext)))
+          .compose(lines -> invoiceLineService.updateInvoiceLines(lines, requestContext)))
         .compose(lines -> updateEncumbranceLinksWhenFiscalYearIsChanged(invoice, invoiceFromStorage, invoiceLines)));
   }
 
@@ -461,7 +641,7 @@ public class InvoiceHelper extends AbstractHelper {
       .compose(v -> getInvoiceWorkflowDataHolders(invoice, lines, requestContext))
       .compose(holders -> encumbranceService.updateInvoiceLinesEncumbranceLinks(holders,
           holders.get(0).getFiscalYear().getId(), requestContext)
-        .compose(linesToUpdate -> invoiceLineService.persistInvoiceLines(linesToUpdate, requestContext))
+        .compose(linesToUpdate -> invoiceLineService.updateInvoiceLines(linesToUpdate, requestContext))
         .map(v -> holders))
       .compose(holders -> budgetExpenseClassService.checkExpenseClasses(holders, requestContext))
       .compose(holders -> pendingPaymentWorkflowService.handlePendingPaymentsCreation(holders, invoice, requestContext))
@@ -847,7 +1027,7 @@ public class InvoiceHelper extends AbstractHelper {
     List<InvoiceWorkflowDataHolder> dataHolders = holderBuilder.buildHoldersSkeleton(lines, invoice);
     return holderBuilder.withEncumbrances(dataHolders, requestContext)
       .compose(holders -> encumbranceService.updateInvoiceLinesEncumbranceLinks(holders, newFiscalYearId, requestContext))
-      .compose(linesToUpdate -> invoiceLineService.persistInvoiceLines(linesToUpdate, requestContext));
+      .compose(linesToUpdate -> invoiceLineService.updateInvoiceLines(linesToUpdate, requestContext));
   }
 
   @VisibleForTesting

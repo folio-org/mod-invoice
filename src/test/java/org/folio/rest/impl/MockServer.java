@@ -20,7 +20,7 @@ import static org.folio.invoices.utils.ResourcePathResolver.BATCH_VOUCHER_EXPORT
 import static org.folio.invoices.utils.ResourcePathResolver.BATCH_VOUCHER_STORAGE;
 import static org.folio.invoices.utils.ResourcePathResolver.BUDGETS;
 import static org.folio.invoices.utils.ResourcePathResolver.BUDGET_EXPENSE_CLASSES;
-import static org.folio.invoices.utils.ResourcePathResolver.COMPOSITE_ORDER;
+import static org.folio.invoices.utils.ResourcePathResolver.COMPOSITE_ORDERS;
 import static org.folio.invoices.utils.ResourcePathResolver.CURRENT_BUDGET;
 import static org.folio.invoices.utils.ResourcePathResolver.EXPENSE_CLASSES_URL;
 import static org.folio.invoices.utils.ResourcePathResolver.FINANCE_CREDITS;
@@ -133,6 +133,10 @@ import org.folio.rest.acq.model.finance.TransactionCollection;
 import org.folio.rest.acq.model.orders.CompositePoLine;
 import org.folio.rest.acq.model.orders.CompositePurchaseOrder;
 import org.folio.rest.acq.model.orders.OrderInvoiceRelationshipCollection;
+import org.folio.rest.acq.model.orders.PoLine;
+import org.folio.rest.acq.model.orders.PoLineCollection;
+import org.folio.rest.acq.model.orders.PurchaseOrder;
+import org.folio.rest.acq.model.orders.PurchaseOrderCollection;
 import org.folio.rest.acq.model.units.AcquisitionsUnit;
 import org.folio.rest.acq.model.units.AcquisitionsUnitCollection;
 import org.folio.rest.acq.model.units.AcquisitionsUnitMembershipCollection;
@@ -205,6 +209,8 @@ public class MockServer {
   private static final String VOUCHER_LINES_COLLECTION = BASE_MOCK_DATA_PATH + "voucherLines/voucher_lines.json";
   public static final String BUDGETS_PATH = BASE_MOCK_DATA_PATH + "budgets/budgets.json";
   public static final String LEDGERS_PATH = BASE_MOCK_DATA_PATH + "ledgers/ledgers.json";
+  public static final String POLINES_PATH = BASE_MOCK_DATA_PATH + "poLines/po_lines.json";
+  public static final String COMPOSITE_ORDERS_PATH = BASE_MOCK_DATA_PATH + "compositeOrders/composite_orders.json";
   private static final String ACQUISITIONS_UNITS_MOCK_DATA_PATH = BASE_MOCK_DATA_PATH + "acquisitionUnits";
   static final String ACQUISITIONS_UNITS_COLLECTION = ACQUISITIONS_UNITS_MOCK_DATA_PATH + "/units.json";
   static final String ACQUISITIONS_MEMBERSHIPS_COLLECTION = ACQUISITIONS_UNITS_MOCK_DATA_PATH + "/memberships.json";
@@ -406,8 +412,10 @@ public class MockServer {
     router.route(HttpMethod.GET, resourcesPath(INVOICE_LINE_NUMBER)).handler(this::handleGetInvoiceLineNumber);
     router.route(HttpMethod.GET, resourceByIdPath(VOUCHER_LINES)).handler(this::handleGetVoucherLineById);
     router.route(HttpMethod.GET, resourceByIdPath(VOUCHERS_STORAGE)).handler(this::handleGetVoucherById);
-    router.route(HttpMethod.GET, resourceByIdPath(COMPOSITE_ORDER)).handler(this::handleGetOrderById);
+    router.route(HttpMethod.GET, resourceByIdPath(COMPOSITE_ORDERS)).handler(this::handleGetOrderById);
+    router.route(HttpMethod.GET, resourcesPath(COMPOSITE_ORDERS)).handler(this::handleGetOrderByQuery);
     router.route(HttpMethod.GET, resourceByIdPath(ORDER_LINES)).handler(this::handleGetPoLineById);
+    router.route(HttpMethod.GET, resourcesPath(ORDER_LINES)).handler(this::handleGetPoLineByQuery);
     router.route(HttpMethod.GET, resourcesPath(ORDER_INVOICE_RELATIONSHIP)).handler(this::handleGetOrderInvoiceRelations);
     router.route(HttpMethod.GET, resourcesPath(VOUCHER_NUMBER_START)).handler(this::handleGetSequence);
     router.route(HttpMethod.GET, resourcesPath(VOUCHERS_STORAGE)).handler(this::handleGetVouchers);
@@ -1076,7 +1084,7 @@ public class MockServer {
       serverResponse(ctx, 500, TEXT_PLAIN, INTERNAL_SERVER_ERROR.getReasonPhrase());
     } else {
       JsonObject body = ctx.body().asJsonObject();
-      if (generateId) {
+      if (generateId && body.getString(AbstractHelper.ID) == null) {
         String id = UUID.randomUUID().toString();
         body.put(AbstractHelper.ID, id);
       }
@@ -1275,7 +1283,7 @@ public class MockServer {
     String id = ctx.request().getParam(AbstractHelper.ID);
     logger.info("id: " + id);
 
-    addServerRqRsData(HttpMethod.GET, COMPOSITE_ORDER, new JsonObject().put(AbstractHelper.ID, id));
+    addServerRqRsData(HttpMethod.GET, COMPOSITE_ORDERS, new JsonObject().put(AbstractHelper.ID, id));
 
     Supplier<JsonObject> getFromFile = () -> {
       String filePath = String.format(MOCK_DATA_PATH_PATTERN, ORDER_MOCK_DATA_PATH, id);
@@ -1286,7 +1294,7 @@ public class MockServer {
       }
     };
 
-    JsonObject order = getMockEntry(COMPOSITE_ORDER, id).orElseGet(getFromFile);
+    JsonObject order = getMockEntry(COMPOSITE_ORDERS, id).orElseGet(getFromFile);
     if (order == null) {
       ctx.response().setStatusCode(404).end(id);
     } else {
@@ -1297,6 +1305,36 @@ public class MockServer {
 
       serverResponse(ctx, 200, APPLICATION_JSON, order.encodePrettily());
     }
+  }
+
+  private void handleGetOrderByQuery(RoutingContext ctx) {
+    String query = StringUtils.trimToEmpty(ctx.request().getParam(QUERY));
+    addServerRqQuery(COMPOSITE_ORDERS, query);
+    if (query.contains("id==")) {
+      List<String> ids = extractIdsFromQuery("id", "==", query);
+      PurchaseOrderCollection orderCollection = getOrdersByIds(ids);
+      JsonObject collection = JsonObject.mapFrom(orderCollection);
+      addServerRqRsData(HttpMethod.GET, COMPOSITE_ORDERS, collection);
+      ctx.response()
+        .setStatusCode(200)
+        .putHeader(HttpHeaders.CONTENT_TYPE, APPLICATION_JSON)
+        .end(collection.encodePrettily());
+    }
+  }
+
+  private PurchaseOrderCollection getOrdersByIds(List<String> ids) {
+    Supplier<List<PurchaseOrder>> getFromFile = () -> {
+      try {
+        return new JsonObject(getMockData(COMPOSITE_ORDERS_PATH)).mapTo(PurchaseOrderCollection.class).getPurchaseOrders();
+      } catch (IOException e) {
+        return Collections.emptyList();
+      }
+    };
+    List<PurchaseOrder> orders = getMockEntries(COMPOSITE_ORDERS, PurchaseOrder.class).orElseGet(getFromFile);
+    if (!ids.isEmpty()) {
+      orders.removeIf(item -> !ids.contains(item.getId()));
+    }
+    return new PurchaseOrderCollection().withPurchaseOrders(orders).withTotalRecords(orders.size());
   }
 
   private void handleGetPoLineById(RoutingContext ctx) {
@@ -1335,6 +1373,36 @@ public class MockServer {
         serverResponse(ctx, 200, APPLICATION_JSON, poLine.encodePrettily());
       }
     }
+  }
+
+  private void handleGetPoLineByQuery(RoutingContext ctx) {
+    String query = StringUtils.trimToEmpty(ctx.request().getParam(QUERY));
+    addServerRqQuery(ORDER_LINES, query);
+    if (query.contains("id==")) {
+      List<String> ids = extractIdsFromQuery("id", "==", query);
+      PoLineCollection poLineCollection = getPoLinesByIds(ids);
+      JsonObject collection = JsonObject.mapFrom(poLineCollection);
+      addServerRqRsData(HttpMethod.GET, ORDER_LINES, collection);
+      ctx.response()
+        .setStatusCode(200)
+        .putHeader(HttpHeaders.CONTENT_TYPE, APPLICATION_JSON)
+        .end(collection.encodePrettily());
+    }
+  }
+
+  private PoLineCollection getPoLinesByIds(List<String> ids) {
+    Supplier<List<PoLine>> getFromFile = () -> {
+      try {
+        return new JsonObject(getMockData(POLINES_PATH)).mapTo(PoLineCollection.class).getPoLines();
+      } catch (IOException e) {
+        return Collections.emptyList();
+      }
+    };
+    List<PoLine> poLines = getMockEntries(ORDER_LINES, PoLine.class).orElseGet(getFromFile);
+    if (!ids.isEmpty()) {
+      poLines.removeIf(item -> !ids.contains(item.getId()));
+    }
+    return new PoLineCollection().withPoLines(poLines).withTotalRecords(poLines.size());
   }
 
   private void serverResponse(RoutingContext ctx, int statusCode, String contentType, String body) {
