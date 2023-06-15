@@ -13,6 +13,7 @@ import static org.folio.invoices.utils.ErrorCodes.CANNOT_RESET_INVOICE_FISCAL_YE
 import static org.folio.invoices.utils.ErrorCodes.INVALID_INVOICE_TRANSITION_ON_PAID_STATUS;
 import static org.folio.invoices.utils.ErrorCodes.ORG_IS_NOT_VENDOR;
 import static org.folio.invoices.utils.ErrorCodes.ORG_NOT_FOUND;
+import static org.folio.invoices.utils.ErrorCodes.MULTIPLE_FISCAL_YEARS_ERROR;
 import static org.folio.invoices.utils.HelperUtils.calculateVoucherLineAmount;
 import static org.folio.invoices.utils.HelperUtils.combineCqlExpressions;
 import static org.folio.invoices.utils.HelperUtils.getAdjustmentFundDistributionAmount;
@@ -33,6 +34,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -54,6 +56,7 @@ import org.folio.models.InvoiceWorkflowDataHolder;
 import org.folio.okapi.common.GenericCompositeFuture;
 import org.folio.rest.acq.model.Organization;
 import org.folio.rest.acq.model.finance.ExpenseClass;
+import org.folio.rest.acq.model.finance.FiscalYear;
 import org.folio.rest.acq.model.finance.Fund;
 import org.folio.rest.acq.model.orders.CompositePoLine;
 import org.folio.rest.core.models.RequestContext;
@@ -169,16 +172,26 @@ public class InvoiceHelper extends AbstractHelper {
       return succeededFuture();
     }
 
-    String fundId = invoice.getAdjustments().stream()
+    Set<String> fundIds = invoice.getAdjustments().stream()
       .flatMap(adjustment -> adjustment.getFundDistributions().stream())
       .map(FundDistribution::getFundId)
-      .findFirst()
-      .orElse(null);
+      .collect(Collectors.toSet());
 
-    if (StringUtils.isNotEmpty(fundId)) {
-      return currentFiscalYearService.getCurrentFiscalYearByFund(fundId, requestContext)
-        .map(fiscalYear -> {
-          invoice.setFiscalYearId(fiscalYear.getId());
+    if (!fundIds.isEmpty()) {
+      return HelperUtils.executeWithSemaphores(fundIds,
+          fundId -> currentFiscalYearService.getCurrentFiscalYearByFund(fundId, requestContext),
+          requestContext)
+        .map(fiscalYears -> {
+          List<FiscalYear> uniqueFiscalYears = fiscalYears.stream().distinct().collect(toList());
+          if (uniqueFiscalYears.size() > 1) {
+            String message = String.format(MULTIPLE_FISCAL_YEARS_ERROR.getDescription(), uniqueFiscalYears.get(0).getCode(),
+              uniqueFiscalYears.get(1).getCode());
+            Error error = new Error().withCode(MULTIPLE_FISCAL_YEARS_ERROR.getCode()).withMessage(message);
+            logger.error(error);
+            throw new HttpException(422, error);
+          } else {
+            invoice.setFiscalYearId(uniqueFiscalYears.get(0).getId());
+          }
           return null;
         });
     }
