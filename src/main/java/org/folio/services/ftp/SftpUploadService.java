@@ -59,19 +59,25 @@ public class SftpUploadService {
   public Future<String> upload(Context ctx, String username, String password, String folder, String filename, String content)
       throws Exception {
     Promise<String> promise = Promise.promise();
-    String folderPath = StringUtils.isEmpty(folder) ? "" : (folder + FILE_SEPARATOR);
-    String remoteAbsPath = folderPath + filename;
-
+    String remoteAbsPath;
+    if (StringUtils.isNotEmpty(folder)) {
+      String folderPath = StringUtils.isEmpty(folder) ? "" : (folder + FILE_SEPARATOR);
+      remoteAbsPath = folderPath + filename;
+    } else {
+      remoteAbsPath = DEFAULT_WORKING_DIR + FILE_SEPARATOR + filename;
+    }
     SessionFactory<SftpClient.DirEntry> sshdFactory;
+    Session<SftpClient.DirEntry> session;
     try {
       sshdFactory = getSshdSessionFactory(username, password);
+      session = sshdFactory.getSession();
     } catch (Exception e) {
       throw new FtpException(HttpStatus.HTTP_FORBIDDEN.toInt(),String.format("Unable to connect to %s:%d", server, port));
     }
     ctx.owner().executeBlocking(blockingFeature -> {
-      try (InputStream inputStream = new ByteArrayInputStream(content.getBytes()); var session = sshdFactory.getSession()) {
+      try (InputStream inputStream = new ByteArrayInputStream(content.getBytes()); session) {
         logger.info("Start uploading file to SFTP path: {}", remoteAbsPath);
-        if (Objects.nonNull(folder)) {
+        if (StringUtils.isNotEmpty(folder)) {
           createRemoteDirectoryIfAbsent(session, folder);
         } else {
           createRemoteDirectoryIfAbsent(session, DEFAULT_WORKING_DIR);
