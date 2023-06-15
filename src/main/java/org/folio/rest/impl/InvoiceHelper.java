@@ -179,7 +179,7 @@ public class InvoiceHelper extends AbstractHelper {
       .map(FundDistribution::getFundId)
       .collect(Collectors.toSet());
 
-    if (!fundIds.isEmpty()) {
+    if (CollectionUtils.isNotEmpty(fundIds)) {
       return HelperUtils.executeWithSemaphores(fundIds,
           fundId -> currentFiscalYearService.getCurrentFiscalYearByFund(fundId, requestContext),
           requestContext)

@@ -31,6 +31,7 @@ import javax.money.convert.ConversionQueryBuilder;
 
 import io.vertx.core.Vertx;
 import io.vertxconcurrent.Semaphore;
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.collections4.map.CaseInsensitiveMap;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -174,7 +175,7 @@ public class HelperUtils {
 
   public static <I, O> Future<List<O>> executeWithSemaphores(Collection<I> collection,
                                                              FunctionReturningFuture<I, O> f, RequestContext requestContext) {
-    if (collection.isEmpty())
+    if (CollectionUtils.isEmpty(collection))
       return Future.succeededFuture(List.of());
     return requestContext.getContext().<List<Future<O>>>executeBlocking(promise -> {
       Semaphore semaphore = new Semaphore(SEMAPHORE_MAX_ACTIVE_THREADS, Vertx.currentContext().owner());
