@@ -29,6 +29,7 @@ import static org.folio.invoices.utils.ErrorCodes.VOUCHER_NOT_FOUND;
 import static org.folio.invoices.utils.ErrorCodes.VOUCHER_NUMBER_PREFIX_NOT_ALPHA;
 import static org.folio.invoices.utils.ErrorCodes.VOUCHER_UPDATE_FAILURE;
 import static org.folio.invoices.utils.ErrorCodes.USER_HAS_NO_FISCAL_YEAR_UPDATE_PERMISSIONS;
+import static org.folio.invoices.utils.ErrorCodes.MULTIPLE_ADJUSTMENTS_FISCAL_YEARS;
 import static org.folio.invoices.utils.HelperUtils.INVOICE;
 import static org.folio.invoices.utils.HelperUtils.calculateInvoiceLineTotals;
 import static org.folio.invoices.utils.HelperUtils.calculateVoucherAmount;
@@ -198,6 +199,7 @@ public class InvoicesApiTest extends ApiTestBase {
   private static final String INVOICE_LINE_WITH_OPEN_EXISTED_INVOICE_ID = "5cb6d270-a54c-4c38-b645-3ae7f249c606";
   private static final String APPROVED_INVOICE_SAMPLE_PATH = INVOICE_MOCK_DATA_PATH + APPROVED_INVOICE_ID + ".json";
   private static final String APPROVED_INVOICE_WITHOUT_FISCAL_YEAR_SAMPLE_PATH = INVOICE_MOCK_DATA_PATH + APPROVED_INVOICE_WITHOUT_FISCAL_YEAR_ID + ".json";
+  private static final String APPROVED_INVOICE_MULTIPLE_ADJUSTMENTS_FISCAL_YEAR_SAMPLE_PATH = INVOICE_MOCK_DATA_PATH + APPROVED_INVOICE_MULTIPLE_ADJUSTMENTS_FISCAL_YEAR_ID + ".json";
   private static final String APPROVED_INVOICE_SAMPLE_PATH_WITHOUT_FISCAL_YEAR = INVOICE_MOCK_DATA_PATH + APPROVED_INVOICE_ID_WITHOUT_FISCAL_YEAR + ".json";
   private static final String APPROVED_INVOICE_FOR_MOVE_PAYMENT_PATH = INVOICE_MOCK_DATA_PATH + "b8862151-6aa5-4301-aa1a-34096a03a5f7.json";
   private static final String REVIEWED_INVOICE_SAMPLE_PATH = INVOICE_MOCK_DATA_PATH + REVIEWED_INVOICE_ID + ".json";
@@ -2721,6 +2723,22 @@ public class InvoicesApiTest extends ApiTestBase {
 
     // Check that invoice in the response and the one in storage are the same
     compareRecordWithSentToStorage(respData);
+  }
+
+  @Test
+  public void updateInvoiceFiscalYearUseMultipleAdjustmentFundFiscalYear() throws IOException {
+    logger.info("=== Update invoice fiscal year use multiple adjustment fund fiscal year ===");
+    String body = getMockData(APPROVED_INVOICE_MULTIPLE_ADJUSTMENTS_FISCAL_YEAR_SAMPLE_PATH);
+
+    final Errors errors = verifyPostResponse(INVOICE_PATH, body, prepareHeaders(X_OKAPI_TENANT), APPLICATION_JSON, 422).as(Errors.class);
+
+    assertThat(errors, notNullValue());
+    assertThat(errors.getErrors(), hasSize(1));
+    final Error error = errors.getErrors()
+      .get(0);
+    assertThat(error.getMessage(), equalTo(MULTIPLE_ADJUSTMENTS_FISCAL_YEARS.getDescription()));
+    assertThat(error.getCode(), equalTo(MULTIPLE_ADJUSTMENTS_FISCAL_YEARS.getCode()));
+    assertThat(error.getParameters().size(), equalTo(2));
   }
 
   @Test
