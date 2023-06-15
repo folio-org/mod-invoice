@@ -72,7 +72,8 @@ public class SftpUploadService {
       sshdFactory = getSshdSessionFactory(username, password);
       session = sshdFactory.getSession();
     } catch (Exception e) {
-      throw new FtpException(HttpStatus.HTTP_FORBIDDEN.toInt(),String.format("Unable to connect to %s:%d", server, port));
+      promise.fail(new FtpException(HttpStatus.HTTP_FORBIDDEN.toInt(),String.format("Unable to connect to %s:%d", server, port)));
+      return promise.future();
     }
     ctx.owner().executeBlocking(blockingFeature -> {
       try (InputStream inputStream = new ByteArrayInputStream(content.getBytes()); session) {
