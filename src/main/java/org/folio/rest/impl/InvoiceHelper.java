@@ -289,6 +289,7 @@ public class InvoiceHelper extends AbstractHelper {
       })
       .compose(v -> getInvoiceRecord(invoice.getId()))
       .compose(invoiceFromStorage -> validateAndHandleInvoiceStatusTransition(invoice, invoiceFromStorage))
+      .compose(v -> validateFiscalYearId(invoice, requestContext))
       .compose(v -> updateInvoiceRecord(invoice));
   }
 
