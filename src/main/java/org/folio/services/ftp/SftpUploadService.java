@@ -30,6 +30,7 @@ public class SftpUploadService {
   private final String server;
   private final int port;
   private static final String FILE_SEPARATOR = "/";
+  public static final String DEFAULT_WORKING_DIR = "/ftp/files/invoices";
 
   public SftpUploadService(String uri, Integer portFromConfig) throws URISyntaxException {
     URI u = new URI(uri);
@@ -70,8 +71,11 @@ public class SftpUploadService {
     ctx.owner().executeBlocking(blockingFeature -> {
       try (InputStream inputStream = new ByteArrayInputStream(content.getBytes()); var session = sshdFactory.getSession()) {
         logger.info("Start uploading file to SFTP path: {}", remoteAbsPath);
-
-        createRemoteDirectoryIfAbsent(session, folder);
+        if (Objects.nonNull(folder)) {
+          createRemoteDirectoryIfAbsent(session, folder);
+        } else {
+          createRemoteDirectoryIfAbsent(session, DEFAULT_WORKING_DIR);
+        }
         session.write(inputStream, remoteAbsPath);
         logger.info("File was uploaded to SFTP successfully to path: {}", remoteAbsPath);
         blockingFeature.complete("Uploaded successfully");
