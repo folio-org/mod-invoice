@@ -90,8 +90,8 @@ public class SftpUploadService {
         logger.error("Error uploading the file {}", remoteAbsPath, e);
         blockingFeature.fail(new CompletionException(e));
       } finally {
-        if (Objects.nonNull(sshdFactory.getSession())) {
-          sshdFactory.getSession().close();
+        if (Objects.nonNull(session) && session.isOpen()) {
+          session.close();
         }
       }
     }, false, asyncResultHandler(promise));
