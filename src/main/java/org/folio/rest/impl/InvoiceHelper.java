@@ -13,7 +13,7 @@ import static org.folio.invoices.utils.ErrorCodes.CANNOT_RESET_INVOICE_FISCAL_YE
 import static org.folio.invoices.utils.ErrorCodes.INVALID_INVOICE_TRANSITION_ON_PAID_STATUS;
 import static org.folio.invoices.utils.ErrorCodes.ORG_IS_NOT_VENDOR;
 import static org.folio.invoices.utils.ErrorCodes.ORG_NOT_FOUND;
-import static org.folio.invoices.utils.ErrorCodes.MULTIPLE_FISCAL_YEARS_ERROR;
+import static org.folio.invoices.utils.ErrorCodes.MULTIPLE_ADJUSTMENTS_FISCAL_YEARS;
 import static org.folio.invoices.utils.HelperUtils.calculateVoucherLineAmount;
 import static org.folio.invoices.utils.HelperUtils.combineCqlExpressions;
 import static org.folio.invoices.utils.HelperUtils.getAdjustmentFundDistributionAmount;
@@ -26,10 +26,12 @@ import static org.folio.utils.UserPermissionsUtil.verifyUserHasAssignPermission;
 import static org.folio.utils.UserPermissionsUtil.verifyUserHasManagePermission;
 import static org.folio.utils.UserPermissionsUtil.verifyUserHasFiscalYearUpdatePermission;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -182,15 +184,17 @@ public class InvoiceHelper extends AbstractHelper {
           fundId -> currentFiscalYearService.getCurrentFiscalYearByFund(fundId, requestContext),
           requestContext)
         .map(fiscalYears -> {
-          List<FiscalYear> uniqueFiscalYears = fiscalYears.stream().distinct().collect(toList());
+          Set<FiscalYear> uniqueFiscalYears = new HashSet<>(fiscalYears);
           if (uniqueFiscalYears.size() > 1) {
-            String message = String.format(MULTIPLE_FISCAL_YEARS_ERROR.getDescription(), uniqueFiscalYears.get(0).getCode(),
-              uniqueFiscalYears.get(1).getCode());
-            Error error = new Error().withCode(MULTIPLE_FISCAL_YEARS_ERROR.getCode()).withMessage(message);
+            List<Parameter> parameters = new ArrayList<>();
+            for (FiscalYear fiscalYear : uniqueFiscalYears) {
+              parameters.add(new Parameter().withKey("fiscalYearCode").withValue(fiscalYear.getCode()));
+            }
+            Error error = MULTIPLE_ADJUSTMENTS_FISCAL_YEARS.toError().withParameters(parameters);
             logger.error(error);
             throw new HttpException(422, error);
           } else {
-            invoice.setFiscalYearId(uniqueFiscalYears.get(0).getId());
+            invoice.setFiscalYearId(uniqueFiscalYears.stream().findFirst().get().getId());
           }
           return null;
         });
