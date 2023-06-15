@@ -13,6 +13,7 @@ import static org.folio.invoices.utils.ErrorCodes.CANNOT_RESET_INVOICE_FISCAL_YE
 import static org.folio.invoices.utils.ErrorCodes.INVALID_INVOICE_TRANSITION_ON_PAID_STATUS;
 import static org.folio.invoices.utils.ErrorCodes.ORG_IS_NOT_VENDOR;
 import static org.folio.invoices.utils.ErrorCodes.ORG_NOT_FOUND;
+import static org.folio.invoices.utils.ErrorCodes.MULTIPLE_ADJUSTMENTS_FISCAL_YEARS;
 import static org.folio.invoices.utils.HelperUtils.calculateVoucherLineAmount;
 import static org.folio.invoices.utils.HelperUtils.combineCqlExpressions;
 import static org.folio.invoices.utils.HelperUtils.getAdjustmentFundDistributionAmount;
@@ -25,14 +26,17 @@ import static org.folio.utils.UserPermissionsUtil.verifyUserHasAssignPermission;
 import static org.folio.utils.UserPermissionsUtil.verifyUserHasManagePermission;
 import static org.folio.utils.UserPermissionsUtil.verifyUserHasFiscalYearUpdatePermission;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -54,6 +58,7 @@ import org.folio.models.InvoiceWorkflowDataHolder;
 import org.folio.okapi.common.GenericCompositeFuture;
 import org.folio.rest.acq.model.Organization;
 import org.folio.rest.acq.model.finance.ExpenseClass;
+import org.folio.rest.acq.model.finance.FiscalYear;
 import org.folio.rest.acq.model.finance.Fund;
 import org.folio.rest.acq.model.orders.CompositePoLine;
 import org.folio.rest.core.models.RequestContext;
@@ -158,9 +163,44 @@ public class InvoiceHelper extends AbstractHelper {
       })
       .compose(v -> validateAcqUnitsOnCreate(invoice.getAcqUnitIds()))
       .compose(v -> updateWithSystemGeneratedData(invoice))
+      .compose(v -> validateFiscalYearId(invoice, requestContext))
       .compose(v -> invoiceService.createInvoice(invoice, requestContext))
       .map(Invoice::getId)
       .map(invoice::withId);
+  }
+
+  private Future<Void> validateFiscalYearId(Invoice invoice, RequestContext requestContext) {
+    if (StringUtils.isNotEmpty(invoice.getFiscalYearId())) {
+      return succeededFuture();
+    }
+
+    Set<String> fundIds = invoice.getAdjustments().stream()
+      .flatMap(adjustment -> adjustment.getFundDistributions().stream())
+      .map(FundDistribution::getFundId)
+      .collect(Collectors.toSet());
+
+    if (CollectionUtils.isNotEmpty(fundIds)) {
+      return HelperUtils.executeWithSemaphores(fundIds,
+          fundId -> currentFiscalYearService.getCurrentFiscalYearByFund(fundId, requestContext),
+          requestContext)
+        .map(fiscalYears -> {
+          Set<FiscalYear> uniqueFiscalYears = new HashSet<>(fiscalYears);
+          if (uniqueFiscalYears.size() > 1) {
+            List<Parameter> parameters = new ArrayList<>();
+            for (FiscalYear fiscalYear : uniqueFiscalYears) {
+              parameters.add(new Parameter().withKey("fiscalYearCode").withValue(fiscalYear.getCode()));
+            }
+            Error error = MULTIPLE_ADJUSTMENTS_FISCAL_YEARS.toError().withParameters(parameters);
+            logger.error(error);
+            throw new HttpException(422, error);
+          } else {
+            invoice.setFiscalYearId(uniqueFiscalYears.stream().findFirst().get().getId());
+          }
+          return null;
+        });
+    }
+
+    return succeededFuture();
   }
 
   /**
@@ -266,6 +306,7 @@ public class InvoiceHelper extends AbstractHelper {
       })
       .compose(v -> getInvoiceRecord(invoice.getId()))
       .compose(invoiceFromStorage -> validateAndHandleInvoiceStatusTransition(invoice, invoiceFromStorage))
+      .compose(v -> validateFiscalYearId(invoice, requestContext))
       .compose(v -> updateInvoiceRecord(invoice));
   }
 

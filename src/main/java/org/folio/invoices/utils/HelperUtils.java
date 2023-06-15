@@ -6,6 +6,7 @@ import static org.folio.invoices.utils.ResourcePathResolver.INVOICES;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_LINES;
 import static org.folio.invoices.utils.ResourcePathResolver.VOUCHERS_STORAGE;
 import static org.folio.invoices.utils.ResourcePathResolver.VOUCHER_LINES;
+import static org.folio.rest.RestConstants.SEMAPHORE_MAX_ACTIVE_THREADS;
 import static org.folio.rest.impl.AbstractHelper.ID;
 import static org.folio.rest.jaxrs.model.FundDistribution.DistributionType.PERCENTAGE;
 import static org.folio.services.exchange.ExchangeRateProviderResolver.RATE_KEY;
@@ -28,12 +29,16 @@ import javax.money.MonetaryAmount;
 import javax.money.convert.ConversionQuery;
 import javax.money.convert.ConversionQueryBuilder;
 
+import io.vertx.core.Vertx;
+import io.vertxconcurrent.Semaphore;
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.collections4.map.CaseInsensitiveMap;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.okapi.common.GenericCompositeFuture;
 import org.folio.rest.acq.model.finance.ExchangeRate;
+import org.folio.rest.core.models.RequestContext;
 import org.folio.rest.impl.ProtectionHelper;
 import org.folio.rest.jaxrs.model.Adjustment;
 import org.folio.rest.jaxrs.model.FundDistribution;
@@ -166,6 +171,30 @@ public class HelperUtils {
   public static <T> Future<List<T>> collectResultsOnSuccess(List<Future<T>> futures) {
     return GenericCompositeFuture.join(new ArrayList<>(futures))
       .map(CompositeFuture::list);
+  }
+
+  public static <I, O> Future<List<O>> executeWithSemaphores(Collection<I> collection,
+                                                             FunctionReturningFuture<I, O> f, RequestContext requestContext) {
+    if (CollectionUtils.isEmpty(collection))
+      return Future.succeededFuture(List.of());
+    return requestContext.getContext().<List<Future<O>>>executeBlocking(promise -> {
+      Semaphore semaphore = new Semaphore(SEMAPHORE_MAX_ACTIVE_THREADS, Vertx.currentContext().owner());
+      List<Future<O>> futures = new ArrayList<>();
+      for (I item : collection) {
+        semaphore.acquire(() -> {
+          Future<O> future = f.apply(item)
+            .onComplete(asyncResult -> semaphore.release());
+          futures.add(future);
+          if (futures.size() == collection.size()) {
+            promise.complete(futures);
+          }
+        });
+      }
+    }).compose(HelperUtils::collectResultsOnSuccess);
+  }
+
+  public interface FunctionReturningFuture<I, O> {
+    Future<O> apply(I item);
   }
 
   public static double calculateVoucherAmount(Voucher voucher, List<VoucherLine> voucherLines) {
