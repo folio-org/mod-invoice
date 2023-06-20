@@ -115,9 +115,12 @@ public class FundAvailabilityHolderValidator implements HolderValidator {
 
           MonetaryAmount transactionAmountDif = newTransactionAmount.subtract(existingTransactionAmount);
           MonetaryAmount newExpendedAmount = transactionAmountDif;
+          boolean isReleaseEncumbrance = holder.getNewTransaction().getAwaitingPayment().getReleaseEncumbrance();
           if (transactionAmountDif.isPositive()) {
               newExpendedAmount = transactionAmountDif.subtract(encumbranceAmount);
-              if (newExpendedAmount.isNegative()) {
+              if (newExpendedAmount.isNegative() && isReleaseEncumbrance) {
+                newExpendedAmount = Money.of(0, transactionAmountDif.getCurrency());
+              } else {
                 newExpendedAmount = transactionAmountDif;
               }
               MonetaryAmount encumbranceReminder = MonetaryFunctions.max().apply(encumbranceAmount.subtract(newExpendedAmount).add(existingTransactionAmount), Money.zero(currency));
