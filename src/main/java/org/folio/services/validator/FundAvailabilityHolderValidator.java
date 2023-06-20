@@ -19,6 +19,7 @@ import javax.money.MonetaryAmount;
 
 import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.models.InvoiceWorkflowDataHolder;
+import org.folio.rest.acq.model.finance.AwaitingPayment;
 import org.folio.rest.acq.model.finance.Budget;
 import org.folio.rest.acq.model.finance.Fund;
 import org.folio.rest.jaxrs.model.Parameter;
@@ -115,7 +116,9 @@ public class FundAvailabilityHolderValidator implements HolderValidator {
 
           MonetaryAmount transactionAmountDif = newTransactionAmount.subtract(existingTransactionAmount);
           MonetaryAmount newExpendedAmount = transactionAmountDif;
-          boolean isReleaseEncumbrance = holder.getNewTransaction().getAwaitingPayment().getReleaseEncumbrance();
+          boolean isReleaseEncumbrance = Optional.ofNullable(holder.getNewTransaction().getAwaitingPayment())
+            .map(AwaitingPayment::getReleaseEncumbrance)
+            .orElse(false);
           if (transactionAmountDif.isPositive()) {
               newExpendedAmount = transactionAmountDif.subtract(encumbranceAmount);
               if (newExpendedAmount.isNegative() && isReleaseEncumbrance) {
