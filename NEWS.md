@@ -1,5 +1,14 @@
 ## 5.7.0 - Unreleased
 
+## 5.6.4 - Orchid R1 2023 Bug Fix
+The focus of this release was to fix invoice approving
+
+[Full Changelog](https://github.com/folio-org/mod-invoice/compare/v5.6.3...v5.6.4)
+
+### Bug Fixes
+* [MODINVOICE-477](https://issues.folio.org/browse/MODINVOICE-477) - Invoice cannot be approved when balance is close to the encumbrance available balance
+
+
 ## 5.6.3 - Orchid R1 2023 Bug Fix
 The focus of this release was to fix batch voucher export flow
 
