@@ -392,4 +392,58 @@ public class FundAvailabilityHolderValidatorTest {
     assertEquals(FUND_CANNOT_BE_PAID.getCode(), error.getCode());
     assertEquals(Collections.singletonList("FC").toString(), error.getParameters().get(0).getValue());
   }
+
+  @Test
+  void shouldPassValidationWhenBudgetRestrictedAndInvoiceApproveLessThanOrdersEncumbered() {
+    String fiscalYearId = UUID.randomUUID().toString();
+    String fundId = UUID.randomUUID().toString();
+    String budgetId = UUID.randomUUID().toString();
+    String ledgerId = UUID.randomUUID().toString();
+    FiscalYear fiscalYear = new FiscalYear()
+      .withCurrency("USD")
+      .withId(fiscalYearId);
+
+    Fund fund = new Fund()
+      .withId(fundId)
+      .withName("TestFund")
+      .withLedgerId(ledgerId)
+      .withCode("FC")
+      .withFundStatus(Fund.FundStatus.ACTIVE);
+
+    Budget budget = new Budget()
+      .withId(budgetId)
+      .withFiscalYearId(fiscalYearId)
+      .withFundId(fundId)
+      .withAllocated(100d)
+      .withTotalFunding(100d)
+      .withAvailable(2d)
+      .withUnavailable(98d)
+      .withEncumbered(98d)
+      .withAwaitingPayment(0d)
+      .withAllowableExpenditure(100d);
+
+    List<InvoiceWorkflowDataHolder> holders = new ArrayList<>();
+
+    Transaction encumbrance = new Transaction()
+      .withId(UUID.randomUUID().toString())
+      .withAmount(98d)
+      .withCurrency("USD");
+
+    Transaction linePendingPayment = new Transaction().withAmount(96.99d)
+      .withAwaitingPayment(new AwaitingPayment().withEncumbranceId(encumbrance.getId()).withReleaseEncumbrance(true))
+      .withCurrency("USD");
+
+    InvoiceWorkflowDataHolder holder1 = new InvoiceWorkflowDataHolder()
+      .withFund(fund)
+      .withBudget(budget)
+      .withRestrictExpenditures(true)
+      .withFiscalYear(fiscalYear)
+      .withNewTransaction(linePendingPayment)
+      .withEncumbrance(encumbrance);
+
+    holders.add(holder1);
+
+    assertDoesNotThrow(()-> fundAvailabilityValidator.validate(holders));
+
+  }
 }
