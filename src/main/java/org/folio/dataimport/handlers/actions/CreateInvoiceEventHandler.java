@@ -63,7 +63,6 @@ import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertxconcurrent.Semaphore;
-import org.springframework.beans.factory.annotation.Value;
 
 public class CreateInvoiceEventHandler implements EventHandler {
 
@@ -87,13 +86,13 @@ public class CreateInvoiceEventHandler implements EventHandler {
   private static final String POL_FUND_DISTRIBUTIONS_KEY = "POL_FUND_DISTRIBUTIONS_%s";
   private static final Pattern SEGMENT_QUERY_PATTERN = Pattern.compile("([A-Z]{3}((\\+|<)\\w*)(\\2*\\w*)*(\\?\\w+)?\\[[1-9](-[1-9])?\\])");
   private static final int MAX_CHUNK_SIZE = 15;
-  @Value("${dataimport.max-active-threads:1}")
-  private int maxActiveThreads;
+  private final int maxActiveThreads;
 
   private final RestClient restClient;
 
   public CreateInvoiceEventHandler(RestClient restClient) {
     this.restClient = restClient;
+    this.maxActiveThreads = Integer.parseInt(System.getProperty("dataimport.max-active-threads", "1"));
   }
 
   @Override
