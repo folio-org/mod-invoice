@@ -11,7 +11,6 @@ import static org.folio.DataImportEventTypes.DI_INVOICE_CREATED;
 import static org.folio.invoices.utils.HelperUtils.collectResultsOnSuccess;
 import static org.folio.invoices.utils.ResourcePathResolver.ORDER_LINES;
 import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
-import static org.folio.rest.RestConstants.SEMAPHORE_MAX_ACTIVE_THREADS;
 import static org.folio.rest.jaxrs.model.EntityType.EDIFACT_INVOICE;
 import static org.folio.rest.jaxrs.model.InvoiceLine.InvoiceLineStatus.OPEN;
 import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.ACTION_PROFILE;
@@ -371,7 +370,7 @@ public class CreateInvoiceEventHandler implements EventHandler {
     InvoiceLineHelper helper = new InvoiceLineHelper(okapiHeaders, Vertx.currentContext());
     return Vertx.currentContext()
       .<List<Future<Pair<InvoiceLine, String>>>>executeBlocking(promise -> {
-        Semaphore semaphore = new Semaphore(SEMAPHORE_MAX_ACTIVE_THREADS, Vertx.currentContext().owner());
+        Semaphore semaphore = new Semaphore(maxActiveThreads, Vertx.currentContext().owner());
         for (InvoiceLine invoiceLine : invoiceLines) {
           semaphore.acquire(() -> {
             var future = helper.createInvoiceLine(invoiceLine)
