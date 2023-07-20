@@ -11,7 +11,6 @@ import static org.folio.DataImportEventTypes.DI_INVOICE_CREATED;
 import static org.folio.invoices.utils.HelperUtils.collectResultsOnSuccess;
 import static org.folio.invoices.utils.ResourcePathResolver.ORDER_LINES;
 import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
-import static org.folio.rest.RestConstants.SEMAPHORE_MAX_ACTIVE_THREADS;
 import static org.folio.rest.jaxrs.model.EntityType.EDIFACT_INVOICE;
 import static org.folio.rest.jaxrs.model.InvoiceLine.InvoiceLineStatus.OPEN;
 import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.ACTION_PROFILE;
@@ -86,11 +85,13 @@ public class CreateInvoiceEventHandler implements EventHandler {
   private static final String POL_FUND_DISTRIBUTIONS_KEY = "POL_FUND_DISTRIBUTIONS_%s";
   private static final Pattern SEGMENT_QUERY_PATTERN = Pattern.compile("([A-Z]{3}((\\+|<)\\w*)(\\2*\\w*)*(\\?\\w+)?\\[[1-9](-[1-9])?\\])");
   private static final int MAX_CHUNK_SIZE = 15;
+  private final int maxActiveThreads;
 
   private final RestClient restClient;
 
   public CreateInvoiceEventHandler(RestClient restClient) {
     this.restClient = restClient;
+    this.maxActiveThreads = Integer.parseInt(System.getProperty("dataimport.max-active-threads", "1"));
   }
 
   @Override
@@ -267,7 +268,7 @@ public class CreateInvoiceEventHandler implements EventHandler {
     return requestContext.getContext()
       .<List<Future<Pair<Integer, PoLine>>>>executeBlocking(promise -> {
         List<Future<Pair<Integer, PoLine>>> futures = new ArrayList<>();
-        Semaphore semaphore = new Semaphore(SEMAPHORE_MAX_ACTIVE_THREADS, Vertx.currentContext().owner());
+        Semaphore semaphore = new Semaphore(maxActiveThreads, Vertx.currentContext().owner());
         for (Map.Entry<Integer, List<String>> entry : refNumberList.entrySet()) {
           semaphore.acquire(() -> {
             var future = getLinePair(entry, requestContext)
@@ -368,7 +369,7 @@ public class CreateInvoiceEventHandler implements EventHandler {
     InvoiceLineHelper helper = new InvoiceLineHelper(okapiHeaders, Vertx.currentContext());
     return Vertx.currentContext()
       .<List<Future<Pair<InvoiceLine, String>>>>executeBlocking(promise -> {
-        Semaphore semaphore = new Semaphore(SEMAPHORE_MAX_ACTIVE_THREADS, Vertx.currentContext().owner());
+        Semaphore semaphore = new Semaphore(maxActiveThreads, Vertx.currentContext().owner());
         for (InvoiceLine invoiceLine : invoiceLines) {
           semaphore.acquire(() -> {
             var future = helper.createInvoiceLine(invoiceLine)
