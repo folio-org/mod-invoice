@@ -339,6 +339,13 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-surefire-plugin</artifactId>
+        <dependencies>
+          <dependency>
+            <groupId>org.ow2.asm</groupId>
+            <artifactId>asm</artifactId>
+            <version>9.1</version>
+          </dependency>
+        </dependencies>
         <version>2.22.2</version>
         <configuration>
           <argLine>-Duser.language=en -Duser.region=US @{argLine}</argLine>
