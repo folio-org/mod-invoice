@@ -1,5 +1,13 @@
 ## 5.7.0 - Unreleased
 
+## 5.6.5 - Orchid R1 2023 Technical debt
+The focus of this release was to allow configuring active threads limit during data import
+
+[Full Changelog](https://github.com/folio-org/mod-invoice/compare/v5.6.4...v5.6.5)
+
+### Technical debt
+Allow configuring active threads limit during data import
+
 ## 5.6.4 - Orchid R1 2023 Bug Fix
 The focus of this release was to fix invoice approving
 

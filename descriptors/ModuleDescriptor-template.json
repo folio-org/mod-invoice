@@ -1039,6 +1039,10 @@
       {
         "name": "dataimport.consumer.verticle.mandatory",
         "value": "false"
+      },
+      {
+        "name": "dataimport.max-active-threads",
+        "value": "1"
       }
     ]
   }

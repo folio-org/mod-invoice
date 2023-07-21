@@ -253,7 +253,7 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
   }
 
   @Test
-  public void shouldCreateInvoiceAndPublishDiCompletedEvent() throws InterruptedException, UnsupportedEncodingException {
+  public void shouldCreateInvoiceAndPublishDiCompletedEvent() throws InterruptedException {
     // given
     Record record = new Record().withParsedRecord(new ParsedRecord().withContent(EDIFACT_PARSED_CONTENT)).withId(UUID.randomUUID().toString());
     ProfileSnapshotWrapper profileSnapshotWrapper = buildProfileSnapshotWrapper(jobProfile, actionProfile, mappingProfile);
