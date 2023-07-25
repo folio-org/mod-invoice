@@ -54,6 +54,7 @@ import org.folio.services.invoice.InvoiceFiscalYearsServiceTest;
 import org.folio.services.order.OrderServiceTest;
 import org.folio.services.validator.FundAvailabilityHolderValidatorTest;
 import org.folio.services.validator.InvoiceLineHolderValidatorTest;
+import org.folio.services.validator.ProtectedFieldsValidatorTest;
 import org.folio.services.voucher.BatchVoucherGenerateServiceTest;
 import org.folio.services.voucher.UploadBatchVoucherExportServiceTest;
 import org.folio.verticles.DataImportConsumerVerticleTest;
@@ -250,6 +251,10 @@ public class ApiTestSuite {
 
   @Nested
   class InvoiceLineHolderValidatorTestNested extends InvoiceLineHolderValidatorTest {
+  }
+
+  @Nested
+  class ProtectedFieldsValidatorTestNested extends ProtectedFieldsValidatorTest {
   }
 
   @Nested

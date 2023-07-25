@@ -3,7 +3,7 @@ package org.folio.services.validator;
 import org.folio.okapi.testing.UtilityClassTester;
 import org.junit.jupiter.api.Test;
 
-class ProtectedFieldsValidatorTest {
+public class ProtectedFieldsValidatorTest {
 
   @Test
   void test() {
