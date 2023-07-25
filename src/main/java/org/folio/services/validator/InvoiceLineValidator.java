@@ -26,14 +26,13 @@ import org.folio.rest.jaxrs.model.InvoiceLine;
 import org.folio.rest.jaxrs.model.Parameter;
 import org.folio.services.adjusment.AdjustmentsService;
 
-public class InvoiceLineValidator extends BaseValidator {
+public class InvoiceLineValidator {
 
   private AdjustmentsService adjustmentsService = new AdjustmentsService();
 
   public void validateProtectedFields(Invoice existedInvoice, InvoiceLine invoiceLine, InvoiceLine existedInvoiceLine) {
     if(isPostApproval(existedInvoice)) {
-      Set<String> fields = findChangedFields(invoiceLine, existedInvoiceLine, InvoiceLineProtectedFields.getFieldNames());
-      verifyThatProtectedFieldsUnchanged(fields);
+      ProtectedFieldsValidator.validate(invoiceLine, existedInvoiceLine, InvoiceLineProtectedFields.values());
     }
   }
 
