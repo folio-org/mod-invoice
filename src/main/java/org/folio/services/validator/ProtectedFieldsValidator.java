@@ -10,6 +10,10 @@ import org.folio.invoices.utils.ProtectedField;
 
 public final class ProtectedFieldsValidator {
 
+  private ProtectedFieldsValidator() {
+    throw new UnsupportedOperationException("Cannot instantiate utility class");
+  }
+
   public static <T> void validate(T t1, T t2, ProtectedField<T>[] protectedFields) {
     var changedFields = new HashSet<String>();
     for (var field : protectedFields) {

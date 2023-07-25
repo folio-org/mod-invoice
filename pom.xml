@@ -196,6 +196,12 @@
       <version>2.9.0</version>
     </dependency>
     <dependency>
+      <groupId>org.folio.okapi</groupId>
+      <artifactId>okapi-testing</artifactId>
+      <version>5.0.1</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
       <groupId>org.mockftpserver</groupId>
       <artifactId>MockFtpServer</artifactId>
       <version>2.7.1</version>
