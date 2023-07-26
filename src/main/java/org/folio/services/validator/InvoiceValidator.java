@@ -17,7 +17,6 @@ import static org.folio.rest.jaxrs.model.FundDistribution.DistributionType.PERCE
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.apache.commons.collections4.CollectionUtils;
@@ -35,7 +34,7 @@ import org.folio.services.adjusment.AdjustmentsService;
 
 import com.google.common.collect.Lists;
 
-public class InvoiceValidator extends BaseValidator {
+public class InvoiceValidator {
 
   public static final String TOTAL = "total";
   public static final String NO_INVOICE_LINES_ERROR_MSG = "An invoice cannot be approved if there are no corresponding lines of invoice.";
@@ -48,8 +47,7 @@ public class InvoiceValidator extends BaseValidator {
 
   public void validateInvoiceProtectedFields(Invoice invoice, Invoice invoiceFromStorage) {
     if(isPostApproval(invoiceFromStorage)) {
-      Set<String> fields = findChangedFields(invoice, invoiceFromStorage, InvoiceProtectedFields.getFieldNames());
-      verifyThatProtectedFieldsUnchanged(fields);
+      ProtectedFieldsValidator.validate(invoice, invoiceFromStorage, InvoiceProtectedFields.values());
     }
   }
 

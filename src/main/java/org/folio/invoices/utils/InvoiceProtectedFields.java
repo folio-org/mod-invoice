@@ -1,39 +1,40 @@
 package org.folio.invoices.utils;
 
-import java.util.Arrays;
-import java.util.List;
-import java.util.stream.Collectors;
+import java.util.function.Function;
+import org.folio.rest.jaxrs.model.Invoice;
 
-public enum InvoiceProtectedFields {
+public enum InvoiceProtectedFields implements ProtectedField<Invoice> {
 
-  ADJUSTMENTS("adjustments"),
-  ADJUSTMENTS_TOTAL("adjustmentsTotal"),
-  APPROVED_BY("approvedBy"),
-  APPROVAL_DATE("approvalDate"),
-  CHK_SUBSCRIPTION_OVERLAP("chkSubscriptionOverlap"),
-  CURRENCY("currency"),
-  EXPORT_TO_ACCOUNTING("exportToAccounting"),
-  FOLIO_INVOICE_NO("folioInvoiceNo"),
-  INVOICE_DATE("invoiceDate"),
-  LOCK_TOTAL("lockTotal"),
-  PAYMENT_TERMS("paymentTerms"),
-  SOURCE("source"),
-  VOUCHER_NUMBER("voucherNumber"),
-  PAYMENT_ID("paymentId"),
-  PO_NUMBERS("poNumbers"),
-  VENDOR_ID("vendorId");
+  ADJUSTMENTS("adjustments", Invoice::getAdjustments),
+  ADJUSTMENTS_TOTAL("adjustmentsTotal", Invoice::getAdjustmentsTotal),
+  APPROVED_BY("approvedBy", Invoice::getApprovedBy),
+  APPROVAL_DATE("approvalDate", Invoice::getApprovalDate),
+  CHK_SUBSCRIPTION_OVERLAP("chkSubscriptionOverlap", Invoice::getChkSubscriptionOverlap),
+  CURRENCY("currency", Invoice::getCurrency),
+  EXPORT_TO_ACCOUNTING("exportToAccounting", Invoice::getExportToAccounting),
+  FOLIO_INVOICE_NO("folioInvoiceNo", Invoice::getFolioInvoiceNo),
+  INVOICE_DATE("invoiceDate", Invoice::getInvoiceDate),
+  LOCK_TOTAL("lockTotal", Invoice::getLockTotal),
+  PAYMENT_TERMS("paymentTerms", Invoice::getPaymentTerms),
+  SOURCE("source", Invoice::getSource),
+  VOUCHER_NUMBER("voucherNumber", Invoice::getVoucherNumber),
+  PAYMENT_ID("paymentId", Invoice::getPaymentId),
+  PO_NUMBERS("poNumbers", Invoice::getPoNumbers),
+  VENDOR_ID("vendorId", Invoice::getVendorId);
 
-  InvoiceProtectedFields(String field) {
+  InvoiceProtectedFields(String field, Function<Invoice, Object> getter) {
     this.field = field;
+    this.getter = getter;
   }
 
   public String getFieldName() {
     return field;
   }
 
-  private String field;
-
-  public static List<String> getFieldNames() {
-    return Arrays.stream(InvoiceProtectedFields.values()).map(InvoiceProtectedFields::getFieldName).collect(Collectors.toList());
+  public Function<Invoice, Object> getGetter() {
+    return getter;
   }
+
+  private String field;
+  private Function<Invoice, Object> getter;
 }

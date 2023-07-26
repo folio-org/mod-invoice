@@ -1,34 +1,34 @@
 package org.folio.invoices.utils;
 
-import java.util.Arrays;
-import java.util.List;
-import java.util.stream.Collectors;
+import java.util.function.Function;
+import org.folio.rest.jaxrs.model.InvoiceLine;
 
-public enum InvoiceLineProtectedFields {
+public enum InvoiceLineProtectedFields implements ProtectedField<InvoiceLine> {
 
-  ADJUSTMENTS("adjustments"),
-  ADJUSTMENTS_TOTAL("adjustmentsTotal"),
-  INVOICE_ID("invoiceId"),
-  INVOICE_LINE_NUMBER("invoiceLineNumber"),
-  PO_LINE_ID("poLineId"),
-  PRODUCT_ID("productId"),
-  PRODUCT_ID_TYPE("productIdType"),
-  QUANTITY("quantity"),
-  SUB_TOTAL("subTotal"),
-  TOTAL("total");
+  ADJUSTMENTS("adjustments", InvoiceLine::getAdjustments),
+  ADJUSTMENTS_TOTAL("adjustmentsTotal", InvoiceLine::getAdjustmentsTotal),
+  INVOICE_ID("invoiceId", InvoiceLine::getInvoiceId),
+  INVOICE_LINE_NUMBER("invoiceLineNumber", InvoiceLine::getInvoiceLineNumber),
+  PO_LINE_ID("poLineId", InvoiceLine::getPoLineId),
+  PRODUCT_ID("productId", InvoiceLine::getProductId),
+  PRODUCT_ID_TYPE("productIdType", InvoiceLine::getProductIdType),
+  QUANTITY("quantity", InvoiceLine::getQuantity),
+  SUB_TOTAL("subTotal", InvoiceLine::getSubTotal),
+  TOTAL("total", InvoiceLine::getTotal);
 
-
-  InvoiceLineProtectedFields(String field) {
+  InvoiceLineProtectedFields(String field, Function<InvoiceLine, Object> getter) {
     this.field = field;
+    this.getter = getter;
   }
 
   public String getFieldName() {
     return field;
   }
 
-  private String field;
-
-  public static List<String> getFieldNames() {
-    return Arrays.stream(InvoiceLineProtectedFields.values()).map(InvoiceLineProtectedFields::getFieldName).collect(Collectors.toList());
+  public Function<InvoiceLine, Object> getGetter() {
+    return getter;
   }
+
+  private String field;
+  private Function<InvoiceLine, Object> getter;
 }

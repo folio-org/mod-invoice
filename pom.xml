@@ -14,7 +14,8 @@
   </licenses>
 
   <properties>
-    <aspectj.version>1.9.7</aspectj.version>
+    <aspectj.version>1.9.19</aspectj.version>
+    <jaxb-api.version>2.3.3</jaxb-api.version>
     <jsonschema_paths>acq-models/mod-invoice-storage/schemas,raml-util/schemas,acq-models/common/schemas/</jsonschema_paths>
     <raml-module-builder.version>35.0.1</raml-module-builder.version>
     <vertx.version>4.3.4</vertx.version>
@@ -195,6 +196,12 @@
       <version>2.9.0</version>
     </dependency>
     <dependency>
+      <groupId>org.folio.okapi</groupId>
+      <artifactId>okapi-testing</artifactId>
+      <version>5.0.1</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
       <groupId>org.mockftpserver</groupId>
       <artifactId>MockFtpServer</artifactId>
       <version>2.7.1</version>
@@ -275,9 +282,8 @@
     <dependency>
       <groupId>org.glassfish.jaxb</groupId>
       <artifactId>jaxb-runtime</artifactId>
-      <version>2.3.3</version>
+      <version>${jaxb-api.version}</version>
     </dependency>
-
   </dependencies>
 
   <build>
@@ -307,7 +313,7 @@
         <artifactId>maven-compiler-plugin</artifactId>
         <version>3.8.1</version>
         <configuration>
-          <release>11</release>
+          <release>17</release>
           <encoding>UTF-8</encoding>
         </configuration>
       </plugin>
@@ -494,12 +500,12 @@
       </plugin>
 
       <plugin>
-        <groupId>com.nickwongdev</groupId>
+        <groupId>dev.aspectj</groupId>
         <artifactId>aspectj-maven-plugin</artifactId>
-        <version>1.12.6</version>
+        <version>1.13.1</version>
         <configuration>
           <verbose>true</verbose>
-          <complianceLevel>11</complianceLevel>
+          <complianceLevel>17</complianceLevel>
           <aspectDirectory>src/main/java/org/folio/rest/annotations</aspectDirectory>
           <XaddSerialVersionUID>true</XaddSerialVersionUID>
           <showWeaveInfo>true</showWeaveInfo>
@@ -685,6 +691,13 @@
         <groupId>org.jvnet.jaxb2.maven2</groupId>
         <artifactId>maven-jaxb2-plugin</artifactId>
         <version>0.14.0</version>
+        <dependencies>
+          <dependency>
+            <groupId>org.glassfish.jaxb</groupId>
+            <artifactId>jaxb-runtime</artifactId>
+            <version>${jaxb-api.version}</version>
+          </dependency>
+        </dependencies>
         <configuration>
           <schemaIncludes>
             <include>batch_voucher.xsd</include>
