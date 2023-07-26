@@ -284,7 +284,6 @@
       <artifactId>jaxb-runtime</artifactId>
       <version>${jaxb-api.version}</version>
     </dependency>
-
   </dependencies>
 
   <build>
