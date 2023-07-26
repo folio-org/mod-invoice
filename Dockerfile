@@ -1,9 +1,4 @@
-FROM folioci/alpine-jre-openjdk17:latest
-
-# Install latest patch versions of packages: https://pythonspeed.com/articles/security-updates-in-docker/
-USER root
-RUN apk upgrade --no-cache
-USER folio
+FROM folioci/alpine-jre-openjdk11:latest
 
 ENV VERTICLE_FILE mod-invoice-fat.jar
 
