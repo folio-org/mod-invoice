@@ -11,6 +11,7 @@ import static org.folio.invoices.utils.ErrorCodes.INCOMPATIBLE_INVOICE_FIELDS_ON
 import static org.folio.invoices.utils.ErrorCodes.INCORRECT_FUND_DISTRIBUTION_TOTAL;
 import static org.folio.invoices.utils.ErrorCodes.LOCK_AND_CALCULATED_TOTAL_MISMATCH;
 import static org.folio.invoices.utils.HelperUtils.isPostApproval;
+import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_LINE_NUMBER;
 import static org.folio.rest.jaxrs.model.FundDistribution.DistributionType.AMOUNT;
 import static org.folio.rest.jaxrs.model.FundDistribution.DistributionType.PERCENTAGE;
 
@@ -36,7 +37,6 @@ import com.google.common.collect.Lists;
 
 public class InvoiceValidator {
 
-  public static final String TOTAL = "total";
   public static final String NO_INVOICE_LINES_ERROR_MSG = "An invoice cannot be approved if there are no corresponding lines of invoice.";
 
   public static final String REMAINING_AMOUNT_FIELD = "remainingAmount";
@@ -121,7 +121,14 @@ public class InvoiceValidator {
       if (CollectionUtils.isEmpty(line.getFundDistributions())) {
         throw new HttpException(400, FUND_DISTRIBUTIONS_NOT_PRESENT);
       }
-      validateFundDistributions(line.getTotal(), line.getFundDistributions());
+
+      try {
+        validateFundDistributions(line.getTotal(), line.getFundDistributions());
+      } catch (HttpException e) {
+        throw new HttpException(422, INCORRECT_FUND_DISTRIBUTION_TOTAL, Lists.newArrayList(new Parameter()
+          .withKey(INVOICE_LINE_NUMBER)
+          .withValue(line.getInvoiceLineNumber())));
+      }
     }
   }
 
