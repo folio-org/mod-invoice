@@ -1,5 +1,6 @@
 {
   "id": "52fd6ec7-ddc3-4c53-bc26-2779afc27136",
+  "nextInvoiceLineNumber": 4,
   "accountingCode": "1345",
   "chkSubscriptionOverlap": false,
   "currency": "USD",
