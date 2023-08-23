@@ -2695,9 +2695,12 @@ public class InvoicesApiTest extends ApiTestBase {
     final Invoice respData = verifyPostResponse(INVOICE_PATH, body, prepareHeaders(X_OKAPI_TENANT), APPLICATION_JSON, 201).as(Invoice.class);
 
     String poId = respData.getId();
+    Integer nextInvoiceLineNumber = respData.getNextInvoiceLineNumber();
     String folioInvoiceNo = respData.getFolioInvoiceNo();
 
     assertThat(poId, notNullValue());
+    assertThat(poId, notNullValue());
+    assertThat(nextInvoiceLineNumber, nullValue());
     assertThat(folioInvoiceNo, notNullValue());
     assertThat(getRqRsEntries(HttpMethod.GET, FOLIO_INVOICE_NUMBER), hasSize(1));
 
