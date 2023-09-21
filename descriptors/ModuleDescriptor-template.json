@@ -692,6 +692,16 @@
       "description": "Delete an existing Invoice"
     },
     {
+      "permissionName": "invoice.item.approve",
+      "displayName": "Invoice - approve an existing Invoice",
+      "description": "Approve an existing Invoice"
+    },
+    {
+      "permissionName": "invoice.item.pay",
+      "displayName": "Invoice - pay an existing Invoice",
+      "description": "Pay an existing Invoice"
+    },
+    {
       "permissionName": "invoice.invoice-lines.collection.get",
       "displayName": "Invoice Line - get collection of Invoice lines",
       "description": "Get collection of Invoice lines"
@@ -1013,6 +1023,8 @@
         "invoice.invoices.item.post",
         "invoice.invoices.item.put",
         "invoice.invoices.item.delete",
+        "invoice.item.approve",
+        "invoice.item.pay",
         "invoice.invoice-lines.collection.get",
         "invoice.invoice-lines.item.get",
         "invoice.invoice-lines.item.post",
