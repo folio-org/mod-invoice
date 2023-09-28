@@ -89,7 +89,7 @@ public class BatchVoucherExportConfigHelper extends AbstractHelper {
           ExportConfig config = exportConfigFuture.result();
           return config.getFtpFormat() == ExportConfig.FtpFormat.FTP ?
             new FtpUploadService(ctx, config.getUploadURI(), config.getFtpPort()) :
-            new SftpUploadService(ctx, config.getUploadURI(), config.getFtpPort());
+            new SftpUploadService(config.getUploadURI(), config.getFtpPort());
         } catch (URISyntaxException e) {
           throw new CompletionException(e);
         }

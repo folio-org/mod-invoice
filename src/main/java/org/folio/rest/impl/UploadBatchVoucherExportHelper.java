@@ -83,7 +83,7 @@ public class UploadBatchVoucherExportHelper extends AbstractHelper {
         return new FtpUploadService(ctx, uploadHolder.getExportConfig().getUploadURI(), port)
           .upload(ctx, uploadHolder.getCredentials().getUsername(), uploadHolder.getCredentials().getPassword(), uploadHolder.getExportConfig().getUploadDirectory(), fileName, content).mapEmpty();
       } else {
-        return new SftpUploadService(ctx, uploadHolder.getExportConfig().getUploadURI(), port)
+        return new SftpUploadService(uploadHolder.getExportConfig().getUploadURI(), port)
           .upload(ctx, uploadHolder.getCredentials().getUsername(), uploadHolder.getCredentials().getPassword(), uploadHolder.getExportConfig().getUploadDirectory(), fileName, content).mapEmpty();
       }
     } catch (Exception e) {

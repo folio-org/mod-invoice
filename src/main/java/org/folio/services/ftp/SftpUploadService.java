@@ -23,7 +23,6 @@ import java.io.InputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.TimeUnit;
 
@@ -31,18 +30,16 @@ public class SftpUploadService implements FileExchangeConnectionInfo {
   private static final Logger logger = LogManager.getLogger(SftpUploadService.class);
   private final String server;
   private final int port;
-  private final Context ctx;
   private static final String FILE_SEPARATOR = "/";
   public static final String DEFAULT_WORKING_DIR = "/ftp/files/invoices";
 
-  public SftpUploadService(Context ctx, String uri, Integer portFromConfig) throws URISyntaxException {
+  public SftpUploadService(String uri, Integer portFromConfig) throws URISyntaxException {
     URI u = new URI(uri);
     this.server = u.getHost();
     if (Objects.isNull(portFromConfig)) {
       portFromConfig = 22;
     }
     this.port = u.getPort() > 0 ? u.getPort() : portFromConfig;
-    this.ctx = ctx;
   }
 
   private ApacheSshdSftpSessionFactory getSshdSessionFactory(String username, String password) throws Exception {
@@ -62,24 +59,22 @@ public class SftpUploadService implements FileExchangeConnectionInfo {
 
   public Future<Session<SftpClient.DirEntry>> login(String username, String password) {
     Promise<Session<SftpClient.DirEntry>> promise = Promise.promise();
+    SessionFactory<SftpClient.DirEntry> sshdFactory;
+    Session<SftpClient.DirEntry> session;
 
-    ctx.owner().executeBlocking(blockingFeature -> {
-      SessionFactory<SftpClient.DirEntry> sshdFactory;
-      Session<SftpClient.DirEntry> session;
-
-      try {
-        sshdFactory = getSshdSessionFactory(username, password);
-        session = sshdFactory.getSession();
-        blockingFeature.complete(session);
-      } catch (Exception e) {
-        blockingFeature.fail(new FtpException(HttpStatus.HTTP_FORBIDDEN.toInt(), String.format("Unable to connect to %s:%d", server, port)));
-      }
-    }, false, asyncResultHandler(promise, "Success login to FTP", "Failed login to FTP"));
+    try {
+      sshdFactory = getSshdSessionFactory(username, password);
+      session = sshdFactory.getSession();
+      promise.complete(session);
+    } catch (Exception e) {
+      promise.fail(new FtpException(HttpStatus.HTTP_FORBIDDEN.toInt(), String.format("Unable to connect to %s:%d", server, port)));
+    }
 
     return promise.future();
   }
 
-  public Future<String> upload(Context ctx, String username, String password, String folder, String filename, String content) {
+  public Future<String> upload(Context ctx, String username, String password, String folder, String filename, String content)
+      throws Exception {
     Promise<String> promise = Promise.promise();
     String remoteAbsPath;
     if (StringUtils.isNotEmpty(folder)) {
@@ -113,18 +108,6 @@ public class SftpUploadService implements FileExchangeConnectionInfo {
     return promise.future();
   }
 
-  @Override
-  public ExportConfig.FtpFormat getExchangeConnectionFormat() {
-    return ExportConfig.FtpFormat.SFTP;
-  }
-
-  @Override
-  public Future<Void> testConnection(String username, String password) {
-    return login(username, password)
-      .onSuccess(Session::close)
-      .mapEmpty();
-  }
-
   private void createRemoteDirectoryIfAbsent(Session<SftpClient.DirEntry> session, String folder) throws IOException {
     if (!session.exists(folder)) {
       String[] folders = folder.split("/");
@@ -153,18 +136,15 @@ public class SftpUploadService implements FileExchangeConnectionInfo {
     };
   }
 
-  private Handler<AsyncResult<Session<SftpClient.DirEntry>>> asyncResultHandler(Promise<Session<SftpClient.DirEntry>> promise, String s, String s2) {
-    return result -> {
-      if (result.succeeded()) {
-        logger.debug(s);
-        promise.complete(result.result());
-      } else {
-        String message = Optional.ofNullable(result.cause())
-          .map(Throwable::getMessage)
-          .orElse(s2);
-        logger.error(message);
-        promise.fail(result.cause());
-      }
-    };
+  @Override
+  public ExportConfig.FtpFormat getExchangeConnectionFormat() {
+    return ExportConfig.FtpFormat.SFTP;
+  }
+
+  @Override
+  public Future<Void> testConnection(String username, String password) {
+    return login(username, password)
+      .onSuccess(Session::close)
+      .mapEmpty();
   }
 }
