@@ -73,8 +73,7 @@ public class SftpUploadService implements FileExchangeConnectionInfo {
     return promise.future();
   }
 
-  public Future<String> upload(Context ctx, String username, String password, String folder, String filename, String content)
-      throws Exception {
+  public Future<String> upload(Context ctx, String username, String password, String folder, String filename, String content) {
     Promise<String> promise = Promise.promise();
     String remoteAbsPath;
     if (StringUtils.isNotEmpty(folder)) {
