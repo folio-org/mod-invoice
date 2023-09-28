@@ -13,6 +13,7 @@ import org.apache.sshd.sftp.client.SftpClient;
 import org.apache.sshd.sftp.spring.integration.ApacheSshdSftpSessionFactory;
 import org.folio.HttpStatus;
 import org.folio.exceptions.FtpException;
+import org.folio.rest.jaxrs.model.ExportConfig;
 import org.springframework.integration.file.remote.session.Session;
 import org.springframework.integration.file.remote.session.SessionFactory;
 
@@ -25,7 +26,7 @@ import java.util.Objects;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.TimeUnit;
 
-public class SftpUploadService {
+public class SftpUploadService implements FileExchangeConnectionInfo {
   private static final Logger logger = LogManager.getLogger(SftpUploadService.class);
   private final String server;
   private final int port;
@@ -56,6 +57,22 @@ public class SftpUploadService {
     return factory;
   }
 
+  public Future<Session<SftpClient.DirEntry>> login(String username, String password) {
+    Promise<Session<SftpClient.DirEntry>> promise = Promise.promise();
+    SessionFactory<SftpClient.DirEntry> sshdFactory;
+    Session<SftpClient.DirEntry> session;
+
+    try {
+      sshdFactory = getSshdSessionFactory(username, password);
+      session = sshdFactory.getSession();
+      promise.complete(session);
+    } catch (Exception e) {
+      promise.fail(new FtpException(HttpStatus.HTTP_FORBIDDEN.toInt(), String.format("Unable to connect to %s:%d", server, port)));
+    }
+
+    return promise.future();
+  }
+
   public Future<String> upload(Context ctx, String username, String password, String folder, String filename, String content)
       throws Exception {
     Promise<String> promise = Promise.promise();
@@ -66,16 +83,8 @@ public class SftpUploadService {
     } else {
       remoteAbsPath = DEFAULT_WORKING_DIR + FILE_SEPARATOR + filename;
     }
-    SessionFactory<SftpClient.DirEntry> sshdFactory;
-    Session<SftpClient.DirEntry> session;
-    try {
-      sshdFactory = getSshdSessionFactory(username, password);
-      session = sshdFactory.getSession();
-    } catch (Exception e) {
-      promise.fail(new FtpException(HttpStatus.HTTP_FORBIDDEN.toInt(),String.format("Unable to connect to %s:%d", server, port)));
-      return promise.future();
-    }
-    ctx.owner().executeBlocking(blockingFeature -> {
+
+    ctx.owner().executeBlocking(blockingFeature ->  login(username, password).compose(session -> {
       try (InputStream inputStream = new ByteArrayInputStream(content.getBytes()); session) {
         logger.info("Start uploading file to SFTP path: {}", remoteAbsPath);
         if (StringUtils.isNotEmpty(folder)) {
@@ -94,7 +103,8 @@ public class SftpUploadService {
           session.close();
         }
       }
-    }, false, asyncResultHandler(promise));
+      return promise.future();
+    }), false, asyncResultHandler(promise));
     return promise.future();
   }
 
@@ -124,5 +134,17 @@ public class SftpUploadService {
         promise.fail(result.cause());
       }
     };
+  }
+
+  @Override
+  public ExportConfig.FtpFormat getExchangeConnectionFormat() {
+    return ExportConfig.FtpFormat.SFTP;
+  }
+
+  @Override
+  public Future<Void> testConnection(String username, String password) {
+    return login(username, password)
+      .onSuccess(Session::close)
+      .mapEmpty();
   }
 }
