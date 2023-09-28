@@ -77,7 +77,7 @@ public class SftpUploadServiceTest {
     batchVoucher.setBatchGroup(batch_group);
     batchVoucher.setCreated(new Date());
 
-    SftpUploadService helper = new SftpUploadService(uri, 22);
+    SftpUploadService helper = new SftpUploadService(context, uri, 22);
     var future = helper.upload(context, USERNAME, PASSWORD, EXPORT_FOLDER_NAME, FILENAME , JsonObject.mapFrom(batchVoucher).encodePrettily())
       .onSuccess(logger::info)
       .onFailure(t -> {
@@ -118,7 +118,7 @@ public class SftpUploadServiceTest {
     batchVoucher.setBatchGroup(UUID.randomUUID().toString());
     batchVoucher.setCreated(new Date());
 
-    SftpUploadService helper = new SftpUploadService(uri, 22);
+    SftpUploadService helper = new SftpUploadService(context, uri, 22);
     var future = helper.upload(context, USERNAME, PASSWORD, EXPORT_FOLDER_NAME+"/test/long/path", FILENAME , JsonObject.mapFrom(batchVoucher).encodePrettily())
       .onSuccess(logger::info)
       .onFailure(t -> {
@@ -159,7 +159,7 @@ public class SftpUploadServiceTest {
     batchVoucher.setBatchGroup(UUID.randomUUID().toString());
     batchVoucher.setCreated(new Date());
 
-    SftpUploadService helper = new SftpUploadService(uri, 22);
+    SftpUploadService helper = new SftpUploadService(context, uri, 22);
     var future = helper.upload(context, USERNAME, PASSWORD, "", FILENAME , JsonObject.mapFrom(batchVoucher).encodePrettily())
       .onSuccess(logger::info)
       .onFailure(t -> {
@@ -195,7 +195,7 @@ public class SftpUploadServiceTest {
     end.setTime(System.currentTimeMillis() - 864000000);
     BatchVoucher batchVoucher = new BatchVoucher();
 
-    SftpUploadService helper = new SftpUploadService(INVALID_URI, 22);
+    SftpUploadService helper = new SftpUploadService(context, INVALID_URI, 22);
     var future = helper.upload(context, USERNAME, PASSWORD, EXPORT_FOLDER_NAME+"/test/long/path", FILENAME , JsonObject.mapFrom(batchVoucher).encodePrettily())
       .onSuccess(logger::info)
       .onFailure(logger::info)
