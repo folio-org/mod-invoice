@@ -26,7 +26,7 @@ import java.util.Objects;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.TimeUnit;
 
-public class SftpUploadService implements FileExchangeConnectionInfo {
+public class SftpUploadService implements FileExchangeService {
   private static final Logger logger = LogManager.getLogger(SftpUploadService.class);
   private final String server;
   private final int port;

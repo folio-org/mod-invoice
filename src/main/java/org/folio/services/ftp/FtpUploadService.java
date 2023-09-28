@@ -24,7 +24,7 @@ import io.vertx.core.Handler;
 import io.vertx.core.Promise;
 import org.folio.rest.jaxrs.model.ExportConfig;
 
-public class FtpUploadService implements FileExchangeConnectionInfo {
+public class FtpUploadService implements FileExchangeService {
   private static final Logger logger = LogManager.getLogger(FtpUploadService.class);
   public static final String DEFAULT_WORKING_DIR = "/files/invoices";
   private final String server;
