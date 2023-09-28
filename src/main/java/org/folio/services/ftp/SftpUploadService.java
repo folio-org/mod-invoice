@@ -104,7 +104,7 @@ public class SftpUploadService implements FileExchangeConnectionInfo {
         }
       }
       return promise.future();
-    }), false, asyncResultHandler(promise));
+    }).onFailure(blockingFeature::fail), false, asyncResultHandler(promise));
     return promise.future();
   }
 
