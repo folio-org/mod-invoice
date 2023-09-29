@@ -22,8 +22,9 @@ import io.vertx.core.Context;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Promise;
+import org.folio.rest.jaxrs.model.ExportConfig;
 
-public class FtpUploadService {
+public class FtpUploadService implements FileExchangeService {
   private static final Logger logger = LogManager.getLogger(FtpUploadService.class);
   public static final String DEFAULT_WORKING_DIR = "/files/invoices";
   private final String server;
@@ -143,6 +144,18 @@ public class FtpUploadService {
     ftpClient.changeWorkingDirectory(dirPath);
     int returnCode = ftpClient.getReplyCode();
     return returnCode == 550;
+  }
+
+  @Override
+  public ExportConfig.FtpFormat getExchangeConnectionFormat() {
+    return ExportConfig.FtpFormat.FTP;
+  }
+
+  @Override
+  public Future<Void> testConnection(String username, String password) {
+    return login(username, password)
+      .onSuccess(this::disconnect)
+      .mapEmpty();
   }
 
   public static class DefaultServerResolver implements FTPClient.HostnameResolver {

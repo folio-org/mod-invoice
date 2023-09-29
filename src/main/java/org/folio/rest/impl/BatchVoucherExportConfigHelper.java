@@ -6,7 +6,6 @@ import static org.folio.invoices.utils.ResourcePathResolver.BATCH_VOUCHER_EXPORT
 import static org.folio.invoices.utils.ResourcePathResolver.resourceByIdPath;
 import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
 
-import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.Map;
 import java.util.concurrent.CompletionException;
@@ -19,6 +18,7 @@ import org.folio.rest.jaxrs.model.Credentials;
 import org.folio.rest.jaxrs.model.ExportConfig;
 import org.folio.rest.jaxrs.model.ExportConfigCollection;
 import org.folio.services.ftp.FtpUploadService;
+import org.folio.services.ftp.SftpUploadService;
 import org.folio.services.voucher.BatchVoucherExportConfigService;
 import org.folio.spring.SpringContextUtil;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -87,21 +87,22 @@ public class BatchVoucherExportConfigHelper extends AbstractHelper {
       .map(cf -> {
         try {
           ExportConfig config = exportConfigFuture.result();
-          return new FtpUploadService(ctx, config.getUploadURI(), config.getFtpPort());
+          return config.getFtpFormat() == ExportConfig.FtpFormat.FTP ?
+            new FtpUploadService(ctx, config.getUploadURI(), config.getFtpPort()) :
+            new SftpUploadService(config.getUploadURI(), config.getFtpPort());
         } catch (URISyntaxException e) {
           throw new CompletionException(e);
         }
       })
       .compose(helper -> {
-        Credentials creds = credentialsFuture.result();
-        return helper.login(creds.getUsername(), creds.getPassword())
-          .compose(ftpClient -> {
-            try {
-              return Future.succeededFuture(ftpClient.getStatus());
-            } catch (IOException e) {
-              logger.error("Could not login to FTP with username: {}", creds.getUsername(), e);
-              return Future.failedFuture(new FtpException(HttpStatus.HTTP_FORBIDDEN.toInt(), creds.getUsername()));
-            }
+        Credentials credentials = credentialsFuture.result();
+        String username = credentials.getUsername();
+        ExportConfig.FtpFormat exchangeConnectionFormat = helper.getExchangeConnectionFormat();
+        return helper.testConnection(username, credentials.getPassword())
+          .compose(aVoid -> Future.succeededFuture(String.format("Successfully logged in to %s with username: %s", exchangeConnectionFormat, username)))
+          .recover(throwable -> {
+            logger.error("Could not login to {} with username: {}", exchangeConnectionFormat, username, throwable);
+            return Future.failedFuture(new FtpException(HttpStatus.HTTP_FORBIDDEN.toInt(), username));
           });
       });
   }
