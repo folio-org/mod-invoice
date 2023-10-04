@@ -1,6 +1,6 @@
 package org.folio;
 
-import static net.mguenther.kafka.junit.EmbeddedKafkaClusterConfig.useDefaults;
+import static net.mguenther.kafka.junit.EmbeddedKafkaClusterConfig.defaultClusterConfig;
 
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -97,7 +97,7 @@ public class ApiTestSuite {
     RestAssured.port = okapiPort;
     RestAssured.enableLoggingOfRequestAndResponseIfValidationFails();
 
-    kafkaCluster = EmbeddedKafkaCluster.provisionWith(useDefaults());
+    kafkaCluster = EmbeddedKafkaCluster.provisionWith(defaultClusterConfig());
     kafkaCluster.start();
     String[] hostAndPort = kafkaCluster.getBrokerList().split(":");
     System.setProperty(KAFKA_HOST, hostAndPort[0]);
