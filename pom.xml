@@ -29,6 +29,7 @@
     <mod-configuration-client.version>5.9.1</mod-configuration-client.version>
     <spring.version>5.3.24</spring.version>
     <log4j.version>2.20.0</log4j.version>
+    <maven-compiler-plugin.version>3.8.1</maven-compiler-plugin.version>
     <!--Test dependencies-->
     <junit.version>4.13.2</junit.version>
     <testcontainers.version>1.19.0</testcontainers.version>
@@ -317,7 +318,7 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-compiler-plugin</artifactId>
-        <version>3.8.1</version>
+        <version>${maven-compiler-plugin.version}</version>
         <configuration>
           <release>17</release>
           <encoding>UTF-8</encoding>
