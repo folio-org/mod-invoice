@@ -14,22 +14,28 @@
   </licenses>
 
   <properties>
-    <aspectj.version>1.9.20.1</aspectj.version>
-    <jaxb-api.version>2.3.3</jaxb-api.version>
+    <!--Configurations-->
     <jsonschema_paths>acq-models/mod-invoice-storage/schemas,raml-util/schemas,acq-models/common/schemas/</jsonschema_paths>
-    <raml-module-builder.version>35.1.0</raml-module-builder.version>
-    <vertx.version>4.4.5</vertx.version>
-    <junit.version>4.13.2</junit.version>
-    <rest-assured.version>5.3.2</rest-assured.version>
     <generated_sources_dir>${project.build.directory}/generated-sources</generated_sources_dir>
     <jsonschema2pojo_output_dir>${generated_sources_dir}/jsonschema2pojo</jsonschema2pojo_output_dir>
     <ramlfiles_path>${basedir}/ramls</ramlfiles_path>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <!--Dependencies-->
+    <aspectj.version>1.9.20.1</aspectj.version>
+    <jaxb-api.version>2.3.3</jaxb-api.version>
+    <raml-module-builder.version>35.1.0</raml-module-builder.version>
+    <vertx.version>4.4.5</vertx.version>
+    <rest-assured.version>5.3.2</rest-assured.version>
     <mod-configuration-client.version>5.9.1</mod-configuration-client.version>
     <spring.version>5.3.24</spring.version>
+    <log4j.version>2.20.0</log4j.version>
+    <!--Test dependencies-->
+    <junit.version>4.13.2</junit.version>
+    <testcontainers.version>1.19.0</testcontainers.version>
+    <kafka-junit.version>3.3.0</kafka-junit.version>
+    <!--Sonar exclusions-->
     <sonar.exclusions>**/models/*.java</sonar.exclusions>
     <sonar.test.exclusions>**/*Test.java</sonar.test.exclusions>
-    <log4j.version>2.20.0</log4j.version>
     <argLine />
   </properties>
 
@@ -227,13 +233,13 @@
     <dependency>
       <groupId>org.testcontainers</groupId>
       <artifactId>kafka</artifactId>
-      <version>1.19.0</version>
+      <version>${testcontainers.version}</version>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.testcontainers</groupId>
       <artifactId>testcontainers</artifactId>
-      <version>1.19.0</version>
+      <version>${testcontainers.version}</version>
       <scope>test</scope>
     </dependency>
     <dependency>
@@ -251,7 +257,7 @@
     <dependency>
       <groupId>net.mguenther.kafka</groupId>
       <artifactId>kafka-junit</artifactId>
-      <version>3.3.0</version>
+      <version>${kafka-junit.version}</version>
       <scope>test</scope>
       <exclusions>
         <exclusion>
