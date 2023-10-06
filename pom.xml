@@ -27,7 +27,7 @@
     <vertx.version>4.4.5</vertx.version>
     <rest-assured.version>5.3.2</rest-assured.version>
     <mod-configuration-client.version>5.9.1</mod-configuration-client.version>
-    <spring.version>5.3.24</spring.version>
+    <spring.version>6.0.2</spring.version>
     <log4j.version>2.20.0</log4j.version>
     <maven-compiler-plugin.version>3.8.1</maven-compiler-plugin.version>
     <folio-di-support.version>2.0.1</folio-di-support.version>
@@ -678,6 +678,7 @@
               </filters>
               <artifactSet />
               <outputFile>${project.build.directory}/${project.artifactId}-fat.jar</outputFile>
+              <createDependencyReducedPom>false</createDependencyReducedPom>
             </configuration>
           </execution>
         </executions>
