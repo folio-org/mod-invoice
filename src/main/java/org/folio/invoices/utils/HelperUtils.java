@@ -244,11 +244,11 @@ public class HelperUtils {
   }
 
   public static String getAcqUnitIdsQueryParamName(String entity) {
-      return switch (entity) {
-          case INVOICE_LINES -> INVOICES + "." + ProtectionHelper.ACQUISITIONS_UNIT_IDS;
-          case VOUCHER_LINES -> VOUCHERS_STORAGE + "." + ProtectionHelper.ACQUISITIONS_UNIT_IDS;
-          default -> ProtectionHelper.ACQUISITIONS_UNIT_IDS;
-      };
+    switch (entity) {
+      case INVOICE_LINES: return INVOICES + "." + ProtectionHelper.ACQUISITIONS_UNIT_IDS;
+      case VOUCHER_LINES: return VOUCHERS_STORAGE + "." + ProtectionHelper.ACQUISITIONS_UNIT_IDS;
+      default: return ProtectionHelper.ACQUISITIONS_UNIT_IDS;
+    }
   }
 
   public static String getId(JsonObject jsonObject) {
