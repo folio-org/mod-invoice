@@ -222,7 +222,7 @@ public class HelperUtils {
   public static void calculateInvoiceLineTotals(InvoiceLine invoiceLine, Invoice invoice) {
     String currency = invoice.getCurrency();
     CurrencyUnit currencyUnit = Monetary.getCurrency(currency);
-    BigDecimal invoiceLineSubTotal = BigDecimal.valueOf(invoiceLine.getSubTotal()).setScale(5, RoundingMode.HALF_EVEN);
+    BigDecimal invoiceLineSubTotal = BigDecimal.valueOf(invoiceLine.getSubTotal()).setScale(2, RoundingMode.HALF_EVEN);
     MonetaryAmount subTotal = Money.of(invoiceLineSubTotal, currencyUnit);
 
     MonetaryAmount adjustmentTotals = calculateAdjustmentsTotal(invoiceLine.getAdjustments(), subTotal);
