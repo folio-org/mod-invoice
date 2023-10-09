@@ -13,7 +13,9 @@ import java.util.Map;
 import javax.money.convert.ConversionQuery;
 
 import org.folio.invoices.utils.HelperUtils;
+import org.folio.rest.jaxrs.model.Adjustment;
 import org.folio.rest.jaxrs.model.Invoice;
+import org.folio.rest.jaxrs.model.InvoiceLine;
 import org.junit.jupiter.api.Test;
 
 public class HelperUtilsTest {
@@ -50,5 +52,23 @@ public class HelperUtilsTest {
     ConversionQuery actQuery = HelperUtils.buildConversionQuery(new Invoice().withExchangeRate(2d).withCurrency("EUR"), systemCurrency);
     assertEquals(actQuery.getCurrency().getCurrencyCode(), systemCurrency);
     assertEquals(Double.valueOf(2d), actQuery.get(RATE_KEY, Double.class));
+  }
+
+  @Test
+  public void testShouldCalculateInvoiceLineTotals() {
+    Invoice invoice = new Invoice()
+      .withCurrency("USD");
+
+    Adjustment adjustment = new Adjustment()
+      .withRelationToTotal(Adjustment.RelationToTotal.IN_ADDITION_TO)
+      .withType(Adjustment.Type.AMOUNT)
+      .withValue(10.0d);
+
+    InvoiceLine invoiceLine = new InvoiceLine()
+      .withSubTotal(100.123456)
+      .withAdjustments(List.of(adjustment));
+
+    HelperUtils.calculateInvoiceLineTotals(invoiceLine, invoice);
+    assertEquals(Double.valueOf(110.12d), invoiceLine.getTotal());
   }
 }
