@@ -1,5 +1,11 @@
 ## 5.8.0 - Unreleased
 
+## 5.7.1 - Released Poppy R2 2023
+The focus of this release was to add permission
+
+### Bug Fixes
+* [MODINVOICE-508](https://issues.folio.org/browse/MODINVOICE-508) - Add invoice.item.cancel permission 
+
 ## 5.7.0 - Released Poppy R2 2023
 The focus of this release was to implement Vertx SFTP client for Batch Voucher Export and implement pay against previous fiscal years
 
