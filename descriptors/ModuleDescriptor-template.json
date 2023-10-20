@@ -702,6 +702,11 @@
       "description": "Pay an existing Invoice"
     },
     {
+      "permissionName": "invoice.item.cancel",
+      "displayName": "Invoice - cancel an existing Invoice",
+      "description": "Cancel an existing Invoice"
+    },
+    {
       "permissionName": "invoice.invoice-lines.collection.get",
       "displayName": "Invoice Line - get collection of Invoice lines",
       "description": "Get collection of Invoice lines"
@@ -1025,6 +1030,7 @@
         "invoice.invoices.item.delete",
         "invoice.item.approve",
         "invoice.item.pay",
+        "invoice.item.cancel",
         "invoice.invoice-lines.collection.get",
         "invoice.invoice-lines.item.get",
         "invoice.invoice-lines.item.post",
