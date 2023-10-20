@@ -1,7 +1,7 @@
 ## 5.8.0 - Unreleased
 
 ## 5.7.1 - Released Poppy R2 2023
-The focus of this release was to add permission
+The focus of this release was to add permission 'invoice.item.cancel'
 
 ### Bug Fixes
 * [MODINVOICE-508](https://issues.folio.org/browse/MODINVOICE-508) - Add invoice.item.cancel permission 
