@@ -656,7 +656,7 @@
     },
     {
       "id": "data-import-converter-storage",
-      "version": "1.2"
+      "version": "1.4"
     }
   ],
   "optional": [
@@ -700,6 +700,11 @@
       "permissionName": "invoice.item.pay",
       "displayName": "Invoice - pay an existing Invoice",
       "description": "Pay an existing Invoice"
+    },
+    {
+      "permissionName": "invoice.item.cancel",
+      "displayName": "Invoice - cancel an existing Invoice",
+      "description": "Cancel an existing Invoice"
     },
     {
       "permissionName": "invoice.invoice-lines.collection.get",
@@ -1025,6 +1030,7 @@
         "invoice.invoices.item.delete",
         "invoice.item.approve",
         "invoice.item.pay",
+        "invoice.item.cancel",
         "invoice.invoice-lines.collection.get",
         "invoice.invoice-lines.item.get",
         "invoice.invoice-lines.item.post",

@@ -1,4 +1,41 @@
-## 5.7.0 - Unreleased
+## 5.8.0 - Unreleased
+
+## 5.7.0 - Released Poppy R2 2023
+The focus of this release was to implement Vertx SFTP client for Batch Voucher Export and implement pay against previous fiscal years
+
+[Full Changelog](https://github.com/folio-org/mod-invoice/compare/v5.6.0...v5.7.0)
+
+### Stories
+* [MODINVOICE-501](https://issues.folio.org/browse/MODINVOICE-501) - Add missed permissions to module descriptor
+* [MODINVOICE-494](https://issues.folio.org/browse/MODINVOICE-494) - Support batch voucher sftp connection test
+* [MODINVOICE-493](https://issues.folio.org/browse/MODINVOICE-493) - Ignore nextPolNumber for pol numbers generation from request payload
+* [MODINVOICE-489](https://issues.folio.org/browse/MODINVOICE-489) - Upgrade folio-kafka-wrapper to 3.0.0 version
+* [MODINVOICE-484](https://issues.folio.org/browse/MODINVOICE-484) - Update to Java 17 mod-invoice
+* [MODINVOICE-481](https://issues.folio.org/browse/MODINVOICE-481) - Save invoice fiscal year if it is undefined after any fund distribution change on INVOICE
+* [MODINVOICE-474](https://issues.folio.org/browse/MODINVOICE-474) - Update the encumbrance when using a past fiscal year
+* [MODINVOICE-473](https://issues.folio.org/browse/MODINVOICE-473) - Save invoice fiscal year if it is undefined after any fund distribution change on invoice line
+* [MODINVOICE-471](https://issues.folio.org/browse/MODINVOICE-471) - Restrict approving/paying an invoice against past fiscal year with a new permission
+* [MODINVOICE-466](https://issues.folio.org/browse/MODINVOICE-466) - Update DTO schema with adding fiscalYearId to PUT payload
+* [MODINVOICE-465](https://issues.folio.org/browse/MODINVOICE-465) - Provide endpoint to retrieve fiscal year for invoice
+* [MODINVOICE-463](https://issues.folio.org/browse/MODINVOICE-463) - Provide fiscalYear field for pending payments, payments and credits
+* [MODINVOICE-455](https://issues.folio.org/browse/MODINVOICE-455) - Update models schema with new fields for ftp configuration
+* [MODINVOICE-454](https://issues.folio.org/browse/MODINVOICE-454) - Implement Vertx SFTP client for Batch Voucher Export
+* [MODINVOICE-443](https://issues.folio.org/browse/MODINVOICE-443) - Update dependent raml-util
+
+### Bug Fixes
+* [MODINVOICE-490](https://issues.folio.org/browse/MODINVOICE-490) - Reflection access to private fields fails in Java 17
+* [MODINVOICE-487](https://issues.folio.org/browse/MODINVOICE-487) - Encumbrance amount updated incorrectly after cancelling related invoice
+* [MODINVOICE-488](https://issues.folio.org/browse/MODINVOICE-488) - Invoice cannot be approved when an invoice-line is multi-fund distributed by amounts with an invoice-level adjustment
+* [MODINVOICE-480](https://issues.folio.org/browse/MODINVOICE-480) - Batch voucher export hangs at 'Pending' indefinitely for batches with multiple vouchers, no export file produced
+* [MODINVOICE-477](https://issues.folio.org/browse/MODINVOICE-477) - Invoice cannot be approved when balance is close to the encumbrance available balance
+* [MODINVOICE-467](https://issues.folio.org/browse/MODINVOICE-467) - Break circular module invocations
+* [MODINVOICE-464](https://issues.folio.org/browse/MODINVOICE-464) - Error when approving an invoice with a different fund than in po line
+* [MODINVOICE-460](https://issues.folio.org/browse/MODINVOICE-460) - Invalid usage of semaphores ignores limit of active threads
+* [MODINVOICE-453](https://issues.folio.org/browse/MODINVOICE-453) - Exchange rates cannot be updated on invoice lines with multiple funds
+* [MODDICORE-306](https://issues.folio.org/browse/MODDICORE-306) - Update mod-di-converter-storage-client and data-import-processing-core dependencies
+
+### Dependencies
+* Bump `java version` from `11` to `17`
 
 ## 5.6.0 - Orchid R1 2023
 The focus of this release was to migrate to Vertx future and improve logging 

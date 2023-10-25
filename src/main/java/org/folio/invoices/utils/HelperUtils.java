@@ -11,6 +11,8 @@ import static org.folio.rest.impl.AbstractHelper.ID;
 import static org.folio.rest.jaxrs.model.FundDistribution.DistributionType.PERCENTAGE;
 import static org.folio.services.exchange.ExchangeRateProviderResolver.RATE_KEY;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -220,7 +222,8 @@ public class HelperUtils {
   public static void calculateInvoiceLineTotals(InvoiceLine invoiceLine, Invoice invoice) {
     String currency = invoice.getCurrency();
     CurrencyUnit currencyUnit = Monetary.getCurrency(currency);
-    MonetaryAmount subTotal = Money.of(invoiceLine.getSubTotal(), currencyUnit);
+    BigDecimal invoiceLineSubTotal = BigDecimal.valueOf(invoiceLine.getSubTotal()).setScale(2, RoundingMode.HALF_EVEN);
+    MonetaryAmount subTotal = Money.of(invoiceLineSubTotal, currencyUnit);
 
     MonetaryAmount adjustmentTotals = calculateAdjustmentsTotal(invoiceLine.getAdjustments(), subTotal);
     MonetaryAmount total = adjustmentTotals.add(subTotal);
