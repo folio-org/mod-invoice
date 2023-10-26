@@ -53,6 +53,7 @@ import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.collections4.ListUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.folio.InvoiceWorkflowDataHolderBuilder;
+import org.folio.dataimport.utils.DataImportUtils;
 import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.invoices.utils.HelperUtils;
 import org.folio.invoices.utils.InvoiceRestrictionsUtil;
@@ -169,10 +170,10 @@ public class InvoiceHelper extends AbstractHelper {
   public InvoiceHelper(Map<String, String> okapiHeaders, Context ctx) {
     super(okapiHeaders, ctx);
     logger.warn("BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB");
+    logger.warn("InvoiceHelper created with headers: {}", okapiHeaders);
     logger.warn(
-      "InvoiceHelper created with headers: {}",
-      okapiHeaders,
-      ctx.get()
+      "CTX permissions?: {}",
+      (Object) ctx.get(DataImportUtils.DATA_IMPORT_PAYLOAD_OKAPI_PERMISSIONS)
     );
     logger.warn("BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB");
     this.protectionHelper = new ProtectionHelper(okapiHeaders, ctx);
