@@ -5,6 +5,8 @@ import java.util.HashMap;
 import java.util.Map;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.folio.DataImportEventPayload;
 import org.folio.rest.RestConstants;
 import org.folio.rest.RestVerticle;
@@ -17,6 +19,10 @@ public class DataImportUtils {
   private DataImportUtils() {}
 
   public static Map<String, String> getOkapiHeaders(DataImportEventPayload eventPayload) {
+    Logger logger = LogManager.getLogger();
+    logger.warn("CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC");
+    logger.warn("DataImportUtils getOkapiHeaders called with eventPayload {}", eventPayload);
+    logger.warn("CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC");
     Map<String, String> result = new HashMap<>();
     result.put(RestVerticle.OKAPI_HEADER_TENANT, eventPayload.getTenant());
     result.put(RestVerticle.OKAPI_HEADER_TOKEN, eventPayload.getToken());

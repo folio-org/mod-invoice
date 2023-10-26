@@ -43,7 +43,7 @@ public final class UserPermissionsUtil {
   public static List<String> getProvidedPermissions(Map<String, String> okapiHeaders) {
     LogManager.getLogger().warn("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA");
     LogManager.getLogger().warn("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA");
-    LogManager.getLogger().warn("getProvidedPermissions(okapiHeaders) ", okapiHeaders);
+    LogManager.getLogger().warn("getProvidedPermissions(okapiHeaders): {}", okapiHeaders);
     LogManager.getLogger().warn("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA");
     LogManager.getLogger().warn("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA");
     return new JsonArray(okapiHeaders.getOrDefault(OKAPI_HEADER_PERMISSIONS, EMPTY_ARRAY)).stream().

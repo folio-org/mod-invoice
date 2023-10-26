@@ -94,14 +94,23 @@ public class DataImportKafkaHandler implements AsyncRecordHandler<String, String
 
   private void populateContextWithOkapiUserAndPerms(KafkaConsumerRecord<String, String> kafkaRecord,
                                                     DataImportEventPayload eventPayload) {
+    logger.warn("DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD");
+    logger.warn("Kafka Handler populateContextWithOkapiUserAndPerms payload: {}", eventPayload);
+    logger.warn("Kafka Handler populateContextWithOkapiUserAndPerms headers: {}", kafkaRecord.headers());
+    logger.warn("DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD");
     for (KafkaHeader header: kafkaRecord.headers()) {
+      logger.warn("EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE");
+      logger.warn("Header key={}, value={}", header.key(), header.value());
       if (UserPermissionsUtil.OKAPI_HEADER_PERMISSIONS.equalsIgnoreCase(header.key())) {
+        logger.warn("in perms conditional");
         String permissions = header.value().toString();
         eventPayload.getContext().put(DataImportUtils.DATA_IMPORT_PAYLOAD_OKAPI_PERMISSIONS, permissions);
       } else if (RestVerticle.OKAPI_USERID_HEADER.equalsIgnoreCase(header.key())) {
+        logger.warn("in user id conditional");
         String userId = header.value().toString();
         eventPayload.getContext().put(DataImportUtils.DATA_IMPORT_PAYLOAD_OKAPI_USER_ID, userId);
       }
+      logger.warn("EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE");
     }
   }
 

@@ -150,6 +150,9 @@ public class InvoiceHelper extends AbstractHelper {
 
   public InvoiceHelper(Map<String, String> okapiHeaders, Context ctx) {
     super(okapiHeaders, ctx);
+    logger.warn("BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB");
+    logger.warn("InvoiceHelper created with headers: {}", okapiHeaders);
+    logger.warn("BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB");
     this.protectionHelper = new ProtectionHelper(okapiHeaders, ctx);
     this.requestContext = new RequestContext(ctx, okapiHeaders);
     SpringContextUtil.autowireDependencies(this, Vertx.currentContext());
