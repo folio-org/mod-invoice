@@ -30,13 +30,14 @@ public class RestClient {
   private static final Logger log = LogManager.getLogger(RestClient.class);
   private static final ErrorConverter ERROR_CONVERTER = ErrorConverter.createFullBody(result -> {
       String error = result.response().bodyAsString();
-      if (isErrorsMessageJson(error)) {
-        return new HttpException(
-          result.response().statusCode(),
-          mapToErrors(error)
-        );
-      }
       return new HttpException(result.response().statusCode(), error);
+      // if ("application/json".equals(result.response().getHeader("Content-Type")) || isErrorsMessageJson(error)) {
+      //   return new HttpException(
+      //     result.response().statusCode(),
+      //     mapToErrors(error)
+      //   );
+      // }
+      // return new HttpException(result.response().statusCode(), error);
     }
   );
   protected static final ResponsePredicate SUCCESS_RESPONSE_PREDICATE = ResponsePredicate.create(
@@ -270,7 +271,7 @@ public class RestClient {
     getVertxWebClient(requestContext.getContext())
       .getAbs(absEndpoint)
       .putHeaders(caseInsensitiveHeader)
-      // .expect(SUCCESS_RESPONSE_PREDICATE)
+      .expect(SUCCESS_RESPONSE_PREDICATE)
       .send()
       .map(res -> {
         log.info("RES {}: {}", res.statusCode(), res.statusMessage());
