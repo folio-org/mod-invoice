@@ -7,6 +7,7 @@ import static java.util.stream.Collectors.toList;
 import static org.folio.invoices.utils.ErrorCodes.CANCEL_TRANSACTIONS_ERROR;
 import static org.folio.invoices.utils.ErrorCodes.CANNOT_CANCEL_INVOICE;
 import static org.folio.invoices.utils.ErrorCodes.ERROR_UNRELEASING_ENCUMBRANCES;
+import static org.folio.invoices.utils.HelperUtils.INVOICE_ID;
 import static org.folio.invoices.utils.HelperUtils.collectResultsOnSuccess;
 import static org.folio.invoices.utils.HelperUtils.convertIdsToCqlQuery;
 import static org.folio.rest.RestConstants.MAX_IDS_FOR_GET_RQ;
@@ -22,7 +23,9 @@ import java.util.List;
 import one.util.streamex.StreamEx;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.folio.InvoiceWorkflowDataHolderBuilder;
 import org.folio.invoices.rest.exceptions.HttpException;
+import org.folio.models.InvoiceWorkflowDataHolder;
 import org.folio.rest.acq.model.finance.InvoiceTransactionSummary;
 import org.folio.rest.acq.model.finance.Transaction;
 import org.folio.rest.acq.model.finance.Transaction.TransactionType;
@@ -56,19 +59,22 @@ public class InvoiceCancelService {
   private final VoucherService voucherService;
   private final OrderLineService orderLineService;
   private final OrderService orderService;
+  private final InvoiceWorkflowDataHolderBuilder holderBuilder;
 
   public InvoiceCancelService(BaseTransactionService baseTransactionService,
       EncumbranceService encumbranceService,
       InvoiceTransactionSummaryService invoiceTransactionSummaryService,
       VoucherService voucherService,
       OrderLineService orderLineService,
-      OrderService orderService) {
+      OrderService orderService,
+      InvoiceWorkflowDataHolderBuilder holderBuilder) {
     this.baseTransactionService = baseTransactionService;
     this.encumbranceService = encumbranceService;
     this.invoiceTransactionSummaryService = invoiceTransactionSummaryService;
     this.voucherService = voucherService;
     this.orderLineService = orderLineService;
     this.orderService = orderService;
+    this.holderBuilder = holderBuilder;
   }
 
   /**
@@ -90,6 +96,7 @@ public class InvoiceCancelService {
         validateCancelInvoice(invoiceFromStorage);
         return null;
       })
+      .compose(v -> validateBudgetsStatus(invoiceFromStorage, lines, requestContext))
       .compose(v -> getTransactions(invoiceId, requestContext))
       .compose(transactions -> cancelTransactions(invoiceId, transactions, requestContext))
       .map(v -> {
@@ -104,11 +111,28 @@ public class InvoiceCancelService {
     List<Invoice.Status> cancellable = List.of(Invoice.Status.APPROVED, Invoice.Status.PAID);
     if (!cancellable.contains(invoiceFromStorage.getStatus())) {
       List<Parameter> parameters = Collections.singletonList(
-        new Parameter().withKey("invoiceId").withValue(invoiceFromStorage.getId()));
+        new Parameter().withKey(INVOICE_ID).withValue(invoiceFromStorage.getId()));
       Error error = CANNOT_CANCEL_INVOICE.toError()
         .withParameters(parameters);
       throw new HttpException(422, error);
     }
+  }
+
+  /**
+   * Performs validation of budget statuses associated with an invoice.
+   *
+   * @param invoice The invoice.This parameter is necessary to extract the associated budgets.
+   * @param lines The list of invoice lines. This parameter is necessary to extract the associated budgets.
+   * @param requestContext The request context providing additional information.
+   * @return A `Future` of type `Void`, representing the result of the validation. If the future succeeds,
+   * it indicates that the validation has been successfully completed, and active budgets have been extracted
+   * @throws HttpException If no active budgets are found, an exception is thrown.
+   */
+  private Future<Void> validateBudgetsStatus(Invoice invoice, List<InvoiceLine> lines, RequestContext requestContext) {
+    List<InvoiceWorkflowDataHolder> dataHolders = holderBuilder.buildHoldersSkeleton(lines, invoice);
+    return holderBuilder.withBudgets(dataHolders, requestContext)
+      .onFailure(t -> logger.error("Could not find an active budget for the invoice with id {}", invoice.getId(), t))
+      .mapEmpty();
   }
 
   private Future<List<Transaction>> getTransactions(String invoiceId, RequestContext requestContext) {
@@ -131,7 +155,7 @@ public class InvoiceCancelService {
       .recover(t -> {
         logger.error("Failed to cancel transactions for invoice with id {}", invoiceId, t);
         List<Parameter> parameters = Collections.singletonList(
-          new Parameter().withKey("invoiceId").withValue(invoiceId));
+          new Parameter().withKey(INVOICE_ID).withValue(invoiceId));
         throw new HttpException(500, CANCEL_TRANSACTIONS_ERROR.toError().withParameters(parameters));
       });
   }

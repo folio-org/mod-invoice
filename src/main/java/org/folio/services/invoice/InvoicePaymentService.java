@@ -13,7 +13,6 @@ import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.folio.InvoiceWorkflowDataHolderBuilder;
 import org.folio.invoices.rest.exceptions.HttpException;
-import org.folio.models.InvoiceWorkflowDataHolder;
 import org.folio.rest.acq.model.orders.CompositePoLine;
 import org.folio.rest.core.models.RequestContext;
 import org.folio.rest.jaxrs.model.FundDistribution;
@@ -55,7 +54,7 @@ public class InvoicePaymentService {
   public Future<Void> payInvoice(Invoice invoice, List<InvoiceLine> invoiceLines, RequestContext requestContext) {
     //  Set payment date, when the invoice is being paid.
     invoice.setPaymentDate(invoice.getMetadata().getUpdatedDate());
-    return getInvoiceWorkflowDataHolders(invoice, invoiceLines, requestContext)
+    return holderBuilder.buildCompleteHolders(invoice, invoiceLines, requestContext)
       .compose(holders -> paymentCreditWorkflowService.handlePaymentsAndCreditsCreation(holders, requestContext))
       .compose(vVoid -> CompositeFuture.join(updatePoLinesStatus(invoice, invoiceLines, requestContext), voucherService.payInvoiceVoucher(invoice.getId(), requestContext)))
       .mapEmpty();
@@ -83,18 +82,6 @@ public class InvoicePaymentService {
         });
     }
     return Future.failedFuture(new HttpException(400, INVOICE_LINE_MUST_HAVE_FUND));
-  }
-
-  private Future<List<InvoiceWorkflowDataHolder>> getInvoiceWorkflowDataHolders(Invoice invoice, List<InvoiceLine> lines, RequestContext requestContext) {
-    List<InvoiceWorkflowDataHolder> dataHolders = holderBuilder.buildHoldersSkeleton(lines, invoice);
-    return holderBuilder.withFunds(dataHolders, requestContext)
-      .compose(holders -> holderBuilder.withLedgers(holders, requestContext))
-      .compose(holders -> holderBuilder.withBudgets(holders, requestContext))
-      .map(holderBuilder::checkMultipleFiscalYears)
-      .compose(holders -> holderBuilder.withFiscalYear(holders, requestContext))
-      .compose(holders -> holderBuilder.withEncumbrances(holders, requestContext))
-      .compose(holders -> holderBuilder.withExpenseClasses(holders, requestContext))
-      .compose(holders -> holderBuilder.withExchangeRate(holders, requestContext));
   }
 
   /**

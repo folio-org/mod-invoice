@@ -42,6 +42,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import org.folio.InvoiceWorkflowDataHolderBuilder;
 import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.rest.acq.model.finance.Encumbrance;
 import org.folio.rest.acq.model.finance.InvoiceTransactionSummary;
@@ -62,6 +63,12 @@ import org.folio.rest.jaxrs.model.InvoiceLine;
 import org.folio.rest.jaxrs.model.InvoiceLineCollection;
 import org.folio.rest.jaxrs.model.Voucher;
 import org.folio.rest.jaxrs.model.VoucherCollection;
+import org.folio.services.exchange.ExchangeRateProviderResolver;
+import org.folio.services.finance.FundService;
+import org.folio.services.finance.LedgerService;
+import org.folio.services.finance.budget.BudgetService;
+import org.folio.services.finance.expence.ExpenseClassRetrieveService;
+import org.folio.services.finance.fiscalyear.FiscalYearService;
 import org.folio.services.finance.transaction.BaseTransactionService;
 import org.folio.services.finance.transaction.EncumbranceService;
 import org.folio.services.finance.transaction.InvoiceTransactionSummaryService;
@@ -126,9 +133,19 @@ public class InvoiceCancelServiceTest {
     OrderLineService orderLineService = new OrderLineService(restClient);
     InvoiceLineService invoiceLineService = new InvoiceLineService(restClient);
     OrderService orderService = new OrderService(restClient, invoiceLineService, orderLineService);
+
+    ExchangeRateProviderResolver exchangeRateProviderResolver = new ExchangeRateProviderResolver();
+    FiscalYearService fiscalYearService = new FiscalYearService(restClient);
+    FundService fundService = new FundService(restClient);
+    LedgerService ledgerService = new LedgerService(restClient);
+    BudgetService budgetService = new BudgetService(restClient);
+    ExpenseClassRetrieveService expenseClassRetrieveService = new ExpenseClassRetrieveService(restClient);
+    InvoiceWorkflowDataHolderBuilder holderBuilder = new InvoiceWorkflowDataHolderBuilder(exchangeRateProviderResolver,
+      fiscalYearService, fundService, ledgerService, baseTransactionService, budgetService, expenseClassRetrieveService);
+
     cancelService = new InvoiceCancelService(baseTransactionService, encumbranceService,
       invoiceTransactionSummaryService, voucherService, orderLineService,
-      orderService);
+      orderService, holderBuilder);
   }
 
   @Test

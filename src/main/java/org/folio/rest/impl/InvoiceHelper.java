@@ -325,7 +325,7 @@ public class InvoiceHelper extends AbstractHelper {
 
 
   private Future<Void> handleExchangeRateChange(Invoice invoice, List<InvoiceLine> invoiceLines) {
-    return getInvoiceWorkflowDataHolders(invoice, invoiceLines, requestContext)
+    return holderBuilder.buildCompleteHolders(invoice, invoiceLines, requestContext)
             .compose(holders -> holderBuilder.withExistingTransactions(holders, requestContext))
             .compose(holders ->  pendingPaymentWorkflowService.handlePendingPaymentsUpdate(holders, requestContext))
             .compose(aVoid -> updateVoucher(invoice, invoiceLines));
@@ -502,7 +502,7 @@ public class InvoiceHelper extends AbstractHelper {
         validateBeforeApproval(organization, invoice, lines);
         return null;
       })
-      .compose(v -> getInvoiceWorkflowDataHolders(invoice, lines, requestContext))
+      .compose(v -> holderBuilder.buildCompleteHolders(invoice, lines, requestContext))
       .compose(holders -> encumbranceService.updateInvoiceLinesEncumbranceLinks(holders,
           holders.get(0).getFiscalYear().getId(), requestContext)
         .compose(linesToUpdate -> invoiceLineService.persistInvoiceLines(linesToUpdate, requestContext))
@@ -527,18 +527,6 @@ public class InvoiceHelper extends AbstractHelper {
       }
     }
     validator.validateBeforeApproval(invoice, lines);
-  }
-
-  private Future<List<InvoiceWorkflowDataHolder>> getInvoiceWorkflowDataHolders(Invoice invoice, List<InvoiceLine> lines, RequestContext requestContext) {
-    List<InvoiceWorkflowDataHolder> dataHolders = holderBuilder.buildHoldersSkeleton(lines, invoice);
-    return holderBuilder.withFunds(dataHolders, requestContext)
-            .compose(holders -> holderBuilder.withLedgers(holders, requestContext))
-            .compose(holders -> holderBuilder.withBudgets(holders, requestContext))
-            .map(holderBuilder::checkMultipleFiscalYears)
-            .compose(holders -> holderBuilder.withFiscalYear(holders, requestContext))
-            .compose(holders -> holderBuilder.withEncumbrances(holders, requestContext))
-            .compose(holders -> holderBuilder.withExpenseClasses(holders, requestContext))
-            .compose(holders -> holderBuilder.withExchangeRate(holders, requestContext));
   }
 
   private Future<Voucher> updateVoucherWithSystemCurrency(Voucher voucher, List<InvoiceLine> lines) {
