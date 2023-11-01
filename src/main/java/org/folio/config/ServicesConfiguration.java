@@ -213,9 +213,10 @@ public class ServicesConfiguration {
                                             InvoiceTransactionSummaryService invoiceTransactionSummaryService,
                                             VoucherService voucherService,
                                             OrderLineService orderLineService,
-                                            OrderService orderService) {
+                                            OrderService orderService,
+                                            InvoiceWorkflowDataHolderBuilder invoiceWorkflowDataHolderBuilder) {
     return new InvoiceCancelService(baseTransactionService, encumbranceService, invoiceTransactionSummaryService,
-      voucherService, orderLineService, orderService);
+      voucherService, orderLineService, orderService, invoiceWorkflowDataHolderBuilder);
   }
   @Bean
   BatchVoucherService batchVoucherService(RestClient restClient) {

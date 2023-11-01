@@ -1,0 +1,23 @@
+{
+  "id": "55f48dc6-efa7-4cfe-bc7c-4786efe493e2",
+  "name": "GRANT1-SUBN-FY2019",
+  "budgetStatus": "Active",
+  "allowableEncumbrance": 100.0,
+  "allowableExpenditure": 100.0,
+  "allocated": 70000.0,
+  "awaitingPayment": 2310.0,
+  "available": 61040.0,
+  "encumbered": 2870.0,
+  "expenditures": 3780.0,
+  "unavailable": 0.0,
+  "overEncumbrance": 0.0,
+  "overExpended": 0.0,
+  "totalFunding": 70000.0,
+  "fundId": "55f48dc6-efa7-4cfe-bc7c-4786efe493e3",
+  "fiscalYearId": "78110b4e-2f8e-4eef-81ee-3058c0c7a9ee",
+  "acqUnitIds": [],
+  "metadata": {
+    "createdDate": "2020-01-30T01:28:17.666+0000",
+    "updatedDate": "2020-01-30T01:28:17.666+0000"
+  }
+}

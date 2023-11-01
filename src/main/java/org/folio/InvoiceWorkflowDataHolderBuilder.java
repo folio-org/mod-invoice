@@ -72,6 +72,20 @@ public class InvoiceWorkflowDataHolderBuilder {
     this.expenseClassRetrieveService = expenseClassRetrieveService;
   }
 
+  public Future<List<InvoiceWorkflowDataHolder>> buildCompleteHolders(Invoice invoice,
+                                                                      List<InvoiceLine> invoiceLines,
+                                                                      RequestContext requestContext) {
+    List<InvoiceWorkflowDataHolder> dataHolders = buildHoldersSkeleton(invoiceLines, invoice);
+    return withFunds(dataHolders, requestContext)
+      .compose(holders -> withLedgers(holders, requestContext))
+      .compose(holders -> withBudgets(holders, requestContext))
+      .map(this::checkMultipleFiscalYears)
+      .compose(holders -> withFiscalYear(holders, requestContext))
+      .compose(holders -> withEncumbrances(holders, requestContext))
+      .compose(holders -> withExpenseClasses(holders, requestContext))
+      .compose(holders -> withExchangeRate(holders, requestContext));
+  }
+
   public List<InvoiceWorkflowDataHolder> buildHoldersSkeleton(List<InvoiceLine> lines, Invoice invoice) {
     List<InvoiceWorkflowDataHolder>  holders = lines.stream()
       .flatMap(invoiceLine -> invoiceLine.getFundDistributions().stream()
