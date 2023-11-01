@@ -120,6 +120,8 @@ public class InvoiceCancelService {
 
   /**
    * Performs validation of budget statuses associated with an invoice.
+   * Associated budgets should have {@link org.folio.rest.acq.model.finance.Budget.BudgetStatus#ACTIVE} status
+   * to pass validation successfully.
    *
    * @param invoice The invoice.This parameter is necessary to extract the associated budgets.
    * @param lines The list of invoice lines. This parameter is necessary to extract the associated budgets.
