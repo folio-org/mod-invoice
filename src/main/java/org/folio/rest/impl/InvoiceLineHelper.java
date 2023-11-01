@@ -205,7 +205,8 @@ public class InvoiceLineHelper extends AbstractHelper {
         ilProcessing.setInvoice(invoice);
         return null;
       })
-      .compose(invoice -> getInvoiceWorkflowDataHolders(ilProcessing, requestContext))
+      .compose(invoice -> holderBuilder.buildCompleteHolders(ilProcessing.getInvoice(),
+        Collections.singletonList(ilProcessing.getInvoiceLine()), requestContext))
       .compose(holders -> budgetExpenseClassService.checkExpenseClasses(holders, requestContext))
       .map(holders -> updateInvoiceFiscalYear(holders, ilProcessing))
       .map(holders -> {
@@ -353,7 +354,8 @@ public class InvoiceLineHelper extends AbstractHelper {
       })
       .compose(v -> protectionHelper.isOperationRestricted(ilProcessing.getInvoice().getAcqUnitIds(),
         ProtectedOperationType.CREATE))
-      .compose(v -> getInvoiceWorkflowDataHolders(ilProcessing, requestContext)
+      .compose(invoice -> holderBuilder.buildCompleteHolders(ilProcessing.getInvoice(),
+          Collections.singletonList(ilProcessing.getInvoiceLine()), requestContext)
         .compose(holders -> budgetExpenseClassService.checkExpenseClasses(holders, requestContext))
         .compose(holders -> generateNewInvoiceLineNumber(holders, ilProcessing, requestContext))
         .map(holders -> updateInvoiceFiscalYear(holders, ilProcessing))
@@ -617,22 +619,6 @@ public class InvoiceLineHelper extends AbstractHelper {
     var newNumbers = new ArrayList<>(numbers);
     newNumbers.add(newNumber);
     return newNumbers;
-  }
-
-  private Future<List<InvoiceWorkflowDataHolder>> getInvoiceWorkflowDataHolders(ILProcessing ilProcessing,
-      RequestContext requestContext) {
-    List<InvoiceLine> lines = new ArrayList<>();
-    lines.add(ilProcessing.getInvoiceLine());
-
-    List<InvoiceWorkflowDataHolder> dataHolders = holderBuilder.buildHoldersSkeleton(lines, ilProcessing.getInvoice());
-    return holderBuilder.withFunds(dataHolders, requestContext)
-      .compose(holders -> holderBuilder.withLedgers(holders, requestContext))
-      .compose(holders -> holderBuilder.withBudgets(holders, requestContext))
-      .map(holderBuilder::checkMultipleFiscalYears)
-      .compose(holders -> holderBuilder.withFiscalYear(holders, requestContext))
-      .compose(holders -> holderBuilder.withEncumbrances(holders, requestContext))
-      .compose(holders -> holderBuilder.withExpenseClasses(holders, requestContext))
-      .compose(holders -> holderBuilder.withExchangeRate(holders, requestContext));
   }
 
   private List<InvoiceWorkflowDataHolder> updateInvoiceFiscalYear(List<InvoiceWorkflowDataHolder> holders,
