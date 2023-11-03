@@ -1,7 +1,17 @@
 ## 5.8.0 - Unreleased
 
+## 5.7.2 - Released Poppy R2 2023
+The focus of this release was to prevent invoice cancellation when related budget is inactive
+
+[Full Changelog](https://github.com/folio-org/mod-invoice/compare/v5.7.1...v5.7.2)
+
+### Bug Fixes
+* [MODINVOICE-509](https://issues.folio.org/browse/MODINVOICE-509) - Invoice cancellation allowed against closed budget
+
 ## 5.7.1 - Released Poppy R2 2023
 The focus of this release was to add permission 'invoice.item.cancel'
+
+[Full Changelog](https://github.com/folio-org/mod-invoice/compare/v5.7.0...v5.7.1)
 
 ### Bug Fixes
 * [MODINVOICE-508](https://issues.folio.org/browse/MODINVOICE-508) - Add invoice.item.cancel permission 
