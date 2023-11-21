@@ -6,7 +6,7 @@ import static org.folio.ActionProfile.Action.CREATE;
 import static org.folio.ApiTestSuite.KAFKA_ENV_VALUE;
 import static org.folio.ApiTestSuite.kafkaCluster;
 import static org.folio.DataImportEventTypes.DI_COMPLETED;
-import static org.folio.DataImportEventTypes.DI_INCOMING_EDIFACT_RECORD_PARSED;
+import static org.folio.DataImportEventTypes.DI_EDIFACT_RECORD_CREATED;
 import static org.folio.DataImportEventTypes.DI_ERROR;
 import static org.folio.DataImportEventTypes.DI_INVOICE_CREATED;
 import static org.folio.dataimport.handlers.actions.CreateInvoiceEventHandler.INVOICE_LINES_ERRORS_KEY;
@@ -264,7 +264,7 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
     payloadContext.put(JOB_PROFILE_SNAPSHOT_ID_KEY, profileSnapshotWrapper.getId());
 
     DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
-      .withEventType(DI_INCOMING_EDIFACT_RECORD_PARSED.value())
+      .withEventType(DI_EDIFACT_RECORD_CREATED.value())
       .withTenant(DI_POST_INVOICE_LINES_SUCCESS_TENANT)
       .withOkapiUrl(OKAPI_URL)
       .withToken(TOKEN)
@@ -339,7 +339,7 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
     payloadContext.put(DATA_IMPORT_PAYLOAD_OKAPI_USER_ID, USER_ID);
 
     DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
-      .withEventType(DI_INCOMING_EDIFACT_RECORD_PARSED.value())
+      .withEventType(DI_EDIFACT_RECORD_CREATED.value())
       .withTenant(DI_POST_INVOICE_LINES_SUCCESS_TENANT)
       .withOkapiUrl(OKAPI_URL)
       .withToken(TOKEN)
@@ -406,7 +406,7 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
     payloadContext.put(JOB_PROFILE_SNAPSHOT_ID_KEY, profileSnapshotWrapper.getId());
 
     DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
-      .withEventType(DI_INCOMING_EDIFACT_RECORD_PARSED.value())
+      .withEventType(DI_EDIFACT_RECORD_CREATED.value())
       .withTenant(DI_POST_INVOICE_LINES_SUCCESS_TENANT)
       .withOkapiUrl(OKAPI_URL)
       .withToken(TOKEN)
@@ -481,7 +481,7 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
     payloadContext.put(JOB_PROFILE_SNAPSHOT_ID_KEY, profileSnapshotWrapper.getId());
 
     DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
-      .withEventType(DI_INCOMING_EDIFACT_RECORD_PARSED.value())
+      .withEventType(DI_EDIFACT_RECORD_CREATED.value())
       .withTenant(DI_POST_INVOICE_LINES_SUCCESS_TENANT)
       .withOkapiUrl(OKAPI_URL)
       .withToken(TOKEN)
@@ -548,7 +548,7 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
     payloadContext.put(JOB_PROFILE_SNAPSHOT_ID_KEY, profileSnapshotWrapper.getId());
 
     DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
-      .withEventType(DI_INCOMING_EDIFACT_RECORD_PARSED.value())
+      .withEventType(DI_EDIFACT_RECORD_CREATED.value())
       .withTenant(DI_POST_INVOICE_LINES_SUCCESS_TENANT)
       .withOkapiUrl(OKAPI_URL)
       .withToken(TOKEN)
@@ -608,7 +608,7 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
     payloadContext.put(JOB_PROFILE_SNAPSHOT_ID_KEY, profileSnapshotWrapper.getId());
 
     DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
-      .withEventType(DI_INCOMING_EDIFACT_RECORD_PARSED.value())
+      .withEventType(DI_EDIFACT_RECORD_CREATED.value())
       .withTenant(DI_POST_INVOICE_LINES_SUCCESS_TENANT)
       .withOkapiUrl(OKAPI_URL)
       .withToken(TOKEN)
@@ -664,7 +664,7 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
     addMockEntry(JOB_PROFILE_SNAPSHOTS_MOCK, profileSnapshotWrapper);
 
     DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
-      .withEventType(DI_INCOMING_EDIFACT_RECORD_PARSED.value())
+      .withEventType(DI_EDIFACT_RECORD_CREATED.value())
       .withTenant(TENANT_ID)
       .withOkapiUrl(OKAPI_URL)
       .withToken(TOKEN)
@@ -709,7 +709,7 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
     payloadContext.put(JOB_PROFILE_SNAPSHOT_ID_KEY, profileSnapshotWrapper.getId());
 
     DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
-      .withEventType(DI_INCOMING_EDIFACT_RECORD_PARSED.value())
+      .withEventType(DI_EDIFACT_RECORD_CREATED.value())
       .withTenant(ERROR_TENANT)
       .withOkapiUrl(OKAPI_URL)
       .withToken(TOKEN)
@@ -762,7 +762,7 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
     payloadContext.put(JOB_PROFILE_SNAPSHOT_ID_KEY, profileSnapshotWrapper.getId());
 
     DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
-      .withEventType(DI_INCOMING_EDIFACT_RECORD_PARSED.value())
+      .withEventType(DI_EDIFACT_RECORD_CREATED.value())
       .withTenant(DI_POST_INVOICE_LINES_SUCCESS_TENANT)
       .withOkapiUrl(OKAPI_URL)
       .withToken(TOKEN)
@@ -820,7 +820,7 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
     payloadContext.put(JOB_PROFILE_SNAPSHOT_ID_KEY, profileSnapshotWrapper.getId());
 
     DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
-      .withEventType(DI_INCOMING_EDIFACT_RECORD_PARSED.value())
+      .withEventType(DI_EDIFACT_RECORD_CREATED.value())
       .withTenant(DI_POST_INVOICE_LINES_SUCCESS_TENANT)
       .withOkapiUrl(OKAPI_URL)
       .withToken(TOKEN)
@@ -854,7 +854,7 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
     // given
     ProfileSnapshotWrapper profileSnapshotWrapper = buildProfileSnapshotWrapper(jobProfile, actionProfile, mappingProfile);
     DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
-      .withEventType(DI_INCOMING_EDIFACT_RECORD_PARSED.value())
+      .withEventType(DI_EDIFACT_RECORD_CREATED.value())
       .withCurrentNode(profileSnapshotWrapper.getChildSnapshotWrappers().get(0));
 
     // when
@@ -880,7 +880,7 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
       .withContent(actionProfile);
 
     DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
-      .withEventType(DI_INCOMING_EDIFACT_RECORD_PARSED.value())
+      .withEventType(DI_EDIFACT_RECORD_CREATED.value())
       .withCurrentNode(profileSnapshotWrapper);
 
     // when
