@@ -1,6 +1,6 @@
 package org.folio.verticles;
 
-import static org.folio.DataImportEventTypes.DI_INCOMING_EDIFACT_RECORD_PARSED;
+import static org.folio.DataImportEventTypes.DI_EDIFACT_RECORD_CREATED;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -55,7 +55,7 @@ public class DataImportConsumerVerticle extends AbstractVerticle {
     EventManager.registerKafkaEventPublisher(kafkaConfig, vertx, maxDistributionNumber);
 
     SubscriptionDefinition subscriptionDefinition = KafkaTopicNameHelper.createSubscriptionDefinition(kafkaConfig.getEnvId(),
-      KafkaTopicNameHelper.getDefaultNameSpace(), DI_INCOMING_EDIFACT_RECORD_PARSED.value());
+      KafkaTopicNameHelper.getDefaultNameSpace(), DI_EDIFACT_RECORD_CREATED.value());
 
     consumerWrapper = KafkaConsumerWrapper.<String, String>builder()
       .context(context)
