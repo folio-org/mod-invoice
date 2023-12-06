@@ -63,7 +63,7 @@ public final class UserPermissionsUtil {
     }
   }
 
-  public static void verifyPaidPermission(List<String> newAcqUnitIds, List<String> currentAcqUnitIds,
+  public static void verifyPaidPermission(List<String> newAcqUnitIds, List<String> currentAcqUnitIds, String acqSataus,
                                                    Map<String, String> okapiHeaders) {
     Set<String> newAcqUnits = new HashSet<>(CollectionUtils.emptyIfNull(newAcqUnitIds));
     Set<String> acqUnitsFromStorage = new HashSet<>(CollectionUtils.emptyIfNull(currentAcqUnitIds));
