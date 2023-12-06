@@ -25,7 +25,9 @@ import static org.folio.services.voucher.VoucherCommandService.VOUCHER_NUMBER_PR
 import static org.folio.utils.UserPermissionsUtil.verifyUserHasAssignPermission;
 import static org.folio.utils.UserPermissionsUtil.verifyUserHasManagePermission;
 import static org.folio.utils.UserPermissionsUtil.verifyUserHasFiscalYearUpdatePermission;
-
+import static org.folio.utils.UserPermissionsUtil.verifyUserHasFiscalYearUpdat;
+import static org.folio.utils.UserPermissionsUtil.verifyApprovalPermission;
+import static org.folio.utils.UserPermissionsUtil.verifyPaidPermission;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
