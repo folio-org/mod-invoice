@@ -71,7 +71,7 @@ public final class UserPermissionsUtil {
     Set<String> acqStatus = new HashSet<>(CollectionUtils.emptyIfNull(status));
     // check if the invoice is approved. if the invoice had not been approved, the function will throw a expection. otherwise the function will check the if the user has permission. 
     if (isApporved(acqStatus)){
-    throw new HttpException(HttpStatus.HTTP_FORBIDDEN.toInt(), USER_HAS_NO_ACQ_PERMISSIONS);
+    throw new HttpException(HttpStatus.HTTP_FORBIDDEN.toInt(), INVOICE_HAD_NOT_BEEN_APPROVED);
       
     }
      else if (isManagePermissionRequired(newAcqUnits, acqUnitsFromStorage) && isUserDoesNotHaveDesiredPermission(MANAGE, okapiHeaders)) {
