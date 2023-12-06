@@ -349,8 +349,10 @@ public class InvoiceHelper extends AbstractHelper {
         validator.validateInvoice(invoice, invoiceFromStorage);
         verifyUserHasManagePermission(invoice.getAcqUnitIds(), invoiceFromStorage.getAcqUnitIds(), okapiHeaders);
         verifyUserHasFiscalYearUpdatePermission(invoice.getFiscalYearId(), invoiceFromStorage.getFiscalYearId(), okapiHeaders);
+        //verify if the user can approve the inovice 
        verifyApprovalPermission(invoice.getAcqUnitIds(), invoiceFromStorage.getAcqUnitIds(), okapiHeaders);
-       verifyPaidPermission(invoice.getAcqUnitIds(), invoiceFromStorage.getAcqUnitIds(), invoice.getStatus(), okapiHeaders);
+        //verify if the invoice is allowed to be paid 
+       verifyPaidPermission(invoice.getAcqUnitIds(), invoiceFromStorage.getAcqUnitIds(), invoice.getStatus().toString(), okapiHeaders);
 
         setSystemGeneratedData(invoiceFromStorage, invoice);
         return null;
