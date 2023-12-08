@@ -70,6 +70,17 @@ public final class UserPermissionsUtil {
     }
   }
 
+
+   public static void verifyApprovalPermission(List<String> newAcqUnitIds, List<String> currentAcqUnitIds,
+                                              Map<String, String> okapiHeaders) {
+    Set<String> newAcqUnits = new HashSet<>(CollectionUtils.emptyIfNull(newAcqUnitIds));
+    Set<String> acqUnitsFromStorage = new HashSet<>(CollectionUtils.emptyIfNull(currentAcqUnitIds));
+
+    if (isManagePermissionRequired(newAcqUnits, acqUnitsFromStorage) && isUserDoesNotHaveDesiredPermission(MANAGE, okapiHeaders)) {
+      throw new HttpException(HttpStatus.HTTP_FORBIDDEN.toInt(), USER_HAS_NO_ACQ_PERMISSIONS);
+    }
+  }
+
   /**
    * The method checks whether the user has the desired permission to update the fiscal year.
    *
