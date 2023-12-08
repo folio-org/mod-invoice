@@ -55,6 +55,17 @@ public final class UserPermissionsUtil {
    * @param newAcqUnitIds     list of acquisition units coming from request
    * @param currentAcqUnitIds list of acquisition units from storage
    */
+
+   public static void verifyUserHasManagePermission(List<String> newAcqUnitIds, List<String> currentAcqUnitIds,
+                                                   Map<String, String> okapiHeaders) {
+    Set<String> newAcqUnits = new HashSet<>(CollectionUtils.emptyIfNull(newAcqUnitIds));
+    Set<String> acqUnitsFromStorage = new HashSet<>(CollectionUtils.emptyIfNull(currentAcqUnitIds));
+
+    if (isManagePermissionRequired(newAcqUnits, acqUnitsFromStorage) && isUserDoesNotHaveDesiredPermission(MANAGE, okapiHeaders)) {
+      throw new HttpException(HttpStatus.HTTP_FORBIDDEN.toInt(), USER_HAS_NO_ACQ_PERMISSIONS);
+    }
+  }
+  
   public static void verifyPaidPermission(List<String> newAcqUnitIds, List<String> currentAcqUnitIds, Invoice.Status invoiceStatus, Invoice.Status StatusFromStorage,
                                           Map<String, String> okapiHeaders) {
     Set<String> newAcqUnits = new HashSet<>(CollectionUtils.emptyIfNull(newAcqUnitIds));
