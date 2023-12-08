@@ -19,6 +19,8 @@ import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.invoices.utils.AcqDesiredPermissions;
 
 import io.vertx.core.json.JsonArray;
+import org.folio.rest.jaxrs.model.Invoice;
+
 
 public final class UserPermissionsUtil {
   public static final String OKAPI_HEADER_PERMISSIONS = "X-Okapi-Permissions";
@@ -53,12 +55,17 @@ public final class UserPermissionsUtil {
    * @param newAcqUnitIds     list of acquisition units coming from request
    * @param currentAcqUnitIds list of acquisition units from storage
    */
-  public static void verifyUserHasManagePermission(List<String> newAcqUnitIds, List<String> currentAcqUnitIds,
-                                                   Map<String, String> okapiHeaders) {
+  public static void verifyPaidPermission(List<String> newAcqUnitIds, List<String> currentAcqUnitIds, Invoice.Status invoiceStatus, Invoice.Status StatusFromStorage,
+                                          Map<String, String> okapiHeaders) {
     Set<String> newAcqUnits = new HashSet<>(CollectionUtils.emptyIfNull(newAcqUnitIds));
     Set<String> acqUnitsFromStorage = new HashSet<>(CollectionUtils.emptyIfNull(currentAcqUnitIds));
 
-    if (isManagePermissionRequired(newAcqUnits, acqUnitsFromStorage) && isUserDoesNotHaveDesiredPermission(MANAGE, okapiHeaders)) {
+    // check if the invoice is approved. if the invoice had not been approved, the function will throw a expection. otherwise the function will check the if the user has permission.
+
+    if (WasThisInvoiceApporved(invoiceStatus) && WasThisInvoicePaid (invoiceStatus) && New_Invoice_Status_Request (invoiceStatus,StatusFromStorage)){
+      throw new HttpException(HttpStatus.HTTP_FORBIDDEN.toInt(), USER_HAS_NO_ACQ_PERMISSIONS);
+
+    } else if (isManagePermissionRequired(newAcqUnits, acqUnitsFromStorage) && isUserDoesNotHaveDesiredPermission(MANAGE, okapiHeaders)) {
       throw new HttpException(HttpStatus.HTTP_FORBIDDEN.toInt(), USER_HAS_NO_ACQ_PERMISSIONS);
     }
   }
@@ -85,3 +92,25 @@ public final class UserPermissionsUtil {
   }
 
 }
+
+private static boolean WasThisInvoiceApporved (Invoice.Status newStatus ) {
+    //  return !CollectionUtils.isEqualCollection(newStatus, "Approved");
+
+    return !newStatus.value().equals("Approved");
+
+  }
+
+  private static boolean WasThisInvoicePaid (Invoice.Status newStatus ) {
+    //  return !CollectionUtils.isEqualCollection(newStatus, "Approved");
+
+    return !newStatus.value().equals("Paid");
+
+  }
+
+  private static boolean New_Invoice_Status_Request(Invoice.Status newStatus, Invoice.Status StatusFromStorage ) {
+
+    return !newStatus.value().equals(StatusFromStorage.value());
+
+  }
+}
+
