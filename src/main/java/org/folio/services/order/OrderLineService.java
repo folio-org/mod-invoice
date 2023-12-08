@@ -2,6 +2,7 @@ package org.folio.services.order;
 
 import static org.folio.invoices.utils.ErrorCodes.PO_LINE_NOT_FOUND;
 import static org.folio.invoices.utils.ErrorCodes.PO_LINE_UPDATE_FAILURE;
+import static org.folio.invoices.utils.ErrorCodes.USER_NOT_A_MEMBER_OF_THE_ACQ;
 import static org.folio.invoices.utils.ResourcePathResolver.ORDER_LINES;
 import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
 
@@ -18,6 +19,7 @@ import org.folio.rest.core.RestClient;
 import org.folio.rest.core.models.RequestContext;
 import org.folio.rest.core.models.RequestEntry;
 import org.folio.rest.jaxrs.model.Parameter;
+import org.folio.utils.ExceptionUtil;
 
 import io.vertx.core.Future;
 
@@ -57,8 +59,12 @@ public class OrderLineService {
   public Future<Void> updateCompositePoLines(List<CompositePoLine> poLines, RequestContext requestContext) {
     var futures = poLines.stream()
       .map(poLine -> updatePoLine(poLine, requestContext)
-        .recover(t -> {
-          throw new HttpException(400, PO_LINE_UPDATE_FAILURE.toError());
+        .recover(cause -> {
+          if (ExceptionUtil.matches(cause, USER_NOT_A_MEMBER_OF_THE_ACQ)) {
+            throw new HttpException(400, USER_NOT_A_MEMBER_OF_THE_ACQ.toError());
+          } else {
+            throw new HttpException(400, PO_LINE_UPDATE_FAILURE.toError());
+          }
         }))
       .collect(Collectors.toList());
     return GenericCompositeFuture.join(futures).mapEmpty();
