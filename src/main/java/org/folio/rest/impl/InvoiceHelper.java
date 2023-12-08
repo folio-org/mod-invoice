@@ -26,6 +26,8 @@ import static org.folio.utils.UserPermissionsUtil.verifyUserHasAssignPermission;
 import static org.folio.utils.UserPermissionsUtil.verifyUserHasManagePermission;
 import static org.folio.utils.UserPermissionsUtil.verifyUserHasFiscalYearUpdatePermission;
 
+import static org.folio.utils.UserPermissionsUtil.verifyApprovalPermission;
+import static org.folio.utils.UserPermissionsUtil.verifyPaidPermission;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -349,6 +351,8 @@ public class InvoiceHelper extends AbstractHelper {
         validator.validateInvoice(invoice, invoiceFromStorage);
         verifyUserHasManagePermission(invoice.getAcqUnitIds(), invoiceFromStorage.getAcqUnitIds(), okapiHeaders);
         verifyUserHasFiscalYearUpdatePermission(invoice.getFiscalYearId(), invoiceFromStorage.getFiscalYearId(), okapiHeaders);
+        verifyApprovalPermission(invoice.getAcqUnitIds(), invoiceFromStorage.getAcqUnitIds(), okapiHeaders);
+        verifyPaidPermission(invoice.getAcqUnitIds(), invoiceFromStorage.getAcqUnitIds(), invoice.getStatus(), invoiceFromStorage.getStatus(), okapiHeaders);
 
         setSystemGeneratedData(invoiceFromStorage, invoice);
         return null;
