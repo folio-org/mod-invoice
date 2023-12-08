@@ -61,7 +61,7 @@ public class OrderLineService {
       .map(poLine -> updatePoLine(poLine, requestContext)
         .recover(cause -> {
           if (ExceptionUtil.matches(cause, USER_NOT_A_MEMBER_OF_THE_ACQ)) {
-            throw new HttpException(400, USER_NOT_A_MEMBER_OF_THE_ACQ.toError());
+            throw new HttpException(403, USER_NOT_A_MEMBER_OF_THE_ACQ.toError());
           } else {
             throw new HttpException(400, PO_LINE_UPDATE_FAILURE.toError());
           }
