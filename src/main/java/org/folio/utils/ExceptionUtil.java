@@ -13,7 +13,7 @@ public final class ExceptionUtil {
       var errors = httpException.getErrors();
       return errors != null && errors.getErrors() != null && errors.getErrors()
         .stream()
-        .anyMatch(error -> error.getCode().equals(errorCode.getCode()));
+        .anyMatch(error -> errorCode.getCode().equals(error.getCode()));
     }
     return false;
   }
