@@ -67,25 +67,16 @@ public final class UserPermissionsUtil {
 
  public static void  verifyUserHasInvoicePayPermission  (Invoice.Status newInvoiceStatus, Invoice.Status statusFromStorage,   Map<String, String> okapiHeaders ){
 
-    if (newInvoiceStatus.value().equals(statusFromStorage.value())&&!newInvoiceStatus.value().equals("Approved")&&!newInvoiceStatus.value().equals("Paid")&&isUserDoesNotHaveDesiredPermission(PAY, okapiHeaders)){
+    if (isInvoiceStatusUpdated(newInvoiceStatus, statusFromStorage )&&!newInvoiceStatus.value().equals("Approved")&&!newInvoiceStatus.value().equals("Paid")&&isUserDoesNotHaveDesiredPermission(PAY, okapiHeaders)){
 
       throw new HttpException(HttpStatus.HTTP_FORBIDDEN.toInt(),  USER_HAS_NO_PAID_PERMISSIONS);
     }
 
   }
 
-  /**
-   * The method checks if list of acquisition units to which the invoice is assigned is changed, if yes, then check that if the user
-   * has desired permission to approve acquisition units assignments
-   *
-   * @param newAcqUnitIds     list of acquisition units coming from request
-   * @param currentAcqUnitIds list of acquisition units from storage
-   * @throws HttpException if user does not have manage permission
-   */
-
   public static void verifyUserHasInvoiceApprovePermission (Invoice.Status newInvoiceStatus, Invoice.Status statusFromStorage, Map<String, String> okapiHeaders ){
 
-    if (newInvoiceStatusRequest(newInvoiceStatus, statusFromStorage ) && isUserDoesNotHaveDesiredPermission(APPROVE, okapiHeaders)){
+    if (isInvoiceStatusUpdated(newInvoiceStatus, statusFromStorage ) && isUserDoesNotHaveDesiredPermission(APPROVE, okapiHeaders)){
 
       throw new HttpException(HttpStatus.HTTP_FORBIDDEN.toInt(),  CANNOT_PAY_INVOICE_WITHOUT_APPROVAL);
     }
@@ -114,7 +105,7 @@ public final class UserPermissionsUtil {
     return !CollectionUtils.isEqualCollection(newAcqUnits, acqUnitsFromStorage);
   }
   
-  private static boolean newInvoiceStatusRequest(Invoice.Status newStatus, Invoice.Status StatusFromStorage ) {
+  private static boolean isInvoiceStatusUpdated(Invoice.Status newStatus, Invoice.Status StatusFromStorage ) {
 
     return !newStatus.value().equals(StatusFromStorage.value());
 
