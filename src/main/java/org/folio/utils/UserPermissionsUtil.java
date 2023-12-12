@@ -71,7 +71,7 @@ public final class UserPermissionsUtil {
 
     if (isInvoiceStatusUpdated(newInvoiceStatus, statusFromStorage )&&!newInvoiceStatus.value().equals("Approved")&&!newInvoiceStatus.value().equals("Paid")&&isUserDoesNotHaveDesiredPermission(PAY, okapiHeaders)){
 
-      throw new HttpException(HttpStatus.HTTP_FORBIDDEN.toInt(),  USER_HAS_NO_PAID_PERMISSIONS);
+      throw new HttpException(HttpStatus.HTTP_FORBIDDEN.toInt(),   CANNOT_PAY_INVOICE_WITHOUT_APPROVAL);
     }
 
   }
