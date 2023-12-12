@@ -2,9 +2,10 @@ package org.folio.utils;
 
 import static org.folio.invoices.utils.AcqDesiredPermissions.ASSIGN;
 import static org.folio.invoices.utils.AcqDesiredPermissions.MANAGE;
+import static org.folio.invoices.utils.AcqDesiredPermissions.PAY;
+import static org.folio.invoices.utils.AcqDesiredPermissions.APPROVE;
 import static org.folio.invoices.utils.AcqDesiredPermissions.FISCAL_YEAR_UPDATE;
-import static org.folio.invoices.utils.ErrorCodes.USER_HAS_NO_FISCAL_YEAR_UPDATE_PERMISSIONS;
-import static org.folio.invoices.utils.ErrorCodes.USER_HAS_NO_ACQ_PERMISSIONS;
+import static org.folio.invoices.utils.ErrorCodes.*;
 
 import java.util.HashSet;
 import java.util.List;
@@ -64,21 +65,13 @@ public final class UserPermissionsUtil {
     }
   }
 
-  public static void verifyPaidPermission(List<String> newAcqUnitIds, List<String> currentAcqUnitIds, Invoice.Status invoiceStatus, Invoice.Status StatusFromStorage,
-                                          Map<String, String> okapiHeaders) {
-    Set<String> newAcqUnits = new HashSet<>(CollectionUtils.emptyIfNull(newAcqUnitIds));
-    Set<String> acqUnitsFromStorage = new HashSet<>(CollectionUtils.emptyIfNull(currentAcqUnitIds));
+ public static void  verifyUserHasInvoicePayPermission  (Invoice.Status newInvoiceStatus, Invoice.Status statusFromStorage,   Map<String, String> okapiHeaders ){
 
-    // this varible is used to check if the inovice appovred
-    //Set<String> acqStatus = new HashSet<>(CollectionUtils.emptyIfNull(status));
-    // check if the invoice is approved. if the invoice had not been approved, the function will throw a expection. otherwise the function will check the if the user has permission.
+    if (newInvoiceStatus.value().equals(statusFromStorage.value())&&!newInvoiceStatus.value().equals("Approved")&&!newInvoiceStatus.value().equals("Paid")&&isUserDoesNotHaveDesiredPermission(PAY, okapiHeaders)){
 
-    if (WasThisInvoiceApporved(invoiceStatus) && WasThisInvoicePaid (invoiceStatus) && New_Invoice_Status_Request (invoiceStatus,StatusFromStorage)){
-      throw new HttpException(HttpStatus.HTTP_FORBIDDEN.toInt(), USER_HAS_NO_ACQ_PERMISSIONS);
-
-    } else if (isManagePermissionRequired(newAcqUnits, acqUnitsFromStorage) && isUserDoesNotHaveDesiredPermission(MANAGE, okapiHeaders)) {
-      throw new HttpException(HttpStatus.HTTP_FORBIDDEN.toInt(), USER_HAS_NO_ACQ_PERMISSIONS);
+      throw new HttpException(HttpStatus.HTTP_FORBIDDEN.toInt(),  USER_HAS_NO_PAID_PERMISSIONS);
     }
+
   }
 
   /**
@@ -90,14 +83,13 @@ public final class UserPermissionsUtil {
    * @throws HttpException if user does not have manage permission
    */
 
-  public static void verifyApprovalPermission(List<String> newAcqUnitIds, List<String> currentAcqUnitIds,
-                                              Map<String, String> okapiHeaders) {
-    Set<String> newAcqUnits = new HashSet<>(CollectionUtils.emptyIfNull(newAcqUnitIds));
-    Set<String> acqUnitsFromStorage = new HashSet<>(CollectionUtils.emptyIfNull(currentAcqUnitIds));
+  public static void verifyUserHasInvoiceApprovePermission (Invoice.Status newInvoiceStatus, Invoice.Status statusFromStorage, Map<String, String> okapiHeaders ){
 
-    if (isManagePermissionRequired(newAcqUnits, acqUnitsFromStorage) && isUserDoesNotHaveDesiredPermission(MANAGE, okapiHeaders)) {
+    if (newInvoiceStatusRequest(newInvoiceStatus, statusFromStorage ) && isUserDoesNotHaveDesiredPermission(APPROVE, okapiHeaders)){
+
       throw new HttpException(HttpStatus.HTTP_FORBIDDEN.toInt(), USER_HAS_NO_ACQ_PERMISSIONS);
     }
+
   }
 
 
@@ -121,32 +113,11 @@ public final class UserPermissionsUtil {
   private static boolean isManagePermissionRequired(Set<String> newAcqUnits, Set<String> acqUnitsFromStorage) {
     return !CollectionUtils.isEqualCollection(newAcqUnits, acqUnitsFromStorage);
   }
-
-  /**
-   * The method checks whether the user has the desired permission to update the fiscal year.
-   *
-   * @param newFiscalYearId         fiscal year id coming from request
-   * @param fiscalYearIdFromStorage fiscal year id from storage
-   * @throws HttpException if user does not have fiscal year update permission
-   */
-
-  private static boolean WasThisInvoiceApporved (Invoice.Status newStatus ) {
-    //  return !CollectionUtils.isEqualCollection(newStatus, "Approved");
-
-    return !newStatus.value().equals("Approved");
-
-  }
-
-  private static boolean WasThisInvoicePaid (Invoice.Status newStatus ) {
-    //  return !CollectionUtils.isEqualCollection(newStatus, "Approved");
-
-    return !newStatus.value().equals("Paid");
-
-  }
-
-  private static boolean New_Invoice_Status_Request(Invoice.Status newStatus, Invoice.Status StatusFromStorage ) {
+  
+  private static boolean newInvoiceStatusRequest(Invoice.Status newStatus, Invoice.Status StatusFromStorage ) {
 
     return !newStatus.value().equals(StatusFromStorage.value());
 
   }
+
 }
