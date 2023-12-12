@@ -13,6 +13,7 @@ public enum ErrorCodes {
   CANNOT_DELETE_INVOICE_LINE("cannotDeleteInvoiceLine", "Cannot delete invoice-line because invoice record associated with invoice-line not found"),
   INVALID_INVOICE_TRANSITION_ON_PAID_STATUS("invalidInvoiceStatusTransitionOnPaidStatus", "Cannot transition invoice to any other statuses when it is in Paid status"),
   PO_LINE_UPDATE_FAILURE("poLineUpdateFailure", "One or more purchase order line record(s) cannot be updated"),
+  USER_NOT_A_MEMBER_OF_THE_ACQ("userNotAMemberOfTheAcq", "User is not a member of the specified acquisitions group - operation is restricted"),
   VOUCHER_NOT_FOUND("voucherNotFound", "The voucher record is not found"),
   FUND_DISTRIBUTIONS_NOT_PRESENT("fundDistributionsNotPresent", "At least one fund distribution should present for every associated invoice line"),
   ACCOUNTING_CODE_NOT_PRESENT("accountingCodeNotPresent", "Invoice can not be approved, because it requires an accounting code to be export to accounting"),
