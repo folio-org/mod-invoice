@@ -87,7 +87,7 @@ public final class UserPermissionsUtil {
 
     if (newInvoiceStatusRequest(newInvoiceStatus, statusFromStorage ) && isUserDoesNotHaveDesiredPermission(APPROVE, okapiHeaders)){
 
-      throw new HttpException(HttpStatus.HTTP_FORBIDDEN.toInt(), USER_HAS_NO_ACQ_PERMISSIONS);
+      throw new HttpException(HttpStatus.HTTP_FORBIDDEN.toInt(),  CANNOT_PAY_INVOICE_WITHOUT_APPROVAL);
     }
 
   }
