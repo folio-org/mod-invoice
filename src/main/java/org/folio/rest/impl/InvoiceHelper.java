@@ -14,7 +14,6 @@ import static org.folio.invoices.utils.ErrorCodes.INVALID_INVOICE_TRANSITION_ON_
 import static org.folio.invoices.utils.ErrorCodes.ORG_IS_NOT_VENDOR;
 import static org.folio.invoices.utils.ErrorCodes.ORG_NOT_FOUND;
 import static org.folio.invoices.utils.ErrorCodes.MULTIPLE_ADJUSTMENTS_FISCAL_YEARS;
-//import static org.folio.invoices.utils.ErrorCodes.INVOICE_HAD_NOT_BEEN_APPROVED;
 import static org.folio.invoices.utils.HelperUtils.calculateVoucherLineAmount;
 import static org.folio.invoices.utils.HelperUtils.combineCqlExpressions;
 import static org.folio.invoices.utils.HelperUtils.getAdjustmentFundDistributionAmount;
@@ -352,9 +351,9 @@ public class InvoiceHelper extends AbstractHelper {
         validator.validateInvoice(invoice, invoiceFromStorage);
         verifyUserHasManagePermission(invoice.getAcqUnitIds(), invoiceFromStorage.getAcqUnitIds(), okapiHeaders);
         verifyUserHasFiscalYearUpdatePermission(invoice.getFiscalYearId(), invoiceFromStorage.getFiscalYearId(), okapiHeaders);
-        verifyUserHasInvoiceApprovePermission(invoice.getStatus(), invoiceFromStorage.getStatus(), okapiHeaders );
-        verifyUserHasInvoicePayPermission(invoice.getStatus(), invoiceFromStorage.getStatus(),okapiHeaders );
-       
+        verifyUserHasInvoiceApprovePermission(invoice.getStatus(), invoiceFromStorage.getStatus(), okapiHeaders);
+        verifyUserHasInvoicePayPermission(invoice.getStatus(), invoiceFromStorage.getStatus(), okapiHeaders);
+
         setSystemGeneratedData(invoiceFromStorage, invoice);
         return null;
       })
@@ -377,8 +376,6 @@ public class InvoiceHelper extends AbstractHelper {
           .compose(lines -> invoiceLineService.persistInvoiceLines(lines, requestContext)))
         .compose(lines -> updateEncumbranceLinksWhenFiscalYearIsChanged(invoice, invoiceFromStorage, invoiceLines)));
   }
-
-
 
   private List<InvoiceLine> filterUpdatedLines(List<InvoiceLine> invoiceLines, List<InvoiceLine> updatedInvoiceLines) {
     Map<String, InvoiceLine> idLineMap = invoiceLines.stream().collect(toMap(InvoiceLine::getId, Function.identity()));
@@ -543,7 +540,7 @@ public class InvoiceHelper extends AbstractHelper {
         .map(fiscalYear -> voucher.withSystemCurrency(fiscalYear.getCurrency()));
     }
     return configurationService.getSystemCurrency(requestContext)
-      .map(systemCurrency -> voucher.withSystemCurrency(systemCurrency));
+      .map(voucher::withSystemCurrency);
   }
 
   private Future<List<FundDistribution>> getAllFundDistributions(List<InvoiceLine> invoiceLines, Invoice invoice) {

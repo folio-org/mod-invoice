@@ -67,18 +67,33 @@ public final class UserPermissionsUtil {
     }
   }
 
-  public static void  verifyUserHasInvoicePayPermission  (Invoice.Status newInvoiceStatus, Invoice.Status statusFromStorage, Map<String, String> okapiHeaders ){
-    if (isInvoiceStatusUpdated(newInvoiceStatus, statusFromStorage) && isUserDoesNotHaveDesiredPermission(PAY, okapiHeaders)){
-      throw new HttpException(HttpStatus.HTTP_FORBIDDEN.toInt(),  USER_HAS_NO_PERMISSIONS);
-    }
- }
- 
-  public static void verifyUserHasInvoiceApprovePermission (Invoice.Status newInvoiceStatus, Invoice.Status statusFromStorage, Map<String, String> okapiHeaders ){
-    if (isInvoiceStatusUpdated(newInvoiceStatus, statusFromStorage ) && isUserDoesNotHaveDesiredPermission(APPROVE, okapiHeaders)){
-      throw new HttpException(HttpStatus.HTTP_FORBIDDEN.toInt(),  USER_HAS_NO_PERMISSIONS);
+  /**
+   * This method checks if user has permission to approve invoice in case when invoice status was changed.
+   *
+   * @param newInvoiceStatus the new invoice status
+   * @param statusFromStorage the invoice status from DB
+   * @param okapiHeaders the okapi headers
+   * @throws HttpException if user does not have permission to approve invoice
+   */
+  public static void verifyUserHasInvoiceApprovePermission(Invoice.Status newInvoiceStatus, Invoice.Status statusFromStorage, Map<String, String> okapiHeaders) {
+    if (isInvoiceStatusUpdated(newInvoiceStatus, statusFromStorage) && isUserDoesNotHaveDesiredPermission(APPROVE, okapiHeaders)) {
+      throw new HttpException(HttpStatus.HTTP_FORBIDDEN.toInt(), USER_HAS_NO_PERMISSIONS);
     }
   }
 
+  /**
+   * This method checks if user has permission to pay invoice in case when invoice status was changed.
+   *
+   * @param newInvoiceStatus the new invoice status
+   * @param statusFromStorage the invoice status from DB
+   * @param okapiHeaders the okapi headers
+   * @throws HttpException if user does not have permission to pay invoice
+   */
+  public static void  verifyUserHasInvoicePayPermission(Invoice.Status newInvoiceStatus, Invoice.Status statusFromStorage, Map<String, String> okapiHeaders) {
+    if (isInvoiceStatusUpdated(newInvoiceStatus, statusFromStorage) && isUserDoesNotHaveDesiredPermission(PAY, okapiHeaders)) {
+      throw new HttpException(HttpStatus.HTTP_FORBIDDEN.toInt(), USER_HAS_NO_PERMISSIONS);
+    }
+ }
 
   /**
    * The method checks whether the user has the desired permission to update the fiscal year.
@@ -100,10 +115,9 @@ public final class UserPermissionsUtil {
   private static boolean isManagePermissionRequired(Set<String> newAcqUnits, Set<String> acqUnitsFromStorage) {
     return !CollectionUtils.isEqualCollection(newAcqUnits, acqUnitsFromStorage);
   }
-  
-  private static boolean isInvoiceStatusUpdated(Invoice.Status newStatus, Invoice.Status StatusFromStorage ) {
 
-   return newStatus != StatusFromStorage;
+  private static boolean isInvoiceStatusUpdated(Invoice.Status newStatus, Invoice.Status statusFromStorage) {
+    return newStatus != statusFromStorage;
   }
 
 }
