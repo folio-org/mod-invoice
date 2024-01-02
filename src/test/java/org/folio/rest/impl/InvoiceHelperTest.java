@@ -66,7 +66,6 @@ class InvoiceHelperTest extends ApiTestBase {
 
     assertDoesNotThrow(() -> UserPermissionsUtil.verifyUserHasInvoiceApprovePermission(
       invoice.getStatus(), invoiceFromStorage.getStatus(), okapiHeaders));
-
   }
 
   
@@ -95,6 +94,7 @@ class InvoiceHelperTest extends ApiTestBase {
       UserPermissionsUtil.verifyUserHasInvoiceApprovePermission(
         invoice.getStatus(), invoiceFromStorage.getStatus(), okapiHeaders);
     });
+  }
 
   @Test
   @DisplayName("should not throw exception when pay permission is in position")
@@ -120,6 +120,7 @@ class InvoiceHelperTest extends ApiTestBase {
     assertDoesNotThrow(() -> UserPermissionsUtil.verifyUserHasInvoicePayPermission(
       invoice.getStatus(), invoiceFromStorage.getStatus(), okapiHeaders));
   }
+  
  @Test
   @DisplayName("should throw exception when pay permission is absent")
   void shouldThrowExceptionWhenPayPermissionIsAbsent(){
@@ -159,16 +160,15 @@ class InvoiceHelperTest extends ApiTestBase {
     okapiHeaders.put(UserPermissionsUtil.OKAPI_HEADER_PERMISSIONS, permissionsJsonArrayString);
     Invoice invoice = new Invoice();
     invoice.setId("123456783423425");
-    invoice.setStatus(Invoice.Status.REVIEWED);
+    invoice.setStatus(Invoice.Status.APPROVED);
     Invoice invoiceFromStorage = new Invoice();
     invoice.setId("123456783423425");
-    invoice.setStatus(Invoice.Status.APPROVED);
+    invoice.setStatus(Invoice.Status.PAID);
 
     HttpException exception = assertThrows(HttpException.class, () ->
       UserPermissionsUtil.verifyUserHasInvoicePayPermission(
         invoice.getStatus(), invoiceFromStorage.getStatus(), okapiHeaders));
     assertEquals(org.folio.HttpStatus.HTTP_FORBIDDEN.toInt(), 403);
-
   }
 
   @Test
@@ -195,7 +195,6 @@ class InvoiceHelperTest extends ApiTestBase {
       UserPermissionsUtil.verifyUserHasInvoiceApprovePermission(
         invoice.getStatus(), invoiceFromStorage.getStatus(), okapiHeaders));
     assertEquals(org.folio.HttpStatus.HTTP_FORBIDDEN.toInt(), 403);
-
   }
 
   @Test
@@ -328,7 +327,6 @@ class InvoiceHelperTest extends ApiTestBase {
 
     assertDoesNotThrow(() -> UserPermissionsUtil. verifyUserHasManagePermission(
       invoice.getAcqUnitIds(),invoiceFromStorage.getAcqUnitIds(), okapiHeaders));
-
   }
     
 @Test
