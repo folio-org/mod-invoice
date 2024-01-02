@@ -11,6 +11,7 @@ import java.util.List;
 import org.folio.utils.UserPermissionsUtil;
 import io.vertx.core.json.JsonArray;
 
+import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.RestConstants;
 import org.folio.rest.acq.model.orders.CompositePoLine;
 import org.folio.rest.core.RestClient;
