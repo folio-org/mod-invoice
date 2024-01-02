@@ -8,6 +8,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.*;
 import java.util.List;
+import org.folio.utils.UserPermissionsUtil;
 import io.vertx.core.json.JsonArray;
 
 import org.folio.rest.RestConstants;
