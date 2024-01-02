@@ -44,6 +44,7 @@ import io.restassured.response.Response;
 import io.vertx.core.json.JsonObject;
 import org.folio.utils.UserPermissionsUtil;
 import java.util.List;
+import io.vertx.core.json.JsonArray;
 
 public class ApiTestBase {
 
