@@ -2525,7 +2525,7 @@ public class InvoicesApiTest extends ApiTestBase {
 
     String jsonBody = JsonObject.mapFrom(reqData).encode();
     Headers headers = prepareHeaders(X_OKAPI_URL, X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID, X_OKAPI_PERMISSION);
-    verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, headrs, "", 204);
+    verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, headers, "", 204);
 
     assertThat(getRqRsEntries(HttpMethod.GET, FINANCE_TRANSACTIONS), hasSize(2));
     assertThat(getRqRsEntries(HttpMethod.GET, FUNDS), hasSize(2));
