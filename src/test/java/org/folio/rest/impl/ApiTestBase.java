@@ -81,6 +81,19 @@ public class ApiTestBase {
 
   private static boolean runningOnOwn;
 
+   public static final List<String> permissionsList = Arrays.asList(
+    "invoice.item.approve",
+    "invoice.item.pay",
+    "invoice.invoices.item.put",
+    "invoices.acquisitions-units-assignments.manage",
+    "invoices.acquisitions-units-assignments.assign",
+    "invoices.fiscal-year.update"
+  );
+
+  public static final JsonArray permissionsArray = new JsonArray(permissionsList);
+  public static final String permissionsJsonArrayString = new JsonArray(permissionsList).encode();
+  public static final Header X_OKAPI_PERMISSION = new Header(UserPermissionsUtil.OKAPI_HEADER_PERMISSIONS, permissionsJsonArrayString);
+
   @BeforeAll
   public static void before() throws InterruptedException, ExecutionException, TimeoutException {
 
