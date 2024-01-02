@@ -43,6 +43,7 @@ import io.restassured.http.Headers;
 import io.restassured.response.Response;
 import io.vertx.core.json.JsonObject;
 import org.folio.utils.UserPermissionsUtil;
+import java.util.List;
 
 public class ApiTestBase {
 
