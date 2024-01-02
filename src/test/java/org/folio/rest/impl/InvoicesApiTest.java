@@ -2307,7 +2307,7 @@ public class InvoicesApiTest extends ApiTestBase {
 
 
     String url = String.format(INVOICE_ID_PATH, reqData.getId());
-     Headers headers = prepareHeaders(X_OKAPI_PERMISSION);
+    Headers headers = prepareHeaders(X_OKAPI_URL, X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID, X_OKAPI_PERMISSION);
     Errors errors = verifyPut(url, JsonObject.mapFrom(reqData), headers, APPLICATION_JSON, 500).as(Errors.class);
 
     assertThat(errors.getErrors(), hasSize(1));
