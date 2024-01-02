@@ -6,6 +6,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.*;
+import java.util.List;
+import io.vertx.core.json.JsonArray;
 
 import org.folio.rest.RestConstants;
 import org.folio.rest.acq.model.orders.CompositePoLine;
@@ -13,6 +16,8 @@ import org.folio.rest.core.RestClient;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.folio.invoices.rest.exceptions.HttpException;
+import static org.junit.jupiter.api.Assertions.*;
 
 import io.vertx.core.Context;
 import io.vertx.core.Vertx;
@@ -39,6 +44,356 @@ class InvoiceHelperTest extends ApiTestBase {
     okapiHeaders.put(X_OKAPI_USER_ID.getName(), X_OKAPI_USER_ID.getValue());
   }
 
+   @Test
+  @DisplayName("should not throw exception when approve permission is in position")
+  void shouldNotThrowExceptionWhenApprovePermissionIsInPosition(){
+      List<String> permissionsList = Arrays.asList(
+        "invoice.item.approve",
+        "invoice.invoices.item.put",
+        "invoices.acquisitions-units-assignments.manage",
+        "invoices.fiscal-year.update"
+      );
+
+      JsonArray permissionsArray = new JsonArray(permissionsList);
+      String permissionsJsonArrayString = new JsonArray(permissionsList).encode();
+      okapiHeaders.put(UserPermissionsUtil.OKAPI_HEADER_PERMISSIONS, permissionsJsonArrayString);
+      Invoice invoice = new Invoice();
+      invoice.setId("123456783423425");
+      invoice.setStatus(Invoice.Status.REVIEWED);
+      Invoice invoiceFromStorage = new Invoice();
+      invoice.setId("123456783423425");
+      invoice.setStatus(Invoice.Status.APPROVED);
+
+    assertDoesNotThrow(() -> UserPermissionsUtil.verifyUserHasInvoiceApprovePermission(
+      invoice.getStatus(), invoiceFromStorage.getStatus(), okapiHeaders));
+
+  }
+
+  
+
+  @Test
+  @DisplayName("should throw exception when approve permission is absent")
+  void shouldThrowExceptionWhenApprovePermissionIsAbsent(){
+
+    List<String> permissionsList = Arrays.asList(
+      "invoice.invoices.item.put",
+      "invoices.acquisitions-units-assignments.manage",
+      "invoices.fiscal-year.update"
+    );
+
+    JsonArray permissionsArray = new JsonArray(permissionsList);
+    String permissionsJsonArrayString = new JsonArray(permissionsList).encode();
+    okapiHeaders.put(UserPermissionsUtil.OKAPI_HEADER_PERMISSIONS, permissionsJsonArrayString);
+    Invoice invoice = new Invoice();
+    invoice.setId("123456783423425");
+    invoice.setStatus(Invoice.Status.REVIEWED);
+    Invoice invoiceFromStorage = new Invoice();
+    invoice.setId("123456783423425");
+    invoice.setStatus(Invoice.Status.APPROVED);
+
+    assertThrows(HttpException.class, () -> {
+      UserPermissionsUtil.verifyUserHasInvoiceApprovePermission(
+        invoice.getStatus(), invoiceFromStorage.getStatus(), okapiHeaders);
+    });
+
+  @Test
+  @DisplayName("should not throw exception when pay permission is in position")
+  void shouldNotThrowExceptionWhenPayPermissionIsInPosition(){
+
+    List<String> permissionsList = Arrays.asList(
+      "invoice.item.pay",
+      "invoice.invoices.item.put",
+      "invoices.acquisitions-units-assignments.manage",
+      "invoices.fiscal-year.update"
+    );
+
+    JsonArray permissionsArray = new JsonArray(permissionsList);
+    String permissionsJsonArrayString = new JsonArray(permissionsList).encode();
+    okapiHeaders.put(UserPermissionsUtil.OKAPI_HEADER_PERMISSIONS, permissionsJsonArrayString);
+    Invoice invoice = new Invoice();
+    invoice.setId("123456783423425");
+    invoice.setStatus(Invoice.Status.REVIEWED);
+    Invoice invoiceFromStorage = new Invoice();
+    invoice.setId("123456783423425");
+    invoice.setStatus(Invoice.Status.APPROVED);
+
+    assertDoesNotThrow(() -> UserPermissionsUtil.verifyUserHasInvoicePayPermission(
+      invoice.getStatus(), invoiceFromStorage.getStatus(), okapiHeaders));
+  }
+ @Test
+  @DisplayName("should throw exception when pay permission is absent")
+  void shouldThrowExceptionWhenPayPermissionIsAbsent(){
+    List<String> permissionsList = Arrays.asList(
+      "invoice.invoices.item.put",
+      "invoices.acquisitions-units-assignments.manage",
+      "invoices.fiscal-year.update"
+    );
+
+    JsonArray permissionsArray = new JsonArray(permissionsList);
+    String permissionsJsonArrayString = new JsonArray(permissionsList).encode();
+    okapiHeaders.put(UserPermissionsUtil.OKAPI_HEADER_PERMISSIONS, permissionsJsonArrayString);
+    Invoice invoice = new Invoice();
+    invoice.setId("123456783423425");
+    invoice.setStatus(Invoice.Status.REVIEWED);
+    Invoice invoiceFromStorage = new Invoice();
+    invoice.setId("123456783423425");
+    invoice.setStatus(Invoice.Status.APPROVED);
+
+    assertThrows(HttpException.class, () -> {
+      UserPermissionsUtil.verifyUserHasInvoicePayPermission(
+        invoice.getStatus(), invoiceFromStorage.getStatus(), okapiHeaders);
+    });
+  }
+
+@Test
+  @DisplayName("should throw correct error code when pay permission is absent")
+  void shouldThrowCorrectErrorCodeWhenPayPermissionIsAbsent(){
+    List<String> permissionsList = Arrays.asList(
+      "invoice.invoices.item.put",
+      "invoices.acquisitions-units-assignments.manage",
+      "invoices.fiscal-year.update"
+    );
+
+    JsonArray permissionsArray = new JsonArray(permissionsList);
+    String permissionsJsonArrayString = new JsonArray(permissionsList).encode();
+    okapiHeaders.put(UserPermissionsUtil.OKAPI_HEADER_PERMISSIONS, permissionsJsonArrayString);
+    Invoice invoice = new Invoice();
+    invoice.setId("123456783423425");
+    invoice.setStatus(Invoice.Status.REVIEWED);
+    Invoice invoiceFromStorage = new Invoice();
+    invoice.setId("123456783423425");
+    invoice.setStatus(Invoice.Status.APPROVED);
+
+    HttpException exception = assertThrows(HttpException.class, () ->
+      UserPermissionsUtil.verifyUserHasInvoicePayPermission(
+        invoice.getStatus(), invoiceFromStorage.getStatus(), okapiHeaders));
+    assertEquals(org.folio.HttpStatus.HTTP_FORBIDDEN.toInt(), 403);
+
+  }
+
+  @Test
+  @DisplayName("should throw correct error code when approve permission absent")
+  void shouldThrowCorrectErrorCodeWhenApprovePermissionIsAbsent(){
+
+    List<String> permissionsList = Arrays.asList(
+      "invoice.invoices.item.put",
+      "invoices.acquisitions-units-assignments.manage",
+      "invoices.fiscal-year.update"
+    );
+
+    JsonArray permissionsArray = new JsonArray(permissionsList);
+    String permissionsJsonArrayString = new JsonArray(permissionsList).encode();
+    okapiHeaders.put(UserPermissionsUtil.OKAPI_HEADER_PERMISSIONS, permissionsJsonArrayString);
+    Invoice invoice = new Invoice();
+    invoice.setId("123456783423425");
+    invoice.setStatus(Invoice.Status.REVIEWED);
+    Invoice invoiceFromStorage = new Invoice();
+    invoice.setId("123456783423425");
+    invoice.setStatus(Invoice.Status.APPROVED);
+
+    HttpException exception = assertThrows(HttpException.class, () ->
+      UserPermissionsUtil.verifyUserHasInvoiceApprovePermission(
+        invoice.getStatus(), invoiceFromStorage.getStatus(), okapiHeaders));
+    assertEquals(org.folio.HttpStatus.HTTP_FORBIDDEN.toInt(), 403);
+
+  }
+
+  @Test
+  @DisplayName("should throw correct error code when assign permission is absent")
+  void shouldThrowCorrectErrorCodeWhenAssignPermissionIsAbsent(){
+
+    List<String> permissionsList = Arrays.asList(
+      "invoice.invoices.item.put",
+      "invoices.acquisitions-units-assignments.manage",
+      "invoices.fiscal-year.update"
+    );
+
+    JsonArray permissionsArray = new JsonArray(permissionsList);
+    String permissionsJsonArrayString = new JsonArray(permissionsList).encode();
+    okapiHeaders.put(UserPermissionsUtil.OKAPI_HEADER_PERMISSIONS, permissionsJsonArrayString);
+    LinkedList <String> inoviceAcqID = new LinkedList<String>();
+    LinkedList <String> inoviceFromStorageAcqID = new LinkedList<String>();
+
+    inoviceAcqID.add("12345678");
+    inoviceFromStorageAcqID.add("6475643839");
+    Invoice invoice = new Invoice();
+    invoice.setId("123456783423425");
+    invoice.setStatus(Invoice.Status.REVIEWED);
+    invoice.setAcqUnitIds(inoviceAcqID);
+    Invoice invoiceFromStorage = new Invoice();
+    invoice.setId("123456783423425");
+    invoice.setStatus(Invoice.Status.APPROVED);
+    invoiceFromStorage.setAcqUnitIds(inoviceFromStorageAcqID);
+
+    HttpException exception = assertThrows(HttpException.class, () ->
+      UserPermissionsUtil.verifyUserHasAssignPermission(
+        invoice.getAcqUnitIds(), okapiHeaders));
+    assertEquals(org.folio.HttpStatus.HTTP_FORBIDDEN.toInt(), 403);
+  }
+
+ @Test
+  @DisplayName("should throw exception when assign permission Is absent")
+  void shouldThrowExceptionWhenAssignPermissionIsAbsent(){
+
+    List<String> permissionsList = Arrays.asList(
+      "invoice.invoices.item.put",
+      "invoices.acquisitions-units-assignments.manage",
+      "invoices.fiscal-year.update"
+    );
+
+    JsonArray permissionsArray = new JsonArray(permissionsList);
+    String permissionsJsonArrayString = new JsonArray(permissionsList).encode();
+    okapiHeaders.put(UserPermissionsUtil.OKAPI_HEADER_PERMISSIONS, permissionsJsonArrayString);
+    LinkedList <String> inoviceAcqID = new LinkedList<String>();
+    LinkedList <String> inoviceFromStorageAcqID = new LinkedList<String>();
+
+    inoviceAcqID.add("12345678");
+    inoviceFromStorageAcqID.add("6475643839");
+    Invoice invoice = new Invoice();
+    invoice.setId("123456783423425");
+    invoice.setStatus(Invoice.Status.REVIEWED);
+    invoice.setAcqUnitIds(inoviceAcqID);
+    Invoice invoiceFromStorage = new Invoice();
+    invoice.setId("123456783423425");
+    invoice.setStatus(Invoice.Status.APPROVED);
+    invoiceFromStorage.setAcqUnitIds(inoviceFromStorageAcqID);
+
+    assertThrows(HttpException.class, () -> {
+      UserPermissionsUtil.verifyUserHasAssignPermission(
+        invoice.getAcqUnitIds(), okapiHeaders);
+    });
+  }
+    
+ @Test
+  @DisplayName("should not throw exception when assign permission is assigned")
+  void shouldNotThrowExceptionWhenAssignPermissionIsAssigned(){
+
+    List<String> permissionsList = Arrays.asList(
+      "invoice.invoices.item.put",
+      "invoices.acquisitions-units-assignments.manage",
+      "invoices.fiscal-year.update",
+      "invoices.acquisitions-units-assignments.assign"
+    );
+
+    JsonArray permissionsArray = new JsonArray(permissionsList);
+    String permissionsJsonArrayString = new JsonArray(permissionsList).encode();
+    okapiHeaders.put(UserPermissionsUtil.OKAPI_HEADER_PERMISSIONS, permissionsJsonArrayString);
+    LinkedList <String> inoviceAcqID = new LinkedList<String>();
+    LinkedList <String> inoviceFromStorageAcqID = new LinkedList<String>();
+
+    inoviceAcqID.add("12345678");
+    inoviceFromStorageAcqID.add("6475643839");
+    Invoice invoice = new Invoice();
+    invoice.setId("123456783423425");
+    invoice.setStatus(Invoice.Status.REVIEWED);
+    invoice.setAcqUnitIds(inoviceAcqID);
+    Invoice invoiceFromStorage = new Invoice();
+    invoice.setId("123456783423425");
+    invoice.setStatus(Invoice.Status.APPROVED);
+    invoiceFromStorage.setAcqUnitIds(inoviceFromStorageAcqID);
+
+    assertDoesNotThrow(() -> UserPermissionsUtil.verifyUserHasAssignPermission(
+      invoice.getAcqUnitIds(), okapiHeaders));
+  }
+
+  @Test
+  @DisplayName("should not throw exception when manage permission is assigned")
+  void shouldNotThrowExceptionWhenManagePermissionIsAssigned(){
+
+    // Create a list of permissions
+    List<String> permissionsList = Arrays.asList(
+      "invoice.invoices.item.put",
+      "invoices.acquisitions-units-assignments.manage",
+      "invoices.fiscal-year.update",
+      "invoices.acquisitions-units-assignments.assign"
+    );
+
+    JsonArray permissionsArray = new JsonArray(permissionsList);
+    String permissionsJsonArrayString = new JsonArray(permissionsList).encode();
+    okapiHeaders.put(UserPermissionsUtil.OKAPI_HEADER_PERMISSIONS, permissionsJsonArrayString);
+    LinkedList <String> inoviceAcqID = new LinkedList<String>();
+    LinkedList <String> inoviceFromStorageAcqID = new LinkedList<String>();
+
+    inoviceAcqID.add("12345678");
+    inoviceFromStorageAcqID.add("6475643839");
+    // okapiHeaders.put(X_OKAPI_PERMISSIONS.getName(), X_OKAPI_PERMISSIONS.getValue());
+    Invoice invoice = new Invoice();
+    invoice.setId("123456783423425");
+    invoice.setStatus(Invoice.Status.REVIEWED);
+    invoice.setAcqUnitIds(inoviceAcqID);
+    Invoice invoiceFromStorage = new Invoice();
+    invoice.setId("123456783423425");
+    invoice.setStatus(Invoice.Status.APPROVED);
+    invoiceFromStorage.setAcqUnitIds(inoviceFromStorageAcqID);
+
+    assertDoesNotThrow(() -> UserPermissionsUtil. verifyUserHasManagePermission(
+      invoice.getAcqUnitIds(),invoiceFromStorage.getAcqUnitIds(), okapiHeaders));
+
+  }
+    
+@Test
+  @DisplayName("should throw exception when manage permission is absent")
+  void shouldThrowExceptionWhenManagePermissionIsAbsent(){
+    List<String> permissionsList = Arrays.asList(
+      "invoice.invoices.item.put",
+      "invoices.fiscal-year.update",
+      "invoices.acquisitions-units-assignments.assign"
+    );
+
+    JsonArray permissionsArray = new JsonArray(permissionsList);
+    String permissionsJsonArrayString = new JsonArray(permissionsList).encode();
+    okapiHeaders.put(UserPermissionsUtil.OKAPI_HEADER_PERMISSIONS, permissionsJsonArrayString);
+    LinkedList <String> inoviceAcqID = new LinkedList<String>();
+    LinkedList <String> inoviceFromStorageAcqID = new LinkedList<String>();
+    inoviceAcqID.add("12345678");
+    inoviceFromStorageAcqID.add("6475643839");
+    Invoice invoice = new Invoice();
+    invoice.setId("123456783423425");
+    invoice.setStatus(Invoice.Status.REVIEWED);
+    invoice.setAcqUnitIds(inoviceAcqID);
+    Invoice invoiceFromStorage = new Invoice();
+    invoice.setId("123456783423425");
+    invoice.setStatus(Invoice.Status.APPROVED);
+    invoiceFromStorage.setAcqUnitIds(inoviceFromStorageAcqID);
+
+    assertThrows(HttpException.class, () -> {
+      UserPermissionsUtil. verifyUserHasManagePermission(
+        invoice.getAcqUnitIds(), invoiceFromStorage.getAcqUnitIds(), okapiHeaders);
+    });
+  }
+    
+  @Test
+  @DisplayName("should Throw Correct Error Code When Manage Permission Is Absent")
+  void shouldThrowCorrectErrorCodeWhenManagePermissionIsAbsent(){
+    List<String> permissionsList = Arrays.asList(
+      "invoice.invoices.item.put",
+      "invoices.fiscal-year.update",
+      "invoices.acquisitions-units-assignments.assign"
+    );
+
+    JsonArray permissionsArray = new JsonArray(permissionsList);
+    String permissionsJsonArrayString = new JsonArray(permissionsList).encode();
+    okapiHeaders.put(UserPermissionsUtil.OKAPI_HEADER_PERMISSIONS, permissionsJsonArrayString);
+    LinkedList <String> inoviceAcqID = new LinkedList<String>();
+    LinkedList <String> inoviceFromStorageAcqID = new LinkedList<String>();
+
+    inoviceAcqID.add("12345678");
+    inoviceFromStorageAcqID.add("6475643839");
+    Invoice invoice = new Invoice();
+    invoice.setId("123456783423425");
+    invoice.setStatus(Invoice.Status.REVIEWED);
+    invoice.setAcqUnitIds(inoviceAcqID);
+    Invoice invoiceFromStorage = new Invoice();
+    invoice.setId("123456783423425");
+    invoice.setStatus(Invoice.Status.APPROVED);
+    invoiceFromStorage.setAcqUnitIds(inoviceFromStorageAcqID);
+
+    HttpException exception = assertThrows(HttpException.class, () ->
+      UserPermissionsUtil.verifyUserHasManagePermission(
+        invoice.getAcqUnitIds(), invoiceFromStorage.getAcqUnitIds(), okapiHeaders));
+    assertEquals(org.folio.HttpStatus.HTTP_FORBIDDEN.toInt(), 403);
+  }
+    
   @Test
   @DisplayName("not decide to update status of POLines with ONGOING status")
   void shouldReturnFalseWhenCompositeCheckingForUpdatePoLinePaymentStatusIsOngoing() {
@@ -59,7 +414,7 @@ class InvoiceHelperTest extends ApiTestBase {
 
     assertFalse(invoiceHelper.isPaymentStatusUpdateRequired(compositePoLinesWithStatus, ongoingCompositePoLine));
   }
-
+    
   @Test
   @DisplayName("decide to update status of POLines with different statuses")
   void shouldReturnTrueWhenCompositeCheckingForUpdatePoLinePaymentStatusIsDifferentValues() {
