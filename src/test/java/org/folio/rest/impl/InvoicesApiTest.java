@@ -1357,6 +1357,33 @@ public class InvoicesApiTest extends ApiTestBase {
 
   }
 
+   @Test
+  void testTransitionToApprovedWithoutPremission() {
+    logger.info("=== Test transition invoice to Approved without premission ===");
+
+    Headers headers = prepareHeaders(X_OKAPI_URL, INVALID_PREFIX_CONFIG_X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID, X_OKAPI_PERMISSION_WITHOUT_PAY_APPROVE);
+    Errors errors =  transitionToApprovedWithoutPermission (REVIEWED_INVOICE_SAMPLE_PATH, headers,403);
+
+     assertThat(errors, notNullValue());
+     assertThat(errors.getErrors(), hasSize(1));
+     assertThat(errors.getErrors().get(0).getMessage(), equalTo(USER_HAS_NO_PERMISSIONS.getDescription()));
+     assertThat(errors.getErrors().get(0).getCode(), equalTo(USER_HAS_NO_PERMISSIONS.getCode()));
+
+  }
+@Test
+  void testTransitionToPaidWithoutPremission() {
+    logger.info("=== Test transition invoice to Approved without premission ===");
+
+    Headers headers = prepareHeaders(X_OKAPI_URL, INVALID_PREFIX_CONFIG_X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID, X_OKAPI_PERMISSION_WITHOUT_PAY);
+    Errors errors =  transitionToPaidWithoutPermission (APPROVED_INVOICE_SAMPLE_PATH, headers,403);
+
+    assertThat(errors, notNullValue());
+    assertThat(errors.getErrors(), hasSize(1));
+    assertThat(errors.getErrors().get(0).getMessage(), equalTo(USER_HAS_NO_PERMISSIONS.getDescription()));
+    assertThat(errors.getErrors().get(0).getCode(), equalTo(USER_HAS_NO_PERMISSIONS.getCode()));
+
+  }
+
   @Test
   void testTransitionToApprovedInvalidCurrency() {
     logger.info("=== Test transition invoice to Approved with invalid invoiceCurrency ===");
@@ -1431,6 +1458,30 @@ public class InvoicesApiTest extends ApiTestBase {
 
     reqData.setStatus(Status.PAID);
 
+    String id = reqData.getId();
+    String jsonBody = JsonObject.mapFrom(reqData).encode();
+    return verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, headers, APPLICATION_JSON, expectedCode)
+      .then()
+      .extract()
+      .body().as(Errors.class);
+  }
+
+   private Errors transitionToApprovedWithoutPermission(String invoiceSamplePath, Headers headers, int expectedCode) {
+
+    Invoice reqData = getMockAsJson(invoiceSamplePath).mapTo(Invoice.class);
+    reqData.setStatus(Status.APPROVED);
+    String id = reqData.getId();
+    String jsonBody = JsonObject.mapFrom(reqData).encode();
+    return verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, headers, APPLICATION_JSON, expectedCode)
+      .then()
+      .extract()
+      .body().as(Errors.class);
+  }
+
+  private Errors transitionToPaidWithoutPermission(String invoiceSamplePath, Headers headers, int expectedCode) {
+
+    Invoice reqData = getMockAsJson(invoiceSamplePath).mapTo(Invoice.class);
+    reqData.setStatus(Status.PAID);
     String id = reqData.getId();
     String jsonBody = JsonObject.mapFrom(reqData).encode();
     return verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, headers, APPLICATION_JSON, expectedCode)
