@@ -4,17 +4,15 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.rest.core.models.RequestContext;
 import org.folio.rest.jaxrs.model.InvoiceDocument;
+import org.folio.utils.LoggingHelper;
 
 import io.vertx.core.Future;
-import io.vertx.core.json.JsonObject;
 
 public class InvoiceDocumentRestClient extends RestClient {
-  private static final Logger log = LogManager.getLogger(InvoiceDocumentRestClient.class);
+  private static final Logger logger = LogManager.getLogger();
 
   public Future<InvoiceDocument> postInvoiceDocument(String endpoint, InvoiceDocument document, RequestContext requestContext) {
-    if (log.isDebugEnabled()) {
-      log.debug("Sending 'POST {}' with body: {}", endpoint, JsonObject.mapFrom(document).encodePrettily());
-    }
+    LoggingHelper.debugAsJson(String.format("Sending 'POST %s' with body: {}", endpoint), document);
     var caseInsensitiveHeader = convertToCaseInsensitiveMap(requestContext.getHeaders());
     return getVertxWebClient(requestContext.getContext())
       .postAbs(buildAbsEndpoint(caseInsensitiveHeader, endpoint))
@@ -23,6 +21,6 @@ public class InvoiceDocumentRestClient extends RestClient {
       // TODO: consider to make streaming transfer for large files
       .sendJson(document)
       .map(bufferHttpResponse -> bufferHttpResponse.bodyAsJsonObject().mapTo(InvoiceDocument.class))
-      .onFailure(log::error);
+      .onFailure(logger::error);
   }
 }

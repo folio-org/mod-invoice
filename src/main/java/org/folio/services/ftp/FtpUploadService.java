@@ -7,7 +7,6 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.time.Duration;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.concurrent.CompletionException;
 
 import org.apache.commons.lang3.StringUtils;
@@ -16,17 +15,20 @@ import org.apache.commons.net.ftp.FTPClient;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.exceptions.FtpException;
+import org.folio.rest.jaxrs.model.ExportConfig;
 
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Context;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Promise;
-import org.folio.rest.jaxrs.model.ExportConfig;
 
 public class FtpUploadService implements FileExchangeService {
+
   private static final Logger logger = LogManager.getLogger(FtpUploadService.class);
-  public static final String DEFAULT_WORKING_DIR = "/files/invoices";
+
+  private static final String DEFAULT_WORKING_DIR = "/files/invoices";
+
   private final String server;
   private final int port;
   private final Context ctx;
@@ -73,20 +75,17 @@ public class FtpUploadService implements FileExchangeService {
         blockingFeature.fail(e);
         disconnect(ftpClient);
       }
-    }, false, asyncResultHandler(promise, "Success login to FTP", "Failed login to FTP"));
+    }, false, asyncResultHandler(promise));
     return promise.future();
   }
 
-  private Handler<AsyncResult<FTPClient>> asyncResultHandler(Promise<FTPClient> promise, String s, String s2) {
+  private Handler<AsyncResult<FTPClient>> asyncResultHandler(Promise<FTPClient> promise) {
     return result -> {
       if (result.succeeded()) {
-        logger.debug(s);
+        logger.debug("Success login to FTP");
         promise.complete(result.result());
       } else {
-        String message = Optional.ofNullable(result.cause())
-          .map(Throwable::getMessage)
-          .orElse(s2);
-        logger.error(message);
+        logger.error("Failed login to FTP", result.cause());
         promise.fail(result.cause());
       }
     };
@@ -134,7 +133,7 @@ public class FtpUploadService implements FileExchangeService {
   }
 
   private void changeWorkingDirectory(String folder, FTPClient ftpClient) throws IOException {
-    if (isDirectoryAbsent(folder, ftpClient)){
+    if (isDirectoryAbsent(folder, ftpClient)) {
       ftpClient.makeDirectory(folder);
     }
     ftpClient.changeWorkingDirectory(folder);

@@ -28,11 +28,12 @@ import org.folio.rest.jaxrs.model.Error;
 import org.folio.rest.jaxrs.model.InvoiceLine;
 import org.folio.rest.jaxrs.model.Parameter;
 import org.folio.services.invoice.InvoiceLineService;
+import org.folio.utils.LoggingHelper;
 
 import io.vertx.core.Future;
 
 public class OrderService {
-  private static final Logger log = LogManager.getLogger(OrderService.class);
+  private static final Logger logger = LogManager.getLogger();
 
   private static final String ORDER_INVOICE_RELATIONSHIP_QUERY = "purchaseOrderId==%s and invoiceId==%s";
   private static final String ORDER_INVOICE_RELATIONSHIP_BY_INVOICE_ID_QUERY = "invoiceId==%s";
@@ -64,6 +65,7 @@ public class OrderService {
       .withQuery(query)
       .withOffset(0)
       .withLimit(Integer.MAX_VALUE);
+    LoggingHelper.logQuery("getOrders", requestEntry);
     return restClient.get(requestEntry,  PurchaseOrderCollection.class, requestContext)
       .map(PurchaseOrderCollection::getPurchaseOrders);
   }
@@ -162,7 +164,7 @@ public class OrderService {
             : succeededFuture(null));
       })
       .recover(throwable -> {
-        log.error("Can't delete Order Invoice relation for invoice line: {}", invoiceLineId, throwable);
+        logger.error("Can't delete Order Invoice relation for invoice line: {}", invoiceLineId, throwable);
         List<Parameter> parameters = Collections.singletonList(new Parameter().withKey("lineId")
           .withValue(invoiceLineId));
         Error error = CANNOT_DELETE_INVOICE_LINE.toError()
@@ -178,7 +180,7 @@ public class OrderService {
       futures.add(deleteOrderInvoiceRelationshipById(id, requestContext))
     );
     return collectResultsOnSuccess(futures)
-      .onSuccess(v -> log.debug("Number of deleted relations between order and invoices: {}", relationIds.size()))
+      .onSuccess(v -> logger.debug("Number of deleted relations between order and invoices: {}", relationIds.size()))
       .mapEmpty();
   }
 }

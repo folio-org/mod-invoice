@@ -39,7 +39,7 @@ import io.vertx.core.Future;
 import io.vertx.core.json.JsonObject;
 
 public class BatchVoucherGenerateService {
-  private static final Logger log = LogManager.getLogger(BatchVoucherGenerateService.class);
+  private static final Logger logger = LogManager.getLogger();
 
   private final VoucherService voucherService;
 
@@ -72,17 +72,17 @@ public class BatchVoucherGenerateService {
     String voucherCQL = buildBatchVoucherQuery(batchVoucherExport);
     return voucherService.getVouchers(voucherCQL, 0, Integer.MAX_VALUE, requestContext)
       .compose(vouchers -> {
-        if (!vouchers.getVouchers().isEmpty()) {
-          Future<Map<String, List<VoucherLine>>> voucherLines = voucherLineService.getVoucherLinesMap(vouchers, requestContext)
-            .onFailure(t -> log.error("buildBatchVoucherObject:: Error retrieving voucher lines", t));
-          Future<Map<String, Invoice>> invoices = invoiceRetrieveService.getInvoiceMap(vouchers, requestContext)
-            .onFailure(t -> log.error("buildBatchVoucherObject:: Error retrieving invoices", t));
-          Future<Map<String, List<InvoiceLine>>> invoiceLines = invoiceLinesRetrieveService.getInvoiceLineMap(vouchers, requestContext)
-            .onFailure(t -> log.error("buildBatchVoucherObject:: Error retrieving invoice lines", t));
-          return CompositeFuture.join(voucherLines, invoices, invoiceLines)
-            .compose(v -> buildBatchVoucher(batchVoucherExport, vouchers, voucherLines.result(), invoices.result(), invoiceLines.result(), requestContext));
+        if (vouchers.getVouchers().isEmpty()) {
+          throw new HttpException(404, "Vouchers for batch voucher export were not found");
         }
-       throw new HttpException(404, "Vouchers for batch voucher export were not found");
+        Future<Map<String, List<VoucherLine>>> voucherLines = voucherLineService.getVoucherLinesMap(vouchers, requestContext)
+          .onFailure(t -> logger.error("buildBatchVoucherObject:: Error retrieving voucher lines", t));
+        Future<Map<String, Invoice>> invoices = invoiceRetrieveService.getInvoiceMap(vouchers, requestContext)
+          .onFailure(t -> logger.error("buildBatchVoucherObject:: Error retrieving invoices", t));
+        Future<Map<String, List<InvoiceLine>>> invoiceLines = invoiceLinesRetrieveService.getInvoiceLineMap(vouchers, requestContext)
+          .onFailure(t -> logger.error("buildBatchVoucherObject:: Error retrieving invoice lines", t));
+        return CompositeFuture.join(voucherLines, invoices, invoiceLines)
+          .compose(v -> buildBatchVoucher(batchVoucherExport, vouchers, voucherLines.result(), invoices.result(), invoiceLines.result(), requestContext));
       });
   }
 

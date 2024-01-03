@@ -32,7 +32,7 @@ import static org.folio.invoices.utils.ErrorCodes.MORE_THAN_ONE_FISCAL_YEAR_SERI
 import static org.folio.invoices.utils.HelperUtils.convertIdsToCqlQuery;
 
 public class InvoiceFiscalYearsService {
-  private static final Logger log = LogManager.getLogger();
+  private static final Logger logger = LogManager.getLogger();
 
   private final InvoiceWorkflowDataHolderBuilder holderBuilder;
   private final BudgetService budgetService;
@@ -50,7 +50,7 @@ public class InvoiceFiscalYearsService {
     List<InvoiceWorkflowDataHolder> dataHolders = holderBuilder.buildHoldersSkeleton(lines, invoice);
     List<String> fundIds = dataHolders.stream().map(InvoiceWorkflowDataHolder::getFundId).distinct().collect(toList());
     if (fundIds.isEmpty()) {
-      log.error("getFiscalYearsByInvoiceAndLines(): no fund related to the invoice with id {}", invoice.getId());
+      logger.error("getFiscalYearsByInvoiceAndLines(): no fund related to the invoice with id {}", invoice.getId());
       throwCouldNotFindValidFiscalYearError(invoice.getId(), fundIds);
     }
     return budgetService.getActiveBudgetListByFundIds(fundIds, requestContext)
@@ -76,7 +76,7 @@ public class InvoiceFiscalYearsService {
       .filter(fiscalYearId -> fundIdsByFiscalYearId.get(fiscalYearId).size() == fundIds.size())
       .collect(toList());
     if (possibleFiscalYearIds.isEmpty()) {
-      log.error("getFiscalYearsByFundIdsAndBudgets(): no fiscal year matching all funds in invoice {}", invoiceId);
+      logger.error("getFiscalYearsByFundIdsAndBudgets(): no fiscal year matching all funds in invoice {}", invoiceId);
       throwCouldNotFindValidFiscalYearError(invoiceId, fundIds);
     }
     String queryIds = convertIdsToCqlQuery(possibleFiscalYearIds);
@@ -86,7 +86,7 @@ public class InvoiceFiscalYearsService {
     return fiscalYearService.getFiscalYearCollectionByQuery(query, requestContext)
       .map(fyCollection -> {
         if (fyCollection.getTotalRecords() == 0) {
-          log.error("getFiscalYearsByFundIdsAndBudgets(): no fiscal year left after filtering by date in invoice {}",
+          logger.error("getFiscalYearsByFundIdsAndBudgets(): no fiscal year left after filtering by date in invoice {}",
             invoiceId);
           throwCouldNotFindValidFiscalYearError(invoiceId, fundIds);
         }
@@ -100,8 +100,8 @@ public class InvoiceFiscalYearsService {
       new Parameter().withKey("fundIds").withValue(fundIds.toString()));
     Error error = COULD_NOT_FIND_VALID_FISCAL_YEAR.toError()
       .withParameters(parameters);
-    if (log.isErrorEnabled()) {
-      log.error("{} - {}", error.getMessage(),
+    if (logger.isErrorEnabled()) {
+      logger.error("{} - {}", error.getMessage(),
         parameters.stream().map(p -> String.format("%s=%s", p.getKey(), p.getValue())).collect(joining(", ")));
     }
     throw new HttpException(422, error);
@@ -115,8 +115,8 @@ public class InvoiceFiscalYearsService {
       new Parameter().withKey("series").withValue(series.toString()));
     Error error = MORE_THAN_ONE_FISCAL_YEAR_SERIES.toError()
       .withParameters(parameters);
-    if (log.isErrorEnabled()) {
-      log.error("{} - {}", error.getMessage(),
+    if (logger.isErrorEnabled()) {
+      logger.error("{} - {}", error.getMessage(),
         parameters.stream().map(p -> String.format("%s=%s", p.getKey(), p.getValue())).collect(joining(", ")));
     }
     throw new HttpException(422, error);

@@ -31,6 +31,7 @@ import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.jaxrs.model.InvoiceDocument;
 import org.folio.rest.jaxrs.model.InvoiceLine;
 import org.folio.rest.jaxrs.model.ValidateFundDistributionsRequest;
+import org.folio.utils.LoggingHelper;
 
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Context;
@@ -71,7 +72,7 @@ public class InvoicesImpl extends BaseApi implements org.folio.rest.jaxrs.resour
 
     helper.getInvoices(limit, offset, query)
       .onSuccess(invoices -> {
-        logInfo("Successfully retrieved invoices: {}", invoices);
+        LoggingHelper.infoAsJson("Successfully retrieved invoices: {}", invoices);
         asyncResultHandler.handle(succeededFuture(helper.buildOkResponse(invoices)));
       })
       .onFailure(t -> handleErrorResponse(asyncResultHandler, helper, t));
@@ -233,7 +234,7 @@ public class InvoicesImpl extends BaseApi implements org.folio.rest.jaxrs.resour
     DocumentHelper documentHelper = new DocumentHelper(okapiHeaders, vertxContext);
     documentHelper.getDocumentByInvoiceIdAndDocumentId(id, documentId)
       .onSuccess(document -> {
-        logInfo("Successfully retrieved document: {}", document);
+        LoggingHelper.infoAsJson("Successfully retrieved document: {}", document);
         asyncResultHandler.handle(succeededFuture(documentHelper.buildOkResponse(document)));
       })
       .onFailure(t -> handleErrorResponse(asyncResultHandler, documentHelper, t));
@@ -261,12 +262,6 @@ public class InvoicesImpl extends BaseApi implements org.folio.rest.jaxrs.resour
       .onFailure(t -> handleErrorResponse(asyncResultHandler, helper, t));
   }
 
-  private void logInfo(String message, Object entry) {
-    if (logger.isInfoEnabled()) {
-      logger.info(message, JsonObject.mapFrom(entry).encodePrettily());
-    }
-  }
-
   private Void handleErrorResponse(Handler<AsyncResult<Response>> asyncResultHandler, AbstractHelper helper, Throwable t) {
     asyncResultHandler.handle(succeededFuture(helper.buildErrorResponse(t)));
     return null;
@@ -288,7 +283,7 @@ public class InvoicesImpl extends BaseApi implements org.folio.rest.jaxrs.resour
     } else {
       documentHelper.createDocument(id, entity)
         .onSuccess(document -> {
-          logInfo("Successfully created document with id={}", document);
+          LoggingHelper.infoAsJson("Successfully created document with id={}", document);
           asyncResultHandler.handle(succeededFuture(documentHelper.buildResponseWithLocation(String.format(DOCUMENTS_LOCATION_PREFIX, id, document.getDocumentMetadata().getId()), document)));
         })
         .onFailure(t -> handleErrorResponse(asyncResultHandler, documentHelper, t));

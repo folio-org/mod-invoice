@@ -32,6 +32,7 @@ import org.folio.rest.jaxrs.model.InvoiceLine;
 import org.folio.rest.jaxrs.model.SequenceNumber;
 import org.folio.services.adjusment.AdjustmentsService;
 import org.folio.services.order.OrderService;
+import org.folio.utils.LoggingHelper;
 import org.javamoney.moneta.Money;
 import org.javamoney.moneta.function.MonetaryFunctions;
 import org.springframework.stereotype.Service;
@@ -41,96 +42,98 @@ import io.vertx.core.json.JsonObject;
 
 @Service
 public class BaseInvoiceService implements InvoiceService {
-    private static final Logger logger = LogManager.getLogger(BaseInvoiceService.class);
-    private static final String INVOICE_ENDPOINT = resourcesPath(INVOICES);
-    private static final String INVOICE_BY_ID_ENDPOINT = INVOICE_ENDPOINT + "/{id}";
+  private static final Logger logger = LogManager.getLogger(BaseInvoiceService.class);
+  private static final String INVOICE_ENDPOINT = resourcesPath(INVOICES);
+  private static final String INVOICE_BY_ID_ENDPOINT = INVOICE_ENDPOINT + "/{id}";
 
-    private final AdjustmentsService adjustmentsService;
-    private final RestClient restClient;
-    private final InvoiceLineService invoiceLineService;
-    private final OrderService orderService;
+  private final AdjustmentsService adjustmentsService;
+  private final RestClient restClient;
+  private final InvoiceLineService invoiceLineService;
+  private final OrderService orderService;
 
-    public BaseInvoiceService(RestClient restClient, InvoiceLineService invoiceLineService, OrderService orderService) {
-      this.restClient = restClient;
-      this.invoiceLineService = invoiceLineService;
-      this.orderService = orderService;
-      this.adjustmentsService = new AdjustmentsService();
+  public BaseInvoiceService(RestClient restClient, InvoiceLineService invoiceLineService, OrderService orderService) {
+    this.restClient = restClient;
+    this.invoiceLineService = invoiceLineService;
+    this.orderService = orderService;
+    this.adjustmentsService = new AdjustmentsService();
+  }
+
+  @Override
+  public Future<InvoiceCollection> getInvoices(String query, int offset, int limit, RequestContext requestContext) {
+    RequestEntry requestEntry = new RequestEntry(INVOICE_ENDPOINT)
+      .withQuery(query)
+      .withOffset(offset)
+      .withLimit(limit);
+    LoggingHelper.logQuery("getInvoices", requestEntry);
+    return restClient.get(requestEntry, InvoiceCollection.class, requestContext);
+  }
+
+  @Override
+  public Future<Invoice> getInvoiceById(String invoiceId, RequestContext requestContext) {
+    RequestEntry requestEntry = new RequestEntry(INVOICE_BY_ID_ENDPOINT).withId(invoiceId);
+    return restClient.get(requestEntry, Invoice.class, requestContext);
+  }
+
+  @Override
+  public Future<Invoice> createInvoice(Invoice invoice, RequestContext requestContext) {
+    RequestEntry requestEntry = new RequestEntry(INVOICE_ENDPOINT);
+    return restClient.post(requestEntry, invoice, Invoice.class, requestContext);
+  }
+
+  @Override
+  public Future<Void> updateInvoice(Invoice invoice, RequestContext requestContext) {
+    RequestEntry requestEntry = new RequestEntry(INVOICE_BY_ID_ENDPOINT).withId(invoice.getId());
+    return restClient.put(requestEntry, invoice, requestContext);
+  }
+
+  @Override
+  public Future<Void> deleteInvoice(String invoiceId, RequestContext requestContext) {
+    RequestEntry requestEntry = new RequestEntry(INVOICE_BY_ID_ENDPOINT).withId(invoiceId);
+    return restClient.delete(requestEntry, requestContext)
+      .compose(v -> orderService.deleteOrderInvoiceRelationshipByInvoiceId(invoiceId, requestContext));
+  }
+
+  public Future<String> generateFolioInvoiceNumber(RequestContext requestContext) {
+    return restClient.get(resourcesPath(FOLIO_INVOICE_NUMBER), SequenceNumber.class, requestContext)
+      .map(SequenceNumber::getSequenceNumber);
+  }
+
+  @Override
+  public void calculateTotals(Invoice invoice, List<InvoiceLine> lines) {
+    CurrencyUnit currency = Monetary.getCurrency(invoice.getCurrency());
+
+    // 1. Sub-total
+    MonetaryAmount subTotal = HelperUtils.summarizeSubTotals(lines, currency, false);
+
+    // 2. Calculate Adjustments Total
+    // If there are no invoice lines then adjustmentsTotal = sum of all invoice adjustments
+    // If lines are present then adjustmentsTotal = notProratedInvoiceAdjustments + sum of invoiceLines adjustmentsTotal
+    MonetaryAmount adjustmentsTotal;
+    if (lines.isEmpty()) {
+      List<Adjustment> proratedAdjustments = new ArrayList<>(adjustmentsService.getProratedAdjustments(invoice));
+      proratedAdjustments.addAll(adjustmentsService.getNotProratedAdjustments(invoice));
+      adjustmentsTotal = calculateAdjustmentsTotal(proratedAdjustments, subTotal);
+    } else {
+      adjustmentsTotal = calculateAdjustmentsTotal(adjustmentsService.getNotProratedAdjustments(invoice), subTotal)
+        .add(calculateInvoiceLinesAdjustmentsTotal(lines, currency));
     }
 
-    @Override
-    public Future<InvoiceCollection> getInvoices(String query, int offset, int limit, RequestContext requestContext) {
-        RequestEntry requestEntry = new RequestEntry(INVOICE_ENDPOINT)
-            .withQuery(query)
-            .withOffset(offset)
-            .withLimit(limit);
-        return restClient.get(requestEntry, InvoiceCollection.class, requestContext);
-    }
+    // 3. Total
+    invoice.setTotal(convertToDoubleWithRounding(subTotal.add(adjustmentsTotal)));
+    invoice.setAdjustmentsTotal(convertToDoubleWithRounding(adjustmentsTotal));
+    invoice.setSubTotal(convertToDoubleWithRounding(subTotal));
+  }
 
-    @Override
-    public Future<Invoice> getInvoiceById(String invoiceId, RequestContext requestContext) {
-        RequestEntry requestEntry = new RequestEntry(INVOICE_BY_ID_ENDPOINT).withId(invoiceId);
-        return restClient.get(requestEntry,  Invoice.class, requestContext);
-    }
-
-    @Override
-    public Future<Invoice> createInvoice(Invoice invoice, RequestContext requestContext) {
-        RequestEntry requestEntry = new RequestEntry(INVOICE_ENDPOINT);
-        return restClient.post(requestEntry, invoice, Invoice.class, requestContext);
-    }
-
-    @Override
-    public Future<Void> updateInvoice(Invoice invoice, RequestContext requestContext) {
-        RequestEntry requestEntry = new RequestEntry(INVOICE_BY_ID_ENDPOINT).withId(invoice.getId());
-        return restClient.put(requestEntry, invoice, requestContext);
-    }
-
-    @Override
-    public Future<Void> deleteInvoice(String invoiceId, RequestContext requestContext) {
-        RequestEntry requestEntry = new RequestEntry(INVOICE_BY_ID_ENDPOINT).withId(invoiceId);
-        return restClient.delete(requestEntry, requestContext)
-                         .compose(v -> orderService.deleteOrderInvoiceRelationshipByInvoiceId(invoiceId, requestContext));
-    }
-
-    public Future<String> generateFolioInvoiceNumber(RequestContext requestContext) {
-      return restClient.get(resourcesPath(FOLIO_INVOICE_NUMBER), SequenceNumber.class, requestContext)
-        .map(SequenceNumber::getSequenceNumber);
-    }
-
-    @Override
-    public void calculateTotals(Invoice invoice, List<InvoiceLine> lines) {
-      CurrencyUnit currency = Monetary.getCurrency(invoice.getCurrency());
-
-      // 1. Sub-total
-      MonetaryAmount subTotal = HelperUtils.summarizeSubTotals(lines, currency, false);
-
-      // 2. Calculate Adjustments Total
-      // If there are no invoice lines then adjustmentsTotal = sum of all invoice adjustments
-      // If lines are present then adjustmentsTotal = notProratedInvoiceAdjustments + sum of invoiceLines adjustmentsTotal
-      MonetaryAmount adjustmentsTotal;
-      if (lines.isEmpty()) {
-        List<Adjustment> proratedAdjustments = new ArrayList<>(adjustmentsService.getProratedAdjustments(invoice));
-        proratedAdjustments.addAll(adjustmentsService.getNotProratedAdjustments(invoice));
-        adjustmentsTotal = calculateAdjustmentsTotal(proratedAdjustments, subTotal);
-      } else {
-        adjustmentsTotal = calculateAdjustmentsTotal(adjustmentsService.getNotProratedAdjustments(invoice), subTotal)
-          .add(calculateInvoiceLinesAdjustmentsTotal(lines, currency));
-      }
-
-      // 3. Total
-      invoice.setTotal(convertToDoubleWithRounding(subTotal.add(adjustmentsTotal)));
-      invoice.setAdjustmentsTotal(convertToDoubleWithRounding(adjustmentsTotal));
-      invoice.setSubTotal(convertToDoubleWithRounding(subTotal));
-    }
-
-    @Override
-    public void calculateTotals(Invoice invoice) {
-      calculateTotals(invoice, Collections.emptyList());
-    }
+  @Override
+  public void calculateTotals(Invoice invoice) {
+    calculateTotals(invoice, Collections.emptyList());
+  }
 
   /**
    * Updates total values of the invoice and invoice lines
+   *
    * @param invoice invoice to update totals for
-   * @param lines List<InvoiceLine> invoice lines to update totals for
+   * @param lines   List<InvoiceLine> invoice lines to update totals for
    * @return {code true} if adjustments total value is different from original one
    */
   @Override
@@ -141,6 +144,7 @@ public class BaseInvoiceService implements InvoiceService {
 
   /**
    * Gets invoice lines from the storage and updates total values of the invoice
+   *
    * @param invoice invoice to update totals for
    * @return {code true} if adjustments total is different from original one
    */
@@ -182,8 +186,9 @@ public class BaseInvoiceService implements InvoiceService {
 
   /**
    * Updates total values of the invoice
+   *
    * @param invoice invoice to update totals for
-   * @param lines invoice lines for the invoice
+   * @param lines   invoice lines for the invoice
    * @return {code true} if adjustments total value is different from original one
    */
   private boolean recalculateInvoiceTotals(Invoice invoice, List<InvoiceLine> lines) {

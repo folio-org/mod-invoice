@@ -23,6 +23,7 @@ import org.folio.rest.acq.model.finance.TransactionCollection;
 import org.folio.rest.core.RestClient;
 import org.folio.rest.core.models.RequestContext;
 import org.folio.rest.core.models.RequestEntry;
+import org.folio.utils.LoggingHelper;
 
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
@@ -51,6 +52,7 @@ public class BaseTransactionService {
         .withQuery(query)
         .withOffset(offset)
         .withLimit(limit);
+    LoggingHelper.logQuery("getTransactions", requestEntry);
     return restClient.get(requestEntry, TransactionCollection.class, requestContext);
   }
 

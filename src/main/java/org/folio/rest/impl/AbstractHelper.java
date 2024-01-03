@@ -4,8 +4,6 @@ import static javax.ws.rs.core.HttpHeaders.CONTENT_TYPE;
 import static javax.ws.rs.core.HttpHeaders.LOCATION;
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 import static javax.ws.rs.core.Response.Status.CREATED;
-import static javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
-import static org.folio.invoices.utils.ErrorCodes.GENERIC_ERROR_CODE;
 import static org.folio.rest.RestConstants.OKAPI_URL;
 import static org.folio.rest.RestVerticle.OKAPI_USERID_HEADER;
 
@@ -18,8 +16,8 @@ import javax.ws.rs.core.Response;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.invoices.events.handlers.MessageAddress;
-import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.rest.core.models.RequestContext;
+import org.folio.utils.ExceptionUtil;
 
 import io.vertx.core.Context;
 import io.vertx.core.eventbus.DeliveryOptions;
@@ -29,7 +27,6 @@ public abstract class AbstractHelper {
   protected final Logger logger = LogManager.getLogger(this.getClass());
 
   public static final String ID = "id";
-  public static final String ERROR_CAUSE = "cause";
   public static final String DEFAULT_SYSTEM_CURRENCY = "USD";
   public static final String LOCALE_SETTINGS = "localeSettings";
   public static final String SYSTEM_CONFIG_MODULE_NAME = "ORG";
@@ -48,39 +45,7 @@ public abstract class AbstractHelper {
   }
 
   public Response buildErrorResponse(Throwable throwable) {
-    return buildErrorResponse(handleProcessingError(throwable));
-  }
-
-  protected HttpException handleProcessingError(Throwable throwable) {
-    logger.error("Exception encountered", throwable);
-
-    if (throwable instanceof HttpException) {
-      return ((HttpException) throwable);
-    } else {
-      return new HttpException(INTERNAL_SERVER_ERROR.getStatusCode(), GENERIC_ERROR_CODE.toError().withAdditionalProperty(ERROR_CAUSE, throwable.getMessage()));
-    }
-
-  }
-
-  public Response buildErrorResponse(HttpException exception) {
-    final Response.ResponseBuilder responseBuilder;
-    switch (exception.getCode()) {
-      case 400:
-      case 403:
-      case 404:
-      case 409:
-      case 413:
-      case 422:
-        responseBuilder = Response.status(exception.getCode());
-        break;
-      default:
-        responseBuilder = Response.status(INTERNAL_SERVER_ERROR);
-    }
-
-    return responseBuilder
-      .header(CONTENT_TYPE, APPLICATION_JSON)
-      .entity(exception.getErrors())
-      .build();
+    return ExceptionUtil.buildErrorResponse(throwable);
   }
 
   public Response buildOkResponse(Object body) {

@@ -20,6 +20,7 @@ import org.folio.rest.core.RestClient;
 import org.folio.rest.core.models.RequestContext;
 import org.folio.rest.core.models.RequestEntry;
 import org.folio.rest.jaxrs.model.Parameter;
+import org.folio.utils.LoggingHelper;
 import org.springframework.stereotype.Service;
 
 import io.vertx.core.Future;
@@ -42,6 +43,7 @@ public class ExpenseClassRetrieveService {
         .withQuery(query)
         .withOffset(offset)
         .withLimit(limit);
+    LoggingHelper.logQuery("getExpenseClasses", requestEntry);
     return restClient.get(requestEntry, ExpenseClassCollection.class, requestContext);
   }
 

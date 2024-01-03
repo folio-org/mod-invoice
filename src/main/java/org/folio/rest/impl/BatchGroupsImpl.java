@@ -11,11 +11,11 @@ import org.apache.logging.log4j.Logger;
 import org.folio.rest.annotations.Validate;
 import org.folio.rest.jaxrs.model.BatchGroup;
 import org.folio.rest.jaxrs.resource.BatchGroups;
+import org.folio.utils.LoggingHelper;
 
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Context;
 import io.vertx.core.Handler;
-import io.vertx.core.json.JsonObject;
 
 public class BatchGroupsImpl implements BatchGroups {
 
@@ -45,7 +45,7 @@ public class BatchGroupsImpl implements BatchGroups {
 
     helper.getBatchGroups(limit, offset, query)
       .onSuccess(batchGroups -> {
-        logInfo("Successfully retrieved batch groups: {}", batchGroups);
+        LoggingHelper.infoAsJson("Successfully retrieved batch groups: {}", batchGroups);
         asyncResultHandler.handle(succeededFuture(helper.buildOkResponse(batchGroups)));
       })
       .onFailure(t -> handleErrorResponse(asyncResultHandler, helper, t));
@@ -85,12 +85,6 @@ public class BatchGroupsImpl implements BatchGroups {
     helper.deleteBatchGroup(id)
       .onSuccess(ok -> asyncResultHandler.handle(succeededFuture(helper.buildNoContentResponse())))
       .onFailure(fail -> handleErrorResponse(asyncResultHandler, helper, fail));
-  }
-
-  private void logInfo(String message, Object entry) {
-    if (logger.isInfoEnabled()) {
-      logger.info(message, JsonObject.mapFrom(entry).encodePrettily());
-    }
   }
 
   private Void handleErrorResponse(Handler<AsyncResult<Response>> asyncResultHandler, AbstractHelper helper, Throwable t) {

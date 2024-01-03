@@ -14,6 +14,7 @@ import java.util.stream.Collectors;
 
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.collections4.ListUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.folio.HttpStatus;
 import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.invoices.utils.HelperUtils;
@@ -166,7 +167,7 @@ public class ProtectionHelper extends AbstractHelper {
     var unitsForUser = getAcqUnitIdsForUser(userId);
     var unitsAllowRead = getOpenForReadAcqUnitIds();
     return CompositeFuture.join(unitsForUser, unitsAllowRead)
-      .map(cf -> StreamEx.of(unitsForUser.result(), unitsAllowRead.result())
+      .map(rcf -> StreamEx.of(unitsForUser.result(), unitsAllowRead.result())
         .flatCollection(strings -> strings)
         .distinct()
         .toList());
@@ -183,7 +184,7 @@ public class ProtectionHelper extends AbstractHelper {
           .collect(Collectors.toList());
 
         if (logger.isDebugEnabled()) {
-          logger.debug("User belongs to {} acq units: {}", ids.size(), StreamEx.of(ids).joining(", "));
+          logger.debug("User belongs to {} acq units: {}", ids.size(), StringUtils.join(ids, ", "));
         }
 
         return ids;
@@ -199,8 +200,7 @@ public class ProtectionHelper extends AbstractHelper {
           .collect(Collectors.toList());
 
         if (logger.isDebugEnabled()) {
-          logger.debug("{} acq units with 'protectRead==false' are found: {}", ids.size(), StreamEx.of(ids)
-            .joining(", "));
+          logger.debug("{} acq units with 'protectRead==false' are found: {}", ids.size(), StringUtils.join(ids, ", "));
         }
         return ids;
       });

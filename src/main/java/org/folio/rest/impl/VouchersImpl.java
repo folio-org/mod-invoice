@@ -13,11 +13,11 @@ import org.folio.rest.annotations.Validate;
 import org.folio.rest.core.models.RequestContext;
 import org.folio.rest.jaxrs.model.Voucher;
 import org.folio.rest.jaxrs.model.VoucherLine;
+import org.folio.utils.LoggingHelper;
 
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Context;
 import io.vertx.core.Handler;
-import io.vertx.core.json.JsonObject;
 
 public class VouchersImpl extends BaseApi implements org.folio.rest.jaxrs.resource.Voucher {
 
@@ -118,10 +118,7 @@ public class VouchersImpl extends BaseApi implements org.folio.rest.jaxrs.resour
 
     voucherHelper.getVouchers(query, offset, limit, new RequestContext(vertxContext, okapiHeaders))
       .onSuccess(vouchers -> {
-        if (logger.isInfoEnabled()) {
-          logger.info("Successfully retrieved vouchers: {}", JsonObject.mapFrom(vouchers)
-            .encodePrettily());
-        }
+        LoggingHelper.infoAsJson("Successfully retrieved vouchers: {}", vouchers);
         asyncResultHandler.handle(succeededFuture(buildOkResponse(vouchers)));
       })
       .onFailure(t -> handleErrorResponse(asyncResultHandler, t));

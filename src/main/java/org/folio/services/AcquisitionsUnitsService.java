@@ -14,13 +14,17 @@ import org.folio.rest.core.models.RequestContext;
 import io.vertx.core.Future;
 
 public class AcquisitionsUnitsService {
+
   public static final String ACQUISITIONS_UNIT_ID = "acquisitionsUnitId";
-  static final String GET_UNITS_BY_QUERY = resourcesPath(ACQUISITIONS_UNITS) + SEARCH_PARAMS;
-  static final String GET_UNITS_MEMBERSHIPS_BY_QUERY = resourcesPath(ACQUISITIONS_MEMBERSHIPS) + SEARCH_PARAMS;
+  private static final String GET_UNITS_BY_QUERY = resourcesPath(ACQUISITIONS_UNITS) + SEARCH_PARAMS;
+  private static final String GET_UNITS_MEMBERSHIPS_BY_QUERY = resourcesPath(ACQUISITIONS_MEMBERSHIPS) + SEARCH_PARAMS;
+
   private final RestClient restClient;
-  public AcquisitionsUnitsService (RestClient restClient) {
+
+  public AcquisitionsUnitsService(RestClient restClient) {
     this.restClient = restClient;
   }
+
   public Future<AcquisitionsUnitCollection> getAcquisitionsUnits(String query, int offset, int limit, RequestContext requestContext) {
     String endpoint = String.format(GET_UNITS_BY_QUERY, limit, offset, getEndpointWithQuery(query));
     return restClient.get(endpoint, AcquisitionsUnitCollection.class, requestContext);

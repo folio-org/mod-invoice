@@ -20,6 +20,7 @@ import org.folio.rest.core.models.RequestContext;
 import org.folio.rest.core.models.RequestEntry;
 import org.folio.rest.jaxrs.model.Parameter;
 import org.folio.utils.ExceptionUtil;
+import org.folio.utils.LoggingHelper;
 
 import io.vertx.core.Future;
 
@@ -38,6 +39,7 @@ public class OrderLineService {
       .withQuery(query)
       .withOffset(0)
       .withLimit(Integer.MAX_VALUE);
+    LoggingHelper.logQuery("getPoLines", requestEntry);
     return restClient.get(requestEntry, PoLineCollection.class, requestContext)
       .map(PoLineCollection::getPoLines);
   }
