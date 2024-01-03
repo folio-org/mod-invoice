@@ -99,6 +99,31 @@ public class ApiTestBase {
   public static final String permissionsJsonArrayString = new JsonArray(permissionsList).encode();
   public static final Header X_OKAPI_PERMISSION = new Header(UserPermissionsUtil.OKAPI_HEADER_PERMISSIONS, permissionsJsonArrayString);
 
+  public static final List<String> permissionsWithoutApproveAndPayList = Arrays.asList(
+    "invoice.invoices.item.put",
+    "invoices.acquisitions-units-assignments.manage",
+    "invoices.acquisitions-units-assignments.assign",
+    "invoices.fiscal-year.update"
+  );
+
+  public static final JsonArray permissionsWithoutApproveAndPayArray = new JsonArray(permissionsWithoutApproveAndPayList);
+  public static final String permissionsWithoutApproveAndPayJsonArrayString = new JsonArray(permissionsWithoutApproveAndPayList).encode();
+  //okapiHeaders.put(UserPermissionsUtil.OKAPI_HEADER_PERMISSIONS, permissionsJsonArrayString);
+  public static final Header X_OKAPI_PERMISSION_WITHOUT_PAY_APPROVE = new Header(UserPermissionsUtil.OKAPI_HEADER_PERMISSIONS, permissionsWithoutApproveAndPayJsonArrayString);
+
+  public static final List<String> permissionsWithoutPaidList = Arrays.asList(
+    "invoice.item.approve",
+    "invoice.invoices.item.put",
+    "invoices.acquisitions-units-assignments.manage",
+    "invoices.acquisitions-units-assignments.assign",
+    "invoices.fiscal-year.update"
+  );
+
+  public static final JsonArray permissionsWithoutPaidArray = new JsonArray(permissionsWithoutPaidList);
+  public static final String permissionsWithoutPaidJsonArrayString = new JsonArray(permissionsWithoutPaidList).encode();
+  //okapiHeaders.put(UserPermissionsUtil.OKAPI_HEADER_PERMISSIONS, permissionsJsonArrayString);
+  public static final Header X_OKAPI_PERMISSION_WITHOUT_PAY= new Header(UserPermissionsUtil.OKAPI_HEADER_PERMISSIONS, permissionsWithoutPaidJsonArrayString);
+  
   @BeforeAll
   public static void before() throws InterruptedException, ExecutionException, TimeoutException {
 
