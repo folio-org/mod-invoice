@@ -2046,7 +2046,7 @@ public class InvoicesApiTest extends ApiTestBase {
   void testTransitionToApprovedWithErrorFromCreateCreditPayment() {
     logger.info("=== Test transition invoice to Approved with error when creating payment credit  ===");
 
-    Headers headers = prepareHeaders(X_OKAPI_URL, MockServer.POST_CREDIT_PAYMENT_ERROR_X_OKAPI_TENANT, X_OKAPI_TOKENN);
+    Headers headers = prepareHeaders(X_OKAPI_URL, MockServer.POST_CREDIT_PAYMENT_ERROR_X_OKAPI_TENANT, X_OKAPI_TOKEN);
     Errors errors = transitionToPaymentWithError(APPROVED_INVOICE_SAMPLE_PATH, headers, 422);
 
     assertThat(errors, notNullValue());
