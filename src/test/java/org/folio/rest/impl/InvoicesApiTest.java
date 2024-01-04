@@ -2879,7 +2879,7 @@ public class InvoicesApiTest extends ApiTestBase {
     reqData.setFolioInvoiceNo(null);
     String body = getMockData(APPROVED_INVOICE_SAMPLE_PATH);
 
-    verifyPostResponse(INVOICE_PATH, body, prepareHeaders(ERROR_X_OKAPI_TENANT), APPLICATION_JSON, 500);
+    verifyPostResponse(INVOICE_PATH, body, prepareHeadersWithoutPermissions(ERROR_X_OKAPI_TENANT), APPLICATION_JSON, 500);
 
     assertThat(getRqRsEntries(HttpMethod.GET, FOLIO_INVOICE_NUMBER), hasSize(1));
   }
