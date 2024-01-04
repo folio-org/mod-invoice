@@ -277,7 +277,13 @@ public class ApiTestBase {
             .response();
   }
 
-  public Headers prepareHeaders(Header... headers) {
+ public Headers prepareHeaders(Header... headers) {
+
+    Header permissionsHeader = new Header(UserPermissionsUtil.OKAPI_HEADER_PERMISSIONS, permissionsJsonArrayString);
+
+    Header[] updatedHeaders = Arrays.copyOf(headers, headers.length + 1);
+    updatedHeaders[headers.length] = permissionsHeader;
+
     return new Headers(headers);
   }
 
