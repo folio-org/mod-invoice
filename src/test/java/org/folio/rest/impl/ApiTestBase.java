@@ -284,6 +284,10 @@ public class ApiTestBase {
     Header[] updatedHeaders = Arrays.copyOf(headers, headers.length + 1);
     updatedHeaders[headers.length] = permissionsHeader;
 
+    return new Headers(updatedHeaders);
+  }
+
+  public Headers prepareHeadersWithoutPermissions(Header... headers) {
     return new Headers(headers);
   }
 
