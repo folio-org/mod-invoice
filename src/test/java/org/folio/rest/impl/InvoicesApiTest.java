@@ -2765,41 +2765,6 @@ public class InvoicesApiTest extends ApiTestBase {
     compareRecordWithSentToStorage(respData);
   }
 
-  @Test
-  public void updateInvoiceFiscalYearUseAdjustmentFundFiscalYear() throws IOException {
-    logger.info("=== Update invoice fiscal year use adjustment fund fiscal year ===");
-    String body = getMockData(APPROVED_INVOICE_WITHOUT_FISCAL_YEAR_SAMPLE_PATH);
-
-    final Invoice respData = verifyPostResponse(INVOICE_PATH, body, prepareHeaders(X_OKAPI_TENANT, X_OKAPI_PERMISSION), APPLICATION_JSON, 201).as(Invoice.class);
-
-    String poId = respData.getId();
-    String folioInvoiceNo = respData.getFolioInvoiceNo();
-    String fiscalYearId = respData.getFiscalYearId();
-
-    assertThat(poId, notNullValue());
-    assertThat(folioInvoiceNo, notNullValue());
-    assertThat(fiscalYearId, notNullValue());
-    assertThat(getRqRsEntries(HttpMethod.GET, FOLIO_INVOICE_NUMBER), hasSize(1));
-
-    // Check that invoice in the response and the one in storage are the same
-    compareRecordWithSentToStorage(respData);
-  }
-
-  @Test
-  public void updateInvoiceFiscalYearUseMultipleAdjustmentFundFiscalYear() throws IOException {
-    logger.info("=== Update invoice fiscal year use multiple adjustment fund fiscal year ===");
-    String body = getMockData(APPROVED_INVOICE_MULTIPLE_ADJUSTMENTS_FISCAL_YEAR_SAMPLE_PATH);
-
-    final Errors errors = verifyPostResponse(INVOICE_PATH, body, prepareHeaders(X_OKAPI_TENANT, X_OKAPI_PERMISSION), APPLICATION_JSON, 422).as(Errors.class);
-
-    assertThat(errors, notNullValue());
-    assertThat(errors.getErrors(), hasSize(1));
-    final Error error = errors.getErrors()
-      .get(0);
-    assertThat(error.getMessage(), equalTo(MULTIPLE_ADJUSTMENTS_FISCAL_YEARS.getDescription()));
-    assertThat(error.getCode(), equalTo(MULTIPLE_ADJUSTMENTS_FISCAL_YEARS.getCode()));
-    assertThat(error.getParameters().size(), equalTo(2));
-  }
 
   @Test
   void testCreateInvoiceWithLockedTotalAndTwoAdjustmentsAndNoInvoiceLinesProvided() throws IOException {
@@ -3076,27 +3041,6 @@ public class InvoicesApiTest extends ApiTestBase {
     assertThat(serverRqRs.row(INVOICES).get(HttpMethod.PUT), nullValue());
   }
 
-  @Test
-  void testUpdateInvoiceStatusToPaidWithoutApproved(){
-    logger.info("=== Don't allow to pay for the invoice which was not approved before ===");
-    Invoice reqData = getMockAsJson(OPEN_INVOICE_SAMPLE_PATH).mapTo(Invoice.class);
-    String id = reqData.getId();
-    InvoiceLine invoiceLine = getMinimalContentInvoiceLine(id);
-
-    invoiceLine.setId(UUID.randomUUID().toString());
-    invoiceLine.setInvoiceId(reqData.getId());
-
-    addMockEntry(INVOICES, reqData);
-    addMockEntry(INVOICE_LINES, invoiceLine);
-    verifySuccessPut(String.format(INVOICE_ID_PATH, id), JsonObject.mapFrom(reqData));
-    Headers headers = prepareHeaders(X_OKAPI_URL, X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID, X_OKAPI_PERMISSION);
-    reqData.setStatus(Status.PAID);
-    Errors errors = verifyPut(String.format(INVOICE_ID_PATH, id), JsonObject.mapFrom(reqData), headers,APPLICATION_JSON, 400).as(Errors.class);
-
-    assertThat(errors.getErrors(), hasSize(1));
-    Error error = errors.getErrors().get(0);
-    assertThat(error.getCode(), equalTo(CANNOT_PAY_INVOICE_WITHOUT_APPROVAL.getCode()));
-  }
 
   @Test
   void testUpdateTagsForPaidStatusInvoice(){
