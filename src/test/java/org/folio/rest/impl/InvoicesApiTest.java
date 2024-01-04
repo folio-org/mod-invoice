@@ -280,7 +280,7 @@ public class InvoicesApiTest extends ApiTestBase {
   void testGetInvoicesForUserAssignedToAcqUnits() {
     logger.info("=== Test Get Invoices by query - user assigned to acq units ===");
 
-    Headers headers = prepareHeaders(X_OKAPI_URL, NON_EXIST_CONFIG_X_OKAPI_TENANT, X_OKAPI_USER_ID_WITH_ACQ_UNITS, X_OKAPI_PERMISSION);
+    Headers headers = prepareHeaders(X_OKAPI_URL, NON_EXIST_CONFIG_X_OKAPI_TENANT, X_OKAPI_USER_ID_WITH_ACQ_UNITS);
     verifyGet(INVOICE_PATH, headers, APPLICATION_JSON, 200);
 
     assertThat(getInvoiceSearches(), hasSize(1));
@@ -518,7 +518,7 @@ public class InvoicesApiTest extends ApiTestBase {
     reqData.setStatus(Invoice.Status.APPROVED);
 
     String jsonBody = JsonObject.mapFrom(reqData).encode();
-    Headers headers = prepareHeaders(X_OKAPI_URL, X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID, X_OKAPI_PERMISSION);
+    Headers headers = prepareHeaders(X_OKAPI_URL, X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID);
     verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, headers, "", 204);
 
     // Verify that expected number of external calls made
@@ -574,7 +574,7 @@ public class InvoicesApiTest extends ApiTestBase {
     reqData.setStatus(Invoice.Status.APPROVED);
 
     String jsonBody = JsonObject.mapFrom(reqData).encode();
-    Headers headers = prepareHeaders(X_OKAPI_URL, X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID, X_OKAPI_PERMISSION);
+    Headers headers = prepareHeaders(X_OKAPI_URL, X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID);
     verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, headers, "", 204);
 
     // Verify that expected number of external calls made
@@ -606,7 +606,7 @@ public class InvoicesApiTest extends ApiTestBase {
     reqData.setStatus(Status.PAID);
 
     String jsonBody = JsonObject.mapFrom(reqData).encode();
-    Headers headers = prepareHeaders(X_OKAPI_URL, X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID, X_OKAPI_PERMISSION);
+    Headers headers = prepareHeaders(X_OKAPI_URL, X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID);
     verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, headers, "", 204);
 
     assertThat(getInvoiceRetrievals(), hasSize(1));
@@ -636,7 +636,7 @@ public class InvoicesApiTest extends ApiTestBase {
     invoice.setStatus(Invoice.Status.APPROVED);
 
     String jsonBody = JsonObject.mapFrom(invoice).encode();
-    Headers headers = prepareHeaders(X_OKAPI_URL, X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID, X_OKAPI_PERMISSION);
+    Headers headers = prepareHeaders(X_OKAPI_URL, X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID);
     verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, headers, "", 204);
 
     // Verify that expected number of external calls made
@@ -685,7 +685,7 @@ public class InvoicesApiTest extends ApiTestBase {
     invoice.setStatus(Invoice.Status.APPROVED);
 
     String jsonBody = JsonObject.mapFrom(invoice).encode();
-    Headers headers = prepareHeaders(X_OKAPI_URL, X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID, X_OKAPI_PERMISSION);
+    Headers headers = prepareHeaders(X_OKAPI_URL, X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID);
     verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, headers, "", 204);
 
     // Verify that expected number of external calls made
@@ -756,7 +756,7 @@ public class InvoicesApiTest extends ApiTestBase {
     reqData.setStatus(Invoice.Status.APPROVED);
 
     String jsonBody = JsonObject.mapFrom(reqData).encode();
-    Headers headers = prepareHeaders(X_OKAPI_URL, X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID, X_OKAPI_PERMISSION);
+    Headers headers = prepareHeaders(X_OKAPI_URL, X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID);
     Errors errors = verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, headers, APPLICATION_JSON, 422).as(Errors.class);
     assertThat(errors.getErrors().get(0).getCode(), equalTo(FUND_CANNOT_BE_PAID.getCode()));
     assertThat(errors.getErrors().get(0).getMessage(), equalTo(FUND_CANNOT_BE_PAID.getDescription()));
@@ -803,7 +803,7 @@ public class InvoicesApiTest extends ApiTestBase {
     reqData.setStatus(Invoice.Status.APPROVED);
 
     String jsonBody = JsonObject.mapFrom(reqData).encode();
-    Headers headers = prepareHeaders(X_OKAPI_URL, X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID, X_OKAPI_PERMISSION);
+    Headers headers = prepareHeaders(X_OKAPI_URL, X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID);
     verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, headers, "", 204);
   }
 
@@ -854,7 +854,7 @@ public class InvoicesApiTest extends ApiTestBase {
     reqData.setStatus(Invoice.Status.APPROVED);
 
     String jsonBody = JsonObject.mapFrom(reqData).encode();
-    Headers headers = prepareHeaders(X_OKAPI_URL, X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID, X_OKAPI_PERMISSION);
+    Headers headers = prepareHeaders(X_OKAPI_URL, X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID);
     verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, headers, "", 204);
   }
 
@@ -884,7 +884,7 @@ public class InvoicesApiTest extends ApiTestBase {
     reqData.setStatus(Invoice.Status.APPROVED);
 
     String jsonBody = JsonObject.mapFrom(reqData).encode();
-    Headers headers = prepareHeaders(X_OKAPI_URL, X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID, X_OKAPI_PERMISSION);
+    Headers headers = prepareHeaders(X_OKAPI_URL, X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID);
     verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, headers, "", 204);
 
     // Verify that expected number of external calls made
@@ -927,7 +927,7 @@ public class InvoicesApiTest extends ApiTestBase {
     reqData.setStatus(Invoice.Status.APPROVED);
     reqData.setLockTotal(100d);
     String jsonBody = JsonObject.mapFrom(reqData).encode();
-    Headers headers = prepareHeaders(X_OKAPI_URL, X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID, X_OKAPI_PERMISSION);
+    Headers headers = prepareHeaders(X_OKAPI_URL, X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID);
     verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, headers, "", 204);
 
     // Verify that expected number of external calls made
@@ -970,7 +970,7 @@ public class InvoicesApiTest extends ApiTestBase {
     reqData.setStatus(Invoice.Status.APPROVED);
     reqData.setLockTotal(100.18d);
     String jsonBody = JsonObject.mapFrom(reqData).encode();
-    Headers headers = prepareHeaders(X_OKAPI_URL, X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID, X_OKAPI_PERMISSION);
+    Headers headers = prepareHeaders(X_OKAPI_URL, X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID);
     verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, headers, "", 204);
 
     // Verify that expected number of external calls made
@@ -1013,7 +1013,7 @@ public class InvoicesApiTest extends ApiTestBase {
     reqData.setStatus(Invoice.Status.APPROVED);
     reqData.setLockTotal(15.4d);
     String jsonBody = JsonObject.mapFrom(reqData).encode();
-    Headers headers = prepareHeaders(X_OKAPI_URL, X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID, X_OKAPI_PERMISSION);
+    Headers headers = prepareHeaders(X_OKAPI_URL, X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID);
     Errors errors = verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, headers, APPLICATION_JSON, 400).as(Errors.class);
 
     // Verify that expected number of external calls made
@@ -1058,7 +1058,7 @@ public class InvoicesApiTest extends ApiTestBase {
     reqData.setStatus(Invoice.Status.APPROVED);
 
     String jsonBody = JsonObject.mapFrom(reqData).encode();
-    Headers headers = prepareHeaders(X_OKAPI_URL, X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID, X_OKAPI_PERMISSION);
+    Headers headers = prepareHeaders(X_OKAPI_URL, X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID);
     Errors errors = verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, headers, "", 422)
       .as(Errors.class);
 
@@ -1140,7 +1140,7 @@ public class InvoicesApiTest extends ApiTestBase {
     invoice.setStatus(Invoice.Status.APPROVED);
 
     String jsonBody = JsonObject.mapFrom(invoice).encode();
-    Headers headers = prepareHeaders(X_OKAPI_URL, X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID, X_OKAPI_PERMISSION);
+    Headers headers = prepareHeaders(X_OKAPI_URL, X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID);
     Errors errors = verifyPut(String.format(INVOICE_ID_PATH, invoiceId), jsonBody, headers, "", 422)
       .as(Errors.class);
 
@@ -1176,7 +1176,7 @@ public class InvoicesApiTest extends ApiTestBase {
   private void verifyInvoiceTransitionFailure(Invoice reqData) {
     String jsonBody = JsonObject.mapFrom(reqData)
       .encode();
-    Headers headers = prepareHeaders(X_OKAPI_URL, X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID, X_OKAPI_PERMISSION);
+    Headers headers = prepareHeaders(X_OKAPI_URL, X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID);
     final Errors errors = verifyPut(String.format(INVOICE_ID_PATH, reqData.getId()), jsonBody, headers, "", 422).then()
       .extract()
       .body()
@@ -1229,7 +1229,7 @@ public class InvoicesApiTest extends ApiTestBase {
 
     String jsonBody = JsonObject.mapFrom(reqData).encode();
 
-    Headers headers = prepareHeaders(X_OKAPI_USER_ID, X_OKAPI_TENANT, X_OKAPI_PERMISSION);
+    Headers headers = prepareHeaders(X_OKAPI_USER_ID, X_OKAPI_TENANT);
     Errors errors = verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, headers, APPLICATION_JSON, 400)
       .then()
       .extract()
@@ -1253,17 +1253,17 @@ public class InvoicesApiTest extends ApiTestBase {
     String id = reqData.getId();
     String jsonBody = JsonObject.mapFrom(reqData).encode();
 
-    Headers nonExistConfigHeaders = prepareHeaders(X_OKAPI_URL, NON_EXIST_CONFIG_X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID, X_OKAPI_PERMISSION);
+    Headers nonExistConfigHeaders = prepareHeaders(X_OKAPI_URL, NON_EXIST_CONFIG_X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID);
     verifySuccessfulPut(prepareInvoiceLines(reqData), reqData, id, jsonBody, nonExistConfigHeaders);
 
     MockServer.release();
 
-    Headers nonExistValueConfigHeaders = prepareHeaders(X_OKAPI_URL, PREFIX_CONFIG_WITHOUT_VALUE_X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID, X_OKAPI_PERMISSION);
+    Headers nonExistValueConfigHeaders = prepareHeaders(X_OKAPI_URL, PREFIX_CONFIG_WITHOUT_VALUE_X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID);
     verifySuccessfulPut(prepareInvoiceLines(reqData), reqData, id, jsonBody, nonExistValueConfigHeaders);
 
     MockServer.release();
 
-    Headers nonExistNeededValueConfigHeaders = prepareHeaders(X_OKAPI_URL, PREFIX_CONFIG_WITH_NON_EXISTING_VALUE_X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID, X_OKAPI_PERMISSION);
+    Headers nonExistNeededValueConfigHeaders = prepareHeaders(X_OKAPI_URL, PREFIX_CONFIG_WITH_NON_EXISTING_VALUE_X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID);
     verifySuccessfulPut(prepareInvoiceLines(reqData), reqData, id, jsonBody, nonExistNeededValueConfigHeaders);
   }
 
@@ -1318,7 +1318,7 @@ public class InvoicesApiTest extends ApiTestBase {
 
     String id = reqData.getId();
     String jsonBody = JsonObject.mapFrom(reqData).encode();
-    Headers headers = prepareHeaders(X_OKAPI_TENANT, X_OKAPI_USER_ID, X_OKAPI_PERMISSION);
+    Headers headers = prepareHeaders(X_OKAPI_TENANT, X_OKAPI_USER_ID);
     verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, headers, "", 204);
     List<JsonObject> vouchersUpdated = serverRqRs.get(VOUCHERS_STORAGE, HttpMethod.PUT);
     List<JsonObject> voucherLinesDeletions = serverRqRs.get(VOUCHER_LINES, HttpMethod.DELETE);
@@ -1345,7 +1345,7 @@ public class InvoicesApiTest extends ApiTestBase {
   void testTransitionToApprovedWithInvalidVoucherNumberPrefix() {
     logger.info("=== Test transition invoice to Approved with invalid voucher number prefix ===");
 
-    Headers headers = prepareHeaders(X_OKAPI_URL, INVALID_PREFIX_CONFIG_X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID, X_OKAPI_PERMISSION);
+    Headers headers = prepareHeaders(X_OKAPI_URL, INVALID_PREFIX_CONFIG_X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID);
     Errors errors = transitionToApprovedWithError(REVIEWED_INVOICE_SAMPLE_PATH, headers,400);
 
     List<JsonObject> voucherNumberGeneration = serverRqRs.get(VOUCHER_NUMBER_STORAGE, HttpMethod.GET);
@@ -1404,7 +1404,7 @@ public class InvoicesApiTest extends ApiTestBase {
     String id = reqData.getId();
     String jsonBody = JsonObject.mapFrom(reqData).encode();
 
-    Headers headers = prepareHeaders(X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID, X_OKAPI_PERMISSION);
+    Headers headers = prepareHeaders(X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID);
 
     Errors errors = verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, headers, APPLICATION_JSON, 500)
       .then()
@@ -1421,7 +1421,7 @@ public class InvoicesApiTest extends ApiTestBase {
     logger.info("=== Test transition invoice to Approved with mod-config error ===");
 
     Errors errors = transitionToApprovedWithError(REVIEWED_INVOICE_SAMPLE_PATH, prepareHeaders(X_OKAPI_URL, ERROR_CONFIG_X_OKAPI_TENANT, X_OKAPI_TOKEN,
-      X_OKAPI_USER_ID, X_OKAPI_PERMISSION));
+      X_OKAPI_USER_ID));
 
     assertThat(errors, notNullValue());
     assertThat(errors.getErrors(), hasSize(1));
@@ -1501,7 +1501,7 @@ public class InvoicesApiTest extends ApiTestBase {
 
     String id = reqData.getId();
     String jsonBody = JsonObject.mapFrom(reqData).encode();
-    Headers headers = prepareHeaders(X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID, X_OKAPI_PERMISSION);
+    Headers headers = prepareHeaders(X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID);
 
     Errors errors = verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, headers, APPLICATION_JSON, 400)
       .then()
@@ -1529,7 +1529,7 @@ public class InvoicesApiTest extends ApiTestBase {
     addMockEntry(INVOICE_LINES, JsonObject.mapFrom(invoiceLine));
 
     String jsonBody = JsonObject.mapFrom(reqData).encode();
-    Headers headers = prepareHeaders(X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID, X_OKAPI_PERMISSION);
+    Headers headers = prepareHeaders(X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID);
 
     Errors errors = verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, headers, APPLICATION_JSON, 400)
       .then()
@@ -1558,7 +1558,7 @@ public class InvoicesApiTest extends ApiTestBase {
     addMockEntry(INVOICE_LINES, JsonObject.mapFrom(invoiceLine));
 
     String jsonBody = JsonObject.mapFrom(reqData).encode();
-    Headers headers = prepareHeaders(X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID, X_OKAPI_PERMISSION);
+    Headers headers = prepareHeaders(X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID);
 
     Errors errors = verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, headers, APPLICATION_JSON, 400)
       .then()
@@ -1588,7 +1588,7 @@ public class InvoicesApiTest extends ApiTestBase {
     addMockEntry(INVOICE_LINES, JsonObject.mapFrom(invoiceLine));
 
     String jsonBody = JsonObject.mapFrom(reqData).encode();
-    Headers headers = prepareHeaders(X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID, X_OKAPI_PERMISSION);
+    Headers headers = prepareHeaders(X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID);
 
     Errors errors = verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, headers, APPLICATION_JSON, 422)
       .then()
@@ -1619,7 +1619,7 @@ public class InvoicesApiTest extends ApiTestBase {
     addMockEntry(INVOICE_LINES, JsonObject.mapFrom(invoiceLine));
 
     String jsonBody = JsonObject.mapFrom(reqData).encode();
-    Headers headers = prepareHeaders(X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID, X_OKAPI_PERMISSION);
+    Headers headers = prepareHeaders(X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID);
 
     Errors errors = verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, headers, APPLICATION_JSON, 422)
       .then()
@@ -1668,7 +1668,7 @@ public class InvoicesApiTest extends ApiTestBase {
     addMockEntry(INVOICE_LINES, JsonObject.mapFrom(invoiceLine));
 
     String jsonBody = JsonObject.mapFrom(reqData).encode();
-    Headers headers = prepareHeaders(X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID, X_OKAPI_PERMISSION);
+    Headers headers = prepareHeaders(X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID);
 
     Errors errors = verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, headers, APPLICATION_JSON, 422)
       .then()
@@ -1707,7 +1707,7 @@ public class InvoicesApiTest extends ApiTestBase {
     addMockEntry(INVOICE_LINES, JsonObject.mapFrom(invoiceLine));
 
     String jsonBody = JsonObject.mapFrom(reqData).encode();
-    Headers headers = prepareHeaders(X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID, X_OKAPI_PERMISSION);
+    Headers headers = prepareHeaders(X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID);
 
     Errors errors = verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, headers, APPLICATION_JSON, 400)
       .then()
@@ -1737,7 +1737,7 @@ public class InvoicesApiTest extends ApiTestBase {
     addMockEntry(INVOICE_LINES, JsonObject.mapFrom(invoiceLine));
 
     String jsonBody = JsonObject.mapFrom(reqData).encode();
-    Headers headers = prepareHeaders(X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID, X_OKAPI_PERMISSION);
+    Headers headers = prepareHeaders(X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID);
 
     verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, headers, "", 204);
 
@@ -1828,7 +1828,7 @@ public class InvoicesApiTest extends ApiTestBase {
     addMockEntry(INVOICE_LINES, JsonObject.mapFrom(invoiceLine));
 
     String jsonBody = JsonObject.mapFrom(reqData).encode();
-    Headers headers = prepareHeaders(X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID, X_OKAPI_PERMISSION);
+    Headers headers = prepareHeaders(X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID);
 
     verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, headers, "", 204);
 
@@ -1871,7 +1871,7 @@ public class InvoicesApiTest extends ApiTestBase {
 
 
     String jsonBody = JsonObject.mapFrom(reqData).encode();
-    Headers headers = prepareHeaders(X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID, X_OKAPI_PERMISSION);
+    Headers headers = prepareHeaders(X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID);
 
     Errors errors = verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, headers, APPLICATION_JSON, 400).then()
       .extract()
@@ -1885,7 +1885,7 @@ public class InvoicesApiTest extends ApiTestBase {
   void testTransitionToApprovedWithInternalServerErrorFromGetInvoiceLines() {
     logger.info("=== Test transition invoice to Approved with Internal Server Error when retrieving invoiceLines ===");
 
-    Headers headers = prepareHeaders(X_OKAPI_URL, MockServer.GET_INVOICE_LINES_ERROR_X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID, X_OKAPI_PERMISSION);
+    Headers headers = prepareHeaders(X_OKAPI_URL, MockServer.GET_INVOICE_LINES_ERROR_X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID);
     Errors errors = transitionToApprovedWithError(REVIEWED_INVOICE_WITH_EXISTING_VOUCHER_SAMPLE_PATH, headers);
 
     assertThat(errors, notNullValue());
@@ -1910,7 +1910,7 @@ public class InvoicesApiTest extends ApiTestBase {
 
     String jsonBody = JsonObject.mapFrom(reqData).encode();
 
-    Headers headers = prepareHeaders(X_OKAPI_USER_ID, X_OKAPI_TENANT, X_OKAPI_PERMISSION);
+    Headers headers = prepareHeaders(X_OKAPI_USER_ID, X_OKAPI_TENANT);
     Errors errors = verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, headers, APPLICATION_JSON, 404)
       .then()
       .extract()
@@ -1928,7 +1928,7 @@ public class InvoicesApiTest extends ApiTestBase {
   void testTransitionToApprovedWithInternalServerErrorFromGetFunds() {
     logger.info("=== Test transition invoice to Approved with Internal Server Error when retrieving funds ===");
 
-    Headers headers = prepareHeaders(X_OKAPI_URL, MockServer.GET_FUNDS_ERROR_X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID, X_OKAPI_PERMISSION);
+    Headers headers = prepareHeaders(X_OKAPI_URL, MockServer.GET_FUNDS_ERROR_X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID);
     Errors errors = transitionToApprovedWithError(REVIEWED_INVOICE_WITH_EXISTING_VOUCHER_SAMPLE_PATH, headers);
 
     assertThat(errors, notNullValue());
@@ -1941,7 +1941,7 @@ public class InvoicesApiTest extends ApiTestBase {
   void testTransitionToApprovedWithErrorFromGetVouchersByInvoiceId() {
     logger.info("=== Test transition invoice to Approved when searching existing voucher ===");
 
-    Headers headers = prepareHeaders(X_OKAPI_URL, MockServer.GET_VOUCHERS_ERROR_X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_PERMISSION);
+    Headers headers = prepareHeaders(X_OKAPI_URL, MockServer.GET_VOUCHERS_ERROR_X_OKAPI_TENANT, X_OKAPI_TOKEN);
     Errors errors = transitionToApprovedWithError(REVIEWED_INVOICE_WITH_EXISTING_VOUCHER_SAMPLE_PATH, headers);
 
     assertThat(errors, notNullValue());
@@ -1953,7 +1953,7 @@ public class InvoicesApiTest extends ApiTestBase {
   void testTransitionToApprovedWithErrorFromUpdateVoucherById() {
     logger.info("=== Test transition invoice to Approved with error when updating existing voucher  ===");
 
-    Headers headers = prepareHeaders(X_OKAPI_URL, MockServer.UPDATE_VOUCHER_ERROR_X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_PERMISSION);
+    Headers headers = prepareHeaders(X_OKAPI_URL, MockServer.UPDATE_VOUCHER_ERROR_X_OKAPI_TENANT, X_OKAPI_TOKEN);
     Errors errors = transitionToApprovedWithError(REVIEWED_INVOICE_WITH_EXISTING_VOUCHER_SAMPLE_PATH, headers);
 
     assertThat(errors, notNullValue());
@@ -1965,7 +1965,7 @@ public class InvoicesApiTest extends ApiTestBase {
   void testTransitionToApprovedWithErrorFromCreateVoucher() {
     logger.info("=== Test transition invoice to Approved with error when creating voucher  ===");
 
-    Headers headers = prepareHeaders(X_OKAPI_URL, MockServer.CREATE_VOUCHER_ERROR_X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_PERMISSION);
+    Headers headers = prepareHeaders(X_OKAPI_URL, MockServer.CREATE_VOUCHER_ERROR_X_OKAPI_TENANT, X_OKAPI_TOKEN);
     Errors errors = transitionToApprovedWithError(REVIEWED_INVOICE_SAMPLE_PATH, headers);
 
     assertThat(errors, notNullValue());
@@ -1977,7 +1977,7 @@ public class InvoicesApiTest extends ApiTestBase {
   void testTransitionToApprovedWithErrorFromGetVoucherLines() {
     logger.info("=== Test transition invoice to Approved with error when getting voucherLines  ===");
 
-    Headers headers = prepareHeaders(X_OKAPI_URL, MockServer.GET_VOUCHER_LINE_ERROR_X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_PERMISSION);
+    Headers headers = prepareHeaders(X_OKAPI_URL, MockServer.GET_VOUCHER_LINE_ERROR_X_OKAPI_TENANT, X_OKAPI_TOKEN);
     Errors errors = transitionToApprovedWithError(REVIEWED_INVOICE_WITH_EXISTING_VOUCHER_SAMPLE_PATH, headers);
 
     assertThat(errors, notNullValue());
@@ -1989,7 +1989,7 @@ public class InvoicesApiTest extends ApiTestBase {
   void testTransitionToApprovedWithErrorFromCreateVoucherLines() {
     logger.info("=== Test transition invoice to Approved with error when creating voucherLines  ===");
 
-    Headers headers = prepareHeaders(X_OKAPI_URL, MockServer.CREATE_VOUCHER_LINE_ERROR_X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_PERMISSION);
+    Headers headers = prepareHeaders(X_OKAPI_URL, MockServer.CREATE_VOUCHER_LINE_ERROR_X_OKAPI_TENANT, X_OKAPI_TOKEN);
     Errors errors = transitionToApprovedWithError(REVIEWED_INVOICE_SAMPLE_PATH, headers);
 
     assertThat(errors, notNullValue());
@@ -2001,7 +2001,7 @@ public class InvoicesApiTest extends ApiTestBase {
   void testTransitionToApprovedWithErrorFromCreateInvoiceTransactionSummary() {
     logger.info("=== Test transition invoice to Approved with error when creating InvoiceTransactionSummary  ===");
 
-    Headers headers = prepareHeaders(X_OKAPI_URL, MockServer.CREATE_INVOICE_TRANSACTION_SUMMARY_ERROR_X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_PERMISSION);
+    Headers headers = prepareHeaders(X_OKAPI_URL, MockServer.CREATE_INVOICE_TRANSACTION_SUMMARY_ERROR_X_OKAPI_TENANT, X_OKAPI_TOKEN);
     Errors errors = transitionToApprovedWithError(REVIEWED_INVOICE_SAMPLE_PATH, headers);
 
     assertThat(errors, notNullValue());
@@ -2013,7 +2013,7 @@ public class InvoicesApiTest extends ApiTestBase {
   void testTransitionToApprovedWithInternalErrorFromCreatePendingPayment() {
     logger.info("=== Test transition invoice to Approved with internal server error when creating AwaitingPayment  ===");
 
-    Headers headers = prepareHeaders(X_OKAPI_URL, MockServer.POST_PENDING_PAYMENT_INTERNAL_SERVER_ERROR_X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_PERMISSION);
+    Headers headers = prepareHeaders(X_OKAPI_URL, MockServer.POST_PENDING_PAYMENT_INTERNAL_SERVER_ERROR_X_OKAPI_TENANT, X_OKAPI_TOKEN);
     Errors errors = transitionToApprovedWithError(REVIEWED_INVOICE_SAMPLE_PATH, headers, 500);
 
     assertThat(errors, notNullValue());
@@ -2024,7 +2024,7 @@ public class InvoicesApiTest extends ApiTestBase {
   void testTransitionToApprovedWithErrorFromCreatePendingPayment() {
     logger.info("=== Test transition invoice to Approved with error when creating AwaitingPayment  ===");
 
-    Headers headers = prepareHeaders(X_OKAPI_URL, MockServer.POST_PENDING_PAYMENT_ERROR_X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_PERMISSION);
+    Headers headers = prepareHeaders(X_OKAPI_URL, MockServer.POST_PENDING_PAYMENT_ERROR_X_OKAPI_TENANT, X_OKAPI_TOKEN);
     Errors errors = transitionToApprovedWithError(REVIEWED_INVOICE_SAMPLE_PATH, headers, 422);
 
     assertThat(errors, notNullValue());
@@ -2035,7 +2035,7 @@ public class InvoicesApiTest extends ApiTestBase {
   void testTransitionToApprovedWithInternalErrorFromCreateCreditPayment() {
     logger.info("=== Test transition invoice to Approved with internal server error when creating payment credit  ===");
 
-    Headers headers = prepareHeaders(X_OKAPI_URL, MockServer.POST_CREDIT_PAYMENT_INTERNAL_SERVER_ERROR_X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_PERMISSION);
+    Headers headers = prepareHeaders(X_OKAPI_URL, MockServer.POST_CREDIT_PAYMENT_INTERNAL_SERVER_ERROR_X_OKAPI_TENANT, X_OKAPI_TOKEN);
     Errors errors = transitionToPaymentWithError(APPROVED_INVOICE_SAMPLE_PATH, headers, 500);
 
     assertThat(errors, notNullValue());
@@ -2046,7 +2046,7 @@ public class InvoicesApiTest extends ApiTestBase {
   void testTransitionToApprovedWithErrorFromCreateCreditPayment() {
     logger.info("=== Test transition invoice to Approved with error when creating payment credit  ===");
 
-    Headers headers = prepareHeaders(X_OKAPI_URL, MockServer.POST_CREDIT_PAYMENT_ERROR_X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_PERMISSION);
+    Headers headers = prepareHeaders(X_OKAPI_URL, MockServer.POST_CREDIT_PAYMENT_ERROR_X_OKAPI_TENANT, X_OKAPI_TOKENN);
     Errors errors = transitionToPaymentWithError(APPROVED_INVOICE_SAMPLE_PATH, headers, 422);
 
     assertThat(errors, notNullValue());
@@ -2159,7 +2159,7 @@ public class InvoicesApiTest extends ApiTestBase {
     prepareMockVoucher(id);
 
     String jsonBody = JsonObject.mapFrom(reqData).encode();
-    Headers headers = prepareHeaders(X_OKAPI_URL, X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID, X_OKAPI_PERMISSION);
+    Headers headers = prepareHeaders(X_OKAPI_URL, X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID);
     Errors errors = verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, headers, APPLICATION_JSON, 404).then().extract().body().as(Errors.class);
     assertThat(serverRqRs.get(INVOICES, HttpMethod.PUT), nullValue());
     assertThat(errors.getErrors(), hasSize(1));
@@ -2182,7 +2182,7 @@ public class InvoicesApiTest extends ApiTestBase {
     prepareMockVoucher(id);
 
     String jsonBody = JsonObject.mapFrom(reqData).encode();
-    Headers headers = prepareHeaders(X_OKAPI_URL, X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID, X_OKAPI_PERMISSION);
+    Headers headers = prepareHeaders(X_OKAPI_URL, X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID);
     Errors errors = verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, headers, APPLICATION_JSON, 400).as(Errors.class);
     assertThat(serverRqRs.get(INVOICES, HttpMethod.PUT), nullValue());
     assertThat(errors.getErrors(), hasSize(1));
@@ -2200,7 +2200,7 @@ public class InvoicesApiTest extends ApiTestBase {
     prepareMockVoucher(id);
 
     String jsonBody = JsonObject.mapFrom(reqData).encode();
-    Headers headers = prepareHeaders(X_OKAPI_URL, X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID, X_OKAPI_PERMISSION);
+    Headers headers = prepareHeaders(X_OKAPI_URL, X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID);
     verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, headers, "", 204);
     assertThat(serverRqRs.get(INVOICES, HttpMethod.PUT).get(0).getString(STATUS), is(Invoice.Status.PAID.value()));
 
@@ -2282,7 +2282,7 @@ public class InvoicesApiTest extends ApiTestBase {
     addMockEntry(INVOICE_LINES, JsonObject.mapFrom(invoiceLine3));
 
     String jsonBody = JsonObject.mapFrom(reqData).encode();
-    Headers headers = prepareHeaders(X_OKAPI_URL, X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID, X_OKAPI_PERMISSION);
+    Headers headers = prepareHeaders(X_OKAPI_URL, X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID);
     verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, headers,"", 204);
     assertThat(serverRqRs.get(INVOICES, HttpMethod.PUT).get(0).getString(STATUS), is(Invoice.Status.PAID.value()));
 
@@ -2306,7 +2306,7 @@ public class InvoicesApiTest extends ApiTestBase {
     addMockEntry(INVOICE_LINES, JsonObject.mapFrom(invoiceLine));
 
     String jsonBody = JsonObject.mapFrom(reqData).encode();
-    Headers headers = prepareHeaders(X_OKAPI_URL, X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID, X_OKAPI_PERMISSION);
+    Headers headers = prepareHeaders(X_OKAPI_URL, X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID);
     verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, headers, "", 400);
   }
 
@@ -2324,7 +2324,7 @@ public class InvoicesApiTest extends ApiTestBase {
     addMockEntry(VOUCHERS_STORAGE, JsonObject.mapFrom(voucher));
 
     String jsonBody = JsonObject.mapFrom(reqData).encode();
-    Headers headers = prepareHeaders(X_OKAPI_URL, X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID, X_OKAPI_PERMISSION);
+    Headers headers = prepareHeaders(X_OKAPI_URL, X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID);
     verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, headers, "", 204);
 
     assertThat(getRqRsEntries(HttpMethod.GET, VOUCHERS_STORAGE), hasSize(1));
@@ -2341,7 +2341,7 @@ public class InvoicesApiTest extends ApiTestBase {
     prepareMockVoucher(ID_DOES_NOT_EXIST);
 
     String url = String.format(INVOICE_ID_PATH, reqData.getId());
-    Headers headers = prepareHeaders(X_OKAPI_URL, X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID, X_OKAPI_PERMISSION);
+    Headers headers = prepareHeaders(X_OKAPI_URL, X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID);
     Errors errors = verifyPut(url, JsonObject.mapFrom(reqData), headers, APPLICATION_JSON, 404).as(Errors.class);
 
     assertThat(errors.getErrors(), hasSize(1));
@@ -2360,7 +2360,7 @@ public class InvoicesApiTest extends ApiTestBase {
 
 
     String url = String.format(INVOICE_ID_PATH, reqData.getId());
-    Headers headers = prepareHeaders(X_OKAPI_URL, X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID, X_OKAPI_PERMISSION);
+    Headers headers = prepareHeaders(X_OKAPI_URL, X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID);
     Errors errors = verifyPut(url, JsonObject.mapFrom(reqData), headers, APPLICATION_JSON, 500).as(Errors.class);
 
     assertThat(errors.getErrors(), hasSize(1));
@@ -2419,7 +2419,7 @@ public class InvoicesApiTest extends ApiTestBase {
     }
 
     prepareMockVoucher(id);
-    Headers headers = prepareHeaders(X_OKAPI_URL, X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID, X_OKAPI_PERMISSION);
+    Headers headers = prepareHeaders(X_OKAPI_URL, X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID);
     verifyPut(String.format(INVOICE_ID_PATH, id), JsonObject.mapFrom(reqData), headers, "", 204);
 
     assertThat(serverRqRs.get(INVOICES, HttpMethod.PUT).get(0).getString(STATUS), is(Invoice.Status.PAID.value()));
@@ -2462,7 +2462,7 @@ public class InvoicesApiTest extends ApiTestBase {
     addMockEntry(INVOICE_LINES, JsonObject.mapFrom(invoiceLine));
     addMockEntry(ORDER_LINES, JsonObject.mapFrom(poLine));
     prepareMockVoucher(id);
-    Headers headers = prepareHeaders(X_OKAPI_URL, X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID, X_OKAPI_PERMISSION);
+    Headers headers = prepareHeaders(X_OKAPI_URL, X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID);
     verifyPut(String.format(INVOICE_ID_PATH, id), JsonObject.mapFrom(reqData), headers, "", 204);
 
     assertThat(getRqRsEntries(HttpMethod.PUT, INVOICES).get(0).getString(STATUS), is(Invoice.Status.PAID.value()));
@@ -2512,7 +2512,7 @@ public class InvoicesApiTest extends ApiTestBase {
     addMockEntry(INVOICE_LINES, invoiceLine);
     prepareMockVoucher(id);
     reqData.setStatus(Status.PAID);
-    Headers headers = prepareHeaders(X_OKAPI_URL, X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID, X_OKAPI_PERMISSION);
+    Headers headers = prepareHeaders(X_OKAPI_URL, X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID);
     Errors errors = verifyPut(String.format(INVOICE_ID_PATH, id), JsonObject.mapFrom(reqData), headers, APPLICATION_JSON, 404).as(Errors.class);
 
     assertThat(getRqRsEntries(HttpMethod.GET, INVOICE_LINES), hasSize(1));
@@ -2545,7 +2545,7 @@ public class InvoicesApiTest extends ApiTestBase {
     addMockEntry(INVOICE_LINES, invoiceLine);
     prepareMockVoucher(id);
     reqData.setStatus(Status.PAID);
-    Headers headers = prepareHeaders(X_OKAPI_URL, X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID, X_OKAPI_PERMISSION);
+    Headers headers = prepareHeaders(X_OKAPI_URL, X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID);
     Errors errors = verifyPut(String.format(INVOICE_ID_PATH, id), JsonObject.mapFrom(reqData), headers, APPLICATION_JSON, 500).as(Errors.class);
 
     assertThat(getRqRsEntries(HttpMethod.GET, INVOICE_LINES), hasSize(1));
@@ -2578,7 +2578,7 @@ public class InvoicesApiTest extends ApiTestBase {
     addMockEntry(FINANCE_TRANSACTIONS, transaction);
 
     String jsonBody = JsonObject.mapFrom(reqData).encode();
-    Headers headers = prepareHeaders(X_OKAPI_URL, X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID, X_OKAPI_PERMISSION);
+    Headers headers = prepareHeaders(X_OKAPI_URL, X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID);
     verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, headers, "", 204);
 
     assertThat(getRqRsEntries(HttpMethod.GET, FINANCE_TRANSACTIONS), hasSize(2));
@@ -2609,7 +2609,7 @@ public class InvoicesApiTest extends ApiTestBase {
     addMockEntry(FINANCE_TRANSACTIONS, transaction);
 
     String jsonBody = JsonObject.mapFrom(reqData).encode();
-    Headers headers = prepareHeaders(X_OKAPI_URL, X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID, X_OKAPI_PERMISSION);
+    Headers headers = prepareHeaders(X_OKAPI_URL, X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID);
     verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, headers, "", 204);
 
     assertThat(getRqRsEntries(HttpMethod.GET, FINANCE_TRANSACTIONS), hasSize(2));
@@ -2651,7 +2651,7 @@ public class InvoicesApiTest extends ApiTestBase {
     addMockEntry(LEDGERS, JsonObject.mapFrom(new Ledger().withId(EXISTING_LEDGER_ID).withRestrictEncumbrance(true)));
     addMockEntry(INVOICE_LINES, JsonObject.mapFrom(invoiceLine));
     prepareMockVoucher(id);
-    Headers headers = prepareHeaders(X_OKAPI_URL, X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID, X_OKAPI_PERMISSION);
+    Headers headers = prepareHeaders(X_OKAPI_URL, X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID);
     Errors errors = verifyPut(String.format(INVOICE_ID_PATH, id), JsonObject.mapFrom(reqData), headers, APPLICATION_JSON, 404).as(Errors.class);
 
     assertThat(getRqRsEntries(HttpMethod.GET, INVOICE_LINES), hasSize(1));
@@ -2691,7 +2691,7 @@ public class InvoicesApiTest extends ApiTestBase {
     invoiceLines.forEach(line -> addMockEntry(INVOICE_LINES, JsonObject.mapFrom(line)));
     poLines.forEach(line -> addMockEntry(ORDER_LINES, JsonObject.mapFrom(line)));
     prepareMockVoucher(id);
-    Headers headers = prepareHeaders(X_OKAPI_URL, X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID, X_OKAPI_PERMISSION);
+    Headers headers = prepareHeaders(X_OKAPI_URL, X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID);
     verifyPut(String.format(INVOICE_ID_PATH, id), JsonObject.mapFrom(reqData), headers, "", 204);
 
     assertThat(getRqRsEntries(HttpMethod.PUT, INVOICES).get(0).getString(STATUS), is(Invoice.Status.PAID.value()));
@@ -2721,7 +2721,7 @@ public class InvoicesApiTest extends ApiTestBase {
     logger.info("=== Test update non existent invoice===");
 
     String jsonBody  = getMockData(APPROVED_INVOICE_SAMPLE_PATH);
-    Headers headers = prepareHeaders(X_OKAPI_URL, X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID, X_OKAPI_PERMISSION);
+    Headers headers = prepareHeaders(X_OKAPI_URL, X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID);
     verifyPut(String.format(INVOICE_ID_PATH, ID_DOES_NOT_EXIST), jsonBody, headers, APPLICATION_JSON, 404);
   }
 
@@ -2730,7 +2730,7 @@ public class InvoicesApiTest extends ApiTestBase {
     logger.info("=== Test update invoice by id with internal server error from storage ===");
 
     String jsonBody  = getMockData(APPROVED_INVOICE_SAMPLE_PATH);
-    Headers headers = prepareHeaders(X_OKAPI_URL, X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID, X_OKAPI_PERMISSION);
+    Headers headers = prepareHeaders(X_OKAPI_URL, X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID);
     verifyPut(String.format(INVOICE_ID_PATH, ID_FOR_INTERNAL_SERVER_ERROR), jsonBody, headers, APPLICATION_JSON, 500);
   }
 
@@ -2739,7 +2739,7 @@ public class InvoicesApiTest extends ApiTestBase {
   void testUpdateInvoiceByIdWithInvalidFormat() throws IOException {
 
     String jsonBody  = getMockData(APPROVED_INVOICE_SAMPLE_PATH);
-    Headers headers = prepareHeaders(X_OKAPI_URL, X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID, X_OKAPI_PERMISSION);
+    Headers headers = prepareHeaders(X_OKAPI_URL, X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID);
     verifyPut(String.format(INVOICE_ID_PATH, ID_BAD_FORMAT), jsonBody, headers, TEXT_PLAIN, 400);
   }
 
@@ -2749,7 +2749,7 @@ public class InvoicesApiTest extends ApiTestBase {
 
     String body = getMockData(APPROVED_INVOICE_SAMPLE_PATH);
 
-    final Invoice respData = verifyPostResponse(INVOICE_PATH, body, prepareHeaders(X_OKAPI_TENANT, X_OKAPI_PERMISSION), APPLICATION_JSON, 201).as(Invoice.class);
+    final Invoice respData = verifyPostResponse(INVOICE_PATH, body, prepareHeaders(X_OKAPI_TENANT), APPLICATION_JSON, 201).as(Invoice.class);
 
     String poId = respData.getId();
     Integer nextInvoiceLineNumber = respData.getNextInvoiceLineNumber();
@@ -2775,7 +2775,7 @@ public class InvoicesApiTest extends ApiTestBase {
     invoice.setLockTotal(15d);
 
     // ===  Run test  ===
-    final Invoice resp = verifyPostResponse(INVOICE_PATH, JsonObject.mapFrom(invoice), prepareHeaders(X_OKAPI_TENANT, X_OKAPI_PERMISSION),
+    final Invoice resp = verifyPostResponse(INVOICE_PATH, JsonObject.mapFrom(invoice), prepareHeaders(X_OKAPI_TENANT),
         APPLICATION_JSON, 201).as(Invoice.class);
 
     /* The invoice has 2 not prorated adjustments one with fixed amount and another with percentage type */
@@ -2804,7 +2804,7 @@ public class InvoicesApiTest extends ApiTestBase {
     invoice.setAdjustments((Arrays.asList(adjustment1, adjustment2)));
 
     // === Run test ===
-    final Invoice resp = verifyPostResponse(INVOICE_PATH, JsonObject.mapFrom(invoice), prepareHeaders(X_OKAPI_TENANT, X_OKAPI_PERMISSION),
+    final Invoice resp = verifyPostResponse(INVOICE_PATH, JsonObject.mapFrom(invoice), prepareHeaders(X_OKAPI_TENANT),
         APPLICATION_JSON, 201).as(Invoice.class);
 
     /* The invoice has 2 adjustments with no lines, one not prorated and one prorated by line adjustments */
@@ -2829,7 +2829,7 @@ public class InvoicesApiTest extends ApiTestBase {
     invoice.setLockTotal(15d);
 
     // ===  Run test  ===
-    final Invoice resp = verifyPostResponse(INVOICE_PATH, JsonObject.mapFrom(invoice), prepareHeaders(X_OKAPI_TENANT, X_OKAPI_PERMISSION),
+    final Invoice resp = verifyPostResponse(INVOICE_PATH, JsonObject.mapFrom(invoice), prepareHeaders(X_OKAPI_TENANT),
       APPLICATION_JSON, 201).as(Invoice.class);
 
     /* The invoice has 2 not prorated adjustments one with fixed amount and another with percentage type */
@@ -2856,7 +2856,7 @@ public class InvoicesApiTest extends ApiTestBase {
     invoice.setTotal(null);
 
     // ===  Run test  ===
-    final Invoice resp = verifyPostResponse(INVOICE_PATH, JsonObject.mapFrom(invoice), prepareHeaders(X_OKAPI_TENANT, X_OKAPI_PERMISSION),
+    final Invoice resp = verifyPostResponse(INVOICE_PATH, JsonObject.mapFrom(invoice), prepareHeaders(X_OKAPI_TENANT),
       APPLICATION_JSON, 201).as(Invoice.class);
 
     assertThat(resp.getAdjustmentsTotal(), equalTo(0d));
@@ -2893,7 +2893,7 @@ public class InvoicesApiTest extends ApiTestBase {
     reqData.setFolioInvoiceNo(null);
     String body = getMockData(APPROVED_INVOICE_SAMPLE_PATH);
 
-    verifyPostResponse(INVOICE_PATH, body, prepareHeaders(INVOICE_NUMBER_ERROR_X_OKAPI_TENANT, X_OKAPI_PERMISSION), APPLICATION_JSON, 500);
+    verifyPostResponse(INVOICE_PATH, body, prepareHeaders(INVOICE_NUMBER_ERROR_X_OKAPI_TENANT), APPLICATION_JSON, 500);
 
   }
 
@@ -2968,7 +2968,7 @@ public class InvoicesApiTest extends ApiTestBase {
       invoice = getMockAsJson(mockFilePath).mapTo(Invoice.class).withStatus(status);
 
       prepareMockVoucher(invoice.getId());
-      Headers headers = prepareHeaders(X_OKAPI_URL, X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID, X_OKAPI_PERMISSION);
+      Headers headers = prepareHeaders(X_OKAPI_URL, X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID);
       verifyPut(String.format(INVOICE_ID_PATH, invoice.getId()), JsonObject.mapFrom(invoice).encode(), headers, "", HttpStatus.SC_NO_CONTENT);
 
       assertThat(serverRqRs.row(INVOICES).get(HttpMethod.GET), hasSize(1));
@@ -2989,7 +2989,7 @@ public class InvoicesApiTest extends ApiTestBase {
     logger.info("=== Test create opened invoice with 'approvedBy' and 'approvedDate' fields ===");
 
     Invoice invoice = getMockAsJson(OPEN_INVOICE_WITH_APPROVED_FILEDS_SAMPLE_PATH).mapTo(Invoice.class);
-    Headers headers = prepareHeaders(X_OKAPI_TENANT, X_OKAPI_USER_ID, X_OKAPI_PERMISSION);
+    Headers headers = prepareHeaders(X_OKAPI_TENANT, X_OKAPI_USER_ID);
 
     verifyPostResponse(INVOICE_PATH, JsonObject.mapFrom(invoice).encode(), headers, APPLICATION_JSON, HttpStatus.SC_UNPROCESSABLE_ENTITY);
   }
@@ -2999,7 +2999,7 @@ public class InvoicesApiTest extends ApiTestBase {
     logger.info("=== Test update opened invoice with 'approvedBy' and 'approvedDate' fields ===");
 
     Invoice invoice = getMockAsJson(OPEN_INVOICE_WITH_APPROVED_FILEDS_SAMPLE_PATH).mapTo(Invoice.class);
-    Headers headers = prepareHeaders(X_OKAPI_TENANT, X_OKAPI_USER_ID, X_OKAPI_PERMISSION);
+    Headers headers = prepareHeaders(X_OKAPI_TENANT, X_OKAPI_USER_ID);
 
     verifyPut(String.format(INVOICE_ID_PATH, invoice.getId()), JsonObject.mapFrom(invoice).encode(), headers, APPLICATION_JSON, HttpStatus.SC_UNPROCESSABLE_ENTITY);
   }
@@ -3056,7 +3056,7 @@ public class InvoicesApiTest extends ApiTestBase {
     addMockEntry(INVOICE_LINES, invoiceLine);
     List<String> tagsList =Arrays.asList("TestTagURGENT","TestTagIMPORTANT");
     reqData.setTags(new Tags().withTagList(tagsList));
-    Headers headers = prepareHeaders(X_OKAPI_URL, X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID, X_OKAPI_PERMISSION);
+    Headers headers = prepareHeaders(X_OKAPI_URL, X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID);
     verifyPut(String.format(INVOICE_ID_PATH, id), JsonObject.mapFrom(reqData), headers, "", 204);
   }
 
@@ -3115,7 +3115,7 @@ public class InvoicesApiTest extends ApiTestBase {
       FieldUtils.writeDeclaredField(invoice, m.getKey().getFieldName(), m.getValue(), true);
     }
     String body = JsonObject.mapFrom(invoice).encode();
-    Headers headers = prepareHeaders(X_OKAPI_URL, X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID, X_OKAPI_PERMISSION);
+    Headers headers = prepareHeaders(X_OKAPI_URL, X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID);
     Errors errors = verifyPut(String.format(INVOICE_ID_PATH, invoice.getId()), body, headers, "", HttpStatus.SC_BAD_REQUEST).as(Errors.class);
 
     // Only one error expected
