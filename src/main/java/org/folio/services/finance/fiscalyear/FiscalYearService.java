@@ -8,7 +8,6 @@ import org.folio.rest.core.RestClient;
 import org.folio.rest.core.models.RequestContext;
 import org.folio.rest.core.models.RequestEntry;
 import org.folio.rest.jaxrs.model.FiscalYearCollection;
-import org.folio.utils.LoggingHelper;
 
 import io.vertx.core.Future;
 
@@ -33,7 +32,6 @@ public class FiscalYearService {
       .withQuery(query)
       .withOffset(0)
       .withLimit(Integer.MAX_VALUE);
-    LoggingHelper.logQuery("getFiscalYearCollectionByQuery", requestEntry);
     return restClient.get(requestEntry, FiscalYearCollection.class, requestContext);
   }
 

@@ -11,11 +11,11 @@ import org.apache.logging.log4j.Logger;
 import org.folio.rest.annotations.Validate;
 import org.folio.rest.jaxrs.model.BatchGroup;
 import org.folio.rest.jaxrs.resource.BatchGroups;
-import org.folio.utils.LoggingHelper;
 
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Context;
 import io.vertx.core.Handler;
+import io.vertx.core.json.JsonObject;
 
 public class BatchGroupsImpl implements BatchGroups {
 
@@ -45,7 +45,7 @@ public class BatchGroupsImpl implements BatchGroups {
 
     helper.getBatchGroups(limit, offset, query)
       .onSuccess(batchGroups -> {
-        LoggingHelper.infoAsJson("Successfully retrieved batch groups: {}", batchGroups);
+        logger.info("Successfully retrieved batch groups: {}", JsonObject.mapFrom(batchGroups).encodePrettily());
         asyncResultHandler.handle(succeededFuture(helper.buildOkResponse(batchGroups)));
       })
       .onFailure(t -> handleErrorResponse(asyncResultHandler, helper, t));

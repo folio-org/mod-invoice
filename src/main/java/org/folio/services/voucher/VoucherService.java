@@ -15,7 +15,6 @@ import org.folio.rest.core.models.RequestEntry;
 import org.folio.rest.jaxrs.model.Voucher;
 import org.folio.rest.jaxrs.model.VoucherCollection;
 import org.folio.services.validator.VoucherValidator;
-import org.folio.utils.LoggingHelper;
 
 import io.vertx.core.Future;
 
@@ -86,7 +85,6 @@ public class VoucherService {
 
   public Future<VoucherCollection> getVouchers(int limit, int offset, String query, RequestContext requestContext) {
     RequestEntry requestEntry = new RequestEntry(VOUCHER_ENDPOINT).withQuery(query).withLimit(limit).withOffset(offset);
-    LoggingHelper.logQuery("getVouchers", requestEntry);
     return restClient.get(requestEntry, VoucherCollection.class, requestContext);
   }
 

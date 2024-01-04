@@ -28,7 +28,6 @@ import org.folio.rest.jaxrs.model.Error;
 import org.folio.rest.jaxrs.model.InvoiceLine;
 import org.folio.rest.jaxrs.model.Parameter;
 import org.folio.services.invoice.InvoiceLineService;
-import org.folio.utils.LoggingHelper;
 
 import io.vertx.core.Future;
 
@@ -65,7 +64,6 @@ public class OrderService {
       .withQuery(query)
       .withOffset(0)
       .withLimit(Integer.MAX_VALUE);
-    LoggingHelper.logQuery("getOrders", requestEntry);
     return restClient.get(requestEntry,  PurchaseOrderCollection.class, requestContext)
       .map(PurchaseOrderCollection::getPurchaseOrders);
   }
@@ -180,7 +178,7 @@ public class OrderService {
       futures.add(deleteOrderInvoiceRelationshipById(id, requestContext))
     );
     return collectResultsOnSuccess(futures)
-      .onSuccess(v -> logger.debug("Number of deleted relations between order and invoices: {}", relationIds.size()))
+      .onSuccess(v -> logger.info("Number of deleted relations between order and invoices: {}", relationIds.size()))
       .mapEmpty();
   }
 }

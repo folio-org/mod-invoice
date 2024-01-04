@@ -184,7 +184,7 @@ public class ProtectionHelper extends AbstractHelper {
           .collect(Collectors.toList());
 
         if (logger.isDebugEnabled()) {
-          logger.debug("User belongs to {} acq units: {}", ids.size(), StringUtils.join(ids, ", "));
+          logger.debug("getAcqUnitIdsForUser:: User belongs to {} acq units: {}", ids.size(), StringUtils.join(ids, ", "));
         }
 
         return ids;
@@ -200,7 +200,7 @@ public class ProtectionHelper extends AbstractHelper {
           .collect(Collectors.toList());
 
         if (logger.isDebugEnabled()) {
-          logger.debug("{} acq units with 'protectRead==false' are found: {}", ids.size(), StringUtils.join(ids, ", "));
+          logger.debug("getOpenForReadAcqUnitIds:: {} acq units with 'protectRead==false' are found: {}", ids.size(), StringUtils.join(ids, ", "));
         }
         return ids;
       });

@@ -21,7 +21,6 @@ import org.folio.rest.core.RestClient;
 import org.folio.rest.core.models.RequestContext;
 import org.folio.rest.core.models.RequestEntry;
 import org.folio.rest.jaxrs.model.Parameter;
-import org.folio.utils.LoggingHelper;
 
 import io.vertx.core.Future;
 
@@ -57,7 +56,6 @@ public class BudgetService {
       RequestContext requestContext) {
     RequestEntry requestEntry = new RequestEntry(BUDGETS_ENDPOINT)
       .withQuery(String.format(QUERY_BY_FUND_ID_AND_FISCAL_YEAR_ID, fundId, fiscalYearId));
-    LoggingHelper.logQuery("getBudgetByFundIdAndFiscalYearId", requestEntry);
     return restClient.get(requestEntry, BudgetCollection.class, requestContext)
       .map(budgetCollection -> {
         if (budgetCollection.getBudgets().isEmpty()) {
@@ -93,7 +91,6 @@ public class BudgetService {
       .withQuery(query)
       .withOffset(0)
       .withLimit(Integer.MAX_VALUE);
-    LoggingHelper.logQuery("getActiveBudgetListByFundIds", requestEntry);
     return restClient.get(requestEntry, BudgetCollection.class, requestContext)
       .map(BudgetCollection::getBudgets);
   }

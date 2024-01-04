@@ -143,7 +143,7 @@ public class InvoiceWorkflowDataHolderBuilder {
       .filter(h -> h.getBudget() != null && h.getBudget().getFiscalYearId() != null)
       .collect(groupingBy(h -> h.getBudget().getFiscalYearId()));
     if (fiscalYearToHolders.size() > 1) {
-      logger.warn("More than one fiscal years found");
+      logger.error("checkMultipleFiscalYears:: More than one fiscal years found");
       List<String> fiscalYearIds = new ArrayList<>(fiscalYearToHolders.keySet());
       InvoiceWorkflowDataHolder h1 = fiscalYearToHolders.get(fiscalYearIds.get(0)).get(0);
       InvoiceWorkflowDataHolder h2 = fiscalYearToHolders.get(fiscalYearIds.get(1)).get(0);

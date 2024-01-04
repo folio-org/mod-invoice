@@ -32,7 +32,6 @@ import org.folio.rest.jaxrs.model.InvoiceLine;
 import org.folio.rest.jaxrs.model.SequenceNumber;
 import org.folio.services.adjusment.AdjustmentsService;
 import org.folio.services.order.OrderService;
-import org.folio.utils.LoggingHelper;
 import org.javamoney.moneta.Money;
 import org.javamoney.moneta.function.MonetaryFunctions;
 import org.springframework.stereotype.Service;
@@ -64,7 +63,6 @@ public class BaseInvoiceService implements InvoiceService {
       .withQuery(query)
       .withOffset(offset)
       .withLimit(limit);
-    LoggingHelper.logQuery("getInvoices", requestEntry);
     return restClient.get(requestEntry, InvoiceCollection.class, requestContext);
   }
 

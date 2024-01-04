@@ -188,7 +188,7 @@ public class InvoiceHelper extends AbstractHelper {
         .map(fiscalYears -> {
           Set<FiscalYear> uniqueFiscalYears = new HashSet<>(fiscalYears);
           if (uniqueFiscalYears.size() > 1) {
-            logger.warn("More than one fiscal years found");
+            logger.error("validateFiscalYearId:: More than one fiscal years found");
             var parameters = uniqueFiscalYears.stream()
               .map(fiscalYear -> new Parameter().withKey("fiscalYearCode").withValue(fiscalYear.getCode()))
               .toList();

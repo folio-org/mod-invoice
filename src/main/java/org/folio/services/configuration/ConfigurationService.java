@@ -10,7 +10,6 @@ import org.folio.rest.core.RestClient;
 import org.folio.rest.core.models.RequestContext;
 import org.folio.rest.core.models.RequestEntry;
 import org.folio.rest.jaxrs.model.Configs;
-import org.folio.utils.LoggingHelper;
 
 import io.vertx.core.Future;
 import io.vertx.core.json.JsonObject;
@@ -43,7 +42,6 @@ public class ConfigurationService {
         .withQuery(query)
         .withOffset(0)
         .withLimit(Integer.MAX_VALUE);
-    LoggingHelper.logQuery("getConfigurationsEntries", requestEntry);
     return restClient.get(requestEntry, Configs.class, requestContext);
   }
 
@@ -57,7 +55,9 @@ public class ConfigurationService {
     logger.info("GET request: {}", query);
     return restClient.get(requestEntry, Configs.class, requestContext)
       .map(configs -> {
-        LoggingHelper.debugAsJson("The response from mod-configuration: {}", configs);
+        if (logger.isDebugEnabled()) {
+          logger.debug("The response from mod-configuration: {}", JsonObject.mapFrom(configs).encodePrettily());
+        }
         JsonObject config = new JsonObject();
         configs.getConfigs().forEach(entry -> config.put(entry.getConfigName(), entry.getValue()));
         return config;

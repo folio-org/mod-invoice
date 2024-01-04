@@ -31,7 +31,6 @@ import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.jaxrs.model.InvoiceDocument;
 import org.folio.rest.jaxrs.model.InvoiceLine;
 import org.folio.rest.jaxrs.model.ValidateFundDistributionsRequest;
-import org.folio.utils.LoggingHelper;
 
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Context;
@@ -72,7 +71,7 @@ public class InvoicesImpl extends BaseApi implements org.folio.rest.jaxrs.resour
 
     helper.getInvoices(limit, offset, query)
       .onSuccess(invoices -> {
-        LoggingHelper.infoAsJson("Successfully retrieved invoices: {}", invoices);
+        logger.info("Successfully retrieved invoices: {}", JsonObject.mapFrom(invoices).encodePrettily());
         asyncResultHandler.handle(succeededFuture(helper.buildOkResponse(invoices)));
       })
       .onFailure(t -> handleErrorResponse(asyncResultHandler, helper, t));
@@ -234,7 +233,7 @@ public class InvoicesImpl extends BaseApi implements org.folio.rest.jaxrs.resour
     DocumentHelper documentHelper = new DocumentHelper(okapiHeaders, vertxContext);
     documentHelper.getDocumentByInvoiceIdAndDocumentId(id, documentId)
       .onSuccess(document -> {
-        LoggingHelper.infoAsJson("Successfully retrieved document: {}", document);
+        logger.info("Successfully retrieved document: {}", JsonObject.mapFrom(document).encodePrettily());
         asyncResultHandler.handle(succeededFuture(documentHelper.buildOkResponse(document)));
       })
       .onFailure(t -> handleErrorResponse(asyncResultHandler, documentHelper, t));
@@ -283,7 +282,7 @@ public class InvoicesImpl extends BaseApi implements org.folio.rest.jaxrs.resour
     } else {
       documentHelper.createDocument(id, entity)
         .onSuccess(document -> {
-          LoggingHelper.infoAsJson("Successfully created document with id={}", document);
+          logger.info("Successfully created document with id={}", JsonObject.mapFrom(document).encodePrettily());
           asyncResultHandler.handle(succeededFuture(documentHelper.buildResponseWithLocation(String.format(DOCUMENTS_LOCATION_PREFIX, id, document.getDocumentMetadata().getId()), document)));
         })
         .onFailure(t -> handleErrorResponse(asyncResultHandler, documentHelper, t));

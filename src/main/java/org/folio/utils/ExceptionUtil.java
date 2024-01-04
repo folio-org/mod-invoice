@@ -34,21 +34,13 @@ public final class ExceptionUtil {
   }
 
   private static Response buildErrorResponse(HttpException exception) {
-    final Response.ResponseBuilder responseBuilder;
-    switch (exception.getCode()) {
-      case 400:
-      case 403:
-      case 404:
-      case 409:
-      case 413:
-      case 422:
-        responseBuilder = Response.status(exception.getCode());
-        break;
-      default:
-        responseBuilder = Response.status(INTERNAL_SERVER_ERROR);
-    }
+    var code = exception.getCode();
+    var wrappedCode = switch (code) {
+      case 400, 403, 404, 409, 413, 422 -> code;
+      default -> 500;
+    };
 
-    return responseBuilder
+    return Response.status(wrappedCode)
       .header(CONTENT_TYPE, APPLICATION_JSON)
       .entity(exception.getErrors())
       .build();
@@ -57,8 +49,8 @@ public final class ExceptionUtil {
   private static HttpException handleProcessingError(Throwable throwable) {
     logger.error("Exception encountered", throwable);
 
-    if (throwable instanceof HttpException) {
-      return ((HttpException) throwable);
+    if (throwable instanceof HttpException httpException) {
+      return httpException;
     }
 
     return new HttpException(
