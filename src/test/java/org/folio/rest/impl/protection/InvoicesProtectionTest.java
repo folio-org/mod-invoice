@@ -126,7 +126,7 @@ public class InvoicesProtectionTest extends ProtectedEntityTestBase {
   public void testModifyUnitsList(ProtectedOperations operation) {
     logger.info("=== Invoices protection: Test user without desired permissions modifying acqUnitsIds ===");
 
-    Headers headers = prepareHeaders(X_OKAPI_TENANT, X_OKAPI_USER_WITH_UNITS_ASSIGNED_TO_RECORD);
+    Headers headers = prepareHeadersWithoutPermissions(X_OKAPI_TENANT, X_OKAPI_USER_WITH_UNITS_ASSIGNED_TO_RECORD);
     Invoice invoice = prepareInvoice(Collections.emptyList());
     Errors errors = operation.process(INVOICE_PATH, encodePrettily(invoice.withAcqUnitIds(PROTECTED_UNITS)),
        headers, APPLICATION_JSON, HttpStatus.HTTP_FORBIDDEN.toInt()).as(Errors.class);
