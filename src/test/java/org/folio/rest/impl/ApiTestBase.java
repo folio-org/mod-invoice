@@ -14,13 +14,13 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.Stream;
-import java.util.*;
 
 import javax.ws.rs.core.HttpHeaders;
 
@@ -44,7 +44,9 @@ import io.restassured.http.Headers;
 import io.restassured.response.Response;
 import io.vertx.core.json.JsonObject;
 import org.folio.utils.UserPermissionsUtil;
+
 import java.util.List;
+
 import io.vertx.core.json.JsonArray;
 
 
@@ -86,7 +88,7 @@ public class ApiTestBase {
 
   private static boolean runningOnOwn;
 
-   public static final List<String> permissionsList = Arrays.asList(
+  public static final List<String> permissionsList = Arrays.asList(
     "invoice.item.approve",
     "invoice.item.pay",
     "invoice.invoices.item.put",
@@ -120,12 +122,12 @@ public class ApiTestBase {
 
   public static final JsonArray permissionsWithoutPaidArray = new JsonArray(permissionsWithoutPaidList);
   public static final String permissionsWithoutPaidJsonArrayString = new JsonArray(permissionsWithoutPaidList).encode();
-  public static final Header X_OKAPI_PERMISSION_WITHOUT_PAY= new Header(UserPermissionsUtil.OKAPI_HEADER_PERMISSIONS, permissionsWithoutPaidJsonArrayString);
-  
+  public static final Header X_OKAPI_PERMISSION_WITHOUT_PAY = new Header(UserPermissionsUtil.OKAPI_HEADER_PERMISSIONS, permissionsWithoutPaidJsonArrayString);
+
   @BeforeAll
   public static void before() throws InterruptedException, ExecutionException, TimeoutException {
 
-    if(ApiTestSuite.isNotInitialised()) {
+    if (ApiTestSuite.isNotInitialised()) {
       logger.info("Running test on own, initialising suite manually");
       runningOnOwn = true;
       ApiTestSuite.before();
@@ -144,13 +146,13 @@ public class ApiTestBase {
   @AfterAll
   public static void after() {
 
-    if(runningOnOwn) {
+    if (runningOnOwn) {
       logger.info("Running test on own, un-initialising suite manually");
       ApiTestSuite.after();
     }
   }
 
- public static String getMockData(String path) throws IOException {
+  public static String getMockData(String path) throws IOException {
     logger.info("Using mock datafile: {}", path);
     try (InputStream resourceAsStream = ApiTestBase.class.getClassLoader().getResourceAsStream(path)) {
       if (resourceAsStream != null) {
@@ -183,19 +185,19 @@ public class ApiTestBase {
   public Response verifyPostResponse(String url, Object body, Headers headers, String expectedContentType, int expectedCode) {
     Response response = RestAssured
       .with()
-        .header(X_OKAPI_URL)
-        .header(X_OKAPI_TOKEN)
-        .headers(headers)
-        .contentType(APPLICATION_JSON)
-        .body(convertToString(body))
+      .header(X_OKAPI_URL)
+      .header(X_OKAPI_TOKEN)
+      .headers(headers)
+      .contentType(APPLICATION_JSON)
+      .body(convertToString(body))
       .post(url)
-        .then()
-          .log()
-          .all()
-          .statusCode(expectedCode)
-          .contentType(expectedContentType)
-          .extract()
-            .response();
+      .then()
+      .log()
+      .all()
+      .statusCode(expectedCode)
+      .contentType(expectedContentType)
+      .extract()
+      .response();
     // sleep needed to avoid some issues with async processing - otherwise some tests start running in parallel and fail randomly (see MODINVOICE-265)
     // FIXME : apply async approach
     try {
@@ -218,16 +220,16 @@ public class ApiTestBase {
   public Response verifyPut(String url, Object body, Headers headers, String expectedContentType, int expectedCode) {
     return RestAssured
       .with()
-        .headers(headers)
-        .header(X_OKAPI_URL)
-        .body(convertToString(body))
-        .contentType(APPLICATION_JSON)
+      .headers(headers)
+      .header(X_OKAPI_URL)
+      .body(convertToString(body))
+      .contentType(APPLICATION_JSON)
       .put(url)
-        .then()
-          .statusCode(expectedCode)
-          .contentType(expectedContentType)
-          .extract()
-            .response();
+      .then()
+      .statusCode(expectedCode)
+      .contentType(expectedContentType)
+      .extract()
+      .response();
   }
 
   Response verifyGet(String url, String expectedContentType, int expectedCode) {
@@ -238,15 +240,15 @@ public class ApiTestBase {
   public Response verifyGet(String url, Headers headers, String expectedContentType, int expectedCode) {
     return RestAssured
       .with()
-        .headers(headers)
-        .header(X_OKAPI_URL)
+      .headers(headers)
+      .header(X_OKAPI_URL)
       .get(url)
-        .then()
-        .log().all()
-        .statusCode(expectedCode)
-        .contentType(expectedContentType)
-        .extract()
-          .response();
+      .then()
+      .log().all()
+      .statusCode(expectedCode)
+      .contentType(expectedContentType)
+      .extract()
+      .response();
   }
 
   <T> T verifySuccessGet(String url, Class<T> clazz) {
@@ -258,24 +260,24 @@ public class ApiTestBase {
   }
 
   Response verifyDeleteResponse(String url, String expectedContentType, int expectedCode) {
-    Headers headers =  prepareHeaders(X_OKAPI_TENANT);
+    Headers headers = prepareHeaders(X_OKAPI_TENANT);
     return verifyDeleteResponse(url, headers, expectedContentType, expectedCode);
   }
 
   public Response verifyDeleteResponse(String url, Headers headers, String expectedContentType, int expectedCode) {
     return RestAssured
       .with()
-        .headers(headers)
-        .header(X_OKAPI_URL)
+      .headers(headers)
+      .header(X_OKAPI_URL)
       .delete(url)
-        .then()
-          .statusCode(expectedCode)
-          .contentType(expectedContentType)
-          .extract()
-            .response();
+      .then()
+      .statusCode(expectedCode)
+      .contentType(expectedContentType)
+      .extract()
+      .response();
   }
 
- public Headers prepareHeaders(Header... headers) {
+  public Headers prepareHeaders(Header... headers) {
 
     Header permissionsHeader = new Header(UserPermissionsUtil.OKAPI_HEADER_PERMISSIONS, permissionsJsonArrayString);
 
