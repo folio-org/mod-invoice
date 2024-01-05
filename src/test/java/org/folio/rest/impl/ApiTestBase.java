@@ -108,7 +108,6 @@ public class ApiTestBase {
 
   public static final JsonArray permissionsWithoutApproveAndPayArray = new JsonArray(permissionsWithoutApproveAndPayList);
   public static final String permissionsWithoutApproveAndPayJsonArrayString = new JsonArray(permissionsWithoutApproveAndPayList).encode();
-  //okapiHeaders.put(UserPermissionsUtil.OKAPI_HEADER_PERMISSIONS, permissionsJsonArrayString);
   public static final Header X_OKAPI_PERMISSION_WITHOUT_PAY_APPROVE = new Header(UserPermissionsUtil.OKAPI_HEADER_PERMISSIONS, permissionsWithoutApproveAndPayJsonArrayString);
 
   public static final List<String> permissionsWithoutPaidList = Arrays.asList(
@@ -121,7 +120,6 @@ public class ApiTestBase {
 
   public static final JsonArray permissionsWithoutPaidArray = new JsonArray(permissionsWithoutPaidList);
   public static final String permissionsWithoutPaidJsonArrayString = new JsonArray(permissionsWithoutPaidList).encode();
-  //okapiHeaders.put(UserPermissionsUtil.OKAPI_HEADER_PERMISSIONS, permissionsJsonArrayString);
   public static final Header X_OKAPI_PERMISSION_WITHOUT_PAY= new Header(UserPermissionsUtil.OKAPI_HEADER_PERMISSIONS, permissionsWithoutPaidJsonArrayString);
   
   @BeforeAll
