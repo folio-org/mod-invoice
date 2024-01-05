@@ -24,11 +24,12 @@ import static org.folio.invoices.utils.ErrorCodes.LOCK_AND_CALCULATED_TOTAL_MISM
 import static org.folio.invoices.utils.ErrorCodes.PO_LINE_NOT_FOUND;
 import static org.folio.invoices.utils.ErrorCodes.PO_LINE_UPDATE_FAILURE;
 import static org.folio.invoices.utils.ErrorCodes.PROHIBITED_FIELD_CHANGING;
+import static org.folio.invoices.utils.ErrorCodes.USER_HAS_NO_APPROVE_PERMISSIONS;
+import static org.folio.invoices.utils.ErrorCodes.USER_HAS_NO_PAY_PERMISSIONS;
 import static org.folio.invoices.utils.ErrorCodes.VOUCHER_NOT_FOUND;
 import static org.folio.invoices.utils.ErrorCodes.VOUCHER_NUMBER_PREFIX_NOT_ALPHA;
 import static org.folio.invoices.utils.ErrorCodes.VOUCHER_UPDATE_FAILURE;
 import static org.folio.invoices.utils.ErrorCodes.USER_HAS_NO_FISCAL_YEAR_UPDATE_PERMISSIONS;
-import static org.folio.invoices.utils.ErrorCodes.*;
 import static org.folio.invoices.utils.HelperUtils.INVOICE;
 import static org.folio.invoices.utils.HelperUtils.calculateInvoiceLineTotals;
 import static org.folio.invoices.utils.HelperUtils.calculateVoucherAmount;
@@ -1352,34 +1353,32 @@ public class InvoicesApiTest extends ApiTestBase {
     assertThat(errors.getErrors(), hasSize(1));
     assertThat(errors.getErrors().get(0).getMessage(), equalTo(VOUCHER_NUMBER_PREFIX_NOT_ALPHA.getDescription()));
     assertThat(errors.getErrors().get(0).getCode(), equalTo(VOUCHER_NUMBER_PREFIX_NOT_ALPHA.getCode()));
-
   }
 
-   @Test
+  @Test
   void testTransitionToApprovedWithoutPremission() {
     logger.info("=== Test transition invoice to Approved without premission ===");
 
-    Headers headers = prepareHeadersWithoutPermissions(X_OKAPI_URL, INVALID_PREFIX_CONFIG_X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID, X_OKAPI_PERMISSION_WITHOUT_PAY_APPROVE);
-    Errors errors =  transitionToApprovedWithoutPermission (REVIEWED_INVOICE_SAMPLE_PATH, headers,403);
+    var headers = prepareHeadersWithoutPermissions(X_OKAPI_URL, INVALID_PREFIX_CONFIG_X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID, X_OKAPI_PERMISSION_WITHOUT_PAY_APPROVE);
+    var errors = transitionToApprovedWithoutPermission(REVIEWED_INVOICE_SAMPLE_PATH, headers, 403);
 
-     assertThat(errors, notNullValue());
-     assertThat(errors.getErrors(), hasSize(1));
-     assertThat(errors.getErrors().get(0).getMessage(), equalTo(USER_HAS_NO_APPROVE_PERMISSIONS.getDescription()));
-     assertThat(errors.getErrors().get(0).getCode(), equalTo(USER_HAS_NO_APPROVE_PERMISSIONS.getCode()));
-
+    assertThat(errors, notNullValue());
+    assertThat(errors.getErrors(), hasSize(1));
+    assertThat(errors.getErrors().get(0).getMessage(), equalTo(USER_HAS_NO_APPROVE_PERMISSIONS.getDescription()));
+    assertThat(errors.getErrors().get(0).getCode(), equalTo(USER_HAS_NO_APPROVE_PERMISSIONS.getCode()));
   }
-@Test
+
+  @Test
   void testTransitionToPaidWithoutPremission() {
     logger.info("=== Test transition invoice to paid without premission ===");
 
-    Headers headers = prepareHeadersWithoutPermissions(X_OKAPI_URL, INVALID_PREFIX_CONFIG_X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID, X_OKAPI_PERMISSION_WITHOUT_PAY);
-    Errors errors =  transitionToPaidWithoutPermission (APPROVED_INVOICE_SAMPLE_PATH, headers,403);
+    var headers = prepareHeadersWithoutPermissions(X_OKAPI_URL, INVALID_PREFIX_CONFIG_X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID, X_OKAPI_PERMISSION_WITHOUT_PAY);
+    var errors = transitionToPaidWithoutPermission(APPROVED_INVOICE_SAMPLE_PATH, headers, 403);
 
     assertThat(errors, notNullValue());
     assertThat(errors.getErrors(), hasSize(1));
     assertThat(errors.getErrors().get(0).getMessage(), equalTo(USER_HAS_NO_PAY_PERMISSIONS.getDescription()));
     assertThat(errors.getErrors().get(0).getCode(), equalTo(USER_HAS_NO_PAY_PERMISSIONS.getCode()));
-
   }
 
   @Test
@@ -1417,8 +1416,8 @@ public class InvoicesApiTest extends ApiTestBase {
   void testTransitionToApprovedErrorFromModConfig() {
     logger.info("=== Test transition invoice to Approved with mod-config error ===");
 
-    Errors errors = transitionToApprovedWithError(REVIEWED_INVOICE_SAMPLE_PATH, prepareHeaders(X_OKAPI_URL, ERROR_CONFIG_X_OKAPI_TENANT, X_OKAPI_TOKEN,
-      X_OKAPI_USER_ID));
+    var headers = prepareHeaders(X_OKAPI_URL, ERROR_CONFIG_X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID);
+    var errors = transitionToApprovedWithError(REVIEWED_INVOICE_SAMPLE_PATH, headers);
 
     assertThat(errors, notNullValue());
     assertThat(errors.getErrors(), hasSize(1));
@@ -2365,7 +2364,7 @@ public class InvoicesApiTest extends ApiTestBase {
     assertThat(getRqRsEntries(HttpMethod.PUT, INVOICES), empty());
   }
 
-  private void validatePoLinesPaymentStatus() {
+    private void validatePoLinesPaymentStatus() {
 
     final List<CompositePoLine> updatedPoLines = getRqRsEntries(HttpMethod.PUT, ORDER_LINES).stream()
       .map(poLine -> poLine.mapTo(CompositePoLine.class))
@@ -3216,7 +3215,7 @@ public class InvoicesApiTest extends ApiTestBase {
     List<VoucherLine> expVoucherLines = voucherLines.stream()
       .filter(voucherLinesP -> voucherLinesP.getFundDistributions().stream()
         .anyMatch(fundDistribution -> Objects.nonNull(fundDistribution.getExpenseClassId()))
-      ).collect(toList());
+      ).toList();
 
     long actFundDistrCount = expVoucherLines.stream().mapToLong(voucherLine -> voucherLine.getFundDistributions().size()).sum();
     assertThat(actFundDistrCount, equalTo(fundDistributionCount));
