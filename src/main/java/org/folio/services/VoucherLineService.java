@@ -43,8 +43,7 @@ public class VoucherLineService {
 
   public Future<VoucherLine> getVoucherLine(String id, RequestContext requestContext) {
     String endpoint = resourceByIdPath(VOUCHER_LINES, id);
-    return restClient.get(endpoint, VoucherLine.class, requestContext)
-      .onFailure(t -> logger.error("Error getting voucher line", t));
+    return restClient.get(endpoint, VoucherLine.class, requestContext);
   }
 
   /**
@@ -59,8 +58,7 @@ public class VoucherLineService {
   public Future<VoucherLineCollection> getVoucherLines(int limit, int offset, String query, RequestContext requestContext) {
     String queryParam = getEndpointWithQuery(query);
     String endpoint = String.format(GET_VOUCHER_LINE_BY_QUERY, limit, offset, queryParam);
-    return restClient.get(endpoint, VoucherLineCollection.class, requestContext)
-      .onFailure(t -> logger.error("Error getting voucher lines", t));
+    return restClient.get(endpoint, VoucherLineCollection.class, requestContext);
   }
 
   public Future<VoucherLine> createVoucherLine(VoucherLine voucherLine, RequestContext requestContext) {
@@ -68,8 +66,7 @@ public class VoucherLineService {
   }
 
   public Future<Void> deleteVoucherLine(String id, RequestContext requestContext) {
-    return restClient.delete(resourceByIdPath(VOUCHER_LINES, id), requestContext)
-      .onFailure(t -> logger.error("Error deleting voucherLines", t));
+    return restClient.delete(resourceByIdPath(VOUCHER_LINES, id), requestContext);
   }
 
 

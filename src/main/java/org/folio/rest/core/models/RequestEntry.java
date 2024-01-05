@@ -7,13 +7,9 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.StringUtils;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import org.glassfish.jersey.uri.UriTemplate;
 
 public class RequestEntry {
-
-  private static final Logger logger = LogManager.getLogger(RequestEntry.class);
 
   private String baseEndpoint;
   private Map<String, String> pathParams = new HashMap<>();

@@ -118,10 +118,7 @@ public class VouchersImpl extends BaseApi implements org.folio.rest.jaxrs.resour
 
     voucherHelper.getVouchers(query, offset, limit, new RequestContext(vertxContext, okapiHeaders))
       .onSuccess(vouchers -> {
-        if (logger.isInfoEnabled()) {
-          logger.info("Successfully retrieved vouchers: {}", JsonObject.mapFrom(vouchers)
-            .encodePrettily());
-        }
+        logger.info("Successfully retrieved vouchers: {}", JsonObject.mapFrom(vouchers).encodePrettily());
         asyncResultHandler.handle(succeededFuture(buildOkResponse(vouchers)));
       })
       .onFailure(t -> handleErrorResponse(asyncResultHandler, t));

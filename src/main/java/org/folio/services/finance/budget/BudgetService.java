@@ -14,8 +14,6 @@ import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.CompletionException;
 
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.rest.acq.model.finance.Budget;
 import org.folio.rest.acq.model.finance.BudgetCollection;
@@ -27,7 +25,6 @@ import org.folio.rest.jaxrs.model.Parameter;
 import io.vertx.core.Future;
 
 public class BudgetService {
-  private static final Logger log = LogManager.getLogger();
 
   private static final String BUDGETS_ENDPOINT = resourcesPath(BUDGETS);
   private static final String ACTIVE_BUDGET_ENDPOINT = "/finance/funds/{id}/budget";
@@ -36,7 +33,7 @@ public class BudgetService {
   private final RestClient restClient;
 
   public BudgetService(RestClient restClient) {
-      this.restClient = restClient;
+    this.restClient = restClient;
   }
 
   public Future<List<Budget>> getBudgetsByFundIds(Collection<String> fundIds, String invoiceFiscalYearId,
@@ -69,9 +66,7 @@ public class BudgetService {
           throw new HttpException(404, BUDGET_NOT_FOUND_USING_FISCAL_YEAR_ID.toError().withParameters(parameters));
         }
         return budgetCollection.getBudgets().get(0);
-      })
-      .onFailure(t -> log.error("Error getting budget by fundId and fiscalYearId, fundId={}, fiscalYearId={}",
-        fundId, fiscalYearId, t));
+      });
   }
 
   private Future<Budget> getActiveBudgetByFundId(String fundId, RequestContext requestContext) {
@@ -97,7 +92,6 @@ public class BudgetService {
       .withOffset(0)
       .withLimit(Integer.MAX_VALUE);
     return restClient.get(requestEntry, BudgetCollection.class, requestContext)
-      .map(BudgetCollection::getBudgets)
-      .onFailure(t -> log.error("Failed to get budget list by fund ids, query={}", query, t));
+      .map(BudgetCollection::getBudgets);
   }
 }

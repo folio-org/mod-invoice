@@ -28,7 +28,7 @@ import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.jaxrs.model.InvoiceLine;
 
 public class EncumbranceService {
-  private static final Logger log = LogManager.getLogger();
+  private static final Logger logger = LogManager.getLogger();
 
   private final BaseTransactionService baseTransactionService;
   private final OrderTransactionSummaryService orderTransactionSummaryService;
@@ -51,8 +51,8 @@ public class EncumbranceService {
       .map(transactionCollections ->
         transactionCollections.stream().flatMap(col -> col.getTransactions().stream()).collect(toList())
       )
-      .onFailure(t -> log.error(String.format("Error getting encumbrances by po line ids, poLineIds=%s, fiscalYearId=%s",
-        poLineIds, fiscalYearId), t));
+      .onFailure(t -> logger.error("Error getting encumbrances by po line ids, poLineIds={}, fiscalYearId={}",
+        poLineIds, fiscalYearId, t));
   }
 
   public Future<Void> unreleaseEncumbrances(List<Transaction> transactions, RequestContext requestContext) {
@@ -112,8 +112,8 @@ public class EncumbranceService {
     List<String> poLineIds = getPoLineIds(relevantHolders);
     return getEncumbrancesByPoLineIds(poLineIds, fiscalYearId, requestContext)
       .map(encumbrances -> updateFundDistributionsWithEncumbrances(relevantHolders, encumbrances))
-      .onFailure(t -> log.error(String.format("Error updating invoice lines encumbrance links, invoiceId=%s, fiscalYearId=%s",
-        relevantHolders.get(0).getInvoice().getId(), fiscalYearId), t));
+      .onFailure(t -> logger.error("Error updating invoice lines encumbrance links, invoiceId={}, fiscalYearId={}",
+        relevantHolders.get(0).getInvoice().getId(), fiscalYearId, t));
   }
 
   private List<String> getPoLineIds(List<InvoiceWorkflowDataHolder> holders) {

@@ -39,36 +39,36 @@ public class ExpenseClassRetrieveService {
 
   public Future<ExpenseClassCollection> getExpenseClasses(String query, int offset, int limit, RequestContext requestContext) {
     RequestEntry requestEntry = new RequestEntry(EXPENSE_CLASS_ENDPOINT)
-        .withQuery(query)
-        .withOffset(offset)
-        .withLimit(limit);
+      .withQuery(query)
+      .withOffset(offset)
+      .withLimit(limit);
     return restClient.get(requestEntry, ExpenseClassCollection.class, requestContext);
   }
 
   public Future<List<ExpenseClass>> getExpenseClasses(List<String> expenseClassIds, RequestContext requestContext) {
     List<Future<ExpenseClassCollection>> expenseClassesFutureList = StreamEx
       .ofSubLists(expenseClassIds, MAX_IDS_FOR_GET_RQ)
-      .map(ids ->  getExpenseClassesChunk(ids, requestContext))
+      .map(ids -> getExpenseClassesChunk(ids, requestContext))
       .collect(toList());
 
     return collectResultsOnSuccess(expenseClassesFutureList)
-                      .map(expenseClassCollections ->
-                                  expenseClassCollections.stream().flatMap(col -> col.getExpenseClasses().stream()).collect(toList())
-                                );
+      .map(expenseClassCollections ->
+        expenseClassCollections.stream().flatMap(col -> col.getExpenseClasses().stream()).collect(toList())
+      );
   }
 
   public Future<ExpenseClass> getExpenseClassById(String id, RequestContext requestContext) {
     RequestEntry requestEntry = new RequestEntry(EXPENSE_CLASS_BY_ID_ENDPOINT)
-        .withId(id);
+      .withId(id);
     return restClient.get(requestEntry, ExpenseClass.class, requestContext)
-            .recover(t -> {
-              Throwable cause = t.getCause() == null ? t : t.getCause();
-              if (HelperUtils.isNotFound(cause)) {
-                List<Parameter> parameters = Collections.singletonList(new Parameter().withValue(id).withKey("expenseClass"));
-                  cause = new HttpException(404, EXPENSE_CLASS_NOT_FOUND.toError().withParameters(parameters));
-              }
-              return Future.failedFuture(cause);
-            });
+      .recover(t -> {
+        Throwable cause = t.getCause() == null ? t : t.getCause();
+        if (HelperUtils.isNotFound(cause)) {
+          List<Parameter> parameters = Collections.singletonList(new Parameter().withValue(id).withKey("expenseClass"));
+          cause = new HttpException(404, EXPENSE_CLASS_NOT_FOUND.toError().withParameters(parameters));
+        }
+        return Future.failedFuture(cause);
+      });
   }
 
   private Future<ExpenseClassCollection> getExpenseClassesChunk(List<String> expenseClassIds, RequestContext requestContext) {

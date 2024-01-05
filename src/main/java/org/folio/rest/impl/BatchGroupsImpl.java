@@ -45,7 +45,7 @@ public class BatchGroupsImpl implements BatchGroups {
 
     helper.getBatchGroups(limit, offset, query)
       .onSuccess(batchGroups -> {
-        logInfo("Successfully retrieved batch groups: {}", batchGroups);
+        logger.info("Successfully retrieved batch groups: {}", JsonObject.mapFrom(batchGroups).encodePrettily());
         asyncResultHandler.handle(succeededFuture(helper.buildOkResponse(batchGroups)));
       })
       .onFailure(t -> handleErrorResponse(asyncResultHandler, helper, t));
@@ -85,12 +85,6 @@ public class BatchGroupsImpl implements BatchGroups {
     helper.deleteBatchGroup(id)
       .onSuccess(ok -> asyncResultHandler.handle(succeededFuture(helper.buildNoContentResponse())))
       .onFailure(fail -> handleErrorResponse(asyncResultHandler, helper, fail));
-  }
-
-  private void logInfo(String message, Object entry) {
-    if (logger.isInfoEnabled()) {
-      logger.info(message, JsonObject.mapFrom(entry).encodePrettily());
-    }
   }
 
   private Void handleErrorResponse(Handler<AsyncResult<Response>> asyncResultHandler, AbstractHelper helper, Throwable t) {
