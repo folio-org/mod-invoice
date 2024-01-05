@@ -40,20 +40,18 @@ public class BatchVoucherService {
   }
 
   public String convertBatchVoucher(BatchVoucher batchVoucher, String contentType) {
-    String content;
+    if (contentType.equalsIgnoreCase(APPLICATION_JSON)){
+      return JsonObject.mapFrom(batchVoucher).encodePrettily();
+    }
     if (contentType.equalsIgnoreCase(APPLICATION_XML)) {
       BatchVoucherType xmlBatchVoucher = batchVoucherModelConverter.convert(batchVoucher);
       try {
-        content = xmlConverter.marshal(BatchVoucherType.class, xmlBatchVoucher, null,true);
+        return xmlConverter.marshal(BatchVoucherType.class, xmlBatchVoucher, null,true);
       } catch (XMLStreamException e) {
         throw new HttpException(400, MARSHAL_ERROR_MSG);
       }
-    } else if (contentType.equalsIgnoreCase(APPLICATION_JSON)){
-      content = JsonObject.mapFrom(batchVoucher).encodePrettily();
-    } else {
-      throw new HttpException(400, HEADER_ERROR_MSG);
     }
-    return content;
+    throw new HttpException(400, HEADER_ERROR_MSG);
   }
 
   public Future<BatchVoucher> createBatchVoucher(BatchVoucher batchVoucher, RequestContext requestContext) {
