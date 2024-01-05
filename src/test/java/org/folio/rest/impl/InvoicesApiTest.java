@@ -1367,21 +1367,21 @@ public class InvoicesApiTest extends ApiTestBase {
 
      assertThat(errors, notNullValue());
      assertThat(errors.getErrors(), hasSize(1));
-     assertThat(errors.getErrors().get(0).getMessage(), equalTo(USER_HAS_NO_PERMISSIONS.getDescription()));
-     assertThat(errors.getErrors().get(0).getCode(), equalTo(USER_HAS_NO_PERMISSIONS.getCode()));
+     assertThat(errors.getErrors().get(0).getMessage(), equalTo(USER_HAS_NO_APPROVE_PERMISSIONS.getDescription()));
+     assertThat(errors.getErrors().get(0).getCode(), equalTo(USER_HAS_NO_APPROVE_PERMISSIONS.getCode()));
 
   }
 @Test
   void testTransitionToPaidWithoutPremission() {
-    logger.info("=== Test transition invoice to Approved without premission ===");
+    logger.info("=== Test transition invoice to paid without premission ===");
 
     Headers headers = prepareHeadersWithoutPermissions(X_OKAPI_URL, INVALID_PREFIX_CONFIG_X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID, X_OKAPI_PERMISSION_WITHOUT_PAY);
     Errors errors =  transitionToPaidWithoutPermission (APPROVED_INVOICE_SAMPLE_PATH, headers,403);
 
     assertThat(errors, notNullValue());
     assertThat(errors.getErrors(), hasSize(1));
-    assertThat(errors.getErrors().get(0).getMessage(), equalTo(USER_HAS_NO_PERMISSIONS.getDescription()));
-    assertThat(errors.getErrors().get(0).getCode(), equalTo(USER_HAS_NO_PERMISSIONS.getCode()));
+    assertThat(errors.getErrors().get(0).getMessage(), equalTo(USER_HAS_NO_PAID_PERMISSIONS.getDescription()));
+    assertThat(errors.getErrors().get(0).getCode(), equalTo(USER_HAS_NO_PAID_PERMISSIONS.getCode()));
 
   }
 
