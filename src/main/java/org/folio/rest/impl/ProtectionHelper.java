@@ -45,7 +45,7 @@ public class ProtectionHelper extends AbstractHelper {
   public ProtectionHelper(Map<String, String> okapiHeaders, Context ctx) {
     super(okapiHeaders, ctx);
     SpringContextUtil.autowireDependencies(this, ctx);
-}
+  }
 
   /**
    * This method determines status of operation restriction based on unit IDs from {@link org.folio.rest.jaxrs.model.Invoice}.
@@ -53,7 +53,7 @@ public class ProtectionHelper extends AbstractHelper {
    * @param unitIds   list of unit IDs.
    * @param operation type of operation
    * @return completable future completed exceptionally if user does not have rights to perform operation or any unit does not
-   *         exist; successfully otherwise
+   * exist; successfully otherwise
    */
   public Future<Void> isOperationRestricted(List<String> unitIds, ProtectedOperationType operation) {
     if (CollectionUtils.isNotEmpty(unitIds)) {
@@ -71,7 +71,7 @@ public class ProtectionHelper extends AbstractHelper {
         } else {
           // In case any unit "hard deleted" or never existed by specified uuid
           throw new HttpException(HttpStatus.HTTP_UNPROCESSABLE_ENTITY.toInt(),
-              buildUnitsNotFoundError(unitIds, extractUnitIds(units)));
+            buildUnitsNotFoundError(unitIds, extractUnitIds(units)));
         }
       });
     } else {
@@ -113,12 +113,10 @@ public class ProtectionHelper extends AbstractHelper {
   }
 
 
-
   /**
    * This method returns list of {@link AcquisitionsUnit} based on list of unit ids
    *
    * @param unitIds list of unit ids
-   *
    * @return list of {@link AcquisitionsUnit}
    */
   private Future<List<AcquisitionsUnit>> getUnitsByIds(List<String> unitIds) {
@@ -152,7 +150,6 @@ public class ProtectionHelper extends AbstractHelper {
   }
 
 
-
   Future<String> buildAcqUnitsCqlExprToSearchRecords(String entity) {
     return getAcqUnitIdsForSearch(getCurrentUserId()).map(ids -> {
       if (ids.isEmpty()) {
@@ -174,7 +171,6 @@ public class ProtectionHelper extends AbstractHelper {
   }
 
 
-
   Future<List<String>> getAcqUnitIdsForUser(String userId) {
     return acquisitionsUnitsService.getAcquisitionsUnitsMemberships("userId==" + userId, 0, Integer.MAX_VALUE, buildRequestContext())
       .map(memberships -> {
@@ -183,9 +179,7 @@ public class ProtectionHelper extends AbstractHelper {
           .map(AcquisitionsUnitMembership::getAcquisitionsUnitId)
           .collect(Collectors.toList());
 
-        if (logger.isDebugEnabled()) {
-          logger.debug("getAcqUnitIdsForUser:: User belongs to {} acq units: {}", ids.size(), StringUtils.join(ids, ", "));
-        }
+        logger.debug("getAcqUnitIdsForUser:: User belongs to {} acq units: {}", ids.size(), StringUtils.join(ids, ", "));
 
         return ids;
       });
@@ -199,9 +193,8 @@ public class ProtectionHelper extends AbstractHelper {
           .map(AcquisitionsUnit::getId)
           .collect(Collectors.toList());
 
-        if (logger.isDebugEnabled()) {
-          logger.debug("getOpenForReadAcqUnitIds:: {} acq units with 'protectRead==false' are found: {}", ids.size(), StringUtils.join(ids, ", "));
-        }
+        logger.debug("getOpenForReadAcqUnitIds:: {} acq units with 'protectRead==false' are found: {}", ids.size(), StringUtils.join(ids, ", "));
+
         return ids;
       });
   }

@@ -13,7 +13,7 @@ public class InvoiceDocumentRestClient extends RestClient {
 
   public Future<InvoiceDocument> postInvoiceDocument(String endpoint, InvoiceDocument document, RequestContext requestContext) {
     if (logger.isDebugEnabled()) {
-      logger.debug(String.format("Sending 'POST %s' with body: {}", endpoint), JsonObject.mapFrom(document).encodePrettily());
+      logger.debug("Sending 'POST {}' with body: {}", endpoint, JsonObject.mapFrom(document).encodePrettily());
     }
     var caseInsensitiveHeader = convertToCaseInsensitiveMap(requestContext.getHeaders());
     return getVertxWebClient(requestContext.getContext())

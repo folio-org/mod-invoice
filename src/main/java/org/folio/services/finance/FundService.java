@@ -38,7 +38,7 @@ public class FundService {
   private static final String FUNDS_ENDPOINT = resourcesPath(FUNDS);
   private static final String FUNDS_BY_ID_ENDPOINT = FUNDS_ENDPOINT + "/{id}";
 
-   private final RestClient restClient;
+  private final RestClient restClient;
 
   public FundService(RestClient restClient) {
     this.restClient = restClient;
@@ -49,16 +49,16 @@ public class FundService {
       .map(ids -> getFundsByIds(ids, requestContext))
       .toList())
       .map(lists -> lists.stream().flatMap(Collection::stream)
-      .collect(Collectors.toList()));
+        .collect(Collectors.toList()));
   }
 
 
   private Future<List<Fund>> getFundsByIds(Collection<String> ids, RequestContext requestContext) {
     String query = convertIdsToCqlQuery(ids);
     RequestEntry requestEntry = new RequestEntry(FUNDS_ENDPOINT)
-        .withQuery(query)
-        .withOffset(0)
-        .withLimit(MAX_IDS_FOR_GET_RQ);
+      .withQuery(query)
+      .withOffset(0)
+      .withLimit(MAX_IDS_FOR_GET_RQ);
     return restClient.get(requestEntry, FundCollection.class, requestContext)
       .map(fundCollection -> verifyThatAllFundsFound(fundCollection.getFunds(), ids));
   }
