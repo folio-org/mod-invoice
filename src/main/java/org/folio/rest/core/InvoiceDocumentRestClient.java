@@ -9,11 +9,11 @@ import io.vertx.core.Future;
 import io.vertx.core.json.JsonObject;
 
 public class InvoiceDocumentRestClient extends RestClient {
-  private static final Logger log = LogManager.getLogger(InvoiceDocumentRestClient.class);
+  private static final Logger logger = LogManager.getLogger();
 
   public Future<InvoiceDocument> postInvoiceDocument(String endpoint, InvoiceDocument document, RequestContext requestContext) {
-    if (log.isDebugEnabled()) {
-      log.debug("Sending 'POST {}' with body: {}", endpoint, JsonObject.mapFrom(document).encodePrettily());
+    if (logger.isDebugEnabled()) {
+      logger.debug("Sending 'POST {}' with body: {}", endpoint, JsonObject.mapFrom(document).encodePrettily());
     }
     var caseInsensitiveHeader = convertToCaseInsensitiveMap(requestContext.getHeaders());
     return getVertxWebClient(requestContext.getContext())
@@ -23,6 +23,6 @@ public class InvoiceDocumentRestClient extends RestClient {
       // TODO: consider to make streaming transfer for large files
       .sendJson(document)
       .map(bufferHttpResponse -> bufferHttpResponse.bodyAsJsonObject().mapTo(InvoiceDocument.class))
-      .onFailure(log::error);
+      .onFailure(logger::error);
   }
 }

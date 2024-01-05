@@ -23,8 +23,6 @@ public class ConfigurationService {
   public static final String CURRENCY_CONFIG = "currency";
   public static final String DEFAULT_CURRENCY = "USD";
   public static final String LOCALE_SETTINGS = "localeSettings";
-  public static final String TZ_CONFIG = "timezone";
-  public static final String TZ_UTC = "UTC";
 
   private final RestClient restClient;
 

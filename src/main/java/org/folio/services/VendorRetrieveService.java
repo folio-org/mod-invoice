@@ -31,13 +31,13 @@ public class VendorRetrieveService {
   private static final String ORGANIZATIONS_STORAGE_VENDORS = "/organizations-storage/organizations";
   private static final String ORGANIZATIONS_STORAGE_VENDOR = ORGANIZATIONS_STORAGE_VENDORS + "/{id}";
 
+  private static final int MAX_IDS_FOR_GET_RQ = 15;
+
   private final RestClient restClient;
 
   public VendorRetrieveService(RestClient restClient) {
     this.restClient = restClient;
   }
-
-  static final int MAX_IDS_FOR_GET_RQ = 15;
 
 
   public Future<Map<String, Organization>> getVendorsMap(List<Invoice> invoices, RequestContext requestContext) {
