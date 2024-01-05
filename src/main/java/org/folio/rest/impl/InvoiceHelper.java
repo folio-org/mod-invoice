@@ -25,6 +25,8 @@ import static org.folio.services.voucher.VoucherCommandService.VOUCHER_NUMBER_PR
 import static org.folio.utils.UserPermissionsUtil.verifyUserHasAssignPermission;
 import static org.folio.utils.UserPermissionsUtil.verifyUserHasManagePermission;
 import static org.folio.utils.UserPermissionsUtil.verifyUserHasFiscalYearUpdatePermission;
+import static org.folio.utils.UserPermissionsUtil.verifyUserHasInvoicePayPermission;
+import static org.folio.utils.UserPermissionsUtil.verifyUserHasInvoiceApprovePermission;
 
 import java.util.Collection;
 import java.util.Collections;
@@ -347,6 +349,8 @@ public class InvoiceHelper extends AbstractHelper {
         validator.validateInvoice(invoice, invoiceFromStorage);
         verifyUserHasManagePermission(invoice.getAcqUnitIds(), invoiceFromStorage.getAcqUnitIds(), okapiHeaders);
         verifyUserHasFiscalYearUpdatePermission(invoice.getFiscalYearId(), invoiceFromStorage.getFiscalYearId(), okapiHeaders);
+        verifyUserHasInvoiceApprovePermission(invoice.getStatus(), invoiceFromStorage.getStatus(), okapiHeaders);
+        verifyUserHasInvoicePayPermission(invoice.getStatus(), invoiceFromStorage.getStatus(), okapiHeaders);
 
         setSystemGeneratedData(invoiceFromStorage, invoice);
         return null;
@@ -511,7 +515,7 @@ public class InvoiceHelper extends AbstractHelper {
       .compose(voucher -> updateVoucherWithSystemCurrency(voucher, lines))
       .compose(voucher -> voucherCommandService.updateVoucherWithExchangeRate(voucher, invoice, requestContext))
       .compose(voucher -> getAllFundDistributions(lines, invoice)
-                                  .compose(fundDistributions -> handleVoucherWithLines(fundDistributions, voucher))
+        .compose(fundDistributions -> handleVoucherWithLines(fundDistributions, voucher))
       );
 
   }
@@ -550,7 +554,7 @@ public class InvoiceHelper extends AbstractHelper {
   }
 
   private List<FundDistribution> getInvoiceLineFundDistributions(List<InvoiceLine> invoiceLines, Invoice invoice,
-      CurrencyConversion conversion) {
+                                                                 CurrencyConversion conversion) {
     Map<InvoiceLine, List<FundDistribution>> fdsByLine = invoiceLines.stream()
       .collect(toMap(Function.identity(), InvoiceLine::getFundDistributions));
 
@@ -860,7 +864,7 @@ public class InvoiceHelper extends AbstractHelper {
   }
 
   private Future<Void> updateEncumbranceLinksWhenFiscalYearIsChanged(Invoice invoice, Invoice invoiceFromStorage,
-      List<InvoiceLine> lines) {
+                                                                     List<InvoiceLine> lines) {
     String previousFiscalYearId = invoiceFromStorage.getFiscalYearId();
     String newFiscalYearId = invoice.getFiscalYearId();
     if (Objects.equals(newFiscalYearId, previousFiscalYearId)) {

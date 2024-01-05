@@ -8,6 +8,8 @@ import java.util.stream.Collectors;
 public enum AcqDesiredPermissions {
   ASSIGN("invoices.acquisitions-units-assignments.assign"),
   MANAGE("invoices.acquisitions-units-assignments.manage"),
+  APPROVE("invoice.item.approve"),
+  PAY("invoice.item.pay"),
   FISCAL_YEAR_UPDATE("invoices.fiscal-year.update");
 
   private String permission;
