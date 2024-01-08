@@ -23,10 +23,11 @@ import static org.folio.invoices.utils.ProtectedOperationType.UPDATE;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICES;
 import static org.folio.services.voucher.VoucherCommandService.VOUCHER_NUMBER_PREFIX_CONFIG_QUERY;
 import static org.folio.utils.UserPermissionsUtil.verifyUserHasAssignPermission;
-import static org.folio.utils.UserPermissionsUtil.verifyUserHasManagePermission;
 import static org.folio.utils.UserPermissionsUtil.verifyUserHasFiscalYearUpdatePermission;
-import static org.folio.utils.UserPermissionsUtil.verifyUserHasInvoicePayPermission;
 import static org.folio.utils.UserPermissionsUtil.verifyUserHasInvoiceApprovePermission;
+import static org.folio.utils.UserPermissionsUtil.verifyUserHasInvoiceCancelPermission;
+import static org.folio.utils.UserPermissionsUtil.verifyUserHasInvoicePayPermission;
+import static org.folio.utils.UserPermissionsUtil.verifyUserHasManagePermission;
 
 import java.util.Collection;
 import java.util.Collections;
@@ -351,6 +352,7 @@ public class InvoiceHelper extends AbstractHelper {
         verifyUserHasFiscalYearUpdatePermission(invoice.getFiscalYearId(), invoiceFromStorage.getFiscalYearId(), okapiHeaders);
         verifyUserHasInvoiceApprovePermission(invoice.getStatus(), invoiceFromStorage.getStatus(), okapiHeaders);
         verifyUserHasInvoicePayPermission(invoice.getStatus(), invoiceFromStorage.getStatus(), okapiHeaders);
+        verifyUserHasInvoiceCancelPermission(invoice.getStatus(), invoiceFromStorage.getStatus(), okapiHeaders);
 
         setSystemGeneratedData(invoiceFromStorage, invoice);
         return null;

@@ -34,6 +34,7 @@ public enum ErrorCodes {
   USER_HAS_NO_FISCAL_YEAR_UPDATE_PERMISSIONS("userHasNoFiscalYearUpdatePermission", "User does not have permissions to update fiscal year - operation is restricted"),
   USER_HAS_NO_APPROVE_PERMISSIONS("userHasNoInvoiceApprovePermission", "User does not have permissions to approve this invoice - operation is restricted"),
   USER_HAS_NO_PAY_PERMISSIONS("userHasNoInvoicePayPermission", "User does not have permissions to pay this invoice - operation is restricted"),
+  USER_HAS_NO_CANCEL_PERMISSIONS("userHasNoInvoiceCancelPermission", "User does not have permissions to cancel this invoice - operation is restricted"),
   ACQ_UNITS_NOT_FOUND("acqUnitsNotFound", "Acquisitions units assigned to the record not found"),
   PENDING_PAYMENT_ERROR("pendingPaymentError", "Failed to create pending payment"),
   INVOICE_PAYMENT_FAILURE("invoicePaymentFailure", "Invoice payment failure"),

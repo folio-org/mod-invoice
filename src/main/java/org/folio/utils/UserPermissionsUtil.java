@@ -1,10 +1,11 @@
 package org.folio.utils;
 
+import static org.folio.invoices.utils.AcqDesiredPermissions.APPROVE;
 import static org.folio.invoices.utils.AcqDesiredPermissions.ASSIGN;
+import static org.folio.invoices.utils.AcqDesiredPermissions.CANCEL;
+import static org.folio.invoices.utils.AcqDesiredPermissions.FISCAL_YEAR_UPDATE;
 import static org.folio.invoices.utils.AcqDesiredPermissions.MANAGE;
 import static org.folio.invoices.utils.AcqDesiredPermissions.PAY;
-import static org.folio.invoices.utils.AcqDesiredPermissions.APPROVE;
-import static org.folio.invoices.utils.AcqDesiredPermissions.FISCAL_YEAR_UPDATE;
 import static org.folio.invoices.utils.ErrorCodes.USER_HAS_NO_FISCAL_YEAR_UPDATE_PERMISSIONS;
 import static org.folio.invoices.utils.ErrorCodes.USER_HAS_NO_ACQ_PERMISSIONS;
 import static org.folio.invoices.utils.ErrorCodes.*;
@@ -68,7 +69,7 @@ public final class UserPermissionsUtil {
   }
 
   /**
-   * This method checks if user has permission to approve invoice in case when invoice status was changed.
+   * This method checks if user has permission to approve invoice in case when invoice status was changed to APPROVED.
    *
    * @param newInvoiceStatus the new invoice status
    * @param statusFromStorage the invoice status from DB
@@ -76,23 +77,37 @@ public final class UserPermissionsUtil {
    * @throws HttpException if user does not have permission to approve invoice
    */
   public static void verifyUserHasInvoiceApprovePermission(Invoice.Status newInvoiceStatus, Invoice.Status statusFromStorage, Map<String, String> okapiHeaders) {
-    if (isInvoiceStatusUpdated(newInvoiceStatus, statusFromStorage) && isUserDoesNotHaveDesiredPermission(APPROVE, okapiHeaders)) {
+    if (isInvoiceStatusUpdated(newInvoiceStatus, statusFromStorage) && Invoice.Status.APPROVED == newInvoiceStatus && isUserDoesNotHaveDesiredPermission(APPROVE, okapiHeaders)) {
       throw new HttpException(HttpStatus.HTTP_FORBIDDEN.toInt(), USER_HAS_NO_APPROVE_PERMISSIONS);
     }
   }
 
   /**
-   * This method checks if user has permission to pay invoice in case when invoice status was changed.
+   * This method checks if user has permission to pay invoice in case when invoice status was changed to PAID.
    *
    * @param newInvoiceStatus the new invoice status
    * @param statusFromStorage the invoice status from DB
    * @param okapiHeaders the okapi headers
    * @throws HttpException if user does not have permission to pay invoice
    */
-  public static void  verifyUserHasInvoicePayPermission(Invoice.Status newInvoiceStatus, Invoice.Status statusFromStorage, Map<String, String> okapiHeaders) {
-    if (isInvoiceStatusUpdated(newInvoiceStatus, statusFromStorage) && isUserDoesNotHaveDesiredPermission(PAY, okapiHeaders)) {
+  public static void verifyUserHasInvoicePayPermission(Invoice.Status newInvoiceStatus, Invoice.Status statusFromStorage, Map<String, String> okapiHeaders) {
+    if (isInvoiceStatusUpdated(newInvoiceStatus, statusFromStorage) && Invoice.Status.PAID == newInvoiceStatus && isUserDoesNotHaveDesiredPermission(PAY, okapiHeaders)) {
       throw new HttpException(HttpStatus.HTTP_FORBIDDEN.toInt(), USER_HAS_NO_PAY_PERMISSIONS);
     }
+ }
+
+  /**
+   * This method checks if user has permission to cancel invoice in case wher invoice status was changed to CANCELLED.
+   *
+   * @param newInvoiceStatus the new invoice status
+   * @param statusFromStorage the invoice status from DB
+   * @param okapiHeaders the okapi headers
+   * @throws HttpException if user does not have permission to cancel invoice
+   */
+ public static void verifyUserHasInvoiceCancelPermission(Invoice.Status newInvoiceStatus, Invoice.Status statusFromStorage, Map<String, String> okapiHeaders) {
+   if (isInvoiceStatusUpdated(newInvoiceStatus, statusFromStorage) && Invoice.Status.CANCELLED == newInvoiceStatus && isUserDoesNotHaveDesiredPermission(CANCEL, okapiHeaders)) {
+     throw new HttpException(HttpStatus.HTTP_FORBIDDEN.toInt(), USER_HAS_NO_CANCEL_PERMISSIONS);
+   }
  }
 
   /**
