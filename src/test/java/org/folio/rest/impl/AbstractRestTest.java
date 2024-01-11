@@ -4,6 +4,8 @@ import static net.mguenther.kafka.junit.EmbeddedKafkaCluster.provisionWith;
 import static net.mguenther.kafka.junit.EmbeddedKafkaClusterConfig.defaultClusterConfig;
 import static org.folio.dataimport.util.RestUtil.OKAPI_TENANT_HEADER;
 import static org.folio.kafka.KafkaTopicNameHelper.getDefaultNameSpace;
+import static org.folio.rest.RestVerticle.OKAPI_HEADER_TENANT;
+import static org.folio.rest.RestVerticle.OKAPI_HEADER_TOKEN;
 import static org.folio.rest.util.OkapiConnectionParams.OKAPI_TOKEN_HEADER;
 import static org.folio.rest.util.OkapiConnectionParams.OKAPI_URL_HEADER;
 import static org.testcontainers.shaded.org.awaitility.Awaitility.await;
@@ -43,7 +45,6 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.common.header.internals.RecordHeader;
 import org.folio.kafka.KafkaTopicNameHelper;
 import org.folio.rest.RestVerticle;
-import org.folio.rest.client.TenantClient;
 import org.folio.rest.jaxrs.model.Event;
 import org.folio.rest.jaxrs.model.TenantAttributes;
 import org.folio.rest.jaxrs.model.TenantJob;
@@ -73,7 +74,6 @@ public abstract class AbstractRestTest {
   private static final String HTTP_PORT = "http.port";
   private static int port;
   private static String useExternalDatabase;
-  private static final String postedSnapshotResponseBody = UUID.randomUUID().toString();
   protected static Vertx vertx;
   protected static final String TENANT_ID = "diku";
   protected static RequestSpecification spec;
@@ -128,7 +128,7 @@ public abstract class AbstractRestTest {
     PostgresClient.stopPostgresTester();
     PostgresClient.closeAllClients();
     useExternalDatabase = System.getProperty(
-      "org.folio.source.record.manager.test.database",
+      "org.folio.invoice.test.database",
       "embedded");
 
     switch (useExternalDatabase) {
@@ -137,7 +137,7 @@ public abstract class AbstractRestTest {
         break;
       case "external":
         String postgresConfigPath = System.getProperty(
-          "org.folio.source.record.manager.test.config",
+          "org.folio.invoice.test.config",
           "/postgres-conf-local.json");
         PostgresClient.setConfigFilePath(postgresConfigPath);
         break;
@@ -169,31 +169,36 @@ public abstract class AbstractRestTest {
     Async async = context.async();
     port = NetworkUtils.nextFreePort();
     String okapiUrl = "http://localhost:" + port;
-    TenantClient tenantClient = new TenantClient(okapiUrl, TENANT_ID, TOKEN);
     final DeploymentOptions options = new DeploymentOptions()
       .setConfig(new JsonObject()
         .put(HTTP_PORT, port));
     vertx.deployVerticle(RestVerticle.class.getName(), options, deployVerticleAr -> {
       try {
+        TenantAPI tenantAPI = new TenantAPI();
         TenantAttributes tenantAttributes = new TenantAttributes();
         tenantAttributes.setModuleTo(constructModuleName());
-        tenantClient.postTenant(tenantAttributes, res2 -> {
-          if (res2.result().statusCode() == 204) {
+        Map<String, String> okapiHeaders = new HashMap<>();
+        okapiHeaders.put(OKAPI_HEADER_TOKEN, TOKEN);
+        okapiHeaders.put(OKAPI_URL_ENV, okapiUrl);
+        okapiHeaders.put(OKAPI_HEADER_TENANT, TENANT_ID);
+        tenantAPI.postTenant(tenantAttributes, okapiHeaders, context.asyncAssertSuccess(result -> {
+          if (result.getStatus() == 204) {
             return;
           }
-          if (res2.result().statusCode() == 201) {
-            tenantClient.getTenantByOperationId(res2.result().bodyAsJson(TenantJob.class).getId(), 60000, context.asyncAssertSuccess(res3 -> {
-              context.assertTrue(res3.bodyAsJson(TenantJob.class).getComplete());
-              String error = res3.bodyAsJson(TenantJob.class).getError();
-              if (error != null) {
-                context.assertTrue(error.contains("EventDescriptor was not registered for eventType"));
-              }
-            }));
+          if (result.getStatus() == 201) {
+            tenantAPI.getTenantByOperationId(((TenantJob)result.getEntity()).getId(), 60000, okapiHeaders,
+              context.asyncAssertSuccess(res3 -> {
+                context.assertTrue(((TenantJob) res3.getEntity()).getComplete());
+                String error = ((TenantJob) res3.getEntity()).getError();
+                if (error != null) {
+                  context.assertTrue(error.contains("EventDescriptor was not registered for eventType"));
+                }
+              }), vertx.getOrCreateContext());
           } else {
-            context.assertEquals("Failed to make post tenant. Received status code 400", res2.result().bodyAsString());
+            context.assertEquals("Failed to make post tenant. Received status code 400", result.getStatus());
           }
           async.complete();
-        });
+        }), vertx.getOrCreateContext());
       } catch (Exception e) {
         e.printStackTrace();
       }

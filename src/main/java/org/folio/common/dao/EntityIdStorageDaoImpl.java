@@ -47,7 +47,7 @@ public class EntityIdStorageDaoImpl implements EntityIdStorageDao {
     String sql = prepareQuery(entityTable);
     Tuple tuple = Tuple.of(recordId, entityId);
 
-    return postgresClientFactory.execute(sql, tuple, tenantId)
+    return postgresClientFactory.createInstance(tenantId).execute(sql, tuple)
       .map(rows -> mapRowToRecordToEntity(rows, entityTable));
   }
 
