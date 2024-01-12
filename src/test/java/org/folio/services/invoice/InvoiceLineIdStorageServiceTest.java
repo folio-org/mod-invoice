@@ -1,6 +1,6 @@
 package org.folio.services.invoice;
 
-import static org.folio.domain.relationship.EntityTable.INVOICE_LINES;
+import static org.folio.domain.relationship.EntityTable.INVOICES;
 import static org.folio.rest.impl.ApiTestBase.TENANT_ID;
 import static org.junit.Assert.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
@@ -29,7 +29,7 @@ class InvoiceLineIdStorageServiceTest {
   @Test
   public void shouldReturnSavedRecordToEntity() {
     RecordToEntity expectedRecordToInstance =
-      RecordToEntity.builder().table(INVOICE_LINES).recordId(RECORD_ID).entityId(INSTANCE_ID).build();
+      RecordToEntity.builder().table(INVOICES).recordId(RECORD_ID).entityId(INSTANCE_ID).build();
     when(entityIdStorageDaoImpl.saveRecordToEntityRelationship(any(RecordToEntity.class), any())).thenReturn(Future.succeededFuture(expectedRecordToInstance));
     Future<RecordToEntity> future = invoiceLineIdStorageService.store(RECORD_ID, INSTANCE_ID, TENANT_ID);
 

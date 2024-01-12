@@ -1,16 +1,19 @@
 package org.folio.common.dao;
 
+import static org.folio.rest.persist.PostgresClient.convertToPsqlStandard;
+
 import io.vertx.core.Future;
 import io.vertx.sqlclient.Row;
 import io.vertx.sqlclient.RowSet;
 import io.vertx.sqlclient.Tuple;
+import java.util.UUID;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-
-import java.util.UUID;
 import org.folio.domain.relationship.EntityTable;
 import org.folio.domain.relationship.RecordToEntity;
+import org.springframework.stereotype.Repository;
 
+@Repository
 public class EntityIdStorageDaoImpl implements EntityIdStorageDao {
   private static final Logger LOGGER = LogManager.getLogger(EntityIdStorageDaoImpl.class);
 
@@ -44,7 +47,7 @@ public class EntityIdStorageDaoImpl implements EntityIdStorageDao {
     String tableName = entityTable.getTableName();
 
     LOGGER.info("Trying to save entity to {} with recordId = {} and entityId = {}", tableName, recordId, entityId);
-    String sql = prepareQuery(entityTable);
+    String sql = prepareQuery(entityTable, tenantId);
     Tuple tuple = Tuple.of(recordId, entityId);
 
     return postgresClientFactory.createInstance(tenantId).execute(sql, tuple)
@@ -73,9 +76,11 @@ public class EntityIdStorageDaoImpl implements EntityIdStorageDao {
    * @param entityTable the entity table.
    * @return sql query to use.
    */
-  private String prepareQuery(EntityTable entityTable) {
+  private String prepareQuery(EntityTable entityTable, String tenantId) {
+    String schemaName = convertToPsqlStandard(tenantId);
     return INSERT_FUNCTION.replace("{recordIdFieldName}", entityTable.getRecordIdFieldName())
       .replace("{entityIdFieldName}", entityTable.getEntityIdFieldName())
-      .replace("{tableName}", entityTable.getTableName());
+      .replace("{tableName}", entityTable.getTableName())
+      .replace("{schemaName}", schemaName);
   }
 }

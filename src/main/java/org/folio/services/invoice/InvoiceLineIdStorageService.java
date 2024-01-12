@@ -1,6 +1,6 @@
 package org.folio.services.invoice;
 
-import static org.folio.domain.relationship.EntityTable.INVOICE_LINES;
+import static org.folio.domain.relationship.EntityTable.INVOICES;
 
 import io.vertx.core.Future;
 import org.apache.logging.log4j.LogManager;
@@ -20,7 +20,7 @@ public class InvoiceLineIdStorageService implements IdStorageService {
   @Override
   public Future<RecordToEntity> store(String recordId, String instanceId, String tenantId) {
     RecordToEntity recordToInvoiceLine = RecordToEntity.builder()
-      .table(INVOICE_LINES)
+      .table(INVOICES)
       .recordId(recordId)
       .entityId(instanceId)
       .build();
