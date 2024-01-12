@@ -22,9 +22,8 @@ public class EntityIdStorageDaoImplTest extends AbstractRestTest {
   private static final String INSTANCE_ID = UUID.randomUUID().toString();
   private static final String DUPLICATE_INSTANCE_ID = UUID.randomUUID().toString();
 
-  static PostgresClientFactory postgresClientFactory = new PostgresClientFactory(Vertx.vertx());
-
-  private EntityIdStorageDao entityIdStorageDao = new EntityIdStorageDaoImpl(postgresClientFactory);
+  PostgresClientFactory postgresClientFactory = new PostgresClientFactory(Vertx.vertx());
+  private final EntityIdStorageDao entityIdStorageDao = new EntityIdStorageDaoImpl(postgresClientFactory);
 
   @Test
   public void shouldReturnSavedRecordToInstance(TestContext context) {
