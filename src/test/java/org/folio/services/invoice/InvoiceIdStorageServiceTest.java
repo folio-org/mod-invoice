@@ -17,14 +17,14 @@ import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 
 @RunWith(MockitoJUnitRunner.class)
-class InvoiceLineIdStorageServiceTest {
+public class InvoiceIdStorageServiceTest {
   private static final String RECORD_ID = UUID.randomUUID().toString();
   private static final String INSTANCE_ID = UUID.randomUUID().toString();
 
   @Mock
   private EntityIdStorageDaoImpl entityIdStorageDaoImpl;
   @InjectMocks
-  private InvoiceLineIdStorageService invoiceLineIdStorageService;
+  private InvoiceIdStorageService invoiceLineIdStorageService;
 
   @Test
   public void shouldReturnSavedRecordToEntity() {

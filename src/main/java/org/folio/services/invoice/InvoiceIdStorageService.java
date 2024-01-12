@@ -8,12 +8,12 @@ import org.apache.logging.log4j.Logger;
 import org.folio.common.dao.EntityIdStorageDao;
 import org.folio.domain.relationship.RecordToEntity;
 
-public class InvoiceLineIdStorageService implements IdStorageService {
-  private static final Logger LOGGER = LogManager.getLogger(InvoiceLineIdStorageService.class);
+public class InvoiceIdStorageService implements IdStorageService {
+  private static final Logger LOGGER = LogManager.getLogger(InvoiceIdStorageService.class);
 
   private final EntityIdStorageDao entityIdStorageDao;
 
-  public InvoiceLineIdStorageService(EntityIdStorageDao entityIdStorageDao) {
+  public InvoiceIdStorageService(EntityIdStorageDao entityIdStorageDao) {
     this.entityIdStorageDao = entityIdStorageDao;
   }
 
