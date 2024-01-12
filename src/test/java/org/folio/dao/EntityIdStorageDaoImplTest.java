@@ -8,16 +8,16 @@ import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 import java.util.UUID;
+import org.folio.ApiTestSuite;
 import org.folio.common.dao.EntityIdStorageDao;
 import org.folio.common.dao.EntityIdStorageDaoImpl;
 import org.folio.common.dao.PostgresClientFactory;
 import org.folio.domain.relationship.RecordToEntity;
-import org.folio.rest.impl.AbstractRestTest;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
 @RunWith(VertxUnitRunner.class)
-public class EntityIdStorageDaoImplTest extends AbstractRestTest {
+public class EntityIdStorageDaoImplTest extends ApiTestSuite {
   private static final String RECORD_ID = UUID.randomUUID().toString();
   private static final String INSTANCE_ID = UUID.randomUUID().toString();
   private static final String DUPLICATE_INSTANCE_ID = UUID.randomUUID().toString();

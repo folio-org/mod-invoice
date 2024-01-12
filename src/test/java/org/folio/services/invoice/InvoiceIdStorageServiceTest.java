@@ -1,7 +1,7 @@
 package org.folio.services.invoice;
 
+import static org.folio.ApiTestSuite.TENANT_ID;
 import static org.folio.domain.relationship.EntityTable.INVOICES;
-import static org.folio.rest.impl.ApiTestBase.TENANT_ID;
 import static org.junit.Assert.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
