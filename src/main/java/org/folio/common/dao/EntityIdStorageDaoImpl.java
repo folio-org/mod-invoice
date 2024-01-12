@@ -11,9 +11,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.domain.relationship.EntityTable;
 import org.folio.domain.relationship.RecordToEntity;
-import org.springframework.stereotype.Repository;
 
-@Repository
 public class EntityIdStorageDaoImpl implements EntityIdStorageDao {
   private static final Logger LOGGER = LogManager.getLogger(EntityIdStorageDaoImpl.class);
 

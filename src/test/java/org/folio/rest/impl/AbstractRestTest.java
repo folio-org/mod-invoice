@@ -3,14 +3,10 @@ package org.folio.rest.impl;
 import static net.mguenther.kafka.junit.EmbeddedKafkaCluster.provisionWith;
 import static net.mguenther.kafka.junit.EmbeddedKafkaClusterConfig.defaultClusterConfig;
 import static org.folio.dataimport.util.RestUtil.OKAPI_TENANT_HEADER;
-import static org.folio.kafka.KafkaTopicNameHelper.getDefaultNameSpace;
 import static org.folio.rest.RestVerticle.OKAPI_HEADER_TENANT;
 import static org.folio.rest.RestVerticle.OKAPI_HEADER_TOKEN;
-import static org.folio.rest.util.OkapiConnectionParams.OKAPI_TOKEN_HEADER;
 import static org.folio.rest.util.OkapiConnectionParams.OKAPI_URL_HEADER;
-import static org.testcontainers.shaded.org.awaitility.Awaitility.await;
 
-import com.github.tomakehurst.wiremock.admin.NotFoundException;
 import com.github.tomakehurst.wiremock.common.ConsoleNotifier;
 import com.github.tomakehurst.wiremock.common.FileSource;
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
@@ -24,28 +20,15 @@ import io.restassured.http.ContentType;
 import io.restassured.specification.RequestSpecification;
 import io.vertx.core.DeploymentOptions;
 import io.vertx.core.Vertx;
-import io.vertx.core.impl.VertxImpl;
-import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
-import io.vertx.kafka.admin.KafkaAdminClient;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Optional;
 import java.util.UUID;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.function.Supplier;
 import net.mguenther.kafka.junit.EmbeddedKafkaCluster;
-import org.apache.kafka.clients.admin.AdminClientConfig;
-import org.apache.kafka.clients.consumer.ConsumerRecord;
-import org.apache.kafka.common.header.internals.RecordHeader;
-import org.folio.kafka.KafkaTopicNameHelper;
 import org.folio.rest.RestVerticle;
-import org.folio.rest.jaxrs.model.Event;
 import org.folio.rest.jaxrs.model.TenantAttributes;
 import org.folio.rest.jaxrs.model.TenantJob;
 import org.folio.rest.persist.Criteria.Criterion;
@@ -53,12 +36,10 @@ import org.folio.rest.persist.PostgresClient;
 import org.folio.rest.tools.utils.Envs;
 import org.folio.rest.tools.utils.ModuleName;
 import org.folio.rest.tools.utils.NetworkUtils;
-import org.folio.rest.util.OkapiConnectionParams;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Rule;
-import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.testcontainers.containers.PostgreSQLContainer;
 
 /**
@@ -250,82 +231,5 @@ public abstract class AbstractRestTest {
     public boolean applyGlobally() {
       return false;
     }
-  }
-
-  protected String formatToKafkaTopicName(String eventType) {
-    return KafkaTopicNameHelper.formatTopicName(KAFKA_ENV_VALUE, getDefaultNameSpace(), TENANT_ID, eventType);
-  }
-
-  protected  <T> T getBeanFromSpringContext(Vertx vtx, Class<T> clazz) {
-
-    String parentVerticleUUID = vertx.deploymentIDs().stream()
-      .filter(v -> !((VertxImpl) vertx).getDeployment(v).isChild())
-      .findFirst()
-      .orElseThrow(() -> new NotFoundException("Couldn't find the parent verticle."));
-
-    Optional<Object> context = Optional.of(((VertxImpl) vtx).getDeployment(parentVerticleUUID).getContexts().stream()
-      .findFirst().map(v -> v.get("springContext")))
-      .orElseThrow(() -> new NotFoundException("Couldn't find the spring context."));
-
-    if (context.isPresent()) {
-      return ((AnnotationConfigApplicationContext) context.get()).getBean(clazz);
-    }
-    throw new NotFoundException(String.format("Couldn't find bean %s", clazz.getName()));
-  }
-
-  protected ConsumerRecord<String, String> buildConsumerRecord(String topic, Event event) {
-    ConsumerRecord<String, String> consumerRecord = new ConsumerRecord("folio", 0, 0, topic, Json.encode(event));
-    consumerRecord.headers().add(new RecordHeader(OkapiConnectionParams.OKAPI_TENANT_HEADER, TENANT_ID.getBytes(StandardCharsets.UTF_8)));
-    consumerRecord.headers().add(new RecordHeader(OKAPI_URL_HEADER, ("http://localhost:" + snapshotMockServer.port()).getBytes(StandardCharsets.UTF_8)));
-    consumerRecord.headers().add(new RecordHeader(OKAPI_TOKEN_HEADER, (TOKEN).getBytes(StandardCharsets.UTF_8)));
-    return consumerRecord;
-  }
-
-  private static void waitForPostgres() {
-    PostgresClient pgClient = PostgresClient.getInstance(vertx);
-    String query = "Select 1";
-    AtomicBoolean isReady = new AtomicBoolean();
-    await()
-      .atMost(15, TimeUnit.SECONDS)
-      .pollInterval(3, TimeUnit.SECONDS)
-      .alias("Is Postgres Up?")
-      .until(() -> {
-        System.out.println("checking to see if postgres is up");
-
-        vertx.runOnContext((at) -> pgClient.select(query)
-          .onSuccess(ar -> isReady.set(true)));
-
-        return isReady.get();
-      });
-
-    if (!isReady.get()) throw new RuntimeException("Could not connect to postgres");
-  }
-
-  private static void waitForKafka() {
-    Supplier<KafkaAdminClient> buildAdminClient = () -> {
-      Map<String, String> configs = new HashMap<>();
-      configs.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaCluster.getBrokerList());
-      return KafkaAdminClient.create(vertx, configs);
-    };
-    AtomicBoolean isReady = new AtomicBoolean();
-
-    await()
-      .atMost(15, TimeUnit.SECONDS)
-      .pollDelay(3, TimeUnit.SECONDS)
-      .pollInterval(3, TimeUnit.SECONDS)
-      .alias("Is Kafka Up?")
-      .until(() -> {
-        System.out.println("listing topics to see if kafka is up");
-        KafkaAdminClient adminClient = buildAdminClient.get();
-        adminClient.listTopics()
-          .onComplete(ar -> {
-            if (ar.succeeded()) {
-              System.out.println("Kafka is up");
-              isReady.set(true);
-            }
-            adminClient.close(1000);
-          });
-        return isReady.get();
-      });
   }
 }
