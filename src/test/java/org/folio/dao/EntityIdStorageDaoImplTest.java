@@ -15,8 +15,6 @@ import org.folio.domain.relationship.RecordToEntity;
 import org.folio.rest.impl.AbstractRestTest;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.mockito.InjectMocks;
-import org.mockito.Spy;
 
 @RunWith(VertxUnitRunner.class)
 public class EntityIdStorageDaoImplTest extends AbstractRestTest {
@@ -24,10 +22,8 @@ public class EntityIdStorageDaoImplTest extends AbstractRestTest {
   private static final String INSTANCE_ID = UUID.randomUUID().toString();
   private static final String DUPLICATE_INSTANCE_ID = UUID.randomUUID().toString();
 
-  @Spy
   static PostgresClientFactory postgresClientFactory = new PostgresClientFactory(Vertx.vertx());
 
-  @InjectMocks
   private EntityIdStorageDao entityIdStorageDao = new EntityIdStorageDaoImpl(postgresClientFactory);
 
   @Test
