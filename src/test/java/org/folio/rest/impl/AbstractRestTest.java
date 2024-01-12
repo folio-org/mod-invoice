@@ -40,6 +40,7 @@ import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Rule;
+import org.junit.jupiter.api.AfterAll;
 import org.testcontainers.containers.PostgreSQLContainer;
 
 /**
@@ -93,7 +94,7 @@ public abstract class AbstractRestTest {
     deployVerticle(context);
   }
 
-  @AfterClass
+  @AfterAll
   public static void tearDownClass(final TestContext context) {
     Async async = context.async();
     vertx.close(context.asyncAssertSuccess(res -> {
