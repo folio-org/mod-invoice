@@ -1,23 +1,15 @@
 package org.folio;
 
 import static net.mguenther.kafka.junit.EmbeddedKafkaClusterConfig.defaultClusterConfig;
-import static org.folio.dataimport.util.RestUtil.OKAPI_TENANT_HEADER;
-import static org.folio.rest.RestVerticle.OKAPI_HEADER_TENANT;
-import static org.folio.rest.RestVerticle.OKAPI_HEADER_TOKEN;
 
 import io.restassured.RestAssured;
-import io.restassured.builder.RequestSpecBuilder;
-import io.restassured.http.ContentType;
-import io.restassured.specification.RequestSpecification;
 import io.vertx.core.DeploymentOptions;
+import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
-import io.vertx.ext.unit.Async;
-import io.vertx.ext.unit.TestContext;
-import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.UUID;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import net.mguenther.kafka.junit.EmbeddedKafkaCluster;
 import org.folio.builders.InvoiceWorkFlowDataHolderBuilderTest;
 import org.folio.converters.BatchVoucherModelConverterTest;
@@ -41,17 +33,10 @@ import org.folio.rest.impl.InvoiceLinesProratedAdjustmentsTest;
 import org.folio.rest.impl.InvoicesApiTest;
 import org.folio.rest.impl.InvoicesProratedAdjustmentsTest;
 import org.folio.rest.impl.MockServer;
-import org.folio.rest.impl.TenantAPI;
 import org.folio.rest.impl.VoucherLinesApiTest;
 import org.folio.rest.impl.VouchersApiTest;
 import org.folio.rest.impl.protection.InvoicesProtectionTest;
 import org.folio.rest.impl.protection.LinesProtectionTest;
-import org.folio.rest.jaxrs.model.TenantAttributes;
-import org.folio.rest.jaxrs.model.TenantJob;
-import org.folio.rest.persist.Criteria.Criterion;
-import org.folio.rest.persist.PostgresClient;
-import org.folio.rest.tools.utils.Envs;
-import org.folio.rest.tools.utils.ModuleName;
 import org.folio.rest.tools.utils.NetworkUtils;
 import org.folio.schemas.xsd.BatchVoucherSchemaXSDTest;
 import org.folio.services.InvoiceLinesRetrieveServiceTest;
@@ -79,28 +64,13 @@ import org.folio.services.voucher.BatchVoucherGenerateServiceTest;
 import org.folio.services.voucher.UploadBatchVoucherExportServiceTest;
 import org.folio.verticles.DataImportConsumerVerticleTest;
 import org.junit.AfterClass;
-import org.junit.Before;
-import org.junit.BeforeClass;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Nested;
-import org.testcontainers.containers.PostgreSQLContainer;
 
 public class ApiTestSuite {
 
-  public static final String POSTGRES_IMAGE = "postgres:12-alpine";
-  private static PostgreSQLContainer<?> postgresSQLContainer;
-
-  private static final String INVOICES_TABLE = "records_invoices";
-  protected static final String TOKEN = "token";
-  private static final String HTTP_PORT = "http.port";
-  private static String useExternalDatabase;
-  public static final String TENANT_ID = "test_tenant";
-  protected static RequestSpecification spec;
-
-  protected static final String okapiUserIdHeader = UUID.randomUUID().toString();
-  public static final String OKAPI_URL_ENV = "OKAPI_URL";
+  private static final int okapiPort = NetworkUtils.nextFreePort();
   public static final int mockPort = NetworkUtils.nextFreePort();
-  public static final int okapiPort = NetworkUtils.nextFreePort();
-  protected static final String OKAPI_URL = "http://localhost:" + okapiPort;
   public static final String KAFKA_ENV_VALUE = "test-env";
   private static final String KAFKA_HOST = "KAFKA_HOST";
   private static final String KAFKA_PORT = "KAFKA_PORT";
@@ -112,8 +82,8 @@ public class ApiTestSuite {
   public static Vertx vertx;
   private static boolean initialised;
 
-  @BeforeClass
-  public static void before(TestContext context) throws Exception {
+  @BeforeAll
+  public static void before() throws InterruptedException, ExecutionException, TimeoutException {
     if (vertx == null) {
       vertx = Vertx.vertx();
     }
@@ -121,8 +91,8 @@ public class ApiTestSuite {
     mockServer = new MockServer(mockPort);
     mockServer.start();
 
-    RestAssured.baseURI = "http://localhost:" + mockPort;
-    RestAssured.port = mockPort;
+    RestAssured.baseURI = "http://localhost:" + okapiPort;
+    RestAssured.port = okapiPort;
     RestAssured.enableLoggingOfRequestAndResponseIfValidationFails();
 
     kafkaCluster = EmbeddedKafkaCluster.provisionWith(defaultClusterConfig());
@@ -131,127 +101,30 @@ public class ApiTestSuite {
     System.setProperty(KAFKA_HOST, hostAndPort[0]);
     System.setProperty(KAFKA_PORT, hostAndPort[1]);
     System.setProperty(KAFKA_ENV, KAFKA_ENV_VALUE);
-    System.setProperty(OKAPI_URL_KEY, OKAPI_URL);
-    runDatabase();
-    deployVerticle(context);
-  }
+    System.setProperty(OKAPI_URL_KEY, "http://localhost:" + mockPort);
 
-  @Before
-  public void setUp(TestContext context) throws IOException {
-    clearTable(context);
-    spec = new RequestSpecBuilder()
-      .setContentType(ContentType.JSON)
-      .addHeader(OKAPI_TENANT_HEADER, TENANT_ID)
-      .addHeader(RestVerticle.OKAPI_USERID_HEADER, okapiUserIdHeader)
-      .addHeader("Accept", "text/plain, application/json")
-      .setBaseUri(OKAPI_URL)
-      .build();
-  }
+    final JsonObject conf = new JsonObject();
+    conf.put("http.port", okapiPort);
 
-  private void clearTable(TestContext context) {
-    Async async = context.async();
-    PostgresClient pgClient = PostgresClient.getInstance(vertx, TENANT_ID);
-    pgClient.delete(INVOICES_TABLE, new Criterion(), event1 -> {
-      if (event1.failed()) {
-        context.fail(event1.cause());
+    final DeploymentOptions opt = new DeploymentOptions().setConfig(conf);
+    Promise<String> deploymentComplete = Promise.promise();
+    vertx.deployVerticle(RestVerticle.class.getName(), opt, res -> {
+      if (res.succeeded()) {
+        deploymentComplete.complete(res.result());
+      } else {
+        deploymentComplete.fail(res.cause());
       }
-      async.complete();
     });
+    deploymentComplete.future().toCompletionStage().toCompletableFuture().get(60, TimeUnit.SECONDS);
+    initialised = true;
   }
 
   @AfterClass
-  public static void after(TestContext context) {
-    Async async = context.async();
-    vertx.close(context.asyncAssertSuccess(res -> {
-      if (useExternalDatabase.equals("embedded")) {
-        PostgresClient.stopPostgresTester();
-      }
-      kafkaCluster.stop();
-      mockServer.close();
-      initialised = false;
-      async.complete();
-    }));
-  }
-
-  private static void runDatabase() throws Exception {
-    PostgresClient.stopPostgresTester();
-    PostgresClient.closeAllClients();
-    useExternalDatabase = System.getProperty(
-      "org.folio.invoice.test.database",
-      "embedded");
-
-    switch (useExternalDatabase) {
-      case "environment":
-        System.out.println("Using environment settings");
-        break;
-      case "external":
-        String postgresConfigPath = System.getProperty(
-          "org.folio.invoice.test.config",
-          "/postgres-conf-local.json");
-        PostgresClient.setConfigFilePath(postgresConfigPath);
-        break;
-      case "embedded":
-        postgresSQLContainer = new PostgreSQLContainer<>(POSTGRES_IMAGE);
-        postgresSQLContainer.start();
-
-        Envs.setEnv(
-          postgresSQLContainer.getHost(),
-          postgresSQLContainer.getFirstMappedPort(),
-          postgresSQLContainer.getUsername(),
-          postgresSQLContainer.getPassword(),
-          postgresSQLContainer.getDatabaseName()
-        );
-        break;
-      default:
-        String message = "No understood database choice made." +
-          "Please set org.folio.source.record.manager.test.database" +
-          "to 'external', 'environment' or 'embedded'";
-        throw new Exception(message);
-    }
-  }
-
-  public static String constructModuleName() {
-    return ModuleName.getModuleName().replace("_", "-") + "-" + ModuleName.getModuleVersion();
-  }
-
-  private static void deployVerticle(final TestContext context) {
-    Async async = context.async();
-    final DeploymentOptions options = new DeploymentOptions()
-      .setConfig(new JsonObject()
-        .put(HTTP_PORT, okapiPort));
-    vertx.deployVerticle(RestVerticle.class.getName(), options, deployVerticleAr -> {
-      try {
-        TenantAPI tenantAPI = new TenantAPI();
-        TenantAttributes tenantAttributes = new TenantAttributes();
-        tenantAttributes.setModuleTo(constructModuleName());
-
-        Map<String, String> okapiHeaders = new HashMap<>();
-        okapiHeaders.put(OKAPI_HEADER_TOKEN, TOKEN);
-        okapiHeaders.put(OKAPI_URL_ENV, OKAPI_URL);
-        okapiHeaders.put(OKAPI_HEADER_TENANT, TENANT_ID);
-        tenantAPI.postTenant(tenantAttributes, okapiHeaders, context.asyncAssertSuccess(result -> {
-          if (result.getStatus() == 204) {
-            return;
-          }
-          if (result.getStatus() == 201) {
-            tenantAPI.getTenantByOperationId(((TenantJob)result.getEntity()).getId(), 60000, okapiHeaders,
-              context.asyncAssertSuccess(res3 -> {
-                context.assertTrue(((TenantJob) res3.getEntity()).getComplete());
-                String error = ((TenantJob) res3.getEntity()).getError();
-                if (error != null) {
-                  context.assertTrue(error.contains("EventDescriptor was not registered for eventType"));
-                }
-                initialised = true;
-              }), vertx.getOrCreateContext());
-          } else {
-            context.assertEquals("Failed to make post tenant. Received status code 400", result.getStatus());
-          }
-          async.complete();
-        }), vertx.getOrCreateContext());
-      } catch (Exception e) {
-        e.printStackTrace();
-      }
-    });
+  public static void after() {
+    kafkaCluster.stop();
+    mockServer.close();
+    vertx.close();
+    initialised = false;
   }
 
   public static boolean isNotInitialised() {

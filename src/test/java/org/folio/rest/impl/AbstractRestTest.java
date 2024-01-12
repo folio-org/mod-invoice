@@ -2,19 +2,12 @@ package org.folio.rest.impl;
 
 import static net.mguenther.kafka.junit.EmbeddedKafkaCluster.provisionWith;
 import static net.mguenther.kafka.junit.EmbeddedKafkaClusterConfig.defaultClusterConfig;
+import static org.folio.ApiTestSuite.mockPort;
 import static org.folio.dataimport.util.RestUtil.OKAPI_TENANT_HEADER;
 import static org.folio.rest.RestVerticle.OKAPI_HEADER_TENANT;
 import static org.folio.rest.RestVerticle.OKAPI_HEADER_TOKEN;
 import static org.folio.rest.util.OkapiConnectionParams.OKAPI_URL_HEADER;
 
-import com.github.tomakehurst.wiremock.common.ConsoleNotifier;
-import com.github.tomakehurst.wiremock.common.FileSource;
-import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
-import com.github.tomakehurst.wiremock.extension.Parameters;
-import com.github.tomakehurst.wiremock.extension.ResponseTransformer;
-import com.github.tomakehurst.wiremock.http.Request;
-import com.github.tomakehurst.wiremock.http.Response;
-import com.github.tomakehurst.wiremock.junit.WireMockRule;
 import io.restassured.builder.RequestSpecBuilder;
 import io.restassured.http.ContentType;
 import io.restassured.specification.RequestSpecification;
@@ -36,10 +29,8 @@ import org.folio.rest.persist.PostgresClient;
 import org.folio.rest.tools.utils.Envs;
 import org.folio.rest.tools.utils.ModuleName;
 import org.folio.rest.tools.utils.NetworkUtils;
-import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
-import org.junit.Rule;
 import org.junit.jupiter.api.AfterAll;
 import org.testcontainers.containers.PostgreSQLContainer;
 
@@ -68,14 +59,6 @@ public abstract class AbstractRestTest {
   public static final String OKAPI_URL_ENV = "OKAPI_URL";
   private static final int PORT = NetworkUtils.nextFreePort();
   protected static final String OKAPI_URL = "http://localhost:" + PORT;
-
-  @Rule
-  public WireMockRule snapshotMockServer = new WireMockRule(
-    WireMockConfiguration.wireMockConfig()
-      .dynamicPort()
-      .notifier(new ConsoleNotifier(true))
-      .extensions(new RequestToResponseTransformer())
-  );
 
   public static EmbeddedKafkaCluster kafkaCluster;
 
@@ -192,7 +175,7 @@ public abstract class AbstractRestTest {
     clearTable(context);
     spec = new RequestSpecBuilder()
       .setContentType(ContentType.JSON)
-      .addHeader(OKAPI_URL_HEADER, "http://localhost:" + snapshotMockServer.port())
+      .addHeader(OKAPI_URL_HEADER, "http://localhost:" + mockPort)
       .addHeader(OKAPI_TENANT_HEADER, TENANT_ID)
       .addHeader(RestVerticle.OKAPI_USERID_HEADER, okapiUserIdHeader)
       .addHeader("Accept", "text/plain, application/json")
@@ -209,28 +192,5 @@ public abstract class AbstractRestTest {
       }
       async.complete();
     });
-  }
-
-  /**
-   * Maps a request body to a response body.
-   */
-  public static class RequestToResponseTransformer extends ResponseTransformer {
-
-    public static final String NAME = "request-to-response-transformer";
-
-    @Override
-    public Response transform(Request request, Response response, FileSource files, Parameters parameters) {
-      return Response.Builder.like(response).but().body(request.getBody()).build();
-    }
-
-    @Override
-    public String getName() {
-      return NAME;
-    }
-
-    @Override
-    public boolean applyGlobally() {
-      return false;
-    }
   }
 }

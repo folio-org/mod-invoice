@@ -7,7 +7,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
 
 @Configuration
-@ComponentScan({"org.folio"})
+@ComponentScan({ "org.folio" })
 @Import({ ServicesConfiguration.class, KafkaConsumersConfiguration.class })
 public class ApplicationConfig {
 
