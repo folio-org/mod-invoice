@@ -22,27 +22,27 @@ public class InvoiceIdStorageServiceTest {
   private static final String INVOICE_ID = UUID.randomUUID().toString();
 
   @Mock private EntityIdStorageDaoImpl entityIdStorageDaoImpl;
-  @InjectMocks private InvoiceIdStorageService invoiceLineIdStorageService;
+  @InjectMocks private InvoiceIdStorageService invoiceIdStorageService;
 
   @Test
   public void shouldReturnSavedRecordToEntity() {
-    RecordToEntity expectedRecordToInstance =
+    RecordToEntity expectedRecordToInvoice =
       RecordToEntity.builder().table(INVOICES).recordId(RECORD_ID).entityId(INVOICE_ID).build();
-    when(entityIdStorageDaoImpl.saveRecordToEntityRelationship(any(RecordToEntity.class), any())).thenReturn(Future.succeededFuture(expectedRecordToInstance));
-    Future<RecordToEntity> future = invoiceLineIdStorageService.store(RECORD_ID, INVOICE_ID, TENANT_ID);
+    when(entityIdStorageDaoImpl.saveRecordToEntityRelationship(any(RecordToEntity.class), any())).thenReturn(Future.succeededFuture(expectedRecordToInvoice));
+    Future<RecordToEntity> future = invoiceIdStorageService.store(RECORD_ID, INVOICE_ID, TENANT_ID);
 
     RecordToEntity actualRecordToInstance = future.result();
-    assertEquals(expectedRecordToInstance.getTable().getTableName(), actualRecordToInstance.getTable().getTableName());
-    assertEquals(expectedRecordToInstance.getTable().getEntityIdFieldName(), actualRecordToInstance.getTable().getEntityIdFieldName());
-    assertEquals(expectedRecordToInstance.getTable().getRecordIdFieldName(), actualRecordToInstance.getTable().getRecordIdFieldName());
-    assertEquals(expectedRecordToInstance.getRecordId(), actualRecordToInstance.getRecordId());
-    assertEquals(expectedRecordToInstance.getEntityId(), actualRecordToInstance.getEntityId());
+    assertEquals(expectedRecordToInvoice.getTable().getTableName(), actualRecordToInstance.getTable().getTableName());
+    assertEquals(expectedRecordToInvoice.getTable().getEntityIdFieldName(), actualRecordToInstance.getTable().getEntityIdFieldName());
+    assertEquals(expectedRecordToInvoice.getTable().getRecordIdFieldName(), actualRecordToInstance.getTable().getRecordIdFieldName());
+    assertEquals(expectedRecordToInvoice.getRecordId(), actualRecordToInstance.getRecordId());
+    assertEquals(expectedRecordToInvoice.getEntityId(), actualRecordToInstance.getEntityId());
   }
 
   @Test
   public void shouldReturnFailedFuture() {
     when(entityIdStorageDaoImpl.saveRecordToEntityRelationship(any(RecordToEntity.class), any())).thenReturn(Future.failedFuture("failed"));
-    Future<RecordToEntity> future = invoiceLineIdStorageService.store(RECORD_ID, INVOICE_ID, TENANT_ID);
+    Future<RecordToEntity> future = invoiceIdStorageService.store(RECORD_ID, INVOICE_ID, TENANT_ID);
 
     assertEquals("failed", future.cause().getMessage());
   }
