@@ -18,11 +18,11 @@ public class InvoiceIdStorageService implements IdStorageService {
   }
 
   @Override
-  public Future<RecordToEntity> store(String recordId, String instanceId, String tenantId) {
+  public Future<RecordToEntity> store(String recordId, String invoiceId, String tenantId) {
     RecordToEntity recordToInvoiceLine = RecordToEntity.builder()
       .table(INVOICES)
       .recordId(recordId)
-      .entityId(instanceId)
+      .entityId(invoiceId)
       .build();
     LOGGER.info("Saving recordToInvoiceLine relationship: {}", recordToInvoiceLine);
     return entityIdStorageDao.saveRecordToEntityRelationship(recordToInvoiceLine, tenantId);

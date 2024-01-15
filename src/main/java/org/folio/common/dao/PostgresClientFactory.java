@@ -5,7 +5,7 @@ import org.folio.rest.persist.PostgresClient;
 
 public class PostgresClientFactory {
 
-  private Vertx vertx;
+  private final Vertx vertx;
 
   public PostgresClientFactory(Vertx vertx) {
     this.vertx = vertx;

@@ -19,8 +19,8 @@ import org.junit.runner.RunWith;
 @RunWith(VertxUnitRunner.class)
 public class EntityIdStorageDaoImplTest extends AbstractRestTest {
   private static final String RECORD_ID = UUID.randomUUID().toString();
-  private static final String INSTANCE_ID = UUID.randomUUID().toString();
-  private static final String DUPLICATE_INSTANCE_ID = UUID.randomUUID().toString();
+  private static final String INVOICE_ID = UUID.randomUUID().toString();
+  private static final String DUPLICATE_INVOICE_ID = UUID.randomUUID().toString();
 
   PostgresClientFactory postgresClientFactory = new PostgresClientFactory(Vertx.vertx());
   private final EntityIdStorageDao entityIdStorageDao = new EntityIdStorageDaoImpl(postgresClientFactory);
@@ -29,7 +29,7 @@ public class EntityIdStorageDaoImplTest extends AbstractRestTest {
   public void shouldReturnSavedRecordToInstance(TestContext context) {
     Async async = context.async();
     RecordToEntity expectedRecordToInstance =
-      RecordToEntity.builder().table(INVOICES).recordId(RECORD_ID).entityId(INSTANCE_ID).build();
+      RecordToEntity.builder().table(INVOICES).recordId(RECORD_ID).entityId(INVOICE_ID).build();
 
     Future<RecordToEntity> future = entityIdStorageDao.saveRecordToEntityRelationship(expectedRecordToInstance, TENANT_ID);
     future.onComplete(ar -> {
@@ -47,9 +47,9 @@ public class EntityIdStorageDaoImplTest extends AbstractRestTest {
     Async async = context.async();
 
     RecordToEntity expectedRecordToInstance1 =
-      RecordToEntity.builder().table(INVOICES).recordId(RECORD_ID).entityId(INSTANCE_ID).build();
+      RecordToEntity.builder().table(INVOICES).recordId(RECORD_ID).entityId(INVOICE_ID).build();
     RecordToEntity expectedRecordToInstance2 =
-      RecordToEntity.builder().table(INVOICES).recordId(RECORD_ID).entityId(DUPLICATE_INSTANCE_ID).build();
+      RecordToEntity.builder().table(INVOICES).recordId(RECORD_ID).entityId(DUPLICATE_INVOICE_ID).build();
 
     Future<RecordToEntity> future = entityIdStorageDao.saveRecordToEntityRelationship(expectedRecordToInstance1, TENANT_ID)
       .compose(ar -> entityIdStorageDao.saveRecordToEntityRelationship(expectedRecordToInstance2, TENANT_ID));
