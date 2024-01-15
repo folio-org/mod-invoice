@@ -7,19 +7,22 @@ import static org.folio.dataimport.util.RestUtil.OKAPI_TENANT_HEADER;
 import static org.folio.rest.RestVerticle.OKAPI_HEADER_TENANT;
 import static org.folio.rest.RestVerticle.OKAPI_HEADER_TOKEN;
 import static org.folio.rest.util.OkapiConnectionParams.OKAPI_URL_HEADER;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 
 import io.restassured.builder.RequestSpecBuilder;
 import io.restassured.http.ContentType;
 import io.restassured.specification.RequestSpecification;
 import io.vertx.core.DeploymentOptions;
+import io.vertx.core.Future;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
-import io.vertx.ext.unit.Async;
-import io.vertx.ext.unit.TestContext;
+import io.vertx.junit5.VertxTestContext;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
+import javax.ws.rs.core.Response;
 import net.mguenther.kafka.junit.EmbeddedKafkaCluster;
 import org.folio.rest.RestVerticle;
 import org.folio.rest.jaxrs.model.TenantAttributes;
@@ -30,8 +33,8 @@ import org.folio.rest.tools.utils.Envs;
 import org.folio.rest.tools.utils.ModuleName;
 import org.folio.rest.tools.utils.NetworkUtils;
 import org.junit.Before;
-import org.junit.BeforeClass;
 import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
 import org.testcontainers.containers.PostgreSQLContainer;
 
 /**
@@ -62,8 +65,8 @@ public abstract class AbstractRestTest {
 
   public static EmbeddedKafkaCluster kafkaCluster;
 
-  @BeforeClass
-  public static void setUpClass(final TestContext context) throws Exception {
+  @BeforeAll
+  public static void setUpClass(final VertxTestContext context) throws Exception {
     vertx = Vertx.vertx();
     kafkaCluster = provisionWith(defaultClusterConfig());
     kafkaCluster.start();
@@ -78,15 +81,20 @@ public abstract class AbstractRestTest {
   }
 
   @AfterAll
-  public static void tearDownClass(final TestContext context) {
-    Async async = context.async();
-    vertx.close(context.asyncAssertSuccess(res -> {
-      if (useExternalDatabase.equals("embedded")) {
-        PostgresClient.stopPostgresTester();
+  public static void tearDownClass(final VertxTestContext context) {
+    vertx.close(ar -> {
+      if (ar.succeeded()) {
+        if ("embedded".equals(useExternalDatabase)) {
+          PostgresClient.stopPostgresTester();
+        }
+        if (kafkaCluster != null) {
+          kafkaCluster.stop();
+        }
+        context.completeNow();
+      } else {
+        context.failNow(ar.cause());
       }
-      kafkaCluster.stop();
-      async.complete();
-    }));
+    });
   }
 
   private static void runDatabase() throws Exception {
@@ -97,19 +105,16 @@ public abstract class AbstractRestTest {
       "embedded");
 
     switch (useExternalDatabase) {
-      case "environment":
-        System.out.println("Using environment settings");
-        break;
-      case "external":
+      case "environment" -> System.out.println("Using environment settings");
+      case "external" -> {
         String postgresConfigPath = System.getProperty(
           "org.folio.invoice.test.config",
           "/postgres-conf-local.json");
         PostgresClient.setConfigFilePath(postgresConfigPath);
-        break;
-      case "embedded":
+      }
+      case "embedded" -> {
         postgresSQLContainer = new PostgreSQLContainer<>(POSTGRES_IMAGE);
         postgresSQLContainer.start();
-
         Envs.setEnv(
           postgresSQLContainer.getHost(),
           postgresSQLContainer.getFirstMappedPort(),
@@ -117,12 +122,13 @@ public abstract class AbstractRestTest {
           postgresSQLContainer.getPassword(),
           postgresSQLContainer.getDatabaseName()
         );
-        break;
-      default:
+      }
+      default -> {
         String message = "No understood database choice made." +
           "Please set org.folio.source.record.manager.test.database" +
           "to 'external', 'environment' or 'embedded'";
         throw new Exception(message);
+      }
     }
   }
 
@@ -130,48 +136,67 @@ public abstract class AbstractRestTest {
     return ModuleName.getModuleName().replace("_", "-") + "-" + ModuleName.getModuleVersion();
   }
 
-  private static void deployVerticle(final TestContext context) {
-    Async async = context.async();
+  private static void deployVerticle(final VertxTestContext testContext) {
     port = NetworkUtils.nextFreePort();
     String okapiUrl = "http://localhost:" + port;
     final DeploymentOptions options = new DeploymentOptions()
       .setConfig(new JsonObject()
         .put(HTTP_PORT, port));
-    vertx.deployVerticle(RestVerticle.class.getName(), options, deployVerticleAr -> {
-      try {
-        TenantAPI tenantAPI = new TenantAPI();
-        TenantAttributes tenantAttributes = new TenantAttributes();
-        tenantAttributes.setModuleTo(constructModuleName());
-        Map<String, String> okapiHeaders = new HashMap<>();
-        okapiHeaders.put(OKAPI_HEADER_TOKEN, TOKEN);
-        okapiHeaders.put(OKAPI_URL_ENV, okapiUrl);
-        okapiHeaders.put(OKAPI_HEADER_TENANT, TENANT_ID);
-        tenantAPI.postTenant(tenantAttributes, okapiHeaders, context.asyncAssertSuccess(result -> {
-          if (result.getStatus() == 204) {
+    vertx.deployVerticle(RestVerticle.class.getName(), options).onComplete(deployVerticleAr -> {
+      if (deployVerticleAr.failed()) {
+        testContext.failNow(deployVerticleAr.cause());
+        return;
+      }
+
+      TenantAPI tenantAPI = new TenantAPI();
+      TenantAttributes tenantAttributes = new TenantAttributes();
+      tenantAttributes.setModuleTo(constructModuleName());
+      Map<String, String> okapiHeaders = new HashMap<>();
+      okapiHeaders.put(OKAPI_HEADER_TOKEN, TOKEN);
+      okapiHeaders.put(OKAPI_URL_ENV, okapiUrl);
+      okapiHeaders.put(OKAPI_HEADER_TENANT, TENANT_ID);
+
+      Future<Response> future = Future.future(promise ->
+        tenantAPI.postTenant(tenantAttributes, okapiHeaders, promise, vertx.getOrCreateContext()));
+
+        future.onComplete(postResult -> {
+          if (postResult.failed()) {
+            testContext.failNow(postResult.cause());
             return;
           }
-          if (result.getStatus() == 201) {
-            tenantAPI.getTenantByOperationId(((TenantJob)result.getEntity()).getId(), 60000, okapiHeaders,
-              context.asyncAssertSuccess(res3 -> {
-                context.assertTrue(((TenantJob) res3.getEntity()).getComplete());
-                String error = ((TenantJob) res3.getEntity()).getError();
-                if (error != null) {
-                  context.assertTrue(error.contains("EventDescriptor was not registered for eventType"));
+          testContext.verify(() -> {
+            Response result = postResult.result();
+            if (result.getStatus() == 204) {
+              testContext.completeNow();
+            } else if (result.getStatus() == 201) {
+              Future<Response> future2 =
+                Future.future(promise -> tenantAPI.getTenantByOperationId(((TenantJob)result.getEntity()).getId(), 60000,
+                okapiHeaders, promise, vertx.getOrCreateContext()));
+
+              future2.onComplete(getResult -> testContext.verify(() -> {
+                if (getResult.failed()) {
+                  testContext.failNow(getResult.cause());
+                  return;
                 }
-              }), vertx.getOrCreateContext());
-          } else {
-            context.assertEquals("Failed to make post tenant. Received status code 400", result.getStatus());
-          }
-          async.complete();
-        }), vertx.getOrCreateContext());
-      } catch (Exception e) {
-        e.printStackTrace();
-      }
+                TenantJob tenantJob = (TenantJob) getResult.result().getEntity();
+                assertTrue(tenantJob.getComplete(), "Tenant job should be complete.");
+
+                String error = tenantJob.getError();
+                if (error != null) {
+                  assertTrue(error.contains("EventDescriptor was not registered for eventType"), "Error message should contain expected text.");
+                }
+                testContext.completeNow();
+              }));
+            } else {
+              fail("Failed to make post tenant. Received status code " + result.getStatus());
+            }
+          });
+        });
     });
   }
 
   @Before
-  public void setUp(TestContext context) throws IOException {
+  public void setUp(VertxTestContext context) throws IOException {
     clearTable(context);
     spec = new RequestSpecBuilder()
       .setContentType(ContentType.JSON)
@@ -183,14 +208,13 @@ public abstract class AbstractRestTest {
       .build();
   }
 
-  private void clearTable(TestContext context) {
-    Async async = context.async();
+  private void clearTable(VertxTestContext context) {
     PostgresClient pgClient = PostgresClient.getInstance(vertx, TENANT_ID);
     pgClient.delete(INVOICES_TABLE, new Criterion(), event1 -> {
       if (event1.failed()) {
-        context.fail(event1.cause());
+        context.failNow(event1.cause());
       }
-      async.complete();
+      context.completeNow();
     });
   }
 }

@@ -2,30 +2,46 @@ package org.folio.services.invoice;
 
 import static org.folio.domain.relationship.EntityTable.INVOICES;
 import static org.folio.kafka.headers.FolioKafkaHeaders.TENANT_ID;
-import static org.junit.Assert.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
 import io.vertx.core.Future;
+import io.vertx.junit5.VertxExtension;
 import java.util.UUID;
 import org.folio.common.dao.EntityIdStorageDaoImpl;
 import org.folio.domain.relationship.RecordToEntity;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.mockito.MockitoAnnotations;
 
-@RunWith(MockitoJUnitRunner.class)
-public class InvoiceIdStorageServiceTest {
+@ExtendWith(VertxExtension.class)
+class InvoiceIdStorageServiceTest {
+
   private static final String RECORD_ID = UUID.randomUUID().toString();
   private static final String INVOICE_ID = UUID.randomUUID().toString();
 
+  private AutoCloseable closeable;
   @Mock private EntityIdStorageDaoImpl entityIdStorageDaoImpl;
   @InjectMocks private InvoiceIdStorageService invoiceIdStorageService;
 
+
+  @BeforeEach
+  public void initMocks() {
+    closeable = MockitoAnnotations.openMocks(this);
+  }
+
+  @AfterEach
+  void closeService() throws Exception {
+    closeable.close();
+  }
+
   @Test
-  public void shouldReturnSavedRecordToEntity() {
+  void shouldReturnSavedRecordToEntity() {
     RecordToEntity expectedRecordToInvoice =
       RecordToEntity.builder().table(INVOICES).recordId(RECORD_ID).entityId(INVOICE_ID).build();
     when(entityIdStorageDaoImpl.saveRecordToEntityRelationship(any(RecordToEntity.class), any())).thenReturn(Future.succeededFuture(expectedRecordToInvoice));
@@ -40,7 +56,7 @@ public class InvoiceIdStorageServiceTest {
   }
 
   @Test
-  public void shouldReturnFailedFuture() {
+  void shouldReturnFailedFuture() {
     when(entityIdStorageDaoImpl.saveRecordToEntityRelationship(any(RecordToEntity.class), any())).thenReturn(Future.failedFuture("failed"));
     Future<RecordToEntity> future = invoiceIdStorageService.store(RECORD_ID, INVOICE_ID, TENANT_ID);
 
