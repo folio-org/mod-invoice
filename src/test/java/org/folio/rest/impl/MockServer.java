@@ -1066,7 +1066,7 @@ public class MockServer {
   }
 
   private <T> void handlePostEntry(RoutingContext ctx, Class<T> tClass, String entryName) {
-    handlePost(ctx, tClass, entryName, true);
+    handlePost(ctx, tClass, entryName, false);
   }
 
   private <T> void handlePost(RoutingContext ctx, Class<T> tClass, String entryName, boolean generateId) {

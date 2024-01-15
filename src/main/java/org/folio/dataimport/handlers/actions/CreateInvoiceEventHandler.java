@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -38,6 +39,7 @@ import org.folio.MappingProfile;
 import org.folio.ParsedRecord;
 import org.folio.Record;
 import org.folio.dataimport.utils.DataImportUtils;
+import org.folio.domain.relationship.RecordToEntity;
 import org.folio.invoices.utils.HelperUtils;
 import org.folio.processing.events.services.handler.EventHandler;
 import org.folio.processing.exceptions.EventProcessingException;
@@ -62,6 +64,7 @@ import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertxconcurrent.Semaphore;
+import org.folio.services.invoice.IdStorageService;
 
 public class CreateInvoiceEventHandler implements EventHandler {
 
@@ -86,11 +89,13 @@ public class CreateInvoiceEventHandler implements EventHandler {
   private static final Pattern SEGMENT_QUERY_PATTERN = Pattern.compile("([A-Z]{3}((\\+|<)\\w*)(\\2*\\w*)*(\\?\\w+)?\\[[1-9](-[1-9])?\\])");
   private static final int MAX_CHUNK_SIZE = 15;
   private final int maxActiveThreads;
-
+  private static final String RECORD_ID = "recordId";
   private final RestClient restClient;
+  private final IdStorageService idStorageService;
 
-  public CreateInvoiceEventHandler(RestClient restClient) {
+  public CreateInvoiceEventHandler(RestClient restClient, IdStorageService idStorageService) {
     this.restClient = restClient;
+    this.idStorageService = idStorageService;
     this.maxActiveThreads = Integer.parseInt(System.getProperty("dataimport.max-active-threads", "1"));
   }
 
@@ -108,41 +113,54 @@ public class CreateInvoiceEventHandler implements EventHandler {
       Map<String, String> okapiHeaders = DataImportUtils.getOkapiHeaders(dataImportEventPayload);
       Future<Map<Integer, PoLine>> poLinesFuture = getAssociatedPoLines(dataImportEventPayload, okapiHeaders);
 
-      poLinesFuture
+      var invoicesFuture = poLinesFuture
         .map(invLineNoToPoLine -> {
           ensureAdditionalData(dataImportEventPayload, invLineNoToPoLine);
           prepareEventPayloadForMapping(dataImportEventPayload);
           MappingManager.map(dataImportEventPayload, new MappingContext());
           prepareMappingResult(dataImportEventPayload);
           return null;
-        })
-        .compose(v -> saveInvoice(dataImportEventPayload, okapiHeaders))
-        .map(savedInvoice -> prepareInvoiceLinesToSave(savedInvoice.getId(), dataImportEventPayload, poLinesFuture.result()))
-        .compose(preparedInvoiceLines -> saveInvoiceLines(preparedInvoiceLines, okapiHeaders))
-        .onComplete(result -> {
-          makeLightweightReturnPayload(dataImportEventPayload);
-
-          if (result.succeeded()) {
-            List<InvoiceLine> invoiceLines = result.result().stream().map(Pair::getLeft).collect(Collectors.toList());
-            InvoiceLineCollection invoiceLineCollection = new InvoiceLineCollection().withInvoiceLines(invoiceLines).withTotalRecords(invoiceLines.size());
-            dataImportEventPayload.getContext().put(INVOICE_LINES_KEY, Json.encode(invoiceLineCollection));
-            Map<Integer, String> invoiceLinesErrors = prepareInvoiceLinesErrors(result.result());
-            if (!invoiceLinesErrors.isEmpty()) {
-              dataImportEventPayload.getContext().put(INVOICE_LINES_ERRORS_KEY, Json.encode(invoiceLinesErrors));
-              future.completeExceptionally(new EventProcessingException("Error during invoice lines creation"));
-              return;
-            }
-            future.complete(dataImportEventPayload);
-          } else {
-            preparePayloadWithMappedInvoiceLines(dataImportEventPayload);
-            logger.error("Error during invoice creation", result.cause());
-            future.completeExceptionally(result.cause());
-          }
         });
+      var recordId = payloadContext.get(RECORD_ID);
+      Future<RecordToEntity> recordToInvoiceFuture = idStorageService.store(recordId, UUID.randomUUID().toString(),
+        dataImportEventPayload.getTenant());
+
+      recordToInvoiceFuture.onSuccess(res -> {
+        String invoiceId = res.getEntityId();
+        invoicesFuture
+          .compose(v -> saveInvoice(dataImportEventPayload, okapiHeaders, invoiceId))
+          .map(savedInvoice -> prepareInvoiceLinesToSave(savedInvoice.getId(), dataImportEventPayload, poLinesFuture.result()))
+          .compose(preparedInvoiceLines -> saveInvoiceLines(preparedInvoiceLines, okapiHeaders))
+          .onComplete(result -> {
+            makeLightweightReturnPayload(dataImportEventPayload);
+
+            if (result.succeeded()) {
+              List<InvoiceLine> invoiceLines = result.result().stream().map(Pair::getLeft).collect(Collectors.toList());
+              InvoiceLineCollection invoiceLineCollection = new InvoiceLineCollection().withInvoiceLines(invoiceLines).withTotalRecords(invoiceLines.size());
+              dataImportEventPayload.getContext().put(INVOICE_LINES_KEY, Json.encode(invoiceLineCollection));
+              Map<Integer, String> invoiceLinesErrors = prepareInvoiceLinesErrors(result.result());
+              if (!invoiceLinesErrors.isEmpty()) {
+                dataImportEventPayload.getContext().put(INVOICE_LINES_ERRORS_KEY, Json.encode(invoiceLinesErrors));
+                future.completeExceptionally(new EventProcessingException("Error during invoice lines creation"));
+                return;
+              }
+              future.complete(dataImportEventPayload);
+            } else {
+              preparePayloadWithMappedInvoiceLines(dataImportEventPayload);
+              logger.error("Error during invoice creation", result.cause());
+              future.completeExceptionally(result.cause());
+            }
+          });
+      }).onFailure(failure -> {
+        logger.error("Error creating invoice recordId and instanceId relationship by jobExecutionId: '{}' and " +
+            "recordId: '{}' ", dataImportEventPayload.getJobExecutionId(), recordId, failure);
+        future.completeExceptionally(failure);
+      });
     } catch (Exception e) {
       logger.error("Error during creation invoice and invoice lines", e);
       future.completeExceptionally(e);
     }
+
     return future;
   }
 
@@ -321,9 +339,11 @@ public class CreateInvoiceEventHandler implements EventHandler {
     return format(PO_LINES_BY_REF_NUMBER_CQL, valueString);
   }
 
-  private Future<Invoice> saveInvoice(DataImportEventPayload dataImportEventPayload, Map<String, String> okapiHeaders) {
+  private Future<Invoice> saveInvoice(DataImportEventPayload dataImportEventPayload,
+                                      Map<String, String> okapiHeaders, String invoiceId) {
     Invoice invoiceToSave = Json.decodeValue(dataImportEventPayload.getContext().get(INVOICE.value()), Invoice.class);
     invoiceToSave.setSource(Invoice.Source.EDI);
+    invoiceToSave.setId(invoiceId);
     InvoiceHelper invoiceHelper = new InvoiceHelper(okapiHeaders, Vertx.currentContext());
     RequestContext requestContext = new RequestContext(Vertx.currentContext(), okapiHeaders);
 
