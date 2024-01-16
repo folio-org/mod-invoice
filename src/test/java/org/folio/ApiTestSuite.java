@@ -15,7 +15,6 @@ import org.folio.builders.InvoiceWorkFlowDataHolderBuilderTest;
 import org.folio.converters.BatchVoucherModelConverterTest;
 import org.folio.converters.BatchedVoucherLinesModelConverterTest;
 import org.folio.converters.BatchedVoucherModelConverterTest;
-import org.folio.dao.EntityIdStorageDaoImplTest;
 import org.folio.dataimport.cache.JobProfileSnapshotCacheTest;
 import org.folio.dataimport.handlers.actions.CreateInvoiceEventHandlerTest;
 import org.folio.invoices.util.HelperUtilsTest;
@@ -332,9 +331,4 @@ public class ApiTestSuite {
   @Nested
   class InvoiceIdStorageServiceTestNested extends InvoiceIdStorageServiceTest {
   }
-
-  @Nested
-  class EntityIdStorageDaoImplTestNested extends EntityIdStorageDaoImplTest{
-  }
-
 }
