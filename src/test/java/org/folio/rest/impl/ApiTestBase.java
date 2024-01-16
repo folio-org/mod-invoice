@@ -3,23 +3,18 @@ package org.folio.rest.impl;
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 import static javax.ws.rs.core.MediaType.APPLICATION_XML;
 import static org.folio.ApiTestSuite.mockPort;
-import static org.folio.dataimport.util.RestUtil.OKAPI_TENANT_HEADER;
 import static org.folio.rest.RestConstants.OKAPI_URL;
 import static org.folio.rest.RestVerticle.OKAPI_HEADER_TENANT;
 import static org.folio.rest.RestVerticle.OKAPI_HEADER_TOKEN;
 import static org.folio.rest.RestVerticle.OKAPI_USERID_HEADER;
 import static org.folio.rest.jaxrs.model.FundDistribution.DistributionType.PERCENTAGE;
-import static org.folio.rest.util.OkapiConnectionParams.OKAPI_URL_HEADER;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
 import io.restassured.RestAssured;
-import io.restassured.builder.RequestSpecBuilder;
-import io.restassured.http.ContentType;
 import io.restassured.http.Header;
 import io.restassured.http.Headers;
 import io.restassured.response.Response;
-import io.restassured.specification.RequestSpecification;
 import io.vertx.core.DeploymentOptions;
 import io.vertx.core.Future;
 import io.vertx.core.Vertx;
@@ -148,11 +143,8 @@ public class ApiTestBase {
   private static String useExternalDatabase;
   protected static Vertx vertx;
   protected static final String TENANT_ID = "diku";
-  protected static RequestSpecification spec;
 
-  protected static final String okapiUserIdHeader = UUID.randomUUID().toString();
   public static final String OKAPI_URL_ENV = "OKAPI_URL";
-  private static final int PORT = NetworkUtils.nextFreePort();
 
   @BeforeAll
   public static void before(final VertxTestContext context) throws Exception {
@@ -165,15 +157,6 @@ public class ApiTestBase {
     vertx = Vertx.vertx();
     runDatabase();
     deployVerticle(context);
-
-    spec = new RequestSpecBuilder()
-      .setContentType(ContentType.JSON)
-      .addHeader(OKAPI_URL_HEADER, "http://localhost:" + mockPort)
-      .addHeader(OKAPI_TENANT_HEADER, TENANT_ID)
-      .addHeader(RestVerticle.OKAPI_USERID_HEADER, okapiUserIdHeader)
-      .addHeader("Accept", "text/plain, application/json")
-      .setBaseUri("http://localhost:" + port)
-      .build();
   }
 
   @BeforeEach
@@ -188,20 +171,15 @@ public class ApiTestBase {
 
   @AfterAll
   public static void after(final VertxTestContext context) {
-    vertx.close(ar -> {
-      if (ar.succeeded()) {
-        if ("embedded".equals(useExternalDatabase)) {
-          PostgresClient.stopPostgresTester();
-        }
-        if (runningOnOwn) {
-          logger.info("Running test on own, un-initialising suite manually");
-          ApiTestSuite.after();
-        }
-        context.completeNow();
-      } else {
-        context.failNow(ar.cause());
+    if (runningOnOwn) {
+      if ("embedded".equals(useExternalDatabase)) {
+        PostgresClient.stopPostgresTester();
       }
-    });
+      logger.info("Running test on own, un-initialising suite manually");
+      ApiTestSuite.after(context);
+    } else {
+      context.completeNow();
+    }
   }
 
   private static void runDatabase() throws Exception {

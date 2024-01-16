@@ -7,6 +7,8 @@ import io.vertx.core.DeploymentOptions;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
+import io.vertx.junit5.VertxExtension;
+import io.vertx.junit5.VertxTestContext;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -65,10 +67,12 @@ import org.folio.services.validator.ProtectedFieldsValidatorTest;
 import org.folio.services.voucher.BatchVoucherGenerateServiceTest;
 import org.folio.services.voucher.UploadBatchVoucherExportServiceTest;
 import org.folio.verticles.DataImportConsumerVerticleTest;
-import org.junit.AfterClass;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.extension.ExtendWith;
 
+@ExtendWith(VertxExtension.class)
 public class ApiTestSuite {
 
   private static final int okapiPort = NetworkUtils.nextFreePort();
@@ -121,11 +125,17 @@ public class ApiTestSuite {
     initialised = true;
   }
 
-  @AfterClass
-  public static void after() {
+  @AfterAll
+  public static void after(VertxTestContext testContext) {
     kafkaCluster.stop();
     mockServer.close();
-    vertx.close();
+    vertx.close(ar -> {
+      if (ar.succeeded()) {
+        testContext.completeNow();
+      } else {
+        testContext.failNow(ar.cause());
+      }
+    });
     initialised = false;
   }
 
