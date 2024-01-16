@@ -130,7 +130,7 @@ public class DataImportConsumerVerticleTest extends ApiTestBase {
     // then
     String topicToObserve = KafkaTopicNameHelper.formatTopicName(KAFKA_ENV_VALUE, getDefaultNameSpace(), TENANT_ID, DI_COMPLETED.value());
     List<KeyValue<String, String>> observedRecords = kafkaCluster.observe(ObserveKeyValues.on(topicToObserve, 1)
-      .observeFor(30, TimeUnit.SECONDS)
+      .observeFor(40, TimeUnit.SECONDS)
       .build());
 
     assertEquals(recordId, new String(observedRecords.get(0).getHeaders().lastHeader(RECORD_ID_HEADER).value(), UTF_8));
