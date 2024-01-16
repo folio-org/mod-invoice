@@ -45,6 +45,7 @@ import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.json.jackson.DatabindCodec;
 import io.vertx.junit5.VertxExtension;
+import io.vertx.junit5.VertxTestContext;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -247,8 +248,8 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
   private RestClient mockOrderLinesRestClient;
 
   @BeforeEach
-  public void setUp() {
-    super.setUp();
+  public void setUp(final VertxTestContext context) {
+    super.setUp(context);
     mockOrderLinesRestClient = Mockito.mock(RestClient.class);
     invoiceIdStorageService = Mockito.mock(InvoiceIdStorageService.class);
     EventManager.clearEventHandlers();

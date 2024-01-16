@@ -25,6 +25,7 @@ import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.nullValue;
 import static org.hamcrest.collection.IsCollectionWithSize.hasSize;
 
+import io.vertx.junit5.VertxExtension;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
@@ -38,10 +39,12 @@ import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.jaxrs.model.InvoiceLine;
 import org.folio.rest.jaxrs.model.Metadata;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
+@ExtendWith(VertxExtension.class)
 public class InvoicesProratedAdjustmentsTest extends ApiTestBase {
 
   private static final Logger logger = LogManager.getLogger(InvoicesProratedAdjustmentsTest.class);

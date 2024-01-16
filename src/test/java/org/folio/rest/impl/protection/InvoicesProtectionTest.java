@@ -18,6 +18,7 @@ import static org.hamcrest.Matchers.is;
 import static org.hamcrest.collection.IsCollectionWithSize.hasSize;
 import static org.hamcrest.core.IsEqual.equalTo;
 
+import io.vertx.junit5.VertxExtension;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -32,11 +33,13 @@ import org.folio.rest.jaxrs.model.Error;
 import org.folio.rest.jaxrs.model.Errors;
 import org.folio.rest.jaxrs.model.Invoice;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import io.restassured.http.Headers;
 
+@ExtendWith(VertxExtension.class)
 public class InvoicesProtectionTest extends ProtectedEntityTestBase {
 
   private static final Logger logger = LogManager.getLogger(InvoicesProtectionTest.class);

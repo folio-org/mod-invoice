@@ -4,26 +4,20 @@ import static org.folio.ApiTestSuite.mockPort;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import io.vertx.core.Context;
+import io.vertx.core.Vertx;
+import io.vertx.junit5.VertxExtension;
+import io.vertx.junit5.VertxTestContext;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.*;
-import java.util.List;
-import org.folio.utils.UserPermissionsUtil;
-import io.vertx.core.json.JsonArray;
-
-import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.RestConstants;
 import org.folio.rest.acq.model.orders.CompositePoLine;
-import org.folio.rest.core.RestClient;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.folio.invoices.rest.exceptions.HttpException;
-import static org.junit.jupiter.api.Assertions.*;
+import org.junit.jupiter.api.extension.ExtendWith;
 
-import io.vertx.core.Context;
-import io.vertx.core.Vertx;
-
+@ExtendWith(VertxExtension.class)
 @DisplayName("InvoiceHelper should : ")
 class InvoiceHelperTest extends ApiTestBase {
 
@@ -34,8 +28,8 @@ class InvoiceHelperTest extends ApiTestBase {
   private Map<String, String> okapiHeaders;
 
   @BeforeEach
-  public void setUp() {
-    super.setUp();
+  public void setUp(final VertxTestContext testContext) {
+    super.setUp(testContext);
     context = Vertx.vertx().getOrCreateContext();
     okapiHeaders = new HashMap<>();
     okapiHeaders.put(RestConstants.OKAPI_URL, "http://localhost:" + mockPort);

@@ -13,12 +13,12 @@ import org.folio.common.dao.EntityIdStorageDao;
 import org.folio.common.dao.EntityIdStorageDaoImpl;
 import org.folio.common.dao.PostgresClientFactory;
 import org.folio.domain.relationship.RecordToEntity;
-import org.folio.rest.impl.AbstractRestTest;
+import org.folio.rest.impl.ApiTestBase;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 @ExtendWith(VertxExtension.class)
-public class EntityIdStorageDaoImplTest extends AbstractRestTest {
+public class EntityIdStorageDaoImplTest extends ApiTestBase {
   private static final String RECORD_ID = UUID.randomUUID().toString();
   private static final String INVOICE_ID = UUID.randomUUID().toString();
   private static final String DUPLICATE_INVOICE_ID = UUID.randomUUID().toString();

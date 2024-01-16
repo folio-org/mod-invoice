@@ -9,6 +9,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import io.vertx.junit5.VertxExtension;
 import java.io.IOException;
 
 import org.apache.logging.log4j.LogManager;
@@ -21,7 +22,9 @@ import org.junit.jupiter.api.Test;
 
 import io.restassured.response.Response;
 import io.vertx.core.json.JsonObject;
+import org.junit.jupiter.api.extension.ExtendWith;
 
+@ExtendWith(VertxExtension.class)
 public class VouchersApiTest extends ApiTestBase {
 
   private static final Logger logger = LogManager.getLogger(VouchersApiTest.class);

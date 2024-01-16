@@ -37,8 +37,8 @@ public class VoucherLineServiceTest extends ApiTestBase {
   private static final String VOUCHERS_LIST_PATH = BASE_MOCK_DATA_PATH + "vouchers/vouchers.json";
 
   @BeforeEach
-  public void setUp()  {
-    super.setUp();
+  public void setUp(final VertxTestContext testContext)  {
+    super.setUp(testContext);
     context = Vertx.vertx().getOrCreateContext();
     okapiHeaders = new HashMap<>();
     okapiHeaders.put(OKAPI_URL, "http://localhost:" + mockPort);

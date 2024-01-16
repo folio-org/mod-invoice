@@ -103,6 +103,7 @@ import static org.hamcrest.core.IsNot.not;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import io.vertx.junit5.VertxExtension;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -177,7 +178,9 @@ import io.restassured.response.Response;
 import io.vertx.core.Vertx;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.core.json.JsonObject;
+import org.junit.jupiter.api.extension.ExtendWith;
 
+@ExtendWith(VertxExtension.class)
 public class InvoicesApiTest extends ApiTestBase {
 
   private static final Logger logger = LogManager.getLogger(InvoicesApiTest.class);
