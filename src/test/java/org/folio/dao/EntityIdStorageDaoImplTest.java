@@ -18,7 +18,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 @ExtendWith(VertxExtension.class)
-class EntityIdStorageDaoImplTest extends AbstractRestTest {
+public class EntityIdStorageDaoImplTest extends AbstractRestTest {
   private static final String RECORD_ID = UUID.randomUUID().toString();
   private static final String INVOICE_ID = UUID.randomUUID().toString();
   private static final String DUPLICATE_INVOICE_ID = UUID.randomUUID().toString();
@@ -27,7 +27,7 @@ class EntityIdStorageDaoImplTest extends AbstractRestTest {
   private final EntityIdStorageDao entityIdStorageDao = new EntityIdStorageDaoImpl(postgresClientFactory);
 
   @Test
-  void shouldReturnSavedRecordToInstance(VertxTestContext context) {
+  public void shouldReturnSavedRecordToInstance(VertxTestContext context) {
     RecordToEntity expectedRecordToInstance =
       RecordToEntity.builder().table(INVOICES).recordId(RECORD_ID).entityId(INVOICE_ID).build();
 
@@ -43,7 +43,7 @@ class EntityIdStorageDaoImplTest extends AbstractRestTest {
   }
 
   @Test
-  void shouldReturnSameInstanceIdWithDuplicateRecordId(VertxTestContext context) {
+  public void shouldReturnSameInstanceIdWithDuplicateRecordId(VertxTestContext context) {
     RecordToEntity expectedRecordToInstance1 =
       RecordToEntity.builder().table(INVOICES).recordId(RECORD_ID).entityId(INVOICE_ID).build();
     RecordToEntity expectedRecordToInstance2 =

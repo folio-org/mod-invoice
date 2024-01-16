@@ -20,7 +20,7 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
 @ExtendWith(VertxExtension.class)
-class InvoiceIdStorageServiceTest {
+public class InvoiceIdStorageServiceTest {
 
   private static final String RECORD_ID = UUID.randomUUID().toString();
   private static final String INVOICE_ID = UUID.randomUUID().toString();
@@ -36,12 +36,12 @@ class InvoiceIdStorageServiceTest {
   }
 
   @AfterEach
-  void closeService() throws Exception {
+  public void closeService() throws Exception {
     closeable.close();
   }
 
   @Test
-  void shouldReturnSavedRecordToEntity() {
+  public void shouldReturnSavedRecordToEntity() {
     RecordToEntity expectedRecordToInvoice =
       RecordToEntity.builder().table(INVOICES).recordId(RECORD_ID).entityId(INVOICE_ID).build();
     when(entityIdStorageDaoImpl.saveRecordToEntityRelationship(any(RecordToEntity.class), any())).thenReturn(Future.succeededFuture(expectedRecordToInvoice));
@@ -56,7 +56,7 @@ class InvoiceIdStorageServiceTest {
   }
 
   @Test
-  void shouldReturnFailedFuture() {
+  public void shouldReturnFailedFuture() {
     when(entityIdStorageDaoImpl.saveRecordToEntityRelationship(any(RecordToEntity.class), any())).thenReturn(Future.failedFuture("failed"));
     Future<RecordToEntity> future = invoiceIdStorageService.store(RECORD_ID, INVOICE_ID, TENANT_ID);
 
