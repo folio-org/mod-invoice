@@ -1,7 +1,5 @@
 package org.folio.rest.impl;
 
-import static net.mguenther.kafka.junit.EmbeddedKafkaCluster.provisionWith;
-import static net.mguenther.kafka.junit.EmbeddedKafkaClusterConfig.defaultClusterConfig;
 import static org.folio.ApiTestSuite.mockPort;
 import static org.folio.dataimport.util.RestUtil.OKAPI_TENANT_HEADER;
 import static org.folio.rest.RestVerticle.OKAPI_HEADER_TENANT;
@@ -23,7 +21,6 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 import javax.ws.rs.core.Response;
-import net.mguenther.kafka.junit.EmbeddedKafkaCluster;
 import org.folio.rest.RestVerticle;
 import org.folio.rest.jaxrs.model.TenantAttributes;
 import org.folio.rest.jaxrs.model.TenantJob;
@@ -55,27 +52,13 @@ public abstract class AbstractRestTest {
   protected static RequestSpecification spec;
 
   protected static final String okapiUserIdHeader = UUID.randomUUID().toString();
-  private static final String KAFKA_HOST = "KAFKA_HOST";
-  private static final String KAFKA_PORT = "KAFKA_PORT";
-  private static final String KAFKA_ENV = "ENV";
-  private static final String KAFKA_ENV_VALUE = "test-env";
   public static final String OKAPI_URL_ENV = "OKAPI_URL";
   private static final int PORT = NetworkUtils.nextFreePort();
   protected static final String OKAPI_URL = "http://localhost:" + PORT;
 
-  public static EmbeddedKafkaCluster kafkaCluster;
-
   @BeforeAll
   public static void setUpClass(final VertxTestContext context) throws Exception {
     vertx = Vertx.vertx();
-    kafkaCluster = provisionWith(defaultClusterConfig());
-    kafkaCluster.start();
-    String[] hostAndPort = kafkaCluster.getBrokerList().split(":");
-
-    System.setProperty(KAFKA_HOST, hostAndPort[0]);
-    System.setProperty(KAFKA_PORT, hostAndPort[1]);
-    System.setProperty(KAFKA_ENV, KAFKA_ENV_VALUE);
-    System.setProperty(OKAPI_URL_ENV, OKAPI_URL);
     runDatabase();
     deployVerticle(context);
   }
@@ -86,9 +69,6 @@ public abstract class AbstractRestTest {
       if (ar.succeeded()) {
         if ("embedded".equals(useExternalDatabase)) {
           PostgresClient.stopPostgresTester();
-        }
-        if (kafkaCluster != null) {
-          kafkaCluster.stop();
         }
         context.completeNow();
       } else {

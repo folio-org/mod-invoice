@@ -15,6 +15,7 @@ import org.folio.builders.InvoiceWorkFlowDataHolderBuilderTest;
 import org.folio.converters.BatchVoucherModelConverterTest;
 import org.folio.converters.BatchedVoucherLinesModelConverterTest;
 import org.folio.converters.BatchedVoucherModelConverterTest;
+import org.folio.dao.EntityIdStorageDaoImplTest;
 import org.folio.dataimport.cache.JobProfileSnapshotCacheTest;
 import org.folio.dataimport.handlers.actions.CreateInvoiceEventHandlerTest;
 import org.folio.invoices.util.HelperUtilsTest;
@@ -56,6 +57,7 @@ import org.folio.services.ftp.FtpUploadServiceTest;
 import org.folio.services.ftp.SftpUploadServiceTest;
 import org.folio.services.invoice.InvoiceCancelServiceTest;
 import org.folio.services.invoice.InvoiceFiscalYearsServiceTest;
+import org.folio.services.invoice.InvoiceIdStorageServiceTest;
 import org.folio.services.order.OrderServiceTest;
 import org.folio.services.validator.FundAvailabilityHolderValidatorTest;
 import org.folio.services.validator.InvoiceLineHolderValidatorTest;
@@ -325,6 +327,14 @@ public class ApiTestSuite {
 
   @Nested
   class SftpUploadServiceTestNested extends SftpUploadServiceTest {
+  }
+
+  @Nested
+  class InvoiceIdStorageServiceTestNested extends InvoiceIdStorageServiceTest {
+  }
+
+  @Nested
+  class EntityIdStorageDaoImplTestNested extends EntityIdStorageDaoImplTest{
   }
 
 }

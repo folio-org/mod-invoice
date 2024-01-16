@@ -52,6 +52,7 @@
     <sonar.exclusions>**/models/*.java</sonar.exclusions>
     <sonar.exclusions>**/domain/relationship/*.java</sonar.exclusions>
     <sonar.exclusions>**/common/dao/PostgresClientFactory.java</sonar.exclusions>
+    <sonar.test.exclusions>**/*Test.java</sonar.test.exclusions>
     <argLine />
   </properties>
 
