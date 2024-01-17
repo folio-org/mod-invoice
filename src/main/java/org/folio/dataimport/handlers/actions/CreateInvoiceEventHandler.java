@@ -15,6 +15,13 @@ import static org.folio.rest.jaxrs.model.EntityType.EDIFACT_INVOICE;
 import static org.folio.rest.jaxrs.model.InvoiceLine.InvoiceLineStatus.OPEN;
 import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.ACTION_PROFILE;
 
+import io.vertx.core.Future;
+import io.vertx.core.Vertx;
+import io.vertx.core.json.Json;
+import io.vertx.core.json.JsonArray;
+import io.vertx.core.json.JsonObject;
+import io.vertx.pgclient.PgException;
+import io.vertxconcurrent.Semaphore;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -26,7 +33,6 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
-
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.collections4.MapUtils;
 import org.apache.commons.lang3.tuple.Pair;
@@ -41,6 +47,7 @@ import org.folio.Record;
 import org.folio.dataimport.utils.DataImportUtils;
 import org.folio.domain.relationship.RecordToEntity;
 import org.folio.invoices.utils.HelperUtils;
+import org.folio.kafka.exception.DuplicateEventException;
 import org.folio.processing.events.services.handler.EventHandler;
 import org.folio.processing.exceptions.EventProcessingException;
 import org.folio.processing.mapping.MappingManager;
@@ -57,13 +64,6 @@ import org.folio.rest.impl.InvoiceLineHelper;
 import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.jaxrs.model.InvoiceLine;
 import org.folio.rest.jaxrs.model.InvoiceLineCollection;
-
-import io.vertx.core.Future;
-import io.vertx.core.Vertx;
-import io.vertx.core.json.Json;
-import io.vertx.core.json.JsonArray;
-import io.vertx.core.json.JsonObject;
-import io.vertxconcurrent.Semaphore;
 import org.folio.services.invoice.IdStorageService;
 
 public class CreateInvoiceEventHandler implements EventHandler {
@@ -92,6 +92,7 @@ public class CreateInvoiceEventHandler implements EventHandler {
   private static final String RECORD_ID = "recordId";
   private final RestClient restClient;
   private final IdStorageService idStorageService;
+  public static final String UNIQUE_CONSTRAINT_VIOLATION_CODE = "23505";
 
   public CreateInvoiceEventHandler(RestClient restClient, IdStorageService idStorageService) {
     this.restClient = restClient;
@@ -128,33 +129,40 @@ public class CreateInvoiceEventHandler implements EventHandler {
       recordToInvoiceFuture.onSuccess(res -> {
         String invoiceId = res.getEntityId();
         invoicesFuture
-          .compose(v -> saveInvoice(dataImportEventPayload, okapiHeaders, invoiceId))
-          .map(savedInvoice -> prepareInvoiceLinesToSave(savedInvoice.getId(), dataImportEventPayload, poLinesFuture.result()))
-          .compose(preparedInvoiceLines -> saveInvoiceLines(preparedInvoiceLines, okapiHeaders))
-          .onComplete(result -> {
-            makeLightweightReturnPayload(dataImportEventPayload);
+          .compose(v -> saveInvoice(dataImportEventPayload, okapiHeaders, invoiceId)
+            .onSuccess(savedInvoice -> Future.succeededFuture(prepareInvoiceLinesToSave(savedInvoice.getId(), dataImportEventPayload, poLinesFuture.result()))
+              .compose(preparedInvoiceLines -> saveInvoiceLines(preparedInvoiceLines, okapiHeaders))
+              .onComplete(result -> {
+                  makeLightweightReturnPayload(dataImportEventPayload);
 
-            if (result.succeeded()) {
-              List<InvoiceLine> invoiceLines = result.result().stream().map(Pair::getLeft).collect(Collectors.toList());
-              InvoiceLineCollection invoiceLineCollection = new InvoiceLineCollection().withInvoiceLines(invoiceLines).withTotalRecords(invoiceLines.size());
-              dataImportEventPayload.getContext().put(INVOICE_LINES_KEY, Json.encode(invoiceLineCollection));
-              Map<Integer, String> invoiceLinesErrors = prepareInvoiceLinesErrors(result.result());
-              if (!invoiceLinesErrors.isEmpty()) {
-                dataImportEventPayload.getContext().put(INVOICE_LINES_ERRORS_KEY, Json.encode(invoiceLinesErrors));
-                future.completeExceptionally(new EventProcessingException("Error during invoice lines creation"));
-                return;
+                  if (result.succeeded()) {
+                    List<InvoiceLine> invoiceLines = result.result().stream().map(Pair::getLeft).collect(Collectors.toList());
+                    InvoiceLineCollection invoiceLineCollection = new InvoiceLineCollection().withInvoiceLines(invoiceLines).withTotalRecords(invoiceLines.size());
+                    dataImportEventPayload.getContext().put(INVOICE_LINES_KEY, Json.encode(invoiceLineCollection));
+                    Map<Integer, String> invoiceLinesErrors = prepareInvoiceLinesErrors(result.result());
+                    if (!invoiceLinesErrors.isEmpty()) {
+                      dataImportEventPayload.getContext().put(INVOICE_LINES_ERRORS_KEY, Json.encode(invoiceLinesErrors));
+                      future.completeExceptionally(new EventProcessingException("Error during invoice lines creation"));
+                      return;
+                    }
+                    future.complete(dataImportEventPayload);
+                  } else {
+                    preparePayloadWithMappedInvoiceLines(dataImportEventPayload);
+                    logger.error("Error during invoice creation", result.cause());
+                    future.completeExceptionally(result.cause());
+                  }
+              })
+            ).onFailure(e -> {
+              if (!(e instanceof DuplicateEventException)) {
+                logger.error("Error creating invoice by jobExecutionId: '{}' and recordId: '{}'",
+                  dataImportEventPayload.getJobExecutionId(), recordId, e);
               }
-              future.complete(dataImportEventPayload);
-            } else {
-              preparePayloadWithMappedInvoiceLines(dataImportEventPayload);
-              logger.error("Error during invoice creation", result.cause());
-              future.completeExceptionally(result.cause());
-            }
-          });
+              future.completeExceptionally(e);
+            }));
       }).onFailure(failure -> {
         logger.error("Error creating invoice recordId and instanceId relationship by jobExecutionId: '{}' and " +
             "recordId: '{}' ", dataImportEventPayload.getJobExecutionId(), recordId, failure);
-        future.completeExceptionally(failure);
+        future.completeExceptionally(failure);  // no except should be thrown
       });
     } catch (Exception e) {
       logger.error("Error during creation invoice and invoice lines", e);
@@ -346,14 +354,18 @@ public class CreateInvoiceEventHandler implements EventHandler {
     invoiceToSave.setId(invoiceId);
     InvoiceHelper invoiceHelper = new InvoiceHelper(okapiHeaders, Vertx.currentContext());
     RequestContext requestContext = new RequestContext(Vertx.currentContext(), okapiHeaders);
-
     return invoiceHelper.createInvoice(invoiceToSave, requestContext)
-      .onComplete(result -> {
-        if (result.succeeded()) {
-          dataImportEventPayload.getContext().put(INVOICE.value(), Json.encode(result.result()));
-          return;
+      .compose(result -> {
+        dataImportEventPayload.getContext().put(INVOICE.value(), Json.encode(result));
+        return Future.succeededFuture(result);
+      })
+      .recover(throwable -> {
+        if (throwable instanceof PgException && UNIQUE_CONSTRAINT_VIOLATION_CODE.equals(((PgException) throwable).getSqlState())) {
+          String message = String.format("Duplicated event by Instance id: %s", invoiceToSave.getId());
+          logger.info("Duplicated event received by InstanceId: {}. Ignoring...", invoiceToSave.getId());
+          return Future.failedFuture(new DuplicateEventException(message));
         }
-        logger.error("Error during creation invoice in the storage", result.cause());
+        return Future.failedFuture(throwable);
       });
   }
 
