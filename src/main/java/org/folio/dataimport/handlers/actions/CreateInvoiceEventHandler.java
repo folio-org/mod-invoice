@@ -129,7 +129,7 @@ public class CreateInvoiceEventHandler implements EventHandler {
       recordToInvoiceFuture.onSuccess(res -> {
         String invoiceId = res.getEntityId();
         invoicesFuture
-          .compose(v -> saveInvoice(dataImportEventPayload, okapiHeaders, invoiceId)
+          .compose(v -> saveInvoice(dataImportEventPayload, okapiHeaders, invoiceId))
             .onSuccess(savedInvoice -> Future.succeededFuture(prepareInvoiceLinesToSave(savedInvoice.getId(), dataImportEventPayload, poLinesFuture.result()))
               .compose(preparedInvoiceLines -> saveInvoiceLines(preparedInvoiceLines, okapiHeaders))
               .onComplete(result -> {
@@ -158,7 +158,7 @@ public class CreateInvoiceEventHandler implements EventHandler {
                   dataImportEventPayload.getJobExecutionId(), recordId, e);
               }
               future.completeExceptionally(e);
-            }));
+            });
       }).onFailure(failure -> {
         logger.error("Error creating invoice recordId and instanceId relationship by jobExecutionId: '{}' and " +
             "recordId: '{}' ", dataImportEventPayload.getJobExecutionId(), recordId, failure);
@@ -168,7 +168,6 @@ public class CreateInvoiceEventHandler implements EventHandler {
       logger.error("Error during creation invoice and invoice lines", e);
       future.completeExceptionally(e);
     }
-
     return future;
   }
 

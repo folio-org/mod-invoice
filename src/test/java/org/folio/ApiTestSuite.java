@@ -127,10 +127,10 @@ public class ApiTestSuite {
 
   @AfterAll
   public static void after(VertxTestContext testContext) {
-    kafkaCluster.stop();
-    mockServer.close();
     vertx.close(ar -> {
       if (ar.succeeded()) {
+        kafkaCluster.stop();
+        mockServer.close();
         testContext.completeNow();
       } else {
         testContext.failNow(ar.cause());
