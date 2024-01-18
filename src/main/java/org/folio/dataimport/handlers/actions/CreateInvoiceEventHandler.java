@@ -130,35 +130,31 @@ public class CreateInvoiceEventHandler implements EventHandler {
         String invoiceId = res.getEntityId();
         invoicesFuture
           .compose(v -> saveInvoice(dataImportEventPayload, okapiHeaders, invoiceId))
-            .onSuccess(savedInvoice -> Future.succeededFuture(prepareInvoiceLinesToSave(savedInvoice.getId(), dataImportEventPayload, poLinesFuture.result()))
-              .compose(preparedInvoiceLines -> saveInvoiceLines(preparedInvoiceLines, okapiHeaders))
-              .onComplete(result -> {
-                  makeLightweightReturnPayload(dataImportEventPayload);
+          .map(savedInvoice -> prepareInvoiceLinesToSave(savedInvoice.getId(), dataImportEventPayload, poLinesFuture.result()))
+          .compose(preparedInvoiceLines -> saveInvoiceLines(preparedInvoiceLines, okapiHeaders))
+          .onComplete(result -> {
+            makeLightweightReturnPayload(dataImportEventPayload);
 
-                  if (result.succeeded()) {
-                    List<InvoiceLine> invoiceLines = result.result().stream().map(Pair::getLeft).collect(Collectors.toList());
-                    InvoiceLineCollection invoiceLineCollection = new InvoiceLineCollection().withInvoiceLines(invoiceLines).withTotalRecords(invoiceLines.size());
-                    dataImportEventPayload.getContext().put(INVOICE_LINES_KEY, Json.encode(invoiceLineCollection));
-                    Map<Integer, String> invoiceLinesErrors = prepareInvoiceLinesErrors(result.result());
-                    if (!invoiceLinesErrors.isEmpty()) {
-                      dataImportEventPayload.getContext().put(INVOICE_LINES_ERRORS_KEY, Json.encode(invoiceLinesErrors));
-                      future.completeExceptionally(new EventProcessingException("Error during invoice lines creation"));
-                      return;
-                    }
-                    future.complete(dataImportEventPayload);
-                  } else {
-                    preparePayloadWithMappedInvoiceLines(dataImportEventPayload);
-                    logger.error("Error during invoice creation", result.cause());
-                    future.completeExceptionally(result.cause());
-                  }
-              })
-            ).onFailure(e -> {
-              if (!(e instanceof DuplicateEventException)) {
-                logger.error("Error creating invoice by jobExecutionId: '{}' and recordId: '{}'",
-                  dataImportEventPayload.getJobExecutionId(), recordId, e);
+            if (result.succeeded()) {
+              List<InvoiceLine> invoiceLines = result.result().stream().map(Pair::getLeft).collect(Collectors.toList());
+              InvoiceLineCollection invoiceLineCollection = new InvoiceLineCollection().withInvoiceLines(invoiceLines).withTotalRecords(invoiceLines.size());
+              dataImportEventPayload.getContext().put(INVOICE_LINES_KEY, Json.encode(invoiceLineCollection));
+              Map<Integer, String> invoiceLinesErrors = prepareInvoiceLinesErrors(result.result());
+              if (!invoiceLinesErrors.isEmpty()) {
+                dataImportEventPayload.getContext().put(INVOICE_LINES_ERRORS_KEY, Json.encode(invoiceLinesErrors));
+                future.completeExceptionally(new EventProcessingException("Error during invoice lines creation"));
+                return;
               }
-              future.completeExceptionally(e);
-            });
+              future.complete(dataImportEventPayload);
+            } else {
+              preparePayloadWithMappedInvoiceLines(dataImportEventPayload);
+              if (!(result.cause() instanceof DuplicateEventException)) {
+                logger.warn("Error creating invoice by jobExecutionId: '{}' and recordId: '{}'",
+                  dataImportEventPayload.getJobExecutionId(), recordId, result.cause());
+              }
+              future.completeExceptionally(result.cause());
+            }
+          });
       }).onFailure(failure -> {
         logger.error("Error creating invoice recordId and instanceId relationship by jobExecutionId: '{}' and " +
             "recordId: '{}' ", dataImportEventPayload.getJobExecutionId(), recordId, failure);
@@ -359,7 +355,7 @@ public class CreateInvoiceEventHandler implements EventHandler {
         return Future.succeededFuture(result);
       })
       .recover(throwable -> {
-        if (throwable instanceof PgException && UNIQUE_CONSTRAINT_VIOLATION_CODE.equals(((PgException) throwable).getSqlState())) {
+        if (throwable instanceof PgException pgException && UNIQUE_CONSTRAINT_VIOLATION_CODE.equals(pgException.getSqlState())) {
           String message = String.format("Duplicated event by Instance id: %s", invoiceToSave.getId());
           logger.info("Duplicated event received by InstanceId: {}. Ignoring...", invoiceToSave.getId());
           return Future.failedFuture(new DuplicateEventException(message));
