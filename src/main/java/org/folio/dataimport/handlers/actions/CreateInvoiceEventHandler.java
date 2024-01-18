@@ -20,7 +20,6 @@ import io.vertx.core.Vertx;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
-import io.vertx.pgclient.PgException;
 import io.vertxconcurrent.Semaphore;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -46,6 +45,7 @@ import org.folio.ParsedRecord;
 import org.folio.Record;
 import org.folio.dataimport.utils.DataImportUtils;
 import org.folio.domain.relationship.RecordToEntity;
+import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.invoices.utils.HelperUtils;
 import org.folio.kafka.exception.DuplicateEventException;
 import org.folio.processing.events.services.handler.EventHandler;
@@ -92,7 +92,7 @@ public class CreateInvoiceEventHandler implements EventHandler {
   private static final String RECORD_ID = "recordId";
   private final RestClient restClient;
   private final IdStorageService idStorageService;
-  public static final String UNIQUE_CONSTRAINT_VIOLATION_CODE = "23505";
+  public static final String UNIQUE_KEY_CONSTRAINT_ERROR = "duplicate key value violates unique constraint";
 
   public CreateInvoiceEventHandler(RestClient restClient, IdStorageService idStorageService) {
     this.restClient = restClient;
@@ -355,7 +355,7 @@ public class CreateInvoiceEventHandler implements EventHandler {
         return Future.succeededFuture(result);
       })
       .recover(throwable -> {
-        if (throwable instanceof PgException pgException && UNIQUE_CONSTRAINT_VIOLATION_CODE.equals(pgException.getSqlState())) {
+        if (throwable instanceof HttpException httpException && httpException.getMessage().contains(UNIQUE_KEY_CONSTRAINT_ERROR)) {
           String message = String.format("Duplicated event by Invoice id: %s", invoiceToSave.getId());
           logger.info("Duplicated event received by InvoiceId: {}. Ignoring...", invoiceToSave.getId());
           return Future.failedFuture(new DuplicateEventException(message));
