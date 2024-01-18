@@ -149,7 +149,7 @@ public class CreateInvoiceEventHandler implements EventHandler {
             } else {
               preparePayloadWithMappedInvoiceLines(dataImportEventPayload);
               if (!(result.cause() instanceof DuplicateEventException)) {
-                logger.warn("Error creating invoice by jobExecutionId: '{}' and recordId: '{}'",
+                logger.error("Error creating invoice by jobExecutionId: '{}' and recordId: '{}'",
                   dataImportEventPayload.getJobExecutionId(), recordId, result.cause());
               }
               future.completeExceptionally(result.cause());
@@ -158,7 +158,7 @@ public class CreateInvoiceEventHandler implements EventHandler {
       }).onFailure(failure -> {
         logger.error("Error creating invoice recordId and instanceId relationship by jobExecutionId: '{}' and " +
             "recordId: '{}' ", dataImportEventPayload.getJobExecutionId(), recordId, failure);
-        future.completeExceptionally(failure);  // no except should be thrown
+        future.completeExceptionally(failure);
       });
     } catch (Exception e) {
       logger.error("Error during creation invoice and invoice lines", e);
@@ -356,8 +356,8 @@ public class CreateInvoiceEventHandler implements EventHandler {
       })
       .recover(throwable -> {
         if (throwable instanceof PgException pgException && UNIQUE_CONSTRAINT_VIOLATION_CODE.equals(pgException.getSqlState())) {
-          String message = String.format("Duplicated event by Instance id: %s", invoiceToSave.getId());
-          logger.info("Duplicated event received by InstanceId: {}. Ignoring...", invoiceToSave.getId());
+          String message = String.format("Duplicated event by Invoice id: %s", invoiceToSave.getId());
+          logger.info("Duplicated event received by InvoiceId: {}. Ignoring...", invoiceToSave.getId());
           return Future.failedFuture(new DuplicateEventException(message));
         }
         return Future.failedFuture(throwable);
