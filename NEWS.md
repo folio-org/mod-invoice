@@ -1,4 +1,5 @@
 ## 5.8.0 - Unreleased
+* [MODSOURMAN-1022](https://issues.folio.org/browse/MODSOURMAN-1022) Remove step of initial saving of incoming records to SRS
 * [MODINVOICE-479](https://issues.folio.org/browse/MODINVOICE-479) - Add Kafka event deduplication mechanism for creating invoices
 
 ## 5.7.0 - Released Poppy R2 2023

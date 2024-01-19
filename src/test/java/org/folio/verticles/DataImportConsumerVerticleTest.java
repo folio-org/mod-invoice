@@ -5,7 +5,7 @@ import static org.folio.ActionProfile.Action.CREATE;
 import static org.folio.ApiTestSuite.KAFKA_ENV_VALUE;
 import static org.folio.ApiTestSuite.kafkaCluster;
 import static org.folio.DataImportEventTypes.DI_COMPLETED;
-import static org.folio.DataImportEventTypes.DI_EDIFACT_RECORD_CREATED;
+import static org.folio.DataImportEventTypes.DI_INCOMING_EDIFACT_RECORD_PARSED;
 import static org.folio.DataImportEventTypes.DI_ERROR;
 import static org.folio.dataimport.handlers.events.DataImportKafkaHandler.JOB_PROFILE_SNAPSHOT_ID_KEY;
 import static org.folio.kafka.KafkaTopicNameHelper.getDefaultNameSpace;
@@ -99,7 +99,7 @@ public class DataImportConsumerVerticleTest extends ApiTestBase {
   }
 
   @Test
-  public void shouldPublishDiCompletedEventWhenProcessingCoreHandlerSucceeded() throws InterruptedException, UnsupportedEncodingException {
+  public void shouldPublishDiCompletedEventWhenProcessingCoreHandlerSucceeded() throws InterruptedException {
     // given
     EventHandler mockedEventHandler = mock(EventHandler.class);
     when(mockedEventHandler.isEligible(any(DataImportEventPayload.class))).thenReturn(true);
@@ -108,7 +108,7 @@ public class DataImportConsumerVerticleTest extends ApiTestBase {
     EventManager.registerEventHandler(mockedEventHandler);
 
     DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
-      .withEventType(DI_EDIFACT_RECORD_CREATED.value())
+      .withEventType(DI_INCOMING_EDIFACT_RECORD_PARSED.value())
       .withTenant(TENANT_ID)
       .withOkapiUrl(OKAPI_URL)
       .withToken(TOKEN)
@@ -146,7 +146,7 @@ public class DataImportConsumerVerticleTest extends ApiTestBase {
     EventManager.registerEventHandler(mockedEventHandler);
 
     DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
-      .withEventType(DI_EDIFACT_RECORD_CREATED.value())
+      .withEventType(DI_INCOMING_EDIFACT_RECORD_PARSED.value())
       .withTenant(TENANT_ID)
       .withOkapiUrl(OKAPI_URL)
       .withToken(TOKEN)
