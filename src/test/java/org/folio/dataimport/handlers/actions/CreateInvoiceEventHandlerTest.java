@@ -15,6 +15,7 @@ import static org.folio.dataimport.utils.DataImportUtils.DATA_IMPORT_PAYLOAD_OKA
 import static org.folio.dataimport.utils.DataImportUtils.DATA_IMPORT_PAYLOAD_OKAPI_USER_ID;
 import static org.folio.kafka.KafkaTopicNameHelper.getDefaultNameSpace;
 import static org.folio.rest.impl.MockServer.DI_POST_INVOICE_LINES_SUCCESS_TENANT;
+import static org.folio.rest.impl.MockServer.DUPLICATE_ERROR_TENANT;
 import static org.folio.rest.impl.MockServer.ERROR_TENANT;
 import static org.folio.rest.impl.MockServer.MOCK_DATA_PATH_PATTERN;
 import static org.folio.rest.impl.MockServer.PO_LINES_MOCK_DATA_PATH;
@@ -793,6 +794,44 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
     InvoiceLineCollection invoiceLineCollection = Json.decodeValue(eventPayload.getContext().get(INVOICE_LINES_KEY), InvoiceLineCollection.class);
     assertEquals(3, invoiceLineCollection.getTotalRecords());
     assertEquals(3, invoiceLineCollection.getInvoiceLines().size());
+  }
+
+  @Test
+  public void shouldNotPublishDiErrorEventWhenDuplicateException() throws InterruptedException {
+    // given
+    ProfileSnapshotWrapper profileSnapshotWrapper = buildProfileSnapshotWrapper(jobProfile, actionProfile, mappingProfile);
+    addMockEntry(JOB_PROFILE_SNAPSHOTS_MOCK, profileSnapshotWrapper);
+
+    Record record = new Record().withParsedRecord(new ParsedRecord().withContent(EDIFACT_PARSED_CONTENT)).withId(RECORD_ID);
+    HashMap<String, String> payloadContext = new HashMap<>();
+    payloadContext.put(EDIFACT_INVOICE.value(), Json.encode(record));
+    payloadContext.put(JOB_PROFILE_SNAPSHOT_ID_KEY, profileSnapshotWrapper.getId());
+
+    DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
+      .withEventType(DI_EDIFACT_RECORD_CREATED.value())
+      .withTenant(DUPLICATE_ERROR_TENANT)
+      .withOkapiUrl(OKAPI_URL)
+      .withToken(TOKEN)
+      .withContext(payloadContext);
+
+    String topic = KafkaTopicNameHelper.formatTopicName(KAFKA_ENV_VALUE, getDefaultNameSpace(), DUPLICATE_ERROR_TENANT, dataImportEventPayload.getEventType());
+    Event event = new Event().withEventPayload(Json.encode(dataImportEventPayload));
+    KeyValue<String, String> kafkaRecord = new KeyValue<>("test-key", Json.encode(event));
+    kafkaRecord.addHeader(RECORD_ID_HEADER, record.getId(), UTF_8);
+    SendKeyValues<String, String> request = SendKeyValues.to(topic, Collections.singletonList(kafkaRecord))
+      .useDefaults();
+
+    // when
+    kafkaCluster.send(request);
+
+    // then
+    String topicToObserve = KafkaTopicNameHelper.formatTopicName(KAFKA_ENV_VALUE, getDefaultNameSpace(), DUPLICATE_ERROR_TENANT, DI_ERROR.value());
+    List<String> observedValues = kafkaCluster.observeValues(ObserveKeyValues.on(topicToObserve, 0)
+      .with(ConsumerConfig.GROUP_ID_CONFIG, GROUP_ID)
+      .observeFor(30, TimeUnit.SECONDS)
+      .build());
+
+    assertEquals(0, observedValues.size());
   }
 
   @Test
