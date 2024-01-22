@@ -103,6 +103,7 @@ import static org.hamcrest.core.IsNot.not;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import io.vertx.junit5.VertxExtension;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -177,7 +178,9 @@ import io.restassured.response.Response;
 import io.vertx.core.Vertx;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.core.json.JsonObject;
+import org.junit.jupiter.api.extension.ExtendWith;
 
+@ExtendWith(VertxExtension.class)
 public class InvoicesApiTest extends ApiTestBase {
 
   private static final Logger logger = LogManager.getLogger(InvoicesApiTest.class);
@@ -457,16 +460,16 @@ public class InvoicesApiTest extends ApiTestBase {
   void testUpdateValidInvoice() {
     logger.info("=== Test update invoice by id ===");
 
-     String newInvoiceNumber = "testFolioInvoiceNumber";
+    String newInvoiceNumber = "testFolioInvoiceNumber";
 
-  	Invoice reqData = getMockAsJson(OPEN_INVOICE_SAMPLE_PATH).mapTo(Invoice.class);
-  	reqData.setFolioInvoiceNo(newInvoiceNumber);
+    Invoice reqData = getMockAsJson(OPEN_INVOICE_SAMPLE_PATH).mapTo(Invoice.class);
+    reqData.setFolioInvoiceNo(newInvoiceNumber);
 
     String id = reqData.getId();
-  	String jsonBody = JsonObject.mapFrom(reqData).encode();
+    String jsonBody = JsonObject.mapFrom(reqData).encode();
 
-  	verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, "", 204);
-  	assertThat(getInvoiceUpdates().get(0).getString(FOLIO_INVOICE_NUMBER), not(newInvoiceNumber));
+    verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, "", 204);
+    assertThat(getInvoiceUpdates().get(0).getString(FOLIO_INVOICE_NUMBER), not(newInvoiceNumber));
   }
 
   @Test
@@ -1197,7 +1200,7 @@ public class InvoicesApiTest extends ApiTestBase {
   @Test
   void testInvoiceTransitionFailureOnPaidStatus() {
     logger.info(
-        "=== Test invoice cannot be transitioned to \"Open\", \"Reviewed\" or \"Approved\" status if it is in \"Paid\" status ===");
+      "=== Test invoice cannot be transitioned to \"Open\", \"Reviewed\" or \"Approved\" status if it is in \"Paid\" status ===");
 
     for (Status status : Invoice.Status.values()) {
       if (status != Invoice.Status.PAID && status != Status.CANCELLED) {
@@ -1404,8 +1407,8 @@ public class InvoicesApiTest extends ApiTestBase {
 
     Errors errors = verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, headers, APPLICATION_JSON, 500)
       .then()
-        .extract()
-          .body().as(Errors.class);
+      .extract()
+      .body().as(Errors.class);
 
     assertThat(errors, notNullValue());
     assertThat(errors.getErrors(), hasSize(1));
@@ -1463,7 +1466,7 @@ public class InvoicesApiTest extends ApiTestBase {
       .body().as(Errors.class);
   }
 
-   private Errors transitionToApprovedWithoutPermission(String invoiceSamplePath, Headers headers, int expectedCode) {
+  private Errors transitionToApprovedWithoutPermission(String invoiceSamplePath, Headers headers, int expectedCode) {
 
     Invoice reqData = getMockAsJson(invoiceSamplePath).mapTo(Invoice.class);
     reqData.setStatus(Status.APPROVED);
@@ -1501,8 +1504,8 @@ public class InvoicesApiTest extends ApiTestBase {
 
     Errors errors = verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, headers, APPLICATION_JSON, 400)
       .then()
-        .extract()
-          .body().as(Errors.class);
+      .extract()
+      .body().as(Errors.class);
 
     assertThat(errors, notNullValue());
     assertThat(errors.getErrors(), hasSize(1));
@@ -2083,7 +2086,7 @@ public class InvoicesApiTest extends ApiTestBase {
     assertThat(invoiceUpdate.getVoucherNumber(), equalTo(voucherCreated.getVoucherNumber()));
     assertThat(invoiceUpdate.getId(), equalTo(voucherCreated.getInvoiceId()));
     assertThat(invoiceUpdate.getCurrency(), equalTo(voucherCreated.getInvoiceCurrency()));
-  //  assertThat(HelperUtils.getInvoiceExchangeRateProvider().getExchangeRate(voucherCreated.getInvoiceCurrency(), voucherCreated.getSystemCurrency()).getFactor().doubleValue(), equalTo(voucherCreated.getExchangeRate()));
+    //  assertThat(HelperUtils.getInvoiceExchangeRateProvider().getExchangeRate(voucherCreated.getInvoiceCurrency(), voucherCreated.getSystemCurrency()).getFactor().doubleValue(), equalTo(voucherCreated.getExchangeRate()));
     assertThat(voucherCreated.getAccountingCode(), equalTo(invoiceUpdate.getAccountingCode()));
     assertThat(voucherCreated.getExportToAccounting(), is(false));
     assertThat(Voucher.Status.AWAITING_PAYMENT, equalTo(voucherCreated.getStatus()));
@@ -2130,7 +2133,7 @@ public class InvoicesApiTest extends ApiTestBase {
     MonetaryAmount voucherLineAmount = Money.of(0, systemCurrency);
 
     for (FundDistribution fundDistribution : fundDistributions) {
-        voucherLineAmount = voucherLineAmount.add(Money.of(fundDistribution.getValue(), systemCurrency));
+      voucherLineAmount = voucherLineAmount.add(Money.of(fundDistribution.getValue(), systemCurrency));
     }
 
     return convertToDoubleWithRounding(voucherLineAmount);
@@ -2364,7 +2367,7 @@ public class InvoicesApiTest extends ApiTestBase {
     assertThat(getRqRsEntries(HttpMethod.PUT, INVOICES), empty());
   }
 
-    private void validatePoLinesPaymentStatus() {
+  private void validatePoLinesPaymentStatus() {
 
     final List<CompositePoLine> updatedPoLines = getRqRsEntries(HttpMethod.PUT, ORDER_LINES).stream()
       .map(poLine -> poLine.mapTo(CompositePoLine.class))
@@ -2386,7 +2389,7 @@ public class InvoicesApiTest extends ApiTestBase {
         .findFirst()
         .orElseThrow(NullPointerException::new);
       CompositePoLine.PaymentStatus expectedStatus = poLineIdWithInvoiceLines.getValue().stream()
-        .anyMatch(InvoiceLine::getReleaseEncumbrance) ? CompositePoLine.PaymentStatus.FULLY_PAID : CompositePoLine.PaymentStatus.PARTIALLY_PAID;
+                                                       .anyMatch(InvoiceLine::getReleaseEncumbrance) ? CompositePoLine.PaymentStatus.FULLY_PAID : CompositePoLine.PaymentStatus.PARTIALLY_PAID;
       assertThat(expectedStatus, is(poLine.getPaymentStatus()));
     }
   }
@@ -2635,13 +2638,13 @@ public class InvoicesApiTest extends ApiTestBase {
     });
 
     reqData.getAdjustments().stream().flatMap(adjustment -> adjustment.getFundDistributions().stream())
-            .map(FundDistribution::getFundId).distinct().forEach(fundId -> {
-      Fund fund = new Fund()
-              .withId(fundId)
-              .withExternalAccountNo("externalNo")
-              .withLedgerId(EXISTING_LEDGER_ID);
-      addMockEntry(FUNDS, fund);
-    });
+      .map(FundDistribution::getFundId).distinct().forEach(fundId -> {
+        Fund fund = new Fund()
+          .withId(fundId)
+          .withExternalAccountNo("externalNo")
+          .withLedgerId(EXISTING_LEDGER_ID);
+        addMockEntry(FUNDS, fund);
+      });
 
 
     addMockEntry(LEDGERS, JsonObject.mapFrom(new Ledger().withId(EXISTING_LEDGER_ID).withRestrictEncumbrance(true)));
@@ -2772,7 +2775,7 @@ public class InvoicesApiTest extends ApiTestBase {
 
     // ===  Run test  ===
     final Invoice resp = verifyPostResponse(INVOICE_PATH, JsonObject.mapFrom(invoice), prepareHeaders(X_OKAPI_TENANT),
-        APPLICATION_JSON, 201).as(Invoice.class);
+      APPLICATION_JSON, 201).as(Invoice.class);
 
     /* The invoice has 2 not prorated adjustments one with fixed amount and another with percentage type */
     assertThat(resp.getLockTotal(), equalTo(15d));
@@ -2790,7 +2793,7 @@ public class InvoicesApiTest extends ApiTestBase {
   @Test
   void testCreateInvoiceWithTwoProratedAdjustmentsNoLines() throws IOException {
     logger.info(
-        "=== Test create invoice with 1 prorated and 1 not prorated adjustments with no lines - adjustmentTotal should always be calculated irrespective if there are any invoiceLines or not===");
+      "=== Test create invoice with 1 prorated and 1 not prorated adjustments with no lines - adjustmentTotal should always be calculated irrespective if there are any invoiceLines or not===");
 
     // === Preparing invoice for test ===
     Invoice invoice = new JsonObject(getMockData(REVIEWED_INVOICE_SAMPLE_PATH)).mapTo(Invoice.class);
@@ -2801,7 +2804,7 @@ public class InvoicesApiTest extends ApiTestBase {
 
     // === Run test ===
     final Invoice resp = verifyPostResponse(INVOICE_PATH, JsonObject.mapFrom(invoice), prepareHeaders(X_OKAPI_TENANT),
-        APPLICATION_JSON, 201).as(Invoice.class);
+      APPLICATION_JSON, 201).as(Invoice.class);
 
     /* The invoice has 2 adjustments with no lines, one not prorated and one prorated by line adjustments */
     assertThat(resp.getAdjustmentsTotal(), equalTo(20.d));
@@ -2951,15 +2954,15 @@ public class InvoicesApiTest extends ApiTestBase {
       Invoice invoice;
       String mockFilePath;
       switch (status) {
-      case OPEN:
-        mockFilePath = OPEN_INVOICE_SAMPLE_PATH;
-        break;
-      case REVIEWED:
-        mockFilePath = REVIEWED_INVOICE_SAMPLE_PATH;
-        break;
-      default:
-        mockFilePath = APPROVED_INVOICE_SAMPLE_PATH;
-        break;
+        case OPEN:
+          mockFilePath = OPEN_INVOICE_SAMPLE_PATH;
+          break;
+        case REVIEWED:
+          mockFilePath = REVIEWED_INVOICE_SAMPLE_PATH;
+          break;
+        default:
+          mockFilePath = APPROVED_INVOICE_SAMPLE_PATH;
+          break;
       }
       invoice = getMockAsJson(mockFilePath).mapTo(Invoice.class).withStatus(status);
 
@@ -3040,7 +3043,7 @@ public class InvoicesApiTest extends ApiTestBase {
 
   @Test
   void testUpdateTagsForPaidStatusInvoice(){
-  logger.info("=== allow to update  tags fields for the paid invoices ===");
+    logger.info("=== allow to update  tags fields for the paid invoices ===");
     Invoice reqData = getMockAsJson(OPEN_INVOICE_SAMPLE_PATH).mapTo(Invoice.class).withStatus(Status.PAID);
     String id = reqData.getId();
     prepareMockVoucher(reqData.getId());
@@ -3173,9 +3176,9 @@ public class InvoicesApiTest extends ApiTestBase {
         .size()).sum() - adjustmentPaymentsCount;
 
     int invoiceLineEncumbranceReferenceNumber = (int) invoiceLines.stream()
-            .flatMap(invoiceLine -> invoiceLine.getFundDistributions().stream())
-            .filter(fundDistribution -> StringUtils.isNotEmpty(fundDistribution.getEncumbrance()))
-            .count();
+      .flatMap(invoiceLine -> invoiceLine.getFundDistributions().stream())
+      .filter(fundDistribution -> StringUtils.isNotEmpty(fundDistribution.getEncumbrance()))
+      .count();
 
 
 

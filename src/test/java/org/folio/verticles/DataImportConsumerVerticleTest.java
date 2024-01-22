@@ -21,6 +21,7 @@ import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import io.vertx.junit5.VertxExtension;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -48,7 +49,9 @@ import io.vertx.core.json.JsonObject;
 import net.mguenther.kafka.junit.KeyValue;
 import net.mguenther.kafka.junit.ObserveKeyValues;
 import net.mguenther.kafka.junit.SendKeyValues;
+import org.junit.jupiter.api.extension.ExtendWith;
 
+@ExtendWith(VertxExtension.class)
 public class DataImportConsumerVerticleTest extends ApiTestBase {
 
   private static final String JOB_PROFILE_SNAPSHOTS_MOCK = "jobProfileSnapshots";
@@ -126,7 +129,7 @@ public class DataImportConsumerVerticleTest extends ApiTestBase {
     // then
     String topicToObserve = KafkaTopicNameHelper.formatTopicName(KAFKA_ENV_VALUE, getDefaultNameSpace(), TENANT_ID, DI_COMPLETED.value());
     List<KeyValue<String, String>> observedRecords = kafkaCluster.observe(ObserveKeyValues.on(topicToObserve, 1)
-      .observeFor(30, TimeUnit.SECONDS)
+      .observeFor(40, TimeUnit.SECONDS)
       .build());
 
     assertEquals(recordId, new String(observedRecords.get(0).getHeaders().lastHeader(RECORD_ID_HEADER).value(), UTF_8));

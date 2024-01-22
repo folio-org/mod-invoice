@@ -7,6 +7,7 @@ import static javax.ws.rs.core.MediaType.APPLICATION_XML;
 import static javax.ws.rs.core.MediaType.TEXT_PLAIN;
 import static javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
 import static org.apache.commons.lang3.StringUtils.EMPTY;
+import static org.folio.dataimport.handlers.actions.CreateInvoiceEventHandler.UNIQUE_KEY_CONSTRAINT_ERROR;
 import static org.folio.invoices.utils.HelperUtils.ALL_UNITS_CQL;
 import static org.folio.invoices.utils.HelperUtils.INVOICE_ID;
 import static org.folio.invoices.utils.HelperUtils.IS_DELETED_PROP;
@@ -180,6 +181,7 @@ public class MockServer {
   private static final String INVOICE_LINE_NUMBER_ERROR_TENANT = "invoice_line_number_error_tenant";
   private static final String VOUCHER_NUMBER_ERROR_TENANT = "voucher_number_error_tenant";
   public static final String ERROR_TENANT = "error_tenant";
+  public static final String DUPLICATE_ERROR_TENANT = "duplicate_error_tenant";
   private static final String ERROR_CONFIG_TENANT = "error_config_tenant";
   private static final String DELETE_VOUCHER_LINES_ERROR_TENANT = "get_voucher_lines_error_tenant";
   private static final String GET_VOUCHER_LINES_ERROR_TENANT = "get_voucher_lines_error_tenant";
@@ -1066,7 +1068,7 @@ public class MockServer {
   }
 
   private <T> void handlePostEntry(RoutingContext ctx, Class<T> tClass, String entryName) {
-    handlePost(ctx, tClass, entryName, true);
+    handlePost(ctx, tClass, entryName, false);
   }
 
   private <T> void handlePost(RoutingContext ctx, Class<T> tClass, String entryName, boolean generateId) {
@@ -1074,6 +1076,8 @@ public class MockServer {
     String tenant = ctx.request().getHeader(OKAPI_HEADER_TENANT);
     if (ERROR_TENANT.equals(tenant) || CREATE_VOUCHER_ERROR_TENANT.equals(tenant) || CREATE_VOUCHER_LINES_ERROR_TENANT.equals(tenant)) {
       serverResponse(ctx, 500, TEXT_PLAIN, INTERNAL_SERVER_ERROR.getReasonPhrase());
+    } else if (DUPLICATE_ERROR_TENANT.equals(tenant)) {
+      serverResponse(ctx, 500, TEXT_PLAIN, UNIQUE_KEY_CONSTRAINT_ERROR);
     } else {
       JsonObject body = ctx.body().asJsonObject();
       if (generateId) {

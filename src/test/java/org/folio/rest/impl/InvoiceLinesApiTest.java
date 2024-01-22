@@ -39,6 +39,7 @@ import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.nullValue;
 
+import io.vertx.junit5.VertxExtension;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -67,7 +68,9 @@ import org.junit.jupiter.api.Test;
 import io.restassured.response.Response;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.core.json.JsonObject;
+import org.junit.jupiter.api.extension.ExtendWith;
 
+@ExtendWith(VertxExtension.class)
 public class InvoiceLinesApiTest extends ApiTestBase {
 
   private static final Logger logger = LogManager.getLogger(InvoiceLinesApiTest.class);

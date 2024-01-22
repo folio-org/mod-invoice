@@ -6,8 +6,8 @@ import static org.folio.ActionProfile.Action.CREATE;
 import static org.folio.ApiTestSuite.KAFKA_ENV_VALUE;
 import static org.folio.ApiTestSuite.kafkaCluster;
 import static org.folio.DataImportEventTypes.DI_COMPLETED;
-import static org.folio.DataImportEventTypes.DI_INCOMING_EDIFACT_RECORD_PARSED;
 import static org.folio.DataImportEventTypes.DI_ERROR;
+import static org.folio.DataImportEventTypes.DI_INCOMING_EDIFACT_RECORD_PARSED;
 import static org.folio.DataImportEventTypes.DI_INVOICE_CREATED;
 import static org.folio.dataimport.handlers.actions.CreateInvoiceEventHandler.INVOICE_LINES_ERRORS_KEY;
 import static org.folio.dataimport.handlers.actions.CreateInvoiceEventHandler.INVOICE_LINES_KEY;
@@ -15,6 +15,7 @@ import static org.folio.dataimport.utils.DataImportUtils.DATA_IMPORT_PAYLOAD_OKA
 import static org.folio.dataimport.utils.DataImportUtils.DATA_IMPORT_PAYLOAD_OKAPI_USER_ID;
 import static org.folio.kafka.KafkaTopicNameHelper.getDefaultNameSpace;
 import static org.folio.rest.impl.MockServer.DI_POST_INVOICE_LINES_SUCCESS_TENANT;
+import static org.folio.rest.impl.MockServer.DUPLICATE_ERROR_TENANT;
 import static org.folio.rest.impl.MockServer.ERROR_TENANT;
 import static org.folio.rest.impl.MockServer.MOCK_DATA_PATH_PATTERN;
 import static org.folio.rest.impl.MockServer.PO_LINES_MOCK_DATA_PATH;
@@ -38,8 +39,15 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import io.vertx.core.Future;
+import io.vertx.core.json.Json;
+import io.vertx.core.json.JsonArray;
+import io.vertx.core.json.JsonObject;
+import io.vertx.core.json.jackson.DatabindCodec;
+import io.vertx.junit5.VertxExtension;
+import io.vertx.junit5.VertxTestContext;
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -47,7 +55,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
-
+import net.mguenther.kafka.junit.KeyValue;
+import net.mguenther.kafka.junit.ObserveKeyValues;
+import net.mguenther.kafka.junit.SendKeyValues;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.folio.ActionProfile;
 import org.folio.ApiTestSuite;
@@ -56,6 +66,8 @@ import org.folio.JobProfile;
 import org.folio.MappingProfile;
 import org.folio.ParsedRecord;
 import org.folio.Record;
+import org.folio.domain.relationship.EntityTable;
+import org.folio.domain.relationship.RecordToEntity;
 import org.folio.invoices.utils.AcqDesiredPermissions;
 import org.folio.kafka.KafkaTopicNameHelper;
 import org.folio.processing.events.EventManager;
@@ -74,22 +86,12 @@ import org.folio.rest.jaxrs.model.MappingDetail;
 import org.folio.rest.jaxrs.model.MappingRule;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
 import org.folio.rest.jaxrs.model.RepeatableSubfieldMapping;
+import org.folio.services.invoice.InvoiceIdStorageService;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mockito;
-
-import com.fasterxml.jackson.core.type.TypeReference;
-
-import io.vertx.core.json.Json;
-import io.vertx.core.json.JsonArray;
-import io.vertx.core.json.JsonObject;
-import io.vertx.core.json.jackson.DatabindCodec;
-import io.vertx.junit5.VertxExtension;
-import net.mguenther.kafka.junit.KeyValue;
-import net.mguenther.kafka.junit.ObserveKeyValues;
-import net.mguenther.kafka.junit.SendKeyValues;
 
 @ExtendWith(VertxExtension.class)
 public class CreateInvoiceEventHandlerTest extends ApiTestBase {
@@ -107,6 +109,8 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
   private static final String ERROR_MSG_KEY = "ERROR";
   private static final String RECORD_ID_HEADER = "recordId";
   private static final String USER_ID = "userId";
+  private static final String INVOICE_ID = "iiiiiiii-2222-4031-a031-70b1c1b2fc5d";
+  private static final String RECORD_ID =  "rrrrrrrr-0000-1111-2222-333333333333";
 
   private JobProfile jobProfile = new JobProfile()
     .withId(UUID.randomUUID().toString())
@@ -240,22 +244,30 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
       .withMappingFields(List.of(new MappingRule().withPath("invoice.vendorInvoiceNo")
         .withValue("test-invalid-expression")
         .withEnabled("true"))));
-
-  private EventHandler createInvoiceHandler = new CreateInvoiceEventHandler(new RestClient());
+  private InvoiceIdStorageService invoiceIdStorageService;
+  private EventHandler createInvoiceHandler = new CreateInvoiceEventHandler(new RestClient(), invoiceIdStorageService);
   private RestClient mockOrderLinesRestClient;
 
   @BeforeEach
-  public void setUp() {
-    super.setUp();
+  public void setUp(final VertxTestContext context) {
+    super.setUp(context);
     mockOrderLinesRestClient = Mockito.mock(RestClient.class);
+    invoiceIdStorageService = Mockito.mock(InvoiceIdStorageService.class);
     EventManager.clearEventHandlers();
-    EventManager.registerEventHandler(new CreateInvoiceEventHandler(mockOrderLinesRestClient));
+    EventManager.registerEventHandler(new CreateInvoiceEventHandler(mockOrderLinesRestClient, invoiceIdStorageService));
+
+    RecordToEntity recordToInvoice = RecordToEntity.builder()
+      .table(EntityTable.INVOICES)
+      .recordId(RECORD_ID)
+      .entityId(INVOICE_ID).build();
+
+    when(invoiceIdStorageService.store(any(), any(), any())).thenReturn(Future.succeededFuture(recordToInvoice));
   }
 
   @Test
   public void shouldCreateInvoiceAndPublishDiCompletedEvent() throws InterruptedException {
     // given
-    Record record = new Record().withParsedRecord(new ParsedRecord().withContent(EDIFACT_PARSED_CONTENT)).withId(UUID.randomUUID().toString());
+    Record record = new Record().withParsedRecord(new ParsedRecord().withContent(EDIFACT_PARSED_CONTENT)).withId(RECORD_ID);
     ProfileSnapshotWrapper profileSnapshotWrapper = buildProfileSnapshotWrapper(jobProfile, actionProfile, mappingProfile);
     addMockEntry(JOB_PROFILE_SNAPSHOTS_MOCK, profileSnapshotWrapper);
 
@@ -295,7 +307,9 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
 
     assertNotNull(eventPayload.getContext().get(INVOICE.value()));
     Invoice createdInvoice = Json.decodeValue(eventPayload.getContext().get(INVOICE.value()), Invoice.class);
-    assertNotNull(createdInvoice.getId());
+    String actualInvoiceId = createdInvoice.getId();
+    assertNotNull(actualInvoiceId);
+    assertEquals(INVOICE_ID, actualInvoiceId);
     assertNotNull(createdInvoice.getVendorInvoiceNo());
     assertNotNull(createdInvoice.getCurrency());
     assertEquals("Open", createdInvoice.getStatus().value());
@@ -317,8 +331,49 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
   }
 
   @Test
+  public void shouldNotProcessEventWhenRecordToInvoiceFutureFails()
+    throws InterruptedException {
+    // given
+    Record record = new Record().withParsedRecord(new ParsedRecord().withContent(EDIFACT_PARSED_CONTENT)).withId(RECORD_ID);
+    ProfileSnapshotWrapper profileSnapshotWrapper = buildProfileSnapshotWrapper(jobProfile, actionProfile, mappingProfile);
+    addMockEntry(JOB_PROFILE_SNAPSHOTS_MOCK, profileSnapshotWrapper);
 
+    HashMap<String, String> payloadContext = new HashMap<>();
+    payloadContext.put(EDIFACT_INVOICE.value(), Json.encode(record));
+    payloadContext.put(JOB_PROFILE_SNAPSHOT_ID_KEY, profileSnapshotWrapper.getId());
 
+    DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
+      .withEventType(DI_INCOMING_EDIFACT_RECORD_PARSED.value())
+      .withTenant(DI_POST_INVOICE_LINES_SUCCESS_TENANT)
+      .withOkapiUrl(OKAPI_URL)
+      .withToken(TOKEN)
+      .withContext(payloadContext);
+
+    String topic = KafkaTopicNameHelper.formatTopicName(KAFKA_ENV_VALUE, getDefaultNameSpace(), DI_POST_INVOICE_LINES_SUCCESS_TENANT, dataImportEventPayload.getEventType());
+    Event event = new Event().withEventPayload(Json.encode(dataImportEventPayload));
+    KeyValue<String, String> kafkaRecord = new KeyValue<>("test-key", Json.encode(event));
+    kafkaRecord.addHeader(RECORD_ID_HEADER, record.getId(), UTF_8);
+    SendKeyValues<String, String> request = SendKeyValues.to(topic, Collections.singletonList(kafkaRecord))
+      .useDefaults();
+
+    // when
+    when(invoiceIdStorageService.store(any(), any(), any())).thenReturn(Future.failedFuture(new Exception()));
+    kafkaCluster.send(request);
+
+    // then
+    String topicToObserve = KafkaTopicNameHelper.formatTopicName(KAFKA_ENV_VALUE, getDefaultNameSpace(), DI_POST_INVOICE_LINES_SUCCESS_TENANT, DI_ERROR.value());
+    List<String> observedValues = kafkaCluster.observeValues(ObserveKeyValues.on(topicToObserve, 1)
+      .with(ConsumerConfig.GROUP_ID_CONFIG, GROUP_ID)
+      .observeFor(30, TimeUnit.SECONDS)
+      .build());
+
+    Event publishedEvent = Json.decodeValue(observedValues.get(0), Event.class);
+    DataImportEventPayload eventPayload = Json.decodeValue(publishedEvent.getEventPayload(), DataImportEventPayload.class);
+    assertEquals(DI_ERROR.value(), eventPayload.getEventType());
+    assertEquals(DI_INVOICE_CREATED.value(), eventPayload.getEventsChain().get(eventPayload.getEventsChain().size() -1));
+  }
+
+  @Test
   public void shouldMatchPoLinesByPoLineNumberAndCreateInvoiceLinesWithDescriptionFromPoLines() throws IOException, InterruptedException {
     // given
     PoLine poLine1 = Json.decodeValue(getMockData(String.format(MOCK_DATA_PATH_PATTERN, PO_LINES_MOCK_DATA_PATH, PO_LINE_ID_1)), PoLine.class);
@@ -328,7 +383,7 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
     when(mockOrderLinesRestClient.get(any(RequestEntry.class), eq(PoLineCollection.class), any(RequestContext.class)))
       .thenReturn(succeededFuture(poLineCollection));
 
-    Record record = new Record().withParsedRecord(new ParsedRecord().withContent(EDIFACT_PARSED_CONTENT)).withId(UUID.randomUUID().toString());
+    Record record = new Record().withParsedRecord(new ParsedRecord().withContent(EDIFACT_PARSED_CONTENT)).withId(RECORD_ID);
     ProfileSnapshotWrapper profileSnapshotWrapper = buildProfileSnapshotWrapper(jobProfile, actionProfile, mappingProfileWithPoLineSyntax);
     addMockEntry(JOB_PROFILE_SNAPSHOTS_MOCK, profileSnapshotWrapper);
 
@@ -384,8 +439,6 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
   }
 
   @Test
-
-
   public void shouldMatchPoLinesByRefNumberAndCreateInvoiceLinesWithDescriptionFromPoLines() throws IOException, InterruptedException {
     // given
     PoLine poLine1 = Json.decodeValue(getMockData(String.format(MOCK_DATA_PATH_PATTERN, PO_LINES_MOCK_DATA_PATH, PO_LINE_ID_1)), PoLine.class);
@@ -400,7 +453,7 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
     ProfileSnapshotWrapper profileSnapshotWrapper = buildProfileSnapshotWrapper(jobProfile, actionProfile, mappingProfileWithPoLineSyntax);
     addMockEntry(JOB_PROFILE_SNAPSHOTS_MOCK, profileSnapshotWrapper);
 
-    Record record = new Record().withParsedRecord(new ParsedRecord().withContent(EDIFACT_PARSED_CONTENT)).withId(UUID.randomUUID().toString());
+    Record record = new Record().withParsedRecord(new ParsedRecord().withContent(EDIFACT_PARSED_CONTENT)).withId(RECORD_ID);
     HashMap<String, String> payloadContext = new HashMap<>();
     payloadContext.put(EDIFACT_INVOICE.value(), Json.encode(record));
     payloadContext.put(JOB_PROFILE_SNAPSHOT_ID_KEY, profileSnapshotWrapper.getId());
@@ -461,8 +514,6 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
   }
 
   @Test
-
-
   public void shouldMatchPoLinesByPoLineNumberAndCreateInvoiceLinesWithPoLinesFundDistributions() throws IOException, InterruptedException {
     // given
     PoLine poLine1 = Json.decodeValue(getMockData(String.format(MOCK_DATA_PATH_PATTERN, PO_LINES_MOCK_DATA_PATH, PO_LINE_ID_1)), PoLine.class);
@@ -475,7 +526,7 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
     ProfileSnapshotWrapper profileSnapshotWrapper = buildProfileSnapshotWrapper(jobProfile, actionProfile, mappingProfileWithPoLineFundDistribution);
     addMockEntry(JOB_PROFILE_SNAPSHOTS_MOCK, profileSnapshotWrapper);
 
-    Record record = new Record().withParsedRecord(new ParsedRecord().withContent(EDIFACT_PARSED_CONTENT)).withId(UUID.randomUUID().toString());
+    Record record = new Record().withParsedRecord(new ParsedRecord().withContent(EDIFACT_PARSED_CONTENT)).withId(RECORD_ID);
     HashMap<String, String> payloadContext = new HashMap<>();
     payloadContext.put(EDIFACT_INVOICE.value(), Json.encode(record));
     payloadContext.put(JOB_PROFILE_SNAPSHOT_ID_KEY, profileSnapshotWrapper.getId());
@@ -528,8 +579,6 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
   }
 
   @Test
-
-
   public void shouldNotLinkInvoiceLinesToPoLinesWhenMultiplePoLinesAreMatchedByRefNumber() throws IOException, InterruptedException {
     // given
     PoLine poLine1 = Json.decodeValue(getMockData(String.format(MOCK_DATA_PATH_PATTERN, PO_LINES_MOCK_DATA_PATH, PO_LINE_ID_1)), PoLine.class);
@@ -542,7 +591,7 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
     ProfileSnapshotWrapper profileSnapshotWrapper = buildProfileSnapshotWrapper(jobProfile, actionProfile, mappingProfileWithPoLineSyntax);
     addMockEntry(JOB_PROFILE_SNAPSHOTS_MOCK, profileSnapshotWrapper);
 
-    Record record = new Record().withParsedRecord(new ParsedRecord().withContent(EDIFACT_PARSED_CONTENT)).withId(UUID.randomUUID().toString());
+    Record record = new Record().withParsedRecord(new ParsedRecord().withContent(EDIFACT_PARSED_CONTENT)).withId(RECORD_ID);
     HashMap<String, String> payloadContext = new HashMap<>();
     payloadContext.put(EDIFACT_INVOICE.value(), Json.encode(record));
     payloadContext.put(JOB_PROFILE_SNAPSHOT_ID_KEY, profileSnapshotWrapper.getId());
@@ -602,7 +651,7 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
     ProfileSnapshotWrapper profileSnapshotWrapper = buildProfileSnapshotWrapper(jobProfile, actionProfile, mappingProfileWithMixedFundDistributionMapping);
     addMockEntry(JOB_PROFILE_SNAPSHOTS_MOCK, profileSnapshotWrapper);
 
-    Record record = new Record().withParsedRecord(new ParsedRecord().withContent(EDIFACT_PARSED_CONTENT)).withId(UUID.randomUUID().toString());
+    Record record = new Record().withParsedRecord(new ParsedRecord().withContent(EDIFACT_PARSED_CONTENT)).withId(RECORD_ID);
     HashMap<String, String> payloadContext = new HashMap<>();
     payloadContext.put(EDIFACT_INVOICE.value(), Json.encode(record));
     payloadContext.put(JOB_PROFILE_SNAPSHOT_ID_KEY, profileSnapshotWrapper.getId());
@@ -696,14 +745,12 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
   }
 
   @Test
-
-
   public void shouldPublishDiErrorEventWhenPostInvoiceToStorageFailed() throws InterruptedException {
     // given
     ProfileSnapshotWrapper profileSnapshotWrapper = buildProfileSnapshotWrapper(jobProfile, actionProfile, mappingProfile);
     addMockEntry(JOB_PROFILE_SNAPSHOTS_MOCK, profileSnapshotWrapper);
 
-    Record record = new Record().withParsedRecord(new ParsedRecord().withContent(EDIFACT_PARSED_CONTENT)).withId(UUID.randomUUID().toString());
+    Record record = new Record().withParsedRecord(new ParsedRecord().withContent(EDIFACT_PARSED_CONTENT)).withId(RECORD_ID);
     HashMap<String, String> payloadContext = new HashMap<>();
     payloadContext.put(EDIFACT_INVOICE.value(), Json.encode(record));
     payloadContext.put(JOB_PROFILE_SNAPSHOT_ID_KEY, profileSnapshotWrapper.getId());
@@ -750,10 +797,48 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
   }
 
   @Test
+  public void shouldNotPublishDiErrorEventWhenDuplicateException() throws InterruptedException {
+    // given
+    ProfileSnapshotWrapper profileSnapshotWrapper = buildProfileSnapshotWrapper(jobProfile, actionProfile, mappingProfile);
+    addMockEntry(JOB_PROFILE_SNAPSHOTS_MOCK, profileSnapshotWrapper);
+
+    Record record = new Record().withParsedRecord(new ParsedRecord().withContent(EDIFACT_PARSED_CONTENT)).withId(RECORD_ID);
+    HashMap<String, String> payloadContext = new HashMap<>();
+    payloadContext.put(EDIFACT_INVOICE.value(), Json.encode(record));
+    payloadContext.put(JOB_PROFILE_SNAPSHOT_ID_KEY, profileSnapshotWrapper.getId());
+
+    DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
+      .withEventType(DI_INCOMING_EDIFACT_RECORD_PARSED.value())
+      .withTenant(DUPLICATE_ERROR_TENANT)
+      .withOkapiUrl(OKAPI_URL)
+      .withToken(TOKEN)
+      .withContext(payloadContext);
+
+    String topic = KafkaTopicNameHelper.formatTopicName(KAFKA_ENV_VALUE, getDefaultNameSpace(), DUPLICATE_ERROR_TENANT, dataImportEventPayload.getEventType());
+    Event event = new Event().withEventPayload(Json.encode(dataImportEventPayload));
+    KeyValue<String, String> kafkaRecord = new KeyValue<>("test-key", Json.encode(event));
+    kafkaRecord.addHeader(RECORD_ID_HEADER, record.getId(), UTF_8);
+    SendKeyValues<String, String> request = SendKeyValues.to(topic, Collections.singletonList(kafkaRecord))
+      .useDefaults();
+
+    // when
+    kafkaCluster.send(request);
+
+    // then
+    String topicToObserve = KafkaTopicNameHelper.formatTopicName(KAFKA_ENV_VALUE, getDefaultNameSpace(), DUPLICATE_ERROR_TENANT, DI_ERROR.value());
+    List<String> observedValues = kafkaCluster.observeValues(ObserveKeyValues.on(topicToObserve, 0)
+      .with(ConsumerConfig.GROUP_ID_CONFIG, GROUP_ID)
+      .observeFor(30, TimeUnit.SECONDS)
+      .build());
+
+    assertEquals(0, observedValues.size());
+  }
+
+  @Test
   public void shouldPublishDiErrorWithInvoiceLineErrorWhenOneOfInvoiceLinesCreationFailed() throws IOException, InterruptedException {
     // given
     Record record = new Record().withParsedRecord(new ParsedRecord().withContent(PARSED_CONTENT_INVOICE_LINE_3_HAS_NO_SUBTOTAL))
-      .withId(UUID.randomUUID().toString());
+      .withId(RECORD_ID);
     ProfileSnapshotWrapper profileSnapshotWrapper = buildProfileSnapshotWrapper(jobProfile, actionProfile, mappingProfile);
     addMockEntry(JOB_PROFILE_SNAPSHOTS_MOCK, profileSnapshotWrapper);
 
@@ -811,7 +896,7 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
   public void shouldPublishDiErrorWhenMappingProfileHasInvalidMappingSyntax() throws InterruptedException {
     // given
     Record record = new Record().withParsedRecord(new ParsedRecord().withContent(PARSED_CONTENT_INVOICE_LINE_3_HAS_NO_SUBTOTAL))
-      .withId(UUID.randomUUID().toString());
+      .withId(RECORD_ID);
     ProfileSnapshotWrapper profileSnapshotWrapper = buildProfileSnapshotWrapper(jobProfile, actionProfile, mappingProfileWithInvalidMappingSyntax);
     addMockEntry(JOB_PROFILE_SNAPSHOTS_MOCK, profileSnapshotWrapper);
 
