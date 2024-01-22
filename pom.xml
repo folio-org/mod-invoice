@@ -31,8 +31,6 @@
     <spring.version>6.0.2</spring.version>
     <log4j.version>2.20.0</log4j.version>
     <folio-di-support.version>2.0.1</folio-di-support.version>
-    <postgres.version>42.2.23</postgres.version>
-    <lombok.version>1.18.30</lombok.version>
 
     <!--Maven plugin dependencies-->
     <exec-maven-plugin.version>3.1.0</exec-maven-plugin.version>
@@ -44,7 +42,6 @@
     <maven-surefire-plugin.version>3.1.2</maven-surefire-plugin.version>
 
     <!--Test dependencies-->
-    <junit.version>4.13.2</junit.version>
     <testcontainers.version>1.19.1</testcontainers.version>
     <kafka-junit.version>3.3.0</kafka-junit.version>
 
@@ -66,39 +63,6 @@
 
   <dependencies>
     <dependency>
-      <groupId>org.projectlombok</groupId>
-      <artifactId>lombok</artifactId>
-      <version>${lombok.version}</version>
-      <scope>provided</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.folio</groupId>
-      <artifactId>data-import-utils</artifactId>
-      <version>1.11.0</version>
-      <type>jar</type>
-      <exclusions>
-        <exclusion>
-          <groupId>org.z3950.zing</groupId>
-          <artifactId>cql2pgjson</artifactId>
-        </exclusion>
-      </exclusions>
-    </dependency>
-    <dependency>
-      <groupId>org.testcontainers</groupId>
-      <artifactId>postgresql</artifactId>
-      <version>${testcontainers.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>io.vertx</groupId>
-      <artifactId>vertx-pg-client</artifactId>
-      <version>${vertx.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>org.postgresql</groupId>
-      <artifactId>postgresql</artifactId>
-      <version>${postgres.version}</version>
-    </dependency>
-    <dependency>
       <groupId>org.folio</groupId>
       <artifactId>domain-models-runtime</artifactId>
       <version>${raml-module-builder.version}</version>
@@ -107,25 +71,6 @@
       <groupId>org.folio</groupId>
       <artifactId>mod-configuration-client</artifactId>
       <version>${mod-configuration-client.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>org.folio</groupId>
-      <artifactId>domain-models-api-interfaces</artifactId>
-      <version>${raml-module-builder.version}</version>
-      <exclusions>
-        <exclusion>
-          <groupId>javax.xml.stream</groupId>
-          <artifactId>stax-api</artifactId>
-        </exclusion>
-          <exclusion>
-            <groupId>xerces</groupId>
-            <artifactId>xmlParserAPIs</artifactId>
-          </exclusion>
-          <exclusion>
-            <groupId>xpp3</groupId>
-            <artifactId>xpp3</artifactId>
-          </exclusion>
-      </exclusions>
     </dependency>
     <dependency>
       <groupId>org.folio</groupId>
@@ -179,12 +124,6 @@
       <groupId>io.vertx</groupId>
       <artifactId>vertx-junit5</artifactId>
       <version>${vertx.version}</version>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>junit</groupId>
-      <artifactId>junit</artifactId>
-      <version>${junit.version}</version>
       <scope>test</scope>
     </dependency>
     <dependency>
@@ -278,6 +217,12 @@
       <groupId>org.assertj</groupId>
       <artifactId>assertj-core</artifactId>
       <version>3.19.0</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>postgresql</artifactId>
+      <version>${testcontainers.version}</version>
       <scope>test</scope>
     </dependency>
     <dependency>

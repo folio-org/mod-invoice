@@ -149,8 +149,7 @@ public class CreateInvoiceEventHandler implements EventHandler {
             } else {
               preparePayloadWithMappedInvoiceLines(dataImportEventPayload);
               if (!(result.cause() instanceof DuplicateEventException)) {
-                logger.error("Error creating invoice by jobExecutionId: '{}' and recordId: '{}'",
-                  dataImportEventPayload.getJobExecutionId(), recordId, result.cause());
+                logger.error("Error during creation invoice in the storage", result.cause());
               }
               future.completeExceptionally(result.cause());
             }
