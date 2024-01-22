@@ -60,7 +60,7 @@ public class RestClient {
       .sendJson(entity)
       .map(HttpResponse::bodyAsJsonObject)
       .map(body -> body.mapTo(responseType))
-      .onFailure(log::info);
+      .onFailure(log::error);
   }
 
   public Future<Void> postEmptyBody(RequestEntry requestEntry, RequestContext requestContext) {
