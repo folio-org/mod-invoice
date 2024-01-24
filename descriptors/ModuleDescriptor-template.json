@@ -558,8 +558,11 @@
       "handlers": [
         {
           "methods": [ "POST" ],
-          "pathPattern": "/_/tenant",
-          "modulePermissions": [ ]
+          "pathPattern": "/_/tenant"
+        },
+        {
+          "methods": ["GET", "DELETE"],
+          "pathPattern": "/_/tenant/{id}"
         }
       ]
     }
