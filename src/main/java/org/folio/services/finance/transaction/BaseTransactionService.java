@@ -94,7 +94,7 @@ public class BaseTransactionService {
     String endpoint = resourcesPath(FINANCE_BATCH_TRANSACTIONS);
     return restClient.postEmptyResponse(endpoint, batch, requestContext)
       .onSuccess(v -> logger.info("batchAllOrNothing completed successfully"))
-      .onFailure(t -> logger.error("batchAllOrNothing failed, batch={}", JsonObject.mapFrom(batch).toString(), t));
+      .onFailure(t -> logger.error("batchAllOrNothing failed, batch={}", JsonObject.mapFrom(batch), t));
   }
 
   public Future<Void> batchCreate(List<Transaction> transactions, RequestContext requestContext) {
