@@ -73,16 +73,7 @@
             "voucher-storage.voucher-number.get",
             "acquisitions-units-storage.units.collection.get",
             "acquisitions-units-storage.memberships.collection.get",
-            "finance.invoice-transaction-summaries.item.post",
-            "finance.invoice-transaction-summaries.item.put",
-            "finance.order-transaction-summaries.item.put",
-            "finance.payments.item.post",
-            "finance.credits.item.post",
-            "finance.credits.item.put",
-            "finance.payments.item.put",
-            "finance.pending-payments.item.post",
-            "finance.pending-payments.item.put",
-            "finance.encumbrances.item.put",
+            "finance.transactions.batch",
             "finance.transactions.collection.get",
             "finance.funds.item.get",
             "finance.funds.collection.get",
@@ -97,8 +88,7 @@
             "finance.exchange-rate.item.get",
             "finance.fiscal-years.item.get",
             "finance.fiscal-years.collection.get",
-            "organizations-storage.organizations.item.get",
-            "finance.release-encumbrance.item.post"
+            "organizations-storage.organizations.item.get"
           ]
         },
         {
@@ -622,7 +612,7 @@
     },
     {
       "id": "finance.transactions",
-      "version": "5.0"
+      "version": "5.1"
     },
     {
       "id": "batch-group-storage.batch-groups",

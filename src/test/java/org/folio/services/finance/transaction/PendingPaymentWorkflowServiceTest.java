@@ -29,7 +29,6 @@ import javax.money.convert.ExchangeRateProvider;
 
 import org.folio.models.InvoiceWorkflowDataHolder;
 import org.folio.rest.acq.model.finance.FiscalYear;
-import org.folio.rest.acq.model.finance.InvoiceTransactionSummary;
 import org.folio.rest.acq.model.finance.Transaction;
 import org.folio.rest.core.models.RequestContext;
 import org.folio.rest.jaxrs.model.Adjustment;
@@ -55,8 +54,6 @@ public class PendingPaymentWorkflowServiceTest {
 
   @Mock
   private BaseTransactionService baseTransactionService;
-  @Mock
-  private InvoiceTransactionSummaryService invoiceTransactionSummaryService;
   @Mock
   private FundAvailabilityHolderValidator fundAvailabilityValidator;
   @Mock
@@ -160,8 +157,7 @@ public class PendingPaymentWorkflowServiceTest {
 
 
     doNothing().when(fundAvailabilityValidator).validate(anyList());
-    when(invoiceTransactionSummaryService.updateInvoiceTransactionSummary(any(), any())).thenReturn(succeededFuture(null));
-    when(baseTransactionService.updateTransaction(any(), any())).thenReturn(succeededFuture(null));
+    when(baseTransactionService.batchUpdate(any(), any())).thenReturn(succeededFuture());
 
     when(requestContext.getContext()).thenReturn(Vertx.vertx().getOrCreateContext());
 
@@ -196,22 +192,20 @@ public class PendingPaymentWorkflowServiceTest {
     assertEquals(Transaction.TransactionType.PENDING_PAYMENT, newInvoiceTransaction.getTransactionType());
     assertEquals(Transaction.Source.INVOICE, newInvoiceTransaction.getSource());
 
-    InvoiceTransactionSummary expectedSummary = new InvoiceTransactionSummary().withId(invoiceId)
-      .withNumPaymentsCredits(2)
-      .withNumPendingPayments(2);
-    verify(invoiceTransactionSummaryService).updateInvoiceTransactionSummary(expectedSummary, requestContext);
 
+    ArgumentCaptor<List<Transaction>> transactionArgumentCaptor = ArgumentCaptor.forClass(List.class);
+    verify(baseTransactionService, times(1))
+      .batchUpdate(transactionArgumentCaptor.capture(), eq(requestContext));
+    List<Transaction> transactions = transactionArgumentCaptor.getValue();
+    assertThat(transactions, hasSize(2));
 
-    ArgumentCaptor<Transaction> transactionArgumentCaptor = ArgumentCaptor.forClass(Transaction.class);
-    verify(baseTransactionService, times(2)).updateTransaction(transactionArgumentCaptor.capture(), eq(requestContext));
-
-    Transaction updateArgumentInvoiceTransaction = transactionArgumentCaptor.getAllValues().stream()
+    Transaction updateArgumentInvoiceTransaction = transactions.stream()
       .filter(transaction -> Objects.isNull(transaction.getSourceInvoiceLineId())).findFirst().get();
 
     assertEquals(existingInvoiceTransaction.getId(), updateArgumentInvoiceTransaction.getId());
     assertEquals(expectedInvoiceTransactionAmount, updateArgumentInvoiceTransaction.getAmount());
 
-    Transaction updateArgumentInvoiceLineTransaction = transactionArgumentCaptor.getAllValues().stream()
+    Transaction updateArgumentInvoiceLineTransaction = transactions.stream()
       .filter(transaction -> Objects.nonNull(transaction.getSourceInvoiceLineId())).findFirst().get();
 
     assertEquals(existingInvoiceLineTransaction.getId(), updateArgumentInvoiceLineTransaction.getId());

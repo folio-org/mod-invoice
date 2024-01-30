@@ -4,7 +4,7 @@ import static io.vertx.core.Future.succeededFuture;
 import static java.util.stream.Collectors.toList;
 import static org.folio.invoices.utils.HelperUtils.collectResultsOnSuccess;
 import static org.folio.invoices.utils.HelperUtils.convertIdsToCqlQuery;
-import static org.folio.invoices.utils.ResourcePathResolver.FINANCE_RELEASE_ENCUMBRANCE;
+import static org.folio.invoices.utils.ResourcePathResolver.FINANCE_BATCH_TRANSACTIONS;
 import static org.folio.invoices.utils.ResourcePathResolver.FINANCE_TRANSACTIONS;
 import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
 import static org.folio.rest.RestConstants.MAX_IDS_FOR_GET_RQ;
@@ -12,33 +12,28 @@ import static org.folio.rest.RestConstants.MAX_IDS_FOR_GET_RQ;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.UUID;
 
+import io.vertx.core.json.JsonObject;
 import org.apache.commons.collections4.CollectionUtils;
-import org.folio.okapi.common.GenericCompositeFuture;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.folio.rest.acq.model.finance.Batch;
+import org.folio.rest.acq.model.finance.Encumbrance;
 import org.folio.rest.acq.model.finance.Transaction;
-import org.folio.rest.acq.model.finance.Transaction.TransactionType;
 import org.folio.rest.acq.model.finance.TransactionCollection;
+import org.folio.rest.acq.model.finance.TransactionPatch;
 import org.folio.rest.core.RestClient;
 import org.folio.rest.core.models.RequestContext;
 import org.folio.rest.core.models.RequestEntry;
 
 import io.vertx.core.Future;
-import io.vertx.core.Promise;
-import io.vertxconcurrent.Semaphore;
 import one.util.streamex.StreamEx;
 
 public class BaseTransactionService {
+  private static final Logger logger = LogManager.getLogger();
 
   private static final String TRANSACTIONS_ENDPOINT = resourcesPath(FINANCE_TRANSACTIONS);
-
-  private static final Map<TransactionType, String> TRANSACTION_ENDPOINTS = Map.of(
-    TransactionType.PAYMENT, "/finance/payments",
-    TransactionType.CREDIT, "/finance/credits",
-    TransactionType.PENDING_PAYMENT, "/finance/pending-payments",
-    TransactionType.ENCUMBRANCE, "/finance/encumbrances"
-  );
 
   private final RestClient restClient;
 
@@ -51,7 +46,9 @@ public class BaseTransactionService {
         .withQuery(query)
         .withOffset(offset)
         .withLimit(limit);
-    return restClient.get(requestEntry, TransactionCollection.class, requestContext);
+    return restClient.get(requestEntry, TransactionCollection.class, requestContext)
+      .onSuccess(v -> logger.info("getTransactions completed successfully"))
+      .onFailure(t -> logger.error("getTransactions failed, query={}", query, t));
   }
 
   public Future<List<Transaction>> getTransactions(List<String> transactionIds, RequestContext requestContext) {
@@ -74,63 +71,57 @@ public class BaseTransactionService {
     return this.getTransactions(query, 0, transactionIds.size(), requestContext);
   }
 
-  public Future<Transaction> createTransaction(Transaction transaction, RequestContext requestContext) {
-    return Optional.ofNullable(getEndpoint(transaction))
-        .map(RequestEntry::new)
-        .map(requestEntry -> restClient.post(requestEntry, transaction, Transaction.class, requestContext))
-        .orElseGet(this::unsupportedOperation);
-  }
-
-  public Future<Void> updateTransaction(Transaction transaction, RequestContext requestContext) {
-    return Optional.ofNullable(getByIdEndpoint(transaction))
-        .map(RequestEntry::new)
-        .map(requestEntry -> requestEntry.withId(transaction.getId()))
-        .map(requestEntry -> restClient.put(requestEntry, transaction, requestContext))
-        .orElseGet(this::unsupportedOperation);
-  }
-
-  public Future<Void> updateTransactions(List<Transaction> transactions, RequestContext requestContext) {
-    if (CollectionUtils.isEmpty(transactions)) {
-      return Future.succeededFuture();
-    }
-    return requestContext.getContext()
-      .<List<Future<Void>>>executeBlocking(promise -> {
-        List<Future<Void>> futures = new ArrayList<>();
-        var semaphore = new Semaphore(1, requestContext.getContext().owner());
-        for (Transaction tr : transactions) {
-          semaphore.acquire(() -> {
-            var future = updateTransaction(tr, requestContext)
-              .onComplete(asyncResult -> semaphore.release());
-
-            futures.add(future);
-            if (futures.size() == transactions.size()) {
-              promise.complete(futures);
-            }
-          });
+  public Future<Void> batchAllOrNothing(List<Transaction> transactionsToCreate, List<Transaction> transactionsToUpdate,
+      List<String> idsOfTransactionsToDelete, List<TransactionPatch> transactionPatches, RequestContext requestContext) {
+    Batch batch = new Batch();
+    if (transactionsToCreate != null) {
+      transactionsToCreate.forEach(tr -> {
+        if (tr.getId() == null) {
+          tr.setId(UUID.randomUUID().toString());
         }
-      })
-      .compose(GenericCompositeFuture::join)
-      .mapEmpty();
+      });
+      batch.setTransactionsToCreate(transactionsToCreate);
+    }
+    if (transactionsToUpdate != null) {
+      batch.setTransactionsToUpdate(transactionsToUpdate);
+    }
+    if (idsOfTransactionsToDelete != null) {
+      batch.setIdsOfTransactionsToDelete(idsOfTransactionsToDelete);
+    }
+    if (transactionPatches != null) {
+      batch.setTransactionPatches(transactionPatches);
+    }
+    String endpoint = resourcesPath(FINANCE_BATCH_TRANSACTIONS);
+    return restClient.postEmptyResponse(endpoint, batch, requestContext)
+      .onSuccess(v -> logger.info("batchAllOrNothing completed successfully"))
+      .onFailure(t -> logger.error("batchAllOrNothing failed, batch={}", JsonObject.mapFrom(batch).toString(), t));
   }
 
-  public <T> Future<T> unsupportedOperation() {
-    Promise<T> promise = Promise.promise();
-    promise.fail(new UnsupportedOperationException());
-    return promise.future();
+  public Future<Void> batchCreate(List<Transaction> transactions, RequestContext requestContext) {
+    return batchAllOrNothing(transactions, null, null, null, requestContext);
+  }
+
+  public Future<Void> batchUpdate(List<Transaction> transactions, RequestContext requestContext) {
+    return batchAllOrNothing(null, transactions, null, null, requestContext);
+  }
+
+  public Future<Void> batchRelease(List<Transaction> transactions, RequestContext requestContext) {
+    // NOTE: we will have to use transactionPatches when it is available
+    transactions.forEach(tr -> tr.getEncumbrance().setStatus(Encumbrance.Status.RELEASED));
+    return batchUpdate(transactions, requestContext);
+  }
+
+  public Future<Void> batchUnrelease(List<Transaction> transactions, RequestContext requestContext) {
+    // NOTE: we will have to use transactionPatches when it is available
+    transactions.forEach(tr -> tr.getEncumbrance().setStatus(Encumbrance.Status.UNRELEASED));
+    return batchUpdate(transactions, requestContext);
   }
 
 
-  public String getEndpoint(Transaction transaction) {
-    return TRANSACTION_ENDPOINTS.get(transaction.getTransactionType());
-  }
-
-  public String getByIdEndpoint(Transaction transaction) {
-    return TRANSACTION_ENDPOINTS.get(transaction.getTransactionType()) + "/{id}";
-  }
-
-  public Future<Void> releaseEncumbrance(Transaction transaction, RequestContext requestContext) {
-    RequestEntry requestEntry = new RequestEntry(resourcesPath(FINANCE_RELEASE_ENCUMBRANCE) + "/{id}").withId(transaction.getId());
-    return restClient.postEmptyBody(requestEntry,  requestContext);
+  public Future<Void> batchCancel(List<Transaction> transactions, RequestContext requestContext) {
+    // NOTE: we will have to use transactionPatches when it is available
+    transactions.forEach(tr -> tr.setInvoiceCancelled(true));
+    return batchUpdate(transactions, requestContext);
   }
 
 }
