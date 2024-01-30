@@ -18,6 +18,7 @@ import static org.mockito.Mockito.when;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Date;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -29,6 +30,7 @@ import javax.money.convert.ExchangeRateProvider;
 
 import org.folio.models.InvoiceWorkflowDataHolder;
 import org.folio.rest.acq.model.finance.FiscalYear;
+import org.folio.rest.acq.model.finance.Metadata;
 import org.folio.rest.acq.model.finance.Transaction;
 import org.folio.rest.core.models.RequestContext;
 import org.folio.rest.jaxrs.model.Adjustment;
@@ -88,7 +90,9 @@ public class PendingPaymentWorkflowServiceTest {
       .withFiscalYearId(fiscalYearId)
       .withSourceInvoiceId(invoiceId)
       .withSourceInvoiceLineId(invoiceLineId)
-      .withAmount(50d);
+      .withAmount(50d)
+      .withMetadata(new Metadata()
+        .withCreatedDate(new Date()));
 
     Transaction existingInvoiceTransaction = new Transaction()
       .withId(UUID.randomUUID().toString())
@@ -96,7 +100,9 @@ public class PendingPaymentWorkflowServiceTest {
       .withFromFundId(fundId)
       .withFiscalYearId(fiscalYearId)
       .withSourceInvoiceId(invoiceId)
-      .withAmount(10d);
+      .withAmount(10d)
+      .withMetadata(new Metadata()
+        .withCreatedDate(new Date()));
 
 
     FundDistribution invoiceFundDistribution = new FundDistribution()
