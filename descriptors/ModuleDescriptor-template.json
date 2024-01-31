@@ -647,14 +647,6 @@
       "version": "2.0"
     },
     {
-      "id": "finance.invoice-transaction-summaries",
-      "version": "2.1"
-    },
-    {
-      "id": "finance.order-transaction-summaries",
-      "version": "1.2"
-    },
-    {
       "id": "finance.expense-classes",
       "version": "3.0"
     },

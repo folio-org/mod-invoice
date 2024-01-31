@@ -77,11 +77,11 @@ public class PaymentCreditWorkflowService {
     }
     return baseTransactionService.batchCreate(transactionsToCreate, requestContext)
       .recover(t -> {
+        String invoiceId = transactionsToCreate.get(0).getSourceInvoiceId();
+        logger.error("Failed to create transactions for invoice with id - {}", invoiceId, t);
         if (t instanceof HttpException he) {
           return Future.failedFuture(new HttpException(he.getCode(), he.getErrors()));
         }
-        String invoiceId = transactionsToCreate.get(0).getSourceInvoiceId();
-        logger.error("Failed to create transactions for invoice with id - {}", invoiceId, t);
         return Future.failedFuture(new HttpException(500, TRANSACTION_CREATION_FAILURE.toError().withParameters(
           List.of(new Parameter().withKey("invoiceId").withValue(invoiceId))
         )));

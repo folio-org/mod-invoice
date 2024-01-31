@@ -81,7 +81,7 @@ public class PendingPaymentWorkflowService {
     return encumbranceService.getEncumbrancesByPoLineIds(poLineIds, fiscalYearId, requestContext)
       .compose(transactions -> cleanupOldEncumbrances(transactions, holders, requestContext))
       .recover(t -> {
-        logger.error("cleanupOldEncumbrances: Failed to release encumbrances", t);
+        logger.error("cleanupOldEncumbrances: Failed to release encumbrances. poLineIds: {}", poLineIds, t);
         if (t instanceof HttpException he) {
           return Future.failedFuture(new HttpException(he.getCode(), he.getErrors()));
         }
