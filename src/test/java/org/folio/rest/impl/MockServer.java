@@ -24,10 +24,8 @@ import static org.folio.invoices.utils.ResourcePathResolver.BUDGET_EXPENSE_CLASS
 import static org.folio.invoices.utils.ResourcePathResolver.COMPOSITE_ORDER;
 import static org.folio.invoices.utils.ResourcePathResolver.CURRENT_BUDGET;
 import static org.folio.invoices.utils.ResourcePathResolver.EXPENSE_CLASSES_URL;
-import static org.folio.invoices.utils.ResourcePathResolver.FINANCE_CREDITS;
+import static org.folio.invoices.utils.ResourcePathResolver.FINANCE_BATCH_TRANSACTIONS;
 import static org.folio.invoices.utils.ResourcePathResolver.FINANCE_EXCHANGE_RATE;
-import static org.folio.invoices.utils.ResourcePathResolver.FINANCE_PAYMENTS;
-import static org.folio.invoices.utils.ResourcePathResolver.FINANCE_PENDING_PAYMENTS;
 import static org.folio.invoices.utils.ResourcePathResolver.FINANCE_TRANSACTIONS;
 import static org.folio.invoices.utils.ResourcePathResolver.FISCAL_YEARS;
 import static org.folio.invoices.utils.ResourcePathResolver.FOLIO_INVOICE_NUMBER;
@@ -36,7 +34,6 @@ import static org.folio.invoices.utils.ResourcePathResolver.INVOICES;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_DOCUMENTS;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_LINES;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_LINE_NUMBER;
-import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_TRANSACTION_SUMMARIES;
 import static org.folio.invoices.utils.ResourcePathResolver.LEDGERS;
 import static org.folio.invoices.utils.ResourcePathResolver.ORDER_INVOICE_RELATIONSHIP;
 import static org.folio.invoices.utils.ResourcePathResolver.ORDER_LINES;
@@ -191,11 +188,8 @@ public class MockServer {
   private static final String UPDATE_VOUCHER_ERROR_TENANT = "update_voucher_error_tenant";
   private static final String GET_VOUCHERS_ERROR_TENANT = "get_vouchers_error_tenant";
   private static final String GET_INVOICE_LINES_ERROR_TENANT = "get_invoice_lines_error_tenant";
-  private static final String CREATE_INVOICE_TRANSACTION_SUMMARY_ERROR_TENANT = "create_invoice_transaction_summary_error_tenant";
-  private static final String POST_PENDING_PAYMENT_ERROR_TENANT = "post_pending_payment_error_tenant";
-  private static final String POST_PENDING_PAYMENT_INTERNAL_SERVER_ERROR_TENANT = "post_pending_payment_internal_server_error_tenant";
-  private static final String POST_CREDIT_PAYMENT_INTERNAL_SERVER_ERROR_TENANT = "post_credit_payment_internal_server_error_tenant";
-  private static final String POST_CREDIT_PAYMENT_ERROR_TENANT = "post_credit_payment_error_tenant";
+  private static final String POST_BATCH_TRANSACTIONS_INTERNAL_SERVER_ERROR_TENANT = "post_batch_transactions_internal_server_error_tenant";
+  private static final String POST_BATCH_TRANSACTIONS_ERROR_TENANT = "post_batch_transactions_error_tenant";
   private static final String NON_EXIST_CONFIG_TENANT = "invoicetest";
   private static final String INVALID_PREFIX_CONFIG_TENANT = "invalid_prefix_config_tenant";
   public static final String PREFIX_CONFIG_WITHOUT_VALUE_TENANT = "prefix_without_value_config_tenant";
@@ -234,19 +228,10 @@ public class MockServer {
   static final Header PREFIX_CONFIG_WITHOUT_VALUE_X_OKAPI_TENANT = new Header(OKAPI_HEADER_TENANT, PREFIX_CONFIG_WITHOUT_VALUE_TENANT);
   static final Header PREFIX_CONFIG_WITH_NON_EXISTING_VALUE_X_OKAPI_TENANT = new Header(OKAPI_HEADER_TENANT, PREFIX_CONFIG_WITH_NON_EXISTING_VALUE_TENANT);
 
-  static final Header CREATE_INVOICE_TRANSACTION_SUMMARY_ERROR_X_OKAPI_TENANT = new Header(OKAPI_HEADER_TENANT,
-    CREATE_INVOICE_TRANSACTION_SUMMARY_ERROR_TENANT);
-  static final Header POST_PENDING_PAYMENT_INTERNAL_SERVER_ERROR_X_OKAPI_TENANT = new Header(OKAPI_HEADER_TENANT,
-    POST_PENDING_PAYMENT_INTERNAL_SERVER_ERROR_TENANT);
-
-  static final Header POST_PENDING_PAYMENT_ERROR_X_OKAPI_TENANT = new Header(OKAPI_HEADER_TENANT,
-    POST_PENDING_PAYMENT_ERROR_TENANT);
-
-  static final Header POST_CREDIT_PAYMENT_INTERNAL_SERVER_ERROR_X_OKAPI_TENANT = new Header(OKAPI_HEADER_TENANT,
-    POST_CREDIT_PAYMENT_INTERNAL_SERVER_ERROR_TENANT);
-
-  static final Header POST_CREDIT_PAYMENT_ERROR_X_OKAPI_TENANT = new Header(OKAPI_HEADER_TENANT,
-    POST_CREDIT_PAYMENT_ERROR_TENANT);
+  static final Header POST_BATCH_TRANSACTIONS_INTERNAL_SERVER_ERROR_X_OKAPI_TENANT = new Header(OKAPI_HEADER_TENANT,
+    POST_BATCH_TRANSACTIONS_INTERNAL_SERVER_ERROR_TENANT);
+  static final Header POST_BATCH_TRANSACTIONS_ERROR_X_OKAPI_TENANT = new Header(OKAPI_HEADER_TENANT,
+    POST_BATCH_TRANSACTIONS_ERROR_TENANT);
 
   static final String CURRENT_FISCAL_YEAR = "currentFiscalYear";
   static final String SYSTEM_CURRENCY = "USD";
@@ -392,12 +377,9 @@ public class MockServer {
     router.route(HttpMethod.POST, "/invoice-storage/invoices/:id/documents").handler(this::handlePostInvoiceDocument);
     router.route(HttpMethod.POST, resourcesPath(BATCH_VOUCHER_EXPORT_CONFIGS)).handler(ctx -> handlePostEntry(ctx, ExportConfig.class, BATCH_VOUCHER_EXPORT_CONFIGS));
     router.route(HttpMethod.POST, "/batch-voucher-storage/export-configurations/:id/credentials").handler(this::handlePostCredentials);
-    router.route(HttpMethod.POST, resourcesPath(INVOICE_TRANSACTION_SUMMARIES)).handler(this::handlePostInvoiceSummary);
     router.route(HttpMethod.POST, resourcesPath(BATCH_GROUPS)).handler(ctx -> handlePost(ctx, BatchGroup.class, BATCH_GROUPS, false));
-    router.route(HttpMethod.POST, resourcesPath(FINANCE_PAYMENTS)).handler(this::handlePostPayment);
-    router.route(HttpMethod.POST, resourcesPath(FINANCE_CREDITS)).handler(ctx -> handlePostEntry(ctx, Transaction.class, FINANCE_CREDITS));
+    router.route(HttpMethod.POST, resourcesPath(FINANCE_BATCH_TRANSACTIONS)).handler(this::handleBatchTransactions);
     router.route(HttpMethod.POST, resourcesPath(BATCH_VOUCHER_EXPORTS_STORAGE)).handler(ctx -> handlePost(ctx, BatchVoucherExport.class, BATCH_VOUCHER_EXPORTS_STORAGE, false));
-    router.route(HttpMethod.POST, resourcesPath(FINANCE_PENDING_PAYMENTS)).handler(this::handlePostPendingPayment);
     router.route(HttpMethod.POST, resourcesPath(ORDER_INVOICE_RELATIONSHIP)).handler(this::handlePostOrderInvoiceRelations);
 
     router.route(HttpMethod.GET, resourcesPath(INVOICES)).handler(this::handleGetInvoices);
@@ -627,55 +609,20 @@ public class MockServer {
     serverResponse(ctx, 201, APPLICATION_JSON, body.encodePrettily());
   }
 
-  private void handlePostPendingPayment(RoutingContext ctx) {
-    logger.info("handlePostPendingPayment got: " + ctx.request().path());
+  private void handleBatchTransactions(RoutingContext ctx) {
+    logger.info("handleBatchTransactions got: " + ctx.request().path());
     String tenant = ctx.request().getHeader(OKAPI_HEADER_TENANT);
-    if (POST_PENDING_PAYMENT_INTERNAL_SERVER_ERROR_TENANT.equals(tenant)) {
+    if (POST_BATCH_TRANSACTIONS_INTERNAL_SERVER_ERROR_TENANT.equals(tenant)) {
       serverResponse(ctx, 500, TEXT_PLAIN, INTERNAL_SERVER_ERROR.getReasonPhrase());
-    } else if (POST_PENDING_PAYMENT_ERROR_TENANT.equals(tenant)) {
+    } else if (POST_BATCH_TRANSACTIONS_ERROR_TENANT.equals(tenant)) {
       Error error = new Error();
       error.setCode("fiscalYearNotFound");
       error.setMessage("Fiscal year not found for the specified fiscalYearId");
       Errors errors = new Errors().withErrors(List.of(error)).withTotalRecords(1);
       serverResponse(ctx, 422, APPLICATION_JSON, JsonObject.mapFrom(errors).encodePrettily());
     } else {
-      JsonObject body = ctx.body().asJsonObject();
-      body.put("id", UUID.randomUUID().toString());
-
-      addServerRqRsData(HttpMethod.POST, FINANCE_PENDING_PAYMENTS, body);
-      serverResponse(ctx, 201, APPLICATION_JSON, body.encodePrettily());
-    }
-  }
-
-  private void handlePostPayment(RoutingContext ctx) {
-    logger.info("handlePostPayment got: " + ctx.request().path());
-    String tenant = ctx.request().getHeader(OKAPI_HEADER_TENANT);
-    if (POST_CREDIT_PAYMENT_INTERNAL_SERVER_ERROR_TENANT.equals(tenant)) {
-      serverResponse(ctx, 500, TEXT_PLAIN, INTERNAL_SERVER_ERROR.getReasonPhrase());
-    } else if (POST_CREDIT_PAYMENT_ERROR_TENANT.equals(tenant)) {
-      Error error = new Error();
-      error.setCode("fiscalYearNotFound");
-      error.setMessage("Fiscal year not found for the specified fiscalYearId");
-      Errors errors = new Errors().withErrors(List.of(error)).withTotalRecords(1);
-      serverResponse(ctx, 422, APPLICATION_JSON, JsonObject.mapFrom(errors).encodePrettily());
-    } else {
-      JsonObject body = ctx.body().asJsonObject();
-      body.put("id", UUID.randomUUID().toString());
-
-      addServerRqRsData(HttpMethod.POST, FINANCE_PAYMENTS, body);
-      serverResponse(ctx, 201, APPLICATION_JSON, body.encodePrettily());
-    }
-  }
-
-  private void handlePostInvoiceSummary(RoutingContext ctx) {
-    logger.info("handlePostInvoiceSummary got: " + ctx.request().path());
-    String tenant = ctx.request().getHeader(OKAPI_HEADER_TENANT);
-    if (CREATE_INVOICE_TRANSACTION_SUMMARY_ERROR_TENANT.equals(tenant)) {
-      serverResponse(ctx, 500, TEXT_PLAIN, INTERNAL_SERVER_ERROR.getReasonPhrase());
-    } else {
-      JsonObject body = ctx.body().asJsonObject();
-      addServerRqRsData(HttpMethod.POST, INVOICE_TRANSACTION_SUMMARIES, body);
-      serverResponse(ctx, 201, APPLICATION_JSON, JsonObject.mapFrom(body).encodePrettily());
+      addServerRqRsData(HttpMethod.POST, FINANCE_BATCH_TRANSACTIONS, ctx.body().asJsonObject());
+      serverResponse(ctx, 204, TEXT_PLAIN, "");
     }
   }
 

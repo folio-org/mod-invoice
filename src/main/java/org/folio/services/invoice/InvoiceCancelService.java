@@ -12,7 +12,6 @@ import static org.folio.invoices.utils.HelperUtils.collectResultsOnSuccess;
 import static org.folio.invoices.utils.HelperUtils.convertIdsToCqlQuery;
 import static org.folio.rest.RestConstants.MAX_IDS_FOR_GET_RQ;
 import static org.folio.rest.acq.model.finance.Encumbrance.Status.RELEASED;
-import static org.folio.rest.acq.model.finance.Encumbrance.Status.UNRELEASED;
 import static org.folio.rest.acq.model.finance.Transaction.TransactionType.CREDIT;
 import static org.folio.rest.acq.model.finance.Transaction.TransactionType.PAYMENT;
 import static org.folio.rest.acq.model.finance.Transaction.TransactionType.PENDING_PAYMENT;
@@ -26,7 +25,6 @@ import org.apache.logging.log4j.Logger;
 import org.folio.InvoiceWorkflowDataHolderBuilder;
 import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.models.InvoiceWorkflowDataHolder;
-import org.folio.rest.acq.model.finance.InvoiceTransactionSummary;
 import org.folio.rest.acq.model.finance.Transaction;
 import org.folio.rest.acq.model.finance.Transaction.TransactionType;
 import org.folio.rest.acq.model.finance.TransactionCollection;
@@ -39,7 +37,6 @@ import org.folio.rest.jaxrs.model.InvoiceLine;
 import org.folio.rest.jaxrs.model.Parameter;
 import org.folio.services.finance.transaction.BaseTransactionService;
 import org.folio.services.finance.transaction.EncumbranceService;
-import org.folio.services.finance.transaction.InvoiceTransactionSummaryService;
 import org.folio.services.order.OrderLineService;
 import org.folio.services.order.OrderService;
 import org.folio.services.voucher.VoucherService;
@@ -55,7 +52,6 @@ public class InvoiceCancelService {
 
   private final BaseTransactionService baseTransactionService;
   private final EncumbranceService encumbranceService;
-  private final InvoiceTransactionSummaryService invoiceTransactionSummaryService;
   private final VoucherService voucherService;
   private final OrderLineService orderLineService;
   private final OrderService orderService;
@@ -63,14 +59,12 @@ public class InvoiceCancelService {
 
   public InvoiceCancelService(BaseTransactionService baseTransactionService,
       EncumbranceService encumbranceService,
-      InvoiceTransactionSummaryService invoiceTransactionSummaryService,
       VoucherService voucherService,
       OrderLineService orderLineService,
       OrderService orderService,
       InvoiceWorkflowDataHolderBuilder holderBuilder) {
     this.baseTransactionService = baseTransactionService;
     this.encumbranceService = encumbranceService;
-    this.invoiceTransactionSummaryService = invoiceTransactionSummaryService;
     this.voucherService = voucherService;
     this.orderLineService = orderLineService;
     this.orderService = orderService;
@@ -150,24 +144,13 @@ public class InvoiceCancelService {
       RequestContext requestContext) {
     if (transactions.isEmpty())
       return succeededFuture(null);
-    transactions.forEach(tr -> tr.setInvoiceCancelled(true));
-    InvoiceTransactionSummary summary = buildInvoiceTransactionsSummary(invoiceId, transactions);
-    return invoiceTransactionSummaryService.updateInvoiceTransactionSummary(summary, requestContext)
-      .compose(s -> baseTransactionService.updateTransactions(transactions, requestContext))
+    return baseTransactionService.batchCancel(transactions, requestContext)
       .recover(t -> {
         logger.error("Failed to cancel transactions for invoice with id {}", invoiceId, t);
         List<Parameter> parameters = Collections.singletonList(
           new Parameter().withKey(INVOICE_ID).withValue(invoiceId));
         throw new HttpException(500, CANCEL_TRANSACTIONS_ERROR.toError().withParameters(parameters));
       });
-  }
-
-  private InvoiceTransactionSummary buildInvoiceTransactionsSummary(String invoiceId, List<Transaction> transactions) {
-    List<TransactionType> paymentOrCredit = List.of(PENDING_PAYMENT, PAYMENT, CREDIT);
-    return new InvoiceTransactionSummary()
-      .withId(invoiceId)
-      .withNumPendingPayments((int)transactions.stream().filter(tr -> tr.getTransactionType() == PENDING_PAYMENT).count())
-      .withNumPaymentsCredits((int)transactions.stream().filter(tr -> paymentOrCredit.contains(tr.getTransactionType())).count());
   }
 
   private void cancelInvoiceLines(List<InvoiceLine> lines) {
@@ -241,12 +224,11 @@ public class InvoiceCancelService {
     return encumbranceService.getEncumbrancesByPoLineIds(poLineIds, fiscalYearId, requestContext)
       .map(transactions -> transactions.stream()
         .filter(tr -> RELEASED.equals(tr.getEncumbrance().getStatus()))
-        .peek(tr -> tr.getEncumbrance().setStatus(UNRELEASED))
-        .collect(toList()))
+        .toList())
       .compose(transactions -> {
         if (transactions.isEmpty())
           return succeededFuture(null);
-        return encumbranceService.unreleaseEncumbrances(transactions, requestContext);
+        return baseTransactionService.batchUnrelease(transactions, requestContext);
       });
   }
 

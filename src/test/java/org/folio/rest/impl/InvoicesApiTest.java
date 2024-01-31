@@ -38,15 +38,12 @@ import static org.folio.invoices.utils.HelperUtils.getAdjustmentFundDistribution
 import static org.folio.invoices.utils.HelperUtils.getFundDistributionAmount;
 import static org.folio.invoices.utils.HelperUtils.getNoAcqUnitCQL;
 import static org.folio.invoices.utils.ResourcePathResolver.BUDGETS;
-import static org.folio.invoices.utils.ResourcePathResolver.FINANCE_CREDITS;
-import static org.folio.invoices.utils.ResourcePathResolver.FINANCE_PAYMENTS;
-import static org.folio.invoices.utils.ResourcePathResolver.FINANCE_PENDING_PAYMENTS;
+import static org.folio.invoices.utils.ResourcePathResolver.FINANCE_BATCH_TRANSACTIONS;
 import static org.folio.invoices.utils.ResourcePathResolver.FINANCE_TRANSACTIONS;
 import static org.folio.invoices.utils.ResourcePathResolver.FOLIO_INVOICE_NUMBER;
 import static org.folio.invoices.utils.ResourcePathResolver.FUNDS;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICES;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_LINES;
-import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_TRANSACTION_SUMMARIES;
 import static org.folio.invoices.utils.ResourcePathResolver.LEDGERS;
 import static org.folio.invoices.utils.ResourcePathResolver.ORDER_LINES;
 import static org.folio.invoices.utils.ResourcePathResolver.VOUCHERS_STORAGE;
@@ -109,6 +106,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
@@ -119,7 +117,6 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import javax.money.CurrencyUnit;
 import javax.money.Monetary;
@@ -136,14 +133,15 @@ import org.apache.http.HttpStatus;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.invoices.utils.InvoiceProtectedFields;
+import org.folio.rest.acq.model.finance.Batch;
 import org.folio.rest.acq.model.finance.Budget;
 import org.folio.rest.acq.model.finance.Budget.BudgetStatus;
 import org.folio.rest.acq.model.finance.Encumbrance;
 import org.folio.rest.acq.model.finance.Fund;
 import org.folio.rest.acq.model.finance.FundCollection;
-import org.folio.rest.acq.model.finance.InvoiceTransactionSummary;
 import org.folio.rest.acq.model.finance.Ledger;
 import org.folio.rest.acq.model.finance.Transaction;
+import org.folio.rest.acq.model.finance.Transaction.TransactionType;
 import org.folio.rest.acq.model.orders.CompositePoLine;
 import org.folio.rest.acq.model.units.AcquisitionsUnitMembershipCollection;
 import org.folio.rest.core.models.RequestContext;
@@ -702,10 +700,15 @@ public class InvoicesApiTest extends ApiTestBase {
     verifyTransitionToApproved(voucherCreated, Collections.singletonList(invoiceLine), updatedInvoice, 2);
     checkVoucherAcqUnitIdsList(voucherCreated, invoice);
 
-    List<Transaction> pendingPayments = serverRqRs.get(FINANCE_PENDING_PAYMENTS, HttpMethod.POST)
-      .stream()
-      .map(transaction -> transaction.mapTo(Transaction.class))
-      .collect(toList());
+    List<JsonObject> batchCalls = serverRqRs.get(FINANCE_BATCH_TRANSACTIONS, HttpMethod.POST);
+    assertThat(batchCalls, hasSize(1));
+    List<Transaction> pendingPayments = batchCalls.stream()
+      .map(entries -> entries.mapTo(Batch.class))
+      .map(Batch::getTransactionsToCreate)
+      .flatMap(Collection::stream)
+      .toList();
+    assertThat(pendingPayments, Every.everyItem(hasProperty("transactionType",
+      is(TransactionType.PENDING_PAYMENT))));
     Double transactionsAmount = pendingPayments.stream()
       .map(tr -> Money.of(tr.getAmount(), tr.getCurrency()))
       .reduce(Money::add)
@@ -1740,16 +1743,9 @@ public class InvoicesApiTest extends ApiTestBase {
 
     verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, headers, "", 204);
 
-    List<JsonObject> invoiceSummariesCreated = serverRqRs.get(INVOICE_TRANSACTION_SUMMARIES, HttpMethod.POST);
-    List<JsonObject> pendingPaymentsCreated = serverRqRs.get(FINANCE_PENDING_PAYMENTS, HttpMethod.POST);
-
-    assertThat(invoiceSummariesCreated, hasSize(1));
-
-    InvoiceTransactionSummary transactionSummary = invoiceSummariesCreated.get(0).mapTo(InvoiceTransactionSummary.class);
+    List<JsonObject> pendingPaymentsCreated = serverRqRs.get(FINANCE_BATCH_TRANSACTIONS, HttpMethod.POST);
 
     int numPendingPayments = invoiceLine.getFundDistributions().size();
-    assertThat(transactionSummary.getNumPendingPayments(), is(numPendingPayments));
-    assertThat(transactionSummary.getNumPaymentsCredits(), is(numPendingPayments));
     assertThat(pendingPaymentsCreated, hasSize(numPendingPayments));
   }
 
@@ -1773,7 +1769,7 @@ public class InvoicesApiTest extends ApiTestBase {
     Transaction enc1 = new Transaction()
       .withId(UUID.randomUUID().toString())
       .withFiscalYearId(FISCAL_YEAR_ID)
-      .withTransactionType(Transaction.TransactionType.ENCUMBRANCE)
+      .withTransactionType(TransactionType.ENCUMBRANCE)
       .withAmount(1.00)
       .withCurrency("USD")
       .withFromFundId(EXISTING_FUND_ID)
@@ -1784,7 +1780,7 @@ public class InvoicesApiTest extends ApiTestBase {
     Transaction enc2 = new Transaction()
       .withId(UUID.randomUUID().toString())
       .withFiscalYearId(FISCAL_YEAR_ID)
-      .withTransactionType(Transaction.TransactionType.ENCUMBRANCE)
+      .withTransactionType(TransactionType.ENCUMBRANCE)
       .withAmount(1.00)
       .withCurrency("USD")
       .withFromFundId(EXISTING_FUND_ID_2)
@@ -1795,7 +1791,7 @@ public class InvoicesApiTest extends ApiTestBase {
     Transaction enc3 = new Transaction()
       .withId(UUID.randomUUID().toString())
       .withFiscalYearId(FISCAL_YEAR_ID)
-      .withTransactionType(Transaction.TransactionType.ENCUMBRANCE)
+      .withTransactionType(TransactionType.ENCUMBRANCE)
       .withAmount(1.00)
       .withCurrency("USD")
       .withFromFundId(EXISTING_FUND_ID_3)
@@ -1831,19 +1827,18 @@ public class InvoicesApiTest extends ApiTestBase {
 
     verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, headers, "", 204);
 
-    List<JsonObject> invoiceSummariesCreated = serverRqRs.get(INVOICE_TRANSACTION_SUMMARIES, HttpMethod.POST);
-    List<JsonObject> pendingPaymesCreated = serverRqRs.get(FINANCE_PENDING_PAYMENTS, HttpMethod.POST);
+    List<JsonObject> batchCalls = serverRqRs.get(FINANCE_BATCH_TRANSACTIONS, HttpMethod.POST);
+    assertThat(batchCalls, hasSize(1));
+    List<Transaction> pendingPaymentCreated = batchCalls.stream()
+      .map(entries -> entries.mapTo(Batch.class))
+      .map(Batch::getTransactionsToCreate)
+      .flatMap(Collection::stream)
+      .toList();
+    assertThat(pendingPaymentCreated, hasSize(invoiceLine.getFundDistributions().size()));
+    assertThat(pendingPaymentCreated, Every.everyItem(hasProperty("transactionType",
+      is(TransactionType.PENDING_PAYMENT))));
 
-    assertThat(invoiceSummariesCreated, hasSize(1));
-
-
-    InvoiceTransactionSummary transactionSummary = invoiceSummariesCreated.get(0).mapTo(InvoiceTransactionSummary.class);
-
-    assertThat(transactionSummary.getNumPendingPayments(), is(invoiceLine.getFundDistributions().size()));
-    assertThat(transactionSummary.getNumPaymentsCredits(), is(invoiceLine.getFundDistributions().size()));
-    assertThat(pendingPaymesCreated, hasSize(invoiceLine.getFundDistributions().size()));
-    Map<String, Transaction> pendingPaymentMap = pendingPaymesCreated.stream()
-      .map(entries -> entries.mapTo(Transaction.class))
+    Map<String, Transaction> pendingPaymentMap = pendingPaymentCreated.stream()
       .collect(toMap((transaction)->transaction.getAwaitingPayment().getEncumbranceId(), Function.identity()));
     ConversionQuery conversionQuery = ConversionQueryBuilder.of().setTermCurrency(DEFAULT_SYSTEM_CURRENCY).set(RATE_KEY, 1.5).build();
     ExchangeRateProvider exchangeRateProvider = new ExchangeRateProviderResolver().resolve(conversionQuery, new RequestContext(
@@ -1997,22 +1992,10 @@ public class InvoicesApiTest extends ApiTestBase {
   }
 
   @Test
-  void testTransitionToApprovedWithErrorFromCreateInvoiceTransactionSummary() {
-    logger.info("=== Test transition invoice to Approved with error when creating InvoiceTransactionSummary  ===");
-
-    Headers headers = prepareHeaders(X_OKAPI_URL, MockServer.CREATE_INVOICE_TRANSACTION_SUMMARY_ERROR_X_OKAPI_TENANT, X_OKAPI_TOKEN);
-    Errors errors = transitionToApprovedWithError(REVIEWED_INVOICE_SAMPLE_PATH, headers);
-
-    assertThat(errors, notNullValue());
-    assertThat(errors.getErrors(), hasSize(1));
-    assertThat(errors.getErrors().get(0).getCode(), equalTo(GENERIC_ERROR_CODE.getCode()));
-  }
-
-  @Test
   void testTransitionToApprovedWithInternalErrorFromCreatePendingPayment() {
     logger.info("=== Test transition invoice to Approved with internal server error when creating AwaitingPayment  ===");
 
-    Headers headers = prepareHeaders(X_OKAPI_URL, MockServer.POST_PENDING_PAYMENT_INTERNAL_SERVER_ERROR_X_OKAPI_TENANT, X_OKAPI_TOKEN);
+    Headers headers = prepareHeaders(X_OKAPI_URL, MockServer.POST_BATCH_TRANSACTIONS_INTERNAL_SERVER_ERROR_X_OKAPI_TENANT, X_OKAPI_TOKEN);
     Errors errors = transitionToApprovedWithError(REVIEWED_INVOICE_SAMPLE_PATH, headers, 500);
 
     assertThat(errors, notNullValue());
@@ -2023,7 +2006,7 @@ public class InvoicesApiTest extends ApiTestBase {
   void testTransitionToApprovedWithErrorFromCreatePendingPayment() {
     logger.info("=== Test transition invoice to Approved with error when creating AwaitingPayment  ===");
 
-    Headers headers = prepareHeaders(X_OKAPI_URL, MockServer.POST_PENDING_PAYMENT_ERROR_X_OKAPI_TENANT, X_OKAPI_TOKEN);
+    Headers headers = prepareHeaders(X_OKAPI_URL, MockServer.POST_BATCH_TRANSACTIONS_ERROR_X_OKAPI_TENANT, X_OKAPI_TOKEN);
     Errors errors = transitionToApprovedWithError(REVIEWED_INVOICE_SAMPLE_PATH, headers, 422);
 
     assertThat(errors, notNullValue());
@@ -2034,7 +2017,7 @@ public class InvoicesApiTest extends ApiTestBase {
   void testTransitionToApprovedWithInternalErrorFromCreateCreditPayment() {
     logger.info("=== Test transition invoice to Approved with internal server error when creating payment credit  ===");
 
-    Headers headers = prepareHeaders(X_OKAPI_URL, MockServer.POST_CREDIT_PAYMENT_INTERNAL_SERVER_ERROR_X_OKAPI_TENANT, X_OKAPI_TOKEN);
+    Headers headers = prepareHeaders(X_OKAPI_URL, MockServer.POST_BATCH_TRANSACTIONS_INTERNAL_SERVER_ERROR_X_OKAPI_TENANT, X_OKAPI_TOKEN);
     Errors errors = transitionToPaymentWithError(APPROVED_INVOICE_SAMPLE_PATH, headers, 500);
 
     assertThat(errors, notNullValue());
@@ -2045,7 +2028,7 @@ public class InvoicesApiTest extends ApiTestBase {
   void testTransitionToApprovedWithErrorFromCreateCreditPayment() {
     logger.info("=== Test transition invoice to Approved with error when creating payment credit  ===");
 
-    Headers headers = prepareHeaders(X_OKAPI_URL, MockServer.POST_CREDIT_PAYMENT_ERROR_X_OKAPI_TENANT, X_OKAPI_TOKEN);
+    Headers headers = prepareHeaders(X_OKAPI_URL, MockServer.POST_BATCH_TRANSACTIONS_ERROR_X_OKAPI_TENANT, X_OKAPI_TOKEN);
     Errors errors = transitionToPaymentWithError(APPROVED_INVOICE_SAMPLE_PATH, headers, 422);
 
     assertThat(errors, notNullValue());
@@ -2058,15 +2041,14 @@ public class InvoicesApiTest extends ApiTestBase {
     List<JsonObject> voucherLinesCreated = serverRqRs.get(VOUCHER_LINES, HttpMethod.POST);
     List<JsonObject> fundsSearches = serverRqRs.get(FUNDS, HttpMethod.GET);
     List<JsonObject> invoiceUpdates = serverRqRs.get(INVOICES, HttpMethod.PUT);
-    List<JsonObject> transactionSummariesCreated = serverRqRs.get(INVOICE_TRANSACTION_SUMMARIES, HttpMethod.POST);
-    List<JsonObject> pendingPaymentCreated = Optional.ofNullable(serverRqRs.get(FINANCE_PENDING_PAYMENTS, HttpMethod.POST)).orElse(emptyList());
+    List<JsonObject> batchCalls = Optional.ofNullable(serverRqRs.get(FINANCE_BATCH_TRANSACTIONS, HttpMethod.POST))
+      .orElse(emptyList());
 
     assertThat(invoiceLinesSearches, notNullValue());
     assertThat(invoiceLinesUpdates, notNullValue());
     assertThat(fundsSearches, notNullValue());
     assertThat(voucherLinesCreated, notNullValue());
     assertThat(invoiceUpdates, notNullValue());
-    assertThat(transactionSummariesCreated, notNullValue());
 
     assertThat(invoiceLinesSearches, hasSize(invoiceLines.size()/MAX_IDS_FOR_GET_RQ + 1));
     List<InvoiceLine> linesWithUpdatedStatus = invoiceLinesUpdates.stream()
@@ -2077,7 +2059,6 @@ public class InvoicesApiTest extends ApiTestBase {
 
     assertThat(voucherLinesCreated, hasSize(createdVoucherLines));
 
-    InvoiceTransactionSummary transactionSummary = transactionSummariesCreated.get(0).mapTo(InvoiceTransactionSummary.class);
     Invoice invoiceUpdate = invoiceUpdates.get(0).mapTo(Invoice.class);
 
     List<VoucherLine> voucherLines = voucherLinesCreated.stream().map(json -> json.mapTo(VoucherLine.class)).collect(Collectors.toList());
@@ -2102,11 +2083,16 @@ public class InvoicesApiTest extends ApiTestBase {
       .mapToInt(adj -> adj.getFundDistributions().size())
       .sum();
 
+    assertThat(batchCalls, hasSize(1));
+    List<Transaction> pendingPaymentCreated = batchCalls.stream()
+      .map(entries -> entries.mapTo(Batch.class))
+      .map(Batch::getTransactionsToCreate)
+      .flatMap(Collection::stream)
+      .toList();
     assertThat(pendingPaymentCreated, hasSize(paymentCreditNumber));
-    List<Transaction> pendingPayments = pendingPaymentCreated.stream().map(entries -> entries.mapTo(Transaction.class)).collect(toList());
-    assertThat(pendingPayments, Every.everyItem(hasProperty("sourceInvoiceId", is(invoice.getId()))));
-    assertThat(transactionSummary.getNumPendingPayments(), is(paymentCreditNumber));
-    assertThat(transactionSummary.getNumPaymentsCredits(), is(paymentCreditNumber));
+    assertThat(pendingPaymentCreated, Every.everyItem(hasProperty("sourceInvoiceId", is(invoice.getId()))));
+    assertThat(pendingPaymentCreated, Every.everyItem(hasProperty("transactionType",
+      is(TransactionType.PENDING_PAYMENT))));
 
     assertThat(calculateVoucherAmount(voucherCreated, voucherLines), equalTo(voucherCreated.getAmount()));
     assertThat(createdVoucherLines, equalTo(voucherLinesCreated.size()));
@@ -2222,9 +2208,11 @@ public class InvoicesApiTest extends ApiTestBase {
     var expectedPaymentDate = invoices.get(0).getMetadata().getUpdatedDate();
 
     assertThat(invoices, everyItem(hasProperty("paymentDate", is(expectedPaymentDate))));
-    var payments = getRqRsEntries(HttpMethod.POST, FINANCE_PAYMENTS).stream()
-      .map(json -> json.mapTo(Transaction.class))
-      .collect(toList());
+    var payments = getRqRsEntries(HttpMethod.POST, FINANCE_BATCH_TRANSACTIONS).stream()
+      .map(entries -> entries.mapTo(Batch.class))
+      .map(Batch::getTransactionsToCreate)
+      .flatMap(Collection::stream)
+      .toList();
 
     invoiceLines.forEach(invLine -> {
       var sumPaymentsByLine = payments.stream()
@@ -2518,8 +2506,7 @@ public class InvoicesApiTest extends ApiTestBase {
 
     assertThat(getRqRsEntries(HttpMethod.GET, FINANCE_TRANSACTIONS), hasSize(0));
     assertThat(getRqRsEntries(HttpMethod.GET, FUNDS), hasSize(1));
-    assertThat(getRqRsEntries(HttpMethod.POST, FINANCE_PAYMENTS), hasSize(0));
-    assertThat(getRqRsEntries(HttpMethod.POST, FINANCE_CREDITS), hasSize(0));
+    assertThat(getRqRsEntries(HttpMethod.POST, FINANCE_BATCH_TRANSACTIONS), hasSize(0));
 
     assertThat(errors.getErrors(), hasSize(1));
     Error error = errors.getErrors().get(0);
@@ -2551,8 +2538,7 @@ public class InvoicesApiTest extends ApiTestBase {
 
     assertThat(getRqRsEntries(HttpMethod.GET, FINANCE_TRANSACTIONS), hasSize(0));
     assertThat(getRqRsEntries(HttpMethod.GET, FUNDS), hasSize(0));
-    assertThat(getRqRsEntries(HttpMethod.POST, FINANCE_PAYMENTS), hasSize(0));
-    assertThat(getRqRsEntries(HttpMethod.POST, FINANCE_CREDITS), hasSize(0));
+    assertThat(getRqRsEntries(HttpMethod.POST, FINANCE_BATCH_TRANSACTIONS), hasSize(0));
 
     assertThat(errors.getErrors(), hasSize(1));
     Error error = errors.getErrors().get(0);
@@ -2570,7 +2556,7 @@ public class InvoicesApiTest extends ApiTestBase {
     Transaction transaction = new Transaction()
       .withSourceInvoiceId(id)
       .withFiscalYearId(FISCAL_YEAR_ID)
-      .withTransactionType(Transaction.TransactionType.PAYMENT)
+      .withTransactionType(TransactionType.PAYMENT)
       .withAmount(1.00)
       .withToFundId(EXISTING_FUND_ID);
 
@@ -2583,8 +2569,7 @@ public class InvoicesApiTest extends ApiTestBase {
     assertThat(getRqRsEntries(HttpMethod.GET, FINANCE_TRANSACTIONS), hasSize(2));
     assertThat(getRqRsEntries(HttpMethod.GET, FUNDS), hasSize(2));
     assertThat(getRqRsEntries(HttpMethod.GET, CURRENT_FISCAL_YEAR), hasSize(1));
-    assertThat(getRqRsEntries(HttpMethod.POST, FINANCE_PAYMENTS), hasSize(0));
-    assertThat(getRqRsEntries(HttpMethod.POST, FINANCE_CREDITS), hasSize(0));
+    assertThat(getRqRsEntries(HttpMethod.POST, FINANCE_BATCH_TRANSACTIONS), hasSize(0));
   }
 
   @Test
@@ -2601,7 +2586,7 @@ public class InvoicesApiTest extends ApiTestBase {
     Transaction transaction = new Transaction()
       .withSourceInvoiceId(id)
       .withFiscalYearId(FISCAL_YEAR_ID)
-      .withTransactionType(Transaction.TransactionType.PAYMENT)
+      .withTransactionType(TransactionType.PAYMENT)
       .withAmount(1.00)
       .withToFundId(EXISTING_FUND_ID);
 
@@ -2614,8 +2599,7 @@ public class InvoicesApiTest extends ApiTestBase {
     assertThat(getRqRsEntries(HttpMethod.GET, FINANCE_TRANSACTIONS), hasSize(2));
     assertThat(getRqRsEntries(HttpMethod.GET, FUNDS), hasSize(2));
     assertThat(getRqRsEntries(HttpMethod.GET, CURRENT_FISCAL_YEAR), hasSize(1));
-    assertThat(getRqRsEntries(HttpMethod.POST, FINANCE_PAYMENTS), hasSize(0));
-    assertThat(getRqRsEntries(HttpMethod.POST, FINANCE_CREDITS), hasSize(0));
+    assertThat(getRqRsEntries(HttpMethod.POST, FINANCE_BATCH_TRANSACTIONS), hasSize(0));
   }
 
   @Test
@@ -2657,8 +2641,7 @@ public class InvoicesApiTest extends ApiTestBase {
 
     assertThat(getRqRsEntries(HttpMethod.GET, FINANCE_TRANSACTIONS), hasSize(0));
     assertThat(getRqRsEntries(HttpMethod.GET, FUNDS), hasSize(1));
-    assertThat(getRqRsEntries(HttpMethod.POST, FINANCE_PAYMENTS), hasSize(0));
-    assertThat(getRqRsEntries(HttpMethod.POST, FINANCE_CREDITS), hasSize(0));
+    assertThat(getRqRsEntries(HttpMethod.POST, FINANCE_BATCH_TRANSACTIONS), hasSize(0));
 
     assertThat(errors.getErrors(), hasSize(1));
     Error error = errors.getErrors().get(0);
@@ -2709,8 +2692,14 @@ public class InvoicesApiTest extends ApiTestBase {
     assertThat(lines, everyItem(hasProperty("invoiceLineStatus", is(InvoiceLine.InvoiceLineStatus.PAID))));
 
     assertThat(getRqRsEntries(HttpMethod.GET, FINANCE_TRANSACTIONS), hasSize(2));
-    assertThat(getRqRsEntries(HttpMethod.POST, FINANCE_PAYMENTS), hasSize(5));
-    assertThat(getRqRsEntries(HttpMethod.POST, FINANCE_CREDITS), hasSize(0));
+    var payments = getRqRsEntries(HttpMethod.POST, FINANCE_BATCH_TRANSACTIONS).stream()
+      .map(entries -> entries.mapTo(Batch.class))
+      .map(Batch::getTransactionsToCreate)
+      .flatMap(Collection::stream)
+      .toList();
+    assertThat(payments, Every.everyItem(hasProperty("transactionType",
+      is(TransactionType.PAYMENT))));
+    assertThat(payments, hasSize(5));
 
     checkCreditsPayments(reqData, invoiceLines);
   }
@@ -3185,17 +3174,18 @@ public class InvoicesApiTest extends ApiTestBase {
     assertThat(getRqRsEntries(HttpMethod.GET, FINANCE_TRANSACTIONS), hasSize(2));
     assertThat(getRqRsEntries(HttpMethod.GET, FUNDS), hasSize(2));
 
-    assertThat(getRqRsEntries(HttpMethod.POST, FINANCE_PAYMENTS), hasSize(invoiceLinePaymentsCount + adjustmentPaymentsCount));
-    assertThat(getRqRsEntries(HttpMethod.POST, FINANCE_CREDITS), hasSize(invoiceLineCreditsCount + adjustmentCreditsCount));
-
-    List<Transaction> payments = getRqRsEntries(HttpMethod.POST, FINANCE_PAYMENTS).stream().map(t -> t.mapTo(Transaction.class)).collect(toList());
-    List<Transaction> credits = getRqRsEntries(HttpMethod.POST, FINANCE_CREDITS).stream().map(t -> t.mapTo(Transaction.class)).collect(toList());
+    var transactions = getRqRsEntries(HttpMethod.POST, FINANCE_BATCH_TRANSACTIONS).stream()
+      .map(entries -> entries.mapTo(Batch.class))
+      .map(Batch::getTransactionsToCreate)
+      .flatMap(Collection::stream)
+      .toList();
+    var payments = transactions.stream().filter(tr -> tr.getTransactionType() == TransactionType.PAYMENT).toList();
+    var credits = transactions.stream().filter(tr -> tr.getTransactionType() == TransactionType.CREDIT).toList();
+    assertThat(payments, hasSize(invoiceLinePaymentsCount + adjustmentPaymentsCount));
+    assertThat(credits, hasSize(invoiceLineCreditsCount + adjustmentCreditsCount));
 
     assertThat(payments, everyItem(HasProperty.hasProperty("fromFundId")));
     assertThat(credits, everyItem(HasProperty.hasProperty("toFundId")));
-
-    List<Transaction> transactions = Stream.concat(getRqRsEntries(HttpMethod.POST, FINANCE_PAYMENTS).stream(), getRqRsEntries(HttpMethod.POST, FINANCE_CREDITS).stream())
-      .map(entry -> entry.mapTo(Transaction.class)).collect(Collectors.toList());
 
     int transactionEncumbranceReferenceNumber = (int) transactions.stream()
             .filter(transaction -> StringUtils.isNotEmpty(transaction.getPaymentEncumbranceId()))

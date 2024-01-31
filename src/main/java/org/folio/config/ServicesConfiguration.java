@@ -21,8 +21,6 @@ import org.folio.services.finance.fiscalyear.CurrentFiscalYearService;
 import org.folio.services.finance.fiscalyear.FiscalYearService;
 import org.folio.services.finance.transaction.BaseTransactionService;
 import org.folio.services.finance.transaction.EncumbranceService;
-import org.folio.services.finance.transaction.InvoiceTransactionSummaryService;
-import org.folio.services.finance.transaction.OrderTransactionSummaryService;
 import org.folio.services.finance.transaction.PaymentCreditWorkflowService;
 import org.folio.services.finance.transaction.PendingPaymentWorkflowService;
 import org.folio.services.invoice.BaseInvoiceService;
@@ -52,9 +50,8 @@ public class ServicesConfiguration {
   }
 
   @Bean
-  EncumbranceService encumbranceService(BaseTransactionService transactionService,
-                                        OrderTransactionSummaryService orderTransactionSummaryService) {
-    return new EncumbranceService(transactionService, orderTransactionSummaryService);
+  EncumbranceService encumbranceService(BaseTransactionService transactionService) {
+    return new EncumbranceService(transactionService);
   }
 
   @Bean
@@ -99,24 +96,13 @@ public class ServicesConfiguration {
   @Bean
   PendingPaymentWorkflowService pendingPaymentService(BaseTransactionService baseTransactionService,
                                                       EncumbranceService encumbranceService,
-                                                      InvoiceTransactionSummaryService invoiceTransactionSummaryService,
                                                       FundAvailabilityHolderValidator fundAvailabilityValidator) {
-    return new PendingPaymentWorkflowService(baseTransactionService, encumbranceService, invoiceTransactionSummaryService, fundAvailabilityValidator);
+    return new PendingPaymentWorkflowService(baseTransactionService, encumbranceService, fundAvailabilityValidator);
   }
 
   @Bean
   PaymentCreditWorkflowService paymentCreditService(BaseTransactionService baseTransactionService) {
     return new PaymentCreditWorkflowService(baseTransactionService);
-  }
-
-  @Bean
-  InvoiceTransactionSummaryService invoiceTransactionSummaryService(RestClient restClient) {
-    return new InvoiceTransactionSummaryService(restClient);
-  }
-
-  @Bean
-  OrderTransactionSummaryService orderTransactionSummaryService(RestClient restClient) {
-    return new OrderTransactionSummaryService(restClient);
   }
 
   @Bean
@@ -210,12 +196,11 @@ public class ServicesConfiguration {
   @Bean
   InvoiceCancelService invoiceCancelService(BaseTransactionService baseTransactionService,
                                             EncumbranceService encumbranceService,
-                                            InvoiceTransactionSummaryService invoiceTransactionSummaryService,
                                             VoucherService voucherService,
                                             OrderLineService orderLineService,
                                             OrderService orderService,
                                             InvoiceWorkflowDataHolderBuilder invoiceWorkflowDataHolderBuilder) {
-    return new InvoiceCancelService(baseTransactionService, encumbranceService, invoiceTransactionSummaryService,
+    return new InvoiceCancelService(baseTransactionService, encumbranceService,
       voucherService, orderLineService, orderService, invoiceWorkflowDataHolderBuilder);
   }
   @Bean
