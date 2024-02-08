@@ -10,6 +10,9 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+import io.vertx.core.CompositeFuture;
+import io.vertx.core.Future;
+import io.vertx.core.json.JsonObject;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.converters.AddressConverter;
@@ -24,8 +27,10 @@ import org.folio.rest.jaxrs.model.BatchVoucher;
 import org.folio.rest.jaxrs.model.BatchVoucherExport;
 import org.folio.rest.jaxrs.model.BatchedVoucher;
 import org.folio.rest.jaxrs.model.BatchedVoucherLine;
+import org.folio.rest.jaxrs.model.Error;
 import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.jaxrs.model.InvoiceLine;
+import org.folio.rest.jaxrs.model.Parameter;
 import org.folio.rest.jaxrs.model.Voucher;
 import org.folio.rest.jaxrs.model.VoucherCollection;
 import org.folio.services.BatchGroupService;
@@ -33,10 +38,6 @@ import org.folio.services.InvoiceLinesRetrieveService;
 import org.folio.services.InvoiceRetrieveService;
 import org.folio.services.VendorRetrieveService;
 import org.folio.services.VoucherLineService;
-
-import io.vertx.core.CompositeFuture;
-import io.vertx.core.Future;
-import io.vertx.core.json.JsonObject;
 
 public class BatchVoucherGenerateService {
   private static final Logger logger = LogManager.getLogger();
@@ -73,7 +74,10 @@ public class BatchVoucherGenerateService {
     return voucherService.getVouchers(voucherCQL, 0, Integer.MAX_VALUE, requestContext)
       .compose(vouchers -> {
         if (vouchers.getVouchers().isEmpty()) {
-          throw new HttpException(404, "Vouchers for batch voucher export were not found");
+          var param = new Parameter().withKey("voucherCQL").withValue(voucherCQL);
+          var error = new Error().withMessage("Vouchers for batch voucher export were not found").withParameters(List.of(param));
+          logger.error(JsonObject.mapFrom(error).encodePrettily());
+          throw new HttpException(404, error);
         }
         Future<Map<String, List<VoucherLine>>> voucherLines = voucherLineService.getVoucherLinesMap(vouchers, requestContext)
           .onFailure(t -> logger.error("buildBatchVoucherObject:: Error retrieving voucher lines", t));
@@ -144,7 +148,7 @@ public class BatchVoucherGenerateService {
     List<Adjustment> invoiceAdjustmentToExport = invoice.getAdjustments().stream()
       .filter(Adjustment::getExportToAccounting)
       .map(adjustment -> calculateTotalAmount(adjustment, invoice.getSubTotal(), voucher.getExchangeRate()))
-      .collect(Collectors.toList());
+      .toList();
 
     adjustments.addAll(invoiceAdjustmentToExport);
     batchedVoucher.setAdjustments(adjustments);

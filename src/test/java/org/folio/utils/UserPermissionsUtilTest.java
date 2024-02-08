@@ -1,21 +1,24 @@
 package org.folio.utils;
 
-import io.vertx.core.json.JsonArray;
-import org.folio.invoices.rest.exceptions.HttpException;
-import org.folio.invoices.utils.ErrorCodes;
-import org.folio.rest.jaxrs.model.Invoice;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-
-import java.util.*;
-
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import io.vertx.core.json.JsonArray;
+import org.folio.invoices.rest.exceptions.HttpException;
+import org.folio.rest.jaxrs.model.Invoice;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+
 public class UserPermissionsUtilTest {
 
-  private Map<String, String> okapiHeaders = new HashMap<>();
+  private final Map<String, String> okapiHeaders = new HashMap<>();
 
   @Test
   @DisplayName("Should not throw exception when approve permission is in position")
@@ -129,7 +132,7 @@ public class UserPermissionsUtilTest {
     Invoice invoiceFromStorage = new Invoice();
     invoiceFromStorage.setStatus(Invoice.Status.PAID);
 
-    HttpException exception = assertThrows(HttpException.class, () ->
+    var exception = assertThrows(HttpException.class, () ->
       UserPermissionsUtil.verifyUserHasInvoiceCancelPermission(
         invoice.getStatus(), invoiceFromStorage.getStatus(), okapiHeaders));
     assertEquals(exception.getCode(), 403);

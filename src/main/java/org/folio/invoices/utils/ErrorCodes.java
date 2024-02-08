@@ -67,7 +67,8 @@ public enum ErrorCodes {
   MULTIPLE_ADJUSTMENTS_FISCAL_YEARS("multipleAdjustmentsFiscalYears", "Multiple fiscal years are used in the adjustments"),
   COULD_NOT_FIND_VALID_FISCAL_YEAR("couldNotFindValidFiscalYear", "Could not find any valid fiscal year with a budget for all funds in the invoice"),
   MORE_THAN_ONE_FISCAL_YEAR_SERIES("moreThanOneFiscalYearSeries", "Fund distributions cannot reference more than one fiscal year series. Please edit fund distributions so they all come from the same fiscal year series."),
-  CANNOT_RESET_INVOICE_FISCAL_YEAR("cannotResetInvoiceFiscalYear", "Invoice fiscal year cannot be set to null if it was previously defined");
+  CANNOT_RESET_INVOICE_FISCAL_YEAR("cannotResetInvoiceFiscalYear", "Invoice fiscal year cannot be set to null if it was previously defined"),
+  BATCH_VOUCHER_NOT_FOUND("batchVoucherNotFound", "Batch voucher was not found");
 
   private final String code;
   private final String description;

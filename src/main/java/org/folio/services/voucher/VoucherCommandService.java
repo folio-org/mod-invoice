@@ -11,12 +11,15 @@ import javax.money.convert.ConversionQuery;
 import javax.money.convert.ExchangeRate;
 import javax.money.convert.ExchangeRateProvider;
 
+import java.util.List;
+
 import org.apache.commons.lang3.StringUtils;
 import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.invoices.utils.HelperUtils;
 import org.folio.rest.core.models.RequestContext;
 import org.folio.rest.jaxrs.model.Config;
 import org.folio.rest.jaxrs.model.Invoice;
+import org.folio.rest.jaxrs.model.Parameter;
 import org.folio.rest.jaxrs.model.SequenceNumber;
 import org.folio.rest.jaxrs.model.Voucher;
 import org.folio.services.configuration.ConfigurationService;
@@ -81,7 +84,8 @@ public class VoucherCommandService {
 
   private void validateVoucherNumberPrefix(String prefix) {
     if (StringUtils.isNotEmpty(prefix) && !isAlpha(prefix)) {
-      throw new HttpException(400, VOUCHER_NUMBER_PREFIX_NOT_ALPHA);
+      var param = new Parameter().withKey("prefix").withValue(prefix);
+      throw new HttpException(400, VOUCHER_NUMBER_PREFIX_NOT_ALPHA, List.of(param));
     }
   }
 

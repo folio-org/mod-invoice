@@ -107,7 +107,7 @@ public class VoucherService {
     }
     return updateVoucher(voucher.getId(), voucher.withStatus(status), requestContext)
       .recover(fail -> {
-        throw new HttpException(500, VOUCHER_UPDATE_FAILURE.toError());
+        throw new HttpException(500, VOUCHER_UPDATE_FAILURE.toErrors(), fail.getMessage());
       });
   }
 

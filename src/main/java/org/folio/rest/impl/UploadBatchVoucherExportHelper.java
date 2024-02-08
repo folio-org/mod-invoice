@@ -1,8 +1,14 @@
 package org.folio.rest.impl;
 
+import static org.folio.invoices.utils.ErrorCodes.BATCH_VOUCHER_NOT_FOUND;
+
 import java.net.URISyntaxException;
+import java.util.List;
 import java.util.Map;
 
+import io.vertx.core.Context;
+import io.vertx.core.Future;
+import io.vertx.core.json.JsonObject;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.invoices.rest.exceptions.HttpException;
@@ -10,7 +16,9 @@ import org.folio.models.BatchVoucherUploadHolder;
 import org.folio.rest.core.models.RequestContext;
 import org.folio.rest.jaxrs.model.BatchVoucher;
 import org.folio.rest.jaxrs.model.BatchVoucherExport;
+import org.folio.rest.jaxrs.model.Error;
 import org.folio.rest.jaxrs.model.ExportConfig;
+import org.folio.rest.jaxrs.model.Parameter;
 import org.folio.services.ftp.FtpUploadService;
 import org.folio.services.ftp.SftpUploadService;
 import org.folio.services.voucher.BatchVoucherExportConfigService;
@@ -18,10 +26,6 @@ import org.folio.services.voucher.BatchVoucherExportsService;
 import org.folio.services.voucher.BatchVoucherService;
 import org.folio.spring.SpringContextUtil;
 import org.springframework.beans.factory.annotation.Autowired;
-
-import io.vertx.core.Context;
-import io.vertx.core.Future;
-import io.vertx.core.json.JsonObject;
 
 public class UploadBatchVoucherExportHelper extends AbstractHelper {
   private static final Logger log = LogManager.getLogger(UploadBatchVoucherExportHelper.class);
@@ -109,7 +113,10 @@ public class UploadBatchVoucherExportHelper extends AbstractHelper {
           uploadHolder.setExportConfig(exportConfigs.getExportConfigs().get(0));
           return null;
         }
-        throw new HttpException(404, "Batch export configuration was not found");
+        var param = new Parameter().withKey("query").withValue(query);
+        var error = new Error().withMessage("Batch export configuration was not found").withParameters(List.of(param));
+        log.error("Failed to retrieve export configuration with query={}", query);
+        throw new HttpException(404, error);
       });
   }
 
@@ -131,7 +138,10 @@ public class UploadBatchVoucherExportHelper extends AbstractHelper {
      return batchVoucherService.getBatchVoucherById(uploadHolder.getBatchVoucherExport().getBatchVoucherId(), buildRequestContext())
        .onSuccess(uploadHolder::setBatchVoucher)
        .recover(t -> {
-         throw new HttpException(404, "Batch voucher was not found");
+         var parameter = new Parameter().withKey("batchVoucherId").withValue(uploadHolder.getBatchVoucherExport().getBatchVoucherId());
+         var error = BATCH_VOUCHER_NOT_FOUND.toError().withParameters(List.of(parameter));
+         log.error("Failed to fetch batch voucher by id: {}", JsonObject.mapFrom(error).encodePrettily());
+         throw new HttpException(404, error);
        })
        .mapEmpty();
    }

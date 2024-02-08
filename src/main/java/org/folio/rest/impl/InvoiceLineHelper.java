@@ -25,6 +25,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
+import io.vertx.core.Context;
+import io.vertx.core.Future;
+import io.vertx.core.json.JsonObject;
 import org.apache.commons.lang3.StringUtils;
 import org.folio.InvoiceWorkflowDataHolderBuilder;
 import org.folio.invoices.rest.exceptions.HttpException;
@@ -37,7 +40,6 @@ import org.folio.rest.acq.model.orders.CompositePurchaseOrder;
 import org.folio.rest.acq.model.orders.OrderInvoiceRelationship;
 import org.folio.rest.core.models.RequestContext;
 import org.folio.rest.jaxrs.model.Adjustment;
-import org.folio.rest.jaxrs.model.Error;
 import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.jaxrs.model.InvoiceLine;
 import org.folio.rest.jaxrs.model.InvoiceLineCollection;
@@ -52,9 +54,6 @@ import org.folio.services.order.OrderService;
 import org.folio.services.validator.InvoiceLineValidator;
 import org.folio.spring.SpringContextUtil;
 import org.springframework.beans.factory.annotation.Autowired;
-
-import io.vertx.core.Context;
-import io.vertx.core.Future;
 
 public class InvoiceLineHelper extends AbstractHelper {
   public static final String QUERY_BY_INVOICE_ID = "invoiceId==%s";
@@ -328,8 +327,9 @@ public class InvoiceLineHelper extends AbstractHelper {
         ilProcessing.setInvoice(invoiceCollection.getInvoices().get(0));
         return succeededFuture(null);
       }
-      List<Parameter> parameters = Collections.singletonList(new Parameter().withKey("invoiceLineId").withValue(lineId));
-      Error error = CANNOT_DELETE_INVOICE_LINE.toError().withParameters(parameters);
+      var param = new Parameter().withKey("invoiceLineId").withValue(lineId);
+      var error = CANNOT_DELETE_INVOICE_LINE.toError().withParameters(List.of(param));
+      logger.error(JsonObject.mapFrom(error).encodePrettily());
       throw new HttpException(404, error);
     });
   }
@@ -365,7 +365,8 @@ public class InvoiceLineHelper extends AbstractHelper {
       .compose(v -> createInvoiceLine(ilProcessing, requestContext))
       .compose(v -> orderService.createInvoiceOrderRelation(ilProcessing.getInvoiceLine(), buildRequestContext())
         .recover(throwable -> {
-          throw new HttpException(500, ORDER_INVOICE_RELATION_CREATE_FAILED.toError());
+          logger.error("Failed to create invoice order relation", throwable);
+          throw new HttpException(500, ORDER_INVOICE_RELATION_CREATE_FAILED.toErrors(), throwable.getMessage());
         }))
       .compose(v -> updateInvoicePoNumbers(ilProcessing, requestContext))
       .compose(v -> persistInvoiceIfNeeded(ilProcessing, requestContext))
@@ -374,7 +375,10 @@ public class InvoiceLineHelper extends AbstractHelper {
 
   private void checkIfInvoiceLineCreationAllowed(Invoice invoice) {
     if (isPostApproval(invoice)) {
-      throw new HttpException(500, PROHIBITED_INVOICE_LINE_CREATION);
+      var param = new Parameter().withKey("invoiceStatus").withValue(invoice.getStatus().toString());
+      var error = PROHIBITED_INVOICE_LINE_CREATION.toError().withParameters(List.of(param));
+      logger.error(JsonObject.mapFrom(error).encodePrettily());
+      throw new HttpException(500, error);
     }
   }
 
@@ -477,7 +481,7 @@ public class InvoiceLineHelper extends AbstractHelper {
       .compose(v -> updateInvoice(ilProcessing, requestContext))
       .recover(t -> {
         logger.error("Failed to update the invoice and other lines", t);
-        throw new HttpException(500, FAILED_TO_UPDATE_INVOICE_AND_OTHER_LINES.toError());
+        throw new HttpException(500, FAILED_TO_UPDATE_INVOICE_AND_OTHER_LINES.toErrors(), t.getMessage());
       });
   }
 
@@ -544,7 +548,7 @@ public class InvoiceLineHelper extends AbstractHelper {
       })
       .recover(throwable -> {
         logger.error("Failed to update invoice poNumbers", throwable);
-        throw new HttpException(500, FAILED_TO_UPDATE_PONUMBERS.toError());
+        throw new HttpException(500, FAILED_TO_UPDATE_PONUMBERS.toErrors(), throwable.getMessage());
       });
   }
 
@@ -562,7 +566,7 @@ public class InvoiceLineHelper extends AbstractHelper {
       .compose(order -> removeInvoicePoNumber(order.getPoNumber(), order, ilProcessing, requestContext))
       .recover(throwable -> {
         logger.error("Failed to update invoice poNumbers", throwable);
-        throw new HttpException(500, FAILED_TO_UPDATE_PONUMBERS.toError());
+        throw new HttpException(500, FAILED_TO_UPDATE_PONUMBERS.toErrors(), throwable.getMessage());
       });
   }
 
@@ -586,7 +590,7 @@ public class InvoiceLineHelper extends AbstractHelper {
     if (!invoicePoNumbers.contains(orderPoNumber))
       return succeededFuture(null);
     // check the other invoice lines to see if one of them is linking to the same order
-    List<String> orderLineIds = order.getCompositePoLines().stream().map(CompositePoLine::getId).collect(toList());
+    List<String> orderLineIds = order.getCompositePoLines().stream().map(CompositePoLine::getId).toList();
     return getRelatedLines(invoiceLine, requestContext).compose(lines -> {
       if (lines.stream().noneMatch(line -> orderLineIds.contains(line.getPoLineId()))) {
         List<String> newNumbers = invoicePoNumbers.stream().filter(n -> !n.equals(orderPoNumber)).collect(toList());
