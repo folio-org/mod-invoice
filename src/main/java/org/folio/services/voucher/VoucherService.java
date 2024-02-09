@@ -8,6 +8,7 @@ import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
 
 import java.util.Optional;
 
+import io.vertx.core.Future;
 import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.rest.core.RestClient;
 import org.folio.rest.core.models.RequestContext;
@@ -15,8 +16,6 @@ import org.folio.rest.core.models.RequestEntry;
 import org.folio.rest.jaxrs.model.Voucher;
 import org.folio.rest.jaxrs.model.VoucherCollection;
 import org.folio.services.validator.VoucherValidator;
-
-import io.vertx.core.Future;
 
 public class VoucherService {
   public static final String QUERY_BY_INVOICE_ID = "invoiceId==%s";
@@ -107,7 +106,9 @@ public class VoucherService {
     }
     return updateVoucher(voucher.getId(), voucher.withStatus(status), requestContext)
       .recover(fail -> {
-        throw new HttpException(500, VOUCHER_UPDATE_FAILURE.toErrors(), fail.getMessage());
+        String message = String.format(VOUCHER_UPDATE_FAILURE.getDescription(), fail.getMessage());
+        var error = VOUCHER_UPDATE_FAILURE.toError().withMessage(message);
+        throw new HttpException(500, error);
       });
   }
 

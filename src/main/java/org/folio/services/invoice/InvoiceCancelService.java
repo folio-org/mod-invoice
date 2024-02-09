@@ -3,7 +3,6 @@ package org.folio.services.invoice;
 import static io.vertx.core.Future.succeededFuture;
 import static java.util.Collections.emptyList;
 import static java.util.Objects.requireNonNullElse;
-import static java.util.stream.Collectors.toList;
 import static org.folio.invoices.utils.ErrorCodes.CANCEL_TRANSACTIONS_ERROR;
 import static org.folio.invoices.utils.ErrorCodes.CANNOT_CANCEL_INVOICE;
 import static org.folio.invoices.utils.ErrorCodes.ERROR_UNRELEASING_ENCUMBRANCES;
@@ -19,6 +18,7 @@ import static org.folio.rest.acq.model.finance.Transaction.TransactionType.PENDI
 import java.util.Collections;
 import java.util.List;
 
+import io.vertx.core.Future;
 import one.util.streamex.StreamEx;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -40,8 +40,6 @@ import org.folio.services.finance.transaction.EncumbranceService;
 import org.folio.services.order.OrderLineService;
 import org.folio.services.order.OrderService;
 import org.folio.services.voucher.VoucherService;
-
-import io.vertx.core.Future;
 
 public class InvoiceCancelService {
   private static final String PO_LINES_WITH_RIGHT_PAYMENT_STATUS_QUERY =
@@ -137,7 +135,7 @@ public class InvoiceCancelService {
     return baseTransactionService.getTransactions(query, 0, Integer.MAX_VALUE, requestContext)
       .map(TransactionCollection::getTransactions)
       .map(transactions -> transactions.stream()
-        .filter(tr -> relevantTransactionTypes.contains(tr.getTransactionType())).collect(toList()));
+        .filter(tr -> relevantTransactionTypes.contains(tr.getTransactionType())).toList());
   }
 
   private Future<Void> cancelTransactions(String invoiceId, List<Transaction> transactions,
@@ -147,9 +145,10 @@ public class InvoiceCancelService {
     return baseTransactionService.batchCancel(transactions, requestContext)
       .recover(t -> {
         logger.error("Failed to cancel transactions for invoice with id {}", invoiceId, t);
-        List<Parameter> parameters = Collections.singletonList(
-          new Parameter().withKey(INVOICE_ID).withValue(invoiceId));
-        throw new HttpException(500, CANCEL_TRANSACTIONS_ERROR.toError().withParameters(parameters));
+        var param = new Parameter().withKey(INVOICE_ID).withValue(invoiceId);
+        String message = String.format(CANCEL_TRANSACTIONS_ERROR.getDescription(), t.getMessage());
+        var error = CANCEL_TRANSACTIONS_ERROR.toError().withMessage(message).withParameters(List.of(param));
+        throw new HttpException(500, error);
       });
   }
 
@@ -167,25 +166,25 @@ public class InvoiceCancelService {
       .filter(InvoiceLine::getReleaseEncumbrance)
       .map(InvoiceLine::getPoLineId)
       .distinct()
-      .collect(toList());
+      .toList();
     if (poLineIds.isEmpty())
       return succeededFuture();
     List<Future<List<PoLine>>> futureList = StreamEx
       .ofSubLists(poLineIds, MAX_IDS_FOR_GET_RQ)
       .map(this::queryToGetPoLinesWithRightPaymentStatusByIds)
       .map(query -> orderLineService.getPoLines(query, requestContext))
-      .collect(toList());
+      .toList();
 
     Future<List<PoLine>> poLinesFuture = collectResultsOnSuccess(futureList)
-      .map(col -> col.stream().flatMap(List::stream).collect(toList()));
+      .map(col -> col.stream().flatMap(List::stream).toList());
 
     return poLinesFuture.compose(poLines -> selectPoLinesWithOpenOrders(poLines, requestContext))
       .compose(poLines -> unreleaseEncumbrancesForPoLines(poLines, invoiceFromStorage, requestContext))
       .recover(t -> {
         Throwable cause = requireNonNullElse(t.getCause(), t);
-        List<Parameter> parameters = Collections.singletonList(
-          new Parameter().withKey("cause").withValue(cause.toString()));
-        Error error = ERROR_UNRELEASING_ENCUMBRANCES.toError().withParameters(parameters);
+        var param = new Parameter().withKey("cause").withValue(cause.toString());
+        String message = String.format(ERROR_UNRELEASING_ENCUMBRANCES.getDescription(), t.getMessage());
+        var error = ERROR_UNRELEASING_ENCUMBRANCES.toError().withMessage(message).withParameters(List.of(param));
         logger.error(error.getMessage(), cause);
         throw new HttpException(500, error);
       });
@@ -201,13 +200,13 @@ public class InvoiceCancelService {
     List<String> orderIds = poLines.stream()
       .map(PoLine::getPurchaseOrderId)
       .distinct()
-      .collect(toList());
+      .toList();
     return orderService.getOrders(queryToGetOpenOrdersByIds(orderIds), requestContext)
       .map(orders -> {
-        List<String> openOrderIds = orders.stream().map(PurchaseOrder::getId).collect(toList());
+        List<String> openOrderIds = orders.stream().map(PurchaseOrder::getId).toList();
         return poLines.stream()
           .filter(poLine -> openOrderIds.contains(poLine.getPurchaseOrderId()))
-          .collect(toList());
+          .toList();
       });
   }
 
@@ -219,7 +218,7 @@ public class InvoiceCancelService {
       RequestContext requestContext) {
     if (poLines.isEmpty())
       return succeededFuture(null);
-    List<String> poLineIds = poLines.stream().map(PoLine::getId).collect(toList());
+    List<String> poLineIds = poLines.stream().map(PoLine::getId).toList();
     String fiscalYearId = invoiceFromStorage.getFiscalYearId();
     return encumbranceService.getEncumbrancesByPoLineIds(poLineIds, fiscalYearId, requestContext)
       .map(transactions -> transactions.stream()

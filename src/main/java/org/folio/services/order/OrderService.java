@@ -8,10 +8,9 @@ import static org.folio.invoices.utils.ResourcePathResolver.ORDER_INVOICE_RELATI
 import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
-import java.util.stream.Collectors;
 
+import io.vertx.core.Future;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.invoices.rest.exceptions.HttpException;
@@ -24,12 +23,9 @@ import org.folio.rest.acq.model.orders.PurchaseOrderCollection;
 import org.folio.rest.core.RestClient;
 import org.folio.rest.core.models.RequestContext;
 import org.folio.rest.core.models.RequestEntry;
-import org.folio.rest.jaxrs.model.Error;
 import org.folio.rest.jaxrs.model.InvoiceLine;
 import org.folio.rest.jaxrs.model.Parameter;
 import org.folio.services.invoice.InvoiceLineService;
-
-import io.vertx.core.Future;
 
 public class OrderService {
   private static final Logger logger = LogManager.getLogger();
@@ -135,7 +131,7 @@ public class OrderService {
     return getOrderInvoiceRelationshipByInvoiceId(invoiceId, requestContext)
       .compose(relation -> {
         if (relation.getTotalRecords() > 0) {
-          List<String> ids = relation.getOrderInvoiceRelationships().stream().map(OrderInvoiceRelationship::getId).collect(Collectors.toList());
+          List<String> ids = relation.getOrderInvoiceRelationships().stream().map(OrderInvoiceRelationship::getId).toList();
           return deleteOrderInvoiceRelations(ids, requestContext);
         }
         return succeededFuture(null);
@@ -147,7 +143,7 @@ public class OrderService {
       .map(CompositePoLine::getPurchaseOrderId)
       .compose(orderId -> getOrderPoLines(orderId, requestContext)
         .map(compositePoLines -> compositePoLines.stream()
-          .map(CompositePoLine::getId).collect(Collectors.toList())))
+          .map(CompositePoLine::getId).toList()))
       .compose(poLineIds -> invoiceLineService.getInvoiceLinesRelatedForOrder(poLineIds, invoiceLine.getInvoiceId(), requestContext))
       .map(invoiceLines -> invoiceLines.size() == 1);
   }
@@ -163,10 +159,9 @@ public class OrderService {
       })
       .recover(throwable -> {
         logger.error("Can't delete Order Invoice relation for invoice line: {}", invoiceLineId, throwable);
-        List<Parameter> parameters = Collections.singletonList(new Parameter().withKey("lineId")
-          .withValue(invoiceLineId));
-        Error error = CANNOT_DELETE_INVOICE_LINE.toError()
-          .withParameters(parameters);
+        String message = String.format(CANNOT_DELETE_INVOICE_LINE.getDescription(), throwable.getMessage());
+        var param = new Parameter().withKey("lineId").withValue(invoiceLineId);
+        var error = CANNOT_DELETE_INVOICE_LINE.toError().withMessage(message).withParameters(List.of(param));
         throw new HttpException(404, error);
       });
   }

@@ -11,13 +11,14 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.mockito.MockitoAnnotations.openMocks;
 
+import javax.ws.rs.core.Response;
+import java.util.HashMap;
+import java.util.Map;
+
 import io.vertx.core.Context;
 import io.vertx.core.Future;
 import io.vertx.junit5.VertxExtension;
 import io.vertx.junit5.VertxTestContext;
-import java.util.HashMap;
-import java.util.Map;
-import javax.ws.rs.core.Response;
 import org.folio.config.ApplicationConfig;
 import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.rest.RestConstants;
@@ -152,6 +153,24 @@ public class UploadBatchVoucherExportServiceTest extends ApiTestBase {
     String actFileName = serviceSpy.generateFileName(bv, "json");
     //Then
     Assertions.assertEquals("bv_"+expId+"_Amherst College (AC)_2019-12-06_2019-12-07.json", actFileName);
+  }
+
+  @Test
+  public void testFineNameGenerateLogicIdThereIsSeparatorInUUID2(VertxTestContext vertxTestContext) {
+    //given
+    UploadBatchVoucherExportHelper serviceSpy = spy(new UploadBatchVoucherExportHelper(okapiHeaders, context));
+    BatchVoucher bv = getMockAsJson(BATCH_VOUCHERS_PATH).mapTo(BatchVoucher.class);
+    String expId = "b58dcd02ee14";
+    bv.setId("xxx-yyy-zzz-" + expId);
+    //When
+    Future<Void> future = serviceSpy.uploadBatchVoucherExport(BV_EXPORT_ID);
+
+    vertxTestContext.assertFailure(future)
+      .onComplete(event -> {
+        Assertions.assertEquals(401, event.cause().toString());
+        vertxTestContext.completeNow();
+    });
+    //Then
   }
 
   @Test

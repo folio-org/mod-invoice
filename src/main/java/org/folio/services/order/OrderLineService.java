@@ -6,10 +6,9 @@ import static org.folio.invoices.utils.ErrorCodes.USER_NOT_A_MEMBER_OF_THE_ACQ;
 import static org.folio.invoices.utils.ResourcePathResolver.ORDER_LINES;
 import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
 
-import java.util.Collections;
 import java.util.List;
-import java.util.stream.Collectors;
 
+import io.vertx.core.Future;
 import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.okapi.common.GenericCompositeFuture;
 import org.folio.rest.acq.model.orders.CompositePoLine;
@@ -20,8 +19,6 @@ import org.folio.rest.core.models.RequestContext;
 import org.folio.rest.core.models.RequestEntry;
 import org.folio.rest.jaxrs.model.Parameter;
 import org.folio.utils.ExceptionUtil;
-
-import io.vertx.core.Future;
 
 public class OrderLineService {
   private static final String ORDER_LINES_ENDPOINT = resourcesPath(ORDER_LINES);
@@ -46,8 +43,10 @@ public class OrderLineService {
     RequestEntry requestEntry = new RequestEntry(ORDER_LINES_BY_ID_ENDPOINT).withId(poLineId);
     return restClient.get(requestEntry, CompositePoLine.class, requestContext)
       .recover(throwable -> {
-        List<Parameter> parameters = Collections.singletonList(new Parameter().withKey("poLineId").withValue(poLineId));
-        throw new HttpException(404, PO_LINE_NOT_FOUND.toError().withParameters(parameters));
+        String message = String.format(PO_LINE_NOT_FOUND.getDescription(), throwable.getMessage());
+        var param = new Parameter().withKey("poLineId").withValue(poLineId);
+        var error = PO_LINE_NOT_FOUND.toError().withMessage(message).withParameters(List.of(param));
+        throw new HttpException(404, error);
       });
   }
 
@@ -61,12 +60,16 @@ public class OrderLineService {
       .map(poLine -> updatePoLine(poLine, requestContext)
         .recover(cause -> {
           if (ExceptionUtil.matches(cause, USER_NOT_A_MEMBER_OF_THE_ACQ)) {
-            throw new HttpException(403, USER_NOT_A_MEMBER_OF_THE_ACQ.toErrors(), cause.getMessage());
+            String message = String.format(USER_NOT_A_MEMBER_OF_THE_ACQ.getDescription(), cause.getMessage());
+            var error = USER_NOT_A_MEMBER_OF_THE_ACQ.toError().withMessage(message);
+            throw new HttpException(403, error);
           } else {
-            throw new HttpException(400, PO_LINE_UPDATE_FAILURE.toErrors(), cause.getMessage());
+            String message = String.format(PO_LINE_UPDATE_FAILURE.getDescription(), cause.getMessage());
+            var error = PO_LINE_UPDATE_FAILURE.toError().withMessage(message);
+            throw new HttpException(400, error);
           }
         }))
-      .collect(Collectors.toList());
+      .toList();
     return GenericCompositeFuture.join(futures).mapEmpty();
   }
 
