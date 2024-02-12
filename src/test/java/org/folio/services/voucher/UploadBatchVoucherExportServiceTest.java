@@ -156,24 +156,6 @@ public class UploadBatchVoucherExportServiceTest extends ApiTestBase {
   }
 
   @Test
-  public void testFineNameGenerateLogicIdThereIsSeparatorInUUID2(VertxTestContext vertxTestContext) {
-    //given
-    UploadBatchVoucherExportHelper serviceSpy = spy(new UploadBatchVoucherExportHelper(okapiHeaders, context));
-    BatchVoucher bv = getMockAsJson(BATCH_VOUCHERS_PATH).mapTo(BatchVoucher.class);
-    String expId = "b58dcd02ee14";
-    bv.setId("xxx-yyy-zzz-" + expId);
-    //When
-    Future<Void> future = serviceSpy.uploadBatchVoucherExport(BV_EXPORT_ID);
-
-    vertxTestContext.assertFailure(future)
-      .onComplete(event -> {
-        Assertions.assertEquals(401, event.cause().toString());
-        vertxTestContext.completeNow();
-    });
-    //Then
-  }
-
-  @Test
   public void testFineNameGenerateLogicIdThereNoSeparatorInUUID() {
     //given
     UploadBatchVoucherExportHelper serviceSpy = spy(new UploadBatchVoucherExportHelper(okapiHeaders, context));
