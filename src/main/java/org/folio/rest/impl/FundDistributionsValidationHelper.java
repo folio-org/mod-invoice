@@ -45,7 +45,7 @@ public class FundDistributionsValidationHelper extends AbstractHelper {
           if (validator.isAdjustmentIdsNotUnique(request.getAdjustments())) {
             var parameter = new Parameter().withKey("adjustments").withValue(request.getAdjustments().toString());
             var error = ADJUSTMENT_IDS_NOT_UNIQUE.toError().withParameters(List.of(parameter));
-            logger.error(JsonObject.mapFrom(error).encodePrettily());
+            logger.error("validateFundDistributions:: Adjustment ids is not unique. '{}'", JsonObject.mapFrom(error).encodePrettily());
             throw new HttpException(400, error);
           }
           subTotal = Money.of(request.getSubTotal(), currencyUnit);

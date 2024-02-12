@@ -7,6 +7,7 @@ import static org.folio.invoices.utils.ResourcePathResolver.ORDER_LINES;
 import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 import io.vertx.core.Future;
 import org.folio.invoices.rest.exceptions.HttpException;
@@ -69,7 +70,7 @@ public class OrderLineService {
             throw new HttpException(400, error);
           }
         }))
-      .toList();
+      .collect(Collectors.toList());
     return GenericCompositeFuture.join(futures).mapEmpty();
   }
 

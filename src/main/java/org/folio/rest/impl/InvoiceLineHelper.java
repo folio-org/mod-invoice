@@ -328,7 +328,7 @@ public class InvoiceLineHelper extends AbstractHelper {
       }
       var param = new Parameter().withKey("invoiceLineId").withValue(lineId);
       var error = CANNOT_DELETE_INVOICE_LINE.toError().withParameters(List.of(param));
-      logger.error(JsonObject.mapFrom(error).encodePrettily());
+      logger.error("getInvoiceIfExists:: Cannot delete invoice line. '{}'", JsonObject.mapFrom(error).encodePrettily());
       throw new HttpException(404, error);
     });
   }
@@ -378,8 +378,7 @@ public class InvoiceLineHelper extends AbstractHelper {
     if (isPostApproval(invoice)) {
       var param = new Parameter().withKey("invoiceStatus").withValue(invoice.getStatus().toString());
       var error = PROHIBITED_INVOICE_LINE_CREATION.toError().withParameters(List.of(param));
-      if (logger.isErrorEnabled())
-        logger.error(JsonObject.mapFrom(error).encodePrettily());
+      logger.error("checkIfInvoiceLineCreationAllowed:: Prohibited invoice line creation. '{}'", param);
       throw new HttpException(500, error);
     }
   }

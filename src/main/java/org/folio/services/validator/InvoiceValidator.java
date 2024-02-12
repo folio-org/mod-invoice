@@ -203,7 +203,7 @@ public class InvoiceValidator {
   }
 
   private void throwExceptionWithIncorrectAmount(BigDecimal remainingAmount) {
-    throw new HttpException(422,INCORRECT_FUND_DISTRIBUTION_TOTAL, Lists.newArrayList(new Parameter()
+    throw new HttpException(422, INCORRECT_FUND_DISTRIBUTION_TOTAL, Lists.newArrayList(new Parameter()
       .withKey(REMAINING_AMOUNT_FIELD)
       .withValue(remainingAmount.toString())));
   }

@@ -1,5 +1,6 @@
 package org.folio.services.invoice;
 
+import static java.util.stream.Collectors.toList;
 import static org.folio.invoices.utils.ErrorCodes.INVOICE_LINE_NOT_FOUND;
 import static org.folio.invoices.utils.HelperUtils.INVOICE_ID;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_LINES;
@@ -70,15 +71,16 @@ public class InvoiceLineService {
   public Future<List<InvoiceLine>> getInvoiceLinesRelatedForOrder(List<String> orderPoLineIds, String invoiceId, RequestContext requestContext) {
     return getInvoiceLinesByInvoiceId(invoiceId, requestContext)
       .map(invoiceLines -> invoiceLines.getInvoiceLines().stream()
-        .filter(invoiceLine -> orderPoLineIds.contains(invoiceLine.getPoLineId())).toList());
+        .filter(invoiceLine -> orderPoLineIds.contains(invoiceLine.getPoLineId())).collect(toList()));
   }
 
   public Future<Void> persistInvoiceLines(List<InvoiceLine> lines,  RequestContext requestContext) {
     var futures = lines.stream()
       .map(invoiceLine -> persistInvoiceLine(invoiceLine, requestContext))
-      .toList();
+      .collect(toList());
     return GenericCompositeFuture.join(futures).mapEmpty();
   }
+
   public Future<Void> updateInvoiceLine(InvoiceLine invoiceLine, RequestContext requestContext) {
     return restClient.put(resourceByIdPath(INVOICE_LINES, invoiceLine.getId()), invoiceLine, requestContext);
   }
@@ -111,6 +113,7 @@ public class InvoiceLineService {
     return restClient.get(getInvoiceLineNumberEndpoint(invoiceId), SequenceNumber.class, requestContext)
       .map(SequenceNumber::getSequenceNumber);
   }
+
   private String getInvoiceLineNumberEndpoint(String id) {
     return INVOICE_LINE_NUMBER_ENDPOINT + id;
   }

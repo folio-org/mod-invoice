@@ -470,7 +470,7 @@ public class InvoiceHelper extends AbstractHelper {
       invoice.getStatus() != invoiceFromStorage.getStatus()) {
       var parameter = new Parameter().withKey("invoiceId").withValue(invoice.getId());
       Error error = INVALID_INVOICE_TRANSITION_ON_PAID_STATUS.toError().withParameters(List.of(parameter));
-      logger.error(JsonObject.mapFrom(error).encodePrettily());
+      logger.error("verifyTransitionOnPaidStatus:: Invalid invoice transition on paid status. '{}'", parameter);
       throw new HttpException(422, error);
     }
   }
@@ -522,10 +522,10 @@ public class InvoiceHelper extends AbstractHelper {
     if (organization == null) {
       throw new HttpException(404, ORG_NOT_FOUND);
     }
-    if (!organization.getIsVendor()) {
+    if (Boolean.FALSE.equals(organization.getIsVendor())) {
       var param = new Parameter().withKey("organizationId").withValue(organization.getId());
       var error = ORG_IS_NOT_VENDOR.toError().withParameters(List.of(param));
-      logger.error(JsonObject.mapFrom(error).encodePrettily());
+      logger.error("validateBeforeApproval:: Organization is not vendor. '{}'", param);
       throw new HttpException(400, error);
     }
 

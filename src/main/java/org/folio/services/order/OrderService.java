@@ -9,6 +9,7 @@ import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import io.vertx.core.Future;
 import org.apache.logging.log4j.LogManager;
@@ -131,7 +132,7 @@ public class OrderService {
     return getOrderInvoiceRelationshipByInvoiceId(invoiceId, requestContext)
       .compose(relation -> {
         if (relation.getTotalRecords() > 0) {
-          List<String> ids = relation.getOrderInvoiceRelationships().stream().map(OrderInvoiceRelationship::getId).toList();
+          List<String> ids = relation.getOrderInvoiceRelationships().stream().map(OrderInvoiceRelationship::getId).collect(Collectors.toList());
           return deleteOrderInvoiceRelations(ids, requestContext);
         }
         return succeededFuture(null);
@@ -143,7 +144,7 @@ public class OrderService {
       .map(CompositePoLine::getPurchaseOrderId)
       .compose(orderId -> getOrderPoLines(orderId, requestContext)
         .map(compositePoLines -> compositePoLines.stream()
-          .map(CompositePoLine::getId).toList()))
+          .map(CompositePoLine::getId).collect(Collectors.toList())))
       .compose(poLineIds -> invoiceLineService.getInvoiceLinesRelatedForOrder(poLineIds, invoiceLine.getInvoiceId(), requestContext))
       .map(invoiceLines -> invoiceLines.size() == 1);
   }

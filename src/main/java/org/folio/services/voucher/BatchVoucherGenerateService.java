@@ -76,7 +76,7 @@ public class BatchVoucherGenerateService {
         if (vouchers.getVouchers().isEmpty()) {
           var param = new Parameter().withKey("voucherCQL").withValue(voucherCQL);
           var error = new Error().withMessage("Vouchers for batch voucher export were not found").withParameters(List.of(param));
-          logger.error(JsonObject.mapFrom(error).encodePrettily());
+          logger.error("buildBatchVoucherObject:: Vouchers for batch voucher export were not found. '{}'", JsonObject.mapFrom(error).encodePrettily());
           throw new HttpException(404, error);
         }
         Future<Map<String, List<VoucherLine>>> voucherLines = voucherLineService.getVoucherLinesMap(vouchers, requestContext)
