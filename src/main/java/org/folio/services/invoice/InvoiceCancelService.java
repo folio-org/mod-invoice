@@ -186,7 +186,7 @@ public class InvoiceCancelService {
         var param = new Parameter().withKey("cause").withValue(cause.toString());
         String message = String.format(ERROR_UNRELEASING_ENCUMBRANCES.getDescription(), t.getMessage());
         var error = ERROR_UNRELEASING_ENCUMBRANCES.toError().withMessage(message).withParameters(List.of(param));
-        logger.error("Failed to unrelease encumbrance for po lines. ", cause);
+        logger.error("Failed to unrelease encumbrance for po lines", cause);
         throw new HttpException(500, error);
       });
   }

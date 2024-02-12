@@ -192,8 +192,8 @@ public class InvoiceHelper extends AbstractHelper {
               .map(fiscalYear -> new Parameter().withKey("fiscalYearCode").withValue(fiscalYear.getCode()))
               .toList();
             var error = MULTIPLE_ADJUSTMENTS_FISCAL_YEARS.toError().withParameters(parameters);
-            logger.error("validateFiscalYearId:: More than one fiscal years found: invoice '{}', details '{}'", invoice.getId(), JsonObject.mapFrom(error).encodePrettily());
-            throw new HttpException(422, MULTIPLE_ADJUSTMENTS_FISCAL_YEARS, parameters);
+            logger.error("validateFiscalYearId:: More than one fiscal years found: invoice '{}'", invoice.getId());
+            throw new HttpException(422, error);
           }
           invoice.setFiscalYearId(uniqueFiscalYears.stream().findFirst().get().getId());
           return null;
@@ -470,7 +470,7 @@ public class InvoiceHelper extends AbstractHelper {
       invoice.getStatus() != invoiceFromStorage.getStatus()) {
       var parameter = new Parameter().withKey("invoiceId").withValue(invoice.getId());
       Error error = INVALID_INVOICE_TRANSITION_ON_PAID_STATUS.toError().withParameters(List.of(parameter));
-      logger.error("verifyTransitionOnPaidStatus:: Invalid invoice transition on paid status. '{}'", parameter);
+      logger.error("verifyTransitionOnPaidStatus:: Invalid invoice '{}' transition on paid status", invoice.getId());
       throw new HttpException(422, error);
     }
   }
@@ -525,7 +525,7 @@ public class InvoiceHelper extends AbstractHelper {
     if (Boolean.FALSE.equals(organization.getIsVendor())) {
       var param = new Parameter().withKey("organizationId").withValue(organization.getId());
       var error = ORG_IS_NOT_VENDOR.toError().withParameters(List.of(param));
-      logger.error("validateBeforeApproval:: Organization is not vendor. '{}'", param);
+      logger.error("validateBeforeApproval:: Organization '{}' is not vendor", organization.getId());
       throw new HttpException(400, error);
     }
 

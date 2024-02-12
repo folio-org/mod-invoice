@@ -27,7 +27,6 @@ import java.util.Objects;
 
 import io.vertx.core.Context;
 import io.vertx.core.Future;
-import io.vertx.core.json.JsonObject;
 import org.apache.commons.lang3.StringUtils;
 import org.folio.InvoiceWorkflowDataHolderBuilder;
 import org.folio.invoices.rest.exceptions.HttpException;
@@ -329,7 +328,7 @@ public class InvoiceLineHelper extends AbstractHelper {
       }
       var param = new Parameter().withKey("invoiceLineId").withValue(lineId);
       var error = CANNOT_DELETE_INVOICE_LINE.toError().withParameters(List.of(param));
-      logger.error("getInvoiceIfExists:: Cannot delete invoice line. '{}'", JsonObject.mapFrom(error).encodePrettily());
+      logger.error("getInvoiceIfExists:: Cannot delete invoice line: {}", lineId);
       throw new HttpException(404, error);
     });
   }
@@ -379,7 +378,7 @@ public class InvoiceLineHelper extends AbstractHelper {
     if (isPostApproval(invoice)) {
       var param = new Parameter().withKey("invoiceStatus").withValue(invoice.getStatus().toString());
       var error = PROHIBITED_INVOICE_LINE_CREATION.toError().withParameters(List.of(param));
-      logger.error("checkIfInvoiceLineCreationAllowed:: Prohibited invoice line creation. '{}'", param);
+      logger.error("checkIfInvoiceLineCreationAllowed:: Prohibited invoice line creation: invoiceStatus={}", invoice.getStatus().toString());
       throw new HttpException(500, error);
     }
   }

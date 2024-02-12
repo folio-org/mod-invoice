@@ -10,7 +10,6 @@ import java.util.Map;
 
 import io.vertx.core.Context;
 import io.vertx.core.Future;
-import io.vertx.core.json.JsonObject;
 import org.apache.commons.collections4.CollectionUtils;
 import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.invoices.utils.HelperUtils;
@@ -45,7 +44,7 @@ public class FundDistributionsValidationHelper extends AbstractHelper {
           if (validator.isAdjustmentIdsNotUnique(request.getAdjustments())) {
             var parameter = new Parameter().withKey("adjustments").withValue(request.getAdjustments().toString());
             var error = ADJUSTMENT_IDS_NOT_UNIQUE.toError().withParameters(List.of(parameter));
-            logger.error("validateFundDistributions:: Adjustment ids is not unique. '{}'", JsonObject.mapFrom(error).encodePrettily());
+            logger.error("validateFundDistributions:: Adjustment ids is not unique: {}", request.getAdjustments().toString());
             throw new HttpException(400, error);
           }
           subTotal = Money.of(request.getSubTotal(), currencyUnit);

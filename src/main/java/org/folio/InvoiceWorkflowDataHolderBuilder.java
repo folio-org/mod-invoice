@@ -150,7 +150,7 @@ public class InvoiceWorkflowDataHolderBuilder {
       String message = String.format(MULTIPLE_FISCAL_YEARS.getDescription(), h1.getFundDistribution().getCode(),
         h2.getFundDistribution().getCode());
       Error error = new Error().withCode(MULTIPLE_FISCAL_YEARS.getCode()).withMessage(message);
-      logger.error("checkMultipleFiscalYears:: More than one fiscal years found. Error: {}", JsonObject.mapFrom(error).encodePrettily());
+      logger.error("checkMultipleFiscalYears:: More than one fiscal years found: {}", JsonObject.mapFrom(error).encodePrettily());
       throw new HttpException(422, error);
     }
     return holders;
