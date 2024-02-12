@@ -15,8 +15,8 @@ import static org.folio.TestMockDataConstants.MOCK_BUDGET_ITEM;
 import static org.folio.TestMockDataConstants.MOCK_BUDGETS_LIST;
 import static org.folio.invoices.utils.ErrorCodes.BUDGET_NOT_FOUND;
 import static org.folio.invoices.utils.ErrorCodes.CANNOT_CANCEL_INVOICE;
-import static org.folio.invoices.utils.ErrorCodes.ERROR_UNRELEASING_ENCUMBRANCES;
 import static org.folio.invoices.utils.ErrorCodes.BUDGET_NOT_FOUND_USING_FISCAL_YEAR_ID;
+import static org.folio.invoices.utils.ErrorCodes.ERROR_UNRELEASING_ENCUMBRANCES;
 import static org.folio.invoices.utils.ResourcePathResolver.FINANCE_TRANSACTIONS;
 import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
 import static org.folio.rest.RestConstants.OKAPI_URL;
@@ -225,7 +225,8 @@ public class InvoiceCancelServiceTest {
       .onComplete(result -> {
         HttpException httpException = (HttpException) result.cause();
         assertEquals(500, httpException.getCode());
-        assertEquals(ERROR_UNRELEASING_ENCUMBRANCES.getDescription(), httpException.getMessage());
+        var error = httpException.getErrors().getErrors().get(0);
+        assertEquals(ERROR_UNRELEASING_ENCUMBRANCES.getCode(), error.getCode());
         vertxTestContext.completeNow();
       });
   }
