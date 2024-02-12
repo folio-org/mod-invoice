@@ -1,6 +1,7 @@
 package org.folio.rest.impl;
 
 import static io.vertx.core.Future.succeededFuture;
+import static java.util.stream.Collectors.toList;
 import static org.apache.commons.lang3.StringUtils.isEmpty;
 import static org.folio.invoices.utils.ErrorCodes.CANNOT_DELETE_INVOICE_LINE;
 import static org.folio.invoices.utils.ErrorCodes.FAILED_TO_UPDATE_INVOICE_AND_OTHER_LINES;
@@ -454,7 +455,7 @@ public class InvoiceLineHelper extends AbstractHelper {
       return adjustmentsService.applyProratedAdjustments(allLines, invoice)
         .stream()
         .filter(line -> !line.equals(invoiceLine))
-        .toList();
+        .collect(toList());
     });
   }
 
@@ -494,7 +495,7 @@ public class InvoiceLineHelper extends AbstractHelper {
         calculateInvoiceLineTotals(invoiceLine, invoice);
         return this.updateInvoiceLineToStorage(invoiceLine, requestContext);
       })
-      .toList();
+      .collect(toList());
 
     return GenericCompositeFuture.join(futures).mapEmpty();
   }
@@ -600,7 +601,7 @@ public class InvoiceLineHelper extends AbstractHelper {
     List<String> orderLineIds = order.getCompositePoLines().stream().map(CompositePoLine::getId).toList();
     return getRelatedLines(invoiceLine, requestContext).compose(lines -> {
       if (lines.stream().noneMatch(line -> orderLineIds.contains(line.getPoLineId()))) {
-        List<String> newNumbers = invoicePoNumbers.stream().filter(n -> !n.equals(orderPoNumber)).toList();
+        List<String> newNumbers = invoicePoNumbers.stream().filter(n -> !n.equals(orderPoNumber)).collect(toList());
         invoice.setPoNumbers(newNumbers);
         ilProcessing.setInvoiceSerializationNeeded();
       }
