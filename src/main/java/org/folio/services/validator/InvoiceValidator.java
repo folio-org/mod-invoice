@@ -129,10 +129,8 @@ public class InvoiceValidator {
       try {
         validateFundDistributions(line.getTotal(), line.getFundDistributions());
       } catch (HttpException e) {
-        String message = String.format(INCORRECT_FUND_DISTRIBUTION_TOTAL.getDescription(), e.getMessage());
         var param = new Parameter().withKey(INVOICE_LINE_NUMBER).withValue(line.getInvoiceLineNumber());
-        var error = new Error().withCode(INCORRECT_FUND_DISTRIBUTION_TOTAL.getCode()).withMessage(message).withParameters(List.of(param));
-        throw new HttpException(422, error);
+        throw new HttpException(422, INCORRECT_FUND_DISTRIBUTION_TOTAL, List.of(param));
       }
     }
   }
