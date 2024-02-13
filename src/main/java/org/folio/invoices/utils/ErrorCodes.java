@@ -36,7 +36,7 @@ public enum ErrorCodes {
   USER_HAS_NO_PAY_PERMISSIONS("userHasNoInvoicePayPermission", "User does not have permissions to pay this invoice - operation is restricted"),
   USER_HAS_NO_CANCEL_PERMISSIONS("userHasNoInvoiceCancelPermission", "User does not have permissions to cancel this invoice - operation is restricted"),
   ACQ_UNITS_NOT_FOUND("acqUnitsNotFound", "Acquisitions units assigned to the record not found"),
-  PENDING_PAYMENT_ERROR("pendingPaymentError", "Failed to create pending payments: %s"),
+  PENDING_PAYMENT_ERROR("pendingPaymentError", "Failed to create pending payments"),
   INVOICE_PAYMENT_FAILURE("invoicePaymentFailure", "Invoice payment failure"),
   CURRENT_FISCAL_YEAR_NOT_FOUND("currentFYearNotFound", "Current fiscal year not found for ledger"),
   TRANSACTION_CREATION_FAILURE("transactionCreationFailure", "One or more transactions record(s) failed to be created"),
@@ -68,7 +68,7 @@ public enum ErrorCodes {
   COULD_NOT_FIND_VALID_FISCAL_YEAR("couldNotFindValidFiscalYear", "Could not find any valid fiscal year with a budget for all funds in the invoice"),
   MORE_THAN_ONE_FISCAL_YEAR_SERIES("moreThanOneFiscalYearSeries", "Fund distributions cannot reference more than one fiscal year series. Please edit fund distributions so they all come from the same fiscal year series."),
   CANNOT_RESET_INVOICE_FISCAL_YEAR("cannotResetInvoiceFiscalYear", "Invoice fiscal year cannot be set to null if it was previously defined"),
-  BATCH_VOUCHER_NOT_FOUND("batchVoucherNotFound", "Batch voucher was not found: %s");
+  BATCH_VOUCHER_NOT_FOUND("batchVoucherNotFound", "Batch voucher was not found");
 
   private final String code;
   private final String description;

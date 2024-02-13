@@ -6,11 +6,11 @@ import static org.folio.invoices.utils.HelperUtils.convertToDoubleWithRounding;
 import static org.folio.invoices.utils.HelperUtils.getFundDistributionAmount;
 import static org.folio.services.FundsDistributionService.distributeFunds;
 
+import javax.money.MonetaryAmount;
 import java.util.List;
 import java.util.Optional;
 
-import javax.money.MonetaryAmount;
-
+import io.vertx.core.Future;
 import io.vertx.core.json.JsonObject;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.logging.log4j.LogManager;
@@ -27,8 +27,6 @@ import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.jaxrs.model.InvoiceLine;
 import org.folio.rest.jaxrs.model.Parameter;
 import org.folio.services.validator.HolderValidator;
-
-import io.vertx.core.Future;
 
 public class PendingPaymentWorkflowService {
 

@@ -108,8 +108,10 @@ public class VoucherService {
     }
     return updateVoucher(voucher.getId(), voucher.withStatus(status), requestContext)
       .recover(fail -> {
+        var param1 = new Parameter().withKey("voucherId").withValue(voucher.getId());
+        var param2 = new Parameter().withKey("voucherStatus").withValue(voucher.getStatus().value());
         var errorParam = new Parameter().withKey("errorMessage").withValue(fail.getMessage());
-        var error = VOUCHER_UPDATE_FAILURE.toError().withParameters(List.of(errorParam));
+        var error = VOUCHER_UPDATE_FAILURE.toError().withParameters(List.of(param1, param2, errorParam));
         throw new HttpException(500, error);
       });
   }

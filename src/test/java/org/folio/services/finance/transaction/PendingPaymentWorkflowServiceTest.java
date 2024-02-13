@@ -293,6 +293,6 @@ public class PendingPaymentWorkflowServiceTest {
       .thenReturn(succeededFuture(List.of(encumbrance)));
 
     Future<Void> future = pendingPaymentWorkflowService.handlePendingPaymentsCreation(dataHolders, invoice, requestContext);
-    assertEquals("Failed to create pending payments: test", future.cause().getMessage());
+    assertEquals("Failed to create pending payments", future.cause().getMessage());
   }
 }
