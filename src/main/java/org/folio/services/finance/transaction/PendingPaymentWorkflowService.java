@@ -25,6 +25,7 @@ import org.folio.rest.jaxrs.model.Error;
 import org.folio.rest.jaxrs.model.FundDistribution;
 import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.jaxrs.model.InvoiceLine;
+import org.folio.rest.jaxrs.model.Parameter;
 import org.folio.services.validator.HolderValidator;
 
 import io.vertx.core.Future;
@@ -85,8 +86,8 @@ public class PendingPaymentWorkflowService {
         if (t instanceof HttpException he) {
           return Future.failedFuture(new HttpException(he.getCode(), he.getErrors()));
         }
-        String message = String.format(PENDING_PAYMENT_ERROR.getDescription(), t.getMessage());
-        Error error = new Error().withCode(PENDING_PAYMENT_ERROR.getCode()).withMessage(message);
+        var errorParam = new Parameter().withKey("errorMessage").withValue(t.getMessage());
+        Error error = PENDING_PAYMENT_ERROR.toError().withParameters(List.of(errorParam));
         return Future.failedFuture(new HttpException(500, error));
       });
   }

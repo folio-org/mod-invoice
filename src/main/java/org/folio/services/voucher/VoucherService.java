@@ -6,6 +6,7 @@ import static org.folio.invoices.utils.ErrorCodes.VOUCHER_UPDATE_FAILURE;
 import static org.folio.invoices.utils.ResourcePathResolver.VOUCHERS_STORAGE;
 import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
 
+import java.util.List;
 import java.util.Optional;
 
 import io.vertx.core.Future;
@@ -13,6 +14,7 @@ import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.rest.core.RestClient;
 import org.folio.rest.core.models.RequestContext;
 import org.folio.rest.core.models.RequestEntry;
+import org.folio.rest.jaxrs.model.Parameter;
 import org.folio.rest.jaxrs.model.Voucher;
 import org.folio.rest.jaxrs.model.VoucherCollection;
 import org.folio.services.validator.VoucherValidator;
@@ -106,8 +108,8 @@ public class VoucherService {
     }
     return updateVoucher(voucher.getId(), voucher.withStatus(status), requestContext)
       .recover(fail -> {
-        String message = String.format(VOUCHER_UPDATE_FAILURE.getDescription(), fail.getMessage());
-        var error = VOUCHER_UPDATE_FAILURE.toError().withMessage(message);
+        var errorParam = new Parameter().withKey("errorMessage").withValue(fail.getMessage());
+        var error = VOUCHER_UPDATE_FAILURE.toError().withParameters(List.of(errorParam));
         throw new HttpException(500, error);
       });
   }

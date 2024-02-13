@@ -160,9 +160,9 @@ public class OrderService {
       })
       .recover(throwable -> {
         logger.error("Can't delete Order Invoice relation for invoice line: {}", invoiceLineId, throwable);
-        String message = String.format(CANNOT_DELETE_INVOICE_LINE.getDescription(), throwable.getMessage());
         var param = new Parameter().withKey("lineId").withValue(invoiceLineId);
-        var error = CANNOT_DELETE_INVOICE_LINE.toError().withMessage(message).withParameters(List.of(param));
+        var errorParam = new Parameter().withKey("errorMessage").withValue(throwable.getMessage());
+        var error = CANNOT_DELETE_INVOICE_LINE.toError().withParameters(List.of(param, errorParam));
         throw new HttpException(404, error);
       });
   }
