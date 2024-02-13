@@ -24,22 +24,19 @@ import org.folio.invoices.utils.AcqDesiredPermissions;
 
 import io.vertx.core.json.JsonArray;
 import org.folio.rest.jaxrs.model.Invoice;
-import org.folio.rest.jaxrs.model.Parameter;
 
 public final class UserPermissionsUtil {
-
   public static final String OKAPI_HEADER_PERMISSIONS = "X-Okapi-Permissions";
+
   private static final String EMPTY_ARRAY = "[]";
 
   private UserPermissionsUtil() {
+
   }
 
   public static void verifyUserHasAssignPermission(List<String> acqUnitIds, Map<String, String> okapiHeaders) {
     if (CollectionUtils.isNotEmpty(acqUnitIds) && isUserDoesNotHaveDesiredPermission(ASSIGN, okapiHeaders)) {
-      var param1 = new Parameter().withKey("Assign").withValue(ASSIGN.getPermission());
-      var param2 = new Parameter().withKey("User permission").withValue(okapiHeaders.get(OKAPI_HEADER_PERMISSIONS));
-      var param3 = new Parameter().withKey("acqUnitIds").withValue(acqUnitIds.toString());
-      throw new HttpException(HttpStatus.HTTP_FORBIDDEN.toInt(), USER_HAS_NO_ACQ_PERMISSIONS, List.of(param1, param2, param3));
+      throw new HttpException(HttpStatus.HTTP_FORBIDDEN.toInt(), USER_HAS_NO_ACQ_PERMISSIONS);
     }
   }
 
@@ -67,11 +64,7 @@ public final class UserPermissionsUtil {
     Set<String> acqUnitsFromStorage = new HashSet<>(CollectionUtils.emptyIfNull(currentAcqUnitIds));
 
     if (isManagePermissionRequired(newAcqUnits, acqUnitsFromStorage) && isUserDoesNotHaveDesiredPermission(MANAGE, okapiHeaders)) {
-      var p1 = new Parameter().withKey("newAcqUnits").withValue(newAcqUnits.toString());
-      var p2 = new Parameter().withKey("acqUnitsFromStorage").withValue(acqUnitsFromStorage.toString());
-      var p3 = new Parameter().withKey("manage").withValue(MANAGE.getPermission());
-      var p4 = new Parameter().withKey("userPermission").withValue(okapiHeaders.get(OKAPI_HEADER_PERMISSIONS));
-      throw new HttpException(HttpStatus.HTTP_FORBIDDEN.toInt(), USER_HAS_NO_ACQ_PERMISSIONS, List.of(p1, p2, p3, p4));
+      throw new HttpException(HttpStatus.HTTP_FORBIDDEN.toInt(), USER_HAS_NO_ACQ_PERMISSIONS);
     }
   }
 
@@ -85,9 +78,7 @@ public final class UserPermissionsUtil {
    */
   public static void verifyUserHasInvoiceApprovePermission(Invoice.Status newInvoiceStatus, Invoice.Status statusFromStorage, Map<String, String> okapiHeaders) {
     if (isInvoiceStatusUpdated(newInvoiceStatus, statusFromStorage) && Invoice.Status.APPROVED == newInvoiceStatus && isUserDoesNotHaveDesiredPermission(APPROVE, okapiHeaders)) {
-      var param1 = new Parameter().withKey("newInvoiceStatus").withValue(newInvoiceStatus.value());
-      var param2 = new Parameter().withKey("statusFromStorage").withValue(statusFromStorage.value());
-      throw new HttpException(HttpStatus.HTTP_FORBIDDEN.toInt(), USER_HAS_NO_APPROVE_PERMISSIONS, List.of(param1, param2));
+      throw new HttpException(HttpStatus.HTTP_FORBIDDEN.toInt(), USER_HAS_NO_APPROVE_PERMISSIONS);
     }
   }
 
@@ -101,9 +92,7 @@ public final class UserPermissionsUtil {
    */
   public static void verifyUserHasInvoicePayPermission(Invoice.Status newInvoiceStatus, Invoice.Status statusFromStorage, Map<String, String> okapiHeaders) {
     if (isInvoiceStatusUpdated(newInvoiceStatus, statusFromStorage) && Invoice.Status.PAID == newInvoiceStatus && isUserDoesNotHaveDesiredPermission(PAY, okapiHeaders)) {
-      var param1 = new Parameter().withKey("newInvoiceStatus").withValue(newInvoiceStatus.value());
-      var param2 = new Parameter().withKey("statusFromStorage").withValue(statusFromStorage.value());
-      throw new HttpException(HttpStatus.HTTP_FORBIDDEN.toInt(), USER_HAS_NO_PAY_PERMISSIONS, List.of(param1, param2));
+      throw new HttpException(HttpStatus.HTTP_FORBIDDEN.toInt(), USER_HAS_NO_PAY_PERMISSIONS);
     }
  }
 
@@ -130,9 +119,7 @@ public final class UserPermissionsUtil {
    */
   public static void verifyUserHasFiscalYearUpdatePermission(String newFiscalYearId, String fiscalYearIdFromStorage, Map<String, String> okapiHeaders) {
     if (isFiscalYearUpdated(newFiscalYearId, fiscalYearIdFromStorage) && isUserDoesNotHaveDesiredPermission(FISCAL_YEAR_UPDATE, okapiHeaders)) {
-      var param1 = new Parameter().withKey("newFiscalYearId").withValue(newFiscalYearId);
-      var param2 = new Parameter().withKey("fiscalYearIdFromStorage").withValue(fiscalYearIdFromStorage);
-      throw new HttpException(HttpStatus.HTTP_FORBIDDEN.toInt(), USER_HAS_NO_FISCAL_YEAR_UPDATE_PERMISSIONS, List.of(param1, param2));
+      throw new HttpException(HttpStatus.HTTP_FORBIDDEN.toInt(), USER_HAS_NO_FISCAL_YEAR_UPDATE_PERMISSIONS);
     }
   }
 

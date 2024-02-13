@@ -327,9 +327,8 @@ public class InvoiceLineHelper extends AbstractHelper {
         return succeededFuture(null);
       }
       var param = new Parameter().withKey("invoiceLineId").withValue(lineId);
-      var error = CANNOT_DELETE_INVOICE_LINE.toError().withParameters(List.of(param));
       logger.error("getInvoiceIfExists:: Cannot delete invoice line: {}", lineId);
-      throw new HttpException(404, error);
+      throw new HttpException(404, CANNOT_DELETE_INVOICE_LINE, List.of(param));
     });
   }
 
@@ -366,9 +365,8 @@ public class InvoiceLineHelper extends AbstractHelper {
         .recover(throwable -> {
           var param = new Parameter().withKey("invoiceLineId").withValue(invoiceLine.getId());
           var errorParam = new Parameter().withKey("errorMessage").withValue(throwable.getMessage());
-          var error = ORDER_INVOICE_RELATION_CREATE_FAILED.toError().withParameters(List.of(param, errorParam));
-          logger.error("Failed to create invoice '{}' order relation", invoiceLine.getId(), throwable);
-          throw new HttpException(500, error);
+          logger.error("Failed to create invoice line '{}' order relation", invoiceLine.getId(), throwable);
+          throw new HttpException(500, ORDER_INVOICE_RELATION_CREATE_FAILED, List.of(param, errorParam));
         }))
       .compose(v -> updateInvoicePoNumbers(ilProcessing, requestContext))
       .compose(v -> persistInvoiceIfNeeded(ilProcessing, requestContext))
@@ -379,9 +377,8 @@ public class InvoiceLineHelper extends AbstractHelper {
     if (isPostApproval(invoice)) {
       var param1 = new Parameter().withKey("invoiceId").withValue(invoice.getId());
       var param2 = new Parameter().withKey("invoiceStatus").withValue(invoice.getStatus().toString());
-      var error = PROHIBITED_INVOICE_LINE_CREATION.toError().withParameters(List.of(param1, param2));
       logger.error("checkIfInvoiceLineCreationAllowed:: Prohibited invoice line '{}' creation: invoiceStatus={}", invoice.getId(), invoice.getStatus().toString());
-      throw new HttpException(500, error);
+      throw new HttpException(500, PROHIBITED_INVOICE_LINE_CREATION, List.of(param1, param2));
     }
   }
 
@@ -485,9 +482,8 @@ public class InvoiceLineHelper extends AbstractHelper {
       .recover(t -> {
         var param = new Parameter().withKey("invoiceId").withValue(invoice.getId());
         var errorParam = new Parameter().withKey("errorMessage").withValue(t.getMessage());
-        var error = FAILED_TO_UPDATE_INVOICE_AND_OTHER_LINES.toError().withParameters(List.of(param, errorParam));
         logger.error("Failed to update the invoice '{}' and other lines", invoice.getId(), t);
-        throw new HttpException(500, error);
+        throw new HttpException(500, FAILED_TO_UPDATE_INVOICE_AND_OTHER_LINES, List.of(param, errorParam));
       });
   }
 
@@ -555,9 +551,8 @@ public class InvoiceLineHelper extends AbstractHelper {
       .recover(throwable -> {
         var param = new Parameter().withKey("poLineId").withValue(poLineId);
         var errorParam = new Parameter().withKey("errorMessage").withValue(throwable.getMessage());
-        var error = FAILED_TO_UPDATE_PONUMBERS.toError().withParameters(List.of(param, errorParam));
         logger.error("Failed to update invoice poNumbers. poLineId={}", poLineId, throwable);
-        throw new HttpException(500, error);
+        throw new HttpException(500, FAILED_TO_UPDATE_PONUMBERS, List.of(param, errorParam));
       });
   }
 
@@ -576,9 +571,8 @@ public class InvoiceLineHelper extends AbstractHelper {
       .recover(throwable -> {
         var param = new Parameter().withKey("invoiceLine.getPoLineId").withValue(invoiceLine.getPoLineId());
         var errorParam = new Parameter().withKey("errorMessage").withValue(throwable.getMessage());
-        var error = FAILED_TO_UPDATE_PONUMBERS.toError().withParameters(List.of(param, errorParam));
         logger.error("Failed to update invoice poNumbers for poLineId={} of invoiceLine", invoiceLine.getPoLineId(), throwable);
-        throw new HttpException(500, error);
+        throw new HttpException(500, FAILED_TO_UPDATE_PONUMBERS, List.of(param, errorParam));
       });
   }
 

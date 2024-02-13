@@ -44,8 +44,7 @@ public class InvoiceLineService {
         if (throwable instanceof HttpException httpException &&  httpException.getCode() == 404) {
           var param = new Parameter().withKey("invoiceLineId").withValue(invoiceLineId);
           var errorParam = new Parameter().withKey("errorMessage").withValue(throwable.getMessage());
-          var error = INVOICE_LINE_NOT_FOUND.toError().withParameters(List.of(param, errorParam));
-          throw new HttpException(404, error);
+          throw new HttpException(404, INVOICE_LINE_NOT_FOUND, List.of(param, errorParam));
         }
         return Future.failedFuture(throwable);
       });

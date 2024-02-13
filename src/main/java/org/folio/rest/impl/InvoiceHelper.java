@@ -70,7 +70,6 @@ import org.folio.rest.acq.model.finance.Fund;
 import org.folio.rest.acq.model.orders.CompositePoLine;
 import org.folio.rest.core.models.RequestContext;
 import org.folio.rest.jaxrs.model.Adjustment;
-import org.folio.rest.jaxrs.model.Error;
 import org.folio.rest.jaxrs.model.FiscalYearCollection;
 import org.folio.rest.jaxrs.model.FundDistribution;
 import org.folio.rest.jaxrs.model.Invoice;
@@ -191,9 +190,8 @@ public class InvoiceHelper extends AbstractHelper {
             var parameters = uniqueFiscalYears.stream()
               .map(fiscalYear -> new Parameter().withKey("fiscalYearCode").withValue(fiscalYear.getCode()))
               .toList();
-            var error = MULTIPLE_ADJUSTMENTS_FISCAL_YEARS.toError().withParameters(parameters);
             logger.error("validateFiscalYearId:: More than one fiscal years found: invoice '{}'", invoice.getId());
-            throw new HttpException(422, error);
+            throw new HttpException(422, MULTIPLE_ADJUSTMENTS_FISCAL_YEARS, parameters);
           }
           invoice.setFiscalYearId(uniqueFiscalYears.stream().findFirst().get().getId());
           return null;
@@ -469,9 +467,8 @@ public class InvoiceHelper extends AbstractHelper {
     if (invoiceFromStorage.getStatus() == Invoice.Status.PAID && invoice.getStatus() != Invoice.Status.CANCELLED &&
       invoice.getStatus() != invoiceFromStorage.getStatus()) {
       var parameter = new Parameter().withKey("invoiceId").withValue(invoice.getId());
-      Error error = INVALID_INVOICE_TRANSITION_ON_PAID_STATUS.toError().withParameters(List.of(parameter));
       logger.error("verifyTransitionOnPaidStatus:: Invalid invoice '{}' transition on paid status", invoice.getId());
-      throw new HttpException(422, error);
+      throw new HttpException(422, INVALID_INVOICE_TRANSITION_ON_PAID_STATUS, List.of(parameter));
     }
   }
 
@@ -524,9 +521,8 @@ public class InvoiceHelper extends AbstractHelper {
     }
     if (Boolean.FALSE.equals(organization.getIsVendor())) {
       var param = new Parameter().withKey("organizationId").withValue(organization.getId());
-      var error = ORG_IS_NOT_VENDOR.toError().withParameters(List.of(param));
       logger.error("validateBeforeApproval:: Organization '{}' is not vendor", organization.getId());
-      throw new HttpException(400, error);
+      throw new HttpException(400, ORG_IS_NOT_VENDOR, List.of(param));
     }
 
     validator.validateBeforeApproval(invoice, lines);
@@ -872,12 +868,9 @@ public class InvoiceHelper extends AbstractHelper {
       return succeededFuture(null);
     }
     if (newFiscalYearId == null) {
-      Parameter invoiceIdParam = new Parameter()
-        .withKey("invoiceId")
-        .withValue(invoice.getId());
-      Error error = CANNOT_RESET_INVOICE_FISCAL_YEAR.toError()
-        .withParameters(List.of(invoiceIdParam));
-      throw new HttpException(422, error);
+      var invoiceIdParam = new Parameter().withKey("invoiceId").withValue(invoice.getId());
+      logger.error("validateFiscalYearId:: newFiscalYearId is null. Cannot reset invoice '{}' fiscal year", invoice.getId());
+      throw new HttpException(422, CANNOT_RESET_INVOICE_FISCAL_YEAR, List.of(invoiceIdParam));
     }
     List<InvoiceWorkflowDataHolder> dataHolders = holderBuilder.buildHoldersSkeleton(lines, invoice);
     return holderBuilder.withEncumbrances(dataHolders, requestContext)

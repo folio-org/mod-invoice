@@ -62,12 +62,10 @@ public class OrderLineService {
         .recover(cause -> {
           if (ExceptionUtil.matches(cause, USER_NOT_A_MEMBER_OF_THE_ACQ)) {
             var errorParam = new Parameter().withKey("errorMessage").withValue(cause.getMessage());
-            var error = USER_NOT_A_MEMBER_OF_THE_ACQ.toError().withParameters(List.of(errorParam));
-            throw new HttpException(403, error);
+            throw new HttpException(403, USER_NOT_A_MEMBER_OF_THE_ACQ, List.of(errorParam));
           } else {
             var errorParam = new Parameter().withKey("errorMessage").withValue(cause.getMessage());
-            var error = PO_LINE_UPDATE_FAILURE.toError().withParameters(List.of(errorParam));
-            throw new HttpException(400, error);
+            throw new HttpException(400, PO_LINE_UPDATE_FAILURE, List.of(errorParam));
           }
         }))
       .collect(Collectors.toList());

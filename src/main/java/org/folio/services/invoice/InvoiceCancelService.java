@@ -16,7 +16,6 @@ import static org.folio.rest.acq.model.finance.Transaction.TransactionType.CREDI
 import static org.folio.rest.acq.model.finance.Transaction.TransactionType.PAYMENT;
 import static org.folio.rest.acq.model.finance.Transaction.TransactionType.PENDING_PAYMENT;
 
-import java.util.Collections;
 import java.util.List;
 
 import io.vertx.core.Future;
@@ -32,7 +31,6 @@ import org.folio.rest.acq.model.finance.TransactionCollection;
 import org.folio.rest.acq.model.orders.PoLine;
 import org.folio.rest.acq.model.orders.PurchaseOrder;
 import org.folio.rest.core.models.RequestContext;
-import org.folio.rest.jaxrs.model.Error;
 import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.jaxrs.model.InvoiceLine;
 import org.folio.rest.jaxrs.model.Parameter;
@@ -103,11 +101,8 @@ public class InvoiceCancelService {
   private void validateCancelInvoice(Invoice invoiceFromStorage) {
     List<Invoice.Status> cancellable = List.of(Invoice.Status.APPROVED, Invoice.Status.PAID);
     if (!cancellable.contains(invoiceFromStorage.getStatus())) {
-      List<Parameter> parameters = Collections.singletonList(
-        new Parameter().withKey(INVOICE_ID).withValue(invoiceFromStorage.getId()));
-      Error error = CANNOT_CANCEL_INVOICE.toError()
-        .withParameters(parameters);
-      throw new HttpException(422, error);
+      var param = new Parameter().withKey(INVOICE_ID).withValue(invoiceFromStorage.getId());
+      throw new HttpException(422, CANNOT_CANCEL_INVOICE, List.of(param));
     }
   }
 
@@ -148,8 +143,7 @@ public class InvoiceCancelService {
         logger.error("Failed to cancel transactions for invoice with id {}", invoiceId, t);
         var param = new Parameter().withKey(INVOICE_ID).withValue(invoiceId);
         var errorParam = new Parameter().withKey("errorMessage").withValue(t.getMessage());
-        var error = CANCEL_TRANSACTIONS_ERROR.toError().withParameters(List.of(param, errorParam));
-        throw new HttpException(500, error);
+        throw new HttpException(500, CANCEL_TRANSACTIONS_ERROR, List.of(param, errorParam));
       });
   }
 
@@ -184,9 +178,8 @@ public class InvoiceCancelService {
       .recover(t -> {
         Throwable cause = requireNonNullElse(t.getCause(), t);
         var param = new Parameter().withKey("cause").withValue(cause.toString());
-        var error = ERROR_UNRELEASING_ENCUMBRANCES.toError().withParameters(List.of(param));
         logger.error("Failed to unrelease encumbrance for po lines", cause);
-        throw new HttpException(500, error);
+        throw new HttpException(500, ERROR_UNRELEASING_ENCUMBRANCES, List.of(param));
       });
   }
 
