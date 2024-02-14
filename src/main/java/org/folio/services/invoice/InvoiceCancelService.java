@@ -179,7 +179,7 @@ public class InvoiceCancelService {
       .recover(t -> {
         Throwable cause = requireNonNullElse(t.getCause(), t);
         var param = new Parameter().withKey("cause").withValue(cause.toString());
-        logger.error("Failed to unrelease encumbrance for po lines", cause);
+        logger.error("Failed to unrelease encumbrance for po lines", t);
         throw new HttpException(500, ERROR_UNRELEASING_ENCUMBRANCES, List.of(param));
       });
   }
