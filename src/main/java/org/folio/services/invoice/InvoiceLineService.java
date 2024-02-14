@@ -42,9 +42,10 @@ public class InvoiceLineService {
     return restClient.get(requestEntry, InvoiceLine.class, requestContext)
       .recover(throwable -> {
         if (throwable instanceof HttpException httpException &&  httpException.getCode() == 404) {
+          String message = String.format(INVOICE_LINE_NOT_FOUND.getDescription() + " : %s", throwable.getMessage());
           var param = new Parameter().withKey("invoiceLineId").withValue(invoiceLineId);
-          var errorParam = new Parameter().withKey("errorMessage").withValue(throwable.getMessage());
-          throw new HttpException(404, INVOICE_LINE_NOT_FOUND, List.of(param, errorParam));
+          var error = INVOICE_LINE_NOT_FOUND.toError().withMessage(message).withParameters(List.of(param));
+          throw new HttpException(404, error);
         }
         return Future.failedFuture(throwable);
       });

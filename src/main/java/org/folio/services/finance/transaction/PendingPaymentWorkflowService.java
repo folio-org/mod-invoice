@@ -21,11 +21,9 @@ import org.folio.rest.acq.model.finance.AwaitingPayment;
 import org.folio.rest.acq.model.finance.Metadata;
 import org.folio.rest.acq.model.finance.Transaction;
 import org.folio.rest.core.models.RequestContext;
-import org.folio.rest.jaxrs.model.Error;
 import org.folio.rest.jaxrs.model.FundDistribution;
 import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.jaxrs.model.InvoiceLine;
-import org.folio.rest.jaxrs.model.Parameter;
 import org.folio.services.validator.HolderValidator;
 
 public class PendingPaymentWorkflowService {
@@ -84,8 +82,8 @@ public class PendingPaymentWorkflowService {
         if (t instanceof HttpException he) {
           return Future.failedFuture(new HttpException(he.getCode(), he.getErrors()));
         }
-        var errorParam = new Parameter().withKey("errorMessage").withValue(t.getMessage());
-        Error error = PENDING_PAYMENT_ERROR.toError().withParameters(List.of(errorParam));
+        String message = String.format(PENDING_PAYMENT_ERROR.getDescription() + " : %s", t.getMessage());
+        var error = PENDING_PAYMENT_ERROR.toError().withMessage(message);
         return Future.failedFuture(new HttpException(500, error));
       });
   }
