@@ -3102,7 +3102,7 @@ public class InvoicesApiTest extends ApiTestBase {
     // ===  Preparing invoice for test and setting fiscal years ===
     Invoice invoice = new JsonObject(getMockData(APPROVED_INVOICE_SAMPLE_PATH)).mapTo(Invoice.class);
     invoice.setFiscalYearId(null);
-    invoice.getAdjustments().get(0).getFundDistributions().get(0).setFundId("55f48dc6-efa7-4cfe-bc7c-4786efe493e3");
+    invoice.getAdjustments().get(0).getFundDistributions().get(0).setFundId("51f48dc6-efa7-4cfe-bc7c-4786efe493e3");
     invoice.setLockTotal(15d);
 
     // ===  Run test  ===
