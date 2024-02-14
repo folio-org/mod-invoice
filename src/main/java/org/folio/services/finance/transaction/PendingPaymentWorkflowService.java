@@ -82,7 +82,7 @@ public class PendingPaymentWorkflowService {
         if (t instanceof HttpException he) {
           return Future.failedFuture(new HttpException(he.getCode(), he.getErrors()));
         }
-        String message = String.format(PENDING_PAYMENT_ERROR.getDescription() + " : %s", t.getMessage());
+        String message = PENDING_PAYMENT_ERROR.getDescription() + " : " + t.getMessage();
         var error = PENDING_PAYMENT_ERROR.toError().withMessage(message);
         return Future.failedFuture(new HttpException(500, error));
       });

@@ -44,7 +44,7 @@ public class OrderLineService {
     RequestEntry requestEntry = new RequestEntry(ORDER_LINES_BY_ID_ENDPOINT).withId(poLineId);
     return restClient.get(requestEntry, CompositePoLine.class, requestContext)
       .recover(throwable -> {
-        String message = String.format(PO_LINE_NOT_FOUND.getDescription() + " : %s", throwable.getMessage());
+        String message = PO_LINE_NOT_FOUND.getDescription() + " : " + throwable.getMessage();
         var param = new Parameter().withKey("poLineId").withValue(poLineId);
         var error = PO_LINE_NOT_FOUND.toError().withMessage(message).withParameters(List.of(param));
         throw new HttpException(404, error);
@@ -61,11 +61,11 @@ public class OrderLineService {
       .map(poLine -> updatePoLine(poLine, requestContext)
         .recover(cause -> {
           if (ExceptionUtil.matches(cause, USER_NOT_A_MEMBER_OF_THE_ACQ)) {
-            String message = String.format(USER_NOT_A_MEMBER_OF_THE_ACQ.getDescription() + " : %s", cause.getMessage());
+            String message = USER_NOT_A_MEMBER_OF_THE_ACQ.getDescription() + " : " + cause.getMessage();
             var error = USER_NOT_A_MEMBER_OF_THE_ACQ.toError().withMessage(message);
             throw new HttpException(403, error);
           } else {
-            String message = String.format(PO_LINE_UPDATE_FAILURE.getDescription() + " : %s", cause.getMessage());
+            String message = PO_LINE_UPDATE_FAILURE.getDescription() + " : " + cause.getMessage();
             var error = PO_LINE_UPDATE_FAILURE.toError().withMessage(message);
             throw new HttpException(400, error);
           }

@@ -141,7 +141,7 @@ public class InvoiceCancelService {
     return baseTransactionService.batchCancel(transactions, requestContext)
       .recover(t -> {
         logger.error("Failed to cancel transactions for invoice with id {}", invoiceId, t);
-        String message = String.format(CANCEL_TRANSACTIONS_ERROR.getDescription() + " : %s", t.getMessage());
+        String message = CANCEL_TRANSACTIONS_ERROR.getDescription() + " : " + t.getMessage();
         var param = new Parameter().withKey(INVOICE_ID).withValue(invoiceId);
         var error = CANCEL_TRANSACTIONS_ERROR.toError().withMessage(message).withParameters(List.of(param));
         throw new HttpException(500, error);
@@ -177,10 +177,11 @@ public class InvoiceCancelService {
     return poLinesFuture.compose(poLines -> selectPoLinesWithOpenOrders(poLines, requestContext))
       .compose(poLines -> unreleaseEncumbrancesForPoLines(poLines, invoiceFromStorage, requestContext))
       .recover(t -> {
-        Throwable cause = requireNonNullElse(t.getCause(), t);
-        var param = new Parameter().withKey("cause").withValue(cause.toString());
         logger.error("Failed to unrelease encumbrance for po lines", t);
-        throw new HttpException(500, ERROR_UNRELEASING_ENCUMBRANCES, List.of(param));
+        String message = ERROR_UNRELEASING_ENCUMBRANCES.getDescription() + " : " + t.getMessage();
+        var param = new Parameter().withKey("cause").withValue(requireNonNullElse(t.getCause(), t).toString());
+        var error = ERROR_UNRELEASING_ENCUMBRANCES.toError().withMessage(message).withParameters(List.of(param));
+        throw new HttpException(500, error);
       });
   }
 
