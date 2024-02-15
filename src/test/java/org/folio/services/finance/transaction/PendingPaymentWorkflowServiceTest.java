@@ -277,7 +277,6 @@ public class PendingPaymentWorkflowServiceTest {
       .withFromFundId(fundId2)
         .withEncumbrance(new Encumbrance()
           .withStatus(Encumbrance.Status.UNRELEASED));
-    String errorMsg = "test";
 
     doNothing().when(fundAvailabilityValidator).validate(anyList());
     when(restClient.postEmptyResponse(anyString(), any(), eq(requestContext)))
@@ -287,13 +286,13 @@ public class PendingPaymentWorkflowServiceTest {
           return succeededFuture();
         } else {
           // fail when updating encumbrances
-          return failedFuture(new Exception(errorMsg));
+          return failedFuture(new Exception("test"));
         }
       });
     when(encumbranceService.getEncumbrancesByPoLineIds(anyList(), eq(fiscalYearId), eq(requestContext)))
       .thenReturn(succeededFuture(List.of(encumbrance)));
 
     Future<Void> future = pendingPaymentWorkflowService.handlePendingPaymentsCreation(dataHolders, invoice, requestContext);
-    assertEquals("Failed to create pending payments" + " : " + errorMsg, future.cause().getMessage());
+    assertEquals("Failed to create pending payments", future.cause().getMessage());
   }
 }

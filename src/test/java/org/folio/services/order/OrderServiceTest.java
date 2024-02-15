@@ -160,8 +160,8 @@ public class OrderServiceTest {
   @Test
   void shouldThrowNotFoundErrorWhenDeletingOrderInvoiceRelationIfLastInvoice(VertxTestContext vertxTestContext) {
     String invoiceLineId = UUID.randomUUID().toString();
-    String errorMsg = "Not Found";
-    doReturn(failedFuture(new HttpException(404, errorMsg)))
+
+    doReturn(failedFuture(new HttpException(404, "Not Found")))
       .when(invoiceLineService).getInvoiceLine(invoiceLineId, requestContextMock);
 
     // when
@@ -174,9 +174,10 @@ public class OrderServiceTest {
         assertEquals(404, httpException.getCode());
         Error error = httpException.getErrors().getErrors().get(0);
         assertEquals(CANNOT_DELETE_INVOICE_LINE.getCode(), error.getCode());
-        assertEquals(CANNOT_DELETE_INVOICE_LINE.getDescription() + " : " + errorMsg, error.getMessage());
         assertEquals("lineId", error.getParameters().get(0).getKey());
         assertEquals(invoiceLineId, error.getParameters().get(0).getValue());
+        assertEquals("errorMessage", error.getParameters().get(1).getKey());
+        assertEquals("Not Found", error.getParameters().get(1).getValue());
         vertxTestContext.completeNow();
       });
   }

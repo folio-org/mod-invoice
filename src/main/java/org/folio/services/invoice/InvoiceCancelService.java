@@ -141,10 +141,9 @@ public class InvoiceCancelService {
     return baseTransactionService.batchCancel(transactions, requestContext)
       .recover(t -> {
         logger.error("Failed to cancel transactions for invoice with id {}", invoiceId, t);
-        String message = String.format(CANCEL_TRANSACTIONS_ERROR.getDescription() + " : %s", t.getMessage());
         var param = new Parameter().withKey(INVOICE_ID).withValue(invoiceId);
-        var error = CANCEL_TRANSACTIONS_ERROR.toError().withMessage(message).withParameters(List.of(param));
-        throw new HttpException(500, error);
+        var errorParam = new Parameter().withKey("errorMessage").withValue(t.getMessage());
+        throw new HttpException(500, CANCEL_TRANSACTIONS_ERROR, List.of(param, errorParam));
       });
   }
 
