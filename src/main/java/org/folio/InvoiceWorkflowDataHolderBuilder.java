@@ -17,6 +17,7 @@ import javax.money.convert.ConversionQuery;
 import javax.money.convert.CurrencyConversion;
 import javax.money.convert.ExchangeRateProvider;
 
+import io.vertx.core.json.JsonObject;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.invoices.rest.exceptions.HttpException;
@@ -101,7 +102,7 @@ public class InvoiceWorkflowDataHolderBuilder {
           .withInvoice(invoice)
           .withAdjustment(adjustment)
           .withFundDistribution(fundDistribution)))
-      .collect(toList());
+      .toList();
 
     holders.addAll(holdersFromAdjustments);
     return holders;
@@ -143,13 +144,13 @@ public class InvoiceWorkflowDataHolderBuilder {
       .filter(h -> h.getBudget() != null && h.getBudget().getFiscalYearId() != null)
       .collect(groupingBy(h -> h.getBudget().getFiscalYearId()));
     if (fiscalYearToHolders.size() > 1) {
-      logger.error("checkMultipleFiscalYears:: More than one fiscal years found");
       List<String> fiscalYearIds = new ArrayList<>(fiscalYearToHolders.keySet());
       InvoiceWorkflowDataHolder h1 = fiscalYearToHolders.get(fiscalYearIds.get(0)).get(0);
       InvoiceWorkflowDataHolder h2 = fiscalYearToHolders.get(fiscalYearIds.get(1)).get(0);
       String message = String.format(MULTIPLE_FISCAL_YEARS.getDescription(), h1.getFundDistribution().getCode(),
         h2.getFundDistribution().getCode());
       Error error = new Error().withCode(MULTIPLE_FISCAL_YEARS.getCode()).withMessage(message);
+      logger.error("checkMultipleFiscalYears:: More than one fiscal years found: {}", JsonObject.mapFrom(error).encodePrettily());
       throw new HttpException(422, error);
     }
     return holders;

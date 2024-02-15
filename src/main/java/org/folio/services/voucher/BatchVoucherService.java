@@ -8,6 +8,10 @@ import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
 
 import javax.xml.stream.XMLStreamException;
 
+import io.vertx.core.Future;
+import io.vertx.core.json.JsonObject;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.folio.converters.BatchVoucherModelConverter;
 import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.jaxb.XMLConverter;
@@ -17,13 +21,12 @@ import org.folio.rest.jaxrs.model.BatchVoucher;
 import org.folio.rest.jaxrs.model.jaxb.BatchVoucherType;
 import org.springframework.stereotype.Service;
 
-import io.vertx.core.Future;
-import io.vertx.core.json.JsonObject;
-
 @Service
 public class BatchVoucherService {
+
+  private static final Logger log = LogManager.getLogger();
   private static final String HEADER_ERROR_MSG = "Accept header must be [\"application/xml\",\"application/json\"]";
-  private static final String MARSHAL_ERROR_MSG = "Internal server error. Can't marshal response to XML";
+  private static final String MARSHAL_ERROR_MSG = "Internal server error. Can't marshal response to XML. Error message: ";
   private final XMLConverter xmlConverter;
   private final BatchVoucherModelConverter batchVoucherModelConverter;
   private final RestClient restClient;
@@ -48,9 +51,11 @@ public class BatchVoucherService {
       try {
         return xmlConverter.marshal(BatchVoucherType.class, xmlBatchVoucher, null,true);
       } catch (XMLStreamException e) {
-        throw new HttpException(400, MARSHAL_ERROR_MSG);
+        log.error("Internal server error. Can't marshal response to XML. batchVoucherId: {}, contentType: {}, Error message: {}", batchVoucher.getId(), contentType, e.getMessage());
+        throw new HttpException(400, MARSHAL_ERROR_MSG + e.getMessage());
       }
     }
+    log.error("Accept header must be [\"application/xml\",\"application/json\"]. batchVoucherId: {}, contentType: {}", batchVoucher.getId(), contentType);
     throw new HttpException(400, HEADER_ERROR_MSG);
   }
 

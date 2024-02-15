@@ -31,6 +31,7 @@ import javax.money.convert.CurrencyConversion;
 import javax.money.convert.ExchangeRateProvider;
 
 import io.vertx.core.Future;
+import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.models.InvoiceWorkflowDataHolder;
 import org.folio.rest.acq.model.finance.Batch;
 import org.folio.rest.acq.model.finance.Encumbrance;
@@ -40,6 +41,7 @@ import org.folio.rest.acq.model.finance.Transaction;
 import org.folio.rest.core.RestClient;
 import org.folio.rest.core.models.RequestContext;
 import org.folio.rest.jaxrs.model.Adjustment;
+import org.folio.rest.jaxrs.model.Error;
 import org.folio.rest.jaxrs.model.FundDistribution;
 import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.jaxrs.model.InvoiceLine;
@@ -293,6 +295,10 @@ public class PendingPaymentWorkflowServiceTest {
       .thenReturn(succeededFuture(List.of(encumbrance)));
 
     Future<Void> future = pendingPaymentWorkflowService.handlePendingPaymentsCreation(dataHolders, invoice, requestContext);
-    assertEquals("Failed to create pending payments: test", future.cause().getMessage());
+    assertEquals("Failed to create pending payments", future.cause().getMessage());
+    HttpException httpException = (HttpException) future.cause();
+    Error error = httpException.getErrors().getErrors().get(0);
+    assertEquals("cause", error.getParameters().get(0).getKey());
+    assertEquals("test", error.getParameters().get(0).getValue());
   }
 }

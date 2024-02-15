@@ -8,10 +8,9 @@ import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_LINE_NUMBER;
 import static org.folio.invoices.utils.ResourcePathResolver.resourceByIdPath;
 import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
 
-import java.util.Collections;
 import java.util.List;
-import java.util.stream.Collectors;
 
+import io.vertx.core.Future;
 import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.invoices.utils.HelperUtils;
 import org.folio.okapi.common.GenericCompositeFuture;
@@ -23,8 +22,6 @@ import org.folio.rest.jaxrs.model.InvoiceLine;
 import org.folio.rest.jaxrs.model.InvoiceLineCollection;
 import org.folio.rest.jaxrs.model.Parameter;
 import org.folio.rest.jaxrs.model.SequenceNumber;
-
-import io.vertx.core.Future;
 
 public class InvoiceLineService {
 
@@ -44,9 +41,10 @@ public class InvoiceLineService {
     RequestEntry requestEntry = new RequestEntry(INVOICE_LINE_BY_ID_ENDPOINT).withId(invoiceLineId);
     return restClient.get(requestEntry, InvoiceLine.class, requestContext)
       .recover(throwable -> {
-        if (throwable instanceof HttpException && ((HttpException) throwable).getCode() == 404) {
-          List<Parameter> parameters = Collections.singletonList(new Parameter().withKey("invoiceLineId").withValue(invoiceLineId));
-          throw new HttpException(404, INVOICE_LINE_NOT_FOUND.toError().withParameters(parameters));
+        if (throwable instanceof HttpException httpException &&  httpException.getCode() == 404) {
+          var param = new Parameter().withKey("invoiceLineId").withValue(invoiceLineId);
+          var causeParam = new Parameter().withKey("cause").withValue(throwable.getMessage());
+          throw new HttpException(404, INVOICE_LINE_NOT_FOUND, List.of(param, causeParam));
         }
         return Future.failedFuture(throwable);
       });
@@ -78,9 +76,10 @@ public class InvoiceLineService {
   public Future<Void> persistInvoiceLines(List<InvoiceLine> lines,  RequestContext requestContext) {
     var futures = lines.stream()
       .map(invoiceLine -> persistInvoiceLine(invoiceLine, requestContext))
-      .collect(Collectors.toList());
+      .collect(toList());
     return GenericCompositeFuture.join(futures).mapEmpty();
   }
+
   public Future<Void> updateInvoiceLine(InvoiceLine invoiceLine, RequestContext requestContext) {
     return restClient.put(resourceByIdPath(INVOICE_LINES, invoiceLine.getId()), invoiceLine, requestContext);
   }
@@ -113,6 +112,7 @@ public class InvoiceLineService {
     return restClient.get(getInvoiceLineNumberEndpoint(invoiceId), SequenceNumber.class, requestContext)
       .map(SequenceNumber::getSequenceNumber);
   }
+
   private String getInvoiceLineNumberEndpoint(String id) {
     return INVOICE_LINE_NUMBER_ENDPOINT + id;
   }

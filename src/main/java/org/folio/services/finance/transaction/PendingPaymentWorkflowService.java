@@ -6,11 +6,11 @@ import static org.folio.invoices.utils.HelperUtils.convertToDoubleWithRounding;
 import static org.folio.invoices.utils.HelperUtils.getFundDistributionAmount;
 import static org.folio.services.FundsDistributionService.distributeFunds;
 
+import javax.money.MonetaryAmount;
 import java.util.List;
 import java.util.Optional;
 
-import javax.money.MonetaryAmount;
-
+import io.vertx.core.Future;
 import io.vertx.core.json.JsonObject;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.logging.log4j.LogManager;
@@ -25,9 +25,8 @@ import org.folio.rest.jaxrs.model.Error;
 import org.folio.rest.jaxrs.model.FundDistribution;
 import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.jaxrs.model.InvoiceLine;
+import org.folio.rest.jaxrs.model.Parameter;
 import org.folio.services.validator.HolderValidator;
-
-import io.vertx.core.Future;
 
 public class PendingPaymentWorkflowService {
 
@@ -85,8 +84,8 @@ public class PendingPaymentWorkflowService {
         if (t instanceof HttpException he) {
           return Future.failedFuture(new HttpException(he.getCode(), he.getErrors()));
         }
-        String message = String.format(PENDING_PAYMENT_ERROR.getDescription(), t.getMessage());
-        Error error = new Error().withCode(PENDING_PAYMENT_ERROR.getCode()).withMessage(message);
+        var causeParam = new Parameter().withKey("cause").withValue(t.getMessage());
+        Error error = PENDING_PAYMENT_ERROR.toError().withParameters(List.of(causeParam));
         return Future.failedFuture(new HttpException(500, error));
       });
   }

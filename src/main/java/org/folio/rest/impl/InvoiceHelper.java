@@ -11,9 +11,9 @@ import static org.apache.commons.lang3.StringUtils.EMPTY;
 import static org.apache.commons.lang3.StringUtils.isEmpty;
 import static org.folio.invoices.utils.ErrorCodes.CANNOT_RESET_INVOICE_FISCAL_YEAR;
 import static org.folio.invoices.utils.ErrorCodes.INVALID_INVOICE_TRANSITION_ON_PAID_STATUS;
+import static org.folio.invoices.utils.ErrorCodes.MULTIPLE_ADJUSTMENTS_FISCAL_YEARS;
 import static org.folio.invoices.utils.ErrorCodes.ORG_IS_NOT_VENDOR;
 import static org.folio.invoices.utils.ErrorCodes.ORG_NOT_FOUND;
-import static org.folio.invoices.utils.ErrorCodes.MULTIPLE_ADJUSTMENTS_FISCAL_YEARS;
 import static org.folio.invoices.utils.HelperUtils.calculateVoucherLineAmount;
 import static org.folio.invoices.utils.HelperUtils.combineCqlExpressions;
 import static org.folio.invoices.utils.HelperUtils.getAdjustmentFundDistributionAmount;
@@ -29,8 +29,11 @@ import static org.folio.utils.UserPermissionsUtil.verifyUserHasInvoiceCancelPerm
 import static org.folio.utils.UserPermissionsUtil.verifyUserHasInvoicePayPermission;
 import static org.folio.utils.UserPermissionsUtil.verifyUserHasManagePermission;
 
+import javax.money.MonetaryAmount;
+import javax.money.convert.ConversionQuery;
+import javax.money.convert.CurrencyConversion;
+import javax.money.convert.ExchangeRateProvider;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -42,11 +45,13 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import javax.money.MonetaryAmount;
-import javax.money.convert.ConversionQuery;
-import javax.money.convert.CurrencyConversion;
-import javax.money.convert.ExchangeRateProvider;
+import com.google.common.annotations.VisibleForTesting;
 
+import io.vertx.core.CompositeFuture;
+import io.vertx.core.Context;
+import io.vertx.core.Future;
+import io.vertx.core.Vertx;
+import io.vertx.core.json.JsonObject;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.collections4.ListUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -65,7 +70,6 @@ import org.folio.rest.acq.model.finance.Fund;
 import org.folio.rest.acq.model.orders.CompositePoLine;
 import org.folio.rest.core.models.RequestContext;
 import org.folio.rest.jaxrs.model.Adjustment;
-import org.folio.rest.jaxrs.model.Error;
 import org.folio.rest.jaxrs.model.FiscalYearCollection;
 import org.folio.rest.jaxrs.model.FundDistribution;
 import org.folio.rest.jaxrs.model.Invoice;
@@ -97,14 +101,6 @@ import org.folio.services.voucher.VoucherService;
 import org.folio.spring.SpringContextUtil;
 import org.javamoney.moneta.Money;
 import org.springframework.beans.factory.annotation.Autowired;
-
-import com.google.common.annotations.VisibleForTesting;
-
-import io.vertx.core.CompositeFuture;
-import io.vertx.core.Context;
-import io.vertx.core.Future;
-import io.vertx.core.Vertx;
-import io.vertx.core.json.JsonObject;
 
 public class InvoiceHelper extends AbstractHelper {
   private final ProtectionHelper protectionHelper;
@@ -191,12 +187,11 @@ public class InvoiceHelper extends AbstractHelper {
         .map(fiscalYears -> {
           Set<FiscalYear> uniqueFiscalYears = new HashSet<>(fiscalYears);
           if (uniqueFiscalYears.size() > 1) {
-            logger.error("validateFiscalYearId:: More than one fiscal years found, invoice: {}", invoice.getId());
             var parameters = uniqueFiscalYears.stream()
               .map(fiscalYear -> new Parameter().withKey("fiscalYearCode").withValue(fiscalYear.getCode()))
               .toList();
-            Error error = MULTIPLE_ADJUSTMENTS_FISCAL_YEARS.toError().withParameters(parameters);
-            throw new HttpException(422, error);
+            logger.error("validateFiscalYearId:: More than one fiscal years found: invoice '{}'", invoice.getId());
+            throw new HttpException(422, MULTIPLE_ADJUSTMENTS_FISCAL_YEARS, parameters);
           }
           invoice.setFiscalYearId(uniqueFiscalYears.stream().findFirst().get().getId());
           return null;
@@ -471,11 +466,9 @@ public class InvoiceHelper extends AbstractHelper {
     // Once an invoice is Paid, it should no longer transition to other statuses, except Cancelled.
     if (invoiceFromStorage.getStatus() == Invoice.Status.PAID && invoice.getStatus() != Invoice.Status.CANCELLED &&
       invoice.getStatus() != invoiceFromStorage.getStatus()) {
-      List<Parameter> parameters = Collections.singletonList(new Parameter().withKey("invoiceId")
-        .withValue(invoice.getId()));
-      Error error = INVALID_INVOICE_TRANSITION_ON_PAID_STATUS.toError()
-        .withParameters(parameters);
-      throw new HttpException(422, error);
+      var parameter = new Parameter().withKey("invoiceId").withValue(invoice.getId());
+      logger.error("verifyTransitionOnPaidStatus:: Invalid invoice '{}' transition on paid status", invoice.getId());
+      throw new HttpException(422, INVALID_INVOICE_TRANSITION_ON_PAID_STATUS, List.of(parameter));
     }
   }
 
@@ -525,11 +518,13 @@ public class InvoiceHelper extends AbstractHelper {
   private void validateBeforeApproval(Organization organization, Invoice invoice, List<InvoiceLine> lines) {
     if (organization == null) {
       throw new HttpException(404, ORG_NOT_FOUND);
-    } else {
-      if (!organization.getIsVendor()) {
-        throw new HttpException(400, ORG_IS_NOT_VENDOR);
-      }
     }
+    if (Boolean.FALSE.equals(organization.getIsVendor())) {
+      var param = new Parameter().withKey("organizationId").withValue(organization.getId());
+      logger.error("validateBeforeApproval:: Organization '{}' is not vendor", organization.getId());
+      throw new HttpException(400, ORG_IS_NOT_VENDOR, List.of(param));
+    }
+
     validator.validateBeforeApproval(invoice, lines);
   }
 
@@ -540,7 +535,7 @@ public class InvoiceHelper extends AbstractHelper {
         .map(fiscalYear -> voucher.withSystemCurrency(fiscalYear.getCurrency()));
     }
     return configurationService.getSystemCurrency(requestContext)
-      .map(systemCurrency -> voucher.withSystemCurrency(systemCurrency));
+      .map(voucher::withSystemCurrency);
   }
 
   private Future<List<FundDistribution>> getAllFundDistributions(List<InvoiceLine> invoiceLines, Invoice invoice) {
@@ -873,12 +868,9 @@ public class InvoiceHelper extends AbstractHelper {
       return succeededFuture(null);
     }
     if (newFiscalYearId == null) {
-      Parameter invoiceIdParam = new Parameter()
-        .withKey("invoiceId")
-        .withValue(invoice.getId());
-      Error error = CANNOT_RESET_INVOICE_FISCAL_YEAR.toError()
-        .withParameters(List.of(invoiceIdParam));
-      throw new HttpException(422, error);
+      var invoiceIdParam = new Parameter().withKey("invoiceId").withValue(invoice.getId());
+      logger.error("validateFiscalYearId:: newFiscalYearId is null. Cannot reset invoice '{}' fiscal year", invoice.getId());
+      throw new HttpException(422, CANNOT_RESET_INVOICE_FISCAL_YEAR, List.of(invoiceIdParam));
     }
     List<InvoiceWorkflowDataHolder> dataHolders = holderBuilder.buildHoldersSkeleton(lines, invoice);
     return holderBuilder.withEncumbrances(dataHolders, requestContext)
