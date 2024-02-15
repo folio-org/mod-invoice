@@ -176,7 +176,7 @@ public class OrderServiceTest {
         assertEquals(CANNOT_DELETE_INVOICE_LINE.getCode(), error.getCode());
         assertEquals("lineId", error.getParameters().get(0).getKey());
         assertEquals(invoiceLineId, error.getParameters().get(0).getValue());
-        assertEquals("errorMessage", error.getParameters().get(1).getKey());
+        assertEquals("cause", error.getParameters().get(1).getKey());
         assertEquals("Not Found", error.getParameters().get(1).getValue());
         vertxTestContext.completeNow();
       });

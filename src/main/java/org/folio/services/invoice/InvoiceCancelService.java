@@ -142,8 +142,8 @@ public class InvoiceCancelService {
       .recover(t -> {
         logger.error("Failed to cancel transactions for invoice with id {}", invoiceId, t);
         var param = new Parameter().withKey(INVOICE_ID).withValue(invoiceId);
-        var errorParam = new Parameter().withKey("errorMessage").withValue(t.getMessage());
-        throw new HttpException(500, CANCEL_TRANSACTIONS_ERROR, List.of(param, errorParam));
+        var causeParam = new Parameter().withKey("cause").withValue(t.getMessage());
+        throw new HttpException(500, CANCEL_TRANSACTIONS_ERROR, List.of(param, causeParam));
       });
   }
 

@@ -364,9 +364,9 @@ public class InvoiceLineHelper extends AbstractHelper {
       .compose(v -> orderService.createInvoiceOrderRelation(ilProcessing.getInvoiceLine(), buildRequestContext())
         .recover(throwable -> {
           var param = new Parameter().withKey("invoiceLineId").withValue(invoiceLine.getId());
-          var errorParam = new Parameter().withKey("errorMessage").withValue(throwable.getMessage());
+          var causeParam = new Parameter().withKey("cause").withValue(throwable.getMessage());
           logger.error("Failed to create invoice line '{}' order relation", invoiceLine.getId(), throwable);
-          throw new HttpException(500, ORDER_INVOICE_RELATION_CREATE_FAILED, List.of(param, errorParam));
+          throw new HttpException(500, ORDER_INVOICE_RELATION_CREATE_FAILED, List.of(param, causeParam));
         }))
       .compose(v -> updateInvoicePoNumbers(ilProcessing, requestContext))
       .compose(v -> persistInvoiceIfNeeded(ilProcessing, requestContext))
@@ -481,9 +481,9 @@ public class InvoiceLineHelper extends AbstractHelper {
       .compose(v -> updateInvoice(ilProcessing, requestContext))
       .recover(t -> {
         var param = new Parameter().withKey("invoiceId").withValue(invoice.getId());
-        var errorParam = new Parameter().withKey("errorMessage").withValue(t.getMessage());
+        var causeParam = new Parameter().withKey("cause").withValue(t.getMessage());
         logger.error("Failed to update the invoice '{}' and other lines", invoice.getId(), t);
-        throw new HttpException(500, FAILED_TO_UPDATE_INVOICE_AND_OTHER_LINES, List.of(param, errorParam));
+        throw new HttpException(500, FAILED_TO_UPDATE_INVOICE_AND_OTHER_LINES, List.of(param, causeParam));
       });
   }
 
@@ -550,9 +550,9 @@ public class InvoiceLineHelper extends AbstractHelper {
       })
       .recover(throwable -> {
         var param = new Parameter().withKey("poLineId").withValue(poLineId);
-        var errorParam = new Parameter().withKey("errorMessage").withValue(throwable.getMessage());
+        var causeParam = new Parameter().withKey("cause").withValue(throwable.getMessage());
         logger.error("Failed to update invoice poNumbers. poLineId={}", poLineId, throwable);
-        throw new HttpException(500, FAILED_TO_UPDATE_PONUMBERS, List.of(param, errorParam));
+        throw new HttpException(500, FAILED_TO_UPDATE_PONUMBERS, List.of(param, causeParam));
       });
   }
 
@@ -570,9 +570,9 @@ public class InvoiceLineHelper extends AbstractHelper {
       .compose(order -> removeInvoicePoNumber(order.getPoNumber(), order, ilProcessing, requestContext))
       .recover(throwable -> {
         var param = new Parameter().withKey("invoiceLine.getPoLineId").withValue(invoiceLine.getPoLineId());
-        var errorParam = new Parameter().withKey("errorMessage").withValue(throwable.getMessage());
+        var causeParam = new Parameter().withKey("cause").withValue(throwable.getMessage());
         logger.error("Failed to update invoice poNumbers for poLineId={} of invoiceLine", invoiceLine.getPoLineId(), throwable);
-        throw new HttpException(500, FAILED_TO_UPDATE_PONUMBERS, List.of(param, errorParam));
+        throw new HttpException(500, FAILED_TO_UPDATE_PONUMBERS, List.of(param, causeParam));
       });
   }
 

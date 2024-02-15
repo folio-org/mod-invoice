@@ -139,8 +139,8 @@ public class UploadBatchVoucherExportHelper extends AbstractHelper {
        .onSuccess(uploadHolder::setBatchVoucher)
        .recover(t -> {
          var parameter = new Parameter().withKey("batchVoucherId").withValue(uploadHolder.getBatchVoucherExport().getBatchVoucherId());
-         var errorParam = new Parameter().withKey("errorMessage").withValue(t.getMessage());
-         var error = BATCH_VOUCHER_NOT_FOUND.toError().withParameters(List.of(parameter, errorParam));
+         var causeParam = new Parameter().withKey("cause").withValue(t.getMessage());
+         var error = BATCH_VOUCHER_NOT_FOUND.toError().withParameters(List.of(parameter, causeParam));
          log.error("Failed to fetch batch voucher by id: {}", JsonObject.mapFrom(error).encodePrettily());
          throw new HttpException(404, error);
        })
