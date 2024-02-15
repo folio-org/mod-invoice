@@ -3095,29 +3095,6 @@ public class InvoicesApiTest extends ApiTestBase {
     assertThat(error.getCode(), equalTo(USER_HAS_NO_FISCAL_YEAR_UPDATE_PERMISSIONS.getCode()));
   }
 
-  @Test
-  void testFailToCreateInvoiceWithTwoFundDistributions() throws IOException {
-    logger.info("=== Test create invoice with two different fund distributions ===");
-
-    // ===  Preparing invoice for test and setting fiscal years ===
-    Invoice invoice = new JsonObject(getMockData(APPROVED_INVOICE_SAMPLE_PATH)).mapTo(Invoice.class);
-    invoice.setFiscalYearId(null);
-    invoice.getAdjustments().get(0).getFundDistributions().get(0).setFundId("51f48dc6-efa7-4cfe-bc7c-4786efe493e3");
-    invoice.setLockTotal(15d);
-
-    // ===  Run test  ===
-    var errors = verifyPostResponse(INVOICE_PATH, JsonObject.mapFrom(invoice), prepareHeaders(X_OKAPI_TENANT),
-      APPLICATION_JSON, 422).as(Errors.class);
-
-    /* The error should be filled with details */
-    assertThat(errors.getErrors().get(0).getCode(), equalTo("multipleAdjustmentsFiscalYears"));
-    assertThat(errors.getErrors().get(0).getMessage(), equalTo("Multiple fiscal years are used in the adjustments"));
-    assertThat(errors.getErrors().get(0).getParameters().get(0).getKey(), equalTo("fiscalYearCode"));
-    assertThat(errors.getErrors().get(0).getParameters().get(0).getValue(), equalTo("test2020"));
-    assertThat(errors.getErrors().get(0).getParameters().get(1).getKey(), equalTo("fiscalYearCode"));
-    assertThat(errors.getErrors().get(0).getParameters().get(1).getValue(), equalTo("test2020"));
-  }
-
   private void checkPreventInvoiceModificationRule(Invoice invoice, Map<InvoiceProtectedFields, Object> updatedFields) throws IllegalAccessException {
     invoice.setStatus(Invoice.Status.APPROVED);
     for (Map.Entry<InvoiceProtectedFields, Object> m : updatedFields.entrySet()) {

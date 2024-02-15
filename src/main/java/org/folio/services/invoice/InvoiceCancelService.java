@@ -176,10 +176,10 @@ public class InvoiceCancelService {
     return poLinesFuture.compose(poLines -> selectPoLinesWithOpenOrders(poLines, requestContext))
       .compose(poLines -> unreleaseEncumbrancesForPoLines(poLines, invoiceFromStorage, requestContext))
       .recover(t -> {
-        Throwable cause = requireNonNullElse(t.getCause(), t);
-        var param = new Parameter().withKey("cause").withValue(cause.toString());
-        logger.error("Failed to unrelease encumbrance for po lines", cause);
-        throw new HttpException(500, ERROR_UNRELEASING_ENCUMBRANCES, List.of(param));
+        logger.error("Failed to unrelease encumbrance for po lines", t);
+        var param = new Parameter().withKey("cause").withValue(requireNonNullElse(t.getCause(), t).toString());
+        var error = ERROR_UNRELEASING_ENCUMBRANCES.toError().withParameters(List.of(param));
+        throw new HttpException(500, error);
       });
   }
 
