@@ -15,6 +15,7 @@ import org.apache.commons.net.ftp.FTPClient;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.exceptions.FtpException;
+import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.rest.jaxrs.model.ExportConfig;
 
 import io.vertx.core.AsyncResult;
@@ -34,6 +35,9 @@ public class FtpUploadService implements FileExchangeService {
   private final Context ctx;
 
   public FtpUploadService(Context ctx, String uri, Integer portFromConfig) throws URISyntaxException {
+    if (uri.isBlank()) {
+      throw new HttpException(400, "URI for for FTP upload were not found");
+    }
     if (!isUriValid(uri)) {
       throw new URISyntaxException(uri, "URI should be valid ftp path");
     }
