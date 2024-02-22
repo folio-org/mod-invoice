@@ -27,16 +27,16 @@ import io.vertx.core.Promise;
 public class FtpUploadService implements FileExchangeService {
 
   private static final Logger logger = LogManager.getLogger(FtpUploadService.class);
-
   private static final String DEFAULT_WORKING_DIR = "/files/invoices";
+  public static final String URL_NOT_FOUND_FOR_FTP = "URI for for FTP upload were not found";
 
   private final String server;
   private final int port;
   private final Context ctx;
 
   public FtpUploadService(Context ctx, String uri, Integer portFromConfig) throws URISyntaxException {
-    if (uri.isBlank()) {
-      throw new HttpException(400, "URI for for FTP upload were not found");
+    if (StringUtils.isBlank(uri)) {
+      throw new HttpException(400, URL_NOT_FOUND_FOR_FTP);
     }
     if (!isUriValid(uri)) {
       throw new URISyntaxException(uri, "URI should be valid ftp path");
