@@ -1,6 +1,8 @@
 package org.folio.rest.impl;
 
 import static org.folio.invoices.utils.ErrorCodes.BATCH_VOUCHER_NOT_FOUND;
+import static org.folio.services.ftp.FtpUploadService.URI_SYNTAX_ERROR;
+import static org.folio.services.ftp.FtpUploadService.URL_NOT_FOUND_FOR_FTP;
 
 import java.util.List;
 import java.util.Map;
@@ -156,7 +158,10 @@ public class UploadBatchVoucherExportHelper extends AbstractHelper {
 
   private Future<Void> failUploadUpdate(BatchVoucherExport bvExport, Throwable t) {
     if (bvExport != null) {
-      bvExport.setStatus(BatchVoucherExport.Status.ERROR);
+      if (Boolean.FALSE.equals(URL_NOT_FOUND_FOR_FTP.equals(t.getMessage()) || URI_SYNTAX_ERROR.equals(t.getMessage())
+        || CREDENTIALS_NOT_FOUND.equals(t.getMessage()))) {
+        bvExport.setStatus(BatchVoucherExport.Status.ERROR);
+      }
       bvExport.setMessage(t.getMessage());
       return batchVoucherExportsService.updateBatchVoucherExportRecord(bvExport, buildRequestContext());
     }

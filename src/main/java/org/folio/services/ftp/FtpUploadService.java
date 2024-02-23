@@ -114,7 +114,7 @@ public class FtpUploadService implements FileExchangeService {
       try (InputStream is = new ByteArrayInputStream(content.getBytes())) {
         ftpClient.setFileType(FTP.BINARY_FILE_TYPE);
         ftpClient.enterLocalPassiveMode();
-        if (Objects.nonNull(folder)) {
+        if (StringUtils.isNotBlank(folder)) {
           changeWorkingDirectory(folder, ftpClient);
         } else {
           changeWorkingDirectory(DEFAULT_WORKING_DIR, ftpClient);
