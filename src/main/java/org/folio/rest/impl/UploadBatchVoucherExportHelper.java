@@ -128,11 +128,12 @@ public class UploadBatchVoucherExportHelper extends AbstractHelper {
 
   private Future<Void> updateHolderWithCredentials(BatchVoucherUploadHolder uploadHolder) {
     return batchVoucherExportConfigService.getExportConfigCredentials(uploadHolder.getExportConfig().getId(), requestContext)
-      .onSuccess(credentials -> {
+      .compose(credentials -> {
         if (StringUtils.isBlank(credentials.getUsername()) || StringUtils.isBlank(credentials.getPassword())) {
           throw new HttpException(404, CREDENTIALS_NOT_FOUND);
         }
         uploadHolder.setCredentials(credentials);
+        return null;
       })
       .recover(t -> {
         throw new HttpException(404, CREDENTIALS_NOT_FOUND);
