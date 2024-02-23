@@ -133,7 +133,7 @@ public class UploadBatchVoucherExportHelper extends AbstractHelper {
           throw new HttpException(404, CREDENTIALS_NOT_FOUND);
         }
         uploadHolder.setCredentials(credentials);
-        return null;
+        return Future.succeededFuture();
       })
       .recover(t -> {
         throw new HttpException(404, CREDENTIALS_NOT_FOUND);
