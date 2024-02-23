@@ -28,7 +28,7 @@ public class FtpUploadService implements FileExchangeService {
 
   private static final Logger logger = LogManager.getLogger(FtpUploadService.class);
   private static final String DEFAULT_WORKING_DIR = "/files/invoices";
-  public static final String URL_NOT_FOUND_FOR_FTP = "URI for for FTP upload were not found";
+  public static final String URL_NOT_FOUND_FOR_FTP = "URL for FTP upload was not found";
 
   private final String server;
   private final int port;

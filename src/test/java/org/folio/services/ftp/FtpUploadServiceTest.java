@@ -1,5 +1,9 @@
 package org.folio.services.ftp;
 
+import static org.folio.services.ftp.FtpUploadService.URL_NOT_FOUND_FOR_FTP;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.text.SimpleDateFormat;
@@ -8,9 +12,15 @@ import java.util.Locale;
 import java.util.TimeZone;
 import java.util.UUID;
 
+import io.vertx.core.Context;
+import io.vertx.core.Vertx;
+import io.vertx.core.json.JsonObject;
+import io.vertx.junit5.VertxExtension;
+import io.vertx.junit5.VertxTestContext;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.exceptions.FtpException;
+import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.rest.jaxrs.model.BatchVoucher;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
@@ -22,12 +32,6 @@ import org.mockftpserver.fake.UserAccount;
 import org.mockftpserver.fake.filesystem.DirectoryEntry;
 import org.mockftpserver.fake.filesystem.FileSystem;
 import org.mockftpserver.fake.filesystem.UnixFakeFileSystem;
-
-import io.vertx.core.Context;
-import io.vertx.core.Vertx;
-import io.vertx.core.json.JsonObject;
-import io.vertx.junit5.VertxExtension;
-import io.vertx.junit5.VertxTestContext;
 
 @ExtendWith(VertxExtension.class)
 public class FtpUploadServiceTest {
@@ -189,5 +193,28 @@ public class FtpUploadServiceTest {
       .onComplete(logger::info);
     vertxTestContext.assertFailure(future)
       .onComplete(result -> vertxTestContext.completeNow());
+  }
+
+  @Test
+  public void testFailedUploadWhenURLProblem() {
+    logger.info("=== Test unsuccessful upload ===");
+
+    Date end = new Date();
+    end.setTime(System.currentTimeMillis() - 864000000);
+
+    BatchVoucher batchVoucher = new BatchVoucher();
+    batchVoucher.setId(UUID.randomUUID().toString());
+    batchVoucher.setStart(end);
+    batchVoucher.setEnd(end);
+    batchVoucher.setBatchGroup(UUID.randomUUID().toString());
+    batchVoucher.setCreated(new Date());
+
+    var httpException = assertThrows(HttpException.class, () -> new FtpUploadService(context, "", 0));
+    assertEquals(400, httpException.getCode());
+    assertEquals(URL_NOT_FOUND_FOR_FTP, httpException.getMessage());
+
+    var urlException = assertThrows(URISyntaxException.class, () -> new FtpUploadService(context, "fsp:/", 0));
+    assertEquals("fsp:/", urlException.getInput());
+    assertEquals("URI should be valid ftp path: fsp:/", urlException.getMessage());
   }
 }
