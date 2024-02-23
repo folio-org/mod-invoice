@@ -10,7 +10,6 @@ import java.util.Map;
 import io.vertx.core.Context;
 import io.vertx.core.Future;
 import io.vertx.core.json.JsonObject;
-import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.invoices.rest.exceptions.HttpException;
@@ -130,13 +129,7 @@ public class UploadBatchVoucherExportHelper extends AbstractHelper {
 
   private Future<Void> updateHolderWithCredentials(BatchVoucherUploadHolder uploadHolder) {
     return batchVoucherExportConfigService.getExportConfigCredentials(uploadHolder.getExportConfig().getId(), requestContext)
-      .compose(credentials -> {
-        if (StringUtils.isBlank(credentials.getUsername()) || StringUtils.isBlank(credentials.getPassword())) {
-          throw new HttpException(404, CREDENTIALS_NOT_FOUND);
-        }
-        uploadHolder.setCredentials(credentials);
-        return Future.succeededFuture(null);
-      })
+      .onSuccess(uploadHolder::setCredentials)
       .recover(t -> {
         throw new HttpException(404, CREDENTIALS_NOT_FOUND);
       })
