@@ -1,10 +1,14 @@
 package org.folio.services.ftp;
 
-import io.vertx.core.AsyncResult;
-import io.vertx.core.Context;
-import io.vertx.core.Future;
-import io.vertx.core.Handler;
-import io.vertx.core.Promise;
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.util.Objects;
+import java.util.concurrent.CompletionException;
+import java.util.concurrent.TimeUnit;
+
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -17,21 +21,21 @@ import org.folio.rest.jaxrs.model.ExportConfig;
 import org.springframework.integration.file.remote.session.Session;
 import org.springframework.integration.file.remote.session.SessionFactory;
 
-import java.io.ByteArrayInputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.util.Objects;
-import java.util.concurrent.CompletionException;
-import java.util.concurrent.TimeUnit;
+import io.vertx.core.AsyncResult;
+import io.vertx.core.Context;
+import io.vertx.core.Future;
+import io.vertx.core.Handler;
+import io.vertx.core.Promise;
 
 public class SftpUploadService implements FileExchangeService {
+
   private static final Logger logger = LogManager.getLogger(SftpUploadService.class);
+
+  private static final String FILE_SEPARATOR = "/";
+  private static final String DEFAULT_WORKING_DIR = "/ftp/files/invoices";
+
   private final String server;
   private final int port;
-  private static final String FILE_SEPARATOR = "/";
-  public static final String DEFAULT_WORKING_DIR = "/ftp/files/invoices";
 
   public SftpUploadService(String uri, Integer portFromConfig) throws URISyntaxException {
     URI u = new URI(uri);
@@ -83,7 +87,7 @@ public class SftpUploadService implements FileExchangeService {
       remoteAbsPath = DEFAULT_WORKING_DIR + FILE_SEPARATOR + filename;
     }
 
-    ctx.owner().executeBlocking(blockingFeature ->  login(username, password).compose(session -> {
+    ctx.owner().executeBlocking(blockingFeature -> login(username, password).compose(session -> {
       try (InputStream inputStream = new ByteArrayInputStream(content.getBytes()); session) {
         logger.info("Start uploading file to SFTP path: {}", remoteAbsPath);
         if (StringUtils.isNotEmpty(folder)) {

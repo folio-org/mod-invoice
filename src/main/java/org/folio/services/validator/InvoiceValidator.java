@@ -38,7 +38,6 @@ import com.google.common.collect.Lists;
 public class InvoiceValidator {
 
   public static final String NO_INVOICE_LINES_ERROR_MSG = "An invoice cannot be approved if there are no corresponding lines of invoice.";
-
   public static final String REMAINING_AMOUNT_FIELD = "remainingAmount";
   private static final BigDecimal ZERO_REMAINING_AMOUNT = BigDecimal.ZERO.setScale(2, HALF_EVEN);
   private static final BigDecimal ONE_HUNDRED_PERCENT = BigDecimal.valueOf(100);
@@ -60,7 +59,8 @@ public class InvoiceValidator {
 
   public void validateInvoiceStatusTransition(Invoice invoice, Invoice invoiceFromStorage) {
     if (invoice.getStatus() == Invoice.Status.PAID && invoiceFromStorage.getStatus() != Invoice.Status.APPROVED) {
-      throw new HttpException(400, CANNOT_PAY_INVOICE_WITHOUT_APPROVAL);
+      var param = new Parameter().withKey("invoiceStatus").withValue(invoice.getStatus().toString());
+      throw new HttpException(400, CANNOT_PAY_INVOICE_WITHOUT_APPROVAL, List.of(param));
     }
    }
 
@@ -83,7 +83,9 @@ public class InvoiceValidator {
   public void validateInvoiceTotals(Invoice invoice) {
     if (invoice.getLockTotal() != null && invoice.getTotal() != null
       && Double.compare(invoice.getLockTotal(), invoice.getTotal()) != 0) {
-      throw new HttpException(400, LOCK_AND_CALCULATED_TOTAL_MISMATCH);
+      var param1 = new Parameter().withKey("lockTotal").withValue(invoice.getLockTotal().toString());
+      var param2 = new Parameter().withKey("total").withValue(invoice.getTotal().toString());
+      throw new HttpException(400, LOCK_AND_CALCULATED_TOTAL_MISMATCH, List.of(param1, param2));
     }
   }
 
@@ -106,7 +108,8 @@ public class InvoiceValidator {
   private void checkVendorHasAccountingCode(Invoice invoice) {
     // accounting code is erpCode from organization record
     if (Boolean.TRUE.equals(invoice.getExportToAccounting()) && StringUtils.isEmpty(invoice.getAccountingCode())) {
-      throw new HttpException(400, ACCOUNTING_CODE_NOT_PRESENT);
+      var param = new Parameter().withKey("exportToAccounting").withValue(invoice.getExportToAccounting().toString());
+      throw new HttpException(400, ACCOUNTING_CODE_NOT_PRESENT, List.of(param));
     }
   }
 
@@ -119,15 +122,15 @@ public class InvoiceValidator {
   private void validateInvoiceLineFundDistributions(List<InvoiceLine> invoiceLines) {
     for (InvoiceLine line : invoiceLines){
       if (CollectionUtils.isEmpty(line.getFundDistributions())) {
-        throw new HttpException(400, FUND_DISTRIBUTIONS_NOT_PRESENT);
+        var param = new Parameter().withKey("invoiceLineId").withValue(line.getInvoiceId());
+        throw new HttpException(400, FUND_DISTRIBUTIONS_NOT_PRESENT, List.of(param));
       }
 
       try {
         validateFundDistributions(line.getTotal(), line.getFundDistributions());
       } catch (HttpException e) {
-        throw new HttpException(422, INCORRECT_FUND_DISTRIBUTION_TOTAL, Lists.newArrayList(new Parameter()
-          .withKey(INVOICE_LINE_NUMBER)
-          .withValue(line.getInvoiceLineNumber())));
+        var param = new Parameter().withKey(INVOICE_LINE_NUMBER).withValue(line.getInvoiceLineNumber());
+        throw new HttpException(422, INCORRECT_FUND_DISTRIBUTION_TOTAL, List.of(param));
       }
     }
   }
@@ -136,7 +139,8 @@ public class InvoiceValidator {
   public void validateAdjustments(List<Adjustment> adjustments) {
     for (Adjustment adjustment : adjustments) {
       if (CollectionUtils.isEmpty(adjustment.getFundDistributions())) {
-        throw new HttpException(400, ADJUSTMENT_FUND_DISTRIBUTIONS_NOT_PRESENT);
+        var param = new Parameter().withKey("adjustmentId").withValue(adjustment.getAdjustmentId());
+        throw new HttpException(400, ADJUSTMENT_FUND_DISTRIBUTIONS_NOT_PRESENT, List.of(param));
       }
       validateFundDistributions(adjustment.getValue(), adjustment.getFundDistributions());
     }
@@ -167,8 +171,10 @@ public class InvoiceValidator {
 
   private void validateZeroPrice(List<FundDistribution> fdList) {
    FundDistribution.DistributionType firstFdType = fdList.get(0).getDistributionType();
-    if (fdList.stream().skip(1).anyMatch(fd -> fd.getDistributionType() != firstFdType))
-      throw new HttpException(422, CANNOT_MIX_TYPES_FOR_ZERO_PRICE);
+    if (fdList.stream().skip(1).anyMatch(fd -> fd.getDistributionType() != firstFdType)) {
+      var param = new Parameter().withKey("firstFdType").withValue(firstFdType.value());
+      throw new HttpException(422, CANNOT_MIX_TYPES_FOR_ZERO_PRICE, List.of(param));
+    }
     if (firstFdType == AMOUNT) {
       for (FundDistribution fd : fdList) {
         if (fd.getValue() != 0)
@@ -197,7 +203,7 @@ public class InvoiceValidator {
   }
 
   private void throwExceptionWithIncorrectAmount(BigDecimal remainingAmount) {
-    throw new HttpException(422,INCORRECT_FUND_DISTRIBUTION_TOTAL, Lists.newArrayList(new Parameter()
+    throw new HttpException(422, INCORRECT_FUND_DISTRIBUTION_TOTAL, Lists.newArrayList(new Parameter()
       .withKey(REMAINING_AMOUNT_FIELD)
       .withValue(remainingAmount.toString())));
   }

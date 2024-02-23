@@ -2,13 +2,14 @@ package org.folio.services.order;
 
 import static org.folio.invoices.utils.ErrorCodes.PO_LINE_NOT_FOUND;
 import static org.folio.invoices.utils.ErrorCodes.PO_LINE_UPDATE_FAILURE;
+import static org.folio.invoices.utils.ErrorCodes.USER_NOT_A_MEMBER_OF_THE_ACQ;
 import static org.folio.invoices.utils.ResourcePathResolver.ORDER_LINES;
 import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
 
-import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import io.vertx.core.Future;
 import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.okapi.common.GenericCompositeFuture;
 import org.folio.rest.acq.model.orders.CompositePoLine;
@@ -18,8 +19,7 @@ import org.folio.rest.core.RestClient;
 import org.folio.rest.core.models.RequestContext;
 import org.folio.rest.core.models.RequestEntry;
 import org.folio.rest.jaxrs.model.Parameter;
-
-import io.vertx.core.Future;
+import org.folio.utils.ExceptionUtil;
 
 public class OrderLineService {
   private static final String ORDER_LINES_ENDPOINT = resourcesPath(ORDER_LINES);
@@ -44,8 +44,10 @@ public class OrderLineService {
     RequestEntry requestEntry = new RequestEntry(ORDER_LINES_BY_ID_ENDPOINT).withId(poLineId);
     return restClient.get(requestEntry, CompositePoLine.class, requestContext)
       .recover(throwable -> {
-        List<Parameter> parameters = Collections.singletonList(new Parameter().withKey("poLineId").withValue(poLineId));
-        throw new HttpException(404, PO_LINE_NOT_FOUND.toError().withParameters(parameters));
+        var param = new Parameter().withKey("poLineId").withValue(poLineId);
+        var causeParam = new Parameter().withKey("cause").withValue(throwable.getMessage());
+        var error = PO_LINE_NOT_FOUND.toError().withParameters(List.of(param, causeParam));
+        throw new HttpException(404, error);
       });
   }
 
@@ -57,8 +59,14 @@ public class OrderLineService {
   public Future<Void> updateCompositePoLines(List<CompositePoLine> poLines, RequestContext requestContext) {
     var futures = poLines.stream()
       .map(poLine -> updatePoLine(poLine, requestContext)
-        .recover(t -> {
-          throw new HttpException(400, PO_LINE_UPDATE_FAILURE.toError());
+        .recover(cause -> {
+          if (ExceptionUtil.matches(cause, USER_NOT_A_MEMBER_OF_THE_ACQ)) {
+            var causeParam = new Parameter().withKey("cause").withValue(cause.getMessage());
+            throw new HttpException(403, USER_NOT_A_MEMBER_OF_THE_ACQ, List.of(causeParam));
+          } else {
+            var causeParam = new Parameter().withKey("cause").withValue(cause.getMessage());
+            throw new HttpException(400, PO_LINE_UPDATE_FAILURE, List.of(causeParam));
+          }
         }))
       .collect(Collectors.toList());
     return GenericCompositeFuture.join(futures).mapEmpty();

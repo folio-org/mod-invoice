@@ -4,20 +4,21 @@ import static org.folio.ApiTestSuite.mockPort;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import io.vertx.core.Context;
+import io.vertx.core.Vertx;
+import io.vertx.junit5.VertxExtension;
+import io.vertx.junit5.VertxTestContext;
 import java.util.HashMap;
 import java.util.Map;
-
 import org.folio.rest.RestConstants;
 import org.folio.rest.acq.model.orders.CompositePoLine;
-import org.folio.rest.core.RestClient;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 
-import io.vertx.core.Context;
-import io.vertx.core.Vertx;
-
-@DisplayName("InvoiceHelper should :")
+@ExtendWith(VertxExtension.class)
+@DisplayName("InvoiceHelper should : ")
 class InvoiceHelperTest extends ApiTestBase {
 
   private static final String PO_LINE_MOCK_DATA_PATH = BASE_MOCK_DATA_PATH + "poLines/";
@@ -26,11 +27,9 @@ class InvoiceHelperTest extends ApiTestBase {
   private Context context;
   private Map<String, String> okapiHeaders;
 
-  RestClient restClient = new RestClient();
-
   @BeforeEach
-  public void setUp() {
-    super.setUp();
+  public void setUp(final VertxTestContext testContext) {
+    super.setUp(testContext);
     context = Vertx.vertx().getOrCreateContext();
     okapiHeaders = new HashMap<>();
     okapiHeaders.put(RestConstants.OKAPI_URL, "http://localhost:" + mockPort);

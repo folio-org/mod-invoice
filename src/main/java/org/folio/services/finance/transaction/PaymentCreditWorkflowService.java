@@ -7,7 +7,6 @@ import static org.folio.invoices.utils.HelperUtils.convertToDoubleWithRounding;
 import static org.folio.invoices.utils.HelperUtils.getFundDistributionAmount;
 import static org.folio.services.FundsDistributionService.distributeFunds;
 
-import java.util.ArrayList;
 import java.util.List;
 
 import javax.money.MonetaryAmount;
@@ -25,8 +24,6 @@ import io.vertx.core.Future;
 public class PaymentCreditWorkflowService {
 
   private static final Logger logger = LogManager.getLogger(PaymentCreditWorkflowService.class);
-
-  public static final String FUND_ID = "fundId";
 
   private final BaseTransactionService baseTransactionService;
 
@@ -72,26 +69,23 @@ public class PaymentCreditWorkflowService {
   }
 
   private Future<Void> createTransactions(List<InvoiceWorkflowDataHolder> holders, RequestContext requestContext) {
-    Future<Void> future = succeededFuture(null);
-    for (InvoiceWorkflowDataHolder holder : holders) {
-      Transaction tr = holder.getNewTransaction();
-      future = future.compose(v -> baseTransactionService.createTransaction(tr, requestContext)
-        .recover(t -> {
-          if (t instanceof HttpException) {
-            HttpException exception = (HttpException) t;
-            return Future.failedFuture(new HttpException(exception.getCode(), exception.getErrors()));
-          }
-          logger.error("Failed to create transaction for invoice with id - {}", tr.getSourceInvoiceId(), t);
-          List<Parameter> parameters = new ArrayList<>();
-          parameters.add(new Parameter().withKey("invoiceLineId").withValue(tr.getSourceInvoiceLineId()));
-          parameters.add(new Parameter().withKey(FUND_ID)
-            .withValue((tr.getTransactionType() == Transaction.TransactionType.PAYMENT) ? tr.getFromFundId() : tr.getToFundId()));
-          return Future.failedFuture(new HttpException(500, TRANSACTION_CREATION_FAILURE.toError().withParameters(parameters)));
-        })
-        .mapEmpty()
-      );
+    List<Transaction> transactionsToCreate = holders.stream()
+      .map(InvoiceWorkflowDataHolder::getNewTransaction)
+      .toList();
+    if (transactionsToCreate.isEmpty()) {
+      return succeededFuture();
     }
-    return future;
+    return baseTransactionService.batchCreate(transactionsToCreate, requestContext)
+      .recover(t -> {
+        String invoiceId = transactionsToCreate.get(0).getSourceInvoiceId();
+        logger.error("Failed to create transactions for invoice with id - {}", invoiceId, t);
+        if (t instanceof HttpException he) {
+          return Future.failedFuture(new HttpException(he.getCode(), he.getErrors()));
+        }
+        return Future.failedFuture(new HttpException(500, TRANSACTION_CREATION_FAILURE.toError().withParameters(
+          List.of(new Parameter().withKey("invoiceId").withValue(invoiceId))
+        )));
+      });
   }
 
   private Transaction buildTransaction(InvoiceWorkflowDataHolder holder) {

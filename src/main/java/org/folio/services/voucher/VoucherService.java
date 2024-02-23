@@ -6,17 +6,18 @@ import static org.folio.invoices.utils.ErrorCodes.VOUCHER_UPDATE_FAILURE;
 import static org.folio.invoices.utils.ResourcePathResolver.VOUCHERS_STORAGE;
 import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
 
+import java.util.List;
 import java.util.Optional;
 
+import io.vertx.core.Future;
 import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.rest.core.RestClient;
 import org.folio.rest.core.models.RequestContext;
 import org.folio.rest.core.models.RequestEntry;
+import org.folio.rest.jaxrs.model.Parameter;
 import org.folio.rest.jaxrs.model.Voucher;
 import org.folio.rest.jaxrs.model.VoucherCollection;
 import org.folio.services.validator.VoucherValidator;
-
-import io.vertx.core.Future;
 
 public class VoucherService {
   public static final String QUERY_BY_INVOICE_ID = "invoiceId==%s";
@@ -107,7 +108,10 @@ public class VoucherService {
     }
     return updateVoucher(voucher.getId(), voucher.withStatus(status), requestContext)
       .recover(fail -> {
-        throw new HttpException(500, VOUCHER_UPDATE_FAILURE.toError());
+        var param1 = new Parameter().withKey("voucherId").withValue(voucher.getId());
+        var param2 = new Parameter().withKey("voucherStatus").withValue(voucher.getStatus().value());
+        var causeParam = new Parameter().withKey("cause").withValue(fail.getMessage());
+        throw new HttpException(500, VOUCHER_UPDATE_FAILURE, List.of(param1, param2, causeParam));
       });
   }
 

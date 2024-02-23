@@ -49,7 +49,10 @@
           "permissionsRequired": ["invoice.invoices.item.put"],
           "permissionsDesired": [
             "invoices.acquisitions-units-assignments.manage",
-            "invoices.fiscal-year.update"
+            "invoices.fiscal-year.update",
+            "invoice.item.approve",
+            "invoice.item.pay",
+            "invoice.item.cancel"
           ],
           "modulePermissions": [
             "configuration.entries.collection.get",
@@ -70,16 +73,7 @@
             "voucher-storage.voucher-number.get",
             "acquisitions-units-storage.units.collection.get",
             "acquisitions-units-storage.memberships.collection.get",
-            "finance.invoice-transaction-summaries.item.post",
-            "finance.invoice-transaction-summaries.item.put",
-            "finance.order-transaction-summaries.item.put",
-            "finance.payments.item.post",
-            "finance.credits.item.post",
-            "finance.credits.item.put",
-            "finance.payments.item.put",
-            "finance.pending-payments.item.post",
-            "finance.pending-payments.item.put",
-            "finance.encumbrances.item.put",
+            "finance.transactions.batch",
             "finance.transactions.collection.get",
             "finance.funds.item.get",
             "finance.funds.collection.get",
@@ -94,8 +88,7 @@
             "finance.exchange-rate.item.get",
             "finance.fiscal-years.item.get",
             "finance.fiscal-years.collection.get",
-            "organizations-storage.organizations.item.get",
-            "finance.release-encumbrance.item.post"
+            "organizations-storage.organizations.item.get"
           ]
         },
         {
@@ -547,6 +540,21 @@
           "permissionsRequired" : [ ]
         }
       ]
+    },
+    {
+      "id": "_tenant",
+      "version": "2.0",
+      "interfaceType": "system",
+      "handlers": [
+        {
+          "methods": [ "POST" ],
+          "pathPattern": "/_/tenant"
+        },
+        {
+          "methods": ["GET", "DELETE"],
+          "pathPattern": "/_/tenant/{id}"
+        }
+      ]
     }
   ],
   "requires": [
@@ -604,7 +612,7 @@
     },
     {
       "id": "finance.transactions",
-      "version": "5.0"
+      "version": "5.1"
     },
     {
       "id": "batch-group-storage.batch-groups",
@@ -637,14 +645,6 @@
     {
       "id": "finance.budgets",
       "version": "2.0"
-    },
-    {
-      "id": "finance.invoice-transaction-summaries",
-      "version": "2.1"
-    },
-    {
-      "id": "finance.order-transaction-summaries",
-      "version": "1.2"
     },
     {
       "id": "finance.expense-classes",
@@ -1090,6 +1090,38 @@
       {
         "name": "dataimport.max-active-threads",
         "value": "1"
+      },
+      {
+        "name": "DB_HOST",
+        "value": "postgres"
+      },
+      {
+        "name": "DB_PORT",
+        "value": "5432"
+      },
+      {
+        "name": "DB_USERNAME",
+        "value": "folio_admin"
+      },
+      {
+        "name": "DB_PASSWORD",
+        "value": "folio_admin"
+      },
+      {
+        "name": "DB_DATABASE",
+        "value": "okapi_modules"
+      },
+      {
+        "name": "DB_QUERYTIMEOUT",
+        "value": "60000"
+      },
+      {
+        "name": "DB_CHARSET",
+        "value": "UTF-8"
+      },
+      {
+        "name": "DB_MAXPOOLSIZE",
+        "value": "5"
       }
     ]
   }

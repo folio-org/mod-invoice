@@ -25,6 +25,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
+import io.vertx.core.Context;
+import io.vertx.core.Future;
 import org.apache.commons.lang3.StringUtils;
 import org.folio.InvoiceWorkflowDataHolderBuilder;
 import org.folio.invoices.rest.exceptions.HttpException;
@@ -37,7 +39,6 @@ import org.folio.rest.acq.model.orders.CompositePurchaseOrder;
 import org.folio.rest.acq.model.orders.OrderInvoiceRelationship;
 import org.folio.rest.core.models.RequestContext;
 import org.folio.rest.jaxrs.model.Adjustment;
-import org.folio.rest.jaxrs.model.Error;
 import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.jaxrs.model.InvoiceLine;
 import org.folio.rest.jaxrs.model.InvoiceLineCollection;
@@ -52,9 +53,6 @@ import org.folio.services.order.OrderService;
 import org.folio.services.validator.InvoiceLineValidator;
 import org.folio.spring.SpringContextUtil;
 import org.springframework.beans.factory.annotation.Autowired;
-
-import io.vertx.core.Context;
-import io.vertx.core.Future;
 
 public class InvoiceLineHelper extends AbstractHelper {
   public static final String QUERY_BY_INVOICE_ID = "invoiceId==%s";
@@ -328,9 +326,9 @@ public class InvoiceLineHelper extends AbstractHelper {
         ilProcessing.setInvoice(invoiceCollection.getInvoices().get(0));
         return succeededFuture(null);
       }
-      List<Parameter> parameters = Collections.singletonList(new Parameter().withKey("invoiceLineId").withValue(lineId));
-      Error error = CANNOT_DELETE_INVOICE_LINE.toError().withParameters(parameters);
-      throw new HttpException(404, error);
+      var param = new Parameter().withKey("invoiceLineId").withValue(lineId);
+      logger.error("getInvoiceIfExists:: Cannot delete invoice line: {}", lineId);
+      throw new HttpException(404, CANNOT_DELETE_INVOICE_LINE, List.of(param));
     });
   }
 
@@ -365,7 +363,10 @@ public class InvoiceLineHelper extends AbstractHelper {
       .compose(v -> createInvoiceLine(ilProcessing, requestContext))
       .compose(v -> orderService.createInvoiceOrderRelation(ilProcessing.getInvoiceLine(), buildRequestContext())
         .recover(throwable -> {
-          throw new HttpException(500, ORDER_INVOICE_RELATION_CREATE_FAILED.toError());
+          var param = new Parameter().withKey("invoiceLineId").withValue(invoiceLine.getId());
+          var causeParam = new Parameter().withKey("cause").withValue(throwable.getMessage());
+          logger.error("Failed to create invoice line '{}' order relation", invoiceLine.getId(), throwable);
+          throw new HttpException(500, ORDER_INVOICE_RELATION_CREATE_FAILED, List.of(param, causeParam));
         }))
       .compose(v -> updateInvoicePoNumbers(ilProcessing, requestContext))
       .compose(v -> persistInvoiceIfNeeded(ilProcessing, requestContext))
@@ -374,7 +375,10 @@ public class InvoiceLineHelper extends AbstractHelper {
 
   private void checkIfInvoiceLineCreationAllowed(Invoice invoice) {
     if (isPostApproval(invoice)) {
-      throw new HttpException(500, PROHIBITED_INVOICE_LINE_CREATION);
+      var param1 = new Parameter().withKey("invoiceId").withValue(invoice.getId());
+      var param2 = new Parameter().withKey("invoiceStatus").withValue(invoice.getStatus().toString());
+      logger.error("checkIfInvoiceLineCreationAllowed:: Prohibited invoice line '{}' creation: invoiceStatus={}", invoice.getId(), invoice.getStatus().toString());
+      throw new HttpException(500, PROHIBITED_INVOICE_LINE_CREATION, List.of(param1, param2));
     }
   }
 
@@ -476,8 +480,10 @@ public class InvoiceLineHelper extends AbstractHelper {
     return persistInvoiceLines(invoice, lines, requestContext)
       .compose(v -> updateInvoice(ilProcessing, requestContext))
       .recover(t -> {
-        logger.error("Failed to update the invoice and other lines", t);
-        throw new HttpException(500, FAILED_TO_UPDATE_INVOICE_AND_OTHER_LINES.toError());
+        var param = new Parameter().withKey("invoiceId").withValue(invoice.getId());
+        var causeParam = new Parameter().withKey("cause").withValue(t.getMessage());
+        logger.error("Failed to update the invoice '{}' and other lines", invoice.getId(), t);
+        throw new HttpException(500, FAILED_TO_UPDATE_INVOICE_AND_OTHER_LINES, List.of(param, causeParam));
       });
   }
 
@@ -543,8 +549,10 @@ public class InvoiceLineHelper extends AbstractHelper {
         }
       })
       .recover(throwable -> {
-        logger.error("Failed to update invoice poNumbers", throwable);
-        throw new HttpException(500, FAILED_TO_UPDATE_PONUMBERS.toError());
+        var param = new Parameter().withKey("poLineId").withValue(poLineId);
+        var causeParam = new Parameter().withKey("cause").withValue(throwable.getMessage());
+        logger.error("Failed to update invoice poNumbers. poLineId={}", poLineId, throwable);
+        throw new HttpException(500, FAILED_TO_UPDATE_PONUMBERS, List.of(param, causeParam));
       });
   }
 
@@ -561,8 +569,10 @@ public class InvoiceLineHelper extends AbstractHelper {
       .compose(poLine -> orderService.getOrder(poLine.getPurchaseOrderId(), requestContext))
       .compose(order -> removeInvoicePoNumber(order.getPoNumber(), order, ilProcessing, requestContext))
       .recover(throwable -> {
-        logger.error("Failed to update invoice poNumbers", throwable);
-        throw new HttpException(500, FAILED_TO_UPDATE_PONUMBERS.toError());
+        var param = new Parameter().withKey("invoiceLine.getPoLineId").withValue(invoiceLine.getPoLineId());
+        var causeParam = new Parameter().withKey("cause").withValue(throwable.getMessage());
+        logger.error("Failed to update invoice poNumbers for poLineId={} of invoiceLine", invoiceLine.getPoLineId(), throwable);
+        throw new HttpException(500, FAILED_TO_UPDATE_PONUMBERS, List.of(param, causeParam));
       });
   }
 
@@ -586,7 +596,7 @@ public class InvoiceLineHelper extends AbstractHelper {
     if (!invoicePoNumbers.contains(orderPoNumber))
       return succeededFuture(null);
     // check the other invoice lines to see if one of them is linking to the same order
-    List<String> orderLineIds = order.getCompositePoLines().stream().map(CompositePoLine::getId).collect(toList());
+    List<String> orderLineIds = order.getCompositePoLines().stream().map(CompositePoLine::getId).toList();
     return getRelatedLines(invoiceLine, requestContext).compose(lines -> {
       if (lines.stream().noneMatch(line -> orderLineIds.contains(line.getPoLineId()))) {
         List<String> newNumbers = invoicePoNumbers.stream().filter(n -> !n.equals(orderPoNumber)).collect(toList());

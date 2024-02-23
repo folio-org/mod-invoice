@@ -11,9 +11,9 @@ import static org.apache.commons.lang3.StringUtils.EMPTY;
 import static org.apache.commons.lang3.StringUtils.isEmpty;
 import static org.folio.invoices.utils.ErrorCodes.CANNOT_RESET_INVOICE_FISCAL_YEAR;
 import static org.folio.invoices.utils.ErrorCodes.INVALID_INVOICE_TRANSITION_ON_PAID_STATUS;
+import static org.folio.invoices.utils.ErrorCodes.MULTIPLE_ADJUSTMENTS_FISCAL_YEARS;
 import static org.folio.invoices.utils.ErrorCodes.ORG_IS_NOT_VENDOR;
 import static org.folio.invoices.utils.ErrorCodes.ORG_NOT_FOUND;
-import static org.folio.invoices.utils.ErrorCodes.MULTIPLE_ADJUSTMENTS_FISCAL_YEARS;
 import static org.folio.invoices.utils.HelperUtils.calculateVoucherLineAmount;
 import static org.folio.invoices.utils.HelperUtils.combineCqlExpressions;
 import static org.folio.invoices.utils.HelperUtils.getAdjustmentFundDistributionAmount;
@@ -23,12 +23,17 @@ import static org.folio.invoices.utils.ProtectedOperationType.UPDATE;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICES;
 import static org.folio.services.voucher.VoucherCommandService.VOUCHER_NUMBER_PREFIX_CONFIG_QUERY;
 import static org.folio.utils.UserPermissionsUtil.verifyUserHasAssignPermission;
-import static org.folio.utils.UserPermissionsUtil.verifyUserHasManagePermission;
 import static org.folio.utils.UserPermissionsUtil.verifyUserHasFiscalYearUpdatePermission;
+import static org.folio.utils.UserPermissionsUtil.verifyUserHasInvoiceApprovePermission;
+import static org.folio.utils.UserPermissionsUtil.verifyUserHasInvoiceCancelPermission;
+import static org.folio.utils.UserPermissionsUtil.verifyUserHasInvoicePayPermission;
+import static org.folio.utils.UserPermissionsUtil.verifyUserHasManagePermission;
 
-import java.util.ArrayList;
+import javax.money.MonetaryAmount;
+import javax.money.convert.ConversionQuery;
+import javax.money.convert.CurrencyConversion;
+import javax.money.convert.ExchangeRateProvider;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -40,11 +45,13 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import javax.money.MonetaryAmount;
-import javax.money.convert.ConversionQuery;
-import javax.money.convert.CurrencyConversion;
-import javax.money.convert.ExchangeRateProvider;
+import com.google.common.annotations.VisibleForTesting;
 
+import io.vertx.core.CompositeFuture;
+import io.vertx.core.Context;
+import io.vertx.core.Future;
+import io.vertx.core.Vertx;
+import io.vertx.core.json.JsonObject;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.collections4.ListUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -63,7 +70,6 @@ import org.folio.rest.acq.model.finance.Fund;
 import org.folio.rest.acq.model.orders.CompositePoLine;
 import org.folio.rest.core.models.RequestContext;
 import org.folio.rest.jaxrs.model.Adjustment;
-import org.folio.rest.jaxrs.model.Error;
 import org.folio.rest.jaxrs.model.FiscalYearCollection;
 import org.folio.rest.jaxrs.model.FundDistribution;
 import org.folio.rest.jaxrs.model.Invoice;
@@ -95,14 +101,6 @@ import org.folio.services.voucher.VoucherService;
 import org.folio.spring.SpringContextUtil;
 import org.javamoney.moneta.Money;
 import org.springframework.beans.factory.annotation.Autowired;
-
-import com.google.common.annotations.VisibleForTesting;
-
-import io.vertx.core.CompositeFuture;
-import io.vertx.core.Context;
-import io.vertx.core.Future;
-import io.vertx.core.Vertx;
-import io.vertx.core.json.JsonObject;
 
 public class InvoiceHelper extends AbstractHelper {
   private final ProtectionHelper protectionHelper;
@@ -189,16 +187,13 @@ public class InvoiceHelper extends AbstractHelper {
         .map(fiscalYears -> {
           Set<FiscalYear> uniqueFiscalYears = new HashSet<>(fiscalYears);
           if (uniqueFiscalYears.size() > 1) {
-            List<Parameter> parameters = new ArrayList<>();
-            for (FiscalYear fiscalYear : uniqueFiscalYears) {
-              parameters.add(new Parameter().withKey("fiscalYearCode").withValue(fiscalYear.getCode()));
-            }
-            Error error = MULTIPLE_ADJUSTMENTS_FISCAL_YEARS.toError().withParameters(parameters);
-            logger.error(error);
-            throw new HttpException(422, error);
-          } else {
-            invoice.setFiscalYearId(uniqueFiscalYears.stream().findFirst().get().getId());
+            var parameters = uniqueFiscalYears.stream()
+              .map(fiscalYear -> new Parameter().withKey("fiscalYearCode").withValue(fiscalYear.getCode()))
+              .toList();
+            logger.error("validateFiscalYearId:: More than one fiscal years found: invoice '{}'", invoice.getId());
+            throw new HttpException(422, MULTIPLE_ADJUSTMENTS_FISCAL_YEARS, parameters);
           }
+          invoice.setFiscalYearId(uniqueFiscalYears.stream().findFirst().get().getId());
           return null;
         });
     }
@@ -209,7 +204,7 @@ public class InvoiceHelper extends AbstractHelper {
   /**
    * @param acqUnitIds acquisitions units assigned to invoice from request
    * @return completable future completed successfully if all checks pass or exceptionally in case of error/restriction caused by
-   *         acquisitions units
+   * acquisitions units
    */
   private Future<Void> validateAcqUnitsOnCreate(List<String> acqUnitIds) {
     if (acqUnitIds.isEmpty()) {
@@ -253,17 +248,17 @@ public class InvoiceHelper extends AbstractHelper {
   /**
    * Gets list of invoice
    *
-   * @param limit Limit the number of elements returned in the response
+   * @param limit  Limit the number of elements returned in the response
    * @param offset Skip over a number of elements by specifying an offset value for the query
-   * @param query A query expressed as a CQL string using valid searchable fields
+   * @param query  A query expressed as a CQL string using valid searchable fields
    * @return completable future with {@link InvoiceCollection} on success or an exception if processing fails
    */
   public Future<InvoiceCollection> getInvoices(int limit, int offset, String query) {
-      return buildGetInvoicesQuery(query)
-        .compose(getInvoicesQuery -> invoiceService.getInvoices(getInvoicesQuery, offset, limit, requestContext))
-        .onSuccess(invoiceCollection -> logger.info("Successfully retrieved invoices: {}", invoiceCollection))
-        .compose(invoiceCollection -> invoiceService.updateInvoicesTotals(invoiceCollection, requestContext).map(invoiceCollection))
-        .onFailure(t -> logger.error("Error getting invoices", t));
+    return buildGetInvoicesQuery(query)
+      .compose(getInvoicesQuery -> invoiceService.getInvoices(getInvoicesQuery, offset, limit, requestContext))
+      .onSuccess(invoiceCollection -> logger.info("Successfully retrieved invoices: {}", invoiceCollection))
+      .compose(invoiceCollection -> invoiceService.updateInvoicesTotals(invoiceCollection, requestContext).map(invoiceCollection))
+      .onFailure(t -> logger.error("Error getting invoices", t));
   }
 
   private Future<String> buildGetInvoicesQuery(String query) {
@@ -283,14 +278,15 @@ public class InvoiceHelper extends AbstractHelper {
    * 2. Verify if user has permission to delete Invoice based on acquisitions units
    * 3. Check if invoice status is not approved or paid
    * 4. If user has permission to delete and invoice is not approved or paid then delete invoiceLine
+   *
    * @param id invoiceLine id to be deleted
    */
   public Future<Void> deleteInvoice(String id, RequestContext requestContext) {
     return getInvoiceRecord(id)
-    .compose(invoice -> protectionHelper.isOperationRestricted(invoice.getAcqUnitIds(), ProtectedOperationType.DELETE)
-      .map(vVoid -> invoice))
-    .compose(InvoiceRestrictionsUtil::checkIfInvoiceDeletionPermitted)
-    .compose(invoice -> invoiceService.deleteInvoice(id, requestContext));
+      .compose(invoice -> protectionHelper.isOperationRestricted(invoice.getAcqUnitIds(), ProtectedOperationType.DELETE)
+        .map(vVoid -> invoice))
+      .compose(InvoiceRestrictionsUtil::checkIfInvoiceDeletionPermitted)
+      .compose(invoice -> invoiceService.deleteInvoice(id, requestContext));
   }
 
   /**
@@ -301,9 +297,9 @@ public class InvoiceHelper extends AbstractHelper {
    * @return completable future holding response indicating success (204 No Content) or error if failed
    */
   public Future<Void> updateInvoice(Invoice invoice) {
-    logger.debug("Updating invoice...");
+    logger.debug("Updating invoice with id {}", invoice.getId());
     return Future.succeededFuture()
-      .map(v-> {
+      .map(v -> {
         validator.validateIncomingInvoice(invoice);
         return null;
       })
@@ -326,9 +322,9 @@ public class InvoiceHelper extends AbstractHelper {
 
   private Future<Void> handleExchangeRateChange(Invoice invoice, List<InvoiceLine> invoiceLines) {
     return holderBuilder.buildCompleteHolders(invoice, invoiceLines, requestContext)
-            .compose(holders -> holderBuilder.withExistingTransactions(holders, requestContext))
-            .compose(holders ->  pendingPaymentWorkflowService.handlePendingPaymentsUpdate(holders, requestContext))
-            .compose(aVoid -> updateVoucher(invoice, invoiceLines));
+      .compose(holders -> holderBuilder.withExistingTransactions(holders, requestContext))
+      .compose(holders -> pendingPaymentWorkflowService.handlePendingPaymentsUpdate(holders, requestContext))
+      .compose(aVoid -> updateVoucher(invoice, invoiceLines));
   }
 
   private Future<Void> updateVoucher(Invoice invoice, List<InvoiceLine> invoiceLines) {
@@ -336,8 +332,8 @@ public class InvoiceHelper extends AbstractHelper {
       .compose(voucher -> {
         if (voucher != null) {
           return voucherCommandService.updateVoucherWithExchangeRate(voucher, invoice, requestContext)
-            .compose(voucherP ->  getAllFundDistributions(invoiceLines, invoice)
-                                            .compose(fundDistributions -> handleVoucherWithLines(fundDistributions, voucherP)));
+            .compose(voucherP -> getAllFundDistributions(invoiceLines, invoice)
+              .compose(fundDistributions -> handleVoucherWithLines(fundDistributions, voucherP)));
         }
         return succeededFuture(null);
       });
@@ -349,6 +345,9 @@ public class InvoiceHelper extends AbstractHelper {
         validator.validateInvoice(invoice, invoiceFromStorage);
         verifyUserHasManagePermission(invoice.getAcqUnitIds(), invoiceFromStorage.getAcqUnitIds(), okapiHeaders);
         verifyUserHasFiscalYearUpdatePermission(invoice.getFiscalYearId(), invoiceFromStorage.getFiscalYearId(), okapiHeaders);
+        verifyUserHasInvoiceApprovePermission(invoice.getStatus(), invoiceFromStorage.getStatus(), okapiHeaders);
+        verifyUserHasInvoicePayPermission(invoice.getStatus(), invoiceFromStorage.getStatus(), okapiHeaders);
+        verifyUserHasInvoiceCancelPermission(invoice.getStatus(), invoiceFromStorage.getStatus(), okapiHeaders);
 
         setSystemGeneratedData(invoiceFromStorage, invoice);
         return null;
@@ -382,7 +381,7 @@ public class InvoiceHelper extends AbstractHelper {
    * @param updatedInvoice   invoice from request
    * @param persistedInvoice invoice from storage
    * @return completable future completed successfully if all checks pass or exceptionally in case of error/restriction caused by
-   *         acquisitions units
+   * acquisitions units
    */
   private Future<Void> validateAcqUnitsOnUpdate(Invoice updatedInvoice, Invoice persistedInvoice) {
     List<String> updatedAcqUnitIds = updatedInvoice.getAcqUnitIds();
@@ -466,12 +465,10 @@ public class InvoiceHelper extends AbstractHelper {
   private void verifyTransitionOnPaidStatus(Invoice invoiceFromStorage, Invoice invoice) {
     // Once an invoice is Paid, it should no longer transition to other statuses, except Cancelled.
     if (invoiceFromStorage.getStatus() == Invoice.Status.PAID && invoice.getStatus() != Invoice.Status.CANCELLED &&
-        invoice.getStatus() != invoiceFromStorage.getStatus()) {
-      List<Parameter> parameters = Collections.singletonList(new Parameter().withKey("invoiceId")
-        .withValue(invoice.getId()));
-      Error error = INVALID_INVOICE_TRANSITION_ON_PAID_STATUS.toError()
-        .withParameters(parameters);
-      throw new HttpException(422, error);
+      invoice.getStatus() != invoiceFromStorage.getStatus()) {
+      var parameter = new Parameter().withKey("invoiceId").withValue(invoice.getId());
+      logger.error("verifyTransitionOnPaidStatus:: Invalid invoice '{}' transition on paid status", invoice.getId());
+      throw new HttpException(422, INVALID_INVOICE_TRANSITION_ON_PAID_STATUS, List.of(parameter));
     }
   }
 
@@ -513,7 +510,7 @@ public class InvoiceHelper extends AbstractHelper {
       .compose(voucher -> updateVoucherWithSystemCurrency(voucher, lines))
       .compose(voucher -> voucherCommandService.updateVoucherWithExchangeRate(voucher, invoice, requestContext))
       .compose(voucher -> getAllFundDistributions(lines, invoice)
-                                  .compose(fundDistributions -> handleVoucherWithLines(fundDistributions, voucher))
+        .compose(fundDistributions -> handleVoucherWithLines(fundDistributions, voucher))
       );
 
   }
@@ -521,11 +518,13 @@ public class InvoiceHelper extends AbstractHelper {
   private void validateBeforeApproval(Organization organization, Invoice invoice, List<InvoiceLine> lines) {
     if (organization == null) {
       throw new HttpException(404, ORG_NOT_FOUND);
-    } else {
-      if (!organization.getIsVendor()) {
-        throw new HttpException(400, ORG_IS_NOT_VENDOR);
-      }
     }
+    if (Boolean.FALSE.equals(organization.getIsVendor())) {
+      var param = new Parameter().withKey("organizationId").withValue(organization.getId());
+      logger.error("validateBeforeApproval:: Organization '{}' is not vendor", organization.getId());
+      throw new HttpException(400, ORG_IS_NOT_VENDOR, List.of(param));
+    }
+
     validator.validateBeforeApproval(invoice, lines);
   }
 
@@ -536,7 +535,7 @@ public class InvoiceHelper extends AbstractHelper {
         .map(fiscalYear -> voucher.withSystemCurrency(fiscalYear.getCurrency()));
     }
     return configurationService.getSystemCurrency(requestContext)
-                               .map(systemCurrency -> voucher.withSystemCurrency(systemCurrency));
+      .map(voucher::withSystemCurrency);
   }
 
   private Future<List<FundDistribution>> getAllFundDistributions(List<InvoiceLine> invoiceLines, Invoice invoice) {
@@ -544,7 +543,7 @@ public class InvoiceHelper extends AbstractHelper {
       .map(systemCurrency -> {
         ConversionQuery conversionQuery = HelperUtils.buildConversionQuery(invoice, systemCurrency);
         ExchangeRateProvider exchangeRateProvider = exchangeRateProviderResolver.resolve(conversionQuery, new RequestContext(ctx, okapiHeaders));
-        CurrencyConversion conversion =  exchangeRateProvider.getCurrencyConversion(conversionQuery);
+        CurrencyConversion conversion = exchangeRateProvider.getCurrencyConversion(conversionQuery);
         List<FundDistribution> fundDistributions = getInvoiceLineFundDistributions(invoiceLines, invoice, conversion);
         fundDistributions.addAll(getAdjustmentFundDistributions(invoice, conversion));
         return fundDistributions;
@@ -552,12 +551,12 @@ public class InvoiceHelper extends AbstractHelper {
   }
 
   private List<FundDistribution> getInvoiceLineFundDistributions(List<InvoiceLine> invoiceLines, Invoice invoice,
-      CurrencyConversion conversion) {
+                                                                 CurrencyConversion conversion) {
     Map<InvoiceLine, List<FundDistribution>> fdsByLine = invoiceLines.stream()
       .collect(toMap(Function.identity(), InvoiceLine::getFundDistributions));
 
     return fdsByLine.entrySet()
-        .stream()
+      .stream()
       .map(invoiceLine -> {
         var invoiceLineTotalWithConversion = Money.of(invoiceLine.getKey().getTotal(), invoice.getCurrency()).with(conversion);
 
@@ -568,7 +567,7 @@ public class InvoiceHelper extends AbstractHelper {
             .withInvoiceLineId(invoiceLine.getKey().getId())
             .withDistributionType(FundDistribution.DistributionType.AMOUNT)
             .withValue(getFundDistributionAmountWithConversion(fD, invoiceLineTotalWithConversion, conversion)))
-      .collect(toList());
+          .collect(toList());
 
         return getRedistributedFunds(fds, invoiceLineTotalWithConversion, conversion);
 
@@ -612,8 +611,8 @@ public class InvoiceHelper extends AbstractHelper {
       .flatMap(adjustment -> adjustment.getFundDistributions()
         .stream()
         .map(fundDistribution -> JsonObject.mapFrom(fundDistribution).mapTo(FundDistribution.class)
-            .withValue(getAdjustmentFundDistributionAmount(fundDistribution, adjustment, invoice).with(conversion).getNumber().doubleValue())
-            .withDistributionType(FundDistribution.DistributionType.AMOUNT)
+          .withValue(getAdjustmentFundDistributionAmount(fundDistribution, adjustment, invoice).with(conversion).getNumber().doubleValue())
+          .withDistributionType(FundDistribution.DistributionType.AMOUNT)
         )
       )
       .collect(toList());
@@ -663,10 +662,10 @@ public class InvoiceHelper extends AbstractHelper {
   }
 
   /**
-   *  Handles creation (or update) of prepared voucher and voucher lines creation
+   * Handles creation (or update) of prepared voucher and voucher lines creation
    *
    * @param fundDistributions {@link List<FundDistribution>} associated with processed invoice
-   * @param voucher associated with processed invoice
+   * @param voucher           associated with processed invoice
    * @return CompletableFuture that indicates when handling is completed
    */
   private Future<Void> handleVoucherWithLines(List<FundDistribution> fundDistributions, Voucher voucher) {
@@ -687,7 +686,7 @@ public class InvoiceHelper extends AbstractHelper {
    * @param fundDistributions {@link List<InvoiceLine>} associated with processed {@link Invoice}
    * @return {@link InvoiceLine#fundDistributions} grouped by {@link Fund#externalAccountNo}
    */
-  private Future<Map<FundExtNoExpenseClassExtNoPair,  List<FundDistribution>>> groupFundDistrosByExternalAcctNo(List<FundDistribution> fundDistributions) {
+  private Future<Map<FundExtNoExpenseClassExtNoPair, List<FundDistribution>>> groupFundDistrosByExternalAcctNo(List<FundDistribution> fundDistributions) {
 
     Map<String, List<FundDistribution>> fundDistrosGroupedByFundId = groupFundDistrosByFundId(fundDistributions);
     var groupedFundDistrosFuture = fundService.getFunds(fundDistrosGroupedByFundId.keySet(), new RequestContext(ctx, okapiHeaders))
@@ -702,22 +701,22 @@ public class InvoiceHelper extends AbstractHelper {
     return funds.stream().collect(groupingBy(Fund::getExternalAccountNo));
   }
 
-  private Map<FundExtNoExpenseClassExtNoPair,  List<FundDistribution>> mapExternalAcctNoToFundDistros(
+  private Map<FundExtNoExpenseClassExtNoPair, List<FundDistribution>> mapExternalAcctNoToFundDistros(
     Map<String, Map<String, List<FundDistribution>>> fundDistrosGroupedByFundIdAndExpenseClassExtNo,
     Map<String, List<Fund>> fundsGroupedByExternalAccountNo) {
-    Map<FundExtNoExpenseClassExtNoPair,  List<FundDistribution>> groupedFundDistribution = new HashMap<>();
+    Map<FundExtNoExpenseClassExtNoPair, List<FundDistribution>> groupedFundDistribution = new HashMap<>();
     for (Map.Entry<String, List<Fund>> fundExternalAccountNoPair : fundsGroupedByExternalAccountNo.entrySet()) {
       String fundExternalAccountNo = fundExternalAccountNoPair.getKey();
       for (Fund fund : fundExternalAccountNoPair.getValue()) {
-         Map<String, List<FundDistribution>> fundDistrsExpenseClassExtNo = fundDistrosGroupedByFundIdAndExpenseClassExtNo.get(fund.getId());
-         for (Map.Entry<String, List<FundDistribution>> fundDistrs : fundDistrsExpenseClassExtNo.entrySet()) {
-           String expenseClassExtAccountNo = fundDistrs.getKey();
-           FundExtNoExpenseClassExtNoPair key = new FundExtNoExpenseClassExtNoPair(fundExternalAccountNo, expenseClassExtAccountNo);
-           List<FundDistribution> fundDistributions = fundDistrs.getValue();
-           updateFundDistributionsWithExpenseClassCode(fund, fundDistributions);
-           Optional.ofNullable(groupedFundDistribution.get(key)).ifPresentOrElse(
-             value -> value.addAll(fundDistributions), () -> groupedFundDistribution.put(key, fundDistributions));
-         }
+        Map<String, List<FundDistribution>> fundDistrsExpenseClassExtNo = fundDistrosGroupedByFundIdAndExpenseClassExtNo.get(fund.getId());
+        for (Map.Entry<String, List<FundDistribution>> fundDistrs : fundDistrsExpenseClassExtNo.entrySet()) {
+          String expenseClassExtAccountNo = fundDistrs.getKey();
+          FundExtNoExpenseClassExtNoPair key = new FundExtNoExpenseClassExtNoPair(fundExternalAccountNo, expenseClassExtAccountNo);
+          List<FundDistribution> fundDistributions = fundDistrs.getValue();
+          updateFundDistributionsWithExpenseClassCode(fund, fundDistributions);
+          Optional.ofNullable(groupedFundDistribution.get(key)).ifPresentOrElse(
+            value -> value.addAll(fundDistributions), () -> groupedFundDistribution.put(key, fundDistributions));
+        }
       }
     }
     return groupedFundDistribution;
@@ -735,14 +734,14 @@ public class InvoiceHelper extends AbstractHelper {
       .distinct()
       .collect(toList());
     return expenseClassRetrieveService.getExpenseClasses(expenseClassIds, new RequestContext(ctx, okapiHeaders))
-                               .map(expenseClasses -> expenseClasses.stream().collect(toMap(ExpenseClass::getId, Function.identity())))
-                               .map(expenseClassByIds ->
-                                 fundDistrs.stream()
-                                   .map(fd -> updateWithExpenseClassCode(fd, expenseClassByIds))
-                                   .collect(groupingBy(FundDistribution::getFundId,
-                                     groupingBy(getExpenseClassExtNo(expenseClassByIds)))
-                                 )
-                               );
+      .map(expenseClasses -> expenseClasses.stream().collect(toMap(ExpenseClass::getId, Function.identity())))
+      .map(expenseClassByIds ->
+        fundDistrs.stream()
+          .map(fd -> updateWithExpenseClassCode(fd, expenseClassByIds))
+          .collect(groupingBy(FundDistribution::getFundId,
+            groupingBy(getExpenseClassExtNo(expenseClassByIds)))
+          )
+      );
   }
 
   private FundDistribution updateWithExpenseClassCode(FundDistribution fundDistribution, Map<String, ExpenseClass> expenseClassByIds) {
@@ -765,8 +764,8 @@ public class InvoiceHelper extends AbstractHelper {
 
   private Function<FundDistribution, String> getExpenseClassExtNo(Map<String, ExpenseClass> expenseClassByIds) {
     return fundDistrsP -> Optional.ofNullable(expenseClassByIds.get(fundDistrsP.getExpenseClassId()))
-                                 .map(ExpenseClass::getExternalAccountNumberExt)
-                                 .orElse(EMPTY);
+      .map(ExpenseClass::getExternalAccountNumberExt)
+      .orElse(EMPTY);
   }
 
   private List<VoucherLine> buildVoucherLineRecords(Map<FundExtNoExpenseClassExtNoPair, List<FundDistribution>> fundDistroGroupedByExternalAcctNo, Voucher voucher) {
@@ -801,7 +800,7 @@ public class InvoiceHelper extends AbstractHelper {
   /**
    * If {@link Voucher} has an id, then the record exists in the voucher-storage and must be updated,
    * otherwise a new {@link Voucher} record must be created.
-   *
+   * <p>
    * If {@link Voucher} record exists, it means that there may be voucher lines associated with this {@link Voucher} that should be deleted.
    *
    * @param voucher Voucher for handling
@@ -826,7 +825,7 @@ public class InvoiceHelper extends AbstractHelper {
   private Future<Void> deleteVoucherLinesIfExist(String voucherId) {
     return getVoucherLineIdsByVoucherId(voucherId)
       .compose(ids -> GenericCompositeFuture.join(ids.stream()
-        .map(lineId-> voucherLineService.deleteVoucherLine(lineId, requestContext))
+        .map(lineId -> voucherLineService.deleteVoucherLine(lineId, requestContext))
         .collect(toList())))
       .mapEmpty();
 
@@ -835,7 +834,7 @@ public class InvoiceHelper extends AbstractHelper {
   private Future<List<String>> getVoucherLineIdsByVoucherId(String voucherId) {
     String query = "voucherId==" + voucherId;
     return voucherLineService.getVoucherLines(Integer.MAX_VALUE, 0, query, requestContext)
-      .map(voucherLineCollection ->  voucherLineCollection.getVoucherLines().
+      .map(voucherLineCollection -> voucherLineCollection.getVoucherLines().
         stream()
         .map(org.folio.rest.acq.model.VoucherLine::getId)
         .collect(toList())
@@ -848,7 +847,7 @@ public class InvoiceHelper extends AbstractHelper {
 
   private Future<Void> createVoucherLinesRecords(List<VoucherLine> voucherLines) {
     var futures = voucherLines.stream()
-      .map(lineId-> voucherLineService.createVoucherLine(lineId, requestContext))
+      .map(lineId -> voucherLineService.createVoucherLine(lineId, requestContext))
       .collect(toList());
     return GenericCompositeFuture.join(futures).mapEmpty();
   }
@@ -862,19 +861,16 @@ public class InvoiceHelper extends AbstractHelper {
   }
 
   private Future<Void> updateEncumbranceLinksWhenFiscalYearIsChanged(Invoice invoice, Invoice invoiceFromStorage,
-      List<InvoiceLine> lines) {
+                                                                     List<InvoiceLine> lines) {
     String previousFiscalYearId = invoiceFromStorage.getFiscalYearId();
     String newFiscalYearId = invoice.getFiscalYearId();
     if (Objects.equals(newFiscalYearId, previousFiscalYearId)) {
       return succeededFuture(null);
     }
     if (newFiscalYearId == null) {
-      Parameter invoiceIdParam = new Parameter()
-        .withKey("invoiceId")
-        .withValue(invoice.getId());
-      Error error = CANNOT_RESET_INVOICE_FISCAL_YEAR.toError()
-        .withParameters(List.of(invoiceIdParam));
-      throw new HttpException(422, error);
+      var invoiceIdParam = new Parameter().withKey("invoiceId").withValue(invoice.getId());
+      logger.error("validateFiscalYearId:: newFiscalYearId is null. Cannot reset invoice '{}' fiscal year", invoice.getId());
+      throw new HttpException(422, CANNOT_RESET_INVOICE_FISCAL_YEAR, List.of(invoiceIdParam));
     }
     List<InvoiceWorkflowDataHolder> dataHolders = holderBuilder.buildHoldersSkeleton(lines, invoice);
     return holderBuilder.withEncumbrances(dataHolders, requestContext)

@@ -17,6 +17,7 @@ import javax.money.convert.ConversionQuery;
 import javax.money.convert.CurrencyConversion;
 import javax.money.convert.ExchangeRateProvider;
 
+import io.vertx.core.json.JsonObject;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.invoices.rest.exceptions.HttpException;
@@ -46,7 +47,7 @@ import io.vertx.core.Future;
 
 public class InvoiceWorkflowDataHolderBuilder {
 
-  private static final Logger log = LogManager.getLogger(InvoiceWorkflowDataHolderBuilder.class);
+  private static final Logger logger = LogManager.getLogger();
 
   private final ExchangeRateProviderResolver exchangeRateProviderResolver;
   private final FiscalYearService fiscalYearService;
@@ -87,7 +88,7 @@ public class InvoiceWorkflowDataHolderBuilder {
   }
 
   public List<InvoiceWorkflowDataHolder> buildHoldersSkeleton(List<InvoiceLine> lines, Invoice invoice) {
-    List<InvoiceWorkflowDataHolder>  holders = lines.stream()
+    List<InvoiceWorkflowDataHolder> holders = lines.stream()
       .flatMap(invoiceLine -> invoiceLine.getFundDistributions().stream()
         .map(fundDistribution -> new InvoiceWorkflowDataHolder()
           .withInvoice(invoice)
@@ -95,13 +96,13 @@ public class InvoiceWorkflowDataHolderBuilder {
           .withFundDistribution(fundDistribution)))
       .collect(toList());
 
-    List<InvoiceWorkflowDataHolder>  holdersFromAdjustments = invoice.getAdjustments().stream()
+    List<InvoiceWorkflowDataHolder> holdersFromAdjustments = invoice.getAdjustments().stream()
       .flatMap(adjustment -> adjustment.getFundDistributions().stream()
         .map(fundDistribution -> new InvoiceWorkflowDataHolder()
           .withInvoice(invoice)
           .withAdjustment(adjustment)
           .withFundDistribution(fundDistribution)))
-      .collect(toList());
+      .toList();
 
     holders.addAll(holdersFromAdjustments);
     return holders;
@@ -149,7 +150,7 @@ public class InvoiceWorkflowDataHolderBuilder {
       String message = String.format(MULTIPLE_FISCAL_YEARS.getDescription(), h1.getFundDistribution().getCode(),
         h2.getFundDistribution().getCode());
       Error error = new Error().withCode(MULTIPLE_FISCAL_YEARS.getCode()).withMessage(message);
-      log.error(error);
+      logger.error("checkMultipleFiscalYears:: More than one fiscal years found: {}", JsonObject.mapFrom(error).encodePrettily());
       throw new HttpException(422, error);
     }
     return holders;
@@ -209,7 +210,7 @@ public class InvoiceWorkflowDataHolderBuilder {
       return baseTransactionService.getTransactions(query, 0, holders.size(), requestContext)
         .map(TransactionCollection::getTransactions)
         .map(transactions -> mapTransactionsToHolders(transactions, holders));
-      }).orElseGet(() -> succeededFuture(holders));
+    }).orElseGet(() -> succeededFuture(holders));
   }
 
   private List<InvoiceWorkflowDataHolder> mapTransactionsToHolders(List<Transaction> transactions, List<InvoiceWorkflowDataHolder> holders) {
@@ -232,6 +233,6 @@ public class InvoiceWorkflowDataHolderBuilder {
       || !Objects.equals(transaction.getSourceInvoiceLineId(), holder.getInvoiceLineId())
       || !Objects.equals(transaction.getExpenseClassId(), holder.getFundDistribution().getEncumbrance())
       || !Objects.nonNull(transaction.getAwaitingPayment())
-      || Objects.equals(transaction.getAwaitingPayment().getEncumbranceId(),holder.getFundDistribution().getEncumbrance());
+      || Objects.equals(transaction.getAwaitingPayment().getEncumbranceId(), holder.getFundDistribution().getEncumbrance());
   }
 }

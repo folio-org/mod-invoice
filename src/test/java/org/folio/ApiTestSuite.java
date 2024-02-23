@@ -2,14 +2,22 @@ package org.folio;
 
 import static net.mguenther.kafka.junit.EmbeddedKafkaClusterConfig.defaultClusterConfig;
 
+import io.restassured.RestAssured;
+import io.vertx.core.DeploymentOptions;
+import io.vertx.core.Promise;
+import io.vertx.core.Vertx;
+import io.vertx.core.json.JsonObject;
+import io.vertx.junit5.VertxExtension;
+import io.vertx.junit5.VertxTestContext;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-
+import net.mguenther.kafka.junit.EmbeddedKafkaCluster;
 import org.folio.builders.InvoiceWorkFlowDataHolderBuilderTest;
 import org.folio.converters.BatchVoucherModelConverterTest;
 import org.folio.converters.BatchedVoucherLinesModelConverterTest;
 import org.folio.converters.BatchedVoucherModelConverterTest;
+import org.folio.dao.EntityIdStorageDaoImplTest;
 import org.folio.dataimport.cache.JobProfileSnapshotCacheTest;
 import org.folio.dataimport.handlers.actions.CreateInvoiceEventHandlerTest;
 import org.folio.invoices.util.HelperUtilsTest;
@@ -37,10 +45,10 @@ import org.folio.schemas.xsd.BatchVoucherSchemaXSDTest;
 import org.folio.services.InvoiceLinesRetrieveServiceTest;
 import org.folio.services.InvoiceRetrieveServiceTest;
 import org.folio.services.VoucherLineServiceTest;
-import org.folio.services.finance.budget.BudgetExpenseClassTest;
 import org.folio.services.finance.CurrentFiscalYearServiceTest;
 import org.folio.services.finance.ManualCurrencyConversionTest;
 import org.folio.services.finance.ManualExchangeRateProviderTest;
+import org.folio.services.finance.budget.BudgetExpenseClassTest;
 import org.folio.services.finance.budget.BudgetServiceTest;
 import org.folio.services.finance.expense.ExpenseClassRetrieveServiceTest;
 import org.folio.services.finance.transaction.BaseTransactionServiceTest;
@@ -51,6 +59,7 @@ import org.folio.services.ftp.FtpUploadServiceTest;
 import org.folio.services.ftp.SftpUploadServiceTest;
 import org.folio.services.invoice.InvoiceCancelServiceTest;
 import org.folio.services.invoice.InvoiceFiscalYearsServiceTest;
+import org.folio.services.invoice.InvoiceIdStorageServiceTest;
 import org.folio.services.order.OrderServiceTest;
 import org.folio.services.validator.FundAvailabilityHolderValidatorTest;
 import org.folio.services.validator.InvoiceLineHolderValidatorTest;
@@ -61,14 +70,9 @@ import org.folio.verticles.DataImportConsumerVerticleTest;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.extension.ExtendWith;
 
-import io.restassured.RestAssured;
-import io.vertx.core.DeploymentOptions;
-import io.vertx.core.Promise;
-import io.vertx.core.Vertx;
-import io.vertx.core.json.JsonObject;
-import net.mguenther.kafka.junit.EmbeddedKafkaCluster;
-
+@ExtendWith(VertxExtension.class)
 public class ApiTestSuite {
 
   private static final int okapiPort = NetworkUtils.nextFreePort();
@@ -122,10 +126,16 @@ public class ApiTestSuite {
   }
 
   @AfterAll
-  public static void after() {
-    kafkaCluster.stop();
-    mockServer.close();
-    vertx.close();
+  public static void after(VertxTestContext testContext) {
+    vertx.close(ar -> {
+      if (ar.succeeded()) {
+        kafkaCluster.stop();
+        mockServer.close();
+        testContext.completeNow();
+      } else {
+        testContext.failNow(ar.cause());
+      }
+    });
     initialised = false;
   }
 
@@ -327,6 +337,14 @@ public class ApiTestSuite {
 
   @Nested
   class SftpUploadServiceTestNested extends SftpUploadServiceTest {
+  }
+
+  @Nested
+  class InvoiceIdStorageServiceTestNested extends InvoiceIdStorageServiceTest {
+  }
+
+  @Nested
+  class EntityIdStorageDaoImplTestNested extends EntityIdStorageDaoImplTest{
   }
 
 }

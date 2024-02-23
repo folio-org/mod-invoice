@@ -2,13 +2,14 @@ package org.folio.rest.impl;
 
 import static org.folio.invoices.utils.ErrorCodes.ADJUSTMENT_IDS_NOT_UNIQUE;
 
-import java.util.List;
-import java.util.Map;
-
 import javax.money.CurrencyUnit;
 import javax.money.Monetary;
 import javax.money.MonetaryAmount;
+import java.util.List;
+import java.util.Map;
 
+import io.vertx.core.Context;
+import io.vertx.core.Future;
 import org.apache.commons.collections4.CollectionUtils;
 import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.invoices.utils.HelperUtils;
@@ -19,9 +20,6 @@ import org.folio.services.validator.InvoiceValidator;
 import org.folio.spring.SpringContextUtil;
 import org.javamoney.moneta.Money;
 import org.springframework.beans.factory.annotation.Autowired;
-
-import io.vertx.core.Context;
-import io.vertx.core.Future;
 
 public class FundDistributionsValidationHelper extends AbstractHelper {
 

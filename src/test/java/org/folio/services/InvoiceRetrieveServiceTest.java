@@ -46,8 +46,8 @@ public class InvoiceRetrieveServiceTest extends ApiTestBase {
   OrderService orderService;
 
   @BeforeEach
-  public void setUp()  {
-    super.setUp();
+  public void setUp(final VertxTestContext testContext)  {
+    super.setUp(testContext);
     context = Vertx.vertx().getOrCreateContext();
     okapiHeaders = new HashMap<>();
     okapiHeaders.put(OKAPI_URL, "http://localhost:" + mockPort);

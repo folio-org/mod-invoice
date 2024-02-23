@@ -15,10 +15,9 @@ import static org.folio.TestMockDataConstants.MOCK_BUDGET_ITEM;
 import static org.folio.TestMockDataConstants.MOCK_BUDGETS_LIST;
 import static org.folio.invoices.utils.ErrorCodes.BUDGET_NOT_FOUND;
 import static org.folio.invoices.utils.ErrorCodes.CANNOT_CANCEL_INVOICE;
-import static org.folio.invoices.utils.ErrorCodes.ERROR_UNRELEASING_ENCUMBRANCES;
 import static org.folio.invoices.utils.ErrorCodes.BUDGET_NOT_FOUND_USING_FISCAL_YEAR_ID;
+import static org.folio.invoices.utils.ErrorCodes.ERROR_UNRELEASING_ENCUMBRANCES;
 import static org.folio.invoices.utils.ResourcePathResolver.FINANCE_TRANSACTIONS;
-import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_TRANSACTION_SUMMARIES;
 import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
 import static org.folio.rest.RestConstants.OKAPI_URL;
 import static org.folio.rest.acq.model.finance.Encumbrance.Status.PENDING;
@@ -43,13 +42,12 @@ import java.util.UUID;
 
 import org.folio.InvoiceWorkflowDataHolderBuilder;
 import org.folio.invoices.rest.exceptions.HttpException;
+import org.folio.rest.acq.model.finance.Batch;
 import org.folio.rest.acq.model.finance.Budget;
 import org.folio.rest.acq.model.finance.Transaction;
 import org.folio.rest.acq.model.finance.Encumbrance;
 import org.folio.rest.acq.model.finance.BudgetCollection;
 import org.folio.rest.acq.model.finance.TransactionCollection;
-import org.folio.rest.acq.model.finance.OrderTransactionSummary;
-import org.folio.rest.acq.model.finance.InvoiceTransactionSummary;
 import org.folio.rest.acq.model.finance.Transaction.TransactionType;
 import org.folio.rest.acq.model.orders.PoLine;
 import org.folio.rest.acq.model.orders.PoLineCollection;
@@ -72,8 +70,6 @@ import org.folio.services.finance.expence.ExpenseClassRetrieveService;
 import org.folio.services.finance.fiscalyear.FiscalYearService;
 import org.folio.services.finance.transaction.BaseTransactionService;
 import org.folio.services.finance.transaction.EncumbranceService;
-import org.folio.services.finance.transaction.InvoiceTransactionSummaryService;
-import org.folio.services.finance.transaction.OrderTransactionSummaryService;
 import org.folio.services.order.OrderLineService;
 import org.folio.services.order.OrderService;
 import org.folio.services.validator.VoucherValidator;
@@ -101,7 +97,6 @@ public class InvoiceCancelServiceTest {
   private static final String OPENED_INVOICE_ID = "52fd6ec7-ddc3-4c53-bc26-2779afc27136";
   private static final String OPENED_INVOICE_SAMPLE_PATH = INVOICE_MOCK_DATA_PATH + OPENED_INVOICE_ID + ".json";
   private static final String TRANSACTIONS_ENDPOINT = resourcesPath(FINANCE_TRANSACTIONS);
-  private static final String INVOICE_TRANSACTION_SUMMARIES_BY_ID_ENDPOINT = resourcesPath(INVOICE_TRANSACTION_SUMMARIES) + "/{id}";
   private static final String EXISTING_VOUCHER_ID = "a9b99f8a-7100-47f2-9903-6293d44a9905";
   private static final String VOUCHER_SAMPLE_PATH = VOUCHER_MOCK_DATA_PATH + EXISTING_VOUCHER_ID + ".json";
 
@@ -123,9 +118,7 @@ public class InvoiceCancelServiceTest {
     requestContext = new RequestContext(Vertx.vertx().getOrCreateContext(), okapiHeaders);
 
     BaseTransactionService baseTransactionService = new BaseTransactionService(restClient);
-    OrderTransactionSummaryService orderTransactionSummaryService = new OrderTransactionSummaryService(restClient);
-    EncumbranceService encumbranceService = new EncumbranceService(baseTransactionService, orderTransactionSummaryService);
-    InvoiceTransactionSummaryService invoiceTransactionSummaryService = new InvoiceTransactionSummaryService(restClient);
+    EncumbranceService encumbranceService = new EncumbranceService(baseTransactionService);
     VoucherService voucherService = new VoucherService(restClient, new VoucherValidator());
     OrderLineService orderLineService = new OrderLineService(restClient);
     InvoiceLineService invoiceLineService = new InvoiceLineService(restClient);
@@ -141,8 +134,7 @@ public class InvoiceCancelServiceTest {
       fiscalYearService, fundService, ledgerService, baseTransactionService, budgetService, expenseClassRetrieveService);
 
     cancelService = new InvoiceCancelService(baseTransactionService, encumbranceService,
-      invoiceTransactionSummaryService, voucherService, orderLineService,
-      orderService, holderBuilder);
+      voucherService, orderLineService, orderService, holderBuilder);
   }
 
   @Test
@@ -233,7 +225,8 @@ public class InvoiceCancelServiceTest {
       .onComplete(result -> {
         HttpException httpException = (HttpException) result.cause();
         assertEquals(500, httpException.getCode());
-        assertEquals(ERROR_UNRELEASING_ENCUMBRANCES.getDescription(), httpException.getMessage());
+        var error = httpException.getErrors().getErrors().get(0);
+        assertEquals(ERROR_UNRELEASING_ENCUMBRANCES.getCode(), error.getCode());
         vertxTestContext.completeNow();
       });
   }
@@ -244,7 +237,6 @@ public class InvoiceCancelServiceTest {
 
   private void setupRestCalls(Invoice invoice, boolean withEmptyBudgets, boolean withEncumbranceError) throws IOException {
     setupGetTransactions(invoice);
-    setupUpdateTransactionSummary(invoice);
     setupGetBudget(withEmptyBudgets);
     setupGetBudgets(withEmptyBudgets);
     setupUpdateVoucher();
@@ -304,15 +296,6 @@ public class InvoiceCancelServiceTest {
     return newCollection;
   }
 
-  private void setupUpdateTransactionSummary(Invoice invoice) {
-    RequestEntry requestEntry = new RequestEntry(INVOICE_TRANSACTION_SUMMARIES_BY_ID_ENDPOINT)
-      .withPathParameter("id", invoice.getId());
-    InvoiceTransactionSummary summary = new InvoiceTransactionSummary().withId(invoice.getId())
-      .withNumPaymentsCredits(3)
-      .withNumPendingPayments(1);
-    doReturn(succeededFuture(null)).when(restClient).put(requestEntry, summary, requestContext);
-  }
-
   private void setupUpdateVoucher() throws IOException {
     // GET Voucher
     Voucher voucher = getMockAs(VOUCHER_SAMPLE_PATH, Voucher.class);
@@ -350,11 +333,10 @@ public class InvoiceCancelServiceTest {
     setupPoLineQuery(poLines);
     setupOrderQuery(orders);
     setupEncumbranceQuery(transactions);
-    setupUpdateOrderTransactionSummary(orders.get(1));
     if (withError)
       setupEncumbrancePutWithError(transactions.get(1));
     else
-      setupEncumbrancePut(transactions.get(1));
+      setupUpdateEncumbrance(transactions.get(1));
   }
 
   private void setupPoLineQuery(List<PoLine> poLines) {
@@ -382,25 +364,25 @@ public class InvoiceCancelServiceTest {
       requestContext));
   }
 
-  private void setupUpdateOrderTransactionSummary(PurchaseOrder order) {
-    OrderTransactionSummary summary = new OrderTransactionSummary().withId(order.getId())
-        .withNumTransactions(1);
-    doReturn(succeededFuture(null)).when(restClient).put(any(RequestEntry.class), eq(summary), eq(requestContext));
-  }
-
-  private void setupEncumbrancePut(Transaction transaction) {
+  private void setupUpdateEncumbrance(Transaction transaction) {
+    String endpoint = "/finance/transactions/batch-all-or-nothing";
     Transaction updatedTransaction = JsonObject.mapFrom(transaction).mapTo(Transaction.class);
     updatedTransaction.getEncumbrance().setStatus(UNRELEASED);
-    doReturn(succeededFuture(null)).when(restClient).put(any(RequestEntry.class), eq(updatedTransaction), any(RequestContext.class));
+    Batch updateBatch = new Batch()
+      .withTransactionsToUpdate(List.of(updatedTransaction));
+    doReturn(succeededFuture(null)).when(restClient)
+      .postEmptyResponse(eq(endpoint), eq(updateBatch), eq(requestContext));
   }
 
   private void setupEncumbrancePutWithError(Transaction transaction) {
-    RequestEntry requestEntry = new RequestEntry("/finance/encumbrances/{id}")
-      .withPathParameter("id", transaction.getId());
+    String endpoint = "/finance/transactions/batch-all-or-nothing";
     Transaction updatedTransaction = JsonObject.mapFrom(transaction).mapTo(Transaction.class);
     updatedTransaction.getEncumbrance().setStatus(UNRELEASED);
+    Batch updateBatch = new Batch()
+      .withTransactionsToUpdate(List.of(updatedTransaction));
     HttpException ex = new HttpException(500, "Error test");
-    doReturn(failedFuture(ex)).when(restClient).put(requestEntry, updatedTransaction, requestContext);
+    doReturn(failedFuture(ex)).when(restClient)
+      .postEmptyResponse(eq(endpoint), eq(updateBatch), eq(requestContext));
   }
 
   private <T> T getMockAs(String path, Class<T> c) throws IOException {

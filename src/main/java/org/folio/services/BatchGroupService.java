@@ -48,8 +48,7 @@ public class BatchGroupService {
   public Future<BatchGroupCollection> getBatchGroups(int limit, int offset, String query, RequestContext requestContext) {
     String queryParam = getEndpointWithQuery(query);
     String endpoint = String.format(GET_BATCH_GROUPS_BY_QUERY, limit, offset, queryParam);
-    return restClient.get(endpoint, BatchGroupCollection.class, requestContext)
-      .onFailure(t -> logger.error("Error getting batch groups", t));
+    return restClient.get(endpoint, BatchGroupCollection.class, requestContext);
   }
 
   /**

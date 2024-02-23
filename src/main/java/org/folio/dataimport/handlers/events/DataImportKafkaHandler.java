@@ -3,6 +3,7 @@ package org.folio.dataimport.handlers.events;
 import static java.lang.String.format;
 import static org.folio.DataImportEventTypes.DI_ERROR;
 
+import io.vertx.core.Vertx;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
@@ -11,6 +12,8 @@ import java.util.concurrent.CompletableFuture;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.DataImportEventPayload;
+import org.folio.common.dao.EntityIdStorageDaoImpl;
+import org.folio.common.dao.PostgresClientFactory;
 import org.folio.dataimport.InvoiceWriterFactory;
 import org.folio.dataimport.cache.JobProfileSnapshotCache;
 import org.folio.dataimport.handlers.actions.CreateInvoiceEventHandler;
@@ -23,6 +26,7 @@ import org.folio.processing.mapping.mapper.reader.record.edifact.EdifactReaderFa
 import org.folio.rest.RestVerticle;
 import org.folio.rest.core.RestClient;
 import org.folio.rest.jaxrs.model.Event;
+import org.folio.services.invoice.InvoiceIdStorageService;
 import org.folio.utils.UserPermissionsUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -44,15 +48,17 @@ public class DataImportKafkaHandler implements AsyncRecordHandler<String, String
   private static final String PROFILE_SNAPSHOT_NOT_FOUND_MSG = "JobProfileSnapshot was not found by id '%s'";
 
   private final Logger logger = LogManager.getLogger(DataImportKafkaHandler.class);
-
+  private final Vertx vertx;
   private final JobProfileSnapshotCache profileSnapshotCache;
 
   @Autowired
-  public DataImportKafkaHandler(RestClient restClient, JobProfileSnapshotCache profileSnapshotCache) {
+  public DataImportKafkaHandler(RestClient restClient, Vertx vertx, JobProfileSnapshotCache profileSnapshotCache) {
+    this.vertx = vertx;
     this.profileSnapshotCache = profileSnapshotCache;
     MappingManager.registerReaderFactory(new EdifactReaderFactory());
     MappingManager.registerWriterFactory(new InvoiceWriterFactory());
-    EventManager.registerEventHandler(new CreateInvoiceEventHandler(restClient));
+    EventManager.registerEventHandler(new CreateInvoiceEventHandler(restClient,
+      new InvoiceIdStorageService(new EntityIdStorageDaoImpl(new PostgresClientFactory(vertx)))));
   }
 
   @Override

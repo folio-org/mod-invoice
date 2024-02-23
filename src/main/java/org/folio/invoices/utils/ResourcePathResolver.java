@@ -27,9 +27,6 @@ public class ResourcePathResolver {
   public static final String INVOICE_DOCUMENTS = "invoiceDocuments";
   public static final String BATCH_VOUCHER_EXPORT_CONFIGS = "batchVoucherExportConfigs";
   public static final String BATCH_VOUCHER_EXPORT_CONFIGS_CREDENTIALS = "batchVoucherExportConfigsCredentials";
-  public static final String INVOICE_TRANSACTION_SUMMARIES = "invoiceSummary";
-  public static final String ORDER_TRANSACTION_SUMMARIES = "orderSummary";
-  public static final String FINANCE_STORAGE_TRANSACTIONS = "finance-storage/transactions";
   public static final String BATCH_GROUPS = "batch-groups";
   public static final String BATCH_VOUCHER_STORAGE = "batch-voucher/batch-vouchers";
   public static final String BATCH_VOUCHER_EXPORTS_STORAGE = "batch-voucher/batch-voucher-exports";
@@ -37,11 +34,7 @@ public class ResourcePathResolver {
   public static final String CURRENT_BUDGET = "finance.current-budgets";
   public static final String LEDGERS = "finance.ledgers";
   public static final String FINANCE_TRANSACTIONS = "finance/transactions";
-  public static final String FINANCE_RELEASE_ENCUMBRANCE = "finance/release-encumbrance";
-  public static final String FINANCE_INVOICE_PAYMENTS_SUMMARIES = "finance/invoice-payment-summaries";
-  public static final String FINANCE_PAYMENTS = "finance/payments";
-  public static final String FINANCE_CREDITS ="finance/credits";
-  public static final String FINANCE_PENDING_PAYMENTS ="finance/pending-payments";
+  public static final String FINANCE_BATCH_TRANSACTIONS = "batchTransactions";
   public static final String EXPENSE_CLASSES_URL = "expenseClassUrl";
   public static final String BUDGET_EXPENSE_CLASSES = "finance-storage.budget-expense-classes";
   public static final String FINANCE_EXCHANGE_RATE = "finance/exchange-rate";
@@ -70,17 +63,11 @@ public class ResourcePathResolver {
     apis.put(INVOICE_DOCUMENTS, "/invoice-storage/invoices/%s/documents");
     apis.put(BATCH_VOUCHER_EXPORT_CONFIGS, "/batch-voucher-storage/export-configurations");
     apis.put(BATCH_VOUCHER_EXPORT_CONFIGS_CREDENTIALS, "/batch-voucher-storage/export-configurations/%s/credentials");
-    apis.put(INVOICE_TRANSACTION_SUMMARIES, "/finance/invoice-transaction-summaries");
-    apis.put(ORDER_TRANSACTION_SUMMARIES, "/finance/order-transaction-summaries");
     apis.put(BATCH_GROUPS, "/batch-group-storage/batch-groups");
     apis.put(BATCH_VOUCHER_STORAGE, "/batch-voucher-storage/batch-vouchers");
     apis.put(BATCH_VOUCHER_EXPORTS_STORAGE, "/batch-voucher-storage/batch-voucher-exports");
     apis.put(FINANCE_TRANSACTIONS, "/finance/transactions");
-    apis.put(FINANCE_RELEASE_ENCUMBRANCE, "/finance/release-encumbrance");
-    apis.put(FINANCE_STORAGE_TRANSACTIONS, "/finance-storage/transactions");
-    apis.put(FINANCE_INVOICE_PAYMENTS_SUMMARIES, "/finance/invoice-payment-summaries");
-    apis.put(FINANCE_PAYMENTS, "/finance/payments");
-    apis.put(FINANCE_CREDITS, "/finance/credits");
+    apis.put(FINANCE_BATCH_TRANSACTIONS, "/finance/transactions/batch-all-or-nothing");
     apis.put(BUDGETS, "/finance/budgets");
     apis.put(CURRENT_BUDGET, "/finance/funds/%s/budget");
     apis.put(LEDGERS, "/finance/ledgers");
@@ -89,7 +76,6 @@ public class ResourcePathResolver {
     apis.put(FINANCE_EXCHANGE_RATE, "/finance/exchange-rate");
     apis.put(TENANT_CONFIGURATION_ENTRIES, "/configurations/entries");
     apis.put(FISCAL_YEARS, "/finance/fiscal-years");
-    apis.put(FINANCE_PENDING_PAYMENTS, "/finance/pending-payments");
 
     SUB_OBJECT_COLLECTION_APIS = Collections.unmodifiableMap(apis);
     SUB_OBJECT_ITEM_APIS = Collections.unmodifiableMap(

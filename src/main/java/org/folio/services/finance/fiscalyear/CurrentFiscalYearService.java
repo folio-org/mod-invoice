@@ -36,7 +36,7 @@ public class CurrentFiscalYearService {
 
   public Future<FiscalYear> getCurrentFiscalYear(String ledgerId, RequestContext requestContext) {
     RequestEntry requestEntry = new RequestEntry(CURRENT_FISCAL_YEAR_ENDPOINT)
-        .withId(ledgerId);
+      .withId(ledgerId);
     return restClient.get(requestEntry, FiscalYear.class, requestContext)
       .recover(t -> {
         Throwable cause = t.getCause() == null ? t : t.getCause();

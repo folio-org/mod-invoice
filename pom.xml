@@ -42,12 +42,13 @@
     <maven-surefire-plugin.version>3.1.2</maven-surefire-plugin.version>
 
     <!--Test dependencies-->
-    <junit.version>4.13.2</junit.version>
     <testcontainers.version>1.19.1</testcontainers.version>
     <kafka-junit.version>3.3.0</kafka-junit.version>
 
     <!--Sonar exclusions-->
     <sonar.exclusions>**/models/*.java</sonar.exclusions>
+    <sonar.exclusions>**/domain/relationship/*.java</sonar.exclusions>
+    <sonar.exclusions>**/common/dao/PostgresClientFactory.java</sonar.exclusions>
     <sonar.test.exclusions>**/*Test.java</sonar.test.exclusions>
     <argLine />
   </properties>
@@ -70,25 +71,6 @@
       <groupId>org.folio</groupId>
       <artifactId>mod-configuration-client</artifactId>
       <version>${mod-configuration-client.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>org.folio</groupId>
-      <artifactId>domain-models-api-interfaces</artifactId>
-      <version>${raml-module-builder.version}</version>
-      <exclusions>
-        <exclusion>
-          <groupId>javax.xml.stream</groupId>
-          <artifactId>stax-api</artifactId>
-        </exclusion>
-          <exclusion>
-            <groupId>xerces</groupId>
-            <artifactId>xmlParserAPIs</artifactId>
-          </exclusion>
-          <exclusion>
-            <groupId>xpp3</groupId>
-            <artifactId>xpp3</artifactId>
-          </exclusion>
-      </exclusions>
     </dependency>
     <dependency>
       <groupId>org.folio</groupId>
@@ -145,12 +127,6 @@
       <scope>test</scope>
     </dependency>
     <dependency>
-      <groupId>junit</groupId>
-      <artifactId>junit</artifactId>
-      <version>${junit.version}</version>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
       <groupId>io.rest-assured</groupId>
       <artifactId>rest-assured</artifactId>
       <version>${rest-assured.version}</version>
@@ -202,7 +178,7 @@
     <dependency>
       <groupId>org.folio</groupId>
       <artifactId>data-import-processing-core</artifactId>
-      <version>4.1.0</version>
+      <version>4.2.0-SNAPSHOT</version>
     </dependency>
     <dependency>
       <groupId>org.folio</groupId>
@@ -241,6 +217,12 @@
       <groupId>org.assertj</groupId>
       <artifactId>assertj-core</artifactId>
       <version>3.19.0</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>postgresql</artifactId>
+      <version>${testcontainers.version}</version>
       <scope>test</scope>
     </dependency>
     <dependency>
@@ -524,11 +506,14 @@
         <version>1.13.1</version>
         <configuration>
           <verbose>true</verbose>
-          <complianceLevel>17</complianceLevel>
+          <release>17</release>
+          <includes>
+            <include>**/impl/*.java</include>
+            <include>**/*.aj</include>
+          </includes>
           <aspectDirectory>src/main/java/org/folio/rest/annotations</aspectDirectory>
           <XaddSerialVersionUID>true</XaddSerialVersionUID>
           <showWeaveInfo>true</showWeaveInfo>
-          <forceAjcCompile>true</forceAjcCompile>
           <aspectLibraries>
             <aspectLibrary>
               <groupId>org.folio</groupId>

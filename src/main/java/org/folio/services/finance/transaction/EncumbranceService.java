@@ -1,7 +1,6 @@
 package org.folio.services.finance.transaction;
 
 import static io.vertx.core.Future.succeededFuture;
-import static java.util.stream.Collectors.groupingBy;
 import static java.util.stream.Collectors.toList;
 import static org.folio.invoices.utils.HelperUtils.collectResultsOnSuccess;
 import static org.folio.invoices.utils.HelperUtils.convertIdsToCqlQuery;
@@ -9,14 +8,11 @@ import static org.folio.rest.RestConstants.MAX_IDS_FOR_GET_RQ;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.models.InvoiceWorkflowDataHolder;
-import org.folio.okapi.common.GenericCompositeFuture;
-import org.folio.rest.acq.model.finance.OrderTransactionSummary;
 import org.folio.rest.acq.model.finance.Transaction;
 import org.folio.rest.acq.model.finance.TransactionCollection;
 import org.folio.rest.core.models.RequestContext;
@@ -28,15 +24,12 @@ import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.jaxrs.model.InvoiceLine;
 
 public class EncumbranceService {
-  private static final Logger log = LogManager.getLogger();
+  private static final Logger logger = LogManager.getLogger();
 
   private final BaseTransactionService baseTransactionService;
-  private final OrderTransactionSummaryService orderTransactionSummaryService;
 
-  public EncumbranceService(BaseTransactionService transactionService,
-      OrderTransactionSummaryService orderTransactionSummaryService) {
+  public EncumbranceService(BaseTransactionService transactionService) {
     this.baseTransactionService = transactionService;
-    this.orderTransactionSummaryService = orderTransactionSummaryService;
   }
 
   public Future<List<Transaction>> getEncumbrancesByPoLineIds(List<String> poLineIds, String fiscalYearId,
@@ -51,17 +44,8 @@ public class EncumbranceService {
       .map(transactionCollections ->
         transactionCollections.stream().flatMap(col -> col.getTransactions().stream()).collect(toList())
       )
-      .onFailure(t -> log.error(String.format("Error getting encumbrances by po line ids, poLineIds=%s, fiscalYearId=%s",
-        poLineIds, fiscalYearId), t));
-  }
-
-  public Future<Void> unreleaseEncumbrances(List<Transaction> transactions, RequestContext requestContext) {
-    Map<String, List<Transaction>> transactionsByOrderId = transactions.stream()
-      .collect(groupingBy(tr -> tr.getEncumbrance().getSourcePurchaseOrderId()));
-    var futures =  transactionsByOrderId.entrySet().stream()
-      .map(entry -> unreleaseEncumbrancesByOrderId(entry.getKey(), entry.getValue(), requestContext))
-      .collect(toList());
-    return GenericCompositeFuture.join(futures).mapEmpty();
+      .onFailure(t -> logger.error("Error getting encumbrances by po line ids, poLineIds={}, fiscalYearId={}",
+        poLineIds, fiscalYearId, t));
   }
 
   private String buildEncumbranceChunckQueryByPoLineIds(List<String> poLineIds, String fiscalYearId) {
@@ -69,19 +53,6 @@ public class EncumbranceService {
     String fiscalYearFilter = fiscalYearId == null ? "" : String.format(" AND fiscalYearId==%s", fiscalYearId);
     String idFilter = " AND " + convertIdsToCqlQuery(poLineIds, "encumbrance.sourcePoLineId", true);
     return String.format("%s%s%s", transactionTypeFilter, fiscalYearFilter, idFilter);
-  }
-
-  private Future<Void> unreleaseEncumbrancesByOrderId(String orderId, List<Transaction> transactions,
-      RequestContext requestContext) {
-    return orderTransactionSummaryService.updateOrderTransactionSummary(
-        buildOrderTransactionsSummary(orderId, transactions), requestContext)
-      .compose(v -> baseTransactionService.updateTransactions(transactions, requestContext));
-  }
-
-  private OrderTransactionSummary buildOrderTransactionsSummary(String orderId, List<Transaction> transactions) {
-    return new OrderTransactionSummary()
-      .withId(orderId)
-      .withNumTransactions(transactions.size());
   }
 
   public Future<List<InvoiceWorkflowDataHolder>> updateEncumbranceLinksForFiscalYear(Invoice invoice,
@@ -112,8 +83,8 @@ public class EncumbranceService {
     List<String> poLineIds = getPoLineIds(relevantHolders);
     return getEncumbrancesByPoLineIds(poLineIds, fiscalYearId, requestContext)
       .map(encumbrances -> updateFundDistributionsWithEncumbrances(relevantHolders, encumbrances))
-      .onFailure(t -> log.error(String.format("Error updating invoice lines encumbrance links, invoiceId=%s, fiscalYearId=%s",
-        relevantHolders.get(0).getInvoice().getId(), fiscalYearId), t));
+      .onFailure(t -> logger.error("Error updating invoice lines encumbrance links, invoiceId={}, fiscalYearId={}",
+        relevantHolders.get(0).getInvoice().getId(), fiscalYearId, t));
   }
 
   private List<String> getPoLineIds(List<InvoiceWorkflowDataHolder> holders) {

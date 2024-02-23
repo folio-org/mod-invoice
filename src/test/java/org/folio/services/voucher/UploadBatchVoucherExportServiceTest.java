@@ -2,7 +2,6 @@ package org.folio.services.voucher;
 
 import static io.vertx.core.Future.succeededFuture;
 import static org.folio.ApiTestSuite.mockPort;
-import static org.folio.ApiTestSuite.vertx;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -12,12 +11,14 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.mockito.MockitoAnnotations.openMocks;
 
+import javax.ws.rs.core.Response;
 import java.util.HashMap;
 import java.util.Map;
 
-import javax.ws.rs.core.Response;
-
-import io.vertx.core.Vertx;
+import io.vertx.core.Context;
+import io.vertx.core.Future;
+import io.vertx.junit5.VertxExtension;
+import io.vertx.junit5.VertxTestContext;
 import org.folio.config.ApplicationConfig;
 import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.rest.RestConstants;
@@ -38,11 +39,6 @@ import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
-
-import io.vertx.core.Context;
-import io.vertx.core.Future;
-import io.vertx.junit5.VertxExtension;
-import io.vertx.junit5.VertxTestContext;
 
 @ExtendWith(VertxExtension.class)
 public class UploadBatchVoucherExportServiceTest extends ApiTestBase {
@@ -69,8 +65,8 @@ public class UploadBatchVoucherExportServiceTest extends ApiTestBase {
   private RequestContext requestContext;
 
   @BeforeEach
-  public void setUp()  {
-    super.setUp();
+  public void setUp(final VertxTestContext testContext)  {
+    super.setUp(testContext);
     context = vertx.getOrCreateContext();
     okapiHeaders = new HashMap<>();
     okapiHeaders.put(RestConstants.OKAPI_URL, "http://localhost:" + mockPort);

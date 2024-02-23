@@ -1,5 +1,6 @@
 package org.folio.services.finance.transaction;
 
+import static io.vertx.core.Future.failedFuture;
 import static io.vertx.core.Future.succeededFuture;
 import static org.folio.rest.impl.AbstractHelper.DEFAULT_SYSTEM_CURRENCY;
 import static org.folio.services.exchange.ExchangeRateProviderResolver.RATE_KEY;
@@ -9,6 +10,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.times;
@@ -18,6 +20,7 @@ import static org.mockito.Mockito.when;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Date;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -27,22 +30,28 @@ import javax.money.convert.ConversionQueryBuilder;
 import javax.money.convert.CurrencyConversion;
 import javax.money.convert.ExchangeRateProvider;
 
+import io.vertx.core.Future;
+import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.models.InvoiceWorkflowDataHolder;
+import org.folio.rest.acq.model.finance.Batch;
+import org.folio.rest.acq.model.finance.Encumbrance;
 import org.folio.rest.acq.model.finance.FiscalYear;
-import org.folio.rest.acq.model.finance.InvoiceTransactionSummary;
+import org.folio.rest.acq.model.finance.Metadata;
 import org.folio.rest.acq.model.finance.Transaction;
+import org.folio.rest.core.RestClient;
 import org.folio.rest.core.models.RequestContext;
 import org.folio.rest.jaxrs.model.Adjustment;
+import org.folio.rest.jaxrs.model.Error;
 import org.folio.rest.jaxrs.model.FundDistribution;
 import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.jaxrs.model.InvoiceLine;
 import org.folio.services.exchange.ExchangeRateProviderResolver;
 import org.folio.services.exchange.ManualCurrencyConversion;
 import org.folio.services.validator.FundAvailabilityHolderValidator;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
@@ -50,25 +59,33 @@ import io.vertx.core.Vertx;
 
 public class PendingPaymentWorkflowServiceTest {
 
-  @InjectMocks
   private PendingPaymentWorkflowService pendingPaymentWorkflowService;
 
   @Mock
-  private BaseTransactionService baseTransactionService;
-  @Mock
-  private InvoiceTransactionSummaryService invoiceTransactionSummaryService;
+  private RestClient restClient;
   @Mock
   private FundAvailabilityHolderValidator fundAvailabilityValidator;
+  @Mock
+  private EncumbranceService encumbranceService;
   @Mock
   private RequestContext requestContext;
   @Mock
   private ManualCurrencyConversion conversion;
+  private AutoCloseable mockitoMocks;
 
 
 
   @BeforeEach
-  public void initMocks() {
-    MockitoAnnotations.openMocks(this);
+  public void init() {
+    mockitoMocks = MockitoAnnotations.openMocks(this);
+    BaseTransactionService baseTransactionService = new BaseTransactionService(restClient);
+    pendingPaymentWorkflowService = new PendingPaymentWorkflowService(baseTransactionService, encumbranceService,
+      fundAvailabilityValidator);
+  }
+
+  @AfterEach
+  public void afterEach() throws Exception {
+    mockitoMocks.close();
   }
 
   @Test
@@ -91,7 +108,9 @@ public class PendingPaymentWorkflowServiceTest {
       .withFiscalYearId(fiscalYearId)
       .withSourceInvoiceId(invoiceId)
       .withSourceInvoiceLineId(invoiceLineId)
-      .withAmount(50d);
+      .withAmount(50d)
+      .withMetadata(new Metadata()
+        .withCreatedDate(new Date()));
 
     Transaction existingInvoiceTransaction = new Transaction()
       .withId(UUID.randomUUID().toString())
@@ -99,7 +118,9 @@ public class PendingPaymentWorkflowServiceTest {
       .withFromFundId(fundId)
       .withFiscalYearId(fiscalYearId)
       .withSourceInvoiceId(invoiceId)
-      .withAmount(10d);
+      .withAmount(10d)
+      .withMetadata(new Metadata()
+        .withCreatedDate(new Date()));
 
 
     FundDistribution invoiceFundDistribution = new FundDistribution()
@@ -160,8 +181,7 @@ public class PendingPaymentWorkflowServiceTest {
 
 
     doNothing().when(fundAvailabilityValidator).validate(anyList());
-    when(invoiceTransactionSummaryService.updateInvoiceTransactionSummary(any(), any())).thenReturn(succeededFuture(null));
-    when(baseTransactionService.updateTransaction(any(), any())).thenReturn(succeededFuture(null));
+    when(restClient.postEmptyResponse(any(), any(), any())).thenReturn(succeededFuture());
 
     when(requestContext.getContext()).thenReturn(Vertx.vertx().getOrCreateContext());
 
@@ -196,26 +216,89 @@ public class PendingPaymentWorkflowServiceTest {
     assertEquals(Transaction.TransactionType.PENDING_PAYMENT, newInvoiceTransaction.getTransactionType());
     assertEquals(Transaction.Source.INVOICE, newInvoiceTransaction.getSource());
 
-    InvoiceTransactionSummary expectedSummary = new InvoiceTransactionSummary().withId(invoiceId)
-      .withNumPaymentsCredits(2)
-      .withNumPendingPayments(2);
-    verify(invoiceTransactionSummaryService).updateInvoiceTransactionSummary(expectedSummary, requestContext);
 
+    ArgumentCaptor<Batch> transactionArgumentCaptor = ArgumentCaptor.forClass(Batch.class);
+    verify(restClient, times(1))
+      .postEmptyResponse(anyString(), transactionArgumentCaptor.capture(), eq(requestContext));
+    Batch batch = transactionArgumentCaptor.getValue();
+    List<Transaction> transactions = batch.getTransactionsToUpdate();
+    assertThat(transactions, hasSize(2));
 
-    ArgumentCaptor<Transaction> transactionArgumentCaptor = ArgumentCaptor.forClass(Transaction.class);
-    verify(baseTransactionService, times(2)).updateTransaction(transactionArgumentCaptor.capture(), eq(requestContext));
-
-    Transaction updateArgumentInvoiceTransaction = transactionArgumentCaptor.getAllValues().stream()
+    Transaction updateArgumentInvoiceTransaction = transactions.stream()
       .filter(transaction -> Objects.isNull(transaction.getSourceInvoiceLineId())).findFirst().get();
 
     assertEquals(existingInvoiceTransaction.getId(), updateArgumentInvoiceTransaction.getId());
     assertEquals(expectedInvoiceTransactionAmount, updateArgumentInvoiceTransaction.getAmount());
 
-    Transaction updateArgumentInvoiceLineTransaction = transactionArgumentCaptor.getAllValues().stream()
+    Transaction updateArgumentInvoiceLineTransaction = transactions.stream()
       .filter(transaction -> Objects.nonNull(transaction.getSourceInvoiceLineId())).findFirst().get();
 
     assertEquals(existingInvoiceLineTransaction.getId(), updateArgumentInvoiceLineTransaction.getId());
     assertEquals(expectedInvoiceLineTransactionAmount, updateArgumentInvoiceLineTransaction.getAmount());
+  }
 
+  @Test
+  void errorInCleanupOldEncumbrances() {
+    String fiscalYearId = UUID.randomUUID().toString();
+    String fundId1 = UUID.randomUUID().toString();
+    String fundId2 = UUID.randomUUID().toString();
+    String invoiceId = UUID.randomUUID().toString();
+    String invoiceLineId = UUID.randomUUID().toString();
+    String poLineId = UUID.randomUUID().toString();
+    FiscalYear fiscalYear = new FiscalYear()
+      .withId(fiscalYearId)
+      .withCurrency("USD");
+    FundDistribution fundDistribution = new FundDistribution()
+      .withDistributionType(FundDistribution.DistributionType.AMOUNT)
+      .withFundId(fundId1)
+      .withValue(1.0);
+    Invoice invoice = new Invoice()
+      .withId(invoiceId)
+      .withSubTotal(50d)
+      .withCurrency("EUR")
+      .withFiscalYearId(fiscalYearId);
+    InvoiceLine invoiceLine = new InvoiceLine()
+      .withSubTotal(60d)
+      .withTotal(60d)
+      .withId(invoiceLineId)
+      .withPoLineId(poLineId);
+    double exchangeRate = 1.3;
+    ConversionQuery conversionQuery = ConversionQueryBuilder.of()
+      .setTermCurrency(DEFAULT_SYSTEM_CURRENCY).set(RATE_KEY, exchangeRate).build();
+    ExchangeRateProvider exchangeRateProvider = new ExchangeRateProviderResolver().resolve(conversionQuery,
+      new RequestContext(Vertx.currentContext(), Collections.emptyMap()));
+    CurrencyConversion conversion = exchangeRateProvider.getCurrencyConversion(conversionQuery);
+    InvoiceWorkflowDataHolder holder = new InvoiceWorkflowDataHolder()
+      .withFundDistribution(fundDistribution)
+      .withInvoice(invoice)
+      .withInvoiceLine(invoiceLine)
+      .withConversion(conversion)
+      .withFiscalYear(fiscalYear);
+    List<InvoiceWorkflowDataHolder> dataHolders = List.of(holder);
+    Transaction encumbrance = new Transaction()
+      .withFromFundId(fundId2)
+        .withEncumbrance(new Encumbrance()
+          .withStatus(Encumbrance.Status.UNRELEASED));
+
+    doNothing().when(fundAvailabilityValidator).validate(anyList());
+    when(restClient.postEmptyResponse(anyString(), any(), eq(requestContext)))
+      .thenAnswer(invocation -> {
+        if (!((Batch)invocation.getArgument(1)).getTransactionsToCreate().isEmpty()) {
+          // successful creation of pending payments
+          return succeededFuture();
+        } else {
+          // fail when updating encumbrances
+          return failedFuture(new Exception("test"));
+        }
+      });
+    when(encumbranceService.getEncumbrancesByPoLineIds(anyList(), eq(fiscalYearId), eq(requestContext)))
+      .thenReturn(succeededFuture(List.of(encumbrance)));
+
+    Future<Void> future = pendingPaymentWorkflowService.handlePendingPaymentsCreation(dataHolders, invoice, requestContext);
+    assertEquals("Failed to create pending payments", future.cause().getMessage());
+    HttpException httpException = (HttpException) future.cause();
+    Error error = httpException.getErrors().getErrors().get(0);
+    assertEquals("cause", error.getParameters().get(0).getKey());
+    assertEquals("test", error.getParameters().get(0).getValue());
   }
 }

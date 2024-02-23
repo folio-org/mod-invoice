@@ -32,7 +32,7 @@ import static org.folio.invoices.utils.ErrorCodes.MORE_THAN_ONE_FISCAL_YEAR_SERI
 import static org.folio.invoices.utils.HelperUtils.convertIdsToCqlQuery;
 
 public class InvoiceFiscalYearsService {
-  private static final Logger log = LogManager.getLogger();
+  private static final Logger logger = LogManager.getLogger();
 
   private final InvoiceWorkflowDataHolderBuilder holderBuilder;
   private final BudgetService budgetService;
@@ -50,8 +50,7 @@ public class InvoiceFiscalYearsService {
     List<InvoiceWorkflowDataHolder> dataHolders = holderBuilder.buildHoldersSkeleton(lines, invoice);
     List<String> fundIds = dataHolders.stream().map(InvoiceWorkflowDataHolder::getFundId).distinct().collect(toList());
     if (fundIds.isEmpty()) {
-      log.error("getFiscalYearsByInvoiceAndLines(): no fund related to the invoice with id {}", invoice.getId());
-      throwCouldNotFindValidFiscalYearError(invoice.getId(), fundIds);
+      logAndThrowCouldNotFindValidFiscalYearError(invoice.getId(), fundIds, "fund");
     }
     return budgetService.getActiveBudgetListByFundIds(fundIds, requestContext)
       .compose(budgets -> getFiscalYearsByFundIdsAndBudgets(fundIds, budgets, invoice.getId(), requestContext));
@@ -62,7 +61,7 @@ public class InvoiceFiscalYearsService {
     List<String> fiscalYearIds = budgets.stream()
       .map(Budget::getFiscalYearId)
       .distinct()
-      .collect(toList());
+      .toList();
     Map<String, List<String>> fundIdsByFiscalYearId = fiscalYearIds.stream()
       .collect(toMap(
         identity(),
@@ -70,14 +69,13 @@ public class InvoiceFiscalYearsService {
           .filter(budget -> fiscalYearId.equals(budget.getFiscalYearId()))
           .map(Budget::getFundId)
           .distinct()
-          .collect(toList())
+          .toList()
       ));
     List<String> possibleFiscalYearIds = fiscalYearIds.stream()
       .filter(fiscalYearId -> fundIdsByFiscalYearId.get(fiscalYearId).size() == fundIds.size())
       .collect(toList());
     if (possibleFiscalYearIds.isEmpty()) {
-      log.error("getFiscalYearsByFundIdsAndBudgets(): no fiscal year matching all funds in invoice {}", invoiceId);
-      throwCouldNotFindValidFiscalYearError(invoiceId, fundIds);
+      logAndThrowCouldNotFindValidFiscalYearError(invoiceId, fundIds, "all funds");
     }
     String queryIds = convertIdsToCqlQuery(possibleFiscalYearIds);
     LocalDate now = Instant.now().atOffset(ZoneOffset.UTC).toLocalDate();
@@ -86,25 +84,22 @@ public class InvoiceFiscalYearsService {
     return fiscalYearService.getFiscalYearCollectionByQuery(query, requestContext)
       .map(fyCollection -> {
         if (fyCollection.getTotalRecords() == 0) {
-          log.error("getFiscalYearsByFundIdsAndBudgets(): no fiscal year left after filtering by date in invoice {}",
-            invoiceId);
-          throwCouldNotFindValidFiscalYearError(invoiceId, fundIds);
+          logAndThrowCouldNotFindValidFiscalYearError(invoiceId, fundIds, "date");
         }
         checkUniqueSeries(invoiceId, fyCollection.getFiscalYears());
         return fyCollection;
       });
   }
 
-  private void throwCouldNotFindValidFiscalYearError(String invoiceId, List<String> fundIds) {
-    List<Parameter> parameters = List.of(new Parameter().withKey("invoiceId").withValue(invoiceId),
-      new Parameter().withKey("fundIds").withValue(fundIds.toString()));
-    Error error = COULD_NOT_FIND_VALID_FISCAL_YEAR.toError()
-      .withParameters(parameters);
-    if (log.isErrorEnabled()) {
-      log.error("{} - {}", error.getMessage(),
-        parameters.stream().map(p -> String.format("%s=%s", p.getKey(), p.getValue())).collect(joining(", ")));
-    }
-    throw new HttpException(422, error);
+  private void logAndThrowCouldNotFindValidFiscalYearError(String invoiceId, List<String> fundIds, String reason) {
+    logger.error("logAndThrowCouldNotFindValidFiscalYearError:: no fiscal year found matching {} in invoice {}, fundIds: [{}]",
+      reason, invoiceId, fundIds);
+
+    List<Parameter> parameters = List.of(
+      new Parameter().withKey("invoiceId").withValue(invoiceId),
+      new Parameter().withKey("fundIds").withValue(fundIds.toString())
+    );
+    throw new HttpException(422, COULD_NOT_FIND_VALID_FISCAL_YEAR.toError().withParameters(parameters));
   }
 
   private void checkUniqueSeries(String invoiceId, List<FiscalYear> fiscalYears) {
@@ -115,8 +110,8 @@ public class InvoiceFiscalYearsService {
       new Parameter().withKey("series").withValue(series.toString()));
     Error error = MORE_THAN_ONE_FISCAL_YEAR_SERIES.toError()
       .withParameters(parameters);
-    if (log.isErrorEnabled()) {
-      log.error("{} - {}", error.getMessage(),
+    if (logger.isErrorEnabled()) {
+      logger.error("{} - {}", error.getMessage(),
         parameters.stream().map(p -> String.format("%s=%s", p.getKey(), p.getValue())).collect(joining(", ")));
     }
     throw new HttpException(422, error);

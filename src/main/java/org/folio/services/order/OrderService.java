@@ -8,10 +8,10 @@ import static org.folio.invoices.utils.ResourcePathResolver.ORDER_INVOICE_RELATI
 import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import io.vertx.core.Future;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.invoices.rest.exceptions.HttpException;
@@ -24,15 +24,12 @@ import org.folio.rest.acq.model.orders.PurchaseOrderCollection;
 import org.folio.rest.core.RestClient;
 import org.folio.rest.core.models.RequestContext;
 import org.folio.rest.core.models.RequestEntry;
-import org.folio.rest.jaxrs.model.Error;
 import org.folio.rest.jaxrs.model.InvoiceLine;
 import org.folio.rest.jaxrs.model.Parameter;
 import org.folio.services.invoice.InvoiceLineService;
 
-import io.vertx.core.Future;
-
 public class OrderService {
-  private static final Logger log = LogManager.getLogger(OrderService.class);
+  private static final Logger logger = LogManager.getLogger();
 
   private static final String ORDER_INVOICE_RELATIONSHIP_QUERY = "purchaseOrderId==%s and invoiceId==%s";
   private static final String ORDER_INVOICE_RELATIONSHIP_BY_INVOICE_ID_QUERY = "invoiceId==%s";
@@ -162,12 +159,10 @@ public class OrderService {
             : succeededFuture(null));
       })
       .recover(throwable -> {
-        log.error("Can't delete Order Invoice relation for invoice line: {}", invoiceLineId, throwable);
-        List<Parameter> parameters = Collections.singletonList(new Parameter().withKey("lineId")
-          .withValue(invoiceLineId));
-        Error error = CANNOT_DELETE_INVOICE_LINE.toError()
-          .withParameters(parameters);
-        throw new HttpException(404, error);
+        logger.error("Can't delete Order Invoice relation for invoice line: {}", invoiceLineId, throwable);
+        var param = new Parameter().withKey("lineId").withValue(invoiceLineId);
+        var causeParam = new Parameter().withKey("cause").withValue(throwable.getMessage());
+        throw new HttpException(404, CANNOT_DELETE_INVOICE_LINE, List.of(param, causeParam));
       });
   }
 
@@ -178,7 +173,7 @@ public class OrderService {
       futures.add(deleteOrderInvoiceRelationshipById(id, requestContext))
     );
     return collectResultsOnSuccess(futures)
-      .onSuccess(v -> log.debug("Number of deleted relations between order and invoices: {}", relationIds.size()))
+      .onSuccess(v -> logger.info("Number of deleted relations between order and invoices: {}", relationIds.size()))
       .mapEmpty();
   }
 }

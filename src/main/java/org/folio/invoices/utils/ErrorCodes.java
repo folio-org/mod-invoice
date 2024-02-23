@@ -13,6 +13,7 @@ public enum ErrorCodes {
   CANNOT_DELETE_INVOICE_LINE("cannotDeleteInvoiceLine", "Cannot delete invoice-line because invoice record associated with invoice-line not found"),
   INVALID_INVOICE_TRANSITION_ON_PAID_STATUS("invalidInvoiceStatusTransitionOnPaidStatus", "Cannot transition invoice to any other statuses when it is in Paid status"),
   PO_LINE_UPDATE_FAILURE("poLineUpdateFailure", "One or more purchase order line record(s) cannot be updated"),
+  USER_NOT_A_MEMBER_OF_THE_ACQ("userNotAMemberOfTheAcq", "User is not a member of the specified acquisitions group - operation is restricted"),
   VOUCHER_NOT_FOUND("voucherNotFound", "The voucher record is not found"),
   FUND_DISTRIBUTIONS_NOT_PRESENT("fundDistributionsNotPresent", "At least one fund distribution should present for every associated invoice line"),
   ACCOUNTING_CODE_NOT_PRESENT("accountingCodeNotPresent", "Invoice can not be approved, because it requires an accounting code to be export to accounting"),
@@ -31,8 +32,11 @@ public enum ErrorCodes {
   USER_HAS_NO_PERMISSIONS("userHasNoPermission", "User does not have permissions - operation is restricted"),
   USER_HAS_NO_ACQ_PERMISSIONS("userHasNoAcqUnitsPermission", "User does not have permissions to manage acquisition units assignments - operation is restricted"),
   USER_HAS_NO_FISCAL_YEAR_UPDATE_PERMISSIONS("userHasNoFiscalYearUpdatePermission", "User does not have permissions to update fiscal year - operation is restricted"),
+  USER_HAS_NO_APPROVE_PERMISSIONS("userHasNoInvoiceApprovePermission", "User does not have permissions to approve this invoice - operation is restricted"),
+  USER_HAS_NO_PAY_PERMISSIONS("userHasNoInvoicePayPermission", "User does not have permissions to pay this invoice - operation is restricted"),
+  USER_HAS_NO_CANCEL_PERMISSIONS("userHasNoInvoiceCancelPermission", "User does not have permissions to cancel this invoice - operation is restricted"),
   ACQ_UNITS_NOT_FOUND("acqUnitsNotFound", "Acquisitions units assigned to the record not found"),
-  PENDING_PAYMENT_ERROR("pendingPaymentError", "Failed to create pending payment"),
+  PENDING_PAYMENT_ERROR("pendingPaymentError", "Failed to create pending payments"),
   INVOICE_PAYMENT_FAILURE("invoicePaymentFailure", "Invoice payment failure"),
   CURRENT_FISCAL_YEAR_NOT_FOUND("currentFYearNotFound", "Current fiscal year not found for ledger"),
   TRANSACTION_CREATION_FAILURE("transactionCreationFailure", "One or more transactions record(s) failed to be created"),
@@ -63,7 +67,8 @@ public enum ErrorCodes {
   MULTIPLE_ADJUSTMENTS_FISCAL_YEARS("multipleAdjustmentsFiscalYears", "Multiple fiscal years are used in the adjustments"),
   COULD_NOT_FIND_VALID_FISCAL_YEAR("couldNotFindValidFiscalYear", "Could not find any valid fiscal year with a budget for all funds in the invoice"),
   MORE_THAN_ONE_FISCAL_YEAR_SERIES("moreThanOneFiscalYearSeries", "Fund distributions cannot reference more than one fiscal year series. Please edit fund distributions so they all come from the same fiscal year series."),
-  CANNOT_RESET_INVOICE_FISCAL_YEAR("cannotResetInvoiceFiscalYear", "Invoice fiscal year cannot be set to null if it was previously defined");
+  CANNOT_RESET_INVOICE_FISCAL_YEAR("cannotResetInvoiceFiscalYear", "Invoice fiscal year cannot be set to null if it was previously defined"),
+  BATCH_VOUCHER_NOT_FOUND("batchVoucherNotFound", "Batch voucher was not found");
 
   private final String code;
   private final String description;

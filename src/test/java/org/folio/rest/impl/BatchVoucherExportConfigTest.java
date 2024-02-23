@@ -6,6 +6,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.notNullValue;
 
+import io.vertx.junit5.VertxExtension;
 import java.io.IOException;
 
 import org.apache.logging.log4j.LogManager;
@@ -18,7 +19,9 @@ import org.junit.jupiter.api.Test;
 
 import io.vertx.core.http.HttpMethod;
 import io.vertx.core.json.JsonObject;
+import org.junit.jupiter.api.extension.ExtendWith;
 
+@ExtendWith(VertxExtension.class)
 public class BatchVoucherExportConfigTest extends ApiTestBase {
 
   private static final Logger logger = LogManager.getLogger(BatchVoucherExportConfigTest.class);

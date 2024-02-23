@@ -55,8 +55,7 @@ public class EncumbranceServiceTest {
   void init() {
     mockitoMocks = MockitoAnnotations.openMocks(this);
     BaseTransactionService transactionService = new BaseTransactionService(restClient);
-    OrderTransactionSummaryService orderTransactionSummaryService = new OrderTransactionSummaryService(restClient);
-    encumbranceService = new EncumbranceService(transactionService, orderTransactionSummaryService);
+    encumbranceService = new EncumbranceService(transactionService);
   }
 
   @AfterEach
