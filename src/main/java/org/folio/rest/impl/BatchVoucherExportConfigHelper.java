@@ -10,6 +10,7 @@ import java.net.URISyntaxException;
 import java.util.Map;
 import java.util.concurrent.CompletionException;
 
+import org.apache.commons.lang3.StringUtils;
 import org.folio.HttpStatus;
 import org.folio.exceptions.FtpException;
 import org.folio.rest.core.RestClient;
@@ -55,7 +56,9 @@ public class BatchVoucherExportConfigHelper extends AbstractHelper {
   }
 
   public Future<Credentials> createCredentials(String id, Credentials credentials) {
-    return restClient.post(String.format(resourcesPath(BATCH_VOUCHER_EXPORT_CONFIGS_CREDENTIALS), id), credentials, Credentials.class, buildRequestContext());
+    return StringUtils.isBlank(credentials.getUsername()) || StringUtils.isBlank(credentials.getPassword()) ?
+      Future.succeededFuture(null) :
+      restClient.post(String.format(resourcesPath(BATCH_VOUCHER_EXPORT_CONFIGS_CREDENTIALS), id), credentials, Credentials.class, buildRequestContext());
   }
 
   public Future<Void> putExportConfig(ExportConfig exportConfig) {
@@ -65,7 +68,9 @@ public class BatchVoucherExportConfigHelper extends AbstractHelper {
 
   public Future<Void> putExportConfigCredentials(String id, Credentials credentials) {
     String path = String.format(resourcesPath(BATCH_VOUCHER_EXPORT_CONFIGS_CREDENTIALS), id);
-    return restClient.put(path, credentials, buildRequestContext());
+    return StringUtils.isBlank(credentials.getUsername()) || StringUtils.isBlank(credentials.getPassword()) ?
+      restClient.delete(path, buildRequestContext()):
+      restClient.put(path, credentials, buildRequestContext());
   }
 
   public Future<Void> deleteExportConfig(String id) {

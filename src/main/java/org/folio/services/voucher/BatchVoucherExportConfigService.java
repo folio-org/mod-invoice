@@ -7,7 +7,6 @@ import static org.folio.invoices.utils.ResourcePathResolver.BATCH_VOUCHER_EXPORT
 import static org.folio.invoices.utils.ResourcePathResolver.resourceByIdPath;
 import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
 
-import org.apache.commons.lang3.StringUtils;
 import org.folio.rest.core.RestClient;
 import org.folio.rest.core.models.RequestContext;
 import org.folio.rest.jaxrs.model.Credentials;
@@ -38,9 +37,7 @@ public class BatchVoucherExportConfigService {
   }
 
   public Future<Credentials> createCredentials(String id, Credentials credentials, RequestContext requestContext) {
-    return StringUtils.isBlank(credentials.getUsername()) || StringUtils.isBlank(credentials.getPassword()) ?
-      Future.succeededFuture(null) :
-      restClient.post(String.format(resourcesPath(BATCH_VOUCHER_EXPORT_CONFIGS_CREDENTIALS), id), credentials, Credentials.class, requestContext);
+    return restClient.post(String.format(resourcesPath(BATCH_VOUCHER_EXPORT_CONFIGS_CREDENTIALS), id), credentials, Credentials.class, requestContext);
   }
 
   public Future<Void> putExportConfig(ExportConfig exportConfig, RequestContext requestContext) {
@@ -50,9 +47,7 @@ public class BatchVoucherExportConfigService {
 
   public Future<Void> putExportConfigCredentials(String id, Credentials credentials, RequestContext requestContext) {
     String path = String.format(resourcesPath(BATCH_VOUCHER_EXPORT_CONFIGS_CREDENTIALS), id);
-    return StringUtils.isBlank(credentials.getUsername()) || StringUtils.isBlank(credentials.getPassword()) ?
-      restClient.delete(path, requestContext):
-      restClient.put(path, credentials, requestContext);
+    return restClient.put(path, credentials, requestContext);
   }
 
   public Future<Void> deleteExportConfig(String id  , RequestContext requestContext) {
