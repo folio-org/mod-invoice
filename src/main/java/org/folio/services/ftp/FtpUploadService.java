@@ -28,7 +28,8 @@ public class FtpUploadService implements FileExchangeService {
 
   private static final Logger logger = LogManager.getLogger(FtpUploadService.class);
   private static final String DEFAULT_WORKING_DIR = "/files/invoices";
-  public static final String URL_NOT_FOUND_FOR_FTP = "URL for FTP upload was not found";
+  public static final String URL_NOT_FOUND_FOR_FTP = "URI for FTP upload was not found";
+  public static final String URI_SYNTAX_ERROR = "URI should be valid ftp path";
 
   private final String server;
   private final int port;
@@ -39,7 +40,7 @@ public class FtpUploadService implements FileExchangeService {
       throw new HttpException(400, URL_NOT_FOUND_FOR_FTP);
     }
     if (!isUriValid(uri)) {
-      throw new URISyntaxException(uri, "URI should be valid ftp path");
+      throw new URISyntaxException(uri, URI_SYNTAX_ERROR);
     }
     URI u = new URI(uri);
     this.server = u.getHost();
