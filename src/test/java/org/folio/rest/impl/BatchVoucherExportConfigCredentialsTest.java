@@ -87,6 +87,26 @@ public class BatchVoucherExportConfigCredentialsTest extends ApiTestBase {
     String id2 = res2.getId();
     assertThat(id2, nullValue());
     assertThat(MockServer.serverRqRs.get(BATCH_VOUCHER_EXPORT_CONFIGS_CREDENTIALS, HttpMethod.POST), hasSize(1));
+
+    credentials.setUsername("john");
+    credentials.setPassword("");
+
+    var res3 = verifyPostResponse(BATCH_VOUCHER_EXPORT_CONFIGS_EMPTY_CREDENTIALS_ENDPOINT, credentials,
+      prepareHeaders(X_OKAPI_TENANT), APPLICATION_JSON, 201).as(Credentials.class);
+
+    String id3 = res3.getId();
+    assertThat(id3, nullValue());
+    assertThat(MockServer.serverRqRs.get(BATCH_VOUCHER_EXPORT_CONFIGS_CREDENTIALS, HttpMethod.POST), hasSize(1));
+
+    credentials.setUsername(" ");
+    credentials.setPassword("123");
+
+    var res4 = verifyPostResponse(BATCH_VOUCHER_EXPORT_CONFIGS_EMPTY_CREDENTIALS_ENDPOINT, credentials,
+      prepareHeaders(X_OKAPI_TENANT), APPLICATION_JSON, 201).as(Credentials.class);
+
+    String id4 = res4.getId();
+    assertThat(id4, nullValue());
+    assertThat(MockServer.serverRqRs.get(BATCH_VOUCHER_EXPORT_CONFIGS_CREDENTIALS, HttpMethod.POST), hasSize(1));
   }
 
   @Test

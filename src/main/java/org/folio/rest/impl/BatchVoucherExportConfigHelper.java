@@ -11,6 +11,8 @@ import java.util.Map;
 import java.util.concurrent.CompletionException;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.folio.HttpStatus;
 import org.folio.exceptions.FtpException;
 import org.folio.rest.core.RestClient;
@@ -30,6 +32,7 @@ import io.vertx.core.Future;
 
 public class BatchVoucherExportConfigHelper extends AbstractHelper {
 
+  private static final Logger log = LogManager.getLogger();
   public static final String GET_EXPORT_CONFIGS_BY_QUERY = resourcesPath(BATCH_VOUCHER_EXPORT_CONFIGS) + SEARCH_PARAMS;
   @Autowired
   BatchVoucherExportConfigService batchVoucherExportConfigService;
@@ -56,9 +59,13 @@ public class BatchVoucherExportConfigHelper extends AbstractHelper {
   }
 
   public Future<Credentials> createCredentials(String id, Credentials credentials) {
-    return StringUtils.isBlank(credentials.getUsername()) || StringUtils.isBlank(credentials.getPassword()) ?
-      Future.succeededFuture(new Credentials()) :
-      restClient.post(String.format(resourcesPath(BATCH_VOUCHER_EXPORT_CONFIGS_CREDENTIALS), id), credentials, Credentials.class, buildRequestContext());
+    log.debug("createCredentials:: Trying to create export config credentials for configId={}", id);
+    if (StringUtils.isBlank(credentials.getUsername()) || StringUtils.isBlank(credentials.getPassword())) {
+      log.info("createCredentials:: new username and/or password is empty, so new record '{}' is not being saved to db", id);
+      return Future.succeededFuture(new Credentials());
+    }
+    return restClient.post(String.format(resourcesPath(BATCH_VOUCHER_EXPORT_CONFIGS_CREDENTIALS), id),
+      credentials, Credentials.class, buildRequestContext());
   }
 
   public Future<Void> putExportConfig(ExportConfig exportConfig) {
@@ -68,6 +75,11 @@ public class BatchVoucherExportConfigHelper extends AbstractHelper {
 
   public Future<Void> putExportConfigCredentials(String id, Credentials credentials) {
     String path = String.format(resourcesPath(BATCH_VOUCHER_EXPORT_CONFIGS_CREDENTIALS), id);
+    log.debug("putExportConfigCredentials:: Trying to update export config credentials for configId={} with path={}", id, path);
+    if (StringUtils.isBlank(credentials.getUsername()) || StringUtils.isBlank(credentials.getPassword())) {
+      log.info("putExportConfigCredentials:: new username and/or password is empty, so deleting existing record");
+      return restClient.delete(path, buildRequestContext());
+    }
     return restClient.put(path, credentials, buildRequestContext());
   }
 
