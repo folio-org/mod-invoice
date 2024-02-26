@@ -37,9 +37,11 @@ public class FtpUploadService implements FileExchangeService {
 
   public FtpUploadService(Context ctx, String uri, Integer portFromConfig) throws URISyntaxException {
     if (StringUtils.isBlank(uri)) {
+      logger.error("FtpUploadService:: URI is not found");
       throw new HttpException(400, URL_NOT_FOUND_FOR_FTP);
     }
     if (!isUriValid(uri)) {
+      logger.error("FtpUploadService:: URI '{}' is not valid", uri);
       throw new URISyntaxException(uri, URI_SYNTAX_ERROR);
     }
     URI u = new URI(uri);
@@ -117,6 +119,7 @@ public class FtpUploadService implements FileExchangeService {
         if (StringUtils.isNotBlank(folder)) {
           changeWorkingDirectory(folder, ftpClient);
         } else {
+          logger.warn("upload:: folder is empty using default working directory={}", DEFAULT_WORKING_DIR);
           changeWorkingDirectory(DEFAULT_WORKING_DIR, ftpClient);
         }
         if (ftpClient.storeFile(filename, is)) {

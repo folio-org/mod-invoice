@@ -217,4 +217,30 @@ public class FtpUploadServiceTest {
     assertEquals("fsp:/", urlException.getInput());
     assertEquals("URI should be valid ftp path: fsp:/", urlException.getMessage());
   }
+
+  @Test
+  public void testUserDefaultFolderWhenDirectoryEmpty(VertxTestContext vertxTestContext) throws URISyntaxException {
+    logger.info("=== Test successful upload ===");
+
+    Date end = new Date();
+    end.setTime(System.currentTimeMillis() - 864000000);
+
+    BatchVoucher batchVoucher = new BatchVoucher();
+    batchVoucher.setId(UUID.randomUUID().toString());
+    batchVoucher.setStart(end);
+    batchVoucher.setEnd(end);
+    batchVoucher.setBatchGroup(UUID.randomUUID().toString());
+    batchVoucher.setCreated(new Date());
+
+    FtpUploadService helper = new FtpUploadService(context, uri, 0);
+    var future = helper.upload(context,username_valid, password_valid, "", filename, JsonObject.mapFrom(batchVoucher).encodePrettily())
+      .onSuccess(logger::info)
+      .onFailure(t -> {
+        logger.error(t);
+        Assertions.fail(t.getMessage());
+      })
+      .onComplete(logger::info);
+    vertxTestContext.assertComplete(future)
+      .onSuccess(result -> vertxTestContext.completeNow());
+  }
 }

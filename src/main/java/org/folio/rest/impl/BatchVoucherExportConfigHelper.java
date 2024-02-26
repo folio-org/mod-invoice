@@ -57,7 +57,7 @@ public class BatchVoucherExportConfigHelper extends AbstractHelper {
 
   public Future<Credentials> createCredentials(String id, Credentials credentials) {
     return StringUtils.isBlank(credentials.getUsername()) || StringUtils.isBlank(credentials.getPassword()) ?
-      Future.succeededFuture(null) :
+      Future.succeededFuture(new Credentials()) :
       restClient.post(String.format(resourcesPath(BATCH_VOUCHER_EXPORT_CONFIGS_CREDENTIALS), id), credentials, Credentials.class, buildRequestContext());
   }
 
@@ -68,9 +68,7 @@ public class BatchVoucherExportConfigHelper extends AbstractHelper {
 
   public Future<Void> putExportConfigCredentials(String id, Credentials credentials) {
     String path = String.format(resourcesPath(BATCH_VOUCHER_EXPORT_CONFIGS_CREDENTIALS), id);
-    return StringUtils.isBlank(credentials.getUsername()) || StringUtils.isBlank(credentials.getPassword()) ?
-      restClient.delete(path, buildRequestContext()):
-      restClient.put(path, credentials, buildRequestContext());
+    return restClient.put(path, credentials, buildRequestContext());
   }
 
   public Future<Void> deleteExportConfig(String id) {
