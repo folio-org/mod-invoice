@@ -1,8 +1,9 @@
 package org.folio.rest.impl;
 
 import static org.folio.invoices.utils.ErrorCodes.BATCH_VOUCHER_NOT_FOUND;
+import static org.folio.services.ftp.FtpUploadService.URI_SYNTAX_ERROR;
+import static org.folio.services.ftp.FtpUploadService.URL_NOT_FOUND_FOR_FTP;
 
-import java.net.URISyntaxException;
 import java.util.List;
 import java.util.Map;
 
@@ -38,6 +39,7 @@ public class UploadBatchVoucherExportHelper extends AbstractHelper {
   private BatchVoucherExportConfigService batchVoucherExportConfigService;
   @Autowired
   private BatchVoucherExportsService batchVoucherExportsService;
+
   private static final String CREDENTIALS_NOT_FOUND = "Credentials for FTP upload were not found";
 
   private final RequestContext requestContext;
@@ -135,22 +137,24 @@ public class UploadBatchVoucherExportHelper extends AbstractHelper {
   }
 
   private Future<Void> updateHolderWithBatchVoucher(BatchVoucherUploadHolder uploadHolder) {
-     return batchVoucherService.getBatchVoucherById(uploadHolder.getBatchVoucherExport().getBatchVoucherId(), buildRequestContext())
-       .onSuccess(uploadHolder::setBatchVoucher)
-       .recover(t -> {
-         var parameter = new Parameter().withKey("batchVoucherId").withValue(uploadHolder.getBatchVoucherExport().getBatchVoucherId());
-         var causeParam = new Parameter().withKey("cause").withValue(t.getMessage());
-         var error = BATCH_VOUCHER_NOT_FOUND.toError().withParameters(List.of(parameter, causeParam));
-         log.error("Failed to fetch batch voucher by id: {}", JsonObject.mapFrom(error).encodePrettily());
-         throw new HttpException(404, error);
-       })
-       .mapEmpty();
-   }
+    return batchVoucherService.getBatchVoucherById(uploadHolder.getBatchVoucherExport().getBatchVoucherId(), buildRequestContext())
+      .onSuccess(uploadHolder::setBatchVoucher)
+      .recover(t -> {
+        var parameter = new Parameter().withKey("batchVoucherId").withValue(uploadHolder.getBatchVoucherExport().getBatchVoucherId());
+        var causeParam = new Parameter().withKey("cause").withValue(t.getMessage());
+        var error = BATCH_VOUCHER_NOT_FOUND.toError().withParameters(List.of(parameter, causeParam));
+        log.error("Failed to fetch batch voucher by id: {}", JsonObject.mapFrom(error).encodePrettily());
+        throw new HttpException(404, error);
+      })
+      .mapEmpty();
+  }
 
   private Future<Void> failUploadUpdate(BatchVoucherExport bvExport, Throwable t) {
     if (bvExport != null) {
-      if (!CREDENTIALS_NOT_FOUND.equals(t.getMessage())
-                      && !(t instanceof URISyntaxException)) {
+      boolean isNotFoundError = URL_NOT_FOUND_FOR_FTP.equals(t.getMessage()) ||
+        URI_SYNTAX_ERROR.equals(t.getMessage()) ||
+        CREDENTIALS_NOT_FOUND.equals(t.getMessage());
+      if (!isNotFoundError) {
         bvExport.setStatus(BatchVoucherExport.Status.ERROR);
       }
       bvExport.setMessage(t.getMessage());

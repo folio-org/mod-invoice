@@ -15,6 +15,7 @@ import org.apache.commons.net.ftp.FTPClient;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.exceptions.FtpException;
+import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.rest.jaxrs.model.ExportConfig;
 
 import io.vertx.core.AsyncResult;
@@ -26,16 +27,22 @@ import io.vertx.core.Promise;
 public class FtpUploadService implements FileExchangeService {
 
   private static final Logger logger = LogManager.getLogger(FtpUploadService.class);
-
   private static final String DEFAULT_WORKING_DIR = "/files/invoices";
+  public static final String URL_NOT_FOUND_FOR_FTP = "URI for FTP upload was not found";
+  public static final String URI_SYNTAX_ERROR = "URI should be valid ftp path";
 
   private final String server;
   private final int port;
   private final Context ctx;
 
   public FtpUploadService(Context ctx, String uri, Integer portFromConfig) throws URISyntaxException {
+    if (StringUtils.isBlank(uri)) {
+      logger.error("FtpUploadService:: URI is not found");
+      throw new HttpException(400, URL_NOT_FOUND_FOR_FTP);
+    }
     if (!isUriValid(uri)) {
-      throw new URISyntaxException(uri, "URI should be valid ftp path");
+      logger.error("FtpUploadService:: URI '{}' is not valid", uri);
+      throw new URISyntaxException(uri, URI_SYNTAX_ERROR);
     }
     URI u = new URI(uri);
     this.server = u.getHost();
@@ -109,9 +116,10 @@ public class FtpUploadService implements FileExchangeService {
       try (InputStream is = new ByteArrayInputStream(content.getBytes())) {
         ftpClient.setFileType(FTP.BINARY_FILE_TYPE);
         ftpClient.enterLocalPassiveMode();
-        if (Objects.nonNull(folder)) {
+        if (StringUtils.isNotBlank(folder)) {
           changeWorkingDirectory(folder, ftpClient);
         } else {
+          logger.warn("upload:: folder is empty using default working directory={}", DEFAULT_WORKING_DIR);
           changeWorkingDirectory(DEFAULT_WORKING_DIR, ftpClient);
         }
         if (ftpClient.storeFile(filename, is)) {

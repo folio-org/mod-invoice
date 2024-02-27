@@ -2,6 +2,7 @@ package org.folio.services.voucher;
 
 import static io.vertx.core.Future.succeededFuture;
 import static org.folio.ApiTestSuite.mockPort;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -20,6 +21,7 @@ import io.vertx.core.Future;
 import io.vertx.junit5.VertxExtension;
 import io.vertx.junit5.VertxTestContext;
 import org.folio.config.ApplicationConfig;
+import org.folio.exceptions.FtpException;
 import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.rest.RestConstants;
 import org.folio.rest.core.RestClient;
@@ -49,6 +51,7 @@ public class UploadBatchVoucherExportServiceTest extends ApiTestBase {
   private static final String BATCH_VOUCHERS_PATH = BASE_MOCK_DATA_PATH + "batchVouchers/" + BV_ID + ".json";
   private static final String BATCH_VOUCHERS_EXPORT_PATH = BASE_MOCK_DATA_PATH + "batchVoucherExports/" + BV_EXPORT_ID  + ".json";
   private static final String BATCH_VOUCHERS_EXPORT_CONF_PATH = BASE_MOCK_DATA_PATH + "batchVoucherExportConfigs/" + BV_EXPORT_CONF_ID  + ".json";
+  private static final String BATCH_VOUCHERS_EXPORT_CONF_COLLECTION_PATH = BASE_MOCK_DATA_PATH + "batchVoucherExportConfigs/" + "configs.json";
   private static final String CRED_PATH = BASE_MOCK_DATA_PATH + "credentials/" + CRED_ID  + ".json";
 
 
@@ -56,6 +59,8 @@ public class UploadBatchVoucherExportServiceTest extends ApiTestBase {
   private BatchVoucherService batchVoucherService;
   @Mock
   private BatchVoucherExportConfigHelper bvExportConfigHelper;
+  @Mock
+  private BatchVoucherExportConfigService batchVoucherExportConfigService;
   @Mock
   private BatchVoucherExportsHelper bvExportsHelper;
   private Context context;
@@ -166,4 +171,24 @@ public class UploadBatchVoucherExportServiceTest extends ApiTestBase {
     //Then
     Assertions.assertEquals("bv_"+bv.getId()+"_Amherst College (AC)_2019-12-06_2019-12-07.json", actFileName);
   }
+
+  @Test
+  public void testChangeStatus(VertxTestContext vertxTestContext) {
+    //given
+    UploadBatchVoucherExportHelper serviceSpy = spy(new UploadBatchVoucherExportHelper(okapiHeaders, context));
+    BatchVoucherExport bv = getMockAsJson(BATCH_VOUCHERS_EXPORT_PATH).mapTo(BatchVoucherExport.class);
+    bv.setId("xxxyyyzzb58dcd02ee14");
+
+    var future = serviceSpy.uploadBatchVoucherExport(bv);
+
+    vertxTestContext.assertFailure(future)
+      .onComplete(event -> {
+        FtpException exception = (FtpException) event.cause();
+        assertEquals(BatchVoucherExport.Status.ERROR, bv.getStatus());
+        assertEquals("Unable to connect to ftp.amherst-lib.edu:22", exception.getMessage());
+        assertEquals(403, exception.getReplyCode());
+        vertxTestContext.completeNow();
+      });
+  }
+
 }
