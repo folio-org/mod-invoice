@@ -575,6 +575,10 @@
       "version": "4.0"
     },
     {
+      "id": "invoice-storage.invoice-number",
+      "version": "1.0"
+    },
+    {
       "id": "invoice-storage.invoice-line-number",
       "version": "1.0"
     },
