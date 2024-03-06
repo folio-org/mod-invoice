@@ -371,7 +371,7 @@ public class FundAvailabilityHolderValidatorTest {
             .withAmount(250d)
             .withCurrency("USD");
 
-    Transaction linePendingPayment = new Transaction().withAmount(245d)
+    Transaction linePendingPayment = new Transaction().withAmount(247d)
             .withAwaitingPayment(new AwaitingPayment().withEncumbranceId(encumbrance.getId()).withReleaseEncumbrance(false))
             .withCurrency("USD");
 
