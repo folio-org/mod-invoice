@@ -43,11 +43,15 @@ public class OrderLineService {
   public Future<CompositePoLine> getPoLine(String poLineId, RequestContext requestContext) {
     RequestEntry requestEntry = new RequestEntry(ORDER_LINES_BY_ID_ENDPOINT).withId(poLineId);
     return restClient.get(requestEntry, CompositePoLine.class, requestContext)
-      .recover(throwable -> {
-        var param = new Parameter().withKey("poLineId").withValue(poLineId);
-        var causeParam = new Parameter().withKey("cause").withValue(throwable.getMessage());
-        var error = PO_LINE_NOT_FOUND.toError().withParameters(List.of(param, causeParam));
-        throw new HttpException(404, error);
+      .recover(cause -> {
+        if (ExceptionUtil.matches(cause, USER_NOT_A_MEMBER_OF_THE_ACQ)) {
+          var causeParam = new Parameter().withKey("cause").withValue(cause.getMessage());
+          throw new HttpException(403, USER_NOT_A_MEMBER_OF_THE_ACQ, List.of(causeParam));
+        } else {
+          var param = new Parameter().withKey("poLineId").withValue(poLineId);
+          var causeParam = new Parameter().withKey("cause").withValue(cause.getMessage());
+          throw new HttpException(404, PO_LINE_NOT_FOUND, List.of(param, causeParam));
+        }
       });
   }
 
