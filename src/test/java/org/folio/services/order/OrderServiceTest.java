@@ -138,13 +138,33 @@ public class OrderServiceTest {
   }
 
   @Test
-  void shouldRethrowUserNotAMemberOfTheAcq(VertxTestContext vertxTestContext) {
+  void shouldRethrowUserNotAMemberOfTheAcqWhenUpdatePoLine(VertxTestContext vertxTestContext) {
     // given
     doReturn(failedFuture(new HttpException(HttpStatus.HTTP_FORBIDDEN.toInt(), USER_NOT_A_MEMBER_OF_THE_ACQ.toError())))
       .when(restClient).put(any(RequestEntry.class), any(CompositePoLine.class), eq(requestContextMock));
 
     // when
     Future<Void> future = orderLineServiceInject.updateCompositePoLines(List.of(new CompositePoLine()), requestContextMock);
+
+    // then
+    vertxTestContext.assertFailure(future)
+      .onComplete(result -> {
+        HttpException httpException = (HttpException) result.cause();
+        assertEquals(HttpStatus.HTTP_FORBIDDEN.toInt(), httpException.getCode());
+        Error error = httpException.getErrors().getErrors().get(0);
+        assertEquals(USER_NOT_A_MEMBER_OF_THE_ACQ.getCode(), error.getCode());
+        vertxTestContext.completeNow();
+      });
+  }
+
+  @Test
+  void shouldRethrowUserNotAMemberOfTheAcqWhenGetPoLine(VertxTestContext vertxTestContext) {
+    // given
+    doReturn(failedFuture(new HttpException(HttpStatus.HTTP_FORBIDDEN.toInt(), USER_NOT_A_MEMBER_OF_THE_ACQ.toError())))
+      .when(restClient).get(any(RequestEntry.class), eq(CompositePoLine.class), eq(requestContextMock));
+
+    // when
+    Future<CompositePoLine> future = orderLineServiceInject.getPoLine("id", requestContextMock);
 
     // then
     vertxTestContext.assertFailure(future)
