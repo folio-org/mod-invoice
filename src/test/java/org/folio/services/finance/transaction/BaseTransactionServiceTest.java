@@ -19,6 +19,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import io.vertx.core.Context;
 import org.folio.rest.acq.model.finance.Transaction;
 import org.folio.rest.acq.model.finance.TransactionCollection;
 import org.folio.rest.core.RestClient;
@@ -33,7 +34,6 @@ import org.mockito.MockitoAnnotations;
 import org.mockito.internal.verification.Times;
 
 import io.restassured.http.Header;
-import io.vertx.core.impl.EventLoopContext;
 import io.vertx.core.json.JsonObject;
 import io.vertx.junit5.VertxExtension;
 import io.vertx.junit5.VertxTestContext;
@@ -41,7 +41,7 @@ import io.vertx.junit5.VertxTestContext;
 @ExtendWith(VertxExtension.class)
 public class BaseTransactionServiceTest extends ApiTestBase {
   @Mock
-  private EventLoopContext ctxMock;
+  private Context ctxMock;
   @Mock
   private RestClient restClient;
 

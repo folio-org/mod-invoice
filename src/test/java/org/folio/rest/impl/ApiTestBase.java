@@ -187,7 +187,7 @@ public class ApiTestBase {
     PostgresClient.closeAllClients();
     useExternalDatabase = System.getProperty(
       "org.folio.invoice.test.database",
-      "embedded");
+      "external");
 
     switch (useExternalDatabase) {
       case "environment" -> System.out.println("Using environment settings");
