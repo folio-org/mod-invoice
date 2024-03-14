@@ -5,6 +5,7 @@ import static io.vertx.core.Future.succeededFuture;
 import static org.folio.invoices.utils.ErrorCodes.CANNOT_DELETE_INVOICE_LINE;
 import static org.folio.invoices.utils.ErrorCodes.USER_NOT_A_MEMBER_OF_THE_ACQ;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doReturn;
@@ -27,6 +28,7 @@ import org.folio.rest.core.RestClient;
 import org.folio.rest.core.models.RequestContext;
 import org.folio.rest.core.models.RequestEntry;
 import org.folio.rest.jaxrs.model.Error;
+import org.folio.rest.jaxrs.model.Parameter;
 import org.folio.services.invoice.InvoiceLineService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -153,6 +155,10 @@ public class OrderServiceTest {
         assertEquals(HttpStatus.HTTP_FORBIDDEN.toInt(), httpException.getCode());
         Error error = httpException.getErrors().getErrors().get(0);
         assertEquals(USER_NOT_A_MEMBER_OF_THE_ACQ.getCode(), error.getCode());
+        Parameter typeParam = error.getParameters().stream().filter(param -> "type".equals(param.getKey())).findFirst().get();
+        assertEquals("order", typeParam.getValue());
+        Parameter poLineNumberParam = error.getParameters().stream().filter(param -> "poLineNumber".equals(param.getKey())).findFirst().get();
+        assertNotNull(poLineNumberParam);
         vertxTestContext.completeNow();
       });
   }
@@ -172,6 +178,8 @@ public class OrderServiceTest {
         HttpException httpException = (HttpException) result.cause();
         assertEquals(HttpStatus.HTTP_FORBIDDEN.toInt(), httpException.getCode());
         Error error = httpException.getErrors().getErrors().get(0);
+        Parameter typeParam = error.getParameters().stream().filter(param -> "type".equals(param.getKey())).findFirst().get();
+        assertEquals("order", typeParam.getValue());
         assertEquals(USER_NOT_A_MEMBER_OF_THE_ACQ.getCode(), error.getCode());
         vertxTestContext.completeNow();
       });
