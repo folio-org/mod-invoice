@@ -27,7 +27,7 @@
     <raml-module-builder.version>35.2.0</raml-module-builder.version>
     <vertx.version>4.5.4</vertx.version>
     <rest-assured.version>5.4.0</rest-assured.version>
-    <mod-configuration-client.version>5.9.1</mod-configuration-client.version>
+    <mod-configuration-client.version>5.10.0</mod-configuration-client.version>
     <spring.version>6.0.2</spring.version>
     <log4j.version>2.23.0</log4j.version>
     <folio-di-support.version>2.0.1</folio-di-support.version>
