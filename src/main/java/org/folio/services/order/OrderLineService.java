@@ -45,8 +45,8 @@ public class OrderLineService {
     return restClient.get(requestEntry, CompositePoLine.class, requestContext)
       .recover(cause -> {
         if (ExceptionUtil.matches(cause, USER_NOT_A_MEMBER_OF_THE_ACQ)) {
-          var causeParam = new Parameter().withKey("cause").withValue(cause.getMessage());
-          throw new HttpException(403, USER_NOT_A_MEMBER_OF_THE_ACQ, List.of(causeParam));
+          var typeParam = new Parameter().withKey("type").withValue("order");
+          throw new HttpException(403, USER_NOT_A_MEMBER_OF_THE_ACQ, List.of(typeParam));
         } else {
           var param = new Parameter().withKey("poLineId").withValue(poLineId);
           var causeParam = new Parameter().withKey("cause").withValue(cause.getMessage());
@@ -65,8 +65,9 @@ public class OrderLineService {
       .map(poLine -> updatePoLine(poLine, requestContext)
         .recover(cause -> {
           if (ExceptionUtil.matches(cause, USER_NOT_A_MEMBER_OF_THE_ACQ)) {
-            var causeParam = new Parameter().withKey("cause").withValue(cause.getMessage());
-            throw new HttpException(403, USER_NOT_A_MEMBER_OF_THE_ACQ, List.of(causeParam));
+            var typeParam = new Parameter().withKey("type").withValue("order");
+            var poLineNumberParam = new Parameter().withKey("poLineNumber").withValue(poLine.getPoLineNumber());
+            throw new HttpException(403, USER_NOT_A_MEMBER_OF_THE_ACQ, List.of(typeParam, poLineNumberParam));
           } else {
             var causeParam = new Parameter().withKey("cause").withValue(cause.getMessage());
             throw new HttpException(400, PO_LINE_UPDATE_FAILURE, List.of(causeParam));
