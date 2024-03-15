@@ -1,6 +1,6 @@
 package org.folio.builders;
 
-import io.vertx.core.impl.EventLoopContext;
+import io.vertx.core.Context;
 import io.vertx.core.json.JsonObject;
 import org.folio.InvoiceWorkflowDataHolderBuilder;
 import org.folio.models.InvoiceWorkflowDataHolder;
@@ -53,7 +53,7 @@ public class InvoiceWorkFlowDataHolderBuilderTest {
   @Mock
   private RestClient restClient;
   @Mock
-  private EventLoopContext ctxMock;
+  private Context ctxMock;
   private Map<String, String> okapiHeaders;
   private List<String> transactionIds;
   private final String transactionId_1 = "c5732efb-9536-4a49-a22e-1ec6ca8a7922";
