@@ -1,6 +1,37 @@
-## 5.8.0 - Unreleased
-* [MODSOURMAN-1022](https://issues.folio.org/browse/MODSOURMAN-1022) Remove step of initial saving of incoming records to SRS
+## 5.9.0 - Unreleased
+
+## 5.8.0 - Released (Quesnelia R1 2024)
+The focus of this release was to fix bugs and make improvement in transaction call and error codes
+
+[Full Changelog](https://github.com/folio-org/mod-invoice/compare/v5.7.0...v5.8.0)
+
+### Stories
+* [MODSOURMAN-1022](https://issues.folio.org/browse/MODSOURMAN-1022) - Remove step of initial saving of incoming records to SRS
+* [MODINVOICE-534](https://folio-org.atlassian.net/browse/MODINVOICE-534) - Rethrow user not linked order's acquisition unit error
+* [MODINVOICE-531](https://folio-org.atlassian.net/browse/MODINVOICE-531) - Upgrade RAML Module Builder
+* [MODINVOICE-502](https://folio-org.atlassian.net/browse/MODINVOICE-502) - Update RMB and vertx to the latest version
+* [MODINVOICE-482](https://folio-org.atlassian.net/browse/MODINVOICE-482) - Accumulate all transactions in holder to make only single call to mod-finance
 * [MODINVOICE-479](https://issues.folio.org/browse/MODINVOICE-479) - Add Kafka event deduplication mechanism for creating invoices
+* [MODINVOICE-361](https://folio-org.atlassian.net/browse/MODINVOICE-361) - Logging improvement
+* [MODINVOICE-302](https://folio-org.atlassian.net/browse/MODINVOICE-302) - Improve backend error reporting by including cause in error message systematically
+* [MODINVOICE-93](https://folio-org.atlassian.net/browse/MODINVOICE-93) - Approve invoice permission and require approval to mark as paid
+
+### Bug Fixes
+* [MODINVOICE-532](https://folio-org.atlassian.net/browse/MODINVOICE-532) - Missing interface dependencies in module descriptor
+* [MODINVOICE-523](https://folio-org.atlassian.net/browse/MODINVOICE-523) - After resaving the configurations with empty credentials, an NPE occurs during manual export
+* [MODINVOICE-514](https://folio-org.atlassian.net/browse/MODINVOICE-514) - Uninformative error in invoice payment due to user not linked to the Purchase Order's acquisition unit
+* [MODINVOICE-450](https://folio-org.atlassian.net/browse/MODINVOICE-450) - Invoice approval is successful but throws error message
+
+### Tech Debt
+* [MODINVOICE-522](https://folio-org.atlassian.net/browse/MODINVOICE-522) - Adding validation to exclude cases where the
+  'directory' field in batch group configuration consists solely of spaces
+
+### Dependencies
+* Bump `raml` from `35.0.1` to `35.2.0`
+* Bump `vertx` from `4.3.4` to `4.5.4`
+* Bump `mod-di-converter-storage-client` from `4.2.0-SNAPSHOT` to `4.2.0`
+* Bump `data-import-processing-core` from `2.1.0` to `2.1.8`
+* Bump `folio-kafka-wrapper` from `3.0.0` to `3.1.0`
 
 ## 5.7.0 - Released Poppy R2 2023
 The focus of this release was to implement Vertx SFTP client for Batch Voucher Export and implement pay against previous fiscal years
