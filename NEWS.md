@@ -32,6 +32,8 @@ The focus of this release was to fix bugs and make improvement in transaction ca
 ### Dependencies
 * Bump `raml` from `35.0.1` to `35.2.0`
 * Bump `vertx` from `4.3.4` to `4.5.4`
+* Bump `mod-di-converter-storage-client` from `2.1.0` to `2.1.8`
+* Bump `folio-kafka-wrapper` from `3.0.0` to `3.1.0`
 
 ## 5.7.0 - Released Poppy R2 2023
 The focus of this release was to implement Vertx SFTP client for Batch Voucher Export and implement pay against previous fiscal years

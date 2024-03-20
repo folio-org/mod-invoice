@@ -178,7 +178,7 @@
     <dependency>
       <groupId>org.folio</groupId>
       <artifactId>folio-kafka-wrapper</artifactId>
-      <version>3.0.0</version>
+      <version>3.1.0</version>
     </dependency>
     <dependency>
       <groupId>org.folio</groupId>
@@ -194,7 +194,7 @@
     <dependency>
       <groupId>org.folio</groupId>
       <artifactId>mod-di-converter-storage-client</artifactId>
-      <version>2.1.0</version>
+      <version>2.1.8</version>
     </dependency>
     <dependency>
       <groupId>com.github.ben-manes.caffeine</groupId>
