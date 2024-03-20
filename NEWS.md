@@ -26,6 +26,9 @@ The focus of this release was to fix bugs and make improvement in transaction ca
 * [MODINVOICE-522](https://folio-org.atlassian.net/browse/MODINVOICE-522) - Adding validation to exclude cases where the
   'directory' field in batch group configuration consists solely of spaces
 
+### Breaking changes
+* DB schema introduced for mod-invoice
+
 ### Dependencies
 * Bump `raml` from `35.0.1` to `35.2.0`
 * Bump `vertx` from `4.3.4` to `4.5.4`
