@@ -60,6 +60,7 @@
             "invoice-storage.invoices.item.get",
             "invoice-storage.invoice-lines.item.put",
             "invoice-storage.invoice-lines.collection.get",
+            "orders.bypass-acquisition-units",
             "orders.collection.get",
             "orders.po-lines.collection.get",
             "orders.po-lines.item.put",
