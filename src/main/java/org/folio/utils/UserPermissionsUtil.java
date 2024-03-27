@@ -23,6 +23,7 @@ import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.invoices.utils.AcqDesiredPermissions;
 
 import io.vertx.core.json.JsonArray;
+import org.folio.rest.core.models.RequestContext;
 import org.folio.rest.jaxrs.model.Invoice;
 
 public final class UserPermissionsUtil {
@@ -38,6 +39,10 @@ public final class UserPermissionsUtil {
     if (CollectionUtils.isNotEmpty(acqUnitIds) && isUserDoesNotHaveDesiredPermission(ASSIGN, okapiHeaders)) {
       throw new HttpException(HttpStatus.HTTP_FORBIDDEN.toInt(), USER_HAS_NO_ACQ_PERMISSIONS);
     }
+  }
+
+  public static boolean userHasDesiredPermission(AcqDesiredPermissions acqPerm, Map<String, String> okapiHeaders) {
+    return getProvidedPermissions(okapiHeaders).contains(acqPerm.getPermission());
   }
 
   public static boolean isUserDoesNotHaveDesiredPermission(AcqDesiredPermissions acqPerm, Map<String, String> okapiHeaders) {

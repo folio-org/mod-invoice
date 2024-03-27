@@ -2,14 +2,18 @@ package org.folio.rest.impl.protection;
 
 import static io.vertx.core.json.Json.encodePrettily;
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
+import static org.folio.invoices.utils.AcqDesiredPermissions.BYPASS_ACQ_UNITS;
 import static org.folio.invoices.utils.ErrorCodes.ACQ_UNITS_NOT_FOUND;
 import static org.folio.invoices.utils.ErrorCodes.GENERIC_ERROR_CODE;
 import static org.folio.invoices.utils.ErrorCodes.USER_HAS_NO_PERMISSIONS;
 import static org.folio.rest.impl.InvoiceLinesApiTest.INVOICE_LINES_PATH;
+import static org.folio.utils.UserPermissionsUtil.OKAPI_HEADER_PERMISSIONS;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.collection.IsCollectionWithSize.hasSize;
 import static org.hamcrest.core.IsEqual.equalTo;
 
+import io.restassured.http.Header;
+import io.vertx.core.json.JsonArray;
 import io.vertx.junit5.VertxExtension;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -20,6 +24,8 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import io.restassured.http.Headers;
+
+import java.util.List;
 
 @ExtendWith(VertxExtension.class)
 public class LinesProtectionTest extends ProtectedEntityTestBase {
@@ -125,6 +131,21 @@ public class LinesProtectionTest extends ProtectedEntityTestBase {
       .get(0)
       .getCode(), equalTo(GENERIC_ERROR_CODE.getCode()));
     // Verify number of sub-requests
+    validateNumberOfRequests(0, 0);
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {
+    "UPDATE",
+    "READ"
+  })
+  void testBypassAcqUnitChecks(ProtectedOperations operation) {
+    Header permissionHeader = new Header(OKAPI_HEADER_PERMISSIONS,
+      new JsonArray(List.of(BYPASS_ACQ_UNITS.getPermission())).encode());
+    Headers headers = new Headers(X_OKAPI_TENANT, permissionHeader, X_OKAPI_USER_WITH_UNITS_NOT_ASSIGNED_TO_RECORD);
+    operation.process(INVOICE_LINES_PATH, encodePrettily(prepareInvoiceLine(PROTECTED_UNITS)),
+      headers, operation.getContentType(), operation.getCode());
+
     validateNumberOfRequests(0, 0);
   }
 }
