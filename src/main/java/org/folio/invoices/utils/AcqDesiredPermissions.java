@@ -11,7 +11,8 @@ public enum AcqDesiredPermissions {
   APPROVE("invoice.item.approve"),
   PAY("invoice.item.pay"),
   CANCEL("invoice.item.cancel"),
-  FISCAL_YEAR_UPDATE("invoices.fiscal-year.update");
+  FISCAL_YEAR_UPDATE("invoices.fiscal-year.update"),
+  BYPASS_ACQ_UNITS("invoices.bypass-acquisition-units");
 
   private String permission;
   private static final List<String> values;
@@ -31,5 +32,9 @@ public enum AcqDesiredPermissions {
 
   public static List<String> getValues() {
     return values;
+  }
+
+  public static List<String> getValuesExceptBypass() {
+    return values.stream().filter(v -> !BYPASS_ACQ_UNITS.getPermission().equals(v)).toList();
   }
 }

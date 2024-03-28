@@ -9,6 +9,7 @@ import static java.util.stream.Collectors.toMap;
 import static javax.money.Monetary.getDefaultRounding;
 import static org.apache.commons.lang3.StringUtils.EMPTY;
 import static org.apache.commons.lang3.StringUtils.isEmpty;
+import static org.folio.invoices.utils.AcqDesiredPermissions.BYPASS_ACQ_UNITS;
 import static org.folio.invoices.utils.ErrorCodes.CANNOT_RESET_INVOICE_FISCAL_YEAR;
 import static org.folio.invoices.utils.ErrorCodes.INVALID_INVOICE_TRANSITION_ON_PAID_STATUS;
 import static org.folio.invoices.utils.ErrorCodes.MULTIPLE_ADJUSTMENTS_FISCAL_YEARS;
@@ -22,6 +23,7 @@ import static org.folio.invoices.utils.HelperUtils.isPostApproval;
 import static org.folio.invoices.utils.ProtectedOperationType.UPDATE;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICES;
 import static org.folio.services.voucher.VoucherCommandService.VOUCHER_NUMBER_PREFIX_CONFIG_QUERY;
+import static org.folio.utils.UserPermissionsUtil.userHasDesiredPermission;
 import static org.folio.utils.UserPermissionsUtil.verifyUserHasAssignPermission;
 import static org.folio.utils.UserPermissionsUtil.verifyUserHasFiscalYearUpdatePermission;
 import static org.folio.utils.UserPermissionsUtil.verifyUserHasInvoiceApprovePermission;
@@ -262,6 +264,9 @@ public class InvoiceHelper extends AbstractHelper {
   }
 
   private Future<String> buildGetInvoicesQuery(String query) {
+    if (userHasDesiredPermission(BYPASS_ACQ_UNITS, okapiHeaders)) {
+      return succeededFuture(query);
+    }
     return protectionHelper.buildAcqUnitsCqlExprToSearchRecords(INVOICES)
       .map(acqUnitsCqlExpr -> {
         if (isEmpty(query)) {
@@ -384,6 +389,9 @@ public class InvoiceHelper extends AbstractHelper {
    * acquisitions units
    */
   private Future<Void> validateAcqUnitsOnUpdate(Invoice updatedInvoice, Invoice persistedInvoice) {
+    if (userHasDesiredPermission(BYPASS_ACQ_UNITS, okapiHeaders)) {
+      return Future.succeededFuture();
+    }
     List<String> updatedAcqUnitIds = updatedInvoice.getAcqUnitIds();
     List<String> currentAcqUnitIds = persistedInvoice.getAcqUnitIds();
     verifyUserHasManagePermission(updatedAcqUnitIds, currentAcqUnitIds, okapiHeaders);

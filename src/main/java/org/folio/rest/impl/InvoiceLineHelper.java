@@ -3,6 +3,7 @@ package org.folio.rest.impl;
 import static io.vertx.core.Future.succeededFuture;
 import static java.util.stream.Collectors.toList;
 import static org.apache.commons.lang3.StringUtils.isEmpty;
+import static org.folio.invoices.utils.AcqDesiredPermissions.BYPASS_ACQ_UNITS;
 import static org.folio.invoices.utils.ErrorCodes.CANNOT_DELETE_INVOICE_LINE;
 import static org.folio.invoices.utils.ErrorCodes.FAILED_TO_UPDATE_INVOICE_AND_OTHER_LINES;
 import static org.folio.invoices.utils.ErrorCodes.FAILED_TO_UPDATE_PONUMBERS;
@@ -18,6 +19,7 @@ import static org.folio.invoices.utils.ProtectedOperationType.READ;
 import static org.folio.invoices.utils.ProtectedOperationType.UPDATE;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_LINES;
 import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
+import static org.folio.utils.UserPermissionsUtil.userHasDesiredPermission;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -86,6 +88,15 @@ public class InvoiceLineHelper extends AbstractHelper {
   }
 
   public Future<InvoiceLineCollection> getInvoiceLines(int limit, int offset, String query) {
+    if (userHasDesiredPermission(BYPASS_ACQ_UNITS, okapiHeaders)) {
+      String endpoint;
+      if (isEmpty(query)) {
+        endpoint = resourcesPath(INVOICE_LINES);
+      } else {
+        endpoint = String.format(GET_INVOICE_LINES_BY_QUERY, limit, offset, getEndpointWithQuery(query));
+      }
+      return invoiceLineService.getInvoiceLines(endpoint, buildRequestContext());
+    }
     return protectionHelper.buildAcqUnitsCqlExprToSearchRecords(INVOICE_LINES)
       .compose(acqUnitsCqlExpr -> {
         String queryParam;

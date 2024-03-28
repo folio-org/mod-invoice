@@ -45,7 +45,7 @@ public abstract class ProtectedEntityTestBase extends ApiTestBase {
   private static final String USER_IS_MEMBER_OF_ACQ_UNITS = "6b4be232-5ad9-47a6-80b1-8c1acabd6212";
   static final Header X_OKAPI_USER_WITH_UNITS_ASSIGNED_TO_RECORD = new Header(OKAPI_USERID_HEADER, USER_IS_MEMBER_OF_ACQ_UNITS);
   protected static final Header ALL_DESIRED_PERMISSIONS_HEADER = new Header(OKAPI_HEADER_PERMISSIONS,
-      new JsonArray(AcqDesiredPermissions.getValues()).encode());
+      new JsonArray(AcqDesiredPermissions.getValuesExceptBypass()).encode());
 
   static void validateNumberOfRequests(int numOfUnitRqs, int numOfMembershipRqs) {
     assertThat(MockServer.getAcqUnitsSearches(), getMatcher(numOfUnitRqs));

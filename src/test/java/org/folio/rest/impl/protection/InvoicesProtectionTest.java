@@ -2,6 +2,7 @@ package org.folio.rest.impl.protection;
 
 import static io.vertx.core.json.Json.encodePrettily;
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
+import static org.folio.invoices.utils.AcqDesiredPermissions.BYPASS_ACQ_UNITS;
 import static org.folio.invoices.utils.ErrorCodes.ACQ_UNITS_NOT_FOUND;
 import static org.folio.invoices.utils.ErrorCodes.USER_HAS_NO_ACQ_PERMISSIONS;
 import static org.folio.invoices.utils.ErrorCodes.USER_HAS_NO_PERMISSIONS;
@@ -10,6 +11,7 @@ import static org.folio.rest.impl.InvoicesApiTest.INVOICE_PATH;
 import static org.folio.rest.impl.MockServer.addMockEntry;
 import static org.folio.rest.impl.ProtectionHelper.ACQUISITIONS_UNIT_IDS;
 import static org.folio.rest.impl.protection.ProtectedOperations.UPDATE;
+import static org.folio.utils.UserPermissionsUtil.OKAPI_HEADER_PERMISSIONS;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.containsInAnyOrder;
@@ -18,6 +20,8 @@ import static org.hamcrest.Matchers.is;
 import static org.hamcrest.collection.IsCollectionWithSize.hasSize;
 import static org.hamcrest.core.IsEqual.equalTo;
 
+import io.restassured.http.Header;
+import io.vertx.core.json.JsonArray;
 import io.vertx.junit5.VertxExtension;
 import java.util.Arrays;
 import java.util.Collections;
@@ -210,5 +214,20 @@ public class InvoicesProtectionTest extends ProtectedEntityTestBase {
       .getAcquisitionsUnits();
     assertThat(acquisitionsUnits, hasSize(1));
     assertThat(acquisitionsUnits.get(0).getIsDeleted(), is(true));
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {
+    "READ"
+  })
+  void testBypassAcqUnitChecks(ProtectedOperations operation) {
+    Header permissionHeader = new Header(OKAPI_HEADER_PERMISSIONS,
+      new JsonArray(List.of(BYPASS_ACQ_UNITS.getPermission())).encode());
+    Headers headers = new Headers(X_OKAPI_TENANT, permissionHeader, X_OKAPI_USER_WITH_UNITS_NOT_ASSIGNED_TO_RECORD);
+    Invoice invoice = prepareInvoice(Collections.emptyList());
+    operation.process(INVOICE_PATH, encodePrettily(invoice.withAcqUnitIds(PROTECTED_UNITS)),
+      headers, operation.getContentType(), operation.getCode());
+
+    validateNumberOfRequests(0, 0);
   }
 }
