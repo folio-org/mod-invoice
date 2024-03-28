@@ -6,6 +6,7 @@ import static org.folio.invoices.utils.AcqDesiredPermissions.BYPASS_ACQ_UNITS;
 import static org.folio.invoices.utils.ErrorCodes.ACQ_UNITS_NOT_FOUND;
 import static org.folio.invoices.utils.ErrorCodes.GENERIC_ERROR_CODE;
 import static org.folio.invoices.utils.ErrorCodes.USER_HAS_NO_PERMISSIONS;
+import static org.folio.invoices.utils.HelperUtils.INVOICE_ID;
 import static org.folio.rest.impl.InvoiceLinesApiTest.INVOICE_LINES_PATH;
 import static org.folio.utils.UserPermissionsUtil.OKAPI_HEADER_PERMISSIONS;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -19,6 +20,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.HttpStatus;
 import org.folio.rest.jaxrs.model.Errors;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -62,11 +64,11 @@ public class LinesProtectionTest extends ProtectedEntityTestBase {
   })
   public void testOperationWithAllowedUnits(ProtectedOperations operation) {
     logger.info(
-        "=== Invoice-lines protection: Test corresponding record has units allowed operation - expecting of call only to Units API ===");
+      "=== Invoice-lines protection: Test corresponding record has units allowed operation - expecting of call only to Units API ===");
 
     final Headers headers = prepareHeaders(X_OKAPI_TENANT, X_OKAPI_USER_ID);
     operation.process(INVOICE_LINES_PATH, encodePrettily(prepareInvoiceLine(NOT_PROTECTED_UNITS)), headers,
-        operation.getContentType(), operation.getCode());
+      operation.getContentType(), operation.getCode());
 
     validateNumberOfRequests(1, 0);
   }
@@ -80,11 +82,11 @@ public class LinesProtectionTest extends ProtectedEntityTestBase {
   })
   public void testWithRestrictedUnitsAndAllowedUser(ProtectedOperations operation) {
     logger.info(
-        "=== Invoice-lines protection: Test corresponding record has units, units protect operation, user is member of order's units - expecting of calls to Units, Memberships APIs and allowance of operation ===");
+      "=== Invoice-lines protection: Test corresponding record has units, units protect operation, user is member of order's units - expecting of calls to Units, Memberships APIs and allowance of operation ===");
 
     operation.process(INVOICE_LINES_PATH, encodePrettily(prepareInvoiceLine(PROTECTED_UNITS)),
-        prepareHeaders(X_OKAPI_TENANT, X_OKAPI_USER_WITH_UNITS_ASSIGNED_TO_RECORD), operation.getContentType(),
-        operation.getCode());
+      prepareHeaders(X_OKAPI_TENANT, X_OKAPI_USER_WITH_UNITS_ASSIGNED_TO_RECORD), operation.getContentType(),
+      operation.getCode());
 
     validateNumberOfRequests(1, 1);
   }
@@ -117,13 +119,13 @@ public class LinesProtectionTest extends ProtectedEntityTestBase {
   })
   public void testOperationWithUnprocessableBadUnits(ProtectedOperations operation) {
     logger.info(
-        "=== Invoice-lines protection: Test corresponding record contains unprocessable bad units - expecting of call only to Units API ===");
+      "=== Invoice-lines protection: Test corresponding record contains unprocessable bad units - expecting of call only to Units API ===");
 
     final Headers headers = prepareHeaders(X_OKAPI_TENANT, X_OKAPI_USER_ID);
 
     Errors errors = operation
       .process(INVOICE_LINES_PATH, encodePrettily(prepareInvoiceLine(BAD_UNITS)), headers, APPLICATION_JSON,
-          HttpStatus.HTTP_BAD_REQUEST.toInt())
+        HttpStatus.HTTP_BAD_REQUEST.toInt())
       .as(Errors.class);
 
     assertThat(errors.getErrors(), hasSize(1));
@@ -145,6 +147,30 @@ public class LinesProtectionTest extends ProtectedEntityTestBase {
     Headers headers = new Headers(X_OKAPI_TENANT, permissionHeader, X_OKAPI_USER_WITH_UNITS_NOT_ASSIGNED_TO_RECORD);
     operation.process(INVOICE_LINES_PATH, encodePrettily(prepareInvoiceLine(PROTECTED_UNITS)),
       headers, operation.getContentType(), operation.getCode());
+
+    validateNumberOfRequests(0, 0);
+  }
+
+  @Test
+  public void testBypassGetCollectionWithQuery() {
+    Header permissionHeader = new Header(OKAPI_HEADER_PERMISSIONS,
+      new JsonArray(List.of(BYPASS_ACQ_UNITS.getPermission())).encode());
+    Headers headers = new Headers(X_OKAPI_TENANT, permissionHeader, X_OKAPI_USER_WITH_UNITS_NOT_ASSIGNED_TO_RECORD);
+    String cql = String.format("%s==%s", INVOICE_ID, APPROVED_INVOICE_ID);
+    String endpointQuery = String.format("%s?query=%s", INVOICE_LINES_PATH, cql);
+
+    verifyGet(endpointQuery, headers, APPLICATION_JSON, 200);
+
+    validateNumberOfRequests(0, 0);
+  }
+
+  @Test
+  public void testBypassGetCollectionWithoutQuery() {
+    Header permissionHeader = new Header(OKAPI_HEADER_PERMISSIONS,
+      new JsonArray(List.of(BYPASS_ACQ_UNITS.getPermission())).encode());
+    Headers headers = new Headers(X_OKAPI_TENANT, permissionHeader, X_OKAPI_USER_WITH_UNITS_NOT_ASSIGNED_TO_RECORD);
+
+    verifyGet(INVOICE_LINES_PATH, headers, APPLICATION_JSON, 200);
 
     validateNumberOfRequests(0, 0);
   }
