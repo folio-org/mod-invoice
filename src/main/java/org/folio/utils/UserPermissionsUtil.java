@@ -23,7 +23,6 @@ import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.invoices.utils.AcqDesiredPermissions;
 
 import io.vertx.core.json.JsonArray;
-import org.folio.rest.core.models.RequestContext;
 import org.folio.rest.jaxrs.model.Invoice;
 
 public final class UserPermissionsUtil {
