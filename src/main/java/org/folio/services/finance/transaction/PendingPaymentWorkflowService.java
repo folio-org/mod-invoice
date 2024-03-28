@@ -4,6 +4,7 @@ import static java.util.stream.Collectors.toList;
 import static org.folio.invoices.utils.ErrorCodes.PENDING_PAYMENT_ERROR;
 import static org.folio.invoices.utils.HelperUtils.convertToDoubleWithRounding;
 import static org.folio.invoices.utils.HelperUtils.getFundDistributionAmount;
+import static org.folio.rest.acq.model.finance.Encumbrance.Status.RELEASED;
 import static org.folio.services.FundsDistributionService.distributeFunds;
 
 import javax.money.MonetaryAmount;
@@ -94,7 +95,8 @@ public class PendingPaymentWorkflowService {
       RequestContext requestContext) {
     // Release encumbrances that are no longer relevant
     List<Transaction> transactionsToRelease = poLineTransactions.stream()
-      .filter(tr -> holders.stream().noneMatch(holder -> sameFundAndPoLine(tr, holder)))
+      .filter(tr -> !RELEASED.equals(tr.getEncumbrance().getStatus()) &&
+        holders.stream().noneMatch(holder -> sameFundAndPoLine(tr, holder)))
       .toList();
     if (transactionsToRelease.isEmpty()) {
       return Future.succeededFuture();
