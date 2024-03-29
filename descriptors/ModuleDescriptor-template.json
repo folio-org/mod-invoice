@@ -10,6 +10,9 @@
           "methods": ["GET"],
           "pathPattern": "/invoice/invoices",
           "permissionsRequired": ["invoice.invoices.collection.get"],
+          "permissionsDesired": [
+            "invoices.bypass-acquisition-units"
+          ],
           "modulePermissions": [
             "invoice-storage.invoices.collection.get",
             "invoice-storage.invoice-lines.collection.get",
@@ -36,6 +39,9 @@
           "permissionsRequired": [
             "invoice.invoices.item.get"
           ],
+          "permissionsDesired": [
+            "invoices.bypass-acquisition-units"
+          ],
           "modulePermissions": [
             "invoice-storage.invoices.item.get",
             "invoice-storage.invoice-lines.collection.get",
@@ -52,7 +58,8 @@
             "invoices.fiscal-year.update",
             "invoice.item.approve",
             "invoice.item.pay",
-            "invoice.item.cancel"
+            "invoice.item.cancel",
+            "invoices.bypass-acquisition-units"
           ],
           "modulePermissions": [
             "configuration.entries.collection.get",
@@ -109,6 +116,9 @@
           "methods": ["GET"],
           "pathPattern": "/invoice/invoice-lines",
           "permissionsRequired": ["invoice.invoice-lines.collection.get"],
+          "permissionsDesired": [
+            "invoices.bypass-acquisition-units"
+          ],
           "modulePermissions": [
             "invoice-storage.invoice-lines.collection.get",
             "acquisitions-units-storage.units.collection.get",
@@ -148,6 +158,9 @@
           "methods": ["GET"],
           "pathPattern": "/invoice/invoice-lines/{id}",
           "permissionsRequired": ["invoice.invoice-lines.item.get"],
+          "permissionsDesired": [
+            "invoices.bypass-acquisition-units"
+          ],
           "modulePermissions": [
             "invoice-storage.invoice-lines.item.get",
             "invoice-storage.invoice-lines.item.put",
@@ -163,6 +176,9 @@
           "methods": ["PUT"],
           "pathPattern": "/invoice/invoice-lines/{id}",
           "permissionsRequired": ["invoice.invoice-lines.item.put"],
+          "permissionsDesired": [
+            "invoices.bypass-acquisition-units"
+          ],
           "modulePermissions": [
             "invoice-storage.invoice-lines.item.put",
             "invoice-storage.invoice-lines.item.get",
@@ -896,6 +912,11 @@
         "batch-voucher.export-configurations.credentials.item.put",
         "batch-voucher.export-configurations.credentials.test"
       ]
+    },
+    {
+      "permissionName": "invoices.bypass-acquisition-units",
+      "displayName": "Bypass acquisition units checks",
+      "description": "Backend internal permission to bypass invoice acquisition units checks"
     },
     {
       "permissionName": "invoices.acquisitions-units-assignments.assign",
