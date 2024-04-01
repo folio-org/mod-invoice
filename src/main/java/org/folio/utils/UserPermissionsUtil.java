@@ -40,6 +40,10 @@ public final class UserPermissionsUtil {
     }
   }
 
+  public static boolean userHasDesiredPermission(AcqDesiredPermissions acqPerm, Map<String, String> okapiHeaders) {
+    return getProvidedPermissions(okapiHeaders).contains(acqPerm.getPermission());
+  }
+
   public static boolean isUserDoesNotHaveDesiredPermission(AcqDesiredPermissions acqPerm, Map<String, String> okapiHeaders) {
     return !getProvidedPermissions(okapiHeaders).contains(acqPerm.getPermission());
   }

@@ -1,11 +1,13 @@
 package org.folio.rest.impl;
 
 import static io.vertx.core.Future.succeededFuture;
+import static org.folio.invoices.utils.AcqDesiredPermissions.BYPASS_ACQ_UNITS;
 import static org.folio.invoices.utils.ErrorCodes.ACQ_UNITS_NOT_FOUND;
 import static org.folio.invoices.utils.ErrorCodes.USER_HAS_NO_PERMISSIONS;
 import static org.folio.invoices.utils.HelperUtils.ALL_UNITS_CQL;
 import static org.folio.invoices.utils.HelperUtils.convertIdsToCqlQuery;
 import static org.folio.services.AcquisitionsUnitsService.ACQUISITIONS_UNIT_ID;
+import static org.folio.utils.UserPermissionsUtil.userHasDesiredPermission;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -56,6 +58,9 @@ public class ProtectionHelper extends AbstractHelper {
    * exist; successfully otherwise
    */
   public Future<Void> isOperationRestricted(List<String> unitIds, ProtectedOperationType operation) {
+    if (userHasDesiredPermission(BYPASS_ACQ_UNITS, okapiHeaders)) {
+      return Future.succeededFuture();
+    }
     if (CollectionUtils.isNotEmpty(unitIds)) {
       return getUnitsByIds(unitIds).compose(units -> {
         if (unitIds.size() == units.size()) {

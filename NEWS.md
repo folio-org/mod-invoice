@@ -1,5 +1,15 @@
 ## 5.9.0 - Unreleased
 
+## 5.8.1 - Released (Quesnelia R1 2024)
+The focus of this release was to fix acquisition check behaviour and improve consistency between invoice and encumbrance
+
+[Full Changelog](https://github.com/folio-org/mod-invoice/compare/v5.8.0...v5.8.1)
+
+### Bug Fixes
+* [MODORDERS-1073](https://folio-org.atlassian.net/browse/MODORDERS-1073) - Invoice encumbrance link not removed because of acquisition unit
+* [MODINVOICE-540](https://folio-org.atlassian.net/browse/MODINVOICE-540) - Mod-invoice tries to release encumbrances that are already released
+* [MODINVOICE-516](https://folio-org.atlassian.net/browse/MODINVOICE-516) - Invoice transactions should not be changed when acquisition check was failed
+
 ## 5.8.0 - Released (Quesnelia R1 2024)
 The focus of this release was to fix bugs and make improvement in transaction call and error codes
 
