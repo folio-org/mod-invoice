@@ -283,7 +283,7 @@ public class InvoiceCancelService {
       .ofSubLists(poLineIds, MAX_IDS_FOR_GET_RQ)
       .map(queryFunction)
       .map(query -> orderLineService.getPoLines(query, requestContext))
-      .collect(toList());
+      .toList();
 
     return collectResultsOnSuccess(futureList)
       .map(col -> col.stream().flatMap(List::stream).collect(toList()));
@@ -295,7 +295,7 @@ public class InvoiceCancelService {
       .ofSubLists(poLineIds, MAX_IDS_FOR_GET_RQ)
       .map(queryFunction)
       .map(query -> invoiceLineService.getInvoiceLinesByQuery(query, requestContext))
-      .collect(toList());
+      .toList();
 
     return collectResultsOnSuccess(futureList)
       .map(col -> col.stream().flatMap(List::stream).collect(toList()));
@@ -321,11 +321,10 @@ public class InvoiceCancelService {
       if (relatedInvoiceLines == null || relatedInvoiceLines.isEmpty()) {
         poLine.setPaymentStatus(AWAITING_PAYMENT);
         modifiedPoLines.add(poLine);
-      } else if (relatedInvoiceLines.stream().noneMatch(InvoiceLine::getReleaseEncumbrance)) {
-        if (!PARTIALLY_PAID.equals(poLine.getPaymentStatus())) {
-          poLine.setPaymentStatus(PARTIALLY_PAID);
-          modifiedPoLines.add(poLine);
-        }
+      } else if (relatedInvoiceLines.stream().noneMatch(InvoiceLine::getReleaseEncumbrance) &&
+          !PARTIALLY_PAID.equals(poLine.getPaymentStatus())) {
+        poLine.setPaymentStatus(PARTIALLY_PAID);
+        modifiedPoLines.add(poLine);
       }
     });
     if (modifiedPoLines.isEmpty()) {
