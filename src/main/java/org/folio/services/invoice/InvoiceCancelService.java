@@ -4,7 +4,6 @@ import static io.vertx.core.Future.succeededFuture;
 import static java.util.Collections.emptyList;
 import static java.util.Objects.requireNonNullElse;
 import static java.util.stream.Collectors.groupingBy;
-import static java.util.stream.Collectors.toList;
 import static org.folio.invoices.utils.ErrorCodes.CANCEL_TRANSACTIONS_ERROR;
 import static org.folio.invoices.utils.ErrorCodes.CANNOT_CANCEL_INVOICE;
 import static org.folio.invoices.utils.ErrorCodes.ERROR_UNRELEASING_ENCUMBRANCES;
@@ -148,7 +147,7 @@ public class InvoiceCancelService {
     return baseTransactionService.getTransactions(query, 0, Integer.MAX_VALUE, requestContext)
       .map(TransactionCollection::getTransactions)
       .map(transactions -> transactions.stream()
-        .filter(tr -> relevantTransactionTypes.contains(tr.getTransactionType())).collect(toList()));
+        .filter(tr -> relevantTransactionTypes.contains(tr.getTransactionType())).toList());
   }
 
   private Future<Void> cancelTransactions(String invoiceId, List<Transaction> transactions,
@@ -178,7 +177,7 @@ public class InvoiceCancelService {
       .filter(InvoiceLine::getReleaseEncumbrance)
       .map(InvoiceLine::getPoLineId)
       .distinct()
-      .collect(toList());
+      .toList();
     if (poLineIds.isEmpty())
       return succeededFuture();
     return getPoLinesByIdAndQuery(poLineIds, this::queryToGetPoLinesWithRightPaymentStatusByIds, requestContext)
@@ -202,13 +201,13 @@ public class InvoiceCancelService {
     List<String> orderIds = poLines.stream()
       .map(PoLine::getPurchaseOrderId)
       .distinct()
-      .collect(toList());
+      .toList();
     return orderService.getOrders(queryToGetOpenOrdersByIds(orderIds), requestContext)
       .map(orders -> {
         List<String> openOrderIds = orders.stream().map(PurchaseOrder::getId).toList();
         return poLines.stream()
           .filter(poLine -> openOrderIds.contains(poLine.getPurchaseOrderId()))
-          .collect(toList());
+          .toList();
       });
   }
 
@@ -220,7 +219,7 @@ public class InvoiceCancelService {
       RequestContext requestContext) {
     if (poLines.isEmpty())
       return succeededFuture(null);
-    List<String> poLineIds = poLines.stream().map(PoLine::getId).collect(toList());
+    List<String> poLineIds = poLines.stream().map(PoLine::getId).toList();
     String fiscalYearId = invoiceFromStorage.getFiscalYearId();
     return encumbranceService.getEncumbrancesByPoLineIds(poLineIds, fiscalYearId, requestContext)
       .map(transactions -> transactions.stream()
@@ -286,7 +285,7 @@ public class InvoiceCancelService {
       .toList();
 
     return collectResultsOnSuccess(futureList)
-      .map(col -> col.stream().flatMap(List::stream).collect(toList()));
+      .map(col -> col.stream().flatMap(List::stream).toList());
   }
 
   private Future<List<InvoiceLine>> getInvoiceLinesByPoLineIdsAndQuery(List<String> poLineIds,
@@ -298,7 +297,7 @@ public class InvoiceCancelService {
       .toList();
 
     return collectResultsOnSuccess(futureList)
-      .map(col -> col.stream().flatMap(List::stream).collect(toList()));
+      .map(col -> col.stream().flatMap(List::stream).toList());
   }
 
   private Future<List<Invoice>> getInvoicesByIdsAndQuery(List<String> invoiceIds, String query, RequestContext requestContext) {
