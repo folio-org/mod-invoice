@@ -31,6 +31,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.io.IOException;
@@ -258,7 +260,11 @@ public class InvoiceCancelServiceTest {
 
     Future<Void> future = cancelService.cancelInvoice(invoice, invoiceLines, requestContext);
     vertxTestContext.assertComplete(future)
-      .onSuccess(result -> vertxTestContext.completeNow())
+      .onSuccess(result -> {
+        verify(restClient, times(2)).put(any(RequestEntry.class), any(CompositePoLine.class),
+          eq(requestContext));
+        vertxTestContext.completeNow();
+      })
       .onFailure(vertxTestContext::failNow);
   }
 
@@ -434,7 +440,7 @@ public class InvoiceCancelServiceTest {
 
   private void setupUpdatePoLinesQuery(List<CompositePoLine> expectedPoLines) {
     expectedPoLines.forEach(expectedPoLine ->
-      doReturn(succeededFuture(null)).doReturn(succeededFuture(null))
+      doReturn(succeededFuture(null))
         .when(restClient).put(any(RequestEntry.class), eq(expectedPoLine), eq(requestContext))
     );
   }

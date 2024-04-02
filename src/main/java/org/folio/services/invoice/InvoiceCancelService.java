@@ -54,7 +54,7 @@ public class InvoiceCancelService {
     "paymentStatus==(\"Awaiting Payment\" OR \"Partially Paid\" OR \"Fully Paid\" OR \"Ongoing\")";
   private static final String OPEN_ORDERS_QUERY = "workflowStatus==\"Open\"";
 
-  private static final Logger logger = LogManager.getLogger(InvoiceCancelService.class);
+  private static final Logger logger = LogManager.getLogger();
 
   private final BaseTransactionService baseTransactionService;
   private final EncumbranceService encumbranceService;
@@ -96,6 +96,7 @@ public class InvoiceCancelService {
    */
   public Future<Void> cancelInvoice(Invoice invoiceFromStorage, List<InvoiceLine> lines, RequestContext requestContext) {
     String invoiceId = invoiceFromStorage.getId();
+    logger.info("Cancelling invoice {}...", invoiceId);
 
     return Future.succeededFuture()
       .map(v -> {
@@ -111,7 +112,9 @@ public class InvoiceCancelService {
       })
       .compose(v -> cancelVoucher(invoiceId, requestContext))
       .compose(v -> unreleaseEncumbrances(lines, invoiceFromStorage, requestContext))
-      .compose(v -> updatePoLinePaymentStatus(invoiceFromStorage, lines, requestContext));
+      .compose(v -> updatePoLinePaymentStatus(invoiceFromStorage, lines, requestContext))
+      .onSuccess(v -> logger.info("Invoice {} cancelled successfully", invoiceId))
+      .onFailure(t -> logger.error("Failed to cancel invoice {}", invoiceId, t));
   }
 
   private void validateCancelInvoice(Invoice invoiceFromStorage) {
@@ -150,10 +153,11 @@ public class InvoiceCancelService {
         .filter(tr -> relevantTransactionTypes.contains(tr.getTransactionType())).toList());
   }
 
-  private Future<Void> cancelTransactions(String invoiceId, List<Transaction> transactions,
-      RequestContext requestContext) {
-    if (transactions.isEmpty())
+  private Future<Void> cancelTransactions(String invoiceId, List<Transaction> transactions, RequestContext requestContext) {
+    if (transactions.isEmpty()) {
       return succeededFuture(null);
+    }
+    logger.info("Cancelling invoice transactions...");
     return baseTransactionService.batchCancel(transactions, requestContext)
       .recover(t -> {
         logger.error("Failed to cancel transactions for invoice with id {}", invoiceId, t);
@@ -168,6 +172,7 @@ public class InvoiceCancelService {
   }
 
   private Future<Void> cancelVoucher(String invoiceId, RequestContext requestContext) {
+    logger.info("Cancelling voucher...");
     return voucherService.cancelInvoiceVoucher(invoiceId, requestContext);
   }
 
@@ -178,8 +183,10 @@ public class InvoiceCancelService {
       .map(InvoiceLine::getPoLineId)
       .distinct()
       .toList();
-    if (poLineIds.isEmpty())
+    if (poLineIds.isEmpty()) {
       return succeededFuture();
+    }
+    logger.info("Unreleasing encumbrances...");
     return getPoLinesByIdAndQuery(poLineIds, this::queryToGetPoLinesWithRightPaymentStatusByIds, requestContext)
       .compose(poLines -> selectPoLinesWithOpenOrders(poLines, requestContext))
       .compose(poLines -> unreleaseEncumbrancesForPoLines(poLines, invoiceFromStorage, requestContext))
@@ -237,6 +244,7 @@ public class InvoiceCancelService {
     if (!Invoice.Status.PAID.equals(invoiceFromStorage.getStatus()) || invoiceFromStorage.getFiscalYearId() == null) {
       // in the unlikely case the fiscal year is undefined, the payment status update is skipped
       // (the MODINVOSTO-177 script should fill it up for pre-Poppy invoices)
+      logger.info("The invoice was not paid or the fiscal year is unknown; skipping po line paymentStatus update.");
       return succeededFuture();
     }
     List<String> allPoLineIds = invoiceLines.stream()
@@ -247,18 +255,25 @@ public class InvoiceCancelService {
     if (allPoLineIds.isEmpty()) {
       return succeededFuture();
     }
+    logger.info("Retrieving linked po lines that might need a paymentStatus update...");
     return getPoLinesByIdAndQuery(allPoLineIds, this::queryToGetPoLinesWithFullyOrPartiallyPaidPaymentStatusByIds, requestContext)
       .compose(filteredPoLines -> {
         if (filteredPoLines.isEmpty()) {
+          logger.info("No matching po line, no paymentStatus update needed.");
           return succeededFuture();
         }
+        logger.info("There are po lines linked to the invoice that might need a paymentStatus update;" +
+          " retrieving paid invoice lines linked to the po lines...");
         List<String> filteredPoLineIds = filteredPoLines.stream().map(PoLine::getId).toList();
         return getInvoiceLinesByPoLineIdsAndQuery(filteredPoLineIds,
             ids -> queryToGetRelatedPaidInvoiceLinesByPoLineIds(invoiceFromStorage.getId(), ids), requestContext)
           .compose(relatedInvoiceLines -> {
             if (relatedInvoiceLines.isEmpty()) {
+              logger.info("No linked paid invoice line; setting paymentStatus to Awaiting Payment...");
               return updateRelatedPoLines(relatedInvoiceLines, filteredPoLines, emptyList(), requestContext);
             }
+            logger.info("There are linked paid invoice lines; retrieving the related invoices to select only invoices" +
+              " with the same fiscal year as the cancelled invoice...");
             List<String> relatedInvoiceIds = relatedInvoiceLines.stream().map(InvoiceLine::getInvoiceId).distinct().toList();
             String invoiceQuery = "status==Paid AND fiscalYearId==" + invoiceFromStorage.getFiscalYearId();
             return getInvoicesByIdsAndQuery(relatedInvoiceIds, invoiceQuery, requestContext)
@@ -327,8 +342,10 @@ public class InvoiceCancelService {
       }
     });
     if (modifiedPoLines.isEmpty()) {
+      logger.info("No po line paymentStatus update needed.");
       return succeededFuture();
     }
+    logger.info("{} po lines need a paymentStatus update. Updating...", modifiedPoLines.size());
     List<CompositePoLine> compositePoLines = modifiedPoLines.stream()
       .map(poLine -> JsonObject.mapFrom(poLine).mapTo(CompositePoLine.class))
       .toList();
