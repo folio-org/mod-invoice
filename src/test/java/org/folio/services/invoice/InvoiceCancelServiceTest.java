@@ -23,6 +23,7 @@ import static org.folio.rest.RestConstants.OKAPI_URL;
 import static org.folio.rest.acq.model.finance.Encumbrance.Status.PENDING;
 import static org.folio.rest.acq.model.finance.Encumbrance.Status.RELEASED;
 import static org.folio.rest.acq.model.finance.Encumbrance.Status.UNRELEASED;
+import static org.folio.rest.acq.model.orders.PoLine.PaymentStatus.FULLY_PAID;
 import static org.folio.rest.impl.ApiTestBase.X_OKAPI_TOKEN;
 import static org.folio.rest.impl.ApiTestBase.X_OKAPI_USER_ID;
 import static org.folio.services.finance.transaction.BaseTransactionServiceTest.X_OKAPI_TENANT;
@@ -30,11 +31,14 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -49,6 +53,7 @@ import org.folio.rest.acq.model.finance.Encumbrance;
 import org.folio.rest.acq.model.finance.BudgetCollection;
 import org.folio.rest.acq.model.finance.TransactionCollection;
 import org.folio.rest.acq.model.finance.Transaction.TransactionType;
+import org.folio.rest.acq.model.orders.CompositePoLine;
 import org.folio.rest.acq.model.orders.PoLine;
 import org.folio.rest.acq.model.orders.PoLineCollection;
 import org.folio.rest.acq.model.orders.PurchaseOrder;
@@ -58,6 +63,7 @@ import org.folio.rest.core.RestClient;
 import org.folio.rest.core.models.RequestContext;
 import org.folio.rest.core.models.RequestEntry;
 import org.folio.rest.jaxrs.model.Invoice;
+import org.folio.rest.jaxrs.model.InvoiceCollection;
 import org.folio.rest.jaxrs.model.InvoiceLine;
 import org.folio.rest.jaxrs.model.InvoiceLineCollection;
 import org.folio.rest.jaxrs.model.Voucher;
@@ -74,6 +80,7 @@ import org.folio.services.order.OrderLineService;
 import org.folio.services.order.OrderService;
 import org.folio.services.validator.VoucherValidator;
 import org.folio.services.voucher.VoucherService;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -101,6 +108,7 @@ public class InvoiceCancelServiceTest {
   private static final String VOUCHER_SAMPLE_PATH = VOUCHER_MOCK_DATA_PATH + EXISTING_VOUCHER_ID + ".json";
 
   private InvoiceCancelService cancelService;
+  private AutoCloseable mockitoMocks;
 
   @Mock
   private RestClient restClient;
@@ -108,7 +116,7 @@ public class InvoiceCancelServiceTest {
 
   @BeforeEach
   public void initMocks() {
-    MockitoAnnotations.openMocks(this);
+    mockitoMocks = MockitoAnnotations.openMocks(this);
 
     Map<String, String> okapiHeaders = new HashMap<>();
     okapiHeaders.put(OKAPI_URL, "http://localhost:" + mockPort);
@@ -123,6 +131,7 @@ public class InvoiceCancelServiceTest {
     OrderLineService orderLineService = new OrderLineService(restClient);
     InvoiceLineService invoiceLineService = new InvoiceLineService(restClient);
     OrderService orderService = new OrderService(restClient, invoiceLineService, orderLineService);
+    BaseInvoiceService baseInvoiceService = new BaseInvoiceService(restClient, invoiceLineService, orderService);
 
     ExchangeRateProviderResolver exchangeRateProviderResolver = new ExchangeRateProviderResolver();
     FiscalYearService fiscalYearService = new FiscalYearService(restClient);
@@ -134,7 +143,12 @@ public class InvoiceCancelServiceTest {
       fiscalYearService, fundService, ledgerService, baseTransactionService, budgetService, expenseClassRetrieveService);
 
     cancelService = new InvoiceCancelService(baseTransactionService, encumbranceService,
-      voucherService, orderLineService, orderService, holderBuilder);
+      voucherService, orderLineService, orderService, invoiceLineService, baseInvoiceService, holderBuilder);
+  }
+
+  @AfterEach
+  public void afterEach() throws Exception {
+    mockitoMocks.close();
   }
 
   @Test
@@ -229,6 +243,29 @@ public class InvoiceCancelServiceTest {
         assertEquals(ERROR_UNRELEASING_ENCUMBRANCES.getCode(), error.getCode());
         vertxTestContext.completeNow();
       });
+  }
+
+  @Test
+  public void updatePaymentStatusTest(VertxTestContext vertxTestContext) throws IOException {
+    Invoice invoice = getMockAs(PAID_INVOICE_SAMPLE_PATH, Invoice.class);
+    invoice.setFiscalYearId("0fc631d6-45fb-494d-8b48-321f7a2fccf6");
+    List<InvoiceLine> invoiceLines = List.of(
+      new InvoiceLine().withId("1077f1a2-9c4d-4ff0-9152-adb5646d2107").withPoLineId("f9c7a38d-3f8e-4758-b303-a12d365fbf57"),
+      new InvoiceLine().withId("736a8649-1f7b-45cb-92d9-8aa83a169e9f").withPoLineId("0818c22e-d469-431a-9277-b6849a39e523"),
+      new InvoiceLine().withId("e6666187-e626-432d-87bc-a4bd4b697679").withPoLineId("a36d30c0-6031-4ae8-889b-9408d98b7ee4")
+    );
+
+    setupRestCalls(invoice, false, false);
+    setupPaymentStatusCalls(invoiceLines);
+
+    Future<Void> future = cancelService.cancelInvoice(invoice, invoiceLines, requestContext);
+    vertxTestContext.assertComplete(future)
+      .onSuccess(result -> {
+        verify(restClient, times(2)).put(any(RequestEntry.class), any(CompositePoLine.class),
+          eq(requestContext));
+        vertxTestContext.completeNow();
+      })
+      .onFailure(vertxTestContext::failNow);
   }
 
   private void setupRestCalls(Invoice invoice) throws IOException {
@@ -383,6 +420,78 @@ public class InvoiceCancelServiceTest {
     HttpException ex = new HttpException(500, "Error test");
     doReturn(failedFuture(ex)).when(restClient)
       .postEmptyResponse(eq(endpoint), eq(updateBatch), eq(requestContext));
+  }
+
+  private void setupInvoiceLineQuery(List<InvoiceLine> invoiceLines) {
+    InvoiceLineCollection invoiceLineCollection = new InvoiceLineCollection()
+      .withInvoiceLines(invoiceLines)
+      .withTotalRecords(invoiceLines.size());
+    doReturn(succeededFuture(invoiceLineCollection))
+      .when(restClient).get(any(RequestEntry.class), eq(InvoiceLineCollection.class), eq(requestContext));
+  }
+
+  private void setupInvoiceQuery(List<Invoice> invoices) {
+    InvoiceCollection invoiceCollection = new InvoiceCollection()
+      .withInvoices(invoices)
+      .withTotalRecords(invoices.size());
+    doReturn(succeededFuture(invoiceCollection))
+      .when(restClient).get(any(RequestEntry.class), eq(InvoiceCollection.class), eq(requestContext));
+  }
+
+  private void setupUpdatePoLinesQuery(List<CompositePoLine> expectedPoLines) {
+    expectedPoLines.forEach(expectedPoLine ->
+      doReturn(succeededFuture(null))
+        .when(restClient).put(any(RequestEntry.class), eq(expectedPoLine), eq(requestContext))
+    );
+  }
+
+  private void setupPaymentStatusCalls(List<InvoiceLine> invoiceLines) {
+    List<PoLine> poLines = new ArrayList<>();
+    for (InvoiceLine invoiceLine : invoiceLines) {
+      poLines.add(new PoLine()
+        .withId(invoiceLine.getPoLineId())
+        .withPaymentStatus(FULLY_PAID));
+    }
+    List<Invoice> relatedInvoices = List.of(
+      new Invoice().withId("52a6cd6f-33dc-41ac-8bb3-cf14c8fabd40"),
+      new Invoice().withId("6c39878d-fd46-4083-a287-1a70b4f06828")
+    );
+    List<InvoiceLine> relatedInvoiceLines = List.of(
+      // invoice line linked to a filtered invoice, no invoice line linked to the same po line has releaseEncumbrance=true,
+      // the po line will be set to PARTIALLY_PAID
+      new InvoiceLine()
+        .withId("846ef0f9-1eab-4a4d-8329-9a717994ea72")
+        .withInvoiceId(relatedInvoices.get(0).getId())
+        .withPoLineId(poLines.get(0).getId())
+        .withReleaseEncumbrance(false),
+      // invoice line linked to a filtered invoice, no invoice line linked to the same po line has releaseEncumbrance=true,
+      // the po line will be set to PARTIALLY_PAID
+      new InvoiceLine()
+        .withId("8e2d8bb6-de5b-4ed0-bb10-983e31ec7711")
+        .withInvoiceId(relatedInvoices.get(1).getId())
+        .withPoLineId(poLines.get(0).getId())
+        .withReleaseEncumbrance(false),
+      // invoice line linked to a filtered invoice with releaseEncumbrance=true, the po line will not be changed
+      new InvoiceLine()
+        .withId("c63f293d-077d-4f00-9d5d-a3160da975db")
+        .withInvoiceId(relatedInvoices.get(1).getId())
+        .withPoLineId(poLines.get(1).getId())
+        .withReleaseEncumbrance(true),
+      // invoice line not linked to a filtered invoice, the po line will be set to AWAITING_PAYMENT
+      new InvoiceLine()
+        .withId("f384585f-fc57-4f96-bca4-292e0e080a88")
+        .withInvoiceId("89910180-9828-4408-825d-8f70af3ae14d")
+        .withPoLineId(poLines.get(2).getId())
+        .withReleaseEncumbrance(false)
+    );
+    setupPoLineQuery(poLines);
+    setupInvoiceLineQuery(relatedInvoiceLines);
+    setupInvoiceQuery(relatedInvoices);
+    CompositePoLine expectedPoLine1 = JsonObject.mapFrom(poLines.get(0)).mapTo(CompositePoLine.class)
+        .withPaymentStatus(CompositePoLine.PaymentStatus.PARTIALLY_PAID);
+    CompositePoLine expectedPoLine2 = JsonObject.mapFrom(poLines.get(2)).mapTo(CompositePoLine.class)
+      .withPaymentStatus(CompositePoLine.PaymentStatus.AWAITING_PAYMENT);
+    setupUpdatePoLinesQuery(List.of(expectedPoLine1, expectedPoLine2));
   }
 
   private <T> T getMockAs(String path, Class<T> c) throws IOException {

@@ -67,6 +67,15 @@ public class InvoiceLineService {
     return restClient.get(requestEntry.buildEndpoint(), InvoiceLineCollection.class, requestContext);
   }
 
+  public Future<List<InvoiceLine>> getInvoiceLinesByQuery(String query, RequestContext requestContext) {
+    RequestEntry requestEntry = new RequestEntry(INVOICE_LINES_ENDPOINT)
+      .withQuery(query)
+      .withLimit(Integer.MAX_VALUE)
+      .withOffset(0);
+    return restClient.get(requestEntry, InvoiceLineCollection.class, requestContext)
+      .map(InvoiceLineCollection::getInvoiceLines);
+  }
+
   public Future<List<InvoiceLine>> getInvoiceLinesRelatedForOrder(List<String> orderPoLineIds, String invoiceId, RequestContext requestContext) {
     return getInvoiceLinesByInvoiceId(invoiceId, requestContext)
       .map(invoiceLines -> invoiceLines.getInvoiceLines().stream()
