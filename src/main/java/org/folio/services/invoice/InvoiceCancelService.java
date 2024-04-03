@@ -54,6 +54,7 @@ public class InvoiceCancelService {
     "paymentStatus==(\"Awaiting Payment\" OR \"Partially Paid\" OR \"Fully Paid\" OR \"Ongoing\")";
   private static final String PAYMENT_STATUS_PAID_QUERY = "paymentStatus==(\"Fully Paid\" OR \"Partially Paid\")";
   private static final String OPEN_ORDERS_QUERY = "workflowStatus==\"Open\"";
+  private static final String AND = " AND ";
 
   private static final Logger logger = LogManager.getLogger();
 
@@ -203,7 +204,7 @@ public class InvoiceCancelService {
   }
 
   private String queryToGetPoLinesWithRightPaymentStatusByIds(List<String> poLineIds) {
-    return PO_LINES_WITH_RIGHT_PAYMENT_STATUS_QUERY + " AND " + convertIdsToCqlQuery(poLineIds);
+    return PO_LINES_WITH_RIGHT_PAYMENT_STATUS_QUERY + AND + convertIdsToCqlQuery(poLineIds);
   }
 
   private Future<List<PoLine>> selectPoLinesWithOpenOrders(List<PoLine> poLines, RequestContext requestContext) {
@@ -223,7 +224,7 @@ public class InvoiceCancelService {
   }
 
   private String queryToGetOpenOrdersByIds(List<String> orderIds) {
-    return OPEN_ORDERS_QUERY + " AND " + convertIdsToCqlQuery(orderIds);
+    return OPEN_ORDERS_QUERY + AND + convertIdsToCqlQuery(orderIds);
   }
 
   private Future<Void> unreleaseEncumbrancesForPoLines(List<PoLine> poLines, Invoice invoiceFromStorage,
@@ -292,7 +293,7 @@ public class InvoiceCancelService {
   }
 
   private String queryToGetPoLinesWithFullyOrPartiallyPaidPaymentStatusByIds(List<String> poLineIds) {
-    return PAYMENT_STATUS_PAID_QUERY + " AND " + convertIdsToCqlQuery(poLineIds);
+    return PAYMENT_STATUS_PAID_QUERY + AND + convertIdsToCqlQuery(poLineIds);
   }
 
   private String queryToGetRelatedPaidInvoiceLinesByPoLineIds(String invoiceId, List<String> poLineIds) {
