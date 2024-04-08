@@ -89,8 +89,8 @@ public class VoucherHelper extends AbstractHelper {
   public Future<Void> partialVoucherUpdate(String id, Voucher voucher, RequestContext requestContext) {
     return voucherService.partialVoucherUpdate(id, voucher, requestContext)
       .compose(update -> baseInvoiceService.updateVoucherNumberInInvoice(voucher ,requestContext))
-      .onSuccess(result-> System.out.println("voucher associate with the invoice is changed "))
-      .onFailure(throwable ->  throwable.printStackTrace() );
+      .onSuccess(result -> logger.debug("Voucher associated with the invoice is changed"))
+      .onFailure(Throwable::printStackTrace);
   }
 
   public Future<VoucherCollection> getVouchers(int limit, int offset, String query, RequestContext requestContext) {
