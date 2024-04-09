@@ -90,7 +90,7 @@ public class VoucherHelper extends AbstractHelper {
     return voucherService.partialVoucherUpdate(id, voucher, requestContext)
       .compose(update -> baseInvoiceService.updateVoucherNumberInInvoice(voucher, requestContext))
       .onSuccess(result -> logger.debug("The voucher number on the invoice has been updated"))
-      .onFailure(error -> logger.error("An error occurred {}", error));
+      .onFailure(error -> logger.error("An error occurred", error));
   }
 
   public Future<VoucherCollection> getVouchers(int limit, int offset, String query, RequestContext requestContext) {
