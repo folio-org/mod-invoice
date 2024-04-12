@@ -63,6 +63,7 @@
           ],
           "modulePermissions": [
             "configuration.entries.collection.get",
+            "invoice-storage.invoices.collection.get",
             "invoice-storage.invoices.item.put",
             "invoice-storage.invoices.item.get",
             "invoice-storage.invoice-lines.item.put",
@@ -581,7 +582,7 @@
     },
     {
       "id": "finance.funds",
-      "version": "2.0"
+      "version": "3.0"
     },
     {
       "id": "invoice-storage.invoices",
