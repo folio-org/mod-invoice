@@ -200,7 +200,9 @@ public class BaseInvoiceService implements InvoiceService {
     return getInvoiceById(voucher.getInvoiceId(), requestContext)
       .compose(invoice -> {
         invoice.setVoucherNumber(voucher.getVoucherNumber());
-        return updateInvoice(invoice, requestContext);
+        return updateInvoice(invoice, requestContext)
+          .onSuccess(result -> logger.debug("updateVoucherNumberInInvoice:: VoucherNumber '{}' was set to invoice '{}', voucher.getVoucherNumber, invoice.getId"))
+          .onFailure(error -> logger.error("An error occurred", error));
       });
   }
 }
