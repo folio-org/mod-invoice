@@ -15,6 +15,7 @@ import org.folio.rest.jaxrs.model.SequenceNumber;
 import org.folio.rest.jaxrs.model.Voucher;
 import org.folio.rest.jaxrs.model.VoucherCollection;
 import org.folio.services.VendorRetrieveService;
+import org.folio.services.invoice.BaseInvoiceService;
 import org.folio.services.voucher.VoucherNumberService;
 import org.folio.services.voucher.VoucherService;
 import org.folio.spring.SpringContextUtil;
@@ -33,6 +34,8 @@ public class VoucherHelper extends AbstractHelper {
   private AddressConverter addressConverter;
   @Autowired
   private VoucherNumberService voucherNumberService;
+  @Autowired
+  private BaseInvoiceService baseInvoiceService;
 
   public VoucherHelper(Map<String, String> okapiHeaders, Context ctx) {
     super(okapiHeaders, ctx);
@@ -84,13 +87,15 @@ public class VoucherHelper extends AbstractHelper {
    * @return completable future holding response indicating success or error if failed
    */
   public Future<Void> partialVoucherUpdate(String id, Voucher voucher, RequestContext requestContext) {
-    return voucherService.partialVoucherUpdate(id, voucher, requestContext);
+    return voucherService.partialVoucherUpdate(id, voucher, requestContext)
+      .compose(update -> baseInvoiceService.updateVoucherNumberInInvoice(voucher, requestContext))
+      .onSuccess(result -> logger.debug("The voucher number on the invoice has been updated, voucher id: {}", id))
+      .onFailure(error -> logger.error("An error occurred for updating the voucher with id: {}", id, error));
   }
 
   public Future<VoucherCollection> getVouchers(int limit, int offset, String query, RequestContext requestContext) {
     return voucherService.getVouchers(limit, offset, query, requestContext);
   }
-
 
   public Future<SequenceNumber> getStartValue(RequestContext requestContext) {
     return voucherNumberService.getStartValue(requestContext);

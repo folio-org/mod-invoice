@@ -30,6 +30,7 @@ import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.jaxrs.model.InvoiceCollection;
 import org.folio.rest.jaxrs.model.InvoiceLine;
 import org.folio.rest.jaxrs.model.SequenceNumber;
+import org.folio.rest.jaxrs.model.Voucher;
 import org.folio.services.adjusment.AdjustmentsService;
 import org.folio.services.order.OrderService;
 import org.javamoney.moneta.Money;
@@ -193,5 +194,15 @@ public class BaseInvoiceService implements InvoiceService {
     Double adjustmentsTotal = invoice.getAdjustmentsTotal();
     calculateTotals(invoice, lines);
     return !Objects.equals(adjustmentsTotal, invoice.getAdjustmentsTotal());
+  }
+
+  public Future<Void> updateVoucherNumberInInvoice(Voucher voucher, RequestContext requestContext) {
+    return getInvoiceById(voucher.getInvoiceId(), requestContext)
+      .compose(invoice -> {
+        invoice.setVoucherNumber(voucher.getVoucherNumber());
+        return updateInvoice(invoice, requestContext)
+          .onSuccess(result -> logger.debug("updateVoucherNumberInInvoice:: VoucherNumber '{}' was set to invoice '{}'", voucher.getVoucherNumber(), invoice.getId()))
+          .onFailure(error -> logger.error("An error occurred", error));
+      });
   }
 }
