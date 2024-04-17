@@ -1,5 +1,13 @@
 ## 5.9.0 - Unreleased
 
+## 5.8.2 - Released (Quesnelia R1 2024)
+This release focused on adding ability to search by location and holding in POL  
+[Full Changelog](https://github.com/folio-org/mod-invoice/compare/v5.8.1...v5.8.2)
+
+### Bug Fixes
+* [MODORDERS-1085](https://folio-org.atlassian.net/browse/MODORDERS-1085) - Add ability to search by location and holding in POL
+
+
 ## 5.8.1 - Released (Quesnelia R1 2024)
 The focus of this release was to fix acquisition check behaviour and improve consistency between invoice and encumbrance
 
