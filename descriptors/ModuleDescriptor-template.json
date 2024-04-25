@@ -306,7 +306,9 @@
           "modulePermissions": [
             "voucher-storage.vouchers.item.get",
             "voucher-storage.vouchers.item.put",
-            "finance.exchange-rate.item.get"
+            "finance.exchange-rate.item.get",
+            "invoice-storage.invoices.item.get",
+            "invoice-storage.invoices.item.put"
           ]
         },
         {
