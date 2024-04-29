@@ -1,0 +1,1549 @@
+{
+  "segments": [
+    {
+      "tag": "UNA",
+      "dataElements": [
+        {
+          "components": [
+            {
+              "data": " "
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "UNB",
+      "dataElements": [
+        {
+          "components": [
+            {
+              "data": "UNOA"
+            },
+            {
+              "data": "2"
+            }
+          ]
+        },
+        {
+          "components": [
+            {
+              "data": "1694510H"
+            },
+            {
+              "data": "ZZ"
+            }
+          ]
+        },
+        {
+          "components": [
+            {
+              "data": "361347X"
+            },
+            {
+              "data": "ZZ"
+            }
+          ]
+        },
+        {
+          "components": [
+            {
+              "data": "210122"
+            },
+            {
+              "data": "0601"
+            }
+          ]
+        },
+        {
+          "components": [
+            {
+              "data": "487"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "UNH",
+      "dataElements": [
+        {
+          "components": [
+            {
+              "data": "1162"
+            }
+          ]
+        },
+        {
+          "components": [
+            {
+              "data": "INVOIC"
+            },
+            {
+              "data": "D"
+            },
+            {
+              "data": "96A"
+            },
+            {
+              "data": "UN"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "BGM",
+      "dataElements": [
+        {
+          "components": [
+            {
+              "data": "380"
+            }
+          ]
+        },
+        {
+          "components": [
+            {
+              "data": "737531"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "DTM",
+      "dataElements": [
+        {
+          "components": [
+            {
+              "data": "137"
+            },
+            {
+              "data": "20210121"
+            },
+            {
+              "data": "102"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "CUX",
+      "dataElements": [
+        {
+          "components": [
+            {
+              "data": "2"
+            },
+            {
+              "data": "USD"
+            },
+            {
+              "data": "4"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "LIN",
+      "dataElements": [
+        {
+          "components": [
+            {
+              "data": "1"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "PIA",
+      "dataElements": [
+        {
+          "components": [
+            {
+              "data": "5"
+            }
+          ]
+        },
+        {
+          "components": [
+            {
+              "data": "1350075744"
+            },
+            {
+              "data": "IB"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "PIA",
+      "dataElements": [
+        {
+          "components": [
+            {
+              "data": "1"
+            }
+          ]
+        },
+        {
+          "components": [
+            {
+              "data": "40030289613"
+            },
+            {
+              "data": "SA"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "IMD",
+      "dataElements": [
+        {
+          "components": [
+            {
+              "data": "L"
+            }
+          ]
+        },
+        {
+          "components": [
+            {
+              "data": "050"
+            }
+          ]
+        },
+        {
+          "components": [
+            {
+              "data": ""
+            },
+            {
+              "data": ""
+            },
+            {
+              "data": ""
+            },
+            {
+              "data": "FALLING THROUGH DANCE AND LIFE."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "IMD",
+      "dataElements": [
+        {
+          "components": [
+            {
+              "data": "L"
+            }
+          ]
+        },
+        {
+          "components": [
+            {
+              "data": "010"
+            }
+          ]
+        },
+        {
+          "components": [
+            {
+              "data": ""
+            },
+            {
+              "data": ""
+            },
+            {
+              "data": ""
+            },
+            {
+              "data": "CLAID, EMILYN"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "IMD",
+      "dataElements": [
+        {
+          "components": [
+            {
+              "data": "L"
+            }
+          ]
+        },
+        {
+          "components": [
+            {
+              "data": "110"
+            }
+          ]
+        },
+        {
+          "components": [
+            {
+              "data": ""
+            },
+            {
+              "data": ""
+            },
+            {
+              "data": ""
+            },
+            {
+              "data": "LONDON"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "QTY",
+      "dataElements": [
+        {
+          "components": [
+            {
+              "data": "47"
+            },
+            {
+              "data": "1"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "MOA",
+      "dataElements": [
+        {
+          "components": [
+            {
+              "data": "203"
+            },
+            {
+              "data": "209"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "PRI",
+      "dataElements": [
+        {
+          "components": [
+            {
+              "data": "AAB"
+            },
+            {
+              "data": "209"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "PRI",
+      "dataElements": [
+        {
+          "components": [
+            {
+              "data": "AAA"
+            },
+            {
+              "data": "209"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "RFF",
+      "dataElements": [
+        {
+          "components": [
+            {
+              "data": "ON"
+            },
+            {
+              "data": "US EVANS AP"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "LIN",
+      "dataElements": [
+        {
+          "components": [
+            {
+              "data": "2"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "PIA",
+      "dataElements": [
+        {
+          "components": [
+            {
+              "data": "5"
+            }
+          ]
+        },
+        {
+          "components": [
+            {
+              "data": "9389812410"
+            },
+            {
+              "data": "IB"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "PIA",
+      "dataElements": [
+        {
+          "components": [
+            {
+              "data": "1"
+            }
+          ]
+        },
+        {
+          "components": [
+            {
+              "data": "40030289676"
+            },
+            {
+              "data": "SA"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "IMD",
+      "dataElements": [
+        {
+          "components": [
+            {
+              "data": "L"
+            }
+          ]
+        },
+        {
+          "components": [
+            {
+              "data": "050"
+            }
+          ]
+        },
+        {
+          "components": [
+            {
+              "data": ""
+            },
+            {
+              "data": ""
+            },
+            {
+              "data": ""
+            },
+            {
+              "data": "INDIAN TRAVEL WRITING IN THE AGE OF"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "IMD",
+      "dataElements": [
+        {
+          "components": [
+            {
+              "data": "L"
+            }
+          ]
+        },
+        {
+          "components": [
+            {
+              "data": "050"
+            }
+          ]
+        },
+        {
+          "components": [
+            {
+              "data": ""
+            },
+            {
+              "data": ""
+            },
+            {
+              "data": ""
+            },
+            {
+              "data": "EMPIRE, 1830-1940."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "IMD",
+      "dataElements": [
+        {
+          "components": [
+            {
+              "data": "L"
+            }
+          ]
+        },
+        {
+          "components": [
+            {
+              "data": "010"
+            }
+          ]
+        },
+        {
+          "components": [
+            {
+              "data": ""
+            },
+            {
+              "data": ""
+            },
+            {
+              "data": ""
+            },
+            {
+              "data": "NAYAR, PRAMOD K"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "IMD",
+      "dataElements": [
+        {
+          "components": [
+            {
+              "data": "L"
+            }
+          ]
+        },
+        {
+          "components": [
+            {
+              "data": "110"
+            }
+          ]
+        },
+        {
+          "components": [
+            {
+              "data": ""
+            },
+            {
+              "data": ""
+            },
+            {
+              "data": ""
+            },
+            {
+              "data": "NEW DELHI"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "QTY",
+      "dataElements": [
+        {
+          "components": [
+            {
+              "data": "47"
+            },
+            {
+              "data": "1"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "MOA",
+      "dataElements": [
+        {
+          "components": [
+            {
+              "data": "203"
+            },
+            {
+              "data": "219"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "PRI",
+      "dataElements": [
+        {
+          "components": [
+            {
+              "data": "AAB"
+            },
+            {
+              "data": "219"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "PRI",
+      "dataElements": [
+        {
+          "components": [
+            {
+              "data": "AAA"
+            },
+            {
+              "data": "219"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "RFF",
+      "dataElements": [
+        {
+          "components": [
+            {
+              "data": "ON"
+            },
+            {
+              "data": "US EVANS AP"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "LIN",
+      "dataElements": [
+        {
+          "components": [
+            {
+              "data": "3"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "PIA",
+      "dataElements": [
+        {
+          "components": [
+            {
+              "data": "5"
+            }
+          ]
+        },
+        {
+          "components": [
+            {
+              "data": "1350008257"
+            },
+            {
+              "data": "IB"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "PIA",
+      "dataElements": [
+        {
+          "components": [
+            {
+              "data": "1"
+            }
+          ]
+        },
+        {
+          "components": [
+            {
+              "data": "40030289612"
+            },
+            {
+              "data": "SA"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "IMD",
+      "dataElements": [
+        {
+          "components": [
+            {
+              "data": "L"
+            }
+          ]
+        },
+        {
+          "components": [
+            {
+              "data": "050"
+            }
+          ]
+        },
+        {
+          "components": [
+            {
+              "data": ""
+            },
+            {
+              "data": ""
+            },
+            {
+              "data": ""
+            },
+            {
+              "data": "LAST HUMANITY: THE NEW ECOLOGICAL S"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "IMD",
+      "dataElements": [
+        {
+          "components": [
+            {
+              "data": "L"
+            }
+          ]
+        },
+        {
+          "components": [
+            {
+              "data": "050"
+            }
+          ]
+        },
+        {
+          "components": [
+            {
+              "data": ""
+            },
+            {
+              "data": ""
+            },
+            {
+              "data": ""
+            },
+            {
+              "data": "CIENCE; TRANS. BY ANTHONY PAUL SMIT"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "IMD",
+      "dataElements": [
+        {
+          "components": [
+            {
+              "data": "L"
+            }
+          ]
+        },
+        {
+          "components": [
+            {
+              "data": "050"
+            }
+          ]
+        },
+        {
+          "components": [
+            {
+              "data": ""
+            },
+            {
+              "data": ""
+            },
+            {
+              "data": ""
+            },
+            {
+              "data": "H."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "IMD",
+      "dataElements": [
+        {
+          "components": [
+            {
+              "data": "L"
+            }
+          ]
+        },
+        {
+          "components": [
+            {
+              "data": "010"
+            }
+          ]
+        },
+        {
+          "components": [
+            {
+              "data": ""
+            },
+            {
+              "data": ""
+            },
+            {
+              "data": ""
+            },
+            {
+              "data": "LARUELLE, FRANCOIS"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "IMD",
+      "dataElements": [
+        {
+          "components": [
+            {
+              "data": "L"
+            }
+          ]
+        },
+        {
+          "components": [
+            {
+              "data": "110"
+            }
+          ]
+        },
+        {
+          "components": [
+            {
+              "data": ""
+            },
+            {
+              "data": ""
+            },
+            {
+              "data": ""
+            },
+            {
+              "data": "LONDON"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "QTY",
+      "dataElements": [
+        {
+          "components": [
+            {
+              "data": "47"
+            },
+            {
+              "data": "1"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "MOA",
+      "dataElements": [
+        {
+          "components": [
+            {
+              "data": "203"
+            },
+            {
+              "data": "180.5"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "PRI",
+      "dataElements": [
+        {
+          "components": [
+            {
+              "data": "AAB"
+            },
+            {
+              "data": "180.5"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "PRI",
+      "dataElements": [
+        {
+          "components": [
+            {
+              "data": "AAA"
+            },
+            {
+              "data": "180.5"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "RFF",
+      "dataElements": [
+        {
+          "components": [
+            {
+              "data": "ON"
+            },
+            {
+              "data": "US EVANS AP"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "LIN",
+      "dataElements": [
+        {
+          "components": [
+            {
+              "data": "4"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "PIA",
+      "dataElements": [
+        {
+          "components": [
+            {
+              "data": "5"
+            }
+          ]
+        },
+        {
+          "components": [
+            {
+              "data": "0567696189"
+            },
+            {
+              "data": "IB"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "PIA",
+      "dataElements": [
+        {
+          "components": [
+            {
+              "data": "1"
+            }
+          ]
+        },
+        {
+          "components": [
+            {
+              "data": "40030289575"
+            },
+            {
+              "data": "SA"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "IMD",
+      "dataElements": [
+        {
+          "components": [
+            {
+              "data": "L"
+            }
+          ]
+        },
+        {
+          "components": [
+            {
+              "data": "050"
+            }
+          ]
+        },
+        {
+          "components": [
+            {
+              "data": ""
+            },
+            {
+              "data": ""
+            },
+            {
+              "data": ""
+            },
+            {
+              "data": "SCRIBES AND SCRIBALISM"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "IMD",
+      "dataElements": [
+        {
+          "components": [
+            {
+              "data": "L"
+            }
+          ]
+        },
+        {
+          "components": [
+            {
+              "data": "010"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "IMD",
+      "dataElements": [
+        {
+          "components": [
+            {
+              "data": "L"
+            }
+          ]
+        },
+        {
+          "components": [
+            {
+              "data": "110"
+            }
+          ]
+        },
+        {
+          "components": [
+            {
+              "data": ""
+            },
+            {
+              "data": ""
+            },
+            {
+              "data": ""
+            },
+            {
+              "data": "LONDON"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "QTY",
+      "dataElements": [
+        {
+          "components": [
+            {
+              "data": "47"
+            },
+            {
+              "data": "1"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "MOA",
+      "dataElements": [
+        {
+          "components": [
+            {
+              "data": "203"
+            },
+            {
+              "data": "218.5"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "PRI",
+      "dataElements": [
+        {
+          "components": [
+            {
+              "data": "AAB"
+            },
+            {
+              "data": "218.5"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "PRI",
+      "dataElements": [
+        {
+          "components": [
+            {
+              "data": "AAA"
+            },
+            {
+              "data": "218.5"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "RFF",
+      "dataElements": [
+        {
+          "components": [
+            {
+              "data": "ON"
+            },
+            {
+              "data": "US EVANS AP"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "LIN",
+      "dataElements": [
+        {
+          "components": [
+            {
+              "data": "5"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "PIA",
+      "dataElements": [
+        {
+          "components": [
+            {
+              "data": "5"
+            }
+          ]
+        },
+        {
+          "components": [
+            {
+              "data": "1350101869"
+            },
+            {
+              "data": "IB"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "PIA",
+      "dataElements": [
+        {
+          "components": [
+            {
+              "data": "1"
+            }
+          ]
+        },
+        {
+          "components": [
+            {
+              "data": "40030289614"
+            },
+            {
+              "data": "SA"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "IMD",
+      "dataElements": [
+        {
+          "components": [
+            {
+              "data": "L"
+            }
+          ]
+        },
+        {
+          "components": [
+            {
+              "data": "050"
+            }
+          ]
+        },
+        {
+          "components": [
+            {
+              "data": ""
+            },
+            {
+              "data": ""
+            },
+            {
+              "data": ""
+            },
+            {
+              "data": "STAGING FASHION: THE FASHION SHOW A"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "IMD",
+      "dataElements": [
+        {
+          "components": [
+            {
+              "data": "L"
+            }
+          ]
+        },
+        {
+          "components": [
+            {
+              "data": "050"
+            }
+          ]
+        },
+        {
+          "components": [
+            {
+              "data": ""
+            },
+            {
+              "data": ""
+            },
+            {
+              "data": ""
+            },
+            {
+              "data": "ND ITS SPACES"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "IMD",
+      "dataElements": [
+        {
+          "components": [
+            {
+              "data": "L"
+            }
+          ]
+        },
+        {
+          "components": [
+            {
+              "data": "010"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "IMD",
+      "dataElements": [
+        {
+          "components": [
+            {
+              "data": "L"
+            }
+          ]
+        },
+        {
+          "components": [
+            {
+              "data": "110"
+            }
+          ]
+        },
+        {
+          "components": [
+            {
+              "data": ""
+            },
+            {
+              "data": ""
+            },
+            {
+              "data": ""
+            },
+            {
+              "data": "LONDON"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "QTY",
+      "dataElements": [
+        {
+          "components": [
+            {
+              "data": "47"
+            },
+            {
+              "data": "1"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "MOA",
+      "dataElements": [
+        {
+          "components": [
+            {
+              "data": "203"
+            },
+            {
+              "data": "190"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "PRI",
+      "dataElements": [
+        {
+          "components": [
+            {
+              "data": "AAB"
+            },
+            {
+              "data": "190"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "PRI",
+      "dataElements": [
+        {
+          "components": [
+            {
+              "data": "AAA"
+            },
+            {
+              "data": "190"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "RFF",
+      "dataElements": [
+        {
+          "components": [
+            {
+              "data": "ON"
+            },
+            {
+              "data": "US EVANS AP"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "UNS",
+      "dataElements": [
+        {
+          "components": [
+            {
+              "data": "S"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "CNT",
+      "dataElements": [
+        {
+          "components": [
+            {
+              "data": "1"
+            },
+            {
+              "data": "5"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "CNT",
+      "dataElements": [
+        {
+          "components": [
+            {
+              "data": "2"
+            },
+            {
+              "data": "5"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "MOA",
+      "dataElements": [
+        {
+          "components": [
+            {
+              "data": "86"
+            },
+            {
+              "data": "1017"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "MOA",
+      "dataElements": [
+        {
+          "components": [
+            {
+              "data": "79"
+            },
+            {
+              "data": "1017"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "UNT",
+      "dataElements": [
+        {
+          "components": [
+            {
+              "data": "69"
+            }
+          ]
+        },
+        {
+          "components": [
+            {
+              "data": "1162"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "UNZ",
+      "dataElements": [
+        {
+          "components": [
+            {
+              "data": "1"
+            }
+          ]
+        },
+        {
+          "components": [
+            {
+              "data": "487"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

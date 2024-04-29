@@ -206,6 +206,7 @@ public class MockServer {
   static final String ACQUISITIONS_MEMBERSHIPS_COLLECTION = ACQUISITIONS_UNITS_MOCK_DATA_PATH + "/memberships.json";
   private static final String ORDER_MOCK_DATA_PATH = BASE_MOCK_DATA_PATH + "compositeOrders/";
   public static final String PO_LINES_MOCK_DATA_PATH = BASE_MOCK_DATA_PATH + "poLines/";
+  public static final String EDIFACTS_MOCK_DATA_PATH = BASE_MOCK_DATA_PATH + "edifacts/";
   private static final String ID_PATH_PARAM = "/:" + AbstractHelper.ID;
   private static final String VALUE_PATH_PARAM = "/:value";
   private static final String TOTAL_RECORDS = "totalRecords";

@@ -395,7 +395,7 @@ public class CreateInvoiceEventHandler implements EventHandler {
     InvoiceLineHelper helper = new InvoiceLineHelper(okapiHeaders, Vertx.currentContext());
     return Vertx.currentContext()
       .<List<Future<Pair<InvoiceLine, String>>>>executeBlocking(promise -> {
-        Semaphore semaphore = new Semaphore(maxActiveThreads, Vertx.currentContext().owner());
+        Semaphore semaphore = new Semaphore(maxActiveThreads, true, Vertx.currentContext().owner());
         for (InvoiceLine invoiceLine : invoiceLines) {
           semaphore.acquire(() -> {
             var future = helper.createInvoiceLine(invoiceLine)
