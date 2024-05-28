@@ -4,6 +4,7 @@ import static io.vertx.core.Future.succeededFuture;
 import static java.lang.String.format;
 import static one.util.streamex.StreamEx.ofSubLists;
 import static org.apache.commons.collections4.CollectionUtils.isNotEmpty;
+import static org.apache.commons.lang.StringUtils.isNotEmpty;
 import static org.apache.commons.lang3.StringUtils.isBlank;
 import static org.folio.ActionProfile.Action.CREATE;
 import static org.folio.ActionProfile.FolioRecord.INVOICE;
@@ -44,6 +45,7 @@ import org.folio.MappingProfile;
 import org.folio.ParsedRecord;
 import org.folio.Record;
 import org.folio.dataimport.utils.DataImportUtils;
+import org.folio.dbschema.ObjectMapperTool;
 import org.folio.domain.relationship.RecordToEntity;
 import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.invoices.utils.HelperUtils;
@@ -64,6 +66,7 @@ import org.folio.rest.impl.InvoiceLineHelper;
 import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.jaxrs.model.InvoiceLine;
 import org.folio.rest.jaxrs.model.InvoiceLineCollection;
+import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
 import org.folio.services.invoice.IdStorageService;
 
 public class CreateInvoiceEventHandler implements EventHandler {
@@ -83,6 +86,8 @@ public class CreateInvoiceEventHandler implements EventHandler {
   private static final String INVOICE_LINES_RULE_NAME = "invoiceLines";
   private static final String REFERENCE_NUMBERS_RULE_NAME = "referenceNumbers";
   private static final String REF_NUMBER_RULE_NAME = "refNumber";
+  private static final String FUND_DISTRIBUTIONS_RULE_NAME = "fundDistributions";
+  private static final String FUND_ID_RULE_NAME = "fundId";
   private static final String POL_NUMBER_KEY = "POL_NUMBER_%s";
   private static final String POL_EXPENSE_CLASS_KEY = "POL_EXPENSE_CLASS_%s";
   private static final String POL_FUND_DISTRIBUTIONS_KEY = "POL_FUND_DISTRIBUTIONS_%s";
@@ -93,6 +98,8 @@ public class CreateInvoiceEventHandler implements EventHandler {
   private final RestClient restClient;
   private final IdStorageService idStorageService;
   public static final String UNIQUE_KEY_CONSTRAINT_ERROR = "duplicate key value violates unique constraint";
+  private static final char LEFT_BRACKET = '(';
+  private static final char RIGHT_BRACKET = ')';
 
   public CreateInvoiceEventHandler(RestClient restClient, IdStorageService idStorageService) {
     this.restClient = restClient;
@@ -372,7 +379,38 @@ public class CreateInvoiceEventHandler implements EventHandler {
       .collect(Collectors.toList());
 
     linkInvoiceLinesToPoLines(invoiceLines, associatedPoLines);
+    ensureFundCode(invoiceLines, dataImportEventPayload);
     return invoiceLines;
+  }
+
+  private void ensureFundCode(List<InvoiceLine> invoiceLines, DataImportEventPayload dataImportEventPayload) {
+    Map<String, String> idToFundName = extractFundsData(dataImportEventPayload);
+
+    invoiceLines.stream()
+      .filter(invoiceLine -> isNotEmpty(invoiceLine.getFundDistributions()))
+      .forEach(invoiceLine -> invoiceLine.getFundDistributions().stream()
+        .filter(fundDistribution -> isNotEmpty(fundDistribution.getFundId()))
+        .forEach(fundDistribution -> populateFundCode(fundDistribution, idToFundName)));
+  }
+
+  private Map<String, String> extractFundsData(DataImportEventPayload dataImportEventPayload) {
+    ProfileSnapshotWrapper mappingProfileWrapper = dataImportEventPayload.getCurrentNode();
+    MappingProfile mappingProfile = ObjectMapperTool.getMapper().convertValue(mappingProfileWrapper.getContent(), MappingProfile.class);
+
+    return mappingProfile.getMappingDetails().getMappingFields().stream()
+      .filter(mappingRule -> INVOICE_LINES_RULE_NAME.equals(mappingRule.getName()) && !mappingRule.getSubfields().isEmpty())
+      .flatMap(mappingRule -> mappingRule.getSubfields().get(0).getFields().stream())
+      .filter(mappingRule -> FUND_DISTRIBUTIONS_RULE_NAME.equals(mappingRule.getName()) && !mappingRule.getSubfields().isEmpty())
+      .flatMap(mappingRule -> mappingRule.getSubfields().get(0).getFields().stream())
+      .filter(mappingRule -> FUND_ID_RULE_NAME.equals(mappingRule.getName()))
+      .map(mappingRule -> ((Map<String, String>) mappingRule.getAcceptedValues()))
+      .findAny()
+      .orElse(Collections.emptyMap());
+  }
+
+  private void populateFundCode(org.folio.rest.jaxrs.model.FundDistribution fundDistribution, Map<String, String> idToFundName) {
+    String fundName = idToFundName.get(fundDistribution.getFundId());
+    fundDistribution.setCode(fundName.substring(fundName.lastIndexOf(LEFT_BRACKET) + 1, fundName.lastIndexOf(RIGHT_BRACKET)));
   }
 
   private void linkInvoiceLinesToPoLines(List<InvoiceLine> invoiceLines, Map<Integer, PoLine> associatedPoLines) {
