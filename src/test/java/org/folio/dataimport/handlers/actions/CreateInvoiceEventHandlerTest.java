@@ -203,6 +203,7 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
                 .withName("poLineId")
                 .withValue("RFF+LI[2]; else {POL_NUMBER}"),
               new MappingRule().withPath("invoice.invoiceLines[].fundDistributions[]")
+                .withName("fundDistributions")
                 .withRepeatableFieldAction(MappingRule.RepeatableFieldAction.EXTEND_EXISTING)
                 .withValue("{POL_FUND_DISTRIBUTIONS}"),
               new MappingRule().withPath("invoice.invoiceLines[].subTotal")

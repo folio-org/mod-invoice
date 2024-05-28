@@ -6,6 +6,7 @@ import static one.util.streamex.StreamEx.ofSubLists;
 import static org.apache.commons.collections4.CollectionUtils.isNotEmpty;
 import static org.apache.commons.lang.StringUtils.isNotEmpty;
 import static org.apache.commons.lang3.StringUtils.isBlank;
+import static org.apache.commons.lang3.StringUtils.isEmpty;
 import static org.folio.ActionProfile.Action.CREATE;
 import static org.folio.ActionProfile.FolioRecord.INVOICE;
 import static org.folio.DataImportEventTypes.DI_INVOICE_CREATED;
@@ -386,11 +387,13 @@ public class CreateInvoiceEventHandler implements EventHandler {
   private void ensureFundCode(List<InvoiceLine> invoiceLines, DataImportEventPayload dataImportEventPayload) {
     Map<String, String> idToFundName = extractFundsData(dataImportEventPayload);
 
-    invoiceLines.stream()
-      .filter(invoiceLine -> isNotEmpty(invoiceLine.getFundDistributions()))
-      .forEach(invoiceLine -> invoiceLine.getFundDistributions().stream()
-        .filter(fundDistribution -> isNotEmpty(fundDistribution.getFundId()))
-        .forEach(fundDistribution -> populateFundCode(fundDistribution, idToFundName)));
+    if (!idToFundName.isEmpty()) {
+      invoiceLines.stream()
+        .filter(invoiceLine -> isNotEmpty(invoiceLine.getFundDistributions()))
+        .forEach(invoiceLine -> invoiceLine.getFundDistributions().stream()
+          .filter(fundDistribution -> isNotEmpty(fundDistribution.getFundId()) && isEmpty(fundDistribution.getCode()))
+          .forEach(fundDistribution -> populateFundCode(fundDistribution, idToFundName)));
+    }
   }
 
   private Map<String, String> extractFundsData(DataImportEventPayload dataImportEventPayload) {
