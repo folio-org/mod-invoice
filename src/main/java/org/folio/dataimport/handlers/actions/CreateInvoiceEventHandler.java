@@ -3,6 +3,7 @@ package org.folio.dataimport.handlers.actions;
 import static io.vertx.core.Future.succeededFuture;
 import static java.lang.String.format;
 import static one.util.streamex.StreamEx.ofSubLists;
+import static org.apache.commons.collections4.CollectionUtils.isEmpty;
 import static org.apache.commons.collections4.CollectionUtils.isNotEmpty;
 import static org.apache.commons.lang.StringUtils.isNotEmpty;
 import static org.apache.commons.lang3.StringUtils.isBlank;
@@ -385,8 +386,11 @@ public class CreateInvoiceEventHandler implements EventHandler {
   }
 
   private void ensureFundCode(List<InvoiceLine> invoiceLines, DataImportEventPayload dataImportEventPayload) {
-    Map<String, String> idToFundName = extractFundsData(dataImportEventPayload);
+    if (invoiceLines.stream().allMatch(line -> isEmpty(line.getFundDistributions()))) {
+      return;
+    }
 
+    Map<String, String> idToFundName = extractFundsData(dataImportEventPayload);
     if (!idToFundName.isEmpty()) {
       invoiceLines.stream()
         .filter(invoiceLine -> isNotEmpty(invoiceLine.getFundDistributions()))
