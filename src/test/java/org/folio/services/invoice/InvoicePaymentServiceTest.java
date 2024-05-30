@@ -20,9 +20,9 @@ class InvoicePaymentServiceTest {
     Map<CompositePoLine, CompositePoLine.PaymentStatus> compositePoLinesWithStatus = Map.ofEntries(
         Map.entry(poLine, CompositePoLine.PaymentStatus.FULLY_PAID));
     InvoicePaymentService invoicePaymentService = new InvoicePaymentService();
-    boolean actual = invoicePaymentService.isPaymentStatusUpdateRequired(compositePoLinesWithStatus, poLine);
+    boolean paymentRequired = invoicePaymentService.isPaymentStatusUpdateRequired(compositePoLinesWithStatus, poLine);
 
-    Assertions.assertTrue(actual);
+    Assertions.assertTrue(paymentRequired);
   }
 
   @Test
@@ -33,8 +33,8 @@ class InvoicePaymentServiceTest {
     Map<CompositePoLine, CompositePoLine.PaymentStatus> compositePoLinesWithStatus = Map.ofEntries(
         Map.entry(poLine, CompositePoLine.PaymentStatus.FULLY_PAID));
     InvoicePaymentService invoicePaymentService = new InvoicePaymentService();
-    boolean actual = invoicePaymentService.isPaymentStatusUpdateRequired(compositePoLinesWithStatus, poLine);
+    boolean paymentRequired = invoicePaymentService.isPaymentStatusUpdateRequired(compositePoLinesWithStatus, poLine);
 
-    Assertions.assertFalse(actual);
+    Assertions.assertFalse(paymentRequired);
   }
 }
