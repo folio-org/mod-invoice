@@ -7,6 +7,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.apache.commons.collections4.CollectionUtils;
@@ -43,6 +44,8 @@ public class InvoicePaymentService {
   private CurrentFiscalYearService currentFiscalYearService;
 
   public static final String INVOICE_LINE_MUST_HAVE_FUND = "The invoice line must contain the fund for payment";
+  public static final Set<CompositePoLine.PaymentStatus> ORDER_LINE_PAYMENT_IGNORED_STATUSES =
+      Set.of(CompositePoLine.PaymentStatus.ONGOING, CompositePoLine.PaymentStatus.PAYMENT_NOT_REQUIRED);
 
   /**
    * Handles transition of given invoice to PAID status.
@@ -154,6 +157,6 @@ public class InvoicePaymentService {
   boolean isPaymentStatusUpdateRequired(Map<CompositePoLine, CompositePoLine.PaymentStatus> compositePoLinesWithStatus, CompositePoLine compositePoLine) {
     CompositePoLine.PaymentStatus newPaymentStatus = compositePoLinesWithStatus.get(compositePoLine);
     return (!newPaymentStatus.equals(compositePoLine.getPaymentStatus()) &&
-      !compositePoLine.getPaymentStatus().equals(CompositePoLine.PaymentStatus.ONGOING));
+        !ORDER_LINE_PAYMENT_IGNORED_STATUSES.contains(compositePoLine.getPaymentStatus()));
   }
 }
