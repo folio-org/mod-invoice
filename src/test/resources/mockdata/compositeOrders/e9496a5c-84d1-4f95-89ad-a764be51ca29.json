@@ -1,0 +1,75 @@
+{
+  "id": "e9496a5c-84d1-4f95-89ad-a764be51ca29",
+  "cost": {
+    "currency": "USD",
+    "discountType": "percentage",
+    "listUnitPrice": 1.0,
+    "quantityPhysical": 1,
+    "poLineEstimatedPrice": 1.0
+  },
+  "rush": false,
+  "alerts": [],
+  "claims": [],
+  "source": "User",
+  "details": {
+    "productIds": [],
+    "isAcknowledged": false,
+    "isBinderyActive": false,
+    "subscriptionInterval": 0
+  },
+  "metadata": {
+    "createdDate": "2024-05-30T08:14:09.414Z",
+    "updatedDate": "2024-05-30T08:16:28.131Z",
+    "createdByUserId": "b24259db-dcef-4143-b471-1f7c1cfbda98",
+    "updatedByUserId": "b24259db-dcef-4143-b471-1f7c1cfbda98"
+  },
+  "physical": {
+    "volumes": [],
+    "materialType": "1a54b431-2e4f-452d-9cae-9cee66c9a892",
+    "createInventory": "Instance, Holding, Item",
+    "materialSupplier": "e0fb5df2-cdf1-11e8-a8d5-f2801f1b9fd1"
+  },
+  "isPackage": false,
+  "locations": [
+    {
+      "quantity": 1,
+      "holdingId": "7d5fe25c-2df9-4c35-a09a-0b168511fbe3",
+      "quantityPhysical": 1
+    }
+  ],
+  "collection": false,
+  "instanceId": "008dee13-1a08-4a69-b2b8-49986654047a",
+  "orderFormat": "Physical Resource",
+  "checkinItems": false,
+  "contributors": [],
+  "poLineNumber": "10018-1",
+  "vendorDetail": {
+    "instructions": "",
+    "vendorAccount": "1234",
+    "referenceNumbers": []
+  },
+  "paymentStatus": "Awaiting Payment",
+  "receiptStatus": "Awaiting Receipt",
+  "claimingActive": false,
+  "reportingCodes": [],
+  "titleOrPackage": "Test 8",
+  "automaticExport": false,
+  "purchaseOrderId": "9fe04405-fc1b-4dbc-b1ed-4fa26fb0d667",
+  "claimingInterval": 45,
+  "fundDistribution": [
+    {
+      "code": "AFRICAHIST",
+      "value": 100.0,
+      "fundId": "7fbd5d84-62d1-44c6-9c45-6cb173998bbd",
+      "encumbrance": "592bc75e-1d32-431e-a5cd-db10138952fa",
+      "expenseClassId": "1bcc3247-99bf-4dca-9b0f-7bc51a2998c2",
+      "distributionType": "percentage"
+    }
+  ],
+  "acquisitionMethod": "306489dd-0053-49ee-a068-c316444a8f55",
+  "searchLocationIds": [
+    "fcd64ce1-6995-48f0-840e-89ffa2288371"
+  ],
+  "donorOrganizationIds": [],
+  "cancellationRestriction": true
+}
