@@ -47,7 +47,7 @@ public class InvoicePaymentService {
   private CurrentFiscalYearService currentFiscalYearService;
 
   public static final String INVOICE_LINE_MUST_HAVE_FUND = "The invoice line must contain the fund for payment";
-  public static final Set<CompositePoLine.PaymentStatus> PO_LINE_PAYMENT_IGNORED_STATUSES =
+  protected static final Set<CompositePoLine.PaymentStatus> PO_LINE_PAYMENT_IGNORED_STATUSES =
     EnumSet.of(ONGOING, PAYMENT_NOT_REQUIRED);
 
   /**
