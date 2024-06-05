@@ -51,7 +51,7 @@ import org.folio.services.voucher.VoucherService;
 
 public class InvoiceCancelService {
   private static final String PO_LINES_WITH_RIGHT_PAYMENT_STATUS_QUERY =
-    "paymentStatus==(\"Awaiting Payment\" OR \"Partially Paid\" OR \"Fully Paid\" OR \"Ongoing\")";
+    "paymentStatus==(\"Awaiting Payment\" OR \"Partially Paid\" OR \"Fully Paid\" OR \"Ongoing\" OR \"Payment Not Required\")";
   private static final String PAYMENT_STATUS_PAID_QUERY = "paymentStatus==(\"Fully Paid\" OR \"Partially Paid\")";
   private static final String OPEN_ORDERS_QUERY = "workflowStatus==\"Open\"";
   private static final String AND = " AND ";

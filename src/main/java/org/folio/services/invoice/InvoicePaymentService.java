@@ -2,9 +2,13 @@ package org.folio.services.invoice;
 
 import static java.util.stream.Collectors.toList;
 import static org.folio.invoices.utils.HelperUtils.collectResultsOnSuccess;
+import static org.folio.rest.acq.model.orders.CompositePoLine.PaymentStatus.ONGOING;
+import static org.folio.rest.acq.model.orders.CompositePoLine.PaymentStatus.PAYMENT_NOT_REQUIRED;
 
 import java.util.Collections;
+import java.util.EnumSet;
 import java.util.List;
+import java.util.Set;
 import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
@@ -43,6 +47,8 @@ public class InvoicePaymentService {
   private CurrentFiscalYearService currentFiscalYearService;
 
   public static final String INVOICE_LINE_MUST_HAVE_FUND = "The invoice line must contain the fund for payment";
+  protected static final Set<CompositePoLine.PaymentStatus> PO_LINE_PAYMENT_IGNORED_STATUSES =
+    EnumSet.of(ONGOING, PAYMENT_NOT_REQUIRED);
 
   /**
    * Handles transition of given invoice to PAID status.
@@ -154,6 +160,6 @@ public class InvoicePaymentService {
   boolean isPaymentStatusUpdateRequired(Map<CompositePoLine, CompositePoLine.PaymentStatus> compositePoLinesWithStatus, CompositePoLine compositePoLine) {
     CompositePoLine.PaymentStatus newPaymentStatus = compositePoLinesWithStatus.get(compositePoLine);
     return (!newPaymentStatus.equals(compositePoLine.getPaymentStatus()) &&
-      !compositePoLine.getPaymentStatus().equals(CompositePoLine.PaymentStatus.ONGOING));
+      !PO_LINE_PAYMENT_IGNORED_STATUSES.contains(compositePoLine.getPaymentStatus()));
   }
 }

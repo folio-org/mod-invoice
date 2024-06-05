@@ -1,0 +1,66 @@
+{
+  "id": "443bcf4c-41e9-4a07-8e70-dcc71ca56069",
+  "cost": {
+    "currency": "USD",
+    "discountType": "percentage",
+    "listUnitPrice": 1.0,
+    "quantityPhysical": 1,
+    "poLineEstimatedPrice": 1.0
+  },
+  "rush": false,
+  "alerts": [],
+  "claims": [],
+  "source": "User",
+  "details": {
+    "productIds": [],
+    "isAcknowledged": false,
+    "isBinderyActive": false,
+    "subscriptionInterval": 0
+  },
+  "metadata": {
+    "createdDate": "2024-05-30T08:06:56.589Z",
+    "updatedDate": "2024-05-30T08:07:35.529Z",
+    "createdByUserId": "b24259db-dcef-4143-b471-1f7c1cfbda98",
+    "updatedByUserId": "b24259db-dcef-4143-b471-1f7c1cfbda98"
+  },
+  "physical": {
+    "volumes": [],
+    "materialType": "1a54b431-2e4f-452d-9cae-9cee66c9a892",
+    "createInventory": "Instance, Holding, Item",
+    "materialSupplier": "e0fb5df2-cdf1-11e8-a8d5-f2801f1b9fd1"
+  },
+  "isPackage": false,
+  "locations": [
+    {
+      "quantity": 1,
+      "holdingId": "abacfc6e-42e5-41c5-84d4-9f5733534804",
+      "quantityPhysical": 1
+    }
+  ],
+  "collection": false,
+  "instanceId": "7674a434-4609-4086-b3c7-ed6f40d48b71",
+  "orderFormat": "Physical Resource",
+  "checkinItems": true,
+  "contributors": [],
+  "poLineNumber": "10016-1",
+  "vendorDetail": {
+    "instructions": "",
+    "vendorAccount": "1234",
+    "referenceNumbers": []
+  },
+  "paymentStatus": "Payment Not Required",
+  "receiptStatus": "Awaiting Receipt",
+  "claimingActive": false,
+  "reportingCodes": [],
+  "titleOrPackage": "Test 7",
+  "automaticExport": false,
+  "purchaseOrderId": "65842f8e-b90d-44bb-a233-d750e5757510",
+  "claimingInterval": 45,
+  "fundDistribution": [],
+  "acquisitionMethod": "306489dd-0053-49ee-a068-c316444a8f55",
+  "searchLocationIds": [
+    "fcd64ce1-6995-48f0-840e-89ffa2288371"
+  ],
+  "donorOrganizationIds": [],
+  "cancellationRestriction": true
+}
