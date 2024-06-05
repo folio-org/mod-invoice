@@ -1,8 +1,8 @@
 package org.folio.dataimport.cache;
 
 import static org.folio.rest.impl.MockServer.addMockEntry;
-import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.ACTION_PROFILE;
-import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.JOB_PROFILE;
+import static org.folio.rest.jaxrs.model.ProfileType.ACTION_PROFILE;
+import static org.folio.rest.jaxrs.model.ProfileType.JOB_PROFILE;
 
 import java.util.List;
 import java.util.Map;
