@@ -23,9 +23,10 @@ import static org.folio.rest.impl.MockServer.PO_LINES_MOCK_DATA_PATH;
 import static org.folio.rest.impl.MockServer.addMockEntry;
 import static org.folio.rest.jaxrs.model.EntityType.EDIFACT_INVOICE;
 import static org.folio.rest.jaxrs.model.EntityType.INVOICE;
-import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.ACTION_PROFILE;
-import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.JOB_PROFILE;
-import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.MAPPING_PROFILE;
+import static org.folio.rest.jaxrs.model.FundDistribution.DistributionType.PERCENTAGE;
+import static org.folio.rest.jaxrs.model.ProfileType.ACTION_PROFILE;
+import static org.folio.rest.jaxrs.model.ProfileType.JOB_PROFILE;
+import static org.folio.rest.jaxrs.model.ProfileType.MAPPING_PROFILE;
 import static org.hamcrest.CoreMatchers.hasItem;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasProperty;
@@ -202,6 +203,7 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
                 .withName("poLineId")
                 .withValue("RFF+LI[2]; else {POL_NUMBER}"),
               new MappingRule().withPath("invoice.invoiceLines[].fundDistributions[]")
+                .withName("fundDistributions")
                 .withRepeatableFieldAction(MappingRule.RepeatableFieldAction.EXTEND_EXISTING)
                 .withValue("{POL_FUND_DISTRIBUTIONS}"),
               new MappingRule().withPath("invoice.invoiceLines[].subTotal")
@@ -759,6 +761,99 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
     assertEquals(2, poLine3.getFundDistribution().size());
     assertNotEquals(poLine3.getFundDistribution().get(0).getExpenseClassId(), poLine3.getFundDistribution().get(1).getExpenseClassId());
     assertNull(createdInvoiceLines.getInvoiceLines().get(2).getFundDistributions().get(0).getExpenseClassId());
+  }
+
+  @Test
+  void shouldCreateInvoiceLinesWithFundDistributionsWhenFundDistributionMappingIsSpecified() throws InterruptedException {
+    // given
+    String expectedFundId = "7fbd5d84-62d1-44c6-9c45-6cb173998bbd";
+    String expectedFundCode = "AFRICAHIST";
+    double expectedDistributionValue = 100;
+
+    MappingProfile mappingProfileWithFundDistribution = new MappingProfile()
+      .withId(UUID.randomUUID().toString())
+      .withIncomingRecordType(EDIFACT_INVOICE)
+      .withExistingRecordType(INVOICE)
+      .withMappingDetails(new MappingDetail()
+        .withMappingFields(List.of(
+          new MappingRule().withPath("invoice.vendorInvoiceNo").withValue("BGM+380+[1]").withEnabled("true"),
+          new MappingRule().withPath("invoice.currency").withValue("CUX+2[2]").withEnabled("true"),
+          new MappingRule().withPath("invoice.status").withValue("\"Open\"").withEnabled("true"),
+          new MappingRule().withPath("invoice.invoiceLines[]").withEnabled("true").withName("invoiceLines")
+            .withRepeatableFieldAction(MappingRule.RepeatableFieldAction.EXTEND_EXISTING)
+            .withSubfields(List.of(new RepeatableSubfieldMapping()
+              .withOrder(0)
+              .withPath("invoice.invoiceLines[]")
+              .withFields(List.of(
+                new MappingRule().withPath("invoice.invoiceLines[].subTotal")
+                  .withValue("MOA+203[2]"),
+                new MappingRule().withPath("invoice.invoiceLines[].quantity")
+                  .withValue("QTY+47[2]"),
+                new MappingRule().withPath("invoice.invoiceLines[].fundDistributions[]")
+                  .withName("fundDistributions")
+                  .withRepeatableFieldAction(MappingRule.RepeatableFieldAction.EXTEND_EXISTING)
+                  .withSubfields(List.of(new RepeatableSubfieldMapping()
+                    .withOrder(0)
+                    .withPath("invoice.invoiceLines[].fundDistributions[]")
+                    .withFields(List.of(
+                      new MappingRule().withPath("invoice.invoiceLines[].fundDistributions[].fundId")
+                        .withName("fundId")
+                        .withValue("\"African (History) (AFRICAHIST)\"")
+                        .withAcceptedValues(new HashMap<>(Map.of(expectedFundId, "African (History) (AFRICAHIST)"))),
+                      new MappingRule().withPath("invoice.invoiceLines[].fundDistributions[].value").withValue("\"100\""),
+                      new MappingRule().withPath("invoice.invoiceLines[].fundDistributions[].distributionType")
+                        .withValue("\"percentage\"")
+                    )))))))))));
+
+    Record record = new Record().withParsedRecord(new ParsedRecord().withContent(edifactParsedContent)).withId(RECORD_ID);
+    ProfileSnapshotWrapper profileSnapshotWrapper = buildProfileSnapshotWrapper(jobProfile, actionProfile, mappingProfileWithFundDistribution);
+    addMockEntry(JOB_PROFILE_SNAPSHOTS_MOCK, profileSnapshotWrapper);
+    String testId = UUID.randomUUID().toString();
+
+    HashMap<String, String> payloadContext = new HashMap<>();
+    payloadContext.put(EDIFACT_INVOICE.value(), Json.encode(record));
+    payloadContext.put(JOB_PROFILE_SNAPSHOT_ID_KEY, profileSnapshotWrapper.getId());
+    payloadContext.put("testId", testId);
+
+    DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
+      .withEventType(DI_INCOMING_EDIFACT_RECORD_PARSED.value())
+      .withTenant(DI_POST_INVOICE_LINES_SUCCESS_TENANT)
+      .withOkapiUrl(OKAPI_URL)
+      .withToken(TOKEN)
+      .withContext(payloadContext);
+
+    String topic = KafkaTopicNameHelper.formatTopicName(KAFKA_ENV_VALUE, getDefaultNameSpace(), DI_POST_INVOICE_LINES_SUCCESS_TENANT, dataImportEventPayload.getEventType());
+    Event event = new Event().withEventPayload(Json.encode(dataImportEventPayload));
+    KeyValue<String, String> kafkaRecord = new KeyValue<>("test-key", Json.encode(event));
+    kafkaRecord.addHeader(RECORD_ID_HEADER, record.getId(), UTF_8);
+    SendKeyValues<String, String> request = SendKeyValues.to(topic, Collections.singletonList(kafkaRecord))
+      .useDefaults();
+
+    // when
+    kafkaCluster.send(request);
+
+    // then
+    String topicToObserve = KafkaTopicNameHelper.formatTopicName(KAFKA_ENV_VALUE, getDefaultNameSpace(), DI_POST_INVOICE_LINES_SUCCESS_TENANT, DI_COMPLETED.value());
+
+    List<String> observedValues = observeValuesAndFilterByTestId(testId, topicToObserve, 1);
+
+    Event obtainedEvent = Json.decodeValue(observedValues.get(0), Event.class);
+    DataImportEventPayload eventPayload = Json.decodeValue(obtainedEvent.getEventPayload(), DataImportEventPayload.class);
+    assertEquals(DI_INVOICE_CREATED.value(), eventPayload.getEventsChain().get(eventPayload.getEventsChain().size() -1));
+
+    assertNotNull(eventPayload.getContext().get(INVOICE.value()));
+    assertNotNull(eventPayload.getContext().get(INVOICE_LINES_KEY));
+    InvoiceLineCollection createdInvoiceLines = Json.decodeValue(eventPayload.getContext().get(INVOICE_LINES_KEY), InvoiceLineCollection.class);
+    assertEquals(3, createdInvoiceLines.getTotalRecords());
+    assertEquals(3, createdInvoiceLines.getInvoiceLines().size());
+
+    createdInvoiceLines.getInvoiceLines().forEach(invLine -> {
+      assertEquals(1, invLine.getFundDistributions().size());
+      assertEquals(expectedFundId, invLine.getFundDistributions().get(0).getFundId());
+      assertEquals(expectedFundCode, invLine.getFundDistributions().get(0).getCode());
+      assertEquals(expectedDistributionValue, invLine.getFundDistributions().get(0).getValue());
+      assertEquals(PERCENTAGE, invLine.getFundDistributions().get(0).getDistributionType());
+    });
   }
 
   @Test

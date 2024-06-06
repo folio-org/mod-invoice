@@ -1,5 +1,6 @@
 ## 5.9.0 - Unreleased
 * [MODINVOICE-543](https://folio-org.atlassian.net/browse/MODINVOICE-543) - EDIFACT invoice lines load out of order
+* [MODINVOICE-548](https://folio-org.atlassian.net/browse/MODINVOICE-548) - Provide fund code population when fund distributions mapping is specified
 
 ## 5.8.0 - Released (Quesnelia R1 2024)
 The focus of this release was to fix bugs and make improvement in transaction call and error codes
