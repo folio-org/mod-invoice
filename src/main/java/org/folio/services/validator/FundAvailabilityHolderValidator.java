@@ -79,11 +79,12 @@ public class FundAvailabilityHolderValidator implements HolderValidator {
 
   private boolean isRemainingAmountExceed(Budget budget, MonetaryAmount totalExpendedAmount) {
     // [remaining amount we can expend] = (totalFunding * allowableExpenditure) - expended
-    // where expended = awaitingPayment + expenditure
+    // where expended = awaitingPayment + expenditure - credited
     CurrencyUnit currency = totalExpendedAmount.getCurrency();
     Money totalFundings = Money.of(budget.getTotalFunding(), currency);
     Money expended = Money.of(budget.getAwaitingPayment(), currency)
-      .add(Money.of(budget.getExpenditures(), currency));
+      .add(Money.of(budget.getExpenditures(), currency))
+      .subtract(Money.of(budget.getCredits(), currency));
     BigDecimal allowableExpenditures = BigDecimal.valueOf(budget.getAllowableExpenditure())
       .movePointLeft(2);
     Money totalAmountCanBeExpended = totalFundings.multiply(allowableExpenditures);
