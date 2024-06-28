@@ -76,9 +76,12 @@ public class FundAvailabilityHolderValidator implements HolderValidator {
       .orElseGet(() -> Money.zero(currency));
   }
 
+  /**
+   * Method is following these formulas <br>
+   * afterApproveExpended [remaining amount we can expend] = expended - credited + (totalFunding * allowableExpenditure) <br>
+   * expended = awaitingPayment + expenditure
+   */
   private boolean isRemainingAmountExceed(Budget budget, MonetaryAmount totalExpendedAmount) {
-    // [remaining amount we can expend] = (totalFunding * allowableExpenditure) - expended
-    // where expended = awaitingPayment + expenditure - credited
     CurrencyUnit currency = totalExpendedAmount.getCurrency();
     Money totalFundings = Money.of(budget.getTotalFunding(), currency);
     Money expended = Money.of(budget.getAwaitingPayment(), currency)
