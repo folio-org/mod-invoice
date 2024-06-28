@@ -78,19 +78,23 @@ public class FundAvailabilityHolderValidator implements HolderValidator {
 
   /**
    * Method is following these formulas <br>
-   * afterApproveExpended [remaining amount we can expend] = expended - credited + (totalFunding * allowableExpenditure) <br>
-   * expended = awaitingPayment + expenditure
+   * afterApproveExpended [remaining amount we can expend] = expended - credited + awaitingPayment + additionalAmountToExpend <br>
+   * totalAmountCanBeExpended = totalFunding * allowableExpenditure
+   * @param additionalAmountToExpend additionalAmountToExpend
+   * @return boolean afterApproveExpended > totalAmountCanBeExpended
    */
-  private boolean isRemainingAmountExceed(Budget budget, MonetaryAmount totalExpendedAmount) {
-    CurrencyUnit currency = totalExpendedAmount.getCurrency();
-    Money totalFundings = Money.of(budget.getTotalFunding(), currency);
-    Money expended = Money.of(budget.getAwaitingPayment(), currency)
-      .add(Money.of(budget.getExpenditures(), currency));
+  private boolean isRemainingAmountExceed(Budget budget, MonetaryAmount additionalAmountToExpend) {
+    CurrencyUnit currency = additionalAmountToExpend.getCurrency();
+
+    Money totalFunding = Money.of(budget.getTotalFunding(), currency);
+    Money awaitingPayment = Money.of(budget.getAwaitingPayment(), currency);
+    Money expended = Money.of(budget.getExpenditures(), currency);
     Money credited = Money.of(budget.getCredits(), currency);
-    BigDecimal allowableExpenditures = BigDecimal.valueOf(budget.getAllowableExpenditure())
-      .movePointLeft(2);
-    Money totalAmountCanBeExpended = totalFundings.multiply(allowableExpenditures);
-    Money afterApproveExpended = expended.subtract(credited).add(totalExpendedAmount);
+    BigDecimal allowableExpenditures = BigDecimal.valueOf(budget.getAllowableExpenditure()).movePointLeft(2);
+
+    Money totalAmountCanBeExpended = totalFunding.multiply(allowableExpenditures);
+    Money afterApproveExpended = expended.subtract(credited).add(awaitingPayment).add(additionalAmountToExpend);
+
     return afterApproveExpended.isGreaterThan(totalAmountCanBeExpended);
   }
 
