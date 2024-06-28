@@ -19,6 +19,7 @@ import org.folio.rest.acq.model.finance.Fund;
 import org.folio.rest.acq.model.finance.Ledger;
 import org.folio.rest.acq.model.finance.Transaction;
 import org.folio.rest.jaxrs.model.Error;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
@@ -30,10 +31,16 @@ public class FundAvailabilityHolderValidatorTest {
   @InjectMocks
   private FundAvailabilityHolderValidator fundAvailabilityValidator;
 
+  private AutoCloseable closeable;
 
   @BeforeEach
   public void initMocks() {
-    MockitoAnnotations.openMocks(this);
+    closeable = MockitoAnnotations.openMocks(this);
+  }
+
+  @AfterEach
+  public void releaseMocks() throws Exception {
+    closeable.close();
   }
 
   @Test
@@ -334,7 +341,7 @@ public class FundAvailabilityHolderValidatorTest {
   }
 
   @Test
-  void shouldPassValidationWhenBudgetRestrictedAndFinalExpendedValueGreaterThenMaxBudgetExpended() {
+  void shouldNotPassValidationWhenBudgetRestrictedAndFinalExpendedValueGreaterThenMaxBudgetExpended() {
     String fiscalYearId = UUID.randomUUID().toString();
     String fundId = UUID.randomUUID().toString();
     String budgetId = UUID.randomUUID().toString();
@@ -360,7 +367,8 @@ public class FundAvailabilityHolderValidatorTest {
             .withUnavailable(290d)
             .withEncumbered(250d)
             .withAwaitingPayment(30d)
-            .withExpenditures(10d)
+            .withExpenditures(20d)
+            .withCredits(10d)
             .withAllowableExpenditure(100d)
             .withAllowableExpenditure(110d);
 
@@ -391,6 +399,62 @@ public class FundAvailabilityHolderValidatorTest {
     Error error = httpException.getErrors().getErrors().get(0);
     assertEquals(FUND_CANNOT_BE_PAID.getCode(), error.getCode());
     assertEquals(Collections.singletonList("FC").toString(), error.getParameters().get(0).getValue());
+  }
+
+  @Test
+  void shouldPassValidationWhenBudgetRestrictedAndFinalExpendedValueLessThenMaxBudgetExpended() {
+    String fiscalYearId = UUID.randomUUID().toString();
+    String fundId = UUID.randomUUID().toString();
+    String budgetId = UUID.randomUUID().toString();
+    String ledgerId = UUID.randomUUID().toString();
+
+    FiscalYear fiscalYear = new FiscalYear()
+      .withCurrency("USD")
+      .withId(fiscalYearId);
+    Fund fund = new Fund()
+      .withId(fundId)
+      .withName("TestFund")
+      .withLedgerId(ledgerId)
+      .withCode("FC")
+      .withFundStatus(Fund.FundStatus.ACTIVE);
+
+    Budget budget = new Budget()
+      .withId(budgetId)
+      .withFiscalYearId(fiscalYearId)
+      .withFundId(fundId)
+      .withAllocated(260d)
+      .withTotalFunding(260d)
+      .withAvailable(0d)
+      .withUnavailable(290d)
+      .withEncumbered(250d)
+      .withAwaitingPayment(30d)
+      .withExpenditures(10d)
+      .withCredits(10d)
+      .withAllowableExpenditure(100d)
+      .withAllowableExpenditure(110d);
+
+    List<InvoiceWorkflowDataHolder> holders = new ArrayList<>();
+
+    Transaction encumbrance = new Transaction()
+      .withId(UUID.randomUUID().toString())
+      .withAmount(250d)
+      .withCurrency("USD");
+
+    Transaction linePendingPayment = new Transaction().withAmount(247d)
+      .withAwaitingPayment(new AwaitingPayment().withEncumbranceId(encumbrance.getId()).withReleaseEncumbrance(false))
+      .withCurrency("USD");
+
+    InvoiceWorkflowDataHolder holder = new InvoiceWorkflowDataHolder()
+      .withFund(fund)
+      .withBudget(budget)
+      .withRestrictExpenditures(true)
+      .withFiscalYear(fiscalYear)
+      .withNewTransaction(linePendingPayment)
+      .withEncumbrance(encumbrance);
+
+
+    holders.add(holder);
+    assertDoesNotThrow(()-> fundAvailabilityValidator.validate(holders));
   }
 
   @Test

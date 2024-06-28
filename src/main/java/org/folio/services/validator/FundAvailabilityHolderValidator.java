@@ -1,7 +1,6 @@
 package org.folio.services.validator;
 
 import static java.util.stream.Collectors.groupingBy;
-import static java.util.stream.Collectors.toList;
 import static org.folio.invoices.utils.ErrorCodes.FUND_CANNOT_BE_PAID;
 import static org.folio.invoices.utils.ResourcePathResolver.FUNDS;
 
@@ -48,12 +47,12 @@ public class FundAvailabilityHolderValidator implements HolderValidator {
       })
       .map(Map.Entry::getKey)
       .map(Budget::getFundId)
-      .collect(toList());
+      .toList();
 
     if (!failedBudgetIds.isEmpty()) {
       Parameter parameter = new Parameter().withKey(FUNDS)
         .withValue(failedBudgetIds.stream().map(fundHoldersMap::get)
-        .collect(toList()).toString());
+        .toList().toString());
       throw new HttpException(422, FUND_CANNOT_BE_PAID.toError()
         .withParameters(Collections.singletonList(parameter)));
     }
@@ -83,12 +82,12 @@ public class FundAvailabilityHolderValidator implements HolderValidator {
     CurrencyUnit currency = totalExpendedAmount.getCurrency();
     Money totalFundings = Money.of(budget.getTotalFunding(), currency);
     Money expended = Money.of(budget.getAwaitingPayment(), currency)
-      .add(Money.of(budget.getExpenditures(), currency))
-      .subtract(Money.of(budget.getCredits(), currency));
+      .add(Money.of(budget.getExpenditures(), currency));
+    Money credited = Money.of(budget.getCredits(), currency);
     BigDecimal allowableExpenditures = BigDecimal.valueOf(budget.getAllowableExpenditure())
       .movePointLeft(2);
     Money totalAmountCanBeExpended = totalFundings.multiply(allowableExpenditures);
-    Money afterApproveExpended = expended.add(totalExpendedAmount);
+    Money afterApproveExpended = expended.subtract(credited).add(totalExpendedAmount);
     return afterApproveExpended.isGreaterThan(totalAmountCanBeExpended);
   }
 
