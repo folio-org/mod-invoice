@@ -23,9 +23,10 @@ import static org.folio.rest.impl.MockServer.PO_LINES_MOCK_DATA_PATH;
 import static org.folio.rest.impl.MockServer.addMockEntry;
 import static org.folio.rest.jaxrs.model.EntityType.EDIFACT_INVOICE;
 import static org.folio.rest.jaxrs.model.EntityType.INVOICE;
-import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.ACTION_PROFILE;
-import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.JOB_PROFILE;
-import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.MAPPING_PROFILE;
+import static org.folio.rest.jaxrs.model.FundDistribution.DistributionType.PERCENTAGE;
+import static org.folio.rest.jaxrs.model.ProfileType.ACTION_PROFILE;
+import static org.folio.rest.jaxrs.model.ProfileType.JOB_PROFILE;
+import static org.folio.rest.jaxrs.model.ProfileType.MAPPING_PROFILE;
 import static org.hamcrest.CoreMatchers.hasItem;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasProperty;
@@ -59,8 +60,9 @@ import java.util.concurrent.TimeUnit;
 import lombok.SneakyThrows;
 import net.mguenther.kafka.junit.KeyValue;
 import net.mguenther.kafka.junit.ObserveKeyValues;
+import net.mguenther.kafka.junit.ReadKeyValues;
 import net.mguenther.kafka.junit.SendKeyValues;
-import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.commons.collections4.CollectionUtils;
 import org.folio.ActionProfile;
 import org.folio.ApiTestSuite;
 import org.folio.DataImportEventPayload;
@@ -201,6 +203,7 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
                 .withName("poLineId")
                 .withValue("RFF+LI[2]; else {POL_NUMBER}"),
               new MappingRule().withPath("invoice.invoiceLines[].fundDistributions[]")
+                .withName("fundDistributions")
                 .withRepeatableFieldAction(MappingRule.RepeatableFieldAction.EXTEND_EXISTING)
                 .withValue("{POL_FUND_DISTRIBUTIONS}"),
               new MappingRule().withPath("invoice.invoiceLines[].subTotal")
@@ -276,10 +279,12 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
     Record record = new Record().withParsedRecord(new ParsedRecord().withContent(edifactParsedContent)).withId(RECORD_ID);
     ProfileSnapshotWrapper profileSnapshotWrapper = buildProfileSnapshotWrapper(jobProfile, actionProfile, mappingProfile);
     addMockEntry(JOB_PROFILE_SNAPSHOTS_MOCK, profileSnapshotWrapper);
+    String testId = UUID.randomUUID().toString();
 
     HashMap<String, String> payloadContext = new HashMap<>();
     payloadContext.put(EDIFACT_INVOICE.value(), Json.encode(record));
     payloadContext.put(JOB_PROFILE_SNAPSHOT_ID_KEY, profileSnapshotWrapper.getId());
+    payloadContext.put("testId", testId);
 
     DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
       .withEventType(DI_INCOMING_EDIFACT_RECORD_PARSED.value())
@@ -301,13 +306,9 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
     // then
     String topicToObserve = KafkaTopicNameHelper.formatTopicName(KAFKA_ENV_VALUE, getDefaultNameSpace(), DI_POST_INVOICE_LINES_SUCCESS_TENANT, DI_COMPLETED.value());
 
-    List<KeyValue<String, String>> observedRecords = kafkaCluster.observe(ObserveKeyValues.on(topicToObserve, 1)
-      .with(ConsumerConfig.GROUP_ID_CONFIG, GROUP_ID)
-      .observeFor(40, TimeUnit.SECONDS)
-      .build());
+    List<String> observedValues = observeValuesAndFilterByTestId(testId, topicToObserve, 1);
 
-    assertEquals(record.getId(), new String(observedRecords.get(0).getHeaders().lastHeader(RECORD_ID_HEADER).value(), UTF_8));
-    Event obtainedEvent = Json.decodeValue(observedRecords.get(0).getValue(), Event.class);
+    Event obtainedEvent = Json.decodeValue(observedValues.get(0), Event.class);
     DataImportEventPayload eventPayload = Json.decodeValue(obtainedEvent.getEventPayload(), DataImportEventPayload.class);
     assertEquals(DI_INVOICE_CREATED.value(), eventPayload.getEventsChain().get(eventPayload.getEventsChain().size() -1));
 
@@ -343,10 +344,12 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
     Record record = new Record().withParsedRecord(new ParsedRecord().withContent(edifactParsedContent)).withId(RECORD_ID);
     ProfileSnapshotWrapper profileSnapshotWrapper = buildProfileSnapshotWrapper(jobProfile, actionProfile, mappingProfile);
     addMockEntry(JOB_PROFILE_SNAPSHOTS_MOCK, profileSnapshotWrapper);
+    String testId = UUID.randomUUID().toString();
 
     HashMap<String, String> payloadContext = new HashMap<>();
     payloadContext.put(EDIFACT_INVOICE.value(), Json.encode(record));
     payloadContext.put(JOB_PROFILE_SNAPSHOT_ID_KEY, profileSnapshotWrapper.getId());
+    payloadContext.put("testId", testId);
 
     DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
       .withEventType(DI_INCOMING_EDIFACT_RECORD_PARSED.value())
@@ -368,10 +371,7 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
 
     // then
     String topicToObserve = KafkaTopicNameHelper.formatTopicName(KAFKA_ENV_VALUE, getDefaultNameSpace(), DI_POST_INVOICE_LINES_SUCCESS_TENANT, DI_ERROR.value());
-    List<String> observedValues = kafkaCluster.observeValues(ObserveKeyValues.on(topicToObserve, 1)
-      .with(ConsumerConfig.GROUP_ID_CONFIG, GROUP_ID)
-      .observeFor(30, TimeUnit.SECONDS)
-      .build());
+    List<String> observedValues = observeValuesAndFilterByTestId(testId, topicToObserve, 1);
 
     Event publishedEvent = Json.decodeValue(observedValues.get(0), Event.class);
     DataImportEventPayload eventPayload = Json.decodeValue(publishedEvent.getEventPayload(), DataImportEventPayload.class);
@@ -388,12 +388,14 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
     Record record = new Record().withParsedRecord(new ParsedRecord().withContent(parsedEdifact)).withId(RECORD_ID);
     ProfileSnapshotWrapper profileSnapshotWrapper = buildProfileSnapshotWrapper(jobProfile, actionProfile, mappingProfileWithPoLineSyntax);
     addMockEntry(JOB_PROFILE_SNAPSHOTS_MOCK, profileSnapshotWrapper);
+    String testId = UUID.randomUUID().toString();
 
     HashMap<String, String> payloadContext = new HashMap<>();
     payloadContext.put(EDIFACT_INVOICE.value(), Json.encode(record));
     payloadContext.put(JOB_PROFILE_SNAPSHOT_ID_KEY, profileSnapshotWrapper.getId());
     payloadContext.put(DATA_IMPORT_PAYLOAD_OKAPI_PERMISSIONS, Json.encode(Collections.singletonList(AcqDesiredPermissions.ASSIGN.getPermission())));
     payloadContext.put(DATA_IMPORT_PAYLOAD_OKAPI_USER_ID, USER_ID);
+    payloadContext.put("testId", testId);
 
     DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
       .withEventType(DI_INCOMING_EDIFACT_RECORD_PARSED.value())
@@ -414,10 +416,7 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
 
     // then
     String topicToObserve = KafkaTopicNameHelper.formatTopicName(KAFKA_ENV_VALUE, getDefaultNameSpace(), DI_POST_INVOICE_LINES_SUCCESS_TENANT, DI_COMPLETED.value());
-    List<String> observedValues  = kafkaCluster.observeValues(ObserveKeyValues.on(topicToObserve, 1)
-      .with(ConsumerConfig.GROUP_ID_CONFIG, GROUP_ID)
-      .observeFor(30, TimeUnit.SECONDS)
-      .build());
+    List<String> observedValues = observeValuesAndFilterByTestId(testId, topicToObserve, 1);
 
     Event obtainedEvent = Json.decodeValue(observedValues.get(0), Event.class);
     DataImportEventPayload eventPayload = Json.decodeValue(obtainedEvent.getEventPayload(), DataImportEventPayload.class);
@@ -449,12 +448,14 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
     Record record = new Record().withParsedRecord(new ParsedRecord().withContent(edifactParsedContent)).withId(RECORD_ID);
     ProfileSnapshotWrapper profileSnapshotWrapper = buildProfileSnapshotWrapper(jobProfile, actionProfile, mappingProfileWithPoLineSyntax);
     addMockEntry(JOB_PROFILE_SNAPSHOTS_MOCK, profileSnapshotWrapper);
+    String testId = UUID.randomUUID().toString();
 
     HashMap<String, String> payloadContext = new HashMap<>();
     payloadContext.put(EDIFACT_INVOICE.value(), Json.encode(record));
     payloadContext.put(JOB_PROFILE_SNAPSHOT_ID_KEY, profileSnapshotWrapper.getId());
     payloadContext.put(DATA_IMPORT_PAYLOAD_OKAPI_PERMISSIONS, Json.encode(Collections.singletonList(AcqDesiredPermissions.ASSIGN.getPermission())));
     payloadContext.put(DATA_IMPORT_PAYLOAD_OKAPI_USER_ID, USER_ID);
+    payloadContext.put("testId", testId);
 
     DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
       .withEventType(DI_INCOMING_EDIFACT_RECORD_PARSED.value())
@@ -475,10 +476,7 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
 
     // then
     String topicToObserve = KafkaTopicNameHelper.formatTopicName(KAFKA_ENV_VALUE, getDefaultNameSpace(), DI_POST_INVOICE_LINES_SUCCESS_TENANT, DI_COMPLETED.value());
-    List<String> observedValues  = kafkaCluster.observeValues(ObserveKeyValues.on(topicToObserve, 1)
-      .with(ConsumerConfig.GROUP_ID_CONFIG, GROUP_ID)
-      .observeFor(30, TimeUnit.SECONDS)
-      .build());
+    List<String> observedValues = observeValuesAndFilterByTestId(testId, topicToObserve, 1);
 
     Event obtainedEvent = Json.decodeValue(observedValues.get(0), Event.class);
     DataImportEventPayload eventPayload = Json.decodeValue(obtainedEvent.getEventPayload(), DataImportEventPayload.class);
@@ -515,11 +513,13 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
 
     ProfileSnapshotWrapper profileSnapshotWrapper = buildProfileSnapshotWrapper(jobProfile, actionProfile, mappingProfileWithPoLineSyntax);
     addMockEntry(JOB_PROFILE_SNAPSHOTS_MOCK, profileSnapshotWrapper);
+    String testId = UUID.randomUUID().toString();
 
     Record record = new Record().withParsedRecord(new ParsedRecord().withContent(edifactParsedContent)).withId(RECORD_ID);
     HashMap<String, String> payloadContext = new HashMap<>();
     payloadContext.put(EDIFACT_INVOICE.value(), Json.encode(record));
     payloadContext.put(JOB_PROFILE_SNAPSHOT_ID_KEY, profileSnapshotWrapper.getId());
+    payloadContext.put("testId", testId);
 
     DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
       .withEventType(DI_INCOMING_EDIFACT_RECORD_PARSED.value())
@@ -540,10 +540,7 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
 
     // then
     String topicToObserve = KafkaTopicNameHelper.formatTopicName(KAFKA_ENV_VALUE, getDefaultNameSpace(), DI_POST_INVOICE_LINES_SUCCESS_TENANT, DI_COMPLETED.value());
-    List<String> observedValues  = kafkaCluster.observeValues(ObserveKeyValues.on(topicToObserve, 1)
-      .with(ConsumerConfig.GROUP_ID_CONFIG, GROUP_ID)
-      .observeFor(30, TimeUnit.SECONDS)
-      .build());
+    List<String> observedValues = observeValuesAndFilterByTestId(testId, topicToObserve, 1);
 
     Event obtainedEvent = Json.decodeValue(observedValues.get(0), Event.class);
     DataImportEventPayload eventPayload = Json.decodeValue(obtainedEvent.getEventPayload(), DataImportEventPayload.class);
@@ -588,11 +585,13 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
 
     ProfileSnapshotWrapper profileSnapshotWrapper = buildProfileSnapshotWrapper(jobProfile, actionProfile, mappingProfileWithPoLineFundDistribution);
     addMockEntry(JOB_PROFILE_SNAPSHOTS_MOCK, profileSnapshotWrapper);
+    String testId = UUID.randomUUID().toString();
 
     Record record = new Record().withParsedRecord(new ParsedRecord().withContent(edifactParsedContent)).withId(RECORD_ID);
     HashMap<String, String> payloadContext = new HashMap<>();
     payloadContext.put(EDIFACT_INVOICE.value(), Json.encode(record));
     payloadContext.put(JOB_PROFILE_SNAPSHOT_ID_KEY, profileSnapshotWrapper.getId());
+    payloadContext.put("testId", testId);
 
     DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
       .withEventType(DI_INCOMING_EDIFACT_RECORD_PARSED.value())
@@ -613,10 +612,7 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
 
     // then
     String topicToObserve = KafkaTopicNameHelper.formatTopicName(KAFKA_ENV_VALUE, getDefaultNameSpace(), DI_POST_INVOICE_LINES_SUCCESS_TENANT, DI_COMPLETED.value());
-    List<String> observedValues  = kafkaCluster.observeValues(ObserveKeyValues.on(topicToObserve, 1)
-      .with(ConsumerConfig.GROUP_ID_CONFIG, GROUP_ID)
-      .observeFor(30, TimeUnit.SECONDS)
-      .build());
+    List<String> observedValues = observeValuesAndFilterByTestId(testId, topicToObserve, 1);
 
     Event obtainedEvent = Json.decodeValue(observedValues.get(0), Event.class);
     DataImportEventPayload eventPayload = Json.decodeValue(obtainedEvent.getEventPayload(), DataImportEventPayload.class);
@@ -653,11 +649,13 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
 
     ProfileSnapshotWrapper profileSnapshotWrapper = buildProfileSnapshotWrapper(jobProfile, actionProfile, mappingProfileWithPoLineSyntax);
     addMockEntry(JOB_PROFILE_SNAPSHOTS_MOCK, profileSnapshotWrapper);
+    String testId = UUID.randomUUID().toString();
 
     Record record = new Record().withParsedRecord(new ParsedRecord().withContent(edifactParsedContent)).withId(RECORD_ID);
     HashMap<String, String> payloadContext = new HashMap<>();
     payloadContext.put(EDIFACT_INVOICE.value(), Json.encode(record));
     payloadContext.put(JOB_PROFILE_SNAPSHOT_ID_KEY, profileSnapshotWrapper.getId());
+    payloadContext.put("testId", testId);
 
     DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
       .withEventType(DI_INCOMING_EDIFACT_RECORD_PARSED.value())
@@ -678,10 +676,7 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
 
     // then
     String topicToObserve = KafkaTopicNameHelper.formatTopicName(KAFKA_ENV_VALUE, getDefaultNameSpace(), DI_POST_INVOICE_LINES_SUCCESS_TENANT, DI_COMPLETED.value());
-    List<String> observedValues  = kafkaCluster.observeValues(ObserveKeyValues.on(topicToObserve, 1)
-      .with(ConsumerConfig.GROUP_ID_CONFIG, GROUP_ID)
-      .observeFor(30, TimeUnit.SECONDS)
-      .build());
+    List<String> observedValues = observeValuesAndFilterByTestId(testId, topicToObserve, 1);
 
     Event obtainedEvent = Json.decodeValue(observedValues.get(0), Event.class);
     DataImportEventPayload eventPayload = Json.decodeValue(obtainedEvent.getEventPayload(), DataImportEventPayload.class);
@@ -713,11 +708,13 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
 
     ProfileSnapshotWrapper profileSnapshotWrapper = buildProfileSnapshotWrapper(jobProfile, actionProfile, mappingProfileWithMixedFundDistributionMapping);
     addMockEntry(JOB_PROFILE_SNAPSHOTS_MOCK, profileSnapshotWrapper);
+    String testId = UUID.randomUUID().toString();
 
     Record record = new Record().withParsedRecord(new ParsedRecord().withContent(edifactParsedContent)).withId(RECORD_ID);
     HashMap<String, String> payloadContext = new HashMap<>();
     payloadContext.put(EDIFACT_INVOICE.value(), Json.encode(record));
     payloadContext.put(JOB_PROFILE_SNAPSHOT_ID_KEY, profileSnapshotWrapper.getId());
+    payloadContext.put("testId", testId);
 
     DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
       .withEventType(DI_INCOMING_EDIFACT_RECORD_PARSED.value())
@@ -738,10 +735,7 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
 
     // then
     String topicToObserve = KafkaTopicNameHelper.formatTopicName(KAFKA_ENV_VALUE, getDefaultNameSpace(), DI_POST_INVOICE_LINES_SUCCESS_TENANT, DI_COMPLETED.value());
-    List<String> observedValues  = kafkaCluster.observeValues(ObserveKeyValues.on(topicToObserve, 1)
-      .with(ConsumerConfig.GROUP_ID_CONFIG, GROUP_ID)
-      .observeFor(30, TimeUnit.SECONDS)
-      .build());
+    List<String> observedValues = observeValuesAndFilterByTestId(testId, topicToObserve, 1);
 
     Event obtainedEvent = Json.decodeValue(observedValues.get(0), Event.class);
     DataImportEventPayload eventPayload = Json.decodeValue(obtainedEvent.getEventPayload(), DataImportEventPayload.class);
@@ -770,19 +764,114 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
   }
 
   @Test
+  void shouldCreateInvoiceLinesWithFundDistributionsWhenFundDistributionMappingIsSpecified() throws InterruptedException {
+    // given
+    String expectedFundId = "7fbd5d84-62d1-44c6-9c45-6cb173998bbd";
+    String expectedFundCode = "AFRICAHIST";
+    double expectedDistributionValue = 100;
+
+    MappingProfile mappingProfileWithFundDistribution = new MappingProfile()
+      .withId(UUID.randomUUID().toString())
+      .withIncomingRecordType(EDIFACT_INVOICE)
+      .withExistingRecordType(INVOICE)
+      .withMappingDetails(new MappingDetail()
+        .withMappingFields(List.of(
+          new MappingRule().withPath("invoice.vendorInvoiceNo").withValue("BGM+380+[1]").withEnabled("true"),
+          new MappingRule().withPath("invoice.currency").withValue("CUX+2[2]").withEnabled("true"),
+          new MappingRule().withPath("invoice.status").withValue("\"Open\"").withEnabled("true"),
+          new MappingRule().withPath("invoice.invoiceLines[]").withEnabled("true").withName("invoiceLines")
+            .withRepeatableFieldAction(MappingRule.RepeatableFieldAction.EXTEND_EXISTING)
+            .withSubfields(List.of(new RepeatableSubfieldMapping()
+              .withOrder(0)
+              .withPath("invoice.invoiceLines[]")
+              .withFields(List.of(
+                new MappingRule().withPath("invoice.invoiceLines[].subTotal")
+                  .withValue("MOA+203[2]"),
+                new MappingRule().withPath("invoice.invoiceLines[].quantity")
+                  .withValue("QTY+47[2]"),
+                new MappingRule().withPath("invoice.invoiceLines[].fundDistributions[]")
+                  .withName("fundDistributions")
+                  .withRepeatableFieldAction(MappingRule.RepeatableFieldAction.EXTEND_EXISTING)
+                  .withSubfields(List.of(new RepeatableSubfieldMapping()
+                    .withOrder(0)
+                    .withPath("invoice.invoiceLines[].fundDistributions[]")
+                    .withFields(List.of(
+                      new MappingRule().withPath("invoice.invoiceLines[].fundDistributions[].fundId")
+                        .withName("fundId")
+                        .withValue("\"African (History) (AFRICAHIST)\"")
+                        .withAcceptedValues(new HashMap<>(Map.of(expectedFundId, "African (History) (AFRICAHIST)"))),
+                      new MappingRule().withPath("invoice.invoiceLines[].fundDistributions[].value").withValue("\"100\""),
+                      new MappingRule().withPath("invoice.invoiceLines[].fundDistributions[].distributionType")
+                        .withValue("\"percentage\"")
+                    )))))))))));
+
+    Record record = new Record().withParsedRecord(new ParsedRecord().withContent(edifactParsedContent)).withId(RECORD_ID);
+    ProfileSnapshotWrapper profileSnapshotWrapper = buildProfileSnapshotWrapper(jobProfile, actionProfile, mappingProfileWithFundDistribution);
+    addMockEntry(JOB_PROFILE_SNAPSHOTS_MOCK, profileSnapshotWrapper);
+    String testId = UUID.randomUUID().toString();
+
+    HashMap<String, String> payloadContext = new HashMap<>();
+    payloadContext.put(EDIFACT_INVOICE.value(), Json.encode(record));
+    payloadContext.put(JOB_PROFILE_SNAPSHOT_ID_KEY, profileSnapshotWrapper.getId());
+    payloadContext.put("testId", testId);
+
+    DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
+      .withEventType(DI_INCOMING_EDIFACT_RECORD_PARSED.value())
+      .withTenant(DI_POST_INVOICE_LINES_SUCCESS_TENANT)
+      .withOkapiUrl(OKAPI_URL)
+      .withToken(TOKEN)
+      .withContext(payloadContext);
+
+    String topic = KafkaTopicNameHelper.formatTopicName(KAFKA_ENV_VALUE, getDefaultNameSpace(), DI_POST_INVOICE_LINES_SUCCESS_TENANT, dataImportEventPayload.getEventType());
+    Event event = new Event().withEventPayload(Json.encode(dataImportEventPayload));
+    KeyValue<String, String> kafkaRecord = new KeyValue<>("test-key", Json.encode(event));
+    kafkaRecord.addHeader(RECORD_ID_HEADER, record.getId(), UTF_8);
+    SendKeyValues<String, String> request = SendKeyValues.to(topic, Collections.singletonList(kafkaRecord))
+      .useDefaults();
+
+    // when
+    kafkaCluster.send(request);
+
+    // then
+    String topicToObserve = KafkaTopicNameHelper.formatTopicName(KAFKA_ENV_VALUE, getDefaultNameSpace(), DI_POST_INVOICE_LINES_SUCCESS_TENANT, DI_COMPLETED.value());
+
+    List<String> observedValues = observeValuesAndFilterByTestId(testId, topicToObserve, 1);
+
+    Event obtainedEvent = Json.decodeValue(observedValues.get(0), Event.class);
+    DataImportEventPayload eventPayload = Json.decodeValue(obtainedEvent.getEventPayload(), DataImportEventPayload.class);
+    assertEquals(DI_INVOICE_CREATED.value(), eventPayload.getEventsChain().get(eventPayload.getEventsChain().size() -1));
+
+    assertNotNull(eventPayload.getContext().get(INVOICE.value()));
+    assertNotNull(eventPayload.getContext().get(INVOICE_LINES_KEY));
+    InvoiceLineCollection createdInvoiceLines = Json.decodeValue(eventPayload.getContext().get(INVOICE_LINES_KEY), InvoiceLineCollection.class);
+    assertEquals(3, createdInvoiceLines.getTotalRecords());
+    assertEquals(3, createdInvoiceLines.getInvoiceLines().size());
+
+    createdInvoiceLines.getInvoiceLines().forEach(invLine -> {
+      assertEquals(1, invLine.getFundDistributions().size());
+      assertEquals(expectedFundId, invLine.getFundDistributions().get(0).getFundId());
+      assertEquals(expectedFundCode, invLine.getFundDistributions().get(0).getCode());
+      assertEquals(expectedDistributionValue, invLine.getFundDistributions().get(0).getValue());
+      assertEquals(PERCENTAGE, invLine.getFundDistributions().get(0).getDistributionType());
+    });
+  }
+
+  @Test
   public void shouldPublishDiErrorEventWhenHasNoSourceRecord() throws InterruptedException {
     // given
     ProfileSnapshotWrapper profileSnapshotWrapper = buildProfileSnapshotWrapper(jobProfile, actionProfile, mappingProfile);
     addMockEntry(JOB_PROFILE_SNAPSHOTS_MOCK, profileSnapshotWrapper);
+    String testId = UUID.randomUUID().toString();
 
+    HashMap<String, String> payloadContext = new HashMap<>();
+    payloadContext.put(JOB_PROFILE_SNAPSHOT_ID_KEY, profileSnapshotWrapper.getId());
+    payloadContext.put("testId", testId);
     DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
       .withEventType(DI_INCOMING_EDIFACT_RECORD_PARSED.value())
       .withTenant(TENANT_ID)
       .withOkapiUrl(OKAPI_URL)
       .withToken(TOKEN)
-      .withContext(new HashMap<>() {{
-        put(JOB_PROFILE_SNAPSHOT_ID_KEY, profileSnapshotWrapper.getId());
-      }});
+      .withContext(payloadContext);
 
     String topic = KafkaTopicNameHelper.formatTopicName(KAFKA_ENV_VALUE, getDefaultNameSpace(), TENANT_ID, dataImportEventPayload.getEventType());
     Event event = new Event().withEventPayload(Json.encode(dataImportEventPayload));
@@ -796,10 +885,7 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
 
     // then
     String topicToObserve = KafkaTopicNameHelper.formatTopicName(KAFKA_ENV_VALUE, getDefaultNameSpace(), TENANT_ID, DI_ERROR.value());
-    List<String> observedValues = kafkaCluster.observeValues(ObserveKeyValues.on(topicToObserve, 1)
-      .with(ConsumerConfig.GROUP_ID_CONFIG, GROUP_ID)
-      .observeFor(30, TimeUnit.SECONDS)
-      .build());
+    List<String> observedValues = observeValuesAndFilterByTestId(testId, topicToObserve, 1);
 
     Event publishedEvent = Json.decodeValue(observedValues.get(0), Event.class);
     DataImportEventPayload eventPayload = Json.decodeValue(publishedEvent.getEventPayload(), DataImportEventPayload.class);
@@ -812,11 +898,13 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
     // given
     ProfileSnapshotWrapper profileSnapshotWrapper = buildProfileSnapshotWrapper(jobProfile, actionProfile, mappingProfile);
     addMockEntry(JOB_PROFILE_SNAPSHOTS_MOCK, profileSnapshotWrapper);
+    String testId = UUID.randomUUID().toString();
 
     Record record = new Record().withParsedRecord(new ParsedRecord().withContent(edifactParsedContent)).withId(RECORD_ID);
     HashMap<String, String> payloadContext = new HashMap<>();
     payloadContext.put(EDIFACT_INVOICE.value(), Json.encode(record));
     payloadContext.put(JOB_PROFILE_SNAPSHOT_ID_KEY, profileSnapshotWrapper.getId());
+    payloadContext.put("testId", testId);
 
     DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
       .withEventType(DI_INCOMING_EDIFACT_RECORD_PARSED.value())
@@ -837,10 +925,7 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
 
     // then
     String topicToObserve = KafkaTopicNameHelper.formatTopicName(KAFKA_ENV_VALUE, getDefaultNameSpace(), ERROR_TENANT, DI_ERROR.value());
-    List<String> observedValues = kafkaCluster.observeValues(ObserveKeyValues.on(topicToObserve, 1)
-      .with(ConsumerConfig.GROUP_ID_CONFIG, GROUP_ID)
-      .observeFor(30, TimeUnit.SECONDS)
-      .build());
+    List<String> observedValues = observeValuesAndFilterByTestId(testId, topicToObserve, 1);
 
     Event publishedEvent = Json.decodeValue(observedValues.get(0), Event.class);
     DataImportEventPayload eventPayload = Json.decodeValue(publishedEvent.getEventPayload(), DataImportEventPayload.class);
@@ -864,11 +949,13 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
     // given
     ProfileSnapshotWrapper profileSnapshotWrapper = buildProfileSnapshotWrapper(jobProfile, actionProfile, mappingProfile);
     addMockEntry(JOB_PROFILE_SNAPSHOTS_MOCK, profileSnapshotWrapper);
+    String testId = UUID.randomUUID().toString();
 
     Record record = new Record().withParsedRecord(new ParsedRecord().withContent(edifactParsedContent)).withId(RECORD_ID);
     HashMap<String, String> payloadContext = new HashMap<>();
     payloadContext.put(EDIFACT_INVOICE.value(), Json.encode(record));
     payloadContext.put(JOB_PROFILE_SNAPSHOT_ID_KEY, profileSnapshotWrapper.getId());
+    payloadContext.put("testId", testId);
 
     DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
       .withEventType(DI_INCOMING_EDIFACT_RECORD_PARSED.value())
@@ -889,10 +976,7 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
 
     // then
     String topicToObserve = KafkaTopicNameHelper.formatTopicName(KAFKA_ENV_VALUE, getDefaultNameSpace(), DUPLICATE_ERROR_TENANT, DI_ERROR.value());
-    List<String> observedValues = kafkaCluster.observeValues(ObserveKeyValues.on(topicToObserve, 0)
-      .with(ConsumerConfig.GROUP_ID_CONFIG, GROUP_ID)
-      .observeFor(30, TimeUnit.SECONDS)
-      .build());
+    List<String> observedValues = observeValuesAndFilterByTestId(testId, topicToObserve, 0);
 
     assertEquals(0, observedValues.size());
   }
@@ -904,10 +988,12 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
       .withId(RECORD_ID);
     ProfileSnapshotWrapper profileSnapshotWrapper = buildProfileSnapshotWrapper(jobProfile, actionProfile, mappingProfile);
     addMockEntry(JOB_PROFILE_SNAPSHOTS_MOCK, profileSnapshotWrapper);
+    String testId = UUID.randomUUID().toString();
 
     HashMap<String, String> payloadContext = new HashMap<>();
     payloadContext.put(EDIFACT_INVOICE.value(), Json.encode(record));
     payloadContext.put(JOB_PROFILE_SNAPSHOT_ID_KEY, profileSnapshotWrapper.getId());
+    payloadContext.put("testId", testId);
 
     DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
       .withEventType(DI_INCOMING_EDIFACT_RECORD_PARSED.value())
@@ -929,10 +1015,7 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
     // then
     String topicToObserve = KafkaTopicNameHelper.formatTopicName(KAFKA_ENV_VALUE, getDefaultNameSpace(), DI_POST_INVOICE_LINES_SUCCESS_TENANT, DI_ERROR.value());
 
-    List<String> observedValues  = kafkaCluster.observeValues(ObserveKeyValues.on(topicToObserve, 1)
-      .with(ConsumerConfig.GROUP_ID_CONFIG, GROUP_ID)
-      .observeFor(30, TimeUnit.SECONDS)
-      .build());
+    List<String> observedValues = observeValuesAndFilterByTestId(testId, topicToObserve, 1);
 
     Event obtainedEvent = Json.decodeValue(observedValues.get(0), Event.class);
     DataImportEventPayload eventPayload = Json.decodeValue(obtainedEvent.getEventPayload(), DataImportEventPayload.class);
@@ -962,10 +1045,12 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
       .withId(RECORD_ID);
     ProfileSnapshotWrapper profileSnapshotWrapper = buildProfileSnapshotWrapper(jobProfile, actionProfile, mappingProfileWithInvalidMappingSyntax);
     addMockEntry(JOB_PROFILE_SNAPSHOTS_MOCK, profileSnapshotWrapper);
+    String testId = UUID.randomUUID().toString();
 
     HashMap<String, String> payloadContext = new HashMap<>();
     payloadContext.put(EDIFACT_INVOICE.value(), Json.encode(record));
     payloadContext.put(JOB_PROFILE_SNAPSHOT_ID_KEY, profileSnapshotWrapper.getId());
+    payloadContext.put("testId", testId);
 
     DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
       .withEventType(DI_INCOMING_EDIFACT_RECORD_PARSED.value())
@@ -986,11 +1071,7 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
 
     // then
     String topicToObserve = KafkaTopicNameHelper.formatTopicName(KAFKA_ENV_VALUE, getDefaultNameSpace(), DI_POST_INVOICE_LINES_SUCCESS_TENANT, DI_ERROR.value());
-
-    List<String> observedValues  = kafkaCluster.observeValues(ObserveKeyValues.on(topicToObserve, 1)
-      .with(ConsumerConfig.GROUP_ID_CONFIG, GROUP_ID)
-      .observeFor(60, TimeUnit.SECONDS)
-      .build());
+    List<String> observedValues = observeValuesAndFilterByTestId(testId, topicToObserve, 1);
 
     Event obtainedEvent = Json.decodeValue(observedValues.get(0), Event.class);
     DataImportEventPayload eventPayload = Json.decodeValue(obtainedEvent.getEventPayload(), DataImportEventPayload.class);
@@ -1056,6 +1137,22 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
               .withProfileId(mappingProfile.getId())
               .withContentType(MAPPING_PROFILE)
               .withContent(JsonObject.mapFrom(mappingProfile).getMap())))));
+  }
+
+  public List<String> observeValuesAndFilterByTestId(String testId, String topicToObserve, Integer countToObserve) throws InterruptedException {
+    List<String> result = new ArrayList<>();
+    List<String> observedValues = kafkaCluster.readValues(ReadKeyValues.from(topicToObserve).build());
+    if (CollectionUtils.isEmpty(observedValues)) {
+      observedValues = kafkaCluster.observeValues(ObserveKeyValues.on(topicToObserve, countToObserve)
+        .observeFor(30, TimeUnit.SECONDS)
+        .build());
+    }
+    for (String observedValue : observedValues) {
+      if (observedValue.contains(testId)) {
+        result.add(observedValue);
+      }
+    }
+    return result;
   }
 
 }

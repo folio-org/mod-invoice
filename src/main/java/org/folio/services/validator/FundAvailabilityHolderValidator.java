@@ -1,7 +1,6 @@
 package org.folio.services.validator;
 
 import static java.util.stream.Collectors.groupingBy;
-import static java.util.stream.Collectors.toList;
 import static org.folio.invoices.utils.ErrorCodes.FUND_CANNOT_BE_PAID;
 import static org.folio.invoices.utils.ResourcePathResolver.FUNDS;
 
@@ -48,12 +47,12 @@ public class FundAvailabilityHolderValidator implements HolderValidator {
       })
       .map(Map.Entry::getKey)
       .map(Budget::getFundId)
-      .collect(toList());
+      .toList();
 
     if (!failedBudgetIds.isEmpty()) {
       Parameter parameter = new Parameter().withKey(FUNDS)
         .withValue(failedBudgetIds.stream().map(fundHoldersMap::get)
-        .collect(toList()).toString());
+        .toList().toString());
       throw new HttpException(422, FUND_CANNOT_BE_PAID.toError()
         .withParameters(Collections.singletonList(parameter)));
     }
@@ -77,17 +76,25 @@ public class FundAvailabilityHolderValidator implements HolderValidator {
       .orElseGet(() -> Money.zero(currency));
   }
 
-  private boolean isRemainingAmountExceed(Budget budget, MonetaryAmount totalExpendedAmount) {
-    // [remaining amount we can expend] = (totalFunding * allowableExpenditure) - expended
-    // where expended = awaitingPayment + expenditure
-    CurrencyUnit currency = totalExpendedAmount.getCurrency();
-    Money totalFundings = Money.of(budget.getTotalFunding(), currency);
-    Money expended = Money.of(budget.getAwaitingPayment(), currency)
-      .add(Money.of(budget.getExpenditures(), currency));
-    BigDecimal allowableExpenditures = BigDecimal.valueOf(budget.getAllowableExpenditure())
-      .movePointLeft(2);
-    Money totalAmountCanBeExpended = totalFundings.multiply(allowableExpenditures);
-    Money afterApproveExpended = expended.add(totalExpendedAmount);
+  /**
+   * Method is following these formulas <br>
+   * afterApproveExpended [remaining amount we can expend] = expended - credited + awaitingPayment + additionalAmountToExpend <br>
+   * totalAmountCanBeExpended = totalFunding * allowableExpenditure
+   * @param additionalAmountToExpend additionalAmountToExpend
+   * @return boolean afterApproveExpended > totalAmountCanBeExpended
+   */
+  private boolean isRemainingAmountExceed(Budget budget, MonetaryAmount additionalAmountToExpend) {
+    CurrencyUnit currency = additionalAmountToExpend.getCurrency();
+
+    Money totalFunding = Money.of(budget.getTotalFunding(), currency);
+    Money awaitingPayment = Money.of(budget.getAwaitingPayment(), currency);
+    Money expended = Money.of(budget.getExpenditures(), currency);
+    Money credited = Money.of(budget.getCredits(), currency);
+    BigDecimal allowableExpenditures = BigDecimal.valueOf(budget.getAllowableExpenditure()).movePointLeft(2);
+
+    Money totalAmountCanBeExpended = totalFunding.multiply(allowableExpenditures);
+    Money afterApproveExpended = expended.subtract(credited).add(awaitingPayment).add(additionalAmountToExpend);
+
     return afterApproveExpended.isGreaterThan(totalAmountCanBeExpended);
   }
 

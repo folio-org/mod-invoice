@@ -30,7 +30,8 @@
             "invoice-storage.invoice-number.get",
             "acquisitions-units-storage.units.collection.get",
             "acquisitions-units-storage.memberships.collection.get",
-            "organizations-storage.organizations.item.get"
+            "organizations-storage.organizations.item.get",
+            "finance.ledgers.current-fiscal-year.item.get"
           ]
         },
         {

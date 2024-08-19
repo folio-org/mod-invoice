@@ -29,7 +29,6 @@
     <mod-configuration-client.version>5.10.0</mod-configuration-client.version>
     <spring.version>6.1.12</spring.version>
     <folio-di-support.version>2.1.0</folio-di-support.version>
-    <jackson-bom.version>2.13.4</jackson-bom.version>
     <assertj-core.version>3.25.3</assertj-core.version>
     <aspectj.version>1.9.21.1</aspectj.version>
     <log4j.version>2.23.0</log4j.version>
@@ -181,7 +180,7 @@
     <dependency>
       <groupId>org.folio</groupId>
       <artifactId>data-import-processing-core</artifactId>
-      <version>4.2.0</version>
+      <version>4.3.0-SNAPSHOT</version>
       <exclusions>
         <exclusion>
           <groupId>org.folio</groupId>
@@ -192,7 +191,7 @@
     <dependency>
       <groupId>org.folio</groupId>
       <artifactId>mod-di-converter-storage-client</artifactId>
-      <version>2.1.8</version>
+      <version>2.3.0-SNAPSHOT</version>
     </dependency>
     <dependency>
       <groupId>com.github.ben-manes.caffeine</groupId>
@@ -763,13 +762,6 @@
   </build>
   <dependencyManagement>
     <dependencies>
-      <dependency>
-        <groupId>com.fasterxml.jackson</groupId>
-        <artifactId>jackson-bom</artifactId>
-        <version>${jackson-bom.version}</version>
-        <type>pom</type>
-        <scope>import</scope>
-      </dependency>
       <dependency>
         <groupId>org.junit</groupId>
         <artifactId>junit-bom</artifactId>
