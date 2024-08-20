@@ -27,7 +27,7 @@
     <vertx.version>4.5.4</vertx.version>
     <rest-assured.version>5.4.0</rest-assured.version>
     <mod-configuration-client.version>5.10.0</mod-configuration-client.version>
-    <spring.version>6.1.5</spring.version>
+    <spring.version>6.1.12</spring.version>
     <folio-di-support.version>2.1.0</folio-di-support.version>
     <assertj-core.version>3.25.3</assertj-core.version>
     <aspectj.version>1.9.21.1</aspectj.version>
@@ -151,13 +151,11 @@
     <dependency>
       <groupId>org.springframework</groupId>
       <artifactId>spring-test</artifactId>
-      <version>${spring.version}</version>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.springframework</groupId>
       <artifactId>spring-context</artifactId>
-      <version>${spring.version}</version>
     </dependency>
     <dependency>
       <groupId>org.jvnet.jaxb2_commons</groupId>
@@ -775,6 +773,13 @@
         <groupId>org.apache.logging.log4j</groupId>
         <artifactId>log4j-bom</artifactId>
         <version>${log4j.version}</version>
+        <scope>import</scope>
+        <type>pom</type>
+      </dependency>
+      <dependency>
+        <groupId>org.springframework</groupId>
+        <artifactId>spring-framework-bom</artifactId>
+        <version>${spring.version}</version>
         <scope>import</scope>
         <type>pom</type>
       </dependency>
