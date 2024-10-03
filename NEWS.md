@@ -1,4 +1,10 @@
-## 5.8.0 - Unreleased
+## 5.7.3 - Released Poppy R2 2023
+The focus of this release was to fix security issues in SFTP connection of batch group voucher exports
+
+[Full Changelog](https://github.com/folio-org/mod-invoice/compare/v5.7.2...v5.7.3)
+
+### Bug Fixes
+* [MODINVOICE-559](https://folio-org.atlassian.net/browse/MODINVOICE-559) - Apache SSHD/SFTP 2.13.2 fixing Terrapin attack - CVE-2024-41909
 
 ## 5.7.2 - Released Poppy R2 2023
 The focus of this release was to prevent invoice cancellation when related budget is inactive
