@@ -83,7 +83,7 @@
             "voucher-storage.voucher-number.get",
             "acquisitions-units-storage.units.collection.get",
             "acquisitions-units-storage.memberships.collection.get",
-            "finance.transactions.batch",
+            "finance.transactions.batch.execute",
             "finance.transactions.collection.get",
             "finance.funds.item.get",
             "finance.funds.collection.get",
