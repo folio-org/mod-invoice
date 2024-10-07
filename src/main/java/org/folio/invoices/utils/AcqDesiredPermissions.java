@@ -8,11 +8,11 @@ import java.util.stream.Collectors;
 public enum AcqDesiredPermissions {
   ASSIGN("invoices.acquisitions-units-assignments.assign"),
   MANAGE("invoices.acquisitions-units-assignments.manage"),
-  APPROVE("invoice.item.approve"),
-  PAY("invoice.item.pay"),
-  CANCEL("invoice.item.cancel"),
-  FISCAL_YEAR_UPDATE("invoices.fiscal-year.update"),
-  BYPASS_ACQ_UNITS("invoices.bypass-acquisition-units");
+  APPROVE("invoice.item.approve.execute"),
+  PAY("invoice.item.pay.execute"),
+  CANCEL("invoice.item.cancel.execute"),
+  FISCAL_YEAR_UPDATE("invoices.fiscal-year.update.execute"),
+  BYPASS_ACQ_UNITS("invoices.acquisition-units.bypass.execute");
 
   private String permission;
   private static final List<String> values;

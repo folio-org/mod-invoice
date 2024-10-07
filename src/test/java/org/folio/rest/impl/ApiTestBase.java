@@ -98,12 +98,12 @@ public class ApiTestBase {
   private static boolean runningOnOwn;
 
   public static final List<String> permissionsList = Arrays.asList(
-    "invoice.item.approve",
-    "invoice.item.pay",
+    "invoice.item.approve.execute",
+    "invoice.item.pay.execute",
     "invoice.invoices.item.put",
     "invoices.acquisitions-units-assignments.manage",
     "invoices.acquisitions-units-assignments.assign",
-    "invoices.fiscal-year.update"
+    "invoices.fiscal-year.update.execute"
   );
 
   public static final JsonArray permissionsArray = new JsonArray(permissionsList);
@@ -114,7 +114,7 @@ public class ApiTestBase {
     "invoice.invoices.item.put",
     "invoices.acquisitions-units-assignments.manage",
     "invoices.acquisitions-units-assignments.assign",
-    "invoices.fiscal-year.update"
+    "invoices.fiscal-year.update.execute"
   );
 
   public static final JsonArray permissionsWithoutApproveAndPayArray = new JsonArray(permissionsWithoutApproveAndPayList);
@@ -122,11 +122,11 @@ public class ApiTestBase {
   public static final Header X_OKAPI_PERMISSION_WITHOUT_PAY_APPROVE = new Header(UserPermissionsUtil.OKAPI_HEADER_PERMISSIONS, permissionsWithoutApproveAndPayJsonArrayString);
 
   public static final List<String> permissionsWithoutPaidList = Arrays.asList(
-    "invoice.item.approve",
+    "invoice.item.approve.execute",
     "invoice.invoices.item.put",
     "invoices.acquisitions-units-assignments.manage",
     "invoices.acquisitions-units-assignments.assign",
-    "invoices.fiscal-year.update"
+    "invoices.fiscal-year.update.execute"
   );
 
   public static final JsonArray permissionsWithoutPaidArray = new JsonArray(permissionsWithoutPaidList);

@@ -24,7 +24,7 @@ public class UserPermissionsUtilTest {
   @DisplayName("Should not throw exception when approve permission is in position")
   void shouldNotThrowExceptionWhenApprovePermissionIsInPosition() {
     List<String> permissionsList = List.of(
-      "invoice.item.approve"
+      "invoice.item.approve.execute"
     );
 
     String permissionsJsonArrayString = new JsonArray(permissionsList).encode();
@@ -44,7 +44,7 @@ public class UserPermissionsUtilTest {
     List<String> permissionsList = Arrays.asList(
       "invoice.invoices.item.put",
       "invoices.acquisitions-units-assignments.manage",
-      "invoices.fiscal-year.update"
+      "invoices.fiscal-year.update.execute"
     );
 
     String permissionsJsonArrayString = new JsonArray(permissionsList).encode();
@@ -63,7 +63,7 @@ public class UserPermissionsUtilTest {
   @DisplayName("Should not throw exception when pay permission is in position")
   void shouldNotThrowExceptionWhenPayPermissionIsInPosition() {
     List<String> permissionsList = List.of(
-      "invoice.item.pay"
+      "invoice.item.pay.execute"
     );
 
     String permissionsJsonArrayString = new JsonArray(permissionsList).encode();
@@ -83,7 +83,7 @@ public class UserPermissionsUtilTest {
     List<String> permissionsList = Arrays.asList(
       "invoice.invoices.item.put",
       "invoices.acquisitions-units-assignments.manage",
-      "invoices.fiscal-year.update"
+      "invoices.fiscal-year.update.execute"
     );
 
     String permissionsJsonArrayString = new JsonArray(permissionsList).encode();
@@ -103,7 +103,7 @@ public class UserPermissionsUtilTest {
   @DisplayName("Should not throw exception when cancel permission is in position")
   void shouldNotThrowExceptionWhenCancelPermissionIsInPosition() {
     List<String> permissionsList = List.of(
-      "invoice.item.cancel"
+      "invoice.item.cancel.execute"
     );
 
     String permissionsJsonArrayString = new JsonArray(permissionsList).encode();
@@ -121,8 +121,8 @@ public class UserPermissionsUtilTest {
   @DisplayName("Should throw correct error code when cancel permission absent")
   void shouldThrowCorrectErrorCodeWhenCancelPermissionIsAbsent() {
     List<String> permissionsList = Arrays.asList(
-      "invoice.item.approve",
-      "invoice.item.pay"
+      "invoice.item.approve.execute",
+      "invoice.item.pay.execute"
     );
 
     String permissionsJsonArrayString = new JsonArray(permissionsList).encode();
@@ -144,7 +144,7 @@ public class UserPermissionsUtilTest {
     List<String> permissionsList = Arrays.asList(
       "invoice.invoices.item.put",
       "invoices.acquisitions-units-assignments.manage",
-      "invoices.fiscal-year.update"
+      "invoices.fiscal-year.update.execute"
     );
 
     String permissionsJsonArrayString = new JsonArray(permissionsList).encode();
@@ -170,7 +170,7 @@ public class UserPermissionsUtilTest {
     List<String> permissionsList = Arrays.asList(
       "invoice.invoices.item.put",
       "invoices.acquisitions-units-assignments.manage",
-      "invoices.fiscal-year.update",
+      "invoices.fiscal-year.update.execute",
       "invoices.acquisitions-units-assignments.assign"
     );
 
@@ -260,7 +260,7 @@ public class UserPermissionsUtilTest {
   void shouldNotThrowExceptionWhenFiscalYearUpdatePermissionIsAssigned() {
     // Create a list of permissions
     List<String> permissionsList = Arrays.asList(
-      "invoices.fiscal-year.update",
+      "invoices.fiscal-year.update.execute",
       "invoices.acquisitions-units-assignments.assign"
     );
 
