@@ -11,7 +11,7 @@
           "pathPattern": "/invoice/invoices",
           "permissionsRequired": ["invoice.invoices.collection.get"],
           "permissionsDesired": [
-            "invoices.bypass-acquisition-units"
+            "invoices.acquisition-units.bypass.execute"
           ],
           "modulePermissions": [
             "invoice-storage.invoices.collection.get",
@@ -41,7 +41,7 @@
             "invoice.invoices.item.get"
           ],
           "permissionsDesired": [
-            "invoices.bypass-acquisition-units"
+            "invoices.acquisition-units.bypass.execute"
           ],
           "modulePermissions": [
             "invoice-storage.invoices.item.get",
@@ -56,11 +56,11 @@
           "permissionsRequired": ["invoice.invoices.item.put"],
           "permissionsDesired": [
             "invoices.acquisitions-units-assignments.manage",
-            "invoices.fiscal-year.update",
-            "invoice.item.approve",
-            "invoice.item.pay",
-            "invoice.item.cancel",
-            "invoices.bypass-acquisition-units"
+            "invoices.fiscal-year.update.execute",
+            "invoice.item.approve.execute",
+            "invoice.item.pay.execute",
+            "invoice.item.cancel.execute",
+            "invoices.acquisition-units.bypass.execute"
           ],
           "modulePermissions": [
             "configuration.entries.collection.get",
@@ -69,7 +69,7 @@
             "invoice-storage.invoices.item.get",
             "invoice-storage.invoice-lines.item.put",
             "invoice-storage.invoice-lines.collection.get",
-            "orders.bypass-acquisition-units",
+            "orders.acquisition-units.bypass.execute",
             "orders.collection.get",
             "orders.po-lines.collection.get",
             "orders.po-lines.item.put",
@@ -119,7 +119,7 @@
           "pathPattern": "/invoice/invoice-lines",
           "permissionsRequired": ["invoice.invoice-lines.collection.get"],
           "permissionsDesired": [
-            "invoices.bypass-acquisition-units"
+            "invoices.acquisition-units.bypass.execute"
           ],
           "modulePermissions": [
             "invoice-storage.invoice-lines.collection.get",
@@ -161,7 +161,7 @@
           "pathPattern": "/invoice/invoice-lines/{id}",
           "permissionsRequired": ["invoice.invoice-lines.item.get"],
           "permissionsDesired": [
-            "invoices.bypass-acquisition-units"
+            "invoices.acquisition-units.bypass.execute"
           ],
           "modulePermissions": [
             "invoice-storage.invoice-lines.item.get",
@@ -179,7 +179,7 @@
           "pathPattern": "/invoice/invoice-lines/{id}",
           "permissionsRequired": ["invoice.invoice-lines.item.put"],
           "permissionsDesired": [
-            "invoices.bypass-acquisition-units"
+            "invoices.acquisition-units.bypass.execute"
           ],
           "modulePermissions": [
             "invoice-storage.invoice-lines.item.put",
@@ -717,19 +717,22 @@
       "description": "Delete an existing Invoice"
     },
     {
-      "permissionName": "invoice.item.approve",
+      "permissionName": "invoice.item.approve.execute",
       "displayName": "Invoice - approve an existing Invoice",
-      "description": "Approve an existing Invoice"
+      "description": "Approve an existing Invoice",
+      "replaces": "invoice.item.approve"
     },
     {
-      "permissionName": "invoice.item.pay",
+      "permissionName": "invoice.item.pay.execute",
       "displayName": "Invoice - pay an existing Invoice",
-      "description": "Pay an existing Invoice"
+      "description": "Pay an existing Invoice",
+      "replaces": "invoice.item.pay"
     },
     {
-      "permissionName": "invoice.item.cancel",
+      "permissionName": "invoice.item.cancel.execute",
       "displayName": "Invoice - cancel an existing Invoice",
-      "description": "Cancel an existing Invoice"
+      "description": "Cancel an existing Invoice",
+      "replaces": ["invoice.item.cancel"]
     },
     {
       "permissionName": "invoice.invoice-lines.collection.get",
@@ -918,9 +921,10 @@
       ]
     },
     {
-      "permissionName": "invoices.bypass-acquisition-units",
+      "permissionName": "invoices.acquisition-units.bypass.execute",
       "displayName": "Bypass acquisition units checks",
-      "description": "Backend internal permission to bypass invoice acquisition units checks"
+      "description": "Backend internal permission to bypass invoice acquisition units checks",
+      "replaces": ["invoices.bypass-acquisition-units"]
     },
     {
       "permissionName": "invoices.acquisitions-units-assignments.assign",
@@ -942,9 +946,10 @@
       ]
     },
     {
-      "permissionName": "invoices.fiscal-year.update",
+      "permissionName": "invoices.fiscal-year.update.execute",
       "displayName": "Invoice - update fiscal year",
-      "description": "Update a fiscal year"
+      "description": "Update a fiscal year",
+      "replaces": ["invoices.fiscal-year.update"]
     },
     {
       "permissionName": "batch-groups.collection.get",
@@ -1058,9 +1063,9 @@
         "invoice.invoices.item.post",
         "invoice.invoices.item.put",
         "invoice.invoices.item.delete",
-        "invoice.item.approve",
-        "invoice.item.pay",
-        "invoice.item.cancel",
+        "invoice.item.approve.execute",
+        "invoice.item.pay.execute",
+        "invoice.item.cancel.execute",
         "invoice.invoice-lines.collection.get",
         "invoice.invoice-lines.item.get",
         "invoice.invoice-lines.item.post",
