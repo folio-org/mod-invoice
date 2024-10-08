@@ -3,7 +3,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>org.folio</groupId>
   <artifactId>mod-invoice</artifactId>
-  <version>5.7.3-SNAPSHOT</version>
+  <version>5.7.4-SNAPSHOT</version>
   <packaging>jar</packaging>
 
   <licenses>
@@ -26,6 +26,7 @@
     <ramlfiles_path>${basedir}/ramls</ramlfiles_path>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <mod-configuration-client.version>5.9.1</mod-configuration-client.version>
+    <sshd.version>2.13.2</sshd.version>
     <spring.version>5.3.20</spring.version>
     <sonar.exclusions>**/models/*.java</sonar.exclusions>
     <sonar.test.exclusions>**/*Test.java</sonar.test.exclusions>
@@ -105,12 +106,12 @@
     <dependency>
       <groupId>org.apache.sshd</groupId>
       <artifactId>sshd-sftp</artifactId>
-      <version>2.9.2</version>
+      <version>${sshd.version}</version>
     </dependency>
     <dependency>
       <groupId>org.apache.sshd</groupId>
       <artifactId>sshd-spring-sftp</artifactId>
-      <version>2.8.0</version>
+      <version>${sshd.version}</version>
     </dependency>
     <!--vertx-rx-java required for vertx-concurrent-1.0.0 -->
     <dependency>
