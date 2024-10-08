@@ -3,7 +3,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>org.folio</groupId>
   <artifactId>mod-invoice</artifactId>
-  <version>5.8.3-SNAPSHOT</version>
+  <version>5.8.4-SNAPSHOT</version>
   <packaging>jar</packaging>
 
   <licenses>
@@ -24,9 +24,10 @@
     <!--Dependencies-->
     <raml-module-builder.version>35.2.0</raml-module-builder.version>
     <jaxb-api.version>2.3.3</jaxb-api.version>
-    <vertx.version>4.5.4</vertx.version>
+    <vertx.version>4.5.9</vertx.version>
     <rest-assured.version>5.4.0</rest-assured.version>
     <mod-configuration-client.version>5.10.0</mod-configuration-client.version>
+    <sshd.version>2.13.2</sshd.version>
     <spring.version>6.1.5</spring.version>
     <folio-di-support.version>2.1.0</folio-di-support.version>
     <jackson-bom.version>2.13.4</jackson-bom.version>
@@ -90,17 +91,14 @@
     <dependency>
       <groupId>io.vertx</groupId>
       <artifactId>vertx-core</artifactId>
-      <version>${vertx.version}</version>
     </dependency>
     <dependency>
       <groupId>io.vertx</groupId>
       <artifactId>vertx-web</artifactId>
-      <version>${vertx.version}</version>
     </dependency>
     <dependency>
       <groupId>io.vertx</groupId>
       <artifactId>vertx-unit</artifactId>
-      <version>${vertx.version}</version>
       <scope>test</scope>
     </dependency>
     <dependency>
@@ -111,24 +109,22 @@
     <dependency>
       <groupId>org.apache.sshd</groupId>
       <artifactId>sshd-sftp</artifactId>
-      <version>2.9.3</version>
+      <version>${sshd.version}</version>
     </dependency>
     <dependency>
       <groupId>org.apache.sshd</groupId>
       <artifactId>sshd-spring-sftp</artifactId>
-      <version>2.8.0</version>
+      <version>${sshd.version}</version>
     </dependency>
     <!--vertx-rx-java required for vertx-concurrent-1.0.0 -->
     <dependency>
       <groupId>io.vertx</groupId>
       <artifactId>vertx-rx-java</artifactId>
-      <version>${vertx.version}</version>
       <scope>provided</scope>
     </dependency>
     <dependency>
       <groupId>io.vertx</groupId>
       <artifactId>vertx-junit5</artifactId>
-      <version>${vertx.version}</version>
       <scope>test</scope>
     </dependency>
     <dependency>
@@ -233,25 +229,21 @@
     <dependency>
       <groupId>org.testcontainers</groupId>
       <artifactId>postgresql</artifactId>
-      <version>${testcontainers.version}</version>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.testcontainers</groupId>
       <artifactId>kafka</artifactId>
-      <version>${testcontainers.version}</version>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.testcontainers</groupId>
       <artifactId>testcontainers</artifactId>
-      <version>${testcontainers.version}</version>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.testcontainers</groupId>
       <artifactId>junit-jupiter</artifactId>
-      <version>1.19.0</version>
       <scope>test</scope>
     </dependency>
     <dependency>
@@ -783,6 +775,27 @@
         <groupId>org.apache.logging.log4j</groupId>
         <artifactId>log4j-bom</artifactId>
         <version>${log4j.version}</version>
+        <scope>import</scope>
+        <type>pom</type>
+      </dependency>
+      <dependency>
+        <groupId>org.springframework</groupId>
+        <artifactId>spring-framework-bom</artifactId>
+        <version>${spring.version}</version>
+        <scope>import</scope>
+        <type>pom</type>
+       </dependency>
+       <dependency>
+         <groupId>io.vertx</groupId>
+         <artifactId>vertx-stack-depchain</artifactId>
+         <version>${vertx.version}</version>
+         <scope>import</scope>
+         <type>pom</type>
+      </dependency>
+      <dependency>
+        <groupId>org.testcontainers</groupId>
+        <artifactId>testcontainers-bom</artifactId>
+        <version>${testcontainers.version}</version>
         <scope>import</scope>
         <type>pom</type>
       </dependency>
