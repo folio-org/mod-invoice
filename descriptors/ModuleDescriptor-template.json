@@ -720,13 +720,13 @@
       "permissionName": "invoice.item.approve.execute",
       "displayName": "Invoice - approve an existing Invoice",
       "description": "Approve an existing Invoice",
-      "replaces": "invoice.item.approve"
+      "replaces": ["invoice.item.approve"]
     },
     {
       "permissionName": "invoice.item.pay.execute",
       "displayName": "Invoice - pay an existing Invoice",
       "description": "Pay an existing Invoice",
-      "replaces": "invoice.item.pay"
+      "replaces": ["invoice.item.pay"]
     },
     {
       "permissionName": "invoice.item.cancel.execute",
