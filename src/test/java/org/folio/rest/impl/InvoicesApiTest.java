@@ -2280,22 +2280,6 @@ public class InvoicesApiTest extends ApiTestBase {
   }
 
   @Test
-  void testShouldFailInvoiceLineDoesNotHaveFund() {
-    logger.info("=== Test should fail because invoice line doesn't have fund ===");
-
-    Invoice reqData = getMockAsJson(APPROVED_INVOICE_SAMPLE_PATH).mapTo(Invoice.class).withStatus(Invoice.Status.PAID);
-    String id = reqData.getId();
-
-    prepareMockVoucher(id);
-    InvoiceLine invoiceLine = getMinimalContentInvoiceLine(id);
-    addMockEntry(INVOICE_LINES, JsonObject.mapFrom(invoiceLine));
-
-    String jsonBody = JsonObject.mapFrom(reqData).encode();
-    Headers headers = prepareHeaders(X_OKAPI_URL, X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID);
-    verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, headers, "", 400);
-  }
-
-  @Test
   void testUpdateInvoiceTransitionToPaidNoVoucherUpdate() {
     logger.info("=== Test transition invoice to paid - voucher already paid ===");
 
@@ -2565,8 +2549,7 @@ public class InvoicesApiTest extends ApiTestBase {
     verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, headers, "", 204);
 
     assertThat(getRqRsEntries(HttpMethod.GET, FINANCE_TRANSACTIONS), hasSize(2));
-    assertThat(getRqRsEntries(HttpMethod.GET, FUNDS), hasSize(2));
-    assertThat(getRqRsEntries(HttpMethod.GET, CURRENT_FISCAL_YEAR), hasSize(1));
+    assertThat(getRqRsEntries(HttpMethod.GET, FUNDS), hasSize(1));
     assertThat(getRqRsEntries(HttpMethod.POST, FINANCE_BATCH_TRANSACTIONS), hasSize(0));
   }
 
@@ -3170,7 +3153,7 @@ public class InvoicesApiTest extends ApiTestBase {
 
 
     assertThat(getRqRsEntries(HttpMethod.GET, FINANCE_TRANSACTIONS), hasSize(2));
-    assertThat(getRqRsEntries(HttpMethod.GET, FUNDS), hasSize(2));
+    assertThat(getRqRsEntries(HttpMethod.GET, FUNDS), hasSize(1));
 
     var transactions = getRqRsEntries(HttpMethod.POST, FINANCE_BATCH_TRANSACTIONS).stream()
       .map(entries -> entries.mapTo(Batch.class))

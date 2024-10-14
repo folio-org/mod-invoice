@@ -10,19 +10,15 @@ import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
 import java.util.Map;
-import java.util.Objects;
 import java.util.stream.Collectors;
 
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.folio.InvoiceWorkflowDataHolderBuilder;
-import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.rest.acq.model.orders.CompositePoLine;
 import org.folio.rest.core.models.RequestContext;
-import org.folio.rest.jaxrs.model.FundDistribution;
 import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.jaxrs.model.InvoiceLine;
-import org.folio.services.finance.fiscalyear.CurrentFiscalYearService;
 import org.folio.services.finance.transaction.PaymentCreditWorkflowService;
 import org.folio.services.order.OrderLineService;
 import org.folio.services.voucher.VoucherService;
@@ -30,7 +26,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 
 import com.google.common.annotations.VisibleForTesting;
 
-import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
 
 public class InvoicePaymentService {
@@ -43,10 +38,7 @@ public class InvoicePaymentService {
   private VoucherService voucherService;
   @Autowired
   private OrderLineService orderLineService;
-  @Autowired
-  private CurrentFiscalYearService currentFiscalYearService;
 
-  public static final String INVOICE_LINE_MUST_HAVE_FUND = "The invoice line must contain the fund for payment";
   protected static final Set<CompositePoLine.PaymentStatus> PO_LINE_PAYMENT_IGNORED_STATUSES =
     EnumSet.of(ONGOING, PAYMENT_NOT_REQUIRED);
 
@@ -62,32 +54,8 @@ public class InvoicePaymentService {
     invoice.setPaymentDate(invoice.getMetadata().getUpdatedDate());
     return holderBuilder.buildCompleteHolders(invoice, invoiceLines, requestContext)
       .compose(holders -> paymentCreditWorkflowService.handlePaymentsAndCreditsCreation(holders, requestContext))
-      .compose(vVoid -> CompositeFuture.join(updatePoLinesStatus(invoice, invoiceLines, requestContext), voucherService.payInvoiceVoucher(invoice.getId(), requestContext)))
+      .compose(v -> Future.join(payPoLines(invoiceLines, requestContext), voucherService.payInvoiceVoucher(invoice.getId(), requestContext)))
       .mapEmpty();
-  }
-
-  private Future<Void> updatePoLinesStatus(Invoice invoice, List<InvoiceLine> invoiceLines, RequestContext requestContext) {
-    if (StringUtils.isBlank(invoice.getFiscalYearId())) {
-      return updatePoLinesToPaidStatus(invoiceLines, requestContext);
-    }
-
-    String fundID = invoiceLines.stream()
-      .flatMap(invoiceLine -> invoiceLine.getFundDistributions().stream())
-      .map(FundDistribution::getFundId)
-      .findFirst()
-      .orElse(null);
-
-    if (StringUtils.isNotBlank(fundID)) {
-      return currentFiscalYearService.getCurrentFiscalYearByFund(fundID, requestContext)
-        .compose(currentFiscalYear -> {
-          if (Objects.equals(currentFiscalYear.getId(), invoice.getFiscalYearId())) {
-            return updatePoLinesToPaidStatus(invoiceLines, requestContext);
-          } else {
-            return Future.succeededFuture();
-          }
-        });
-    }
-    return Future.failedFuture(new HttpException(400, INVOICE_LINE_MUST_HAVE_FUND));
   }
 
   /**
@@ -96,7 +64,7 @@ public class InvoicePaymentService {
    * @param invoiceLines the invoice lines to be paid
    * @return CompletableFuture that indicates when transition is completed
    */
-  private Future<Void> updatePoLinesToPaidStatus(List<InvoiceLine> invoiceLines, RequestContext requestContext) {
+  private Future<Void> payPoLines(List<InvoiceLine> invoiceLines, RequestContext requestContext) {
     Map<String, List<InvoiceLine>> poLineIdInvoiceLinesMap = groupInvoiceLinesByPoLineId(invoiceLines);
     return fetchPoLines(poLineIdInvoiceLinesMap, requestContext)
       .map(this::updatePoLinesPaymentStatus)
