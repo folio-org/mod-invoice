@@ -222,6 +222,7 @@ public class AdjustmentsService {
       Adjustment preparedAdjustment = prepareAdjustmentForLine(adjustment.withType(Adjustment.Type.AMOUNT))
         .withValue(amountAdjustmentValue.getNumber().doubleValue());
       line.withSubTotal(lineSubtotal.subtract(amountAdjustmentValue).getNumber().doubleValue());
+      line.withAdjustmentsTotal(amountAdjustmentValue.getNumber().doubleValue());
       if (addAdjustmentToLine(line, preparedAdjustment)) {
         updatedLines.add(line);
       }
