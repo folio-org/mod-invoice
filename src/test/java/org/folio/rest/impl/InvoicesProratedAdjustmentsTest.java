@@ -1049,7 +1049,7 @@ public class InvoicesProratedAdjustmentsTest extends ApiTestBase {
 
     Invoice invoiceToStorage = getInvoiceUpdates().get(0).mapTo(Invoice.class);
     assertThat(invoiceToStorage.getAdjustments(), hasSize(1));
-    assertThat(invoiceToStorage.getAdjustmentsTotal(), is(0.0));
+    assertThat(invoiceToStorage.getAdjustmentsTotal(), is(1.96d));
     Adjustment invoiceAdjustment = invoiceToStorage.getAdjustments().get(0);
     assertThat(invoiceAdjustment.getId(), not(is(emptyOrNullString())));
 
@@ -1057,7 +1057,7 @@ public class InvoicesProratedAdjustmentsTest extends ApiTestBase {
       .forEach(id -> {
         InvoiceLine lineToStorage = getLineToStorageById(id);
         assertThat(lineToStorage.getAdjustments(), hasSize(1));
-        assertThat(lineToStorage.getAdjustmentsTotal(), is(0d));
+        assertThat(lineToStorage.getAdjustmentsTotal(), is(1.96d));
         assertThat(lineToStorage.getSubTotal(), is(28.04d));
 
         Adjustment lineAdjustment = lineToStorage.getAdjustments().get(0);
@@ -1104,7 +1104,7 @@ public class InvoicesProratedAdjustmentsTest extends ApiTestBase {
 
     Invoice invoiceToStorage = getInvoiceUpdates().get(0).mapTo(Invoice.class);
     assertThat(invoiceToStorage.getAdjustments(), hasSize(1));
-    assertThat(invoiceToStorage.getAdjustmentsTotal(), is(0.0));
+    assertThat(invoiceToStorage.getAdjustmentsTotal(), is(5.88d));
     Adjustment invoiceAdjustment = invoiceToStorage.getAdjustments().get(0);
     assertThat(invoiceAdjustment.getId(), not(is(emptyOrNullString())));
 
@@ -1112,7 +1112,7 @@ public class InvoicesProratedAdjustmentsTest extends ApiTestBase {
       .forEach(id -> {
         InvoiceLine lineToStorage = getLineToStorageById(id);
         assertThat(lineToStorage.getAdjustments(), hasSize(1));
-        assertThat(lineToStorage.getAdjustmentsTotal(), is(0d));
+        assertThat(lineToStorage.getAdjustmentsTotal(), is(1.96d));
         assertThat(lineToStorage.getSubTotal(), is(28.04d));
 
         Adjustment lineAdjustment = lineToStorage.getAdjustments().get(0);
