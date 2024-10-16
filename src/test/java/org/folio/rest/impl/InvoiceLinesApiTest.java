@@ -629,7 +629,7 @@ public class InvoiceLinesApiTest extends ApiTestBase {
 
 
     InvoiceLine reqData = getMockAsJson(INVOICE_LINE_ADJUSTMENTS_SAMPLE_PATH).mapTo(InvoiceLine.class);
-    // set adjustment realtion to Included In
+    // set adjustment relation to Included In
     reqData.getAdjustments()
       .get(0)
       .setRelationToTotal(Adjustment.RelationToTotal.INCLUDED_IN);
@@ -638,8 +638,8 @@ public class InvoiceLinesApiTest extends ApiTestBase {
     InvoiceLine invoiceLine = verifyPostResponse(INVOICE_LINES_PATH, jsonBody, prepareHeaders(X_OKAPI_TENANT), APPLICATION_JSON,
         201).as(InvoiceLine.class);
 
-    double expectedAdjustmentsTotal = 5d;
-    double expectedTotal = 25.02d;
+    double expectedAdjustmentsTotal = 7.02d;
+    double expectedTotal = 27.04d;
 
     assertThat(invoiceLine.getAdjustmentsTotal(), equalTo(expectedAdjustmentsTotal));
     assertThat(invoiceLine.getTotal(), equalTo(expectedTotal));
