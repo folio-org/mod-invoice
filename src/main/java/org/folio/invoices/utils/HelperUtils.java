@@ -18,7 +18,6 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -34,13 +33,13 @@ import javax.money.convert.ConversionQueryBuilder;
 
 import io.vertx.core.Vertx;
 import io.vertxconcurrent.Semaphore;
-import lombok.extern.log4j.Log4j2;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.collections4.map.CaseInsensitiveMap;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.okapi.common.GenericCompositeFuture;
+import org.folio.rest.acq.model.finance.ExchangeRate;
 import org.folio.rest.core.models.RequestContext;
 import org.folio.rest.impl.ProtectionHelper;
 import org.folio.rest.jaxrs.model.Adjustment;
@@ -59,7 +58,6 @@ import io.vertx.core.eventbus.Message;
 import io.vertx.core.json.JsonObject;
 import one.util.streamex.StreamEx;
 
-@Log4j2
 public class HelperUtils {
 
   public static final String INVOICE_ID = "invoiceId";
@@ -71,10 +69,10 @@ public class HelperUtils {
   public static final String BATCH_VOUCHER_EXPORT = "batchVoucherExport";
 
   private static final Pattern CQL_SORT_BY_PATTERN = Pattern.compile("(.*)(\\ssortBy\\s.*)", Pattern.CASE_INSENSITIVE);
-  private static final EnumSet<Adjustment.RelationToTotal> SUPPORTED_RELATION_TO_TOTALS =
-    EnumSet.of(Adjustment.RelationToTotal.IN_ADDITION_TO, Adjustment.RelationToTotal.INCLUDED_IN);
+
 
   private HelperUtils() {
+
   }
 
   /**
@@ -110,7 +108,7 @@ public class HelperUtils {
 
   public static MonetaryAmount calculateAdjustmentsTotal(List<Adjustment> adjustments, MonetaryAmount subTotal) {
     return adjustments.stream()
-      .filter(adj -> SUPPORTED_RELATION_TO_TOTALS.contains(adj.getRelationToTotal()))
+      .filter(adj -> adj.getRelationToTotal().equals(Adjustment.RelationToTotal.IN_ADDITION_TO))
       .map(adj -> calculateAdjustment(adj, subTotal))
       .collect(MonetaryFunctions.summarizingMonetary(subTotal.getCurrency()))
       .getSum()
@@ -202,6 +200,7 @@ public class HelperUtils {
   }
 
   public static double calculateVoucherAmount(Voucher voucher, List<VoucherLine> voucherLines) {
+
     CurrencyUnit currency = Monetary.getCurrency(voucher.getSystemCurrency());
 
     MonetaryAmount amount = voucherLines.stream()
@@ -225,6 +224,7 @@ public class HelperUtils {
     CurrencyUnit currencyUnit = Monetary.getCurrency(currency);
     BigDecimal invoiceLineSubTotal = BigDecimal.valueOf(invoiceLine.getSubTotal()).setScale(2, RoundingMode.HALF_EVEN);
     MonetaryAmount subTotal = Money.of(invoiceLineSubTotal, currencyUnit);
+
     MonetaryAmount adjustmentTotals = calculateAdjustmentsTotal(invoiceLine.getAdjustments(), subTotal);
     MonetaryAmount total = adjustmentTotals.add(subTotal);
     invoiceLine.setAdjustmentsTotal(convertToDoubleWithRounding(adjustmentTotals));
@@ -244,11 +244,11 @@ public class HelperUtils {
   }
 
   public static String getAcqUnitIdsQueryParamName(String entity) {
-    return switch (entity) {
-      case INVOICE_LINES -> INVOICES + "." + ProtectionHelper.ACQUISITIONS_UNIT_IDS;
-      case VOUCHER_LINES -> VOUCHERS_STORAGE + "." + ProtectionHelper.ACQUISITIONS_UNIT_IDS;
-      default -> ProtectionHelper.ACQUISITIONS_UNIT_IDS;
-    };
+    switch (entity) {
+      case INVOICE_LINES: return INVOICES + "." + ProtectionHelper.ACQUISITIONS_UNIT_IDS;
+      case VOUCHER_LINES: return VOUCHERS_STORAGE + "." + ProtectionHelper.ACQUISITIONS_UNIT_IDS;
+      default: return ProtectionHelper.ACQUISITIONS_UNIT_IDS;
+    }
   }
 
   public static String getId(JsonObject jsonObject) {
@@ -303,6 +303,14 @@ public class HelperUtils {
         .set(RATE_KEY, invoice.getExchangeRate()).build();
     }
     return ConversionQueryBuilder.of().setBaseCurrency(invoice.getCurrency()).setTermCurrency(systemCurrency).build();
+  }
+
+  public static ConversionQuery buildConversionQuery(ExchangeRate exchangeRate) {
+
+    return ConversionQueryBuilder.of().setBaseCurrency(exchangeRate.getFrom())
+      .setTermCurrency(exchangeRate.getTo())
+      .set(RATE_KEY, exchangeRate.getExchangeRate()).build();
+
   }
 
   public static boolean isNotFound(Throwable t) {
