@@ -12,6 +12,7 @@ import io.vertx.core.Future;
 import io.vertx.core.json.JsonObject;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.folio.dbschema.ObjectMapperTool;
 import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.models.BatchVoucherUploadHolder;
 import org.folio.rest.core.models.RequestContext;
@@ -99,7 +100,7 @@ public class UploadBatchVoucherExportHelper extends AbstractHelper {
   }
 
   public String generateFileName(BatchVoucher batchVoucher, String fileFormat) {
-    JsonObject voucherJSON = JsonObject.mapFrom(batchVoucher);
+    JsonObject voucherJSON = new JsonObject(ObjectMapperTool.valueAsString(batchVoucher));
     String bvShortUUID = batchVoucher.getId().substring(batchVoucher.getId().lastIndexOf('-') + 1);
     String voucherGroup = voucherJSON.getString("batchGroup");
     String voucherStart = voucherJSON.getString("start").split(DATE_TIME_DELIMITER)[0];
