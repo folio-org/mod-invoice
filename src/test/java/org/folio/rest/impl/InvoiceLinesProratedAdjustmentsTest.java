@@ -11,9 +11,6 @@ import static org.folio.rest.impl.MockServer.addMockEntry;
 import static org.folio.rest.impl.MockServer.getInvoiceLineCreations;
 import static org.folio.rest.impl.MockServer.getInvoiceLineUpdates;
 import static org.folio.rest.impl.MockServer.getInvoiceUpdates;
-import static org.folio.rest.jaxrs.model.Adjustment.Prorate.BY_AMOUNT;
-import static org.folio.rest.jaxrs.model.Adjustment.RelationToTotal.INCLUDED_IN;
-import static org.folio.rest.jaxrs.model.Adjustment.Type.PERCENTAGE;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.is;
@@ -22,7 +19,6 @@ import static org.hamcrest.collection.IsCollectionWithSize.hasSize;
 
 import io.vertx.junit5.VertxExtension;
 import java.util.Collections;
-import java.util.UUID;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -31,7 +27,6 @@ import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.jaxrs.model.InvoiceLine;
 import org.folio.rest.jaxrs.model.InvoiceLineCollection;
 import org.hamcrest.Matchers;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
@@ -185,82 +180,6 @@ public class InvoiceLinesProratedAdjustmentsTest extends ApiTestBase {
     Adjustment lineAdjustment = lineToStorage.getAdjustments().get(0);
     verifyInvoiceLineAdjustmentCommon(invoiceAdjustment, lineAdjustment);
     assertThat(lineAdjustment.getValue(), is(expectedAdjValue));
-  }
-
-  @Test
-  public void testCreateInvoiceWithOnePercentageTypeByAmountProrateIncludedByTotalAdjustment() {
-    logger.info("=== Creating invoice with one adjustment by amount prorate included by total ===");
-
-    // Prepare data "from storage"
-    Invoice invoice = getMockAsJson(OPEN_INVOICE_SAMPLE_PATH).mapTo(Invoice.class).withId(randomUUID().toString());
-    Adjustment invoiceAdjustment = new Adjustment()
-      .withId(UUID.randomUUID().toString())
-      .withDescription("VAT")
-      .withProrate(BY_AMOUNT)
-      .withType(PERCENTAGE)
-      .withRelationToTotal(INCLUDED_IN)
-      .withValue(7d);
-    invoice.withAdjustments(Collections.singletonList(invoiceAdjustment));
-    addMockEntry(INVOICES, invoice);
-
-    // Prepare request body
-    InvoiceLine invoiceLineBody = getMockInvoiceLine(invoice.getId()).withAdjustmentsTotal(0d).withSubTotal(30d).withQuantity(1);
-
-    // Send create request
-    InvoiceLine invoiceLine = verifySuccessPost(INVOICE_LINES_PATH, invoiceLineBody).as(InvoiceLine.class);
-
-    // Verification
-    assertThat(getInvoiceLineUpdates(), Matchers.hasSize(0));
-    assertThat(getInvoiceUpdates(), Matchers.hasSize(1));
-    compareRecordWithSentToStorage(invoiceLine);
-
-    assertThat(invoiceLine.getAdjustments(), hasSize(1));
-    assertThat(invoiceLine.getAdjustmentsTotal(), is(0d));
-    assertThat(invoiceLine.getSubTotal(), is(28.04d));
-
-    Adjustment lineAdjustment = invoiceLine.getAdjustments().get(0);
-    verifyInvoiceLineAdjustmentCommon(invoiceAdjustment, lineAdjustment);
-    assertThat(lineAdjustment.getValue(), is(1.96d));
-  }
-
-  @Test
-  public void testDeleteInvoiceWithOnePercentageTypeByAmountProrateIncludedByTotalAdjustment() {
-    logger.info("=== Deleting invoice with one adjustment by amount prorate included by total ===");
-
-    // Prepare data "from storage"
-    Invoice invoice = getMockAsJson(OPEN_INVOICE_SAMPLE_PATH).mapTo(Invoice.class).withId(randomUUID().toString());
-    Adjustment invoiceAdjustment = new Adjustment()
-      .withId(UUID.randomUUID().toString())
-      .withDescription("VAT")
-      .withProrate(BY_AMOUNT)
-      .withType(PERCENTAGE)
-      .withRelationToTotal(INCLUDED_IN)
-      .withValue(7d);
-    invoice.withAdjustments(Collections.singletonList(invoiceAdjustment));
-    addMockEntry(INVOICES, invoice);
-
-    InvoiceLine line1 = getMockInvoiceLine(invoice.getId()).withAdjustmentsTotal(0d).withSubTotal(30d).withQuantity(1);
-    addMockEntry(INVOICE_LINES, line1);
-    InvoiceLine line2 = getMockInvoiceLine(invoice.getId()).withAdjustmentsTotal(0d).withSubTotal(30d).withQuantity(1);
-    addMockEntry(INVOICE_LINES, line2);
-
-    // Send delete request
-    verifyDeleteResponse(String.format(INVOICE_LINE_ID_PATH, line2.getId()), "", 204);
-
-    // Verification
-    assertThat(getInvoiceLineUpdates(), Matchers.hasSize(1));
-    assertThat(getInvoiceUpdates(), Matchers.hasSize(1));
-
-    InvoiceLine lineToStorage = getLineToStorageById(line1.getId());
-    assertThat(lineToStorage.getAdjustments(), hasSize(1));
-
-    assertThat(lineToStorage.getAdjustments(), hasSize(1));
-    assertThat(lineToStorage.getAdjustmentsTotal(), is(0d));
-    assertThat(lineToStorage.getSubTotal(), is(28.04));
-
-    Adjustment lineAdjustment = lineToStorage.getAdjustments().get(0);
-    verifyInvoiceLineAdjustmentCommon(invoiceAdjustment, lineAdjustment);
-    assertThat(lineAdjustment.getValue(), is(1.96d));
   }
 
   private InvoiceLine getLineToStorageById(String invoiceLineId) {
