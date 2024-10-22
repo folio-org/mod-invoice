@@ -13,7 +13,6 @@ import static org.folio.rest.jaxrs.model.Adjustment.Prorate.BY_AMOUNT;
 import static org.folio.rest.jaxrs.model.Adjustment.Prorate.BY_LINE;
 import static org.folio.rest.jaxrs.model.Adjustment.Prorate.BY_QUANTITY;
 import static org.folio.rest.jaxrs.model.Adjustment.Prorate.NOT_PRORATED;
-import static org.folio.rest.jaxrs.model.Adjustment.RelationToTotal.INCLUDED_IN;
 import static org.folio.rest.jaxrs.model.Adjustment.Type.AMOUNT;
 import static org.folio.rest.jaxrs.model.Adjustment.Type.PERCENTAGE;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -31,7 +30,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
-import java.util.UUID;
 import java.util.stream.Stream;
 
 import org.apache.logging.log4j.LogManager;
@@ -1016,111 +1014,6 @@ public class InvoicesProratedAdjustmentsTest extends ApiTestBase {
         assertThat(lineAdjustment.getValue(), is(0.5d));
     });
   }
-
-  @Test
-  public void testUpdateInvoiceWithOneLinePercentageTypeByAmountProrateIncludedByTotalAdjustment() {
-    logger.info("=== Updating invoice with one line adding 7% adjustment by amount prorate included by total ===");
-
-    // Prepare data "from storage"
-    Invoice invoice = getMockAsJson(OPEN_INVOICE_SAMPLE_PATH).mapTo(Invoice.class).withId(randomUUID().toString());
-    invoice.getAdjustments().clear();
-    addMockEntry(INVOICES, invoice);
-
-    InvoiceLine invoiceLine = getMockInvoiceLine(invoice.getId()).withAdjustmentsTotal(0d).withSubTotal(30d).withInvoiceLineNumber("n-1");
-    addMockEntry(INVOICE_LINES, invoiceLine);
-
-    // Prepare request body
-    Invoice invoiceBody = copyObject(invoice);
-    Adjustment adjustment = new Adjustment()
-      .withId(UUID.randomUUID().toString())
-      .withDescription("VAT")
-      .withProrate(BY_AMOUNT)
-      .withType(PERCENTAGE)
-      .withRelationToTotal(INCLUDED_IN)
-      .withValue(7d);
-    invoiceBody.getAdjustments().add(adjustment);
-
-    // Send update request
-    verifyPut(String.format(INVOICE_ID_PATH, invoice.getId()), invoiceBody, "", 204);
-
-    // Verification
-    assertThat(getInvoiceUpdates(), hasSize(1));
-    assertThat(getInvoiceLineUpdates(), hasSize(1));
-
-    Invoice invoiceToStorage = getInvoiceUpdates().get(0).mapTo(Invoice.class);
-    assertThat(invoiceToStorage.getAdjustments(), hasSize(1));
-    assertThat(invoiceToStorage.getAdjustmentsTotal(), is(1.96d));
-    Adjustment invoiceAdjustment = invoiceToStorage.getAdjustments().get(0);
-    assertThat(invoiceAdjustment.getId(), not(is(emptyOrNullString())));
-
-    Stream.of(invoiceLine.getId())
-      .forEach(id -> {
-        InvoiceLine lineToStorage = getLineToStorageById(id);
-        assertThat(lineToStorage.getAdjustments(), hasSize(1));
-        assertThat(lineToStorage.getAdjustmentsTotal(), is(1.96d));
-        assertThat(lineToStorage.getSubTotal(), is(28.04d));
-
-        Adjustment lineAdjustment = lineToStorage.getAdjustments().get(0);
-        verifyInvoiceLineAdjustmentCommon(invoiceAdjustment, lineAdjustment);
-        assertThat(lineAdjustment.getValue(), is(1.96d));
-      });
-  }
-
-  @Test
-  public void testUpdateInvoiceWithThreeLinesPercentageTypeByAmountProrateIncludedByTotalAdjustment() {
-    logger.info("=== Updating invoice with three lines adding 7% adjustment by amount prorate included by total ===");
-
-    // Prepare data "from storage"
-    Invoice invoice = getMockAsJson(OPEN_INVOICE_SAMPLE_PATH).mapTo(Invoice.class).withId(randomUUID().toString());
-    invoice.getAdjustments().clear();
-    addMockEntry(INVOICES, invoice);
-
-    InvoiceLine invoiceLine1 = getMockInvoiceLine(invoice.getId()).withAdjustmentsTotal(0d).withSubTotal(30d).withInvoiceLineNumber("n-1");
-    addMockEntry(INVOICE_LINES, invoiceLine1);
-
-    InvoiceLine invoiceLine2 = getMockInvoiceLine(invoice.getId()).withAdjustmentsTotal(0d).withSubTotal(30d).withInvoiceLineNumber("n-2");
-    addMockEntry(INVOICE_LINES, invoiceLine2);
-
-    InvoiceLine invoiceLine3 = getMockInvoiceLine(invoice.getId()).withAdjustmentsTotal(0d).withSubTotal(30d).withInvoiceLineNumber("n-3");
-    addMockEntry(INVOICE_LINES, invoiceLine3);
-
-    // Prepare request body
-    Invoice invoiceBody = copyObject(invoice);
-    Adjustment adjustment = new Adjustment()
-      .withId(UUID.randomUUID().toString())
-      .withDescription("VAT")
-      .withProrate(BY_AMOUNT)
-      .withType(PERCENTAGE)
-      .withRelationToTotal(INCLUDED_IN)
-      .withValue(7d);
-    invoiceBody.getAdjustments().add(adjustment);
-
-    // Send update request
-    verifyPut(String.format(INVOICE_ID_PATH, invoice.getId()), invoiceBody, "", 204);
-
-    // Verification
-    assertThat(getInvoiceUpdates(), hasSize(1));
-    assertThat(getInvoiceLineUpdates(), hasSize(3));
-
-    Invoice invoiceToStorage = getInvoiceUpdates().get(0).mapTo(Invoice.class);
-    assertThat(invoiceToStorage.getAdjustments(), hasSize(1));
-    assertThat(invoiceToStorage.getAdjustmentsTotal(), is(5.88d));
-    Adjustment invoiceAdjustment = invoiceToStorage.getAdjustments().get(0);
-    assertThat(invoiceAdjustment.getId(), not(is(emptyOrNullString())));
-
-    Stream.of(invoiceLine1.getId(), invoiceLine2.getId(), invoiceLine3.getId())
-      .forEach(id -> {
-        InvoiceLine lineToStorage = getLineToStorageById(id);
-        assertThat(lineToStorage.getAdjustments(), hasSize(1));
-        assertThat(lineToStorage.getAdjustmentsTotal(), is(1.96d));
-        assertThat(lineToStorage.getSubTotal(), is(28.04d));
-
-        Adjustment lineAdjustment = lineToStorage.getAdjustments().get(0);
-        verifyInvoiceLineAdjustmentCommon(invoiceAdjustment, lineAdjustment);
-        assertThat(lineAdjustment.getValue(), is(1.96d));
-      });
-  }
-
 
   private InvoiceLine getLineToStorageById(String invoiceLineId) {
     return getInvoiceLineUpdates().stream()
