@@ -102,7 +102,8 @@ public class SftpUploadServiceTest {
         }
       });
     vertxTestContext.assertComplete(future)
-      .onSuccess(result -> vertxTestContext.completeNow());
+      .onSuccess(s -> vertxTestContext.completeNow())
+      .onFailure(vertxTestContext::failNow);
   }
 
   @Test
@@ -143,7 +144,8 @@ public class SftpUploadServiceTest {
         }
       });
     vertxTestContext.assertComplete(future)
-      .onSuccess(result -> vertxTestContext.completeNow());
+      .onSuccess(s -> vertxTestContext.completeNow())
+      .onFailure(vertxTestContext::failNow);
   }
 
   @Test
@@ -184,7 +186,8 @@ public class SftpUploadServiceTest {
         }
       });
     vertxTestContext.assertComplete(future)
-      .onSuccess(result -> vertxTestContext.completeNow());
+      .onSuccess(s -> vertxTestContext.completeNow())
+      .onFailure(vertxTestContext::failNow);
   }
 
 

@@ -133,7 +133,7 @@ public class ApiTestBase {
   public static final String permissionsWithoutPaidJsonArrayString = new JsonArray(permissionsWithoutPaidList).encode();
   public static final Header X_OKAPI_PERMISSION_WITHOUT_PAY = new Header(UserPermissionsUtil.OKAPI_HEADER_PERMISSIONS, permissionsWithoutPaidJsonArrayString);
 
-  public static final String POSTGRES_IMAGE = "postgres:12-alpine";
+  public static final String POSTGRES_IMAGE = "postgres:16-alpine";
   private static PostgreSQLContainer<?> postgresSQLContainer;
 
   private static final String INVOICES_TABLE = "records_invoices";
