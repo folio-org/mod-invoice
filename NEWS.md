@@ -1,6 +1,25 @@
-## 5.9.0 - Unreleased
-* [MODINVOICE-543](https://folio-org.atlassian.net/browse/MODINVOICE-543) - EDIFACT invoice lines load out of order
+## 6.0.0 - Unreleased
+
+## 5.9.0 - Released (Ramsons R2 2024)
+The focus of this release was to update libraries, separate credits from expenditures, and fix various bugs.
+
+[Full Changelog](https://github.com/folio-org/mod-invoice/compare/v5.8.0...v5.9.0)
+
+### Stories
+* [MODINVOICE-562](https://folio-org.atlassian.net/browse/MODINVOICE-562) - Update libraries of dependant acq modules to the latest versions
+* [MODINVOICE-547](https://folio-org.atlassian.net/browse/MODINVOICE-547) - Separate credits from expenditures in mod-invoice
+
+### Bug Fixes
+* [MODINVOICE-552](https://folio-org.atlassian.net/browse/MODINVOICE-552) - Vert.x 4.5.9, Netty 4.1.111, Apache sshd/sftp 2.13.2
 * [MODINVOICE-548](https://folio-org.atlassian.net/browse/MODINVOICE-548) - Provide fund code population when fund distributions mapping is specified
+* [MODINVOICE-546](https://folio-org.atlassian.net/browse/MODINVOICE-546) - Can not ctrate invoice line from POL (500 error)
+* [MODINVOICE-543](https://folio-org.atlassian.net/browse/MODINVOICE-543) - EDIFACT invoice lines load out of order
+* [MODINVOICE-542](https://folio-org.atlassian.net/browse/MODINVOICE-542) - Cannot search for voucher by number after editing voucher number
+
+### Dependencies
+* Bump `raml` from `35.2.0` to `35.3.0`
+* Added `folio-module-descriptor-validator` version `1.0.0`
+
 
 ## 5.8.0 - Released (Quesnelia R1 2024)
 The focus of this release was to fix bugs and make improvement in transaction call and error codes
