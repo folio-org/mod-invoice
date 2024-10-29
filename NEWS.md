@@ -1,6 +1,6 @@
 ## 6.0.0 - Unreleased
 
-## 5.9.0 - Released (Ramson R2 2024)
+## 5.9.0 - Released (Ramsons R2 2024)
 The focus of this release was to update libraries, separate credits from expenditures, and fix various bugs.
 
 [Full Changelog](https://github.com/folio-org/mod-invoice/compare/v5.8.0...v5.9.0)
