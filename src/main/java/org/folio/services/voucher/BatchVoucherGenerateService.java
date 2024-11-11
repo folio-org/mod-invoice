@@ -16,6 +16,7 @@ import io.vertx.core.json.JsonObject;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.converters.AddressConverter;
+import org.folio.dbschema.ObjectMapperTool;
 import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.rest.acq.model.Address;
 import org.folio.rest.acq.model.FundDistribution;
@@ -212,7 +213,7 @@ public class BatchVoucherGenerateService {
   }
 
   private String buildBatchVoucherQuery(BatchVoucherExport batchVoucherExport) {
-    JsonObject voucherJSON = JsonObject.mapFrom(batchVoucherExport);
+    JsonObject voucherJSON = new JsonObject(ObjectMapperTool.valueAsString(batchVoucherExport));
     String voucherStart = voucherJSON.getString("start");
     String voucherEnd = voucherJSON.getString("end");
     return "batchGroupId==" + batchVoucherExport.getBatchGroupId() + " and voucherDate>=" + voucherStart
