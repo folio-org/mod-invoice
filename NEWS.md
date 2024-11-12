@@ -1,5 +1,13 @@
 ## 6.0.0 - Unreleased
 
+## 5.9.1 - Released (Ramsons R2 2024 Bug Fix)
+The focus of this release was to fix an issue with manual Batch Voucher Export
+
+[Full Changelog](https://github.com/folio-org/mod-invoice/compare/v5.9.0...v5.9.1)
+
+### Bug Fixes
+* [MODINVOICE-566](https://folio-org.atlassian.net/browse/MODINVOICE-566) - Error When Run Batch Voucher Export Manually
+
 ## 5.9.0 - Released (Ramsons R2 2024)
 The focus of this release was to update libraries, separate credits from expenditures, and fix various bugs.
 

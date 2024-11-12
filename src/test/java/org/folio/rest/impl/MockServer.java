@@ -1549,29 +1549,36 @@ public class MockServer {
       serverResponse(ctx, 400, APPLICATION_JSON, Response.Status.BAD_REQUEST.getReasonPhrase());
     } else if (queryParam.contains(ID_FOR_INTERNAL_SERVER_ERROR) || GET_VOUCHERS_ERROR_TENANT.equals(tenant)) {
       serverResponse(ctx, 500, APPLICATION_JSON, Response.Status.INTERNAL_SERVER_ERROR.getReasonPhrase());
-    } else {
-      Supplier<List<Voucher>> getFromFile = () -> {
-        try {
-          return new JsonObject(getMockData(VOUCHERS_LIST_PATH))
-            .mapTo(VoucherCollection.class).getVouchers();
-        } catch (IOException e) {
-          return Collections.emptyList();
-        }
-      };
-
-      VoucherCollection voucherCollection = new VoucherCollection();
-      List<Voucher> vouchers  = getMockEntries(VOUCHERS_STORAGE, Voucher.class).orElseGet(getFromFile);
-
-      Function<Voucher, String> invoiceIdGetter = Voucher::getInvoiceId;
-      voucherCollection.setVouchers(filterEntriesByStringValue(invoiceId, vouchers, invoiceIdGetter));
-      voucherCollection.setTotalRecords(voucherCollection.getVouchers().size());
-
-      JsonObject vouchersJson = JsonObject.mapFrom(voucherCollection);
-      logger.info(vouchersJson.encodePrettily());
-
-      addServerRqRsData(HttpMethod.GET, VOUCHERS_STORAGE, vouchersJson);
-      serverResponse(ctx, 200, APPLICATION_JSON, vouchersJson.encode());
+    } else if (queryParam.contains("voucherDate")) {
+      // Regular expression to match the ISO_OFFSET_DATE_TIME format
+      Pattern pattern = Pattern.compile("\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}([+-]\\d{2}:\\d{2}|Z)");
+      Matcher matcher = pattern.matcher(queryParam);
+      if (!matcher.find()) {
+        serverResponse(ctx, 500, APPLICATION_JSON, "Voucher Export date has invalid format");
+      }
     }
+
+    Supplier<List<Voucher>> getFromFile = () -> {
+      try {
+        return new JsonObject(getMockData(VOUCHERS_LIST_PATH))
+          .mapTo(VoucherCollection.class).getVouchers();
+      } catch (IOException e) {
+        return Collections.emptyList();
+      }
+    };
+
+    VoucherCollection voucherCollection = new VoucherCollection();
+    List<Voucher> vouchers  = getMockEntries(VOUCHERS_STORAGE, Voucher.class).orElseGet(getFromFile);
+
+    Function<Voucher, String> invoiceIdGetter = Voucher::getInvoiceId;
+    voucherCollection.setVouchers(filterEntriesByStringValue(invoiceId, vouchers, invoiceIdGetter));
+    voucherCollection.setTotalRecords(voucherCollection.getVouchers().size());
+
+    JsonObject vouchersJson = JsonObject.mapFrom(voucherCollection);
+    logger.info(vouchersJson.encodePrettily());
+
+    addServerRqRsData(HttpMethod.GET, VOUCHERS_STORAGE, vouchersJson);
+    serverResponse(ctx, 200, APPLICATION_JSON, vouchersJson.encode());
   }
 
   private void handleGetBatchGroups(RoutingContext ctx) {
