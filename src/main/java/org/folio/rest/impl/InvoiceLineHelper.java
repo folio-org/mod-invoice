@@ -658,13 +658,11 @@ public class InvoiceLineHelper extends AbstractHelper {
   }
 
   private Future<Void> persistInvoiceIfNeeded(ILProcessing ilProcessing, RequestContext requestContext) {
-    return updateInvoice(ilProcessing, requestContext).compose(v -> {
-      if (ilProcessing.getInvoiceSerializationNeeded()) {
-        return invoiceService.updateInvoice(ilProcessing.getInvoice(), requestContext);
-      } else {
-        return succeededFuture(null);
-      }
-    });
+    if (ilProcessing.getInvoiceSerializationNeeded()) {
+      return invoiceService.updateInvoice(ilProcessing.getInvoice(), requestContext);
+    } else {
+      return succeededFuture(null);
+    }
   }
 
   private static class ILProcessing {
