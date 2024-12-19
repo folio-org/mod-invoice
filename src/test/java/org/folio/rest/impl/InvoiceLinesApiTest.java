@@ -100,6 +100,7 @@ public class InvoiceLinesApiTest extends ApiTestBase {
   static final String INVOICE_LINE_WITH_APPROVED_INVOICE_SAMPLE_PATH = INVOICE_LINES_MOCK_DATA_PATH + INVOICE_LINE_WITH_APPROVED_EXISTED_INVOICE_ID + ".json";
   static final String APPROVED_INVOICE_LINE_WITH_APPROVED_INVOICE_SAMPLE_PATH = INVOICE_LINES_MOCK_DATA_PATH + APPROVED_INVOICE_LINE_WITH_APPROVED_EXISTED_INVOICE_ID + ".json";
   private static final String INVOICE_LINE_WITH_PO_NUMBER_PATH = INVOICE_LINES_MOCK_DATA_PATH + INVOICE_LINE_WITH_PO_NUMBER + ".json";
+  private static final String INVOICE_LINES_WITH_OPEN_EXISTED_INVOICE_PATH = INVOICE_LINES_MOCK_DATA_PATH + INVOICE_LINE_WITH_OPEN_EXISTED_INVOICE_ID + ".json";
 
   @Test
   public void getInvoicingInvoiceLinesTest() {
@@ -168,6 +169,8 @@ public class InvoiceLinesApiTest extends ApiTestBase {
   public void testGetInvoicingInvoiceLinesByIdUpdateTotal() {
     logger.info("=== Test 200 when correct calculated invoice line total is returned without waiting to update in storage ===");
 
+    InvoiceLine invoiceLine = getMockAsJson(INVOICE_LINE_OUTDATED_TOTAL_PATH).mapTo(InvoiceLine.class);
+    addMockEntry(INVOICE_LINES, invoiceLine);
     final InvoiceLine resp = verifySuccessGetById(INVOICE_LINE_OUTDATED_TOTAL, true, true);
 
     Double expectedTotal = 4.62;
@@ -655,6 +658,8 @@ public class InvoiceLinesApiTest extends ApiTestBase {
     checkNumberOfRequests(INVOICE_LINE_WITH_APPROVED_EXISTED_INVOICE_ID);
     clearServiceInteractions();
 
+    InvoiceLine invoiceLine = getMockAsJson(INVOICE_LINES_WITH_OPEN_EXISTED_INVOICE_PATH).mapTo(InvoiceLine.class);
+    addMockEntry(INVOICE_LINES, invoiceLine);
     // InvoiceLine with corresponding Invoice with status OPEN
     checkNumberOfRequests(INVOICE_LINE_WITH_OPEN_EXISTED_INVOICE_ID);
   }
@@ -737,8 +742,9 @@ public class InvoiceLinesApiTest extends ApiTestBase {
   @Test
   public void testPutUpdatePoLineRef() {
     logger.info("=== Test update invoice line by id with protected fields (all fields set) ===");
-    InvoiceLine invoiceLine = getMockAsJson( INVOICE_LINES_MOCK_DATA_PATH + INVOICE_LINE_WITH_OPEN_EXISTED_INVOICE_ID + ".json").mapTo(InvoiceLine.class);
+    InvoiceLine invoiceLine = getMockAsJson(INVOICE_LINES_WITH_OPEN_EXISTED_INVOICE_PATH).mapTo(InvoiceLine.class);
     invoiceLine.setPoLineId("0000edd1-b463-41ba-bf64-1b1d9f9d0001");
+    addMockEntry(INVOICE_LINES, invoiceLine);
     // Invoice line updated (invoice status = APPROVED) - protected field not modified
     verifyPut(invoiceLine.getId(), invoiceLine, "", HttpStatus.SC_NO_CONTENT);
 

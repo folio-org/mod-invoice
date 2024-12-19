@@ -192,8 +192,12 @@ public class BaseInvoiceService implements InvoiceService {
    */
   private boolean recalculateInvoiceTotals(Invoice invoice, List<InvoiceLine> lines) {
     Double adjustmentsTotal = invoice.getAdjustmentsTotal();
+    Double subTotal = invoice.getSubTotal();
+    Double total = invoice.getTotal();
     calculateTotals(invoice, lines);
-    return !Objects.equals(adjustmentsTotal, invoice.getAdjustmentsTotal());
+    return !Objects.equals(adjustmentsTotal, invoice.getAdjustmentsTotal())
+      || !Objects.equals(subTotal, invoice.getSubTotal())
+      || !Objects.equals(total, invoice.getTotal());
   }
 
   public Future<Void> updateVoucherNumberInInvoice(Voucher voucher, RequestContext requestContext) {
