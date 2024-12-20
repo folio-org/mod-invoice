@@ -1,5 +1,6 @@
 ## 6.0.0 - Unreleased
-
+* [MODINVOICE-568](https://folio-org.atlassian.net/browse/MODINVOICE-568) - Use system user token in DI kafka handlers
+* 
 ## 5.9.0 - Released (Ramsons R2 2024)
 The focus of this release was to update libraries, separate credits from expenditures, and fix various bugs.
 
