@@ -1113,10 +1113,13 @@
         "invoice-storage.invoices.item.get",
         "invoice-storage.invoices.item.put",
         "acquisitions-units-storage.units.collection.get",
-        "acquisitions-units.memberships.collection.get",
-        "acquisitions-units.units.collection.get",
+        "acquisitions-units-storage.units.collection.get",
+        "acquisitions-units-storage.memberships.collection.get",
         "orders.po-lines.collection.get",
-        "orders.po-lines.item.get"
+        "orders.po-lines.item.get",
+        "orders-storage.order-invoice-relationships.collection.get",
+        "orders-storage.order-invoice-relationships.item.post",
+        "acquisitions-units-storage.memberships.collection.get"
       ]
     }
   },
