@@ -1097,6 +1097,32 @@
       "description": "Ability to manage acquisition unit and update invoice"
     }
   ],
+  "metadata": {
+    "user": {
+      "type": "system",
+      "permissions": [
+        "finance-storage.fiscal-years.item.get",
+        "converter-storage.jobprofilesnapshots.get",
+        "organizations-storage.organizations.item.get",
+        "invoice-storage.invoice-lines.collection.get",
+        "invoice-storage.invoice-lines.item.post",
+        "invoice-storage.invoice-line-number.get",
+        "invoice-storage.invoice-lines.item.put",
+        "invoice-storage.invoice-number.get",
+        "invoice-storage.invoices.item.post",
+        "invoice-storage.invoices.item.get",
+        "invoice-storage.invoices.item.put",
+        "acquisitions-units-storage.units.collection.get",
+        "acquisitions-units-storage.units.collection.get",
+        "acquisitions-units-storage.memberships.collection.get",
+        "orders.po-lines.collection.get",
+        "orders.po-lines.item.get",
+        "orders-storage.order-invoice-relationships.collection.get",
+        "orders-storage.order-invoice-relationships.item.post",
+        "acquisitions-units-storage.memberships.collection.get"
+      ]
+    }
+  },
   "launchDescriptor": {
     "dockerImage": "${artifactId}:${version}",
     "dockerPull": false,

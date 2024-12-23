@@ -1,5 +1,8 @@
 ## 6.0.0 - Unreleased
 
+## 5.9.2 - Released (Ramsons R2 2024 Bug Fix)
+* [MODINVOICE-568](https://folio-org.atlassian.net/browse/MODINVOICE-568) - Use system user token in DI kafka handlers
+
 ## 5.9.1 - Released (Ramsons R2 2024 Bug Fix)
 The focus of this release was to fix an issue with manual Batch Voucher Export
 
