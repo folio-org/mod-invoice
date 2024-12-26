@@ -1,7 +1,13 @@
 ## 6.0.0 - Unreleased
 
 ## 5.9.2 - Released (Ramsons R2 2024 Bug Fix)
+The focus of this release was to provide RTR support on Eureka-based environemnt for invoices creation through data import
+
+[Full Changelog](https://github.com/folio-org/mod-invoice/compare/v5.9.1...v5.9.2)
+
+### Stories
 * [MODINVOICE-568](https://folio-org.atlassian.net/browse/MODINVOICE-568) - Use system user token in DI kafka handlers
+
 
 ## 5.9.1 - Released (Ramsons R2 2024 Bug Fix)
 The focus of this release was to fix an issue with manual Batch Voucher Export
