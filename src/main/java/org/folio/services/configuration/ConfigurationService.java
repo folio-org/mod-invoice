@@ -55,9 +55,6 @@ public class ConfigurationService {
     logger.info("GET request: {}", query);
     return restClient.get(requestEntry, Configs.class, requestContext)
       .map(configs -> {
-        if (logger.isDebugEnabled()) {
-          logger.debug("The response from mod-configuration: {}", JsonObject.mapFrom(configs).encodePrettily());
-        }
         JsonObject config = new JsonObject();
         configs.getConfigs().forEach(entry -> config.put(entry.getConfigName(), entry.getValue()));
         return config;

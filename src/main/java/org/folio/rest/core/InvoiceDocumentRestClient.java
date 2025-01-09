@@ -6,15 +6,11 @@ import org.folio.rest.core.models.RequestContext;
 import org.folio.rest.jaxrs.model.InvoiceDocument;
 
 import io.vertx.core.Future;
-import io.vertx.core.json.JsonObject;
 
 public class InvoiceDocumentRestClient extends RestClient {
   private static final Logger logger = LogManager.getLogger();
 
   public Future<InvoiceDocument> postInvoiceDocument(String endpoint, InvoiceDocument document, RequestContext requestContext) {
-    if (logger.isDebugEnabled()) {
-      logger.debug("Sending 'POST {}' with body: {}", endpoint, JsonObject.mapFrom(document).encodePrettily());
-    }
     var caseInsensitiveHeader = convertToCaseInsensitiveMap(requestContext.getHeaders());
     return getVertxWebClient(requestContext.getContext())
       .postAbs(buildAbsEndpoint(caseInsensitiveHeader, endpoint))
