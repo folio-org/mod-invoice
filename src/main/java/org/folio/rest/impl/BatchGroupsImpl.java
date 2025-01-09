@@ -15,7 +15,6 @@ import org.folio.rest.jaxrs.resource.BatchGroups;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Context;
 import io.vertx.core.Handler;
-import io.vertx.core.json.JsonObject;
 
 public class BatchGroupsImpl implements BatchGroups {
 
@@ -44,10 +43,7 @@ public class BatchGroupsImpl implements BatchGroups {
     BatchGroupHelper helper = new BatchGroupHelper(okapiHeaders, vertxContext);
 
     helper.getBatchGroups(limit, offset, query)
-      .onSuccess(batchGroups -> {
-        logger.info("Successfully retrieved batch groups: {}", JsonObject.mapFrom(batchGroups).encodePrettily());
-        asyncResultHandler.handle(succeededFuture(helper.buildOkResponse(batchGroups)));
-      })
+      .onSuccess(batchGroups -> asyncResultHandler.handle(succeededFuture(helper.buildOkResponse(batchGroups))))
       .onFailure(t -> handleErrorResponse(asyncResultHandler, helper, t));
   }
 

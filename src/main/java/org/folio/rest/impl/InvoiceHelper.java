@@ -258,7 +258,6 @@ public class InvoiceHelper extends AbstractHelper {
   public Future<InvoiceCollection> getInvoices(int limit, int offset, String query) {
     return buildGetInvoicesQuery(query)
       .compose(getInvoicesQuery -> invoiceService.getInvoices(getInvoicesQuery, offset, limit, requestContext))
-      .onSuccess(invoiceCollection -> logger.info("Successfully retrieved invoices: {}", invoiceCollection))
       .compose(invoiceCollection -> invoiceService.updateInvoicesTotals(invoiceCollection, requestContext).map(invoiceCollection))
       .onFailure(t -> logger.error("Error getting invoices", t));
   }
