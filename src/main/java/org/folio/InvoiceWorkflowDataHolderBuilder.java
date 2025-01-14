@@ -131,8 +131,7 @@ public class InvoiceWorkflowDataHolderBuilder {
     if (holders.isEmpty())
       return succeededFuture(holders);
     List<String> fundIds = holders.stream().map(InvoiceWorkflowDataHolder::getFundId).distinct().collect(toList());
-    String invoiceFiscalYearId = holders.get(0).getInvoice().getFiscalYearId();
-    return budgetService.getBudgetsByFundIds(fundIds, invoiceFiscalYearId, requestContext)
+    return budgetService.getBudgetsByFundIds(fundIds, requestContext)
       .map(budgets -> budgets.stream().collect(toMap(Budget::getFundId, Function.identity())))
       .map(fundIdBudgetMap -> holders.stream()
         .map(holder -> holder.withBudget(fundIdBudgetMap.get(holder.getFundId())))

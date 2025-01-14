@@ -46,7 +46,6 @@ public enum ErrorCodes {
   CANNOT_ADD_ADJUSTMENTS("cannotAddAdjustment", "Prorated adjustment cannot be adde because it is not present on invoice level"),
   APPROVED_OR_PAID_INVOICE_DELETE_FORBIDDEN("approvedOrPaidInvoiceDeleteForbiddenError", "Approved or paid invoice can not be deleted"),
   BUDGET_NOT_FOUND("budgetNotFoundByFundId", "Budget not found by fundId"),
-  BUDGET_NOT_FOUND_USING_FISCAL_YEAR_ID("budgetNotFoundByFundIdAndFiscalYearId", "Active budget not found by fund id and fiscal year id"),
   LEDGER_NOT_FOUND("ledgerNotFound", "Ledger not found"),
   FUND_CANNOT_BE_PAID("fundCannotBePaid", "Fund cannot be paid due to restrictions"),
   INACTIVE_EXPENSE_CLASS("inactiveExpenseClass", "Expense class is Inactive"),

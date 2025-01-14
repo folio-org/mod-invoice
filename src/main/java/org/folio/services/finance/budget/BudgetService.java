@@ -2,7 +2,6 @@ package org.folio.services.finance.budget;
 
 import static java.util.stream.Collectors.toList;
 import static org.folio.invoices.utils.ErrorCodes.BUDGET_NOT_FOUND;
-import static org.folio.invoices.utils.ErrorCodes.BUDGET_NOT_FOUND_USING_FISCAL_YEAR_ID;
 import static org.folio.invoices.utils.HelperUtils.collectResultsOnSuccess;
 import static org.folio.invoices.utils.HelperUtils.convertIdsToCqlQuery;
 import static org.folio.invoices.utils.ResourcePathResolver.BUDGETS;
@@ -28,7 +27,6 @@ public class BudgetService {
 
   private static final String BUDGETS_ENDPOINT = resourcesPath(BUDGETS);
   private static final String ACTIVE_BUDGET_ENDPOINT = "/finance/funds/{id}/budget";
-  private static final String QUERY_BY_FUND_ID_AND_FISCAL_YEAR_ID = "budgetStatus==Active AND fundId==%s AND fiscalYearId==%s";
 
   private final RestClient restClient;
 
@@ -36,37 +34,18 @@ public class BudgetService {
     this.restClient = restClient;
   }
 
-  public Future<List<Budget>> getBudgetsByFundIds(Collection<String> fundIds, String invoiceFiscalYearId,
+  public Future<List<Budget>> getBudgetsByFundIds(Collection<String> fundIds,
       RequestContext requestContext) {
     List<Future<Budget>> futures = fundIds.stream()
       .distinct()
-      .map(fundId -> getBudgetByFundId(fundId, invoiceFiscalYearId, requestContext))
+      .map(fundId -> getBudgetByFundId(fundId, requestContext))
       .collect(toList());
 
     return collectResultsOnSuccess(futures);
   }
 
-  private Future<Budget> getBudgetByFundId(String fundId, String invoiceFiscalYearId, RequestContext requestContext) {
-    if (invoiceFiscalYearId == null)
+  private Future<Budget> getBudgetByFundId(String fundId, RequestContext requestContext) {
       return getActiveBudgetByFundId(fundId, requestContext);
-    return getBudgetByFundIdAndFiscalYearId(fundId, invoiceFiscalYearId, requestContext);
-  }
-
-  private Future<Budget> getBudgetByFundIdAndFiscalYearId(String fundId, String fiscalYearId,
-      RequestContext requestContext) {
-    RequestEntry requestEntry = new RequestEntry(BUDGETS_ENDPOINT)
-      .withQuery(String.format(QUERY_BY_FUND_ID_AND_FISCAL_YEAR_ID, fundId, fiscalYearId));
-    return restClient.get(requestEntry, BudgetCollection.class, requestContext)
-      .map(budgetCollection -> {
-        if (budgetCollection.getBudgets().isEmpty()) {
-          List<Parameter> parameters = List.of(
-            new Parameter().withKey("fundId").withValue(fundId),
-            new Parameter().withKey("fiscalYearId").withValue(fiscalYearId)
-          );
-          throw new HttpException(404, BUDGET_NOT_FOUND_USING_FISCAL_YEAR_ID.toError().withParameters(parameters));
-        }
-        return budgetCollection.getBudgets().get(0);
-      });
   }
 
   private Future<Budget> getActiveBudgetByFundId(String fundId, RequestContext requestContext) {
