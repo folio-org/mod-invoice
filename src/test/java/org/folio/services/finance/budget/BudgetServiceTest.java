@@ -5,7 +5,6 @@ import io.vertx.junit5.VertxExtension;
 import io.vertx.junit5.VertxTestContext;
 import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.rest.acq.model.finance.Budget;
-import org.folio.rest.acq.model.finance.BudgetCollection;
 import org.folio.rest.core.RestClient;
 import org.folio.rest.core.models.RequestContext;
 import org.folio.rest.core.models.RequestEntry;
@@ -23,10 +22,7 @@ import org.mockito.MockitoAnnotations;
 import java.util.List;
 import java.util.UUID;
 
-import static org.folio.invoices.utils.ErrorCodes.BUDGET_NOT_FOUND_USING_FISCAL_YEAR_ID;
-import static org.folio.invoices.utils.HelperUtils.encodeQuery;
-import static org.folio.invoices.utils.ResourcePathResolver.BUDGETS;
-import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
+import static org.folio.invoices.utils.ErrorCodes.BUDGET_NOT_FOUND;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.instanceOf;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -59,17 +55,13 @@ public class BudgetServiceTest {
   }
 
   @Test
-  void shouldThrowErrorWhenBudgetIsNotFoundUsingFiscalYearId(VertxTestContext vertxTestContext) {
+  void shouldThrowErrorWhenCurrentBudgetIsNotFoundForFund(VertxTestContext vertxTestContext) {
     String fundId = UUID.randomUUID().toString();
     List<String> fundIds = List.of(fundId);
-    String invoiceFiscalYearId = UUID.randomUUID().toString();
-    BudgetCollection budgetCollection = new BudgetCollection()
-      .withBudgets(List.of())
-      .withTotalRecords(0);
+    var notFoundError = new HttpException(404, "Current budget doesn't exist");
     when(restClient.get(any(RequestEntry.class), any(), any()))
-      .thenReturn(Future.succeededFuture(budgetCollection));
-
-    Future<List<Budget>> f = budgetService.getBudgetsByFundIds(fundIds, invoiceFiscalYearId, requestContext);
+      .thenReturn(Future.failedFuture(notFoundError));
+    Future<List<Budget>> f = budgetService.getBudgetsByFundIds(fundIds, requestContext);
 
     vertxTestContext.assertFailure(f)
       .onComplete(result -> {
@@ -78,43 +70,13 @@ public class BudgetServiceTest {
         assertEquals(404, exception.getCode());
         Errors errors = exception.getErrors();
         Error error = errors.getErrors().get(0);
-        assertEquals(BUDGET_NOT_FOUND_USING_FISCAL_YEAR_ID.getCode(), error.getCode());
+        assertEquals(BUDGET_NOT_FOUND.getCode(), error.getCode());
         vertxTestContext.completeNow();
       });
   }
 
   @Test
-  void shouldReturnBudgetsWhenGettingBudgetsUsingFiscalYearId(VertxTestContext vertxTestContext) {
-    String fundId = UUID.randomUUID().toString();
-    List<String> fundIds = List.of(fundId);
-    String invoiceFiscalYearId = UUID.randomUUID().toString();
-    Budget budget = new Budget()
-      .withId(UUID.randomUUID().toString());
-    BudgetCollection budgetCollection = new BudgetCollection()
-      .withBudgets(List.of(budget))
-      .withTotalRecords(1);
-    String query = String.format("budgetStatus==Active AND fundId==%s AND fiscalYearId==%s", fundId, invoiceFiscalYearId);
-    ArgumentCaptor<RequestEntry> requestEntryCaptor = ArgumentCaptor.forClass(RequestEntry.class);
-    when(restClient.get(requestEntryCaptor.capture(), any(), any()))
-      .thenReturn(Future.succeededFuture(budgetCollection));
-
-    Future<List<Budget>> f = budgetService.getBudgetsByFundIds(fundIds, invoiceFiscalYearId, requestContext);
-
-    vertxTestContext.assertComplete(f)
-      .onComplete(result -> {
-        verify(restClient, times(1)).get(any(RequestEntry.class), any(), any());
-        List<RequestEntry> requestEntries = requestEntryCaptor.getAllValues();
-        assertEquals(requestEntries.get(0).getBaseEndpoint(), resourcesPath(BUDGETS));
-        assertEquals(requestEntries.get(0).getQueryParams().get("query"), encodeQuery(query));
-        List<Budget> budgets = result.result();
-        assertEquals(1, budgets.size());
-        assertEquals(budget.getId(), budgets.get(0).getId());
-        vertxTestContext.completeNow();
-      });
-  }
-
-  @Test
-  void shouldReturnActiveBudgetsWhenGettingBudgetsWithoutUsingFiscalYearId(VertxTestContext vertxTestContext) {
+  void shouldReturnActiveBudgetsWhenGettingBudgets(VertxTestContext vertxTestContext) {
     String fundId = UUID.randomUUID().toString();
     List<String> fundIds = List.of(fundId);
     Budget budget = new Budget()
@@ -123,14 +85,14 @@ public class BudgetServiceTest {
     when(restClient.get(requestEntryCaptor.capture(), any(), any()))
       .thenReturn(Future.succeededFuture(budget));
 
-    Future<List<Budget>> f = budgetService.getBudgetsByFundIds(fundIds, null, requestContext);
+    Future<List<Budget>> f = budgetService.getBudgetsByFundIds(fundIds, requestContext);
 
     vertxTestContext.assertComplete(f)
       .onComplete(result -> {
         verify(restClient, times(1)).get(any(RequestEntry.class), any(), any());
         List<RequestEntry> requestEntries = requestEntryCaptor.getAllValues();
-        assertEquals(requestEntries.get(0).getBaseEndpoint(), "/finance/funds/{id}/budget");
-        assertEquals(requestEntries.get(0).getPathParams().get("id"), fundId);
+        assertEquals("/finance/funds/{id}/budget", requestEntries.get(0).getBaseEndpoint());
+        assertEquals(fundId, requestEntries.get(0).getPathParams().get("id"));
         List<Budget> budgets = result.result();
         assertEquals(1, budgets.size());
         assertEquals(budget.getId(), budgets.get(0).getId());

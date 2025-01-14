@@ -36,24 +36,18 @@ public class BudgetService {
 
   public Future<List<Budget>> getBudgetsByFundIds(Collection<String> fundIds,
       RequestContext requestContext) {
-    List<Future<Budget>> futures = fundIds.stream()
+    var futures = fundIds.stream()
       .distinct()
-      .map(fundId -> getBudgetByFundId(fundId, requestContext))
+      .map(fundId -> getActiveBudgetByFundId(fundId, requestContext))
       .collect(toList());
-
     return collectResultsOnSuccess(futures);
   }
 
-  private Future<Budget> getBudgetByFundId(String fundId, RequestContext requestContext) {
-      return getActiveBudgetByFundId(fundId, requestContext);
-  }
-
   private Future<Budget> getActiveBudgetByFundId(String fundId, RequestContext requestContext) {
-    RequestEntry requestEntry = new RequestEntry(ACTIVE_BUDGET_ENDPOINT)
-      .withId(fundId);
+    var requestEntry = new RequestEntry(ACTIVE_BUDGET_ENDPOINT).withId(fundId);
     return restClient.get(requestEntry, Budget.class, requestContext)
       .recover(t -> {
-        Throwable cause = Objects.isNull(t.getCause()) ? t : t.getCause();
+        var cause = Objects.isNull(t.getCause()) ? t : t.getCause();
         if (cause instanceof HttpException) {
           throw new HttpException(404, BUDGET_NOT_FOUND
             .toError().withParameters(Collections.singletonList(new Parameter().withKey("fund").withValue(fundId))));
