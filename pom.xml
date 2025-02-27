@@ -26,7 +26,7 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
     <!--Dependencies-->
-    <raml-module-builder.version>35.3.0</raml-module-builder.version>
+    <raml-module-builder.version>35.4.0-SNAPSHOT</raml-module-builder.version>
     <jaxb-api.version>2.3.3</jaxb-api.version>
     <vertx.version>4.5.13</vertx.version>
     <rest-assured.version>5.5.1</rest-assured.version>
