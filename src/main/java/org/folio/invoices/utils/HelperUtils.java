@@ -138,6 +138,14 @@ public class HelperUtils {
       .doubleValue();
   }
 
+  public static boolean isTransitionToApproved(Invoice invoiceFromStorage, Invoice invoice) {
+    return invoice.getStatus() == Invoice.Status.APPROVED && !isPostApproval(invoiceFromStorage);
+  }
+
+  public static boolean isTransitionToCancelled(Invoice invoiceFromStorage, Invoice invoice) {
+    return invoiceFromStorage.getStatus() != Invoice.Status.CANCELLED && invoice.getStatus() == Invoice.Status.CANCELLED;
+  }
+
   public static boolean isPostApproval(Invoice invoice) {
     return invoice.getStatus() == Invoice.Status.APPROVED || invoice.getStatus() == Invoice.Status.PAID
         || invoice.getStatus() == Invoice.Status.CANCELLED;

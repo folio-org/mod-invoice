@@ -65,6 +65,14 @@ resourceTypes:
         description: Return an invoice with given {id}
       put:
         description: Update invoice. Only in case an acquisition units list has to be changed, it is required that user should have extra permission invoices.acquisitions-units-assignments.manage to update an Invoice.
+        queryParameters:
+          poLinePaymentStatus:
+            description: how to update the payment status of po lines when approving or cancelling the invoice;
+              only applies to lines with releaseEncumbrance=true linked to po lines of one-time open orders;
+              required when approving or cancelling an invoice in a past fiscal year containing lines with releaseEncumbrance=true linked to po lines of one-time open orders.
+            type: string
+            pattern: "No Change|Awaiting Payment|Partially Paid|Fully Paid|Cancelled"
+            required: false
         is: [validate]
       delete:
         description: Delete an invoice with given {id}

@@ -24,11 +24,14 @@ import org.folio.services.finance.transaction.EncumbranceService;
 import org.folio.services.finance.transaction.PaymentCreditWorkflowService;
 import org.folio.services.finance.transaction.PendingPaymentWorkflowService;
 import org.folio.services.invoice.BaseInvoiceService;
+import org.folio.services.invoice.InvoiceApprovalService;
 import org.folio.services.invoice.InvoiceCancelService;
 import org.folio.services.invoice.InvoiceFiscalYearsService;
+import org.folio.services.invoice.InvoiceFundDistributionService;
 import org.folio.services.invoice.InvoiceLineService;
 import org.folio.services.invoice.InvoicePaymentService;
 import org.folio.services.invoice.InvoiceService;
+import org.folio.services.invoice.PoLinePaymentStatusUpdateService;
 import org.folio.services.order.OrderLineService;
 import org.folio.services.order.OrderService;
 import org.folio.services.validator.FundAvailabilityHolderValidator;
@@ -39,6 +42,7 @@ import org.folio.services.voucher.BatchVoucherExportsService;
 import org.folio.services.voucher.BatchVoucherGenerateService;
 import org.folio.services.voucher.BatchVoucherService;
 import org.folio.services.voucher.VoucherCommandService;
+import org.folio.services.voucher.VoucherCreationService;
 import org.folio.services.voucher.VoucherNumberService;
 import org.folio.services.voucher.VoucherService;
 import org.springframework.context.annotation.Bean;
@@ -164,6 +168,12 @@ public class ServicesConfiguration {
   }
 
   @Bean
+  VoucherCreationService voucherCreationService(ExpenseClassRetrieveService expenseClassRetrieveService, FundService fundService,
+    VoucherLineService voucherLineService, VoucherService voucherService) {
+    return new VoucherCreationService(expenseClassRetrieveService, fundService, voucherLineService, voucherService);
+  }
+
+  @Bean
   VoucherNumberService voucherNumberService(RestClient restClient) {
     return new VoucherNumberService(restClient);
   }
@@ -194,16 +204,36 @@ public class ServicesConfiguration {
   }
 
   @Bean
+  InvoiceFundDistributionService invoiceFundDistributionService(AdjustmentsService adjustmentsService,
+      ConfigurationService configurationService, ExchangeRateProviderResolver exchangeRateProviderResolver) {
+    return new InvoiceFundDistributionService(adjustmentsService, configurationService, exchangeRateProviderResolver);
+  }
+
+  @Bean
+  InvoiceApprovalService invoiceApprovalService(BudgetExpenseClassService budgetExpenseClassService,
+      ConfigurationService configurationService, CurrentFiscalYearService currentFiscalYearService,
+      EncumbranceService encumbranceService, InvoiceFundDistributionService invoiceFundDistributionService,
+      InvoiceLineService invoiceLineService, InvoiceValidator validator, InvoiceWorkflowDataHolderBuilder holderBuilder,
+      PendingPaymentWorkflowService pendingPaymentWorkflowService,
+      PoLinePaymentStatusUpdateService poLinePaymentStatusUpdateService, VendorRetrieveService vendorService,
+      VoucherCommandService voucherCommandService, VoucherCreationService voucherCreationService,
+      VoucherService voucherService) {
+    return new InvoiceApprovalService(budgetExpenseClassService, configurationService, currentFiscalYearService,
+      encumbranceService, invoiceFundDistributionService, invoiceLineService, validator, holderBuilder,
+      pendingPaymentWorkflowService, poLinePaymentStatusUpdateService, vendorService, voucherCommandService,
+      voucherCreationService, voucherService);
+  }
+
+  @Bean
   InvoiceCancelService invoiceCancelService(BaseTransactionService baseTransactionService,
                                             EncumbranceService encumbranceService,
                                             VoucherService voucherService,
                                             OrderLineService orderLineService,
                                             OrderService orderService,
-                                            InvoiceLineService invoiceLineService,
-                                            BaseInvoiceService baseInvoiceService,
+                                            PoLinePaymentStatusUpdateService poLinePaymentStatusUpdateService,
                                             InvoiceWorkflowDataHolderBuilder invoiceWorkflowDataHolderBuilder) {
     return new InvoiceCancelService(baseTransactionService, encumbranceService, voucherService, orderLineService,
-      orderService, invoiceLineService, baseInvoiceService, invoiceWorkflowDataHolderBuilder);
+      orderService, poLinePaymentStatusUpdateService, invoiceWorkflowDataHolderBuilder);
   }
   @Bean
   BatchVoucherService batchVoucherService(RestClient restClient) {
@@ -243,8 +273,9 @@ public class ServicesConfiguration {
   }
 
   @Bean
-  InvoiceValidator invoiceValidator() {
-    return new InvoiceValidator();
+  InvoiceValidator invoiceValidator(AdjustmentsService adjustmentsService, OrderLineService orderLineService,
+      FiscalYearService fiscalYearService) {
+    return new InvoiceValidator(adjustmentsService, orderLineService, fiscalYearService);
   }
 
   @Bean
@@ -256,5 +287,11 @@ public class ServicesConfiguration {
   InvoiceFiscalYearsService invoiceFiscalYearsService(InvoiceWorkflowDataHolderBuilder holderBuilder,
       BudgetService budgetService, FiscalYearService fiscalYearService) {
     return new InvoiceFiscalYearsService(holderBuilder, budgetService, fiscalYearService);
+  }
+
+  @Bean
+  PoLinePaymentStatusUpdateService poLinePaymentStatusUpdateService(InvoiceLineService invoiceLineService,
+      InvoiceService invoiceService, OrderLineService orderLineService) {
+    return new PoLinePaymentStatusUpdateService(invoiceLineService, invoiceService, orderLineService);
   }
 }
