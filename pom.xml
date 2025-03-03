@@ -14,6 +14,10 @@
   </licenses>
 
   <properties>
+    <java.version>21</java.version>
+    <maven.compiler.source>21</maven.compiler.source>
+    <maven.compiler.target>21</maven.compiler.target>
+
     <!--Configurations-->
     <jsonschema_paths>acq-models/mod-invoice-storage/schemas,raml-util/schemas,acq-models/common/schemas/</jsonschema_paths>
     <generated_sources_dir>${project.build.directory}/generated-sources</generated_sources_dir>
@@ -22,36 +26,44 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
     <!--Dependencies-->
-    <raml-module-builder.version>35.3.0</raml-module-builder.version>
+    <raml-module-builder.version>35.4.0</raml-module-builder.version>
+    <spring.version>6.2.3</spring.version>
     <jaxb-api.version>2.3.3</jaxb-api.version>
-    <vertx.version>4.5.10</vertx.version>
-    <rest-assured.version>5.5.0</rest-assured.version>
-    <sshd.version>2.13.2</sshd.version>
-    <spring.version>6.1.14</spring.version>
-    <folio-di-support.version>2.1.0</folio-di-support.version>
-    <assertj-core.version>3.26.3</assertj-core.version>
+    <vertx.version>4.5.13</vertx.version>
+    <rest-assured.version>5.5.1</rest-assured.version>
+    <sshd.version>2.15.0</sshd.version>
+    <assertj-core.version>3.27.3</assertj-core.version>
     <aspectj.version>1.9.22.1</aspectj.version>
-    <log4j.version>2.24.1</log4j.version>
+    <log4j.version>2.24.3</log4j.version>
+    <streamex.version>0.8.3</streamex.version>
+    <caffeine.version>3.2.0</caffeine.version>
 
     <!--Folio dependencies properties-->
     <folio-module-descriptor-validator.version>1.0.0</folio-module-descriptor-validator.version>
     <mod-configuration-client.version>5.11.0</mod-configuration-client.version>
+    <mod-di-converter-storage-client.version>2.3.1</mod-di-converter-storage-client.version>
+    <folio-di-support.version>3.0.0</folio-di-support.version>
+    <folio-kafka-wrapper.version>3.2.0</folio-kafka-wrapper.version>
+    <data-import-processing-core.version>4.4.0-SNAPSHOT</data-import-processing-core.version>
 
     <!--Maven plugin dependencies-->
     <build-helper-maven-plugin.version>3.6.0</build-helper-maven-plugin.version>
     <aspectj-maven-plugin.version>1.14</aspectj-maven-plugin.version>
-    <exec-maven-plugin.version>3.4.1</exec-maven-plugin.version>
+    <exec-maven-plugin.version>3.5.0</exec-maven-plugin.version>
     <maven-resources-plugin.version>3.3.1</maven-resources-plugin.version>
-    <maven-compiler-plugin.version>3.13.0</maven-compiler-plugin.version>
+    <maven-compiler-plugin.version>3.14.0</maven-compiler-plugin.version>
     <maven-antrun-plugin.version>3.1.0</maven-antrun-plugin.version>
     <maven-shade-plugin.version>3.6.0</maven-shade-plugin.version>
     <maven-release-plugin.version>3.1.1</maven-release-plugin.version>
-    <maven-surefire-plugin.version>3.5.1</maven-surefire-plugin.version>
+    <maven-surefire-plugin.version>3.5.2</maven-surefire-plugin.version>
     <copy-rename-maven-plugin.version>1.0.1</copy-rename-maven-plugin.version>
 
     <!--Test dependencies-->
-    <testcontainers.version>1.20.2</testcontainers.version>
+    <testcontainers.version>1.20.5</testcontainers.version>
     <kafka-junit.version>3.6.0</kafka-junit.version>
+    <awaitility.version>4.3.0</awaitility.version>
+    <mockito.version>5.15.2</mockito.version>
+    <junit-bom.version>5.12.0</junit-bom.version>
 
     <!--Sonar exclusions-->
     <sonar.exclusions>**/models/*.java</sonar.exclusions>
@@ -88,7 +100,7 @@
     <dependency>
       <groupId>one.util</groupId>
       <artifactId>streamex</artifactId>
-      <version>0.8.3</version>
+      <version>${streamex.version}</version>
     </dependency>
     <dependency>
       <groupId>io.vertx</groupId>
@@ -138,7 +150,7 @@
     <dependency>
       <groupId>org.awaitility</groupId>
       <artifactId>awaitility</artifactId>
-      <version>4.2.2</version>
+      <version>${awaitility.version}</version>
       <scope>test</scope>
     </dependency>
     <dependency>
@@ -174,12 +186,12 @@
     <dependency>
       <groupId>org.folio</groupId>
       <artifactId>folio-kafka-wrapper</artifactId>
-      <version>3.2.0</version>
+      <version>${folio-kafka-wrapper.version}</version>
     </dependency>
     <dependency>
       <groupId>org.folio</groupId>
       <artifactId>data-import-processing-core</artifactId>
-      <version>4.4.0-SNAPSHOT</version>
+      <version>${data-import-processing-core.version}</version>
       <exclusions>
         <exclusion>
           <groupId>org.folio</groupId>
@@ -190,12 +202,12 @@
     <dependency>
       <groupId>org.folio</groupId>
       <artifactId>mod-di-converter-storage-client</artifactId>
-      <version>2.3.0</version>
+      <version>${mod-di-converter-storage-client.version}</version>
     </dependency>
     <dependency>
       <groupId>com.github.ben-manes.caffeine</groupId>
       <artifactId>caffeine</artifactId>
-      <version>3.1.8</version>
+      <version>${caffeine.version}</version>
     </dependency>
     <dependency>
       <groupId>org.folio.okapi</groupId>
@@ -217,7 +229,7 @@
     <dependency>
       <groupId>org.mockito</groupId>
       <artifactId>mockito-junit-jupiter</artifactId>
-      <version>5.14.2</version>
+      <version>${mockito.version}</version>
       <scope>test</scope>
     </dependency>
     <dependency>
@@ -510,7 +522,7 @@
         <version>${aspectj-maven-plugin.version}</version>
         <configuration>
           <verbose>true</verbose>
-          <release>17</release>
+          <release>21</release>
           <includes>
             <include>**/impl/*.java</include>
             <include>**/*.aj</include>
@@ -773,7 +785,7 @@
       <dependency>
         <groupId>org.junit</groupId>
         <artifactId>junit-bom</artifactId>
-        <version>5.11.2</version>
+        <version>${junit-bom.version}</version>
         <type>pom</type>
         <scope>import</scope>
       </dependency>
