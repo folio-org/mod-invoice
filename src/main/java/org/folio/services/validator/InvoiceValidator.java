@@ -1,5 +1,6 @@
 package org.folio.services.validator;
 
+import static io.vertx.core.Future.succeededFuture;
 import static java.math.RoundingMode.HALF_EVEN;
 import static org.folio.invoices.utils.ErrorCodes.ACCOUNTING_CODE_NOT_PRESENT;
 import static org.folio.invoices.utils.ErrorCodes.ADJUSTMENT_FUND_DISTRIBUTIONS_NOT_PRESENT;
@@ -10,20 +11,28 @@ import static org.folio.invoices.utils.ErrorCodes.FUND_DISTRIBUTIONS_NOT_PRESENT
 import static org.folio.invoices.utils.ErrorCodes.INCOMPATIBLE_INVOICE_FIELDS_ON_STATUS_TRANSITION;
 import static org.folio.invoices.utils.ErrorCodes.INCORRECT_FUND_DISTRIBUTION_TOTAL;
 import static org.folio.invoices.utils.ErrorCodes.LOCK_AND_CALCULATED_TOTAL_MISMATCH;
+import static org.folio.invoices.utils.ErrorCodes.PO_LINE_PAYMENT_STATUS_NOT_PRESENT;
+import static org.folio.invoices.utils.HelperUtils.convertIdsToCqlQuery;
 import static org.folio.invoices.utils.HelperUtils.isPostApproval;
+import static org.folio.invoices.utils.HelperUtils.isTransitionToApproved;
+import static org.folio.invoices.utils.HelperUtils.isTransitionToCancelled;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_LINE_NUMBER;
 import static org.folio.rest.jaxrs.model.FundDistribution.DistributionType.AMOUNT;
 import static org.folio.rest.jaxrs.model.FundDistribution.DistributionType.PERCENTAGE;
 
 import java.math.BigDecimal;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
+import io.vertx.core.Future;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.invoices.utils.InvoiceProtectedFields;
+import org.folio.rest.core.models.RequestContext;
 import org.folio.rest.jaxrs.model.Adjustment;
 import org.folio.rest.jaxrs.model.Error;
 import org.folio.rest.jaxrs.model.Errors;
@@ -34,6 +43,8 @@ import org.folio.rest.jaxrs.model.Parameter;
 import org.folio.services.adjusment.AdjustmentsService;
 
 import com.google.common.collect.Lists;
+import org.folio.services.finance.fiscalyear.FiscalYearService;
+import org.folio.services.order.OrderLineService;
 
 public class InvoiceValidator {
 
@@ -41,8 +52,20 @@ public class InvoiceValidator {
   public static final String REMAINING_AMOUNT_FIELD = "remainingAmount";
   private static final BigDecimal ZERO_REMAINING_AMOUNT = BigDecimal.ZERO.setScale(2, HALF_EVEN);
   private static final BigDecimal ONE_HUNDRED_PERCENT = BigDecimal.valueOf(100);
+  private static final String PO_LINE_WITH_ONE_TIME_OPEN_ORDER_QUERY =
+    "purchaseOrder.orderType==\"One-Time\" AND purchaseOrder.workflowStatus==\"Open\"";
+  private static final String AND = " AND ";
 
-  private final AdjustmentsService adjustmentsService = new AdjustmentsService();
+  private final AdjustmentsService adjustmentsService;
+  private final OrderLineService orderLineService;
+  private final FiscalYearService fiscalYearService;
+
+  public InvoiceValidator(AdjustmentsService adjustmentsService, OrderLineService orderLineService,
+      FiscalYearService fiscalYearService) {
+    this.adjustmentsService = adjustmentsService;
+    this.orderLineService = orderLineService;
+    this.fiscalYearService = fiscalYearService;
+  }
 
   public void validateInvoiceProtectedFields(Invoice invoice, Invoice invoiceFromStorage) {
     if(isPostApproval(invoiceFromStorage)) {
@@ -103,6 +126,50 @@ public class InvoiceValidator {
     verifyInvoiceLineNotEmpty(lines);
     validateInvoiceLineFundDistributions(lines);
     validateAdjustments(adjustmentsService.getNotProratedAdjustments(invoice));
+  }
+
+  /**
+   * Check poLinePaymentStatus is present if needed.
+   * Does not throw an error if the parameter is not needed but present.
+   */
+  public Future<Void> validatePoLinePaymentStatusParameter(Invoice invoice, List<InvoiceLine> invoiceLines,
+      Invoice invoiceFromStorage, String poLinePaymentStatus, RequestContext requestContext) {
+    if (poLinePaymentStatus != null) {
+      return Future.succeededFuture();
+    }
+    if (!isTransitionToApproved(invoiceFromStorage, invoice) && !isTransitionToCancelled(invoiceFromStorage, invoice)) {
+      return Future.succeededFuture();
+    }
+    if (invoiceLines.stream().noneMatch(InvoiceLine::getReleaseEncumbrance)) {
+      return Future.succeededFuture();
+    }
+    List<String> poLineIds = invoiceLines.stream()
+      .filter(InvoiceLine::getReleaseEncumbrance)
+      .map(InvoiceLine::getPoLineId)
+      .filter(Objects::nonNull)
+      .distinct()
+      .toList();
+    if (poLineIds.isEmpty()) {
+      return succeededFuture();
+    }
+    if (invoice.getFiscalYearId() == null) {
+      return succeededFuture();
+    }
+    return fiscalYearService.getFiscalYear(invoice.getFiscalYearId(), requestContext)
+      .compose(fiscalYear -> {
+        Date now = new Date();
+        if (fiscalYear.getPeriodEnd().after(now)) {
+          // fiscal year is not past
+          return succeededFuture();
+        }
+        return orderLineService.getPoLinesByIdAndQuery(poLineIds, this::queryPoLinesWithOneTimeOpenOrder, requestContext)
+          .compose(poLines -> {
+            if (!poLines.isEmpty()) {
+              throw new HttpException(400, PO_LINE_PAYMENT_STATUS_NOT_PRESENT);
+            }
+            return succeededFuture();
+          });
+      });
   }
 
   private void checkVendorHasAccountingCode(Invoice invoice) {
@@ -206,6 +273,10 @@ public class InvoiceValidator {
     throw new HttpException(422, INCORRECT_FUND_DISTRIBUTION_TOTAL, Lists.newArrayList(new Parameter()
       .withKey(REMAINING_AMOUNT_FIELD)
       .withValue(remainingAmount.toString())));
+  }
+
+  private String queryPoLinesWithOneTimeOpenOrder(List<String> poLineIds) {
+    return PO_LINE_WITH_ONE_TIME_OPEN_ORDER_QUERY + AND + convertIdsToCqlQuery(poLineIds);
   }
 
 }
