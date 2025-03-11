@@ -1,6 +1,30 @@
-## 6.0.0 - Unreleased
-* [MODINVOICE-568](https://folio-org.atlassian.net/browse/MODINVOICE-568) - Use system user token in DI kafka handlers
-* 
+## 6.1.0 - Unreleased
+
+## 6.0.0 - Released (Sunflower R1 2025)
+The focus of this release was to implement improvements and do version upgrades.
+
+[Full Changelog](https://github.com/folio-org/mod-invoice/compare/v5.9.0...v6.0.0)
+
+### Stories
+* [MODINVOICE-570](https://folio-org.atlassian.net/browse/MODINVOICE-570) - Update Invoice totals/subtotals when adding/removing invoice line
+* [FOLIO-4207](https://folio-org.atlassian.net/browse/FOLIO-4207) - Update to mod-invoice Java 21
+
+### Dependencies
+* Bump `java` from `17` to `21`
+* Bump `raml` from `35.3.0` to `35.4.0`
+* Bump `spring` from `6.1.14` to `6.2.3`
+* Bump `vertx` from `4.5.10` to `4.5.13`
+* Bump `log4j` from `2.24.1` to `2.24.3`
+* Bump `rest-assured` from `5.5.0` to `5.5.1`
+* Bump `folio-di-support` from `2.1.0` to `3.0.0`
+* Bump `sshd` from `2.13.2` to `2.15.0`
+* Bump `assertj-core` from `3.26.3` to `3.27.3`
+* Bump `streamex` from `3.26.3` to `3.27.3`
+* Bump `folio-kafka-wrapper` from `3.2.0` to `3.3.0`
+* Bump `data-import-processing-core` from `4.3.0` to `4.4.0`
+* Bump `caffeine` from `3.1.8` to `3.2.0`
+* Bump test dependencies and maven plugins to the latest versions
+
 ## 5.9.0 - Released (Ramsons R2 2024)
 The focus of this release was to update libraries, separate credits from expenditures, and fix various bugs.
 
