@@ -3,7 +3,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>org.folio</groupId>
   <artifactId>mod-invoice</artifactId>
-  <version>6.0.0-SNAPSHOT</version>
+  <version>6.1.0-SNAPSHOT</version>
   <packaging>jar</packaging>
 
   <licenses>
@@ -43,8 +43,8 @@
     <mod-configuration-client.version>5.11.0</mod-configuration-client.version>
     <mod-di-converter-storage-client.version>2.3.1</mod-di-converter-storage-client.version>
     <folio-di-support.version>3.0.0</folio-di-support.version>
-    <folio-kafka-wrapper.version>3.2.0</folio-kafka-wrapper.version>
-    <data-import-processing-core.version>4.4.0-SNAPSHOT</data-import-processing-core.version>
+    <folio-kafka-wrapper.version>3.3.0</folio-kafka-wrapper.version>
+    <data-import-processing-core.version>4.4.0</data-import-processing-core.version>
 
     <!--Maven plugin dependencies-->
     <build-helper-maven-plugin.version>3.6.0</build-helper-maven-plugin.version>
