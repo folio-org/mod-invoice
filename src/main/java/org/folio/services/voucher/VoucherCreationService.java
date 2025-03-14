@@ -34,12 +34,14 @@ import static org.apache.commons.lang3.StringUtils.EMPTY;
 import static org.apache.commons.lang3.StringUtils.isEmpty;
 import static org.folio.invoices.utils.HelperUtils.calculateVoucherLineAmount;
 
+
 public class VoucherCreationService {
 
   private final ExpenseClassRetrieveService expenseClassRetrieveService;
   private final FundService fundService;
   private final VoucherLineService voucherLineService;
   private final VoucherService voucherService;
+
 
   public VoucherCreationService(ExpenseClassRetrieveService expenseClassRetrieveService, FundService fundService,
       VoucherLineService voucherLineService, VoucherService voucherService) {
@@ -147,8 +149,7 @@ public class VoucherCreationService {
   private void updateFundDistributionsWithExpenseClassCode(Fund fund, List<FundDistribution> fundDistributions) {
     fundDistributions.forEach(fundDistribution -> {
       String fundCode = isEmpty(fundDistribution.getCode()) ? fund.getCode() : fund.getCode() + "-" + fundDistribution.getCode();
-      fundDistribution
-        .setCode(fundCode);
+      fundDistribution.setCode(fundCode);
     });
   }
 

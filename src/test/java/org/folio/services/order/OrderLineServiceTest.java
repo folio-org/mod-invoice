@@ -26,11 +26,15 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasSize;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
 
 public class OrderLineServiceTest {
+
   private AutoCloseable mockitoMocks;
   private OrderLineService orderLineService;
 
@@ -40,6 +44,7 @@ public class OrderLineServiceTest {
   private RestClient restClient;
   @Captor
   ArgumentCaptor<RequestEntry> requestEntryCaptor;
+
 
   @BeforeEach
   public void initMocks() {

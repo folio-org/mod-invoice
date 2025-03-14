@@ -23,7 +23,9 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+
 public class PoLinePaymentStatusUpdateServiceTest {
+
   private AutoCloseable mockitoMocks;
   private PoLinePaymentStatusUpdateService poLinePaymentStatusUpdateService;
 
@@ -35,6 +37,7 @@ public class PoLinePaymentStatusUpdateServiceTest {
   OrderLineService orderLineService;
   @Mock
   private RequestContext requestContext;
+
 
   @BeforeEach
   public void initMocks() {

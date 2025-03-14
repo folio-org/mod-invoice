@@ -28,7 +28,9 @@ import static org.folio.rest.RestConstants.MAX_IDS_FOR_GET_RQ;
 import static org.folio.rest.acq.model.orders.PoLine.PaymentStatus.AWAITING_PAYMENT;
 import static org.folio.rest.acq.model.orders.PoLine.PaymentStatus.PARTIALLY_PAID;
 
+
 public class PoLinePaymentStatusUpdateService {
+
   private static final String PAYMENT_STATUS_PAID_QUERY = "paymentStatus==(\"Fully Paid\" OR \"Partially Paid\")";
   private static final String PO_LINE_WITH_ONE_TIME_OPEN_ORDER_QUERY =
     "purchaseOrder.orderType==\"One-Time\" AND purchaseOrder.workflowStatus==\"Open\"";
@@ -39,6 +41,7 @@ public class PoLinePaymentStatusUpdateService {
   private final InvoiceLineService invoiceLineService;
   private final InvoiceService invoiceService;
   private final OrderLineService orderLineService;
+
 
   public PoLinePaymentStatusUpdateService(InvoiceLineService invoiceLineService, InvoiceService invoiceService,
       OrderLineService orderLineService) {

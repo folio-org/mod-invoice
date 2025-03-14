@@ -28,10 +28,13 @@ import static javax.money.Monetary.getDefaultRounding;
 import static org.folio.invoices.utils.HelperUtils.getAdjustmentFundDistributionAmount;
 import static org.folio.invoices.utils.HelperUtils.getFundDistributionAmount;
 
+
 public class InvoiceFundDistributionService {
+
   private final AdjustmentsService adjustmentsService;
   private final ConfigurationService configurationService;
   private final ExchangeRateProviderResolver exchangeRateProviderResolver;
+
 
   public InvoiceFundDistributionService(AdjustmentsService adjustmentsService, ConfigurationService configurationService,
       ExchangeRateProviderResolver exchangeRateProviderResolver) {

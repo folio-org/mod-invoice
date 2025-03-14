@@ -23,10 +23,14 @@ import java.util.UUID;
 import static org.folio.invoices.utils.ErrorCodes.PO_LINE_PAYMENT_STATUS_NOT_PRESENT;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
+
 public class InvoiceValidatorServiceTest {
+
   private AutoCloseable mockitoMocks;
   private InvoiceValidator invoiceValidator;
 
@@ -38,6 +42,7 @@ public class InvoiceValidatorServiceTest {
   FiscalYearService fiscalYearService;
   @Mock
   private RequestContext requestContext;
+
 
   @BeforeEach
   public void initMocks() {

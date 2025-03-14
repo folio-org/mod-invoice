@@ -1,9 +1,8 @@
 package org.folio.services.invoice;
 
 import io.vertx.core.Future;
+import lombok.extern.log4j.Log4j2;
 import org.apache.commons.collections4.CollectionUtils;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import org.folio.InvoiceWorkflowDataHolderBuilder;
 import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.rest.acq.model.Organization;
@@ -32,9 +31,11 @@ import static org.folio.invoices.utils.ErrorCodes.ORG_IS_NOT_VENDOR;
 import static org.folio.invoices.utils.ErrorCodes.ORG_NOT_FOUND;
 import static org.folio.rest.impl.AbstractHelper.SYSTEM_CONFIG_QUERY;
 import static org.folio.services.voucher.VoucherCommandService.VOUCHER_NUMBER_PREFIX_CONFIG_QUERY;
+import static org.folio.utils.FutureUtils.asFuture;
 
+
+@Log4j2
 public class InvoiceApprovalService {
-  private static final Logger logger = LogManager.getLogger();
 
   private final BudgetExpenseClassService budgetExpenseClassService;
   private final ConfigurationService configurationService;
@@ -50,6 +51,7 @@ public class InvoiceApprovalService {
   private final VoucherCommandService voucherCommandService;
   private final VoucherCreationService voucherCreationService;
   private final VoucherService voucherService;
+
 
   public InvoiceApprovalService(BudgetExpenseClassService budgetExpenseClassService, ConfigurationService configurationService,
       CurrentFiscalYearService currentFiscalYearService, EncumbranceService encumbranceService,
@@ -90,10 +92,7 @@ public class InvoiceApprovalService {
 
     return configurationService.getConfigurationsEntries(requestContext, SYSTEM_CONFIG_QUERY, VOUCHER_NUMBER_PREFIX_CONFIG_QUERY)
       .compose(v -> vendorService.getVendor(invoice.getVendorId(), requestContext))
-      .map(organization -> {
-        validateBeforeApproval(organization, invoice, lines);
-        return null;
-      })
+      .compose(organization -> asFuture(() -> validateBeforeApproval(organization, invoice, lines)))
       .compose(v -> holderBuilder.buildCompleteHolders(invoice, lines, requestContext))
       .compose(holders -> encumbranceService.updateInvoiceLinesEncumbranceLinks(holders,
           holders.get(0).getFiscalYear().getId(), requestContext)
@@ -118,7 +117,7 @@ public class InvoiceApprovalService {
     }
     if (Boolean.FALSE.equals(organization.getIsVendor())) {
       var param = new Parameter().withKey("organizationId").withValue(organization.getId());
-      logger.error("validateBeforeApproval:: Organization '{}' is not vendor", organization.getId());
+      log.error("validateBeforeApproval:: Organization '{}' is not vendor", organization.getId());
       throw new HttpException(400, ORG_IS_NOT_VENDOR, List.of(param));
     }
 
