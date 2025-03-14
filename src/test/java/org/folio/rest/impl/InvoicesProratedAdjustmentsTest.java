@@ -13,6 +13,7 @@ import static org.folio.rest.jaxrs.model.Adjustment.Prorate.BY_AMOUNT;
 import static org.folio.rest.jaxrs.model.Adjustment.Prorate.BY_LINE;
 import static org.folio.rest.jaxrs.model.Adjustment.Prorate.BY_QUANTITY;
 import static org.folio.rest.jaxrs.model.Adjustment.Prorate.NOT_PRORATED;
+import static org.folio.rest.jaxrs.model.Adjustment.RelationToTotal.INCLUDED_IN;
 import static org.folio.rest.jaxrs.model.Adjustment.Type.AMOUNT;
 import static org.folio.rest.jaxrs.model.Adjustment.Type.PERCENTAGE;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -30,6 +31,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Stream;
 
 import org.apache.logging.log4j.LogManager;
@@ -78,11 +80,11 @@ public class InvoicesProratedAdjustmentsTest extends ApiTestBase {
     assertThat(getInvoiceLineUpdates(), empty());
 
     // Prorated adjustment is not applied if no lines available
-    Invoice invoiceToStorage = getInvoiceUpdates().get(0).mapTo(Invoice.class);
+    Invoice invoiceToStorage = getInvoiceUpdates().getFirst().mapTo(Invoice.class);
     assertThat(invoiceToStorage.getAdjustments(), hasSize(1));
     assertThat(invoiceToStorage.getAdjustmentsTotal(), not(0));
 
-    Adjustment adjustment = invoiceToStorage.getAdjustments().get(0);
+    Adjustment adjustment = invoiceToStorage.getAdjustments().getFirst();
     assertThat(adjustment.getId(), not(is(emptyOrNullString())));
   }
 
@@ -128,13 +130,13 @@ public class InvoicesProratedAdjustmentsTest extends ApiTestBase {
      */
     double expectedAdjTotal = (type == AMOUNT) ? 25d : 13.75d;
 
-    Invoice invoiceToStorage = getInvoiceUpdates().get(0).mapTo(Invoice.class);
+    Invoice invoiceToStorage = getInvoiceUpdates().getFirst().mapTo(Invoice.class);
     assertThat(invoiceToStorage.getAdjustments(), hasSize(1));
     assertThat(invoiceToStorage.getAdjustmentsTotal(), is(expectedAdjTotal));
-    Adjustment invoiceAdjustment = invoiceToStorage.getAdjustments().get(0);
+    Adjustment invoiceAdjustment = invoiceToStorage.getAdjustments().getFirst();
     assertThat(invoiceAdjustment.getId(), not(is(emptyOrNullString())));
 
-    InvoiceLine lineToStorage = getInvoiceLineUpdates().get(0).mapTo(InvoiceLine.class);
+    InvoiceLine lineToStorage = getInvoiceLineUpdates().getFirst().mapTo(InvoiceLine.class);
     assertThat(lineToStorage.getAdjustments(), hasSize(2));
     assertThat(lineToStorage.getAdjustmentsTotal(), is(expectedAdjTotal));
 
@@ -179,9 +181,9 @@ public class InvoicesProratedAdjustmentsTest extends ApiTestBase {
     assertThat(getInvoiceUpdates(), hasSize(1));
     assertThat(getInvoiceLineUpdates(), hasSize(2));
 
-    Invoice invoiceToStorage = getInvoiceUpdates().get(0).mapTo(Invoice.class);
+    Invoice invoiceToStorage = getInvoiceUpdates().getFirst().mapTo(Invoice.class);
     assertThat(invoiceToStorage.getAdjustments(), hasSize(1));
-    Adjustment invoiceAdjustment = invoiceToStorage.getAdjustments().get(0);
+    Adjustment invoiceAdjustment = invoiceToStorage.getAdjustments().getFirst();
     assertThat(invoiceAdjustment.getId(), not(is(emptyOrNullString())));
 
     /*
@@ -197,7 +199,7 @@ public class InvoicesProratedAdjustmentsTest extends ApiTestBase {
       .map(json -> json.mapTo(InvoiceLine.class))
       .forEach(line -> {
         assertThat(line.getAdjustments(), hasSize(1));
-        Adjustment adj = line.getAdjustments().get(0);
+        Adjustment adj = line.getAdjustments().getFirst();
         verifyInvoiceLineAdjustmentCommon(invoiceAdjustment, adj);
         assertThat(adj.getValue(), is(expectedAdjValue));
         assertThat(line.getAdjustmentsTotal(), is(expectedAdjValue));
@@ -234,9 +236,9 @@ public class InvoicesProratedAdjustmentsTest extends ApiTestBase {
     assertThat(getInvoiceUpdates(), hasSize(1));
     assertThat(getInvoiceLineUpdates(), hasSize(2));
 
-    Invoice invoiceToStorage = getInvoiceUpdates().get(0).mapTo(Invoice.class);
+    Invoice invoiceToStorage = getInvoiceUpdates().getFirst().mapTo(Invoice.class);
     assertThat(invoiceToStorage.getAdjustments(), hasSize(1));
-    Adjustment invoiceAdjustment = invoiceToStorage.getAdjustments().get(0);
+    Adjustment invoiceAdjustment = invoiceToStorage.getAdjustments().getFirst();
     assertThat(invoiceAdjustment.getId(), not(is(emptyOrNullString())));
 
     // Depending on type either original prorated amount is split across lines adjustments or percent of subtotal is calculated
@@ -251,7 +253,7 @@ public class InvoicesProratedAdjustmentsTest extends ApiTestBase {
     assertThat(lineToStorage1.getAdjustments(), hasSize(1));
     assertThat(lineToStorage1.getAdjustmentsTotal(), is(expectedAdjTotal1));
 
-    Adjustment lineAdjustment1 = lineToStorage1.getAdjustments().get(0);
+    Adjustment lineAdjustment1 = lineToStorage1.getAdjustments().getFirst();
     verifyInvoiceLineAdjustmentCommon(invoiceAdjustment, lineAdjustment1);
     assertThat(lineAdjustment1.getValue(), is(expectedAdjValue1));
 
@@ -259,7 +261,7 @@ public class InvoicesProratedAdjustmentsTest extends ApiTestBase {
     assertThat(lineToStorage2.getAdjustments(), hasSize(1));
     assertThat(lineToStorage2.getAdjustmentsTotal(), is(expectedAdjTotal2));
 
-    Adjustment lineAdjustment2 = lineToStorage2.getAdjustments().get(0);
+    Adjustment lineAdjustment2 = lineToStorage2.getAdjustments().getFirst();
     verifyInvoiceLineAdjustmentCommon(invoiceAdjustment, lineAdjustment2);
     assertThat(lineAdjustment2.getValue(), is(expectedAdjValue2));
   }
@@ -290,9 +292,9 @@ public class InvoicesProratedAdjustmentsTest extends ApiTestBase {
     assertThat(getInvoiceUpdates(), hasSize(1));
     assertThat(getInvoiceLineUpdates(), hasSize(2));
 
-    Invoice invoiceToStorage = getInvoiceUpdates().get(0).mapTo(Invoice.class);
+    Invoice invoiceToStorage = getInvoiceUpdates().getFirst().mapTo(Invoice.class);
     assertThat(invoiceToStorage.getAdjustments(), hasSize(1));
-    Adjustment invoiceAdjustment = invoiceToStorage.getAdjustments().get(0);
+    Adjustment invoiceAdjustment = invoiceToStorage.getAdjustments().getFirst();
     assertThat(invoiceAdjustment.getId(), not(is(emptyOrNullString())));
 
     // Depending on type either original prorated amount is split across lines adjustments or percent of subtotal is calculated
@@ -304,7 +306,7 @@ public class InvoicesProratedAdjustmentsTest extends ApiTestBase {
     assertThat(lineToStorage1.getAdjustments(), hasSize(1));
     assertThat(lineToStorage1.getAdjustmentsTotal(), is(expectedValue));
 
-    Adjustment lineAdjustment1 = lineToStorage1.getAdjustments().get(0);
+    Adjustment lineAdjustment1 = lineToStorage1.getAdjustments().getFirst();
     verifyInvoiceLineAdjustmentCommon(invoiceAdjustment, lineAdjustment1);
     assertThat(lineAdjustment1.getValue(), is(expectedValue));
 
@@ -312,7 +314,7 @@ public class InvoicesProratedAdjustmentsTest extends ApiTestBase {
     assertThat(lineToStorage2.getAdjustments(), hasSize(1));
     assertThat(lineToStorage2.getAdjustmentsTotal(), is(expectedValue));
 
-    Adjustment lineAdjustment2 = lineToStorage2.getAdjustments().get(0);
+    Adjustment lineAdjustment2 = lineToStorage2.getAdjustments().getFirst();
     verifyInvoiceLineAdjustmentCommon(invoiceAdjustment, lineAdjustment2);
     assertThat(lineAdjustment2.getValue(), is(expectedValue));
   }
@@ -347,11 +349,11 @@ public class InvoicesProratedAdjustmentsTest extends ApiTestBase {
     assertThat(getInvoiceUpdates(), hasSize(1));
     assertThat(getInvoiceLineUpdates(), hasSize(3));
 
-    Invoice invoiceToStorage = getInvoiceUpdates().get(0).mapTo(Invoice.class);
+    Invoice invoiceToStorage = getInvoiceUpdates().getFirst().mapTo(Invoice.class);
     assertThat(invoiceToStorage.getAdjustments(), hasSize(1));
     // Prorated adj value + non prorated adj of first line
     assertThat(invoiceToStorage.getAdjustmentsTotal(), is(15d));
-    Adjustment invoiceAdjustment = invoiceToStorage.getAdjustments().get(0);
+    Adjustment invoiceAdjustment = invoiceToStorage.getAdjustments().getFirst();
     assertThat(invoiceAdjustment.getId(), not(is(emptyOrNullString())));
 
     InvoiceLine lineToStorage1 = getLineToStorageById(invoiceLine1.getId());
@@ -359,7 +361,7 @@ public class InvoicesProratedAdjustmentsTest extends ApiTestBase {
     assertThat(lineToStorage1.getAdjustmentsTotal(), is(10.5d));
 
     // First adjustment is not prorated
-    assertThat(lineToStorage1.getAdjustments().get(0).getValue(), is(10d));
+    assertThat(lineToStorage1.getAdjustments().getFirst().getValue(), is(10d));
     // Second adjustment is prorated
     Adjustment line1Adjustment2 = lineToStorage1.getAdjustments().get(1);
     verifyInvoiceLineAdjustmentCommon(invoiceAdjustment, line1Adjustment2);
@@ -369,7 +371,7 @@ public class InvoicesProratedAdjustmentsTest extends ApiTestBase {
     assertThat(lineToStorage2.getAdjustments(), hasSize(1));
     assertThat(lineToStorage2.getAdjustmentsTotal(), is(2d));
 
-    Adjustment line2Adjustment1 = lineToStorage2.getAdjustments().get(0);
+    Adjustment line2Adjustment1 = lineToStorage2.getAdjustments().getFirst();
     verifyInvoiceLineAdjustmentCommon(invoiceAdjustment, line2Adjustment1);
     assertThat(line2Adjustment1.getValue(), is(2d));
 
@@ -377,7 +379,7 @@ public class InvoicesProratedAdjustmentsTest extends ApiTestBase {
     assertThat(lineToStorage3.getAdjustments(), hasSize(1));
     assertThat(lineToStorage3.getAdjustmentsTotal(), is(2.5d));
 
-    Adjustment line3Adjustment1 = lineToStorage3.getAdjustments().get(0);
+    Adjustment line3Adjustment1 = lineToStorage3.getAdjustments().getFirst();
     verifyInvoiceLineAdjustmentCommon(invoiceAdjustment, line3Adjustment1);
     assertThat(line3Adjustment1.getValue(), is(2.5d));
   }
@@ -411,11 +413,11 @@ public class InvoicesProratedAdjustmentsTest extends ApiTestBase {
     assertThat(getInvoiceUpdates(), hasSize(1));
     assertThat(getInvoiceLineUpdates(), hasSize(3));
 
-    Invoice invoiceToStorage = getInvoiceUpdates().get(0).mapTo(Invoice.class);
+    Invoice invoiceToStorage = getInvoiceUpdates().getFirst().mapTo(Invoice.class);
     assertThat(invoiceToStorage.getAdjustments(), hasSize(1));
     // Prorated adj value + non prorated adj of first line
     assertThat(invoiceToStorage.getAdjustmentsTotal(), is(5d));
-    Adjustment invoiceAdjustment = invoiceToStorage.getAdjustments().get(0);
+    Adjustment invoiceAdjustment = invoiceToStorage.getAdjustments().getFirst();
     assertThat(invoiceAdjustment.getId(), not(is(emptyOrNullString())));
 
 
@@ -458,11 +460,11 @@ public class InvoicesProratedAdjustmentsTest extends ApiTestBase {
     assertThat(getInvoiceUpdates(), hasSize(1));
     assertThat(getInvoiceLineUpdates(), hasSize(3));
 
-    Invoice invoiceToStorage = getInvoiceUpdates().get(0).mapTo(Invoice.class);
+    Invoice invoiceToStorage = getInvoiceUpdates().getFirst().mapTo(Invoice.class);
     assertThat(invoiceToStorage.getAdjustments(), hasSize(1));
     // Prorated adj value + non prorated adj of first line
     assertThat(invoiceToStorage.getAdjustmentsTotal(), is(5.001d));
-    Adjustment invoiceAdjustment = invoiceToStorage.getAdjustments().get(0);
+    Adjustment invoiceAdjustment = invoiceToStorage.getAdjustments().getFirst();
     assertThat(invoiceAdjustment.getId(), not(is(emptyOrNullString())));
 
     verifyAdjustmentValue(invoiceLine1.getId(), 2.5d);     // 5.001 * 25 / 50 = 2,500(5)
@@ -502,11 +504,11 @@ public class InvoicesProratedAdjustmentsTest extends ApiTestBase {
     assertThat(getInvoiceUpdates(), hasSize(1));
     assertThat(getInvoiceLineUpdates(), hasSize(3));
 
-    Invoice invoiceToStorage = getInvoiceUpdates().get(0).mapTo(Invoice.class);
+    Invoice invoiceToStorage = getInvoiceUpdates().getFirst().mapTo(Invoice.class);
     assertThat(invoiceToStorage.getAdjustments(), hasSize(1));
     // Prorated adj value + non prorated adj of first line
     assertThat(invoiceToStorage.getAdjustmentsTotal(), is(-0.02d));
-    Adjustment invoiceAdjustment = invoiceToStorage.getAdjustments().get(0);
+    Adjustment invoiceAdjustment = invoiceToStorage.getAdjustments().getFirst();
     assertThat(invoiceAdjustment.getId(), not(is(emptyOrNullString())));
 
     verifyAdjustmentValue(invoiceLine1.getId(), 0d); // -0.02 * 25 / 75 = -0,00(6666666666666)
@@ -545,14 +547,14 @@ public class InvoicesProratedAdjustmentsTest extends ApiTestBase {
     assertThat(getInvoiceUpdates(), hasSize(1));
     assertThat(getInvoiceLineUpdates(), hasSize(7));
 
-    Invoice invoiceToStorage = getInvoiceUpdates().get(0).mapTo(Invoice.class);
+    Invoice invoiceToStorage = getInvoiceUpdates().getFirst().mapTo(Invoice.class);
     assertThat(invoiceToStorage.getAdjustments(), hasSize(1));
     // Prorated adj value + non prorated adj of first line
     assertThat(invoiceToStorage.getAdjustmentsTotal(), is(6d));
-    Adjustment invoiceAdjustment = invoiceToStorage.getAdjustments().get(0);
+    Adjustment invoiceAdjustment = invoiceToStorage.getAdjustments().getFirst();
     assertThat(invoiceAdjustment.getId(), not(is(emptyOrNullString())));
 
-    verifyAdjustmentValue(lines.get(0).getId(), 0d); // 6 / 7 = 0(.8571428571428571)
+    verifyAdjustmentValue(lines.getFirst().getId(), 0d); // 6 / 7 = 0(.8571428571428571)
 
     for (int i = 1 ; i < 7; i++) {
       verifyAdjustmentValue(lines.get(i).getId(), 1d); // 6 / 7 = 0(.8571428571428571) + 1
@@ -563,7 +565,7 @@ public class InvoicesProratedAdjustmentsTest extends ApiTestBase {
 
   private void verifyAdjustmentValue(String id, double v) {
     InvoiceLine lineToStorage = getLineToStorageById(id);
-    Adjustment adjustment = lineToStorage.getAdjustments().get(0);
+    Adjustment adjustment = lineToStorage.getAdjustments().getFirst();
     assertThat(adjustment.getValue(), is(v));
   }
 
@@ -597,11 +599,11 @@ public class InvoicesProratedAdjustmentsTest extends ApiTestBase {
     assertThat(getInvoiceUpdates(), hasSize(1));
     assertThat(getInvoiceLineUpdates(), hasSize(3));
 
-    Invoice invoiceToStorage = getInvoiceUpdates().get(0).mapTo(Invoice.class);
+    Invoice invoiceToStorage = getInvoiceUpdates().getFirst().mapTo(Invoice.class);
     assertThat(invoiceToStorage.getAdjustments(), hasSize(1));
     // Prorated adj value + non prorated adj of first line
     assertThat(invoiceToStorage.getAdjustmentsTotal(), is(5d));
-    Adjustment invoiceAdjustment = invoiceToStorage.getAdjustments().get(0);
+    Adjustment invoiceAdjustment = invoiceToStorage.getAdjustments().getFirst();
     assertThat(invoiceAdjustment.getId(), not(is(emptyOrNullString())));
 
     verifyAdjustmentValue(invoiceLine1.getId(), 2d); // 5 * 4 / 11 = 1(.818181818181818)
@@ -642,10 +644,10 @@ public class InvoicesProratedAdjustmentsTest extends ApiTestBase {
     assertThat(getInvoiceUpdates(), hasSize(1));
     assertThat(getInvoiceLineUpdates(), hasSize(3));
 
-    Invoice invoiceToStorage = getInvoiceUpdates().get(0).mapTo(Invoice.class);
+    Invoice invoiceToStorage = getInvoiceUpdates().getFirst().mapTo(Invoice.class);
     assertThat(invoiceToStorage.getAdjustments(), hasSize(1));
     assertThat(invoiceToStorage.getAdjustmentsTotal(), is(10d));
-    Adjustment invoiceAdjustment = invoiceToStorage.getAdjustments().get(0);
+    Adjustment invoiceAdjustment = invoiceToStorage.getAdjustments().getFirst();
     assertThat(invoiceAdjustment.getId(), not(is(emptyOrNullString())));
 
     InvoiceLine lineToStorage1 = getLineToStorageById(invoiceLine1.getId());
@@ -653,7 +655,7 @@ public class InvoicesProratedAdjustmentsTest extends ApiTestBase {
     assertThat(lineToStorage1.getAdjustmentsTotal(), is(10d));
 
     // First adjustment is not prorated
-    assertThat(lineToStorage1.getAdjustments().get(0).getValue(), is(10d));
+    assertThat(lineToStorage1.getAdjustments().getFirst().getValue(), is(10d));
     // Second adjustment is prorated
     Adjustment line1Adjustment2 = lineToStorage1.getAdjustments().get(1);
     verifyInvoiceLineAdjustmentCommon(invoiceAdjustment, line1Adjustment2);
@@ -663,7 +665,7 @@ public class InvoicesProratedAdjustmentsTest extends ApiTestBase {
     assertThat(lineToStorage2.getAdjustments(), hasSize(1));
     assertThat(lineToStorage2.getAdjustmentsTotal(), is(0d));
 
-    Adjustment line2Adjustment1 = lineToStorage2.getAdjustments().get(0);
+    Adjustment line2Adjustment1 = lineToStorage2.getAdjustments().getFirst();
     verifyInvoiceLineAdjustmentCommon(invoiceAdjustment, line2Adjustment1);
     assertThat(line2Adjustment1.getValue(), is(0d));
 
@@ -671,7 +673,7 @@ public class InvoicesProratedAdjustmentsTest extends ApiTestBase {
     assertThat(lineToStorage3.getAdjustments(), hasSize(1));
     assertThat(lineToStorage3.getAdjustmentsTotal(), is(0d));
 
-    Adjustment line3Adjustment1 = lineToStorage3.getAdjustments().get(0);
+    Adjustment line3Adjustment1 = lineToStorage3.getAdjustments().getFirst();
     verifyInvoiceLineAdjustmentCommon(invoiceAdjustment, line3Adjustment1);
     assertThat(line3Adjustment1.getValue(), is(0d));
   }
@@ -702,17 +704,17 @@ public class InvoicesProratedAdjustmentsTest extends ApiTestBase {
     assertThat(getInvoiceUpdates(), hasSize(1));
     assertThat(getInvoiceLineUpdates(), hasSize(2));
 
-    Invoice invoiceToStorage = getInvoiceUpdates().get(0).mapTo(Invoice.class);
+    Invoice invoiceToStorage = getInvoiceUpdates().getFirst().mapTo(Invoice.class);
     assertThat(invoiceToStorage.getAdjustments(), hasSize(1));
     assertThat(invoiceToStorage.getAdjustmentsTotal(), is(10d));
-    Adjustment invoiceAdjustment = invoiceToStorage.getAdjustments().get(0);
+    Adjustment invoiceAdjustment = invoiceToStorage.getAdjustments().getFirst();
     assertThat(invoiceAdjustment.getId(), not(is(emptyOrNullString())));
 
     InvoiceLine lineToStorage1 = getLineToStorageById(invoiceLine1.getId());
     assertThat(lineToStorage1.getAdjustments(), hasSize(1));
     assertThat(lineToStorage1.getAdjustmentsTotal(), is(2.75d));
 
-    Adjustment lineAdjustment1 = lineToStorage1.getAdjustments().get(0);
+    Adjustment lineAdjustment1 = lineToStorage1.getAdjustments().getFirst();
     verifyInvoiceLineAdjustmentCommon(invoiceAdjustment, lineAdjustment1);
     assertThat(lineAdjustment1.getValue(), is(2.75d));
 
@@ -720,7 +722,7 @@ public class InvoicesProratedAdjustmentsTest extends ApiTestBase {
     assertThat(lineToStorage2.getAdjustments(), hasSize(1));
     assertThat(lineToStorage2.getAdjustmentsTotal(), is(7.25d));
 
-    Adjustment lineAdjustment2 = lineToStorage2.getAdjustments().get(0);
+    Adjustment lineAdjustment2 = lineToStorage2.getAdjustments().getFirst();
     verifyInvoiceLineAdjustmentCommon(invoiceAdjustment, lineAdjustment2);
     assertThat(lineAdjustment2.getValue(), is(7.25d));
   }
@@ -765,7 +767,7 @@ public class InvoicesProratedAdjustmentsTest extends ApiTestBase {
      */
     double expectedAdjTotal = (type == AMOUNT) ? 15d : 3.75d;
 
-    Invoice invoiceToStorage = getInvoiceUpdates().get(0).mapTo(Invoice.class);
+    Invoice invoiceToStorage = getInvoiceUpdates().getFirst().mapTo(Invoice.class);
     assertThat(invoiceToStorage.getAdjustments(), hasSize(1));
     assertThat(invoiceToStorage.getAdjustments(), equalTo(invoice.getAdjustments()));
     assertThat(invoiceToStorage.getAdjustmentsTotal(), is(expectedAdjTotal));
@@ -799,7 +801,7 @@ public class InvoicesProratedAdjustmentsTest extends ApiTestBase {
 
     // Send update request
     Invoice body = copyObject(invoice);
-    body.getAdjustments().get(0).setValue(25d);
+    body.getAdjustments().getFirst().setValue(25d);
 
     verifyPut(String.format(INVOICE_ID_PATH, invoice.getId()), body, "", 204);
 
@@ -816,17 +818,17 @@ public class InvoicesProratedAdjustmentsTest extends ApiTestBase {
      */
     double expectedAdjTotal = (type == AMOUNT) ? expectedAdjValue : 6.25d;
 
-    Invoice invoiceToStorage = getInvoiceUpdates().get(0).mapTo(Invoice.class);
+    Invoice invoiceToStorage = getInvoiceUpdates().getFirst().mapTo(Invoice.class);
     assertThat(invoiceToStorage.getAdjustments(), hasSize(1));
     assertThat(invoiceToStorage.getAdjustmentsTotal(), is(expectedAdjTotal));
-    Adjustment invoiceAdjustment = invoiceToStorage.getAdjustments().get(0);
+    Adjustment invoiceAdjustment = invoiceToStorage.getAdjustments().getFirst();
     assertThat(invoiceAdjustment.getId(), not(is(emptyOrNullString())));
 
-    InvoiceLine lineToStorage = getInvoiceLineUpdates().get(0).mapTo(InvoiceLine.class);
+    InvoiceLine lineToStorage = getInvoiceLineUpdates().getFirst().mapTo(InvoiceLine.class);
     assertThat(lineToStorage.getAdjustments(), hasSize(1));
     assertThat(lineToStorage.getAdjustmentsTotal(), is(expectedAdjTotal));
 
-    Adjustment lineAdjustment = lineToStorage.getAdjustments().get(0);
+    Adjustment lineAdjustment = lineToStorage.getAdjustments().getFirst();
     verifyInvoiceLineAdjustmentCommon(invoiceAdjustment, lineAdjustment);
     assertThat(lineAdjustment.getValue(), is(expectedAdjValue));
   }
@@ -875,7 +877,7 @@ public class InvoicesProratedAdjustmentsTest extends ApiTestBase {
      */
     double expectedAdjTotal = (type == AMOUNT) ? 25d : 6.25d;
 
-    Invoice invoiceToStorage = getInvoiceUpdates().get(0).mapTo(Invoice.class);
+    Invoice invoiceToStorage = getInvoiceUpdates().getFirst().mapTo(Invoice.class);
     assertThat(invoiceToStorage.getAdjustments(), hasSize(2));
     assertThat(invoiceToStorage.getAdjustmentsTotal(), is(expectedAdjTotal));
 
@@ -896,7 +898,7 @@ public class InvoicesProratedAdjustmentsTest extends ApiTestBase {
     assertThat(invoiceAdjToStorage1, notNullValue());
     assertThat(invoiceAdjToStorage2, notNullValue());
 
-    InvoiceLine lineToStorage = getInvoiceLineUpdates().get(0).mapTo(InvoiceLine.class);
+    InvoiceLine lineToStorage = getInvoiceLineUpdates().getFirst().mapTo(InvoiceLine.class);
     assertThat(lineToStorage.getAdjustments(), hasSize(2));
     assertThat(lineToStorage.getAdjustmentsTotal(), is(expectedAdjTotal));
 
@@ -941,7 +943,7 @@ public class InvoicesProratedAdjustmentsTest extends ApiTestBase {
 
     // Send update request making adjustment "Not prorated"
     Invoice body = copyObject(invoice);
-    body.getAdjustments().get(0).setProrate(NOT_PRORATED);
+    body.getAdjustments().getFirst().setProrate(NOT_PRORATED);
 
     verifyPut(String.format(INVOICE_ID_PATH, invoice.getId()), body, "", 204);
 
@@ -956,14 +958,14 @@ public class InvoicesProratedAdjustmentsTest extends ApiTestBase {
      */
     double expectedAdjTotal = (type == AMOUNT) ? adjValue : 3.75d;
 
-    Invoice invoiceToStorage = getInvoiceUpdates().get(0).mapTo(Invoice.class);
+    Invoice invoiceToStorage = getInvoiceUpdates().getFirst().mapTo(Invoice.class);
     assertThat(invoiceToStorage.getAdjustments(), hasSize(1));
     assertThat(invoiceToStorage.getAdjustmentsTotal(), is(expectedAdjTotal));
-    Adjustment invoiceAdjustment = invoiceToStorage.getAdjustments().get(0);
+    Adjustment invoiceAdjustment = invoiceToStorage.getAdjustments().getFirst();
     assertThat(invoiceAdjustment.getId(), not(is(emptyOrNullString())));
 
     // Adjustments should be deleted
-    InvoiceLine lineToStorage = getInvoiceLineUpdates().get(0).mapTo(InvoiceLine.class);
+    InvoiceLine lineToStorage = getInvoiceLineUpdates().getFirst().mapTo(InvoiceLine.class);
     assertThat(lineToStorage.getAdjustments(), empty());
     assertThat(lineToStorage.getAdjustmentsTotal(), is(0d));
   }
@@ -997,10 +999,10 @@ public class InvoicesProratedAdjustmentsTest extends ApiTestBase {
     assertThat(getInvoiceUpdates(), hasSize(1));
     assertThat(getInvoiceLineUpdates(), hasSize(3));
 
-    Invoice invoiceToStorage = getInvoiceUpdates().get(0).mapTo(Invoice.class);
+    Invoice invoiceToStorage = getInvoiceUpdates().getFirst().mapTo(Invoice.class);
     assertThat(invoiceToStorage.getAdjustments(), hasSize(1));
     assertThat(invoiceToStorage.getAdjustmentsTotal(), is(1.5d));
-    Adjustment invoiceAdjustment = invoiceToStorage.getAdjustments().get(0);
+    Adjustment invoiceAdjustment = invoiceToStorage.getAdjustments().getFirst();
     assertThat(invoiceAdjustment.getId(), not(is(emptyOrNullString())));
 
     Stream.of(invoiceLine1.getId(), invoiceLine2.getId(), invoiceLine3.getId())
@@ -1009,10 +1011,114 @@ public class InvoicesProratedAdjustmentsTest extends ApiTestBase {
         assertThat(lineToStorage.getAdjustments(), hasSize(1));
         assertThat(lineToStorage.getAdjustmentsTotal(), is(0.5d));
 
-        Adjustment lineAdjustment = lineToStorage.getAdjustments().get(0);
+        Adjustment lineAdjustment = lineToStorage.getAdjustments().getFirst();
         verifyInvoiceLineAdjustmentCommon(invoiceAdjustment, lineAdjustment);
         assertThat(lineAdjustment.getValue(), is(0.5d));
     });
+  }
+
+  @Test
+  public void testUpdateInvoiceWithOneLinePercentageTypeByAmountProrateIncludedByTotalAdjustment() {
+    logger.info("=== Updating invoice with one line adding 7% adjustment by amount prorate included by total ===");
+
+    // Prepare data "from storage"
+    Invoice invoice = getMockAsJson(OPEN_INVOICE_SAMPLE_PATH).mapTo(Invoice.class).withId(randomUUID().toString());
+    invoice.getAdjustments().clear();
+    addMockEntry(INVOICES, invoice);
+
+    InvoiceLine invoiceLine = getMockInvoiceLine(invoice.getId()).withAdjustmentsTotal(0d).withSubTotal(30d).withInvoiceLineNumber("n-1");
+    addMockEntry(INVOICE_LINES, invoiceLine);
+
+    // Prepare request body
+    Invoice invoiceBody = copyObject(invoice);
+    Adjustment adjustment = new Adjustment()
+      .withId(UUID.randomUUID().toString())
+      .withDescription("VAT")
+      .withProrate(BY_AMOUNT)
+      .withType(PERCENTAGE)
+      .withRelationToTotal(INCLUDED_IN)
+      .withValue(7d);
+    invoiceBody.getAdjustments().add(adjustment);
+
+    // Send update request
+    verifyPut(String.format(INVOICE_ID_PATH, invoice.getId()), invoiceBody, "", 204);
+
+    // Verification
+    assertThat(getInvoiceUpdates(), hasSize(1));
+    assertThat(getInvoiceLineUpdates(), hasSize(1));
+
+    Invoice invoiceToStorage = getInvoiceUpdates().getFirst().mapTo(Invoice.class);
+    assertThat(invoiceToStorage.getAdjustments(), hasSize(1));
+    assertThat(invoiceToStorage.getAdjustmentsTotal(), is(1.96d));
+    Adjustment invoiceAdjustment = invoiceToStorage.getAdjustments().getFirst();
+    assertThat(invoiceAdjustment.getId(), not(is(emptyOrNullString())));
+
+    Stream.of(invoiceLine.getId())
+      .forEach(id -> {
+        InvoiceLine lineToStorage = getLineToStorageById(id);
+        assertThat(lineToStorage.getAdjustments(), hasSize(1));
+        assertThat(lineToStorage.getAdjustmentsTotal(), is(1.96d));
+        assertThat(lineToStorage.getSubTotal(), is(28.04d));
+
+        Adjustment lineAdjustment = lineToStorage.getAdjustments().getFirst();
+        verifyInvoiceLineAdjustmentCommon(invoiceAdjustment, lineAdjustment);
+        assertThat(lineAdjustment.getValue(), is(1.96d));
+      });
+  }
+
+  @Test
+  public void testUpdateInvoiceWithThreeLinesPercentageTypeByAmountProrateIncludedByTotalAdjustment() {
+    logger.info("=== Updating invoice with three lines adding 7% adjustment by amount prorate included by total ===");
+
+    // Prepare data "from storage"
+    Invoice invoice = getMockAsJson(OPEN_INVOICE_SAMPLE_PATH).mapTo(Invoice.class).withId(randomUUID().toString());
+    invoice.getAdjustments().clear();
+    addMockEntry(INVOICES, invoice);
+
+    InvoiceLine invoiceLine1 = getMockInvoiceLine(invoice.getId()).withAdjustmentsTotal(0d).withSubTotal(30d).withInvoiceLineNumber("n-1");
+    addMockEntry(INVOICE_LINES, invoiceLine1);
+
+    InvoiceLine invoiceLine2 = getMockInvoiceLine(invoice.getId()).withAdjustmentsTotal(0d).withSubTotal(30d).withInvoiceLineNumber("n-2");
+    addMockEntry(INVOICE_LINES, invoiceLine2);
+
+    InvoiceLine invoiceLine3 = getMockInvoiceLine(invoice.getId()).withAdjustmentsTotal(0d).withSubTotal(30d).withInvoiceLineNumber("n-3");
+    addMockEntry(INVOICE_LINES, invoiceLine3);
+
+    // Prepare request body
+    Invoice invoiceBody = copyObject(invoice);
+    Adjustment adjustment = new Adjustment()
+      .withId(UUID.randomUUID().toString())
+      .withDescription("VAT")
+      .withProrate(BY_AMOUNT)
+      .withType(PERCENTAGE)
+      .withRelationToTotal(INCLUDED_IN)
+      .withValue(7d);
+    invoiceBody.getAdjustments().add(adjustment);
+
+    // Send update request
+    verifyPut(String.format(INVOICE_ID_PATH, invoice.getId()), invoiceBody, "", 204);
+
+    // Verification
+    assertThat(getInvoiceUpdates(), hasSize(1));
+    assertThat(getInvoiceLineUpdates(), hasSize(3));
+
+    Invoice invoiceToStorage = getInvoiceUpdates().getFirst().mapTo(Invoice.class);
+    assertThat(invoiceToStorage.getAdjustments(), hasSize(1));
+    assertThat(invoiceToStorage.getAdjustmentsTotal(), is(5.88d));
+    Adjustment invoiceAdjustment = invoiceToStorage.getAdjustments().getFirst();
+    assertThat(invoiceAdjustment.getId(), not(is(emptyOrNullString())));
+
+    Stream.of(invoiceLine1.getId(), invoiceLine2.getId(), invoiceLine3.getId())
+      .forEach(id -> {
+        InvoiceLine lineToStorage = getLineToStorageById(id);
+        assertThat(lineToStorage.getAdjustments(), hasSize(1));
+        assertThat(lineToStorage.getAdjustmentsTotal(), is(1.96d));
+        assertThat(lineToStorage.getSubTotal(), is(28.04d));
+
+        Adjustment lineAdjustment = lineToStorage.getAdjustments().getFirst();
+        verifyInvoiceLineAdjustmentCommon(invoiceAdjustment, lineAdjustment);
+        assertThat(lineAdjustment.getValue(), is(1.96d));
+      });
   }
 
   private InvoiceLine getLineToStorageById(String invoiceLineId) {
@@ -1020,7 +1126,7 @@ public class InvoicesProratedAdjustmentsTest extends ApiTestBase {
       .filter(line -> invoiceLineId.equals(line.getString("id")))
       .findAny()
       .map(obj -> obj.mapTo(InvoiceLine.class))
-      .get();
+      .orElseThrow();
   }
 
   private InvoiceLine getMockInvoiceLine(String invoiceId) {
