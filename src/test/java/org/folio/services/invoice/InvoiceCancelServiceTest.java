@@ -132,6 +132,8 @@ public class InvoiceCancelServiceTest {
     InvoiceLineService invoiceLineService = new InvoiceLineService(restClient);
     OrderService orderService = new OrderService(restClient, invoiceLineService, orderLineService);
     BaseInvoiceService baseInvoiceService = new BaseInvoiceService(restClient, invoiceLineService, orderService);
+    PoLinePaymentStatusUpdateService poLinePaymentStatusUpdateService = new PoLinePaymentStatusUpdateService(
+      invoiceLineService, baseInvoiceService, orderLineService);
 
     ExchangeRateProviderResolver exchangeRateProviderResolver = new ExchangeRateProviderResolver();
     FiscalYearService fiscalYearService = new FiscalYearService(restClient);
@@ -143,7 +145,7 @@ public class InvoiceCancelServiceTest {
       fiscalYearService, fundService, ledgerService, baseTransactionService, budgetService, expenseClassRetrieveService);
 
     cancelService = new InvoiceCancelService(baseTransactionService, encumbranceService,
-      voucherService, orderLineService, orderService, invoiceLineService, baseInvoiceService, holderBuilder);
+      voucherService, orderLineService, orderService, poLinePaymentStatusUpdateService, holderBuilder);
   }
 
   @AfterEach
@@ -158,7 +160,7 @@ public class InvoiceCancelServiceTest {
 
     setupRestCalls(invoice);
 
-    Future<Void> future = cancelService.cancelInvoice(invoice, invoiceLines, requestContext);
+    Future<Void> future = cancelService.cancelInvoice(invoice, invoiceLines, null, requestContext);
     vertxTestContext.assertComplete(future)
       .onSuccess(result -> vertxTestContext.completeNow())
       .onFailure(vertxTestContext::failNow);
@@ -171,7 +173,7 @@ public class InvoiceCancelServiceTest {
 
     setupRestCalls(invoice);
 
-    Future<Void> future = cancelService.cancelInvoice(invoice, invoiceLines, requestContext);
+    Future<Void> future = cancelService.cancelInvoice(invoice, invoiceLines, null, requestContext);
     vertxTestContext.assertComplete(future)
       .onSuccess(result -> vertxTestContext.completeNow())
       .onFailure(vertxTestContext::failNow);
@@ -182,7 +184,7 @@ public class InvoiceCancelServiceTest {
     Invoice invoice = getMockAs(OPENED_INVOICE_SAMPLE_PATH, Invoice.class);
     List<InvoiceLine> invoiceLines = getMockAs(INVOICE_LINES_LIST_PATH, InvoiceLineCollection.class).getInvoiceLines();
 
-    var future =  cancelService.cancelInvoice(invoice, invoiceLines, requestContext);
+    var future =  cancelService.cancelInvoice(invoice, invoiceLines, null, requestContext);
     vertxTestContext.assertFailure(future)
       .onComplete(result -> {
         var exception = (HttpException) result.cause();
@@ -200,7 +202,7 @@ public class InvoiceCancelServiceTest {
 
     setupRestCalls(invoice, true, false);
 
-    Future<Void> future = cancelService.cancelInvoice(invoice, invoiceLines, requestContext);
+    Future<Void> future = cancelService.cancelInvoice(invoice, invoiceLines, null, requestContext);
     vertxTestContext.assertFailure(future)
       .onComplete(result -> {
         var exception = (HttpException) result.cause();
@@ -217,7 +219,7 @@ public class InvoiceCancelServiceTest {
 
     setupRestCalls(invoice, true, false);
 
-    Future<Void> future = cancelService.cancelInvoice(invoice, invoiceLines, requestContext);
+    Future<Void> future = cancelService.cancelInvoice(invoice, invoiceLines, null, requestContext);
     vertxTestContext.assertFailure(future)
       .onComplete(result -> {
         var exception = (HttpException) result.cause();
@@ -234,7 +236,7 @@ public class InvoiceCancelServiceTest {
 
     setupRestCalls(invoice, false, true);
 
-    Future<Void> future = cancelService.cancelInvoice(invoice, invoiceLines, requestContext);
+    Future<Void> future = cancelService.cancelInvoice(invoice, invoiceLines, null, requestContext);
     vertxTestContext.assertFailure(future)
       .onComplete(result -> {
         HttpException httpException = (HttpException) result.cause();
@@ -258,7 +260,7 @@ public class InvoiceCancelServiceTest {
     setupRestCalls(invoice, false, false);
     setupPaymentStatusCalls(invoiceLines);
 
-    Future<Void> future = cancelService.cancelInvoice(invoice, invoiceLines, requestContext);
+    Future<Void> future = cancelService.cancelInvoice(invoice, invoiceLines, null, requestContext);
     vertxTestContext.assertComplete(future)
       .onSuccess(result -> {
         verify(restClient, times(2)).put(any(RequestEntry.class), any(CompositePoLine.class),
