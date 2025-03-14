@@ -16,6 +16,7 @@ public enum ErrorCodes {
   USER_NOT_A_MEMBER_OF_THE_ACQ("userNotAMemberOfTheAcq", "User is not a member of the specified acquisitions group - operation is restricted"),
   VOUCHER_NOT_FOUND("voucherNotFound", "The voucher record is not found"),
   FUND_DISTRIBUTIONS_NOT_PRESENT("fundDistributionsNotPresent", "At least one fund distribution should present for every associated invoice line"),
+  PO_LINE_PAYMENT_STATUS_NOT_PRESENT("poLinePaymentStatusNotPresent", "Invoice cannot be processed, because the poLinePaymentStatus parameter is missing, the invoice is for a past fiscal year, and there are one-time open orders related to invoice lines with releaseEncumbrance=true"),
   ACCOUNTING_CODE_NOT_PRESENT("accountingCodeNotPresent", "Invoice can not be approved, because it requires an accounting code to be export to accounting"),
   ADJUSTMENT_FUND_DISTRIBUTIONS_NOT_PRESENT("adjustmentFundDistributionsNotPresent", "At least one fund distribution should present for every non-prorated adjustment"),
   INCORRECT_FUND_DISTRIBUTION_TOTAL("incorrectFundDistributionTotal","Fund distribution total must add to 100% or totalPrice"),

@@ -3,6 +3,7 @@ package org.folio.services.order;
 import static io.vertx.core.Future.succeededFuture;
 import static org.folio.invoices.utils.ErrorCodes.CANNOT_DELETE_INVOICE_LINE;
 import static org.folio.invoices.utils.HelperUtils.collectResultsOnSuccess;
+import static org.folio.invoices.utils.HelperUtils.convertIdsToCqlQuery;
 import static org.folio.invoices.utils.ResourcePathResolver.COMPOSITE_ORDER;
 import static org.folio.invoices.utils.ResourcePathResolver.ORDER_INVOICE_RELATIONSHIP;
 import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
@@ -164,6 +165,11 @@ public class OrderService {
         var causeParam = new Parameter().withKey("cause").withValue(throwable.getMessage());
         throw new HttpException(404, CANNOT_DELETE_INVOICE_LINE, List.of(param, causeParam));
       });
+  }
+
+  public Future<List<PurchaseOrder>> getOrdersByIdsAndQuery(List<String> ids, String query, RequestContext requestContext) {
+    String query2 = "(" + query + ") AND " + convertIdsToCqlQuery(ids);
+    return getOrders(query2, requestContext);
   }
 
 

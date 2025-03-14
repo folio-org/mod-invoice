@@ -87,13 +87,13 @@ public class InvoicesImpl extends BaseApi implements org.folio.rest.jaxrs.resour
 
   @Validate
   @Override
-  public void putInvoiceInvoicesById(String id, Invoice invoice, Map<String, String> okapiHeaders,
-      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+  public void putInvoiceInvoicesById(String id, String poLinePaymentStatus, Invoice invoice,
+      Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
 
     invoice.setId(id);
 
     InvoiceHelper invoiceHelper = new InvoiceHelper(okapiHeaders, vertxContext);
-    invoiceHelper.updateInvoice(invoice)
+    invoiceHelper.updateInvoice(invoice, poLinePaymentStatus)
       .onSuccess(ok -> asyncResultHandler.handle(succeededFuture(invoiceHelper.buildNoContentResponse())))
       .onFailure(t -> {
         logger.error("Failed to update invoice with id={}", invoice.getId(), t);
