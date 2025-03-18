@@ -1,10 +1,11 @@
 package org.folio.invoices.utils;
 
-import java.util.Collections;
-
+import lombok.AllArgsConstructor;
+import lombok.Getter;
 import org.folio.rest.jaxrs.model.Error;
-import org.folio.rest.jaxrs.model.Errors;
 
+@Getter
+@AllArgsConstructor
 public enum ErrorCodes {
 
   GENERIC_ERROR_CODE("genericError", "Generic error"),
@@ -44,7 +45,7 @@ public enum ErrorCodes {
   DOCUMENT_IS_TOO_LARGE("documentIsTooLarge", "Document size is too large"),
   ADJUSTMENT_IDS_NOT_UNIQUE("adjustmentIdsNotUnique", "Adjustment ids must be unique"),
   CANNOT_DELETE_ADJUSTMENTS("cannotDeleteAdjustment", "Prorated adjustment cannot be deleted because it is present on invoice level"),
-  CANNOT_ADD_ADJUSTMENTS("cannotAddAdjustment", "Prorated adjustment cannot be adde because it is not present on invoice level"),
+  CANNOT_ADD_ADJUSTMENTS("cannotAddAdjustment", "Prorated adjustment cannot be added because it is not present on invoice level"),
   APPROVED_OR_PAID_INVOICE_DELETE_FORBIDDEN("approvedOrPaidInvoiceDeleteForbiddenError", "Approved or paid invoice can not be deleted"),
   BUDGET_NOT_FOUND("budgetNotFoundByFundId", "Budget not found by fundId"),
   BUDGET_NOT_FOUND_USING_FISCAL_YEAR_ID("budgetNotFoundByFundIdAndFiscalYearId", "Active budget not found by fund id and fiscal year id"),
@@ -74,19 +75,6 @@ public enum ErrorCodes {
   private final String code;
   private final String description;
 
-  ErrorCodes(String code, String description) {
-    this.code = code;
-    this.description = description;
-  }
-
-  public String getDescription() {
-    return description;
-  }
-
-  public String getCode() {
-    return code;
-  }
-
   @Override
   public String toString() {
     return code + ": " + description;
@@ -94,9 +82,5 @@ public enum ErrorCodes {
 
   public Error toError() {
     return new Error().withCode(code).withMessage(description);
-  }
-
-  public Errors toErrors() {
-    return new Errors().withErrors(Collections.singletonList(new Error().withCode(code).withMessage(description))).withTotalRecords(1);
   }
 }

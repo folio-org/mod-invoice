@@ -641,8 +641,8 @@ public class InvoiceLinesApiTest extends ApiTestBase {
     InvoiceLine invoiceLine = verifyPostResponse(INVOICE_LINES_PATH, jsonBody, prepareHeaders(X_OKAPI_TENANT), APPLICATION_JSON,
         201).as(InvoiceLine.class);
 
-    double expectedAdjustmentsTotal = 7.02d;
-    double expectedTotal = 27.04d;
+    double expectedAdjustmentsTotal = 6.84d;
+    double expectedTotal = 25.02d;
 
     assertThat(invoiceLine.getAdjustmentsTotal(), equalTo(expectedAdjustmentsTotal));
     assertThat(invoiceLine.getTotal(), equalTo(expectedTotal));

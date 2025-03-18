@@ -18,7 +18,6 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -71,8 +70,6 @@ public class HelperUtils {
   public static final String BATCH_VOUCHER_EXPORT = "batchVoucherExport";
 
   private static final Pattern CQL_SORT_BY_PATTERN = Pattern.compile("(.*)(\\ssortBy\\s.*)", Pattern.CASE_INSENSITIVE);
-  private static final EnumSet<Adjustment.RelationToTotal> SUPPORTED_RELATION_TO_TOTALS =
-    EnumSet.of(Adjustment.RelationToTotal.IN_ADDITION_TO, Adjustment.RelationToTotal.INCLUDED_IN);
 
   private HelperUtils() {
   }
@@ -110,7 +107,9 @@ public class HelperUtils {
 
   public static MonetaryAmount calculateAdjustmentsTotal(List<Adjustment> adjustments, MonetaryAmount subTotal) {
     return adjustments.stream()
-      .filter(adj -> SUPPORTED_RELATION_TO_TOTALS.contains(adj.getRelationToTotal()))
+      // Only allow "Included In" in the calculation if its adjustmentId is not empty (i.e. excluded Invoice level template-like adjustments)
+      .filter(adj -> adj.getRelationToTotal() == Adjustment.RelationToTotal.IN_ADDITION_TO
+        || (adj.getRelationToTotal() == Adjustment.RelationToTotal.INCLUDED_IN && StringUtils.isNotEmpty(adj.getAdjustmentId())))
       .map(adj -> calculateAdjustment(adj, subTotal))
       .collect(MonetaryFunctions.summarizingMonetary(subTotal.getCurrency()))
       .getSum()

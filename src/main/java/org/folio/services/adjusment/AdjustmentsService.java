@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
 import java.util.Objects;
+import java.util.UUID;
 import java.util.function.BiFunction;
 import java.util.function.Predicate;
 
@@ -20,6 +21,7 @@ import javax.money.CurrencyUnit;
 import javax.money.Monetary;
 import javax.money.MonetaryAmount;
 
+import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.rest.jaxrs.model.Adjustment;
@@ -59,30 +61,61 @@ public class AdjustmentsService {
   public List<InvoiceLine> applyProratedAdjustments(List<InvoiceLine> lines, Invoice invoice) {
     CurrencyUnit currencyUnit = Monetary.getCurrency(invoice.getCurrency());
     sortByInvoiceLineNumber(lines);
-    List<Adjustment> proratedAdjustments = getProratedAdjustments(invoice);
-    List<InvoiceLine> updatedLines = new ArrayList<>();
-    for (Adjustment adjustment : proratedAdjustments) {
-      switch (adjustment.getProrate()) {
-        case BY_LINE:
-          updatedLines.addAll(applyProratedAdjustmentByLines(adjustment, lines, currencyUnit));
-          break;
-        case BY_AMOUNT:
-          updatedLines.addAll(applyAdjustmentsAndUpdateLines(adjustment, lines, currencyUnit));
-          break;
-        case BY_QUANTITY:
-          updatedLines.addAll(applyProratedAdjustmentByQuantity(adjustment, lines, currencyUnit));
-          break;
-        default:
+    List<InvoiceLine> updatedProratedLines = new ArrayList<>();
+    List<InvoiceLine> updatedLinesWithAdjustments = addIncludedInAdjustmentsToLines(lines, currencyUnit);
+    for (Adjustment adjustment : getProratedAdjustments(invoice)) {
+      List<InvoiceLine> updatedLinesByProrate = switch (adjustment.getProrate()) {
+        case BY_LINE -> applyProratedAdjustmentByLines(adjustment, updatedLinesWithAdjustments, currencyUnit);
+        case BY_AMOUNT -> applyProratedAdjustmentByAmountWithIncludedIn(adjustment, updatedLinesWithAdjustments, currencyUnit);
+        case BY_QUANTITY -> applyProratedAdjustmentByQuantity(adjustment, updatedLinesWithAdjustments, currencyUnit);
+        default -> {
           logger.warn("Unexpected {} adjustment's prorate type for invoice with id={}", adjustment.getProrate(), invoice.getId());
-      }
+          yield List.of();
+        }
+      };
+      updatedProratedLines.addAll(updatedLinesByProrate);
     }
     // Return only unique invoice lines
-    return updatedLines.stream()
+    return updatedProratedLines.stream()
       .distinct()
       .toList();
   }
 
-  private List<InvoiceLine> applyAdjustmentsAndUpdateLines(Adjustment adjustment, List<InvoiceLine> lines,
+  public List<Adjustment> hasPendingInvoiceLineAdjustments(InvoiceLine invoiceLine) {
+    return invoiceLine.getAdjustments().stream().filter(adjustment -> Objects.isNull(adjustment.getId())).toList();
+  }
+
+  private List<InvoiceLine> addIncludedInAdjustmentsToLines(List<InvoiceLine> lines, CurrencyUnit currencyUnit) {
+    List<InvoiceLine> updatedLinesWithAdjustments = new ArrayList<>();
+    for (InvoiceLine line : lines) {
+      // Perform a shallow copy to avoid concurrent modification exceptions
+      List<Adjustment> updatedAdjustments = new ArrayList<>(line.getAdjustments());
+      for (Adjustment adjustment : line.getAdjustments()) {
+        // Excluded other relations to total, Invoice level adjustments or if the adjustment was already added
+        if (adjustment.getRelationToTotal() != Adjustment.RelationToTotal.INCLUDED_IN || !StringUtils.equals(adjustment.getId(), adjustment.getAdjustmentId())
+          || invoiceLineWasAdjustedById(adjustment, line)) {
+          continue;
+        }
+        Adjustment preparedAdjustment = prepareIncludedInAdjustmentValue(adjustment, currencyUnit, line);
+        // Invoice Line level adjustment have both id and adjustmentId not populated and to distinguish
+        // them form the Invoice level adjustments, their id matches always their adjustmentId
+        if (StringUtils.isEmpty(adjustment.getId())) {
+          preparedAdjustment.setId(UUID.randomUUID().toString());
+        }
+        if (StringUtils.isEmpty(adjustment.getAdjustmentId())) {
+          preparedAdjustment.withAdjustmentId(preparedAdjustment.getId());
+        }
+        // Remove the old adjustment in the list and add a new one
+        updatedAdjustments.remove(adjustment);
+        updatedAdjustments.add(preparedAdjustment);
+      }
+      line.withAdjustments(updatedAdjustments);
+      updatedLinesWithAdjustments.add(line);
+    }
+    return updatedLinesWithAdjustments;
+  }
+
+  private List<InvoiceLine> applyProratedAdjustmentByAmountWithIncludedIn(Adjustment adjustment, List<InvoiceLine> lines,
                                                            CurrencyUnit currencyUnit) {
     if (adjustment.getRelationToTotal() == Adjustment.RelationToTotal.INCLUDED_IN) {
       return applyProratedAmountTypeIncludedInAdjustments(adjustment, lines, currencyUnit);
@@ -103,8 +136,9 @@ public class AdjustmentsService {
 
   /**
    * Removes adjustments at invoice line level based on invoice's prorated adjustments which are no longer available
+   *
    * @param proratedAdjustments list of prorated adjustments available at invoice level
-   * @param invoiceLines list of invoice lines associated with current invoice
+   * @param invoiceLines        list of invoice lines associated with current invoice
    */
   void filterDeletedAdjustments(List<Adjustment> proratedAdjustments, List<InvoiceLine> invoiceLines) {
     List<String> adjIds = proratedAdjustments.stream()
@@ -112,23 +146,23 @@ public class AdjustmentsService {
       .toList();
 
     invoiceLines.forEach(line -> line.getAdjustments()
-        .removeIf(adj -> Objects.nonNull(adj.getAdjustmentId()) && !adjIds.contains(adj.getAdjustmentId())));
+      .removeIf(adj -> Objects.nonNull(adj.getAdjustmentId()) && !adjIds.contains(adj.getAdjustmentId())));
   }
 
-    /**
-     * Removes the invoice number from invoiceLineNumber if needed, and sorts lines
-     * on the line number as an integer.
-     *
-     * @param lines to be sorted
-     */
-    private void sortByInvoiceLineNumber(List<InvoiceLine> lines) {
-      lines.sort(Comparator.comparing(invoiceLine -> {
-        String lineNumber = invoiceLine.getInvoiceLineNumber();
-        if (lineNumber.contains(HYPHEN_SEPARATOR)) // only needed until MODINVOSTO-75 is done
-          lineNumber = lineNumber.split(HYPHEN_SEPARATOR)[1];
-        return Integer.parseInt(lineNumber);
-      }));
-    }
+  /**
+   * Removes the invoice number from invoiceLineNumber if needed, and sorts lines
+   * on the line number as an integer.
+   *
+   * @param lines to be sorted
+   */
+  private void sortByInvoiceLineNumber(List<InvoiceLine> lines) {
+    lines.sort(Comparator.comparing(invoiceLine -> {
+      String lineNumber = invoiceLine.getInvoiceLineNumber();
+      if (lineNumber.contains(HYPHEN_SEPARATOR)) // only needed until MODINVOSTO-75 is done
+        lineNumber = lineNumber.split(HYPHEN_SEPARATOR)[1];
+      return Integer.parseInt(lineNumber);
+    }));
+  }
 
   /**
    * Each invoiceLine gets adjustment value divided by quantity of lines
@@ -165,10 +199,8 @@ public class AdjustmentsService {
       .withProrate(NOT_PRORATED);
   }
 
-  private boolean addAdjustmentToLine(InvoiceLine line, Adjustment proratedAdjustment) {
-    List<Adjustment> lineAdjustments = line.getAdjustments();
+  private boolean addAdjustmentToLine(List<Adjustment> lineAdjustments, Adjustment proratedAdjustment) {
     if (!lineAdjustments.contains(proratedAdjustment)) {
-      // Just in case there was adjustment with this uuid but now updated, remove it
       lineAdjustments.removeIf(adj -> proratedAdjustment.getAdjustmentId().equals(adj.getAdjustmentId()));
       lineAdjustments.add(proratedAdjustment);
       return true;
@@ -200,7 +232,7 @@ public class AdjustmentsService {
 
       Adjustment proratedAdjustment = prepareAdjustmentForLine(adjustment);
       proratedAdjustment.setValue(amount.getNumber().doubleValue());
-      if (addAdjustmentToLine(line, proratedAdjustment)) {
+      if (addAdjustmentToLine(line.getAdjustments(), proratedAdjustment)) {
         updatedLines.add(line);
       }
     }
@@ -216,7 +248,7 @@ public class AdjustmentsService {
         continue;
       }
       Adjustment preparedAdjustment = prepareIncludedInAdjustmentValue(adjustment, currencyUnit, line);
-      if (addAdjustmentToLine(line, preparedAdjustment)) {
+      if (addAdjustmentToLine(line.getAdjustments(), preparedAdjustment)) {
         updatedLines.add(line);
       }
     }
