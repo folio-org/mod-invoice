@@ -98,7 +98,7 @@ public class AdjustmentsService {
         }
         Adjustment preparedAdjustment = prepareIncludedInAdjustmentValue(adjustment, currencyUnit, line);
         // Invoice Line level adjustment have both id and adjustmentId not populated and to distinguish
-        // them form the Invoice level adjustments, their id matches always their adjustmentId
+        // them from the Invoice level adjustments, their id always matches their adjustmentId
         if (StringUtils.isEmpty(adjustment.getId())) {
           preparedAdjustment.setId(UUID.randomUUID().toString());
         }
