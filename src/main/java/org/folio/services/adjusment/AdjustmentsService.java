@@ -63,7 +63,8 @@ public class AdjustmentsService {
     sortByInvoiceLineNumber(lines);
     List<InvoiceLine> updatedProratedLines = new ArrayList<>();
     List<InvoiceLine> updatedLinesWithAdjustments = addIncludedInAdjustmentsToLines(lines, currencyUnit);
-    for (Adjustment adjustment : getProratedAdjustments(invoice)) {
+    List<Adjustment> proratedAdjustments = getProratedAdjustments(invoice);
+    for (Adjustment adjustment : proratedAdjustments) {
       List<InvoiceLine> updatedLinesByProrate = switch (adjustment.getProrate()) {
         case BY_LINE -> applyProratedAdjustmentByLines(adjustment, updatedLinesWithAdjustments, currencyUnit);
         case BY_AMOUNT -> applyProratedAdjustmentByAmountWithIncludedIn(adjustment, updatedLinesWithAdjustments, currencyUnit);
@@ -92,8 +93,7 @@ public class AdjustmentsService {
       List<Adjustment> updatedAdjustments = new ArrayList<>(line.getAdjustments());
       for (Adjustment adjustment : line.getAdjustments()) {
         // Excluded other relations to total, Invoice level adjustments or if the adjustment was already added
-        if (adjustment.getRelationToTotal() != Adjustment.RelationToTotal.INCLUDED_IN || !StringUtils.equals(adjustment.getId(), adjustment.getAdjustmentId())
-          || invoiceLineWasAdjustedById(adjustment, line)) {
+        if (isIncludedInOnInvoiceLineLevel(adjustment) || hasAdjustmentOnInvoiceLine(adjustment, line)) {
           continue;
         }
         Adjustment preparedAdjustment = prepareIncludedInAdjustmentValue(adjustment, currencyUnit, line);
@@ -113,6 +113,11 @@ public class AdjustmentsService {
       updatedLinesWithAdjustments.add(line);
     }
     return updatedLinesWithAdjustments;
+  }
+
+  private boolean isIncludedInOnInvoiceLineLevel(Adjustment adjustment) {
+    return adjustment.getRelationToTotal() != Adjustment.RelationToTotal.INCLUDED_IN
+      || !StringUtils.equals(adjustment.getId(), adjustment.getAdjustmentId());
   }
 
   private List<InvoiceLine> applyProratedAdjustmentByAmountWithIncludedIn(Adjustment adjustment, List<InvoiceLine> lines,
@@ -244,7 +249,7 @@ public class AdjustmentsService {
                                                                          CurrencyUnit currencyUnit) {
     List<InvoiceLine> updatedLines = new ArrayList<>();
     for (InvoiceLine line : lines) {
-      if (invoiceLineWasAdjustedById(adjustment, line)) {
+      if (hasAdjustmentOnInvoiceLine(adjustment, line)) {
         continue;
       }
       Adjustment preparedAdjustment = prepareIncludedInAdjustmentValue(adjustment, currencyUnit, line);
@@ -255,22 +260,30 @@ public class AdjustmentsService {
     return updatedLines;
   }
 
-  private boolean invoiceLineWasAdjustedById(Adjustment adjustment, InvoiceLine line) {
-    return Objects.nonNull(adjustment.getId()) && line.getAdjustments().stream()
+  private boolean hasAdjustmentOnInvoiceLine(Adjustment adjustment, InvoiceLine line) {
+    boolean foundByAdjustmentId = line.getAdjustments().stream()
       .map(Adjustment::getAdjustmentId)
       .filter(Objects::nonNull)
       .anyMatch(lineAdjustmentId -> lineAdjustmentId.equals(adjustment.getId()));
+
+    return Objects.nonNull(adjustment.getId()) && foundByAdjustmentId;
   }
 
   private Adjustment prepareIncludedInAdjustmentValue(Adjustment adjustment, CurrencyUnit currencyUnit, InvoiceLine line) {
     MonetaryAmount lineSubtotal = Money.of(line.getSubTotal(), currencyUnit);
-    MonetaryAmount amountAdjustmentValue = lineSubtotal.multiply(adjustment.getValue())
-      .divide(Money.of(100, currencyUnit).add(Money.of(adjustment.getValue(), currencyUnit)).getNumber().doubleValue())
+
+    MonetaryAmount amountAdjustmentValue = lineSubtotal
+      .multiply(adjustment.getValue())
+      .divide(Money.of(100, currencyUnit)
+        .add(Money.of(adjustment.getValue(), currencyUnit)).getNumber().doubleValue())
       .with(Monetary.getDefaultRounding());
+
     Adjustment preparedAdjustment = prepareAdjustmentForLine(adjustment.withType(Adjustment.Type.AMOUNT))
       .withValue(amountAdjustmentValue.getNumber().doubleValue());
+
     line.withSubTotal(lineSubtotal.subtract(amountAdjustmentValue).getNumber().doubleValue());
     line.withAdjustmentsTotal(amountAdjustmentValue.getNumber().doubleValue());
+
     return preparedAdjustment;
   }
 
