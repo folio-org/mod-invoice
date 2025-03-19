@@ -449,7 +449,7 @@ public class InvoiceLineHelper extends AbstractHelper {
 
     // Exclude adjustment recalculation if no prorated ones are found or if no pending (id is null) Invoice Line level adjustments are found
     if (adjustmentsService.getProratedAdjustments(invoice).isEmpty()
-      && adjustmentsService.hasPendingInvoiceLineAdjustments(invoiceLine).isEmpty()) {
+      && adjustmentsService.getPendingInvoiceLineAdjustments(invoiceLine).isEmpty()) {
       return succeededFuture(Collections.emptyList());
     }
     invoiceLine.getAdjustments()

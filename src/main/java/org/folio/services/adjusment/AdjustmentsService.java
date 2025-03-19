@@ -82,7 +82,7 @@ public class AdjustmentsService {
       .toList();
   }
 
-  public List<Adjustment> hasPendingInvoiceLineAdjustments(InvoiceLine invoiceLine) {
+  public List<Adjustment> getPendingInvoiceLineAdjustments(InvoiceLine invoiceLine) {
     return invoiceLine.getAdjustments().stream().filter(adjustment -> Objects.isNull(adjustment.getId())).toList();
   }
 
