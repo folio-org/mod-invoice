@@ -1,10 +1,11 @@
 package org.folio.invoices.utils;
 
-import java.util.Collections;
-
+import lombok.AllArgsConstructor;
+import lombok.Getter;
 import org.folio.rest.jaxrs.model.Error;
-import org.folio.rest.jaxrs.model.Errors;
 
+@Getter
+@AllArgsConstructor
 public enum ErrorCodes {
 
   GENERIC_ERROR_CODE("genericError", "Generic error"),
@@ -16,6 +17,7 @@ public enum ErrorCodes {
   USER_NOT_A_MEMBER_OF_THE_ACQ("userNotAMemberOfTheAcq", "User is not a member of the specified acquisitions group - operation is restricted"),
   VOUCHER_NOT_FOUND("voucherNotFound", "The voucher record is not found"),
   FUND_DISTRIBUTIONS_NOT_PRESENT("fundDistributionsNotPresent", "At least one fund distribution should present for every associated invoice line"),
+  PO_LINE_PAYMENT_STATUS_NOT_PRESENT("poLinePaymentStatusNotPresent", "Invoice cannot be processed, because the poLinePaymentStatus parameter is missing, the invoice is for a past fiscal year, and there are one-time open orders related to invoice lines with releaseEncumbrance=true"),
   ACCOUNTING_CODE_NOT_PRESENT("accountingCodeNotPresent", "Invoice can not be approved, because it requires an accounting code to be export to accounting"),
   ADJUSTMENT_FUND_DISTRIBUTIONS_NOT_PRESENT("adjustmentFundDistributionsNotPresent", "At least one fund distribution should present for every non-prorated adjustment"),
   INCORRECT_FUND_DISTRIBUTION_TOTAL("incorrectFundDistributionTotal","Fund distribution total must add to 100% or totalPrice"),
@@ -43,7 +45,7 @@ public enum ErrorCodes {
   DOCUMENT_IS_TOO_LARGE("documentIsTooLarge", "Document size is too large"),
   ADJUSTMENT_IDS_NOT_UNIQUE("adjustmentIdsNotUnique", "Adjustment ids must be unique"),
   CANNOT_DELETE_ADJUSTMENTS("cannotDeleteAdjustment", "Prorated adjustment cannot be deleted because it is present on invoice level"),
-  CANNOT_ADD_ADJUSTMENTS("cannotAddAdjustment", "Prorated adjustment cannot be adde because it is not present on invoice level"),
+  CANNOT_ADD_ADJUSTMENTS("cannotAddAdjustment", "Prorated adjustment cannot be added because it is not present on invoice level"),
   APPROVED_OR_PAID_INVOICE_DELETE_FORBIDDEN("approvedOrPaidInvoiceDeleteForbiddenError", "Approved or paid invoice can not be deleted"),
   BUDGET_NOT_FOUND("budgetNotFoundByFundId", "Budget not found by fundId"),
   BUDGET_NOT_FOUND_USING_FISCAL_YEAR_ID("budgetNotFoundByFundIdAndFiscalYearId", "Active budget not found by fund id and fiscal year id"),
@@ -73,19 +75,6 @@ public enum ErrorCodes {
   private final String code;
   private final String description;
 
-  ErrorCodes(String code, String description) {
-    this.code = code;
-    this.description = description;
-  }
-
-  public String getDescription() {
-    return description;
-  }
-
-  public String getCode() {
-    return code;
-  }
-
   @Override
   public String toString() {
     return code + ": " + description;
@@ -93,9 +82,5 @@ public enum ErrorCodes {
 
   public Error toError() {
     return new Error().withCode(code).withMessage(description);
-  }
-
-  public Errors toErrors() {
-    return new Errors().withErrors(Collections.singletonList(new Error().withCode(code).withMessage(description))).withTotalRecords(1);
   }
 }

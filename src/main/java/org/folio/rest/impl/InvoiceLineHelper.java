@@ -334,7 +334,7 @@ public class InvoiceLineHelper extends AbstractHelper {
     return invoiceService.getInvoices(query, 0, Integer.MAX_VALUE, requestContext)
       .compose(invoiceCollection -> {
       if (!invoiceCollection.getInvoices().isEmpty()) {
-        ilProcessing.setInvoice(invoiceCollection.getInvoices().get(0));
+        ilProcessing.setInvoice(invoiceCollection.getInvoices().getFirst());
         return succeededFuture(null);
       }
       var param = new Parameter().withKey("invoiceLineId").withValue(lineId);
@@ -447,8 +447,9 @@ public class InvoiceLineHelper extends AbstractHelper {
   private Future<List<InvoiceLine>> applyProratedAdjustments(InvoiceLine invoiceLine, Invoice invoice,
       RequestContext requestContext) {
 
-    if (adjustmentsService.getProratedAdjustments(invoice)
-      .isEmpty()) {
+    // Exclude adjustment recalculation if no prorated ones are found or if no pending (id is null) Invoice Line level adjustments are found
+    if (adjustmentsService.getProratedAdjustments(invoice).isEmpty()
+      && adjustmentsService.getPendingInvoiceLineAdjustments(invoiceLine).isEmpty()) {
       return succeededFuture(Collections.emptyList());
     }
     invoiceLine.getAdjustments()
@@ -651,8 +652,8 @@ public class InvoiceLineHelper extends AbstractHelper {
     if (invoice.getFiscalYearId() != null)
       return holders;
     logger.info("Invoice fiscal year updated based on the invoice line, invoiceLineId={}",
-      holders.get(0).getInvoiceLine().getId());
-    invoice.setFiscalYearId(holders.get(0).getFiscalYear().getId());
+      holders.getFirst().getInvoiceLine().getId());
+    invoice.setFiscalYearId(holders.getFirst().getFiscalYear().getId());
     ilProcessing.setInvoiceSerializationNeeded();
     return holders;
   }

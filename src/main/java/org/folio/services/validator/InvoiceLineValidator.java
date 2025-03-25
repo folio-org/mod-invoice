@@ -15,6 +15,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.invoices.utils.ErrorCodes;
 import org.folio.invoices.utils.InvoiceLineProtectedFields;
@@ -28,7 +29,7 @@ import org.folio.services.adjusment.AdjustmentsService;
 
 public class InvoiceLineValidator {
 
-  private AdjustmentsService adjustmentsService = new AdjustmentsService();
+  private final AdjustmentsService adjustmentsService = new AdjustmentsService();
 
   public void validateProtectedFields(Invoice existedInvoice, InvoiceLine invoiceLine, InvoiceLine existedInvoiceLine) {
     if(isPostApproval(existedInvoice)) {
@@ -42,8 +43,8 @@ public class InvoiceLineValidator {
     List<Error> errorList = errors.getErrors();
 
     errorList.addAll(validateAdjustmentIdsUnique(invoiceLine));
-    errorList.addAll(validateDeletedAdjustments(getAdjustmentIds(invoice),  getAdjustmentIds(invoiceLine)));
-    errorList.addAll(validateAddedAdjustments(getAdjustmentIds(invoice),  getAdjustmentIds(invoiceLine)));
+    errorList.addAll(validateDeletedAdjustments(getAdjustmentIds(invoice), getAdjustmentIds(invoiceLine)));
+    errorList.addAll(validateAddedAdjustments(getAdjustmentIds(invoice), getAdjustmentIds(invoiceLine)));
 
     if (CollectionUtils.isNotEmpty(errorList)) {
       throw new HttpException(422, errors, "Invoice line adjustments validation error");
@@ -95,6 +96,8 @@ public class InvoiceLineValidator {
   private Set<String> getAdjustmentIds(InvoiceLine invoiceLine) {
     return adjustmentsService.getProratedAdjustments(invoiceLine)
       .stream()
+      // Excluded adjustments that were explicitly added at the Invoice Line level
+      .filter(adjustment -> !StringUtils.equals(adjustment.getId(), adjustment.getAdjustmentId()))
       .map(Adjustment::getAdjustmentId)
       .collect(toSet());
   }

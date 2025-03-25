@@ -33,13 +33,13 @@ import javax.money.convert.ConversionQueryBuilder;
 
 import io.vertx.core.Vertx;
 import io.vertxconcurrent.Semaphore;
+import lombok.extern.log4j.Log4j2;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.collections4.map.CaseInsensitiveMap;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.okapi.common.GenericCompositeFuture;
-import org.folio.rest.acq.model.finance.ExchangeRate;
 import org.folio.rest.core.models.RequestContext;
 import org.folio.rest.impl.ProtectionHelper;
 import org.folio.rest.jaxrs.model.Adjustment;
@@ -58,6 +58,7 @@ import io.vertx.core.eventbus.Message;
 import io.vertx.core.json.JsonObject;
 import one.util.streamex.StreamEx;
 
+@Log4j2
 public class HelperUtils {
 
   public static final String INVOICE_ID = "invoiceId";
@@ -70,9 +71,7 @@ public class HelperUtils {
 
   private static final Pattern CQL_SORT_BY_PATTERN = Pattern.compile("(.*)(\\ssortBy\\s.*)", Pattern.CASE_INSENSITIVE);
 
-
   private HelperUtils() {
-
   }
 
   /**
@@ -108,7 +107,9 @@ public class HelperUtils {
 
   public static MonetaryAmount calculateAdjustmentsTotal(List<Adjustment> adjustments, MonetaryAmount subTotal) {
     return adjustments.stream()
-      .filter(adj -> adj.getRelationToTotal().equals(Adjustment.RelationToTotal.IN_ADDITION_TO))
+      // Only allow "Included In" in the calculation if its adjustmentId is not empty (i.e. excluded Invoice level template-like adjustments)
+      .filter(adj -> adj.getRelationToTotal() == Adjustment.RelationToTotal.IN_ADDITION_TO
+        || (adj.getRelationToTotal() == Adjustment.RelationToTotal.INCLUDED_IN && StringUtils.isNotEmpty(adj.getAdjustmentId())))
       .map(adj -> calculateAdjustment(adj, subTotal))
       .collect(MonetaryFunctions.summarizingMonetary(subTotal.getCurrency()))
       .getSum()
@@ -136,6 +137,14 @@ public class HelperUtils {
     return amount.with(MonetaryOperators.rounding())
       .getNumber()
       .doubleValue();
+  }
+
+  public static boolean isTransitionToApproved(Invoice invoiceFromStorage, Invoice invoice) {
+    return invoice.getStatus() == Invoice.Status.APPROVED && !isPostApproval(invoiceFromStorage);
+  }
+
+  public static boolean isTransitionToCancelled(Invoice invoiceFromStorage, Invoice invoice) {
+    return invoiceFromStorage.getStatus() != Invoice.Status.CANCELLED && invoice.getStatus() == Invoice.Status.CANCELLED;
   }
 
   public static boolean isPostApproval(Invoice invoice) {
@@ -200,7 +209,6 @@ public class HelperUtils {
   }
 
   public static double calculateVoucherAmount(Voucher voucher, List<VoucherLine> voucherLines) {
-
     CurrencyUnit currency = Monetary.getCurrency(voucher.getSystemCurrency());
 
     MonetaryAmount amount = voucherLines.stream()
@@ -244,11 +252,11 @@ public class HelperUtils {
   }
 
   public static String getAcqUnitIdsQueryParamName(String entity) {
-    switch (entity) {
-      case INVOICE_LINES: return INVOICES + "." + ProtectionHelper.ACQUISITIONS_UNIT_IDS;
-      case VOUCHER_LINES: return VOUCHERS_STORAGE + "." + ProtectionHelper.ACQUISITIONS_UNIT_IDS;
-      default: return ProtectionHelper.ACQUISITIONS_UNIT_IDS;
-    }
+    return switch (entity) {
+      case INVOICE_LINES -> INVOICES + "." + ProtectionHelper.ACQUISITIONS_UNIT_IDS;
+      case VOUCHER_LINES -> VOUCHERS_STORAGE + "." + ProtectionHelper.ACQUISITIONS_UNIT_IDS;
+      default -> ProtectionHelper.ACQUISITIONS_UNIT_IDS;
+    };
   }
 
   public static String getId(JsonObject jsonObject) {
@@ -276,7 +284,7 @@ public class HelperUtils {
 
   public static <T> Map<Integer, List<T>> buildIdsChunks(List<T> source, int maxListRecords) {
     int size = source.size();
-    if (size <= 0)
+    if (size == 0)
       return Collections.emptyMap();
     int fullChunks = (size - 1) / maxListRecords;
     HashMap<Integer, List<T>> idChunkMap = new HashMap<>();
@@ -303,14 +311,6 @@ public class HelperUtils {
         .set(RATE_KEY, invoice.getExchangeRate()).build();
     }
     return ConversionQueryBuilder.of().setBaseCurrency(invoice.getCurrency()).setTermCurrency(systemCurrency).build();
-  }
-
-  public static ConversionQuery buildConversionQuery(ExchangeRate exchangeRate) {
-
-    return ConversionQueryBuilder.of().setBaseCurrency(exchangeRate.getFrom())
-      .setTermCurrency(exchangeRate.getTo())
-      .set(RATE_KEY, exchangeRate.getExchangeRate()).build();
-
   }
 
   public static boolean isNotFound(Throwable t) {

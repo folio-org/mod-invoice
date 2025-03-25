@@ -60,9 +60,12 @@ import org.folio.services.ftp.SftpUploadServiceTest;
 import org.folio.services.invoice.InvoiceCancelServiceTest;
 import org.folio.services.invoice.InvoiceFiscalYearsServiceTest;
 import org.folio.services.invoice.InvoiceIdStorageServiceTest;
+import org.folio.services.invoice.PoLinePaymentStatusUpdateServiceTest;
+import org.folio.services.order.OrderLineServiceTest;
 import org.folio.services.order.OrderServiceTest;
 import org.folio.services.validator.FundAvailabilityHolderValidatorTest;
 import org.folio.services.validator.InvoiceLineHolderValidatorTest;
+import org.folio.services.validator.InvoiceValidatorServiceTest;
 import org.folio.services.validator.ProtectedFieldsValidatorTest;
 import org.folio.services.voucher.BatchVoucherGenerateServiceTest;
 import org.folio.services.voucher.UploadBatchVoucherExportServiceTest;
@@ -264,6 +267,10 @@ public class ApiTestSuite {
   }
 
   @Nested
+  class InvoiceValidatorServiceTestNested extends InvoiceValidatorServiceTest {
+  }
+
+  @Nested
   class ProtectedFieldsValidatorTestNested extends ProtectedFieldsValidatorTest {
   }
 
@@ -328,7 +335,15 @@ public class ApiTestSuite {
   }
 
   @Nested
+  class OrderLineServiceTestNested extends OrderLineServiceTest {
+  }
+
+  @Nested
   class InvoiceCancelServiceTestNested extends InvoiceCancelServiceTest {
+  }
+
+  @Nested
+  class PoLinePaymentStatusUpdateServiceTestNested extends PoLinePaymentStatusUpdateServiceTest {
   }
 
   @Nested
