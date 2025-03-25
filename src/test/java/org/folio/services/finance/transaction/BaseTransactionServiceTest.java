@@ -74,7 +74,7 @@ public class BaseTransactionServiceTest extends ApiTestBase {
     //When
 
     List<String> transactionIds = encumbrances.stream().map(Transaction::getId).collect(toList());
-    var future = service.getTransactions(transactionIds, requestContext);
+    var future = service.getTransactionsByIds(transactionIds, requestContext);
     vertxTestContext.assertComplete(future)
       .onComplete(result -> {
         assertThat(result.result(), hasSize(1));
@@ -91,7 +91,7 @@ public class BaseTransactionServiceTest extends ApiTestBase {
     RequestContext requestContext = new RequestContext(ctxMock, okapiHeaders);
      //When
     List<String> transactionIds = new ArrayList<>();
-    var future = service.getTransactions(transactionIds, requestContext);
+    var future = service.getTransactionsByIds(transactionIds, requestContext);
     //Then
     vertxTestContext.assertComplete(future)
       .onComplete(result -> {

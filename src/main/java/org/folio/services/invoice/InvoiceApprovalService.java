@@ -100,14 +100,19 @@ public class InvoiceApprovalService {
         .map(v -> holders))
       .compose(holders -> budgetExpenseClassService.checkExpenseClasses(holders, requestContext))
       .compose(holders -> pendingPaymentWorkflowService.handlePendingPaymentsCreation(holders, invoice, requestContext))
-      .compose(v -> poLinePaymentStatusUpdateService.updatePoLinePaymentStatusToApproveInvoice(lines,
-        poLinePaymentStatus, requestContext))
-      .compose(v -> prepareVoucher(invoice, requestContext))
-      .compose(voucher -> updateVoucherWithSystemCurrency(voucher, lines, requestContext))
-      .compose(voucher -> voucherCommandService.updateVoucherWithExchangeRate(voucher, invoice, requestContext))
-      .compose(voucher -> invoiceFundDistributionService.getAllFundDistributions(lines, invoice, requestContext)
-        .compose(fundDistributions -> voucherCreationService.handleVoucherWithLines(fundDistributions,
-          voucher, requestContext))
+      .compose(holders -> poLinePaymentStatusUpdateService.updatePoLinePaymentStatusToApproveInvoice(lines,
+        poLinePaymentStatus, requestContext)
+        .compose(v -> prepareVoucher(invoice, requestContext))
+        .compose(voucher -> updateVoucherWithSystemCurrency(voucher, lines, requestContext))
+        .compose(voucher -> voucherCommandService.updateVoucherWithExchangeRate(voucher, invoice, requestContext))
+        .compose(voucher -> invoiceFundDistributionService.getAllFundDistributions(lines, invoice, requestContext)
+          .compose(fundDistributions -> voucherCreationService.handleVoucherWithLines(fundDistributions,
+            voucher, requestContext))
+        ).recover(t -> {
+          log.error("approveInvoice:: error after creating the pending payments; rolling back...", t);
+          return pendingPaymentWorkflowService.rollbackCreationOfPendingPayments(holders, requestContext)
+            .compose(v -> Future.failedFuture(t));
+        })
       );
   }
 
