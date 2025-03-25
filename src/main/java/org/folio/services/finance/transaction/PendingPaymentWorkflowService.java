@@ -64,6 +64,7 @@ public class PendingPaymentWorkflowService {
   }
 
   public Future<Void> rollbackCreationOfPendingPayments(List<InvoiceWorkflowDataHolder> holders, RequestContext requestContext) {
+    // NOTE: we are using the holders with the assumption that their encumbrances were not updated when encumbrances were released
     List<Transaction> pendingPayments = holders.stream()
       .map(InvoiceWorkflowDataHolder::getNewTransaction)
       .filter(t -> t.getTransactionType() == Transaction.TransactionType.PENDING_PAYMENT)
@@ -180,7 +181,7 @@ public class PendingPaymentWorkflowService {
       .filter(t -> Objects.nonNull(t) && t.getEncumbrance().getStatus() == UNRELEASED)
       .toList();
     if (previousUnreleasedEncumbrances.isEmpty()) {
-      log.info("unreleaseReleasedEncumbrances:: no encumbrance to unrelease");
+      log.info("unreleaseReleasedEncumbrances:: no encumbrance to unrelease (no encumbrance was unreleased)");
       return succeededFuture();
     }
     List<String> ids = previousUnreleasedEncumbrances.stream().map(Transaction::getId).toList();
@@ -190,7 +191,7 @@ public class PendingPaymentWorkflowService {
           .filter(t -> t.getEncumbrance().getStatus() == RELEASED)
           .toList();
         if (encumbrancesToUnrelease.isEmpty()) {
-          log.info("unreleaseReleasedEncumbrances:: no encumbrance to unrelease");
+          log.info("unreleaseReleasedEncumbrances:: no encumbrance to unrelease (unreleased encumbrances have not been released)");
           return succeededFuture();
         }
         return baseTransactionService.batchUnrelease(encumbrancesToUnrelease, requestContext)
