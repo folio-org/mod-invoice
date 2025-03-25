@@ -2,12 +2,17 @@ package org.folio.services.finance.transaction;
 
 import static io.vertx.core.Future.failedFuture;
 import static io.vertx.core.Future.succeededFuture;
+import static org.folio.rest.acq.model.finance.Encumbrance.Status.RELEASED;
+import static org.folio.rest.acq.model.finance.Encumbrance.Status.UNRELEASED;
+import static org.folio.rest.acq.model.finance.Transaction.TransactionType.ENCUMBRANCE;
+import static org.folio.rest.acq.model.finance.Transaction.TransactionType.PENDING_PAYMENT;
 import static org.folio.rest.impl.AbstractHelper.DEFAULT_SYSTEM_CURRENCY;
 import static org.folio.services.exchange.ExchangeRateProviderResolver.RATE_KEY;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasSize;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -38,15 +43,16 @@ import org.folio.rest.acq.model.finance.Encumbrance;
 import org.folio.rest.acq.model.finance.FiscalYear;
 import org.folio.rest.acq.model.finance.Metadata;
 import org.folio.rest.acq.model.finance.Transaction;
+import org.folio.rest.acq.model.finance.TransactionCollection;
 import org.folio.rest.core.RestClient;
 import org.folio.rest.core.models.RequestContext;
+import org.folio.rest.core.models.RequestEntry;
 import org.folio.rest.jaxrs.model.Adjustment;
 import org.folio.rest.jaxrs.model.Error;
 import org.folio.rest.jaxrs.model.FundDistribution;
 import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.jaxrs.model.InvoiceLine;
 import org.folio.services.exchange.ExchangeRateProviderResolver;
-import org.folio.services.exchange.ManualCurrencyConversion;
 import org.folio.services.validator.FundAvailabilityHolderValidator;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -69,8 +75,6 @@ public class PendingPaymentWorkflowServiceTest {
   private EncumbranceService encumbranceService;
   @Mock
   private RequestContext requestContext;
-  @Mock
-  private ManualCurrencyConversion conversion;
   private AutoCloseable mockitoMocks;
 
 
@@ -204,7 +208,7 @@ public class PendingPaymentWorkflowServiceTest {
     assertEquals(fiscalYearId, newInvoiceLineTransaction.getFiscalYearId());
     assertEquals(invoiceId, newInvoiceLineTransaction.getSourceInvoiceId());
     assertEquals(invoiceLineId, newInvoiceLineTransaction.getSourceInvoiceLineId());
-    assertEquals(Transaction.TransactionType.PENDING_PAYMENT, newInvoiceLineTransaction.getTransactionType());
+    assertEquals(PENDING_PAYMENT, newInvoiceLineTransaction.getTransactionType());
     assertEquals(Transaction.Source.INVOICE, newInvoiceLineTransaction.getSource());
 
     double expectedInvoiceTransactionAmount = BigDecimal.valueOf(30.5).multiply(BigDecimal.valueOf(exchangeRate)).doubleValue();
@@ -213,7 +217,7 @@ public class PendingPaymentWorkflowServiceTest {
     assertEquals(fiscalYearId, newInvoiceTransaction.getFiscalYearId());
     assertEquals(invoiceId, newInvoiceTransaction.getSourceInvoiceId());
     assertNull(newInvoiceTransaction.getSourceInvoiceLineId());
-    assertEquals(Transaction.TransactionType.PENDING_PAYMENT, newInvoiceTransaction.getTransactionType());
+    assertEquals(PENDING_PAYMENT, newInvoiceTransaction.getTransactionType());
     assertEquals(Transaction.Source.INVOICE, newInvoiceTransaction.getSource());
 
 
@@ -278,7 +282,7 @@ public class PendingPaymentWorkflowServiceTest {
     Transaction encumbrance = new Transaction()
       .withFromFundId(fundId2)
         .withEncumbrance(new Encumbrance()
-          .withStatus(Encumbrance.Status.UNRELEASED));
+          .withStatus(UNRELEASED));
 
     doNothing().when(fundAvailabilityValidator).validate(anyList());
     when(restClient.postEmptyResponse(anyString(), any(), eq(requestContext)))
@@ -294,11 +298,53 @@ public class PendingPaymentWorkflowServiceTest {
     when(encumbranceService.getEncumbrancesByPoLineIds(anyList(), eq(fiscalYearId), eq(requestContext)))
       .thenReturn(succeededFuture(List.of(encumbrance)));
 
-    Future<Void> future = pendingPaymentWorkflowService.handlePendingPaymentsCreation(dataHolders, invoice, requestContext);
+    Future<List<InvoiceWorkflowDataHolder>> future = pendingPaymentWorkflowService.handlePendingPaymentsCreation(
+      dataHolders, invoice, requestContext);
     assertEquals("Failed to create pending payments", future.cause().getMessage());
     HttpException httpException = (HttpException) future.cause();
     Error error = httpException.getErrors().getErrors().get(0);
     assertEquals("cause", error.getParameters().get(0).getKey());
     assertEquals("test", error.getParameters().get(0).getValue());
+  }
+
+  @Test
+  void testRollbackCreationOfPendingPayments() {
+    Transaction pendingPayment = new Transaction()
+      .withTransactionType(PENDING_PAYMENT);
+    Transaction encumbrance = new Transaction()
+      .withId(UUID.randomUUID().toString())
+      .withTransactionType(ENCUMBRANCE)
+      .withEncumbrance(new Encumbrance().withStatus(UNRELEASED));
+    InvoiceWorkflowDataHolder holder1 = new InvoiceWorkflowDataHolder()
+      .withNewTransaction(pendingPayment)
+      .withEncumbrance(encumbrance);
+    List<InvoiceWorkflowDataHolder> holders = List.of(holder1);
+    Transaction newEncumbrance = new Transaction()
+      .withId(encumbrance.getId())
+      .withTransactionType(ENCUMBRANCE)
+      .withEncumbrance(new Encumbrance().withStatus(RELEASED));
+    TransactionCollection transactionCollection = new TransactionCollection()
+      .withTransactions(List.of(newEncumbrance));
+
+    ArgumentCaptor<Batch> batchCaptor = ArgumentCaptor.forClass(Batch.class);
+    when(restClient.postEmptyResponse(anyString(), any(Batch.class), eq(requestContext)))
+      .thenReturn(succeededFuture());
+    when(restClient.get(any(RequestEntry.class), eq(TransactionCollection.class), eq(requestContext)))
+      .thenReturn(succeededFuture(transactionCollection));
+
+    Future<Void> future = pendingPaymentWorkflowService.rollbackCreationOfPendingPayments(holders, requestContext);
+
+    assertTrue(future.succeeded());
+    verify(restClient, times(2))
+      .postEmptyResponse(anyString(), batchCaptor.capture(), eq(requestContext));
+    verify(restClient, times(1))
+      .get(any(RequestEntry.class), eq(TransactionCollection.class), eq(requestContext));
+    List<Batch> batches = batchCaptor.getAllValues();
+    assertThat(batches, hasSize(2));
+    Batch firstBatch = batches.getFirst();
+    assertThat(firstBatch.getIdsOfTransactionsToDelete(), hasSize(1));
+    Batch secondBatch = batches.get(1);
+    assertThat(secondBatch.getTransactionsToUpdate(), hasSize(1));
+    assertEquals(UNRELEASED, secondBatch.getTransactionsToUpdate().getFirst().getEncumbrance().getStatus());
   }
 }
