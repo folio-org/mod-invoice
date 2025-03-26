@@ -29,7 +29,6 @@ import java.util.stream.Collectors;
 import static io.vertx.core.Future.succeededFuture;
 import static java.util.Collections.emptyList;
 import static java.util.stream.Collectors.groupingBy;
-import static java.util.stream.Collectors.toList;
 import static org.folio.invoices.utils.HelperUtils.collectResultsOnSuccess;
 import static org.folio.invoices.utils.HelperUtils.convertIdsToCqlQuery;
 import static org.folio.rest.RestConstants.MAX_IDS_FOR_GET_RQ;
