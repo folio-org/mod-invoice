@@ -29,7 +29,6 @@ import org.folio.services.invoice.InvoiceCancelService;
 import org.folio.services.invoice.InvoiceFiscalYearsService;
 import org.folio.services.invoice.InvoiceFundDistributionService;
 import org.folio.services.invoice.InvoiceLineService;
-import org.folio.services.invoice.InvoicePaymentService;
 import org.folio.services.invoice.InvoiceService;
 import org.folio.services.invoice.PoLinePaymentStatusUpdateService;
 import org.folio.services.order.OrderLineService;
@@ -194,11 +193,6 @@ public class ServicesConfiguration {
   }
 
   @Bean
-  InvoicePaymentService invoicePaymentService() {
-    return new InvoicePaymentService();
-  }
-
-  @Bean
   OrderLineService orderLineService(RestClient restClient) {
     return new OrderLineService(restClient);
   }
@@ -215,13 +209,11 @@ public class ServicesConfiguration {
       EncumbranceService encumbranceService, InvoiceFundDistributionService invoiceFundDistributionService,
       InvoiceLineService invoiceLineService, InvoiceValidator validator, InvoiceWorkflowDataHolderBuilder holderBuilder,
       PendingPaymentWorkflowService pendingPaymentWorkflowService,
-      PoLinePaymentStatusUpdateService poLinePaymentStatusUpdateService, VendorRetrieveService vendorService,
-      VoucherCommandService voucherCommandService, VoucherCreationService voucherCreationService,
-      VoucherService voucherService) {
+      VendorRetrieveService vendorService, VoucherCommandService voucherCommandService,
+      VoucherCreationService voucherCreationService, VoucherService voucherService) {
     return new InvoiceApprovalService(budgetExpenseClassService, configurationService, currentFiscalYearService,
       encumbranceService, invoiceFundDistributionService, invoiceLineService, validator, holderBuilder,
-      pendingPaymentWorkflowService, poLinePaymentStatusUpdateService, vendorService, voucherCommandService,
-      voucherCreationService, voucherService);
+      pendingPaymentWorkflowService, vendorService, voucherCommandService, voucherCreationService, voucherService);
   }
 
   @Bean
