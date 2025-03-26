@@ -154,7 +154,7 @@ public class PoLinePaymentStatusUpdateService {
     List<Future<CompositePoLine>> futures = poLineIdsWithInvoiceLines.keySet()
       .stream()
       .map(poLine -> orderLineService.getPoLine(poLine, requestContext))
-      .collect(toList());
+      .toList();
 
     return collectResultsOnSuccess(futures)
       .map(compositePoLines ->  compositePoLines.stream()
@@ -166,7 +166,7 @@ public class PoLinePaymentStatusUpdateService {
       .keySet().stream()
       .filter(compositePoLine -> isPaymentStatusUpdateRequired(compositePoLinesWithNewStatuses, compositePoLine))
       .map(compositePoLine -> updatePaymentStatus(compositePoLinesWithNewStatuses, compositePoLine))
-      .collect(toList());
+      .toList();
   }
 
   @VisibleForTesting

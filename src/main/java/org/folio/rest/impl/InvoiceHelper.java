@@ -421,7 +421,7 @@ public class InvoiceHelper extends AbstractHelper {
       List<InvoiceLine> invoiceLines, String poLinePaymentStatus) {
     verifyTransitionOnPaidStatus(invoiceFromStorage, invoice);
     if (isTransitionToApproved(invoiceFromStorage, invoice)) {
-      return invoiceApprovalService.approveInvoice(invoice, invoiceLines, poLinePaymentStatus, requestContext);
+      return invoiceApprovalService.approveInvoice(invoice, invoiceLines, requestContext);
     } else if (isAfterApprove(invoice, invoiceFromStorage) && isExchangeRateChanged(invoice, invoiceFromStorage)) {
       return handleExchangeRateChange(invoice, invoiceLines);
     } else if (isTransitionToPaid(invoiceFromStorage, invoice)) {

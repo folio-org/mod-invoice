@@ -83,8 +83,7 @@ public class InvoiceApprovalService {
    * @param invoice {@link Invoice}to be approved
    * @return CompletableFuture that indicates when transition is completed
    */
-  public Future<Void> approveInvoice(Invoice invoice, List<InvoiceLine> lines, String poLinePaymentStatus,
-      RequestContext requestContext) {
+  public Future<Void> approveInvoice(Invoice invoice, List<InvoiceLine> lines, RequestContext requestContext) {
     invoice.setApprovalDate(new Date());
     invoice.setApprovedBy(invoice.getMetadata().getUpdatedByUserId());
 
