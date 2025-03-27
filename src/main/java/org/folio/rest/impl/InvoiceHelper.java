@@ -13,6 +13,7 @@ import static org.folio.invoices.utils.HelperUtils.combineCqlExpressions;
 import static org.folio.invoices.utils.HelperUtils.isPostApproval;
 import static org.folio.invoices.utils.HelperUtils.isTransitionToApproved;
 import static org.folio.invoices.utils.HelperUtils.isTransitionToCancelled;
+import static org.folio.invoices.utils.HelperUtils.isTransitionToPaid;
 import static org.folio.invoices.utils.ProtectedOperationType.UPDATE;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICES;
 import static org.folio.utils.UserPermissionsUtil.userHasDesiredPermission;
@@ -31,8 +32,6 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import com.google.common.annotations.VisibleForTesting;
-
 import io.vertx.core.Context;
 import io.vertx.core.Future;
 import io.vertx.core.Vertx;
@@ -47,7 +46,6 @@ import org.folio.invoices.utils.InvoiceRestrictionsUtil;
 import org.folio.invoices.utils.ProtectedOperationType;
 import org.folio.models.InvoiceWorkflowDataHolder;
 import org.folio.rest.acq.model.finance.FiscalYear;
-import org.folio.rest.acq.model.orders.CompositePoLine;
 import org.folio.rest.core.models.RequestContext;
 import org.folio.rest.jaxrs.model.Adjustment;
 import org.folio.rest.jaxrs.model.FiscalYearCollection;
@@ -60,14 +58,15 @@ import org.folio.rest.jaxrs.model.Parameter;
 import org.folio.services.adjusment.AdjustmentsService;
 import org.folio.services.finance.fiscalyear.CurrentFiscalYearService;
 import org.folio.services.finance.transaction.EncumbranceService;
+import org.folio.services.finance.transaction.PaymentCreditWorkflowService;
 import org.folio.services.finance.transaction.PendingPaymentWorkflowService;
 import org.folio.services.invoice.InvoiceApprovalService;
 import org.folio.services.invoice.InvoiceCancelService;
 import org.folio.services.invoice.InvoiceFiscalYearsService;
 import org.folio.services.invoice.InvoiceFundDistributionService;
 import org.folio.services.invoice.InvoiceLineService;
-import org.folio.services.invoice.InvoicePaymentService;
 import org.folio.services.invoice.InvoiceService;
+import org.folio.services.invoice.PoLinePaymentStatusUpdateService;
 import org.folio.services.validator.InvoiceValidator;
 import org.folio.services.voucher.VoucherCommandService;
 import org.folio.services.voucher.VoucherCreationService;
@@ -96,8 +95,6 @@ public class InvoiceHelper extends AbstractHelper {
   @Autowired
   private InvoiceWorkflowDataHolderBuilder holderBuilder;
   @Autowired
-  private InvoicePaymentService invoicePaymentService;
-  @Autowired
   private InvoiceCancelService invoiceCancelService;
   @Autowired
   private VoucherService voucherService;
@@ -109,6 +106,10 @@ public class InvoiceHelper extends AbstractHelper {
   private InvoiceFundDistributionService invoiceFundDistributionService;
   @Autowired
   private VoucherCreationService voucherCreationService;
+  @Autowired
+  private PaymentCreditWorkflowService paymentCreditWorkflowService;
+  @Autowired
+  private PoLinePaymentStatusUpdateService poLinePaymentStatusUpdateService;
   private RequestContext requestContext;
 
   public InvoiceHelper(Map<String, String> okapiHeaders, Context ctx) {
@@ -403,6 +404,10 @@ public class InvoiceHelper extends AbstractHelper {
     adjustmentsService.processProratedAdjustments(lines, updatedInvoice);
   }
 
+  private Future<Void> updateInvoiceRecord(Invoice updatedInvoice) {
+    return invoiceService.updateInvoice(updatedInvoice, new RequestContext(ctx, okapiHeaders));
+  }
+
   private void updateInvoiceLinesStatus(Invoice invoice, List<InvoiceLine> invoiceLines) {
     invoiceLines.forEach(invoiceLine -> invoiceLine.withInvoiceLineStatus(InvoiceLine.InvoiceLineStatus.fromValue(invoice.getStatus().value())));
   }
@@ -416,20 +421,30 @@ public class InvoiceHelper extends AbstractHelper {
       List<InvoiceLine> invoiceLines, String poLinePaymentStatus) {
     verifyTransitionOnPaidStatus(invoiceFromStorage, invoice);
     if (isTransitionToApproved(invoiceFromStorage, invoice)) {
-      return invoiceApprovalService.approveInvoice(invoice, invoiceLines, poLinePaymentStatus, requestContext);
+      return invoiceApprovalService.approveInvoice(invoice, invoiceLines, requestContext);
     } else if (isAfterApprove(invoice, invoiceFromStorage) && isExchangeRateChanged(invoice, invoiceFromStorage)) {
       return handleExchangeRateChange(invoice, invoiceLines);
     } else if (isTransitionToPaid(invoiceFromStorage, invoice)) {
       if (isExchangeRateChanged(invoice, invoiceFromStorage)) {
         return handleExchangeRateChange(invoice, invoiceLines)
-          .compose(aVoid1 -> invoicePaymentService.payInvoice(invoice, invoiceLines, requestContext));
+          .compose(v -> payInvoice(invoice, invoiceLines, poLinePaymentStatus, requestContext));
       }
       invoice.setExchangeRate(invoiceFromStorage.getExchangeRate());
-      return invoicePaymentService.payInvoice(invoice, invoiceLines, requestContext);
+      return payInvoice(invoice, invoiceLines, poLinePaymentStatus, requestContext);
     } else if (isTransitionToCancelled(invoiceFromStorage, invoice)) {
       return invoiceCancelService.cancelInvoice(invoiceFromStorage, invoiceLines, poLinePaymentStatus, requestContext);
     }
     return succeededFuture(null);
+  }
+
+  private void verifyTransitionOnPaidStatus(Invoice invoiceFromStorage, Invoice invoice) {
+    // Once an invoice is Paid, it should no longer transition to other statuses, except Cancelled.
+    if (invoiceFromStorage.getStatus() == Invoice.Status.PAID && invoice.getStatus() != Invoice.Status.CANCELLED &&
+        invoice.getStatus() != invoiceFromStorage.getStatus()) {
+      var parameter = new Parameter().withKey("invoiceId").withValue(invoice.getId());
+      logger.error("verifyTransitionOnPaidStatus:: Invalid invoice '{}' transition on paid status", invoice.getId());
+      throw new HttpException(422, INVALID_INVOICE_TRANSITION_ON_PAID_STATUS, List.of(parameter));
+    }
   }
 
   private boolean isAfterApprove(Invoice invoice, Invoice invoiceFromStorage) {
@@ -440,23 +455,19 @@ public class InvoiceHelper extends AbstractHelper {
     return Objects.nonNull(invoice.getExchangeRate()) && !invoice.getExchangeRate().equals(invoiceFromStorage.getExchangeRate());
   }
 
-  private void verifyTransitionOnPaidStatus(Invoice invoiceFromStorage, Invoice invoice) {
-    // Once an invoice is Paid, it should no longer transition to other statuses, except Cancelled.
-    if (invoiceFromStorage.getStatus() == Invoice.Status.PAID && invoice.getStatus() != Invoice.Status.CANCELLED &&
-      invoice.getStatus() != invoiceFromStorage.getStatus()) {
-      var parameter = new Parameter().withKey("invoiceId").withValue(invoice.getId());
-      logger.error("verifyTransitionOnPaidStatus:: Invalid invoice '{}' transition on paid status", invoice.getId());
-      throw new HttpException(422, INVALID_INVOICE_TRANSITION_ON_PAID_STATUS, List.of(parameter));
-    }
-  }
-
-
-  public Future<Void> updateInvoiceRecord(Invoice updatedInvoice) {
-    return invoiceService.updateInvoice(updatedInvoice, new RequestContext(ctx, okapiHeaders));
-  }
-
-  private boolean isTransitionToPaid(Invoice invoiceFromStorage, Invoice invoice) {
-    return invoiceFromStorage.getStatus() == Invoice.Status.APPROVED && invoice.getStatus() == Invoice.Status.PAID;
+  /**
+   * Handles transition of given invoice to PAID status.
+   */
+  private Future<Void> payInvoice(Invoice invoice, List<InvoiceLine> invoiceLines, String poLinePaymentStatus,
+    RequestContext requestContext) {
+    //  Set payment date, when the invoice is being paid.
+    invoice.setPaymentDate(invoice.getMetadata().getUpdatedDate());
+    return holderBuilder.buildCompleteHolders(invoice, invoiceLines, requestContext)
+      .compose(holders -> paymentCreditWorkflowService.handlePaymentsAndCreditsCreation(holders, requestContext))
+      .compose(v -> Future.join(
+        poLinePaymentStatusUpdateService.updatePoLinePaymentStatusToPayInvoice(invoiceLines, poLinePaymentStatus, requestContext),
+        voucherService.payInvoiceVoucher(invoice.getId(), requestContext)))
+      .mapEmpty();
   }
 
   private Future<Void> updateEncumbranceLinksWhenFiscalYearIsChanged(Invoice invoice, Invoice invoiceFromStorage,
@@ -477,10 +488,4 @@ public class InvoiceHelper extends AbstractHelper {
       .compose(linesToUpdate -> invoiceLineService.persistInvoiceLines(linesToUpdate, requestContext));
   }
 
-  @VisibleForTesting
-  boolean isPaymentStatusUpdateRequired(Map<CompositePoLine, CompositePoLine.PaymentStatus> compositePoLinesWithStatus, CompositePoLine compositePoLine) {
-    CompositePoLine.PaymentStatus newPaymentStatus = compositePoLinesWithStatus.get(compositePoLine);
-    return (!newPaymentStatus.equals(compositePoLine.getPaymentStatus()) &&
-      !compositePoLine.getPaymentStatus().equals(CompositePoLine.PaymentStatus.ONGOING));
-  }
 }
