@@ -168,7 +168,6 @@ public class PoLinePaymentStatusUpdateService {
       .toList();
   }
 
-  @VisibleForTesting
   boolean isPaymentStatusUpdateRequired(Map<CompositePoLine, CompositePoLine.PaymentStatus> compositePoLinesWithStatus,
       CompositePoLine compositePoLine) {
     CompositePoLine.PaymentStatus newPaymentStatus = compositePoLinesWithStatus.get(compositePoLine);
@@ -179,8 +178,7 @@ public class PoLinePaymentStatusUpdateService {
   private CompositePoLine updatePaymentStatus(Map<CompositePoLine, CompositePoLine.PaymentStatus> compositePoLinesWithStatus,
       CompositePoLine compositePoLine) {
     CompositePoLine.PaymentStatus newPaymentStatus = compositePoLinesWithStatus.get(compositePoLine);
-    compositePoLine.setPaymentStatus(newPaymentStatus);
-    return compositePoLine;
+    return compositePoLine.withPaymentStatus(newPaymentStatus);
   }
 
   private CompositePoLine.PaymentStatus getPoLinePaymentStatus(List<InvoiceLine> invoiceLines) {
