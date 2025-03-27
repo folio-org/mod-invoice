@@ -1,6 +1,5 @@
 package org.folio.services.invoice;
 
-import com.google.common.annotations.VisibleForTesting;
 import io.vertx.core.Future;
 import io.vertx.core.json.JsonObject;
 import one.util.streamex.StreamEx;
