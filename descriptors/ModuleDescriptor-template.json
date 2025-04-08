@@ -605,7 +605,7 @@
     },
     {
       "id": "order-lines",
-      "version": "3.0"
+      "version": "4.0"
     },
     {
       "id": "voucher-storage.vouchers",
@@ -687,7 +687,7 @@
   "optional": [
     {
       "id": "orders",
-      "version": "12.0"
+      "version": "13.0"
     }
   ],
   "permissionSets": [
