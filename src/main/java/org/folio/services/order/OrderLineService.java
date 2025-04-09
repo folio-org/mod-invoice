@@ -85,7 +85,7 @@ public class OrderLineService {
         if (poLines.size() != ids.size()) {
           List<String> foundIds = poLines.stream().map(PoLine::getId).toList();
           List<String> missingIds = ids.stream().filter(id -> !foundIds.contains(id)).toList();
-          logger.error("getPoLinesByIds:: Could not these po lines by ids: {}", missingIds);
+          logger.error("getPoLinesByIds:: Could not find these po lines by ids: {}", missingIds);
           var param = new Parameter().withKey("poLineIds").withValue(missingIds.toString());
           throw new HttpException(404, PO_LINE_NOT_FOUND, List.of(param));
         }

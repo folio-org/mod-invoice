@@ -31,6 +31,7 @@ import static java.util.stream.Collectors.groupingBy;
 import static org.folio.invoices.utils.HelperUtils.collectResultsOnSuccess;
 import static org.folio.invoices.utils.HelperUtils.convertIdsToCqlQuery;
 import static org.folio.rest.RestConstants.MAX_IDS_FOR_GET_RQ;
+import static org.folio.rest.acq.model.orders.PoLine.PaymentStatus.FULLY_PAID;
 import static org.folio.rest.acq.model.orders.PoLine.PaymentStatus.ONGOING;
 import static org.folio.rest.acq.model.orders.PoLine.PaymentStatus.PAYMENT_NOT_REQUIRED;
 import static org.folio.rest.acq.model.orders.PoLine.PaymentStatus.AWAITING_PAYMENT;
@@ -178,9 +179,9 @@ public class PoLinePaymentStatusUpdateService {
 
   private PaymentStatus getPoLinePaymentStatus(List<InvoiceLine> invoiceLines) {
     if (isAnyInvoiceLineReleaseEncumbrance(invoiceLines)) {
-      return PaymentStatus.FULLY_PAID;
+      return FULLY_PAID;
     } else {
-      return PaymentStatus.PARTIALLY_PAID;
+      return PARTIALLY_PAID;
     }
   }
 
