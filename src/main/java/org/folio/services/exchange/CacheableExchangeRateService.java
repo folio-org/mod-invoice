@@ -39,11 +39,11 @@ public class CacheableExchangeRateService {
   }
 
   public Future<Optional<ExchangeRate>> getExchangeRate(String from, String to, Number customExchangeRate, RequestContext requestContext) {
-    if (StringUtils.equals(from, to)) {
-      return Future.succeededFuture(Optional.of(createDefaultExchangeRate(from, to, 1d)));
+    if (StringUtils.equals(from, to) && Objects.isNull(customExchangeRate)) {
+      return Future.succeededFuture(Optional.empty());
     }
     if (Objects.nonNull(customExchangeRate)) {
-      return Future.succeededFuture(Optional.of(createDefaultExchangeRate(from, to, customExchangeRate)));
+      return Future.succeededFuture(Optional.of(new ExchangeRate().withFrom(from).withTo(to).withExchangeRate(customExchangeRate.doubleValue())));
     }
     try {
       var cacheKey = String.format("%s-%s", from, to);
@@ -53,10 +53,6 @@ public class CacheableExchangeRateService {
       log.error("Error when retrieving consortium configuration", e);
       return Future.failedFuture(e);
     }
-  }
-
-  private ExchangeRate createDefaultExchangeRate(String from, String to, Number exchangeRateValue) {
-    return new ExchangeRate().withFrom(from).withTo(to).withExchangeRate(exchangeRateValue.doubleValue());
   }
 
   private CompletableFuture<Optional<ExchangeRate>> getExchangeRateFromRemote(String from, String to, RequestContext requestContext) {

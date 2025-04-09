@@ -643,7 +643,6 @@ public class InvoicesApiTest extends ApiTestBase {
     checkVoucherAcqUnitIdsList(voucherCreated, invoice);
   }
 
-
   @Test
   void testInvoiceTransitionApprovedWithOddNumberOfPennies() {
     logger.info("=== Test transition invoice to Approved with odd number of pennies ===");
