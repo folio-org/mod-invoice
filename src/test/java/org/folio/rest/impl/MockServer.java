@@ -1313,11 +1313,11 @@ public class MockServer {
     }
     poLineCollection.setTotalRecords(poLineCollection.getPoLines().size());
 
-    JsonObject po_lines = JsonObject.mapFrom(poLineCollection);
-    logger.info(po_lines.encodePrettily());
+    JsonObject poLines = JsonObject.mapFrom(poLineCollection);
+    logger.info(poLines.encodePrettily());
 
-    addServerRqRsData(HttpMethod.GET, ORDER_LINES, po_lines);
-    serverResponse(ctx, 200, APPLICATION_JSON, po_lines.encode());
+    addServerRqRsData(HttpMethod.GET, ORDER_LINES, poLines);
+    serverResponse(ctx, 200, APPLICATION_JSON, poLines.encode());
   }
 
   private void serverResponse(RoutingContext ctx, int statusCode, String contentType, String body) {
