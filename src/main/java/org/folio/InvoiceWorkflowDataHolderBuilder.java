@@ -10,12 +10,9 @@ import static org.folio.invoices.utils.ErrorCodes.MULTIPLE_FISCAL_YEARS;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.function.Function;
-
-import javax.money.convert.ConversionQuery;
-import javax.money.convert.CurrencyConversion;
-import javax.money.convert.ExchangeRateProvider;
 
 import io.vertx.core.json.JsonObject;
 import org.apache.logging.log4j.LogManager;
@@ -25,7 +22,6 @@ import org.folio.invoices.utils.HelperUtils;
 import org.folio.models.InvoiceWorkflowDataHolder;
 import org.folio.rest.acq.model.finance.Budget;
 import org.folio.rest.acq.model.finance.ExpenseClass;
-import org.folio.rest.acq.model.finance.FiscalYear;
 import org.folio.rest.acq.model.finance.Fund;
 import org.folio.rest.acq.model.finance.Ledger;
 import org.folio.rest.acq.model.finance.Transaction;
@@ -35,7 +31,8 @@ import org.folio.rest.jaxrs.model.Error;
 import org.folio.rest.jaxrs.model.FundDistribution;
 import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.jaxrs.model.InvoiceLine;
-import org.folio.services.exchange.ExchangeRateProviderResolver;
+import org.folio.services.exchange.CacheableExchangeRateService;
+import org.folio.services.exchange.CentralExchangeRateProvider;
 import org.folio.services.finance.FundService;
 import org.folio.services.finance.LedgerService;
 import org.folio.services.finance.budget.BudgetService;
@@ -49,28 +46,28 @@ public class InvoiceWorkflowDataHolderBuilder {
 
   private static final Logger logger = LogManager.getLogger();
 
-  private final ExchangeRateProviderResolver exchangeRateProviderResolver;
   private final FiscalYearService fiscalYearService;
   private final FundService fundService;
   private final LedgerService ledgerService;
   private final BaseTransactionService baseTransactionService;
   private final BudgetService budgetService;
   private final ExpenseClassRetrieveService expenseClassRetrieveService;
+  private final CacheableExchangeRateService cacheableExchangeRateService;
 
-  public InvoiceWorkflowDataHolderBuilder(ExchangeRateProviderResolver exchangeRateProviderResolver,
-                                          FiscalYearService fiscalYearService,
+  public InvoiceWorkflowDataHolderBuilder(FiscalYearService fiscalYearService,
                                           FundService fundService,
                                           LedgerService ledgerService,
                                           BaseTransactionService baseTransactionService,
                                           BudgetService budgetService,
-                                          ExpenseClassRetrieveService expenseClassRetrieveService) {
-    this.exchangeRateProviderResolver = exchangeRateProviderResolver;
+                                          ExpenseClassRetrieveService expenseClassRetrieveService,
+                                          CacheableExchangeRateService cacheableExchangeRateService) {
     this.fiscalYearService = fiscalYearService;
     this.fundService = fundService;
     this.ledgerService = ledgerService;
     this.baseTransactionService = baseTransactionService;
     this.budgetService = budgetService;
     this.expenseClassRetrieveService = expenseClassRetrieveService;
+    this.cacheableExchangeRateService = cacheableExchangeRateService;
   }
 
   public Future<List<InvoiceWorkflowDataHolder>> buildCompleteHolders(Invoice invoice,
@@ -128,10 +125,11 @@ public class InvoiceWorkflowDataHolderBuilder {
   }
 
   public Future<List<InvoiceWorkflowDataHolder>> withBudgets(List<InvoiceWorkflowDataHolder> holders, RequestContext requestContext) {
-    if (holders.isEmpty())
+    if (holders.isEmpty()) {
       return succeededFuture(holders);
+    }
     List<String> fundIds = holders.stream().map(InvoiceWorkflowDataHolder::getFundId).distinct().collect(toList());
-    String invoiceFiscalYearId = holders.get(0).getInvoice().getFiscalYearId();
+    String invoiceFiscalYearId = holders.getFirst().getInvoice().getFiscalYearId();
     return budgetService.getBudgetsByFundIds(fundIds, invoiceFiscalYearId, requestContext)
       .map(budgets -> budgets.stream().collect(toMap(Budget::getFundId, Function.identity())))
       .map(fundIdBudgetMap -> holders.stream()
@@ -145,8 +143,8 @@ public class InvoiceWorkflowDataHolderBuilder {
       .collect(groupingBy(h -> h.getBudget().getFiscalYearId()));
     if (fiscalYearToHolders.size() > 1) {
       List<String> fiscalYearIds = new ArrayList<>(fiscalYearToHolders.keySet());
-      InvoiceWorkflowDataHolder h1 = fiscalYearToHolders.get(fiscalYearIds.get(0)).get(0);
-      InvoiceWorkflowDataHolder h2 = fiscalYearToHolders.get(fiscalYearIds.get(1)).get(0);
+      InvoiceWorkflowDataHolder h1 = fiscalYearToHolders.get(fiscalYearIds.get(0)).getFirst();
+      InvoiceWorkflowDataHolder h2 = fiscalYearToHolders.get(fiscalYearIds.get(1)).getFirst();
       String message = String.format(MULTIPLE_FISCAL_YEARS.getDescription(), h1.getFundDistribution().getCode(),
         h2.getFundDistribution().getCode());
       Error error = new Error().withCode(MULTIPLE_FISCAL_YEARS.getCode()).withMessage(message);
@@ -159,7 +157,7 @@ public class InvoiceWorkflowDataHolderBuilder {
   public Future<List<InvoiceWorkflowDataHolder>> withFiscalYear(List<InvoiceWorkflowDataHolder> holders, RequestContext requestContext) {
     if (holders.isEmpty())
       return succeededFuture(holders);
-    String fiscalYearId = holders.get(0).getBudget().getFiscalYearId();
+    String fiscalYearId = holders.getFirst().getBudget().getFiscalYearId();
     return fiscalYearService.getFiscalYear(fiscalYearId, requestContext)
       .map(fiscalYear -> holders.stream().map(holder -> holder.withFiscalYear(fiscalYear)).collect(toList()));
   }
@@ -189,19 +187,25 @@ public class InvoiceWorkflowDataHolderBuilder {
   public Future<List<InvoiceWorkflowDataHolder>> withExchangeRate(List<InvoiceWorkflowDataHolder> holders, RequestContext requestContext) {
     return holders.stream()
       .findFirst()
-      .map(holder -> requestContext.getContext().<CurrencyConversion>executeBlocking(event -> {
-        Invoice invoice = holder.getInvoice();
-        FiscalYear fiscalYear = holder.getFiscalYear();
-        ConversionQuery conversionQuery = HelperUtils.buildConversionQuery(invoice, fiscalYear.getCurrency());
-        ExchangeRateProvider exchangeRateProvider = exchangeRateProviderResolver.resolve(conversionQuery, requestContext);
-        invoice.setExchangeRate(exchangeRateProvider.getExchangeRate(conversionQuery).getFactor().doubleValue());
-        event.complete(exchangeRateProvider.getCurrencyConversion(conversionQuery));
-      })
-        .map(conversion -> holders.stream()
-          .map(h -> h.withConversion(conversion))
-          .collect(toList())))
+      .map(holder -> setExchangeRateToHolder(holders, holder, requestContext))
       .orElseGet(() -> succeededFuture(holders));
+  }
 
+  private Future<List<InvoiceWorkflowDataHolder>> setExchangeRateToHolder(List<InvoiceWorkflowDataHolder> holders, InvoiceWorkflowDataHolder holder,
+                                                                          RequestContext requestContext) {
+    var invoice = holder.getInvoice();
+    var fiscalYear = holder.getFiscalYear();
+    return cacheableExchangeRateService.getExchangeRate(invoice.getCurrency(), fiscalYear.getCurrency(), invoice.getExchangeRate(), requestContext)
+      .compose(exchangeRateOptional -> {
+        var exchangeRate = exchangeRateOptional.orElseThrow(() -> new NoSuchElementException("Cannot retrieve exchange rate from API")).getExchangeRate();
+        var conversionQuery = HelperUtils.buildConversionQuery(invoice.getCurrency(), fiscalYear.getCurrency(), exchangeRate);
+        var exchangeRateProvider = new CentralExchangeRateProvider();
+        invoice.setExchangeRate(exchangeRateProvider.getExchangeRate(conversionQuery).getFactor().doubleValue());
+        return Future.succeededFuture(exchangeRateProvider.getCurrencyConversion(conversionQuery));
+      })
+      .map(conversion -> holders.stream()
+        .map(h -> h.withConversion(conversion))
+        .toList());
   }
 
   public Future<List<InvoiceWorkflowDataHolder>> withExistingTransactions(List<InvoiceWorkflowDataHolder> holders, RequestContext requestContext) {
@@ -222,8 +226,8 @@ public class InvoiceWorkflowDataHolderBuilder {
       .filter(tr -> isTransactionRefersToHolder(tr, holder))
       .findFirst()
       .orElseGet(() -> new Transaction().withAmount(0d).withCurrency(holder.getFyCurrency()));
-    //Added remove so that in case of multiple transaction update our holder won't hold the same transaction because of findFirst().
-    //And in this case we can avoid "Primary Key Violation" when working with invoice summaries.
+    // Added remove so that in case of multiple transaction update our holder won't hold the same transaction because of findFirst().
+    // And in this case we can avoid "Primary Key Violation" when working with invoice summaries.
     transactions.remove(transaction);
     return transaction;
   }

@@ -9,7 +9,7 @@ import static org.folio.invoices.utils.ResourcePathResolver.VOUCHER_LINES;
 import static org.folio.rest.RestConstants.SEMAPHORE_MAX_ACTIVE_THREADS;
 import static org.folio.rest.impl.AbstractHelper.ID;
 import static org.folio.rest.jaxrs.model.FundDistribution.DistributionType.PERCENTAGE;
-import static org.folio.services.exchange.ExchangeRateProviderResolver.RATE_KEY;
+import static org.folio.services.exchange.CentralExchangeRateProvider.RATE_KEY;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -308,13 +308,12 @@ public class HelperUtils {
       .getSum();
   }
 
-  public static ConversionQuery buildConversionQuery(Invoice invoice, String systemCurrency) {
-    if (invoice.getExchangeRate() != null){
-      return ConversionQueryBuilder.of().setBaseCurrency(invoice.getCurrency())
-        .setTermCurrency(systemCurrency)
-        .set(RATE_KEY, invoice.getExchangeRate()).build();
-    }
-    return ConversionQueryBuilder.of().setBaseCurrency(invoice.getCurrency()).setTermCurrency(systemCurrency).build();
+  public static ConversionQuery buildConversionQuery(String fromCurrency, String toCurrency, Number exchangeRate) {
+    return ConversionQueryBuilder.of()
+      .setBaseCurrency(fromCurrency)
+      .setTermCurrency(toCurrency)
+      .set(RATE_KEY, exchangeRate)
+      .build();
   }
 
   public static boolean isNotFound(Throwable t) {

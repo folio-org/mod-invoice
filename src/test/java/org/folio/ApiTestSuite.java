@@ -46,8 +46,7 @@ import org.folio.services.InvoiceLinesRetrieveServiceTest;
 import org.folio.services.InvoiceRetrieveServiceTest;
 import org.folio.services.VoucherLineServiceTest;
 import org.folio.services.finance.CurrentFiscalYearServiceTest;
-import org.folio.services.finance.ManualCurrencyConversionTest;
-import org.folio.services.finance.ManualExchangeRateProviderTest;
+import org.folio.services.finance.CentralExchangeRateProviderTest;
 import org.folio.services.finance.budget.BudgetExpenseClassTest;
 import org.folio.services.finance.budget.BudgetServiceTest;
 import org.folio.services.finance.expense.ExpenseClassRetrieveServiceTest;
@@ -287,11 +286,7 @@ public class ApiTestSuite {
   }
 
   @Nested
-  class ManualCurrencyConversionTestNested extends ManualCurrencyConversionTest {
-  }
-
-  @Nested
-  class ManualExchangeRateProviderTestNested extends ManualExchangeRateProviderTest {
+  class CentralExchangeRateProviderNested extends CentralExchangeRateProviderTest {
   }
 
   @Nested
