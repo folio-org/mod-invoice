@@ -2147,7 +2147,7 @@ public class InvoicesApiTest extends ApiTestBase {
     assertThat(serverRqRs.get(INVOICES, HttpMethod.PUT), nullValue());
     assertThat(errors.getErrors(), hasSize(1));
     assertThat(errors.getErrors().get(0).getCode(), equalTo(PO_LINE_NOT_FOUND.getCode()));
-    assertThat(errors.getErrors().get(0).getParameters().get(0).getValue(), equalTo(ID_DOES_NOT_EXIST));
+    assertThat(errors.getErrors().get(0).getParameters().get(0).getValue(), equalTo("[" + ID_DOES_NOT_EXIST + "]"));
   }
 
   @Test

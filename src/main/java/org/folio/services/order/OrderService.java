@@ -76,7 +76,7 @@ public class OrderService {
     if (invoiceLine.getPoLineId() == null) {
       return succeededFuture(null);
     }
-    return orderLineService.getPoLine(invoiceLine.getPoLineId(), requestContext)
+    return orderLineService.getPoLineById(invoiceLine.getPoLineId(), requestContext)
       .compose(poLine -> getOrderInvoiceRelationshipByOrderIdAndInvoiceId(poLine.getPurchaseOrderId(), invoiceLine.getInvoiceId(), requestContext)
         .compose(relationships -> {
           if (relationships.getTotalRecords() == 0) {
@@ -119,7 +119,7 @@ public class OrderService {
   }
 
   public Future<Void> deleteOrderInvoiceRelationshipByInvoiceIdAndLineId(String invoiceId, String poLineId, RequestContext requestContext) {
-    return orderLineService.getPoLine(poLineId, requestContext)
+    return orderLineService.getPoLineById(poLineId, requestContext)
       .compose(poLine -> getOrderInvoiceRelationshipByOrderIdAndInvoiceId(poLine.getPurchaseOrderId(), invoiceId, requestContext))
       .compose(relation -> {
           if (relation.getTotalRecords() > 0) {
@@ -141,7 +141,7 @@ public class OrderService {
   }
 
   public Future<Boolean> isInvoiceLineLastForOrder(InvoiceLine invoiceLine, RequestContext requestContext) {
-    return orderLineService.getPoLine(invoiceLine.getPoLineId(), requestContext)
+    return orderLineService.getPoLineById(invoiceLine.getPoLineId(), requestContext)
       .map(CompositePoLine::getPurchaseOrderId)
       .compose(orderId -> getOrderPoLines(orderId, requestContext)
         .map(compositePoLines -> compositePoLines.stream()

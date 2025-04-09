@@ -1,14 +1,13 @@
 package org.folio.services.invoice;
 
 import io.vertx.core.Future;
-import io.vertx.core.json.JsonObject;
 import one.util.streamex.StreamEx;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.folio.rest.acq.model.orders.CompositePoLine;
 import org.folio.rest.acq.model.orders.PoLine;
+import org.folio.rest.acq.model.orders.PoLine.PaymentStatus;
 import org.folio.rest.core.models.RequestContext;
 import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.jaxrs.model.InvoiceCollection;
@@ -27,12 +26,13 @@ import java.util.stream.Collectors;
 
 import static io.vertx.core.Future.succeededFuture;
 import static java.util.Collections.emptyList;
+import static java.util.function.Predicate.not;
 import static java.util.stream.Collectors.groupingBy;
 import static org.folio.invoices.utils.HelperUtils.collectResultsOnSuccess;
 import static org.folio.invoices.utils.HelperUtils.convertIdsToCqlQuery;
 import static org.folio.rest.RestConstants.MAX_IDS_FOR_GET_RQ;
-import static org.folio.rest.acq.model.orders.CompositePoLine.PaymentStatus.ONGOING;
-import static org.folio.rest.acq.model.orders.CompositePoLine.PaymentStatus.PAYMENT_NOT_REQUIRED;
+import static org.folio.rest.acq.model.orders.PoLine.PaymentStatus.ONGOING;
+import static org.folio.rest.acq.model.orders.PoLine.PaymentStatus.PAYMENT_NOT_REQUIRED;
 import static org.folio.rest.acq.model.orders.PoLine.PaymentStatus.AWAITING_PAYMENT;
 import static org.folio.rest.acq.model.orders.PoLine.PaymentStatus.PARTIALLY_PAID;
 
@@ -42,8 +42,10 @@ public class PoLinePaymentStatusUpdateService {
   private static final String PAYMENT_STATUS_PAID_QUERY = "paymentStatus==(\"Fully Paid\" OR \"Partially Paid\")";
   private static final String PO_LINE_WITH_ONE_TIME_OPEN_ORDER_QUERY =
     "purchaseOrder.orderType==\"One-Time\" AND purchaseOrder.workflowStatus==\"Open\"";
+  private static final String PO_LINE_WITH_ONE_TIME_OPEN_ORDER_AND_AWAITING_PAYMENT_QUERY =
+    "purchaseOrder.orderType==\"One-Time\" AND purchaseOrder.workflowStatus==\"Open\" AND paymentStatus==\"Awaiting Payment\"";
   private static final String AND = " AND ";
-  private static final Set<CompositePoLine.PaymentStatus> PO_LINE_PAYMENT_IGNORED_STATUSES =
+  private static final Set<PaymentStatus> PO_LINE_PAYMENT_IGNORED_STATUSES =
     EnumSet.of(ONGOING, PAYMENT_NOT_REQUIRED);
 
   private static final Logger logger = LogManager.getLogger();
@@ -65,7 +67,8 @@ public class PoLinePaymentStatusUpdateService {
     if (poLinePaymentStatus == null) {
       return payPoLines(invoiceLines, requestContext);
     }
-    return updatePoLinePaymentStatusUsingParameter(invoiceLines, poLinePaymentStatus, requestContext);
+    return updatePoLinePaymentStatusUsingParameter(invoiceLines, poLinePaymentStatus, requestContext)
+      .compose(v -> updatePoLinePaymentStatusWithoutReleaseEncumbrance(invoiceLines, requestContext));
   }
 
   public Future<Void> updatePoLinePaymentStatusToCancelInvoice(Invoice invoiceFromStorage, List<InvoiceLine> invoiceLines,
@@ -129,7 +132,7 @@ public class PoLinePaymentStatusUpdateService {
     Map<String, List<InvoiceLine>> poLineIdInvoiceLinesMap = groupInvoiceLinesByPoLineId(invoiceLines);
     return fetchPoLines(poLineIdInvoiceLinesMap, requestContext)
       .map(this::updatePoLinesPaymentStatus)
-      .compose(poLines -> orderLineService.updateCompositePoLines(poLines, requestContext));
+      .compose(poLines -> orderLineService.updatePoLines(poLines, requestContext));
   }
 
   private Map<String, List<InvoiceLine>>  groupInvoiceLinesByPoLineId(List<InvoiceLine> invoiceLines) {
@@ -145,46 +148,39 @@ public class PoLinePaymentStatusUpdateService {
   /**
    * Retrieves PO Lines associated with invoice lines and calculates expected PO Line's payment status
    * @param poLineIdsWithInvoiceLines map where key is PO Line id and value is list of associated invoice lines
-   * @return map where key is {@link CompositePoLine} and value is expected PO Line's payment status
+   * @return map where key is {@link PoLine} and value is expected PO Line's payment status
    */
-  private Future<Map<CompositePoLine, CompositePoLine.PaymentStatus>> fetchPoLines(Map<String, List<InvoiceLine>> poLineIdsWithInvoiceLines,
-    RequestContext requestContext) {
-    List<Future<CompositePoLine>> futures = poLineIdsWithInvoiceLines.keySet()
-      .stream()
-      .map(poLine -> orderLineService.getPoLine(poLine, requestContext))
-      .toList();
-
-    return collectResultsOnSuccess(futures)
-      .map(compositePoLines ->  compositePoLines.stream()
-        .collect(Collectors.toMap(poLine -> poLine, poLine -> getPoLinePaymentStatus(poLineIdsWithInvoiceLines.get(poLine.getId())))));
+  private Future<Map<PoLine, PaymentStatus>> fetchPoLines(Map<String, List<InvoiceLine>> poLineIdsWithInvoiceLines,
+      RequestContext requestContext) {
+    List<String> poLineIds = poLineIdsWithInvoiceLines.keySet().stream().toList();
+    return orderLineService.getPoLinesByIds(poLineIds, requestContext)
+      .map(poLines ->  poLines.stream()
+        .collect(Collectors.toMap(poLine -> poLine, poLine -> getPoLinePaymentStatus(poLineIdsWithInvoiceLines.get(poLine.getId())))))
+      .onFailure(t -> logger.error("Failed to fetch the po lines: {}", poLineIds, t));
   }
 
-  private List<CompositePoLine> updatePoLinesPaymentStatus(Map<CompositePoLine, CompositePoLine.PaymentStatus> compositePoLinesWithNewStatuses) {
-    return compositePoLinesWithNewStatuses
-      .keySet().stream()
-      .filter(compositePoLine -> isPaymentStatusUpdateRequired(compositePoLinesWithNewStatuses, compositePoLine))
-      .map(compositePoLine -> updatePaymentStatus(compositePoLinesWithNewStatuses, compositePoLine))
+  private List<PoLine> updatePoLinesPaymentStatus(Map<PoLine, PaymentStatus> poLinesWithNewStatuses) {
+    return poLinesWithNewStatuses.keySet().stream()
+      .filter(poLine -> isPaymentStatusUpdateRequired(poLinesWithNewStatuses, poLine))
+      .map(poLine -> updatePaymentStatus(poLinesWithNewStatuses, poLine))
       .toList();
   }
 
-  boolean isPaymentStatusUpdateRequired(Map<CompositePoLine, CompositePoLine.PaymentStatus> compositePoLinesWithStatus,
-      CompositePoLine compositePoLine) {
-    CompositePoLine.PaymentStatus newPaymentStatus = compositePoLinesWithStatus.get(compositePoLine);
-    return (!newPaymentStatus.equals(compositePoLine.getPaymentStatus()) &&
-      !PO_LINE_PAYMENT_IGNORED_STATUSES.contains(compositePoLine.getPaymentStatus()));
+  boolean isPaymentStatusUpdateRequired(Map<PoLine, PaymentStatus> poLinesWithStatus, PoLine poLine) {
+    PaymentStatus newPaymentStatus = poLinesWithStatus.get(poLine);
+    return (!newPaymentStatus.equals(poLine.getPaymentStatus()) && !PO_LINE_PAYMENT_IGNORED_STATUSES.contains(poLine.getPaymentStatus()));
   }
 
-  private CompositePoLine updatePaymentStatus(Map<CompositePoLine, CompositePoLine.PaymentStatus> compositePoLinesWithStatus,
-      CompositePoLine compositePoLine) {
-    CompositePoLine.PaymentStatus newPaymentStatus = compositePoLinesWithStatus.get(compositePoLine);
-    return compositePoLine.withPaymentStatus(newPaymentStatus);
+  private PoLine updatePaymentStatus(Map<PoLine, PaymentStatus> poLinesWithStatus, PoLine poLine) {
+    PaymentStatus newPaymentStatus = poLinesWithStatus.get(poLine);
+    return poLine.withPaymentStatus(newPaymentStatus);
   }
 
-  private CompositePoLine.PaymentStatus getPoLinePaymentStatus(List<InvoiceLine> invoiceLines) {
+  private PaymentStatus getPoLinePaymentStatus(List<InvoiceLine> invoiceLines) {
     if (isAnyInvoiceLineReleaseEncumbrance(invoiceLines)) {
-      return CompositePoLine.PaymentStatus.FULLY_PAID;
+      return PaymentStatus.FULLY_PAID;
     } else {
-      return CompositePoLine.PaymentStatus.PARTIALLY_PAID;
+      return PaymentStatus.PARTIALLY_PAID;
     }
   }
 
@@ -194,6 +190,8 @@ public class PoLinePaymentStatusUpdateService {
 
   private Future<Void> updatePoLinePaymentStatusUsingParameter(List<InvoiceLine> invoiceLines,
       String poLinePaymentStatus, RequestContext requestContext) {
+    // This method is called when paying or cancelling an invoice with the poLinePaymentStatus parameter,
+    // for invoice lines with releaseEncumbrance=true
     logger.info("updatePoLinePaymentStatusUsingParameter:: Update po line paymentStatus using parameter...");
     if ("No Change".equals(poLinePaymentStatus)) {
       logger.info("updatePoLinePaymentStatusUsingParameter:: No change requested");
@@ -214,12 +212,46 @@ public class PoLinePaymentStatusUpdateService {
       return succeededFuture();
     }
     return orderLineService.getPoLinesByIdAndQuery(poLineIds, this::queryPoLinesWithOneTimeOpenOrder, requestContext)
-      .map(poLines -> {
-        poLines.forEach(poLine -> poLine.setPaymentStatus(PoLine.PaymentStatus.fromValue(poLinePaymentStatus)));
-        return poLines;
-      }).compose(poLines -> orderLineService.updatePoLines(poLines, requestContext))
+      .compose(poLines -> {
+        if (poLines.isEmpty()) {
+          logger.info("updatePoLinePaymentStatusUsingParameter:: No po line to update");
+          return succeededFuture();
+        }
+        poLines.forEach(poLine -> poLine.setPaymentStatus(PaymentStatus.fromValue(poLinePaymentStatus)));
+        return orderLineService.updatePoLines(poLines, requestContext);
+      })
       .onSuccess(v -> logger.info("updatePoLinePaymentStatusUsingParameter:: Success updating po lines"))
       .onFailure(t -> logger.error("updatePoLinePaymentStatusUsingParameter:: Error updating po lines", t));
+  }
+
+  private Future<Void> updatePoLinePaymentStatusWithoutReleaseEncumbrance(List<InvoiceLine> invoiceLines, RequestContext requestContext) {
+    // This method is called when paying an invoice with the poLinePaymentStatus parameter,
+    // for invoice lines with releaseEncumbrance=false
+    if (invoiceLines.stream().allMatch(InvoiceLine::getReleaseEncumbrance)) {
+      logger.info("updatePoLinePaymentStatusWithoutReleaseEncumbrance:: No invoice line with releaseEncumbrance=false");
+      return Future.succeededFuture();
+    }
+    List<String> poLineIds = invoiceLines.stream()
+      .filter(not(InvoiceLine::getReleaseEncumbrance))
+      .map(InvoiceLine::getPoLineId)
+      .filter(Objects::nonNull)
+      .distinct()
+      .toList();
+    if (poLineIds.isEmpty()) {
+      logger.info("updatePoLinePaymentStatusWithoutReleaseEncumbrance:: No po line linked to an invoice line with releaseEncumbrance=false");
+      return succeededFuture();
+    }
+    return orderLineService.getPoLinesByIdAndQuery(poLineIds, this::queryPoLinesWithOneTimeOpenOrderAndAwaitingPayment, requestContext)
+      .compose(poLines -> {
+        if (poLines.isEmpty()) {
+          logger.info("updatePoLinePaymentStatusWithoutReleaseEncumbrance:: No po line to update");
+          return succeededFuture();
+        }
+        poLines.forEach(poLine -> poLine.setPaymentStatus(PARTIALLY_PAID));
+        return orderLineService.updatePoLines(poLines, requestContext);
+      })
+      .onSuccess(v -> logger.info("updatePoLinePaymentStatusWithoutReleaseEncumbrance:: Success updating po lines"))
+      .onFailure(t -> logger.error("updatePoLinePaymentStatusWithoutReleaseEncumbrance:: Error updating po lines", t));
   }
 
   private String queryToGetPoLinesWithFullyOrPartiallyPaidPaymentStatusByIds(List<String> poLineIds) {
@@ -265,7 +297,7 @@ public class PoLinePaymentStatusUpdateService {
         poLine.setPaymentStatus(AWAITING_PAYMENT);
         modifiedPoLines.add(poLine);
       } else if (relatedInvoiceLines.stream().noneMatch(InvoiceLine::getReleaseEncumbrance) &&
-        !PARTIALLY_PAID.equals(poLine.getPaymentStatus())) {
+          !PARTIALLY_PAID.equals(poLine.getPaymentStatus())) {
         poLine.setPaymentStatus(PARTIALLY_PAID);
         modifiedPoLines.add(poLine);
       }
@@ -276,14 +308,15 @@ public class PoLinePaymentStatusUpdateService {
     }
     logger.info("updateRelatedPoLines:: {} po lines need a paymentStatus update for invoice {}. Updating...",
       modifiedPoLines.size(), invoiceId);
-    List<CompositePoLine> compositePoLines = modifiedPoLines.stream()
-      .map(poLine -> JsonObject.mapFrom(poLine).mapTo(CompositePoLine.class))
-      .toList();
-    return orderLineService.updateCompositePoLines(compositePoLines, requestContext);
+    return orderLineService.updatePoLines(modifiedPoLines, requestContext);
   }
 
   private String queryPoLinesWithOneTimeOpenOrder(List<String> poLineIds) {
     return PO_LINE_WITH_ONE_TIME_OPEN_ORDER_QUERY + AND + convertIdsToCqlQuery(poLineIds);
+  }
+
+  private String queryPoLinesWithOneTimeOpenOrderAndAwaitingPayment(List<String> poLineIds) {
+    return PO_LINE_WITH_ONE_TIME_OPEN_ORDER_AND_AWAITING_PAYMENT_QUERY + AND + convertIdsToCqlQuery(poLineIds);
   }
 
 }
