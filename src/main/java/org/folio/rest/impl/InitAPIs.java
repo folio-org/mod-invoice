@@ -2,7 +2,8 @@ package org.folio.rest.impl;
 
 import javax.money.convert.MonetaryConversions;
 
-import lombok.extern.log4j.Log4j2;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.folio.config.ApplicationConfig;
 import org.folio.dbschema.ObjectMapperTool;
 import org.folio.rest.resource.interfaces.InitAPI;
@@ -26,8 +27,9 @@ import io.vertx.core.json.jackson.DatabindCodec;
 /**
  * The class initializes vertx context adding spring context
  */
-@Log4j2
 public class InitAPIs implements InitAPI {
+
+  private final Logger log = LogManager.getLogger(InitAPIs.class);
 
   @Value("${mod.invoice.kafka.DataImportConsumerVerticle.instancesNumber:1}")
   private int dataImportConsumerVerticleNumber;
