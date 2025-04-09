@@ -10,7 +10,6 @@ import static org.folio.invoices.utils.ErrorCodes.MULTIPLE_FISCAL_YEARS;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.function.Function;
 
@@ -196,9 +195,8 @@ public class InvoiceWorkflowDataHolderBuilder {
     var invoice = holder.getInvoice();
     var fiscalYear = holder.getFiscalYear();
     return cacheableExchangeRateService.getExchangeRate(invoice.getCurrency(), fiscalYear.getCurrency(), invoice.getExchangeRate(), requestContext)
-      .compose(exchangeRateOptional -> {
-        var exchangeRate = exchangeRateOptional.orElseThrow(() -> new NoSuchElementException("Cannot retrieve exchange rate from API")).getExchangeRate();
-        var conversionQuery = HelperUtils.buildConversionQuery(invoice.getCurrency(), fiscalYear.getCurrency(), exchangeRate);
+      .compose(exchangeRate -> {
+        var conversionQuery = HelperUtils.buildConversionQuery(invoice.getCurrency(), fiscalYear.getCurrency(), exchangeRate.getExchangeRate());
         var exchangeRateProvider = new CentralExchangeRateProvider();
         invoice.setExchangeRate(exchangeRateProvider.getExchangeRate(conversionQuery).getFactor().doubleValue());
         return Future.succeededFuture(exchangeRateProvider.getCurrencyConversion(conversionQuery));

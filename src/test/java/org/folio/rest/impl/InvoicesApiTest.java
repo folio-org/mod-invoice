@@ -656,7 +656,7 @@ public class InvoicesApiTest extends ApiTestBase {
     invoiceLine.setId(UUID.randomUUID().toString());
     invoiceLine.setInvoiceId(id);
 
-    var conversionFactor = 3d;
+    var conversionFactor = 1d;
 
     invoice.setExchangeRate(conversionFactor);
 

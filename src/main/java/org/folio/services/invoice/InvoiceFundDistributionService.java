@@ -18,7 +18,6 @@ import javax.money.convert.CurrencyConversion;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
-import java.util.NoSuchElementException;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -46,9 +45,8 @@ public class InvoiceFundDistributionService {
                                                                 RequestContext requestContext) {
     return configurationService.getSystemCurrency(requestContext)
       .compose(systemCurrency -> cacheableExchangeRateService.getExchangeRate(invoice.getCurrency(), systemCurrency, invoice.getExchangeRate(), requestContext)
-        .compose(exchangeRateOptional -> {
-          var exchangeRate = exchangeRateOptional.orElseThrow(() -> new NoSuchElementException("Cannot retrieve exchange rate from API")).getExchangeRate();
-          var conversionQuery = HelperUtils.buildConversionQuery(invoice.getCurrency(), systemCurrency, exchangeRate);
+        .compose(exchangeRate -> {
+          var conversionQuery = HelperUtils.buildConversionQuery(invoice.getCurrency(), systemCurrency, exchangeRate.getExchangeRate());
           var exchangeRateProvider = new CentralExchangeRateProvider();
           var conversion = exchangeRateProvider.getCurrencyConversion(conversionQuery);
           var fundDistributions = getInvoiceLineFundDistributions(invoiceLines, invoice, conversion);

@@ -38,21 +38,27 @@ public class CacheableExchangeRateService {
     this.asyncCache = buildAsyncCache(Vertx.currentContext(), cacheExpirationTime);
   }
 
-  public Future<Optional<ExchangeRate>> getExchangeRate(String from, String to, Number customExchangeRate, RequestContext requestContext) {
-    if (StringUtils.equals(from, to) && Objects.isNull(customExchangeRate)) {
-      return Future.succeededFuture(Optional.empty());
+  public Future<ExchangeRate> getExchangeRate(String from, String to, Number customExchangeRate, RequestContext requestContext) {
+    log.info("getExchangeRate:: Retrieving an exchange rate, {} -> {}, customExchangeRate: {}", from, to, customExchangeRate);
+    if (StringUtils.equals(from, to)) {
+      return Future.succeededFuture(createDefaultExchangeRate(from, to, 1d));
     }
     if (Objects.nonNull(customExchangeRate)) {
-      return Future.succeededFuture(Optional.of(new ExchangeRate().withFrom(from).withTo(to).withExchangeRate(customExchangeRate.doubleValue())));
+      return Future.succeededFuture(createDefaultExchangeRate(from, to, customExchangeRate));
     }
     try {
       var cacheKey = String.format("%s-%s", from, to);
-      return Future.fromCompletionStage(asyncCache.get(cacheKey, (key, executor) ->
-        getExchangeRateFromRemote(from, to, requestContext)));
+      return Future.fromCompletionStage(asyncCache.get(cacheKey, (key, executor) -> getExchangeRateFromRemote(from, to, requestContext)))
+        .compose(exchangeRateOptional -> exchangeRateOptional.map(Future::succeededFuture)
+          .orElseGet(() -> Future.failedFuture("Cannot retrieve exchange rate from API")));
     } catch (Exception e) {
       log.error("Error when retrieving consortium configuration", e);
       return Future.failedFuture(e);
     }
+  }
+
+  private ExchangeRate createDefaultExchangeRate(String from, String to, Number exchangeRateValue) {
+    return new ExchangeRate().withFrom(from).withTo(to).withExchangeRate(exchangeRateValue.doubleValue());
   }
 
   private CompletableFuture<Optional<ExchangeRate>> getExchangeRateFromRemote(String from, String to, RequestContext requestContext) {

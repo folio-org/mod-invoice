@@ -8,7 +8,6 @@ import static org.folio.rest.impl.AbstractHelper.INVOICE_CONFIG_MODULE_NAME;
 import static org.folio.rest.impl.AbstractHelper.SYSTEM_CONFIG_QUERY;
 
 import java.util.List;
-import java.util.NoSuchElementException;
 import java.util.Objects;
 
 import org.apache.commons.lang3.StringUtils;
@@ -77,12 +76,9 @@ public class VoucherCommandService {
       return Future.succeededFuture(voucher);
     }
     return cacheableExchangeRateService.getExchangeRate(invoice.getCurrency(), voucher.getSystemCurrency(), invoice.getExchangeRate(), requestContext)
-      .compose(exchangeRateOptional -> {
-        var exchangeRate = exchangeRateOptional
-          .orElseThrow(() -> new NoSuchElementException("Exchange rate cannot be retrieved"))
-          .getExchangeRate();
-        invoice.setExchangeRate(exchangeRate);
-        voucher.setExchangeRate(exchangeRate);
+      .compose(exchangeRate -> {
+        invoice.setExchangeRate(exchangeRate.getExchangeRate());
+        voucher.setExchangeRate(exchangeRate.getExchangeRate());
         return Future.succeededFuture(voucher);
       });
   }
