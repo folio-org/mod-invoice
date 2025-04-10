@@ -39,17 +39,20 @@ public class CacheableExchangeRateService {
   }
 
   public Future<ExchangeRate> getExchangeRate(String from, String to, Number customExchangeRate, RequestContext requestContext) {
-    log.info("getExchangeRate:: Retrieving an exchange rate, {} -> {}, customExchangeRate: {}", from, to, customExchangeRate);
     if (StringUtils.equals(from, to)) {
       return Future.succeededFuture(createDefaultExchangeRate(from, to, 1d));
     }
     if (Objects.nonNull(customExchangeRate)) {
+      log.info("getExchangeRate:: Retrieving an exchange rate, {} -> {}, customExchangeRate: {}", from, to, customExchangeRate);
       return Future.succeededFuture(createDefaultExchangeRate(from, to, customExchangeRate));
     }
     try {
       var cacheKey = String.format("%s-%s", from, to);
       return Future.fromCompletionStage(asyncCache.get(cacheKey, (key, executor) -> getExchangeRateFromRemote(from, to, requestContext)))
-        .compose(exchangeRateOptional -> exchangeRateOptional.map(Future::succeededFuture)
+        .compose(exchangeRateOptional -> exchangeRateOptional.map(exchangeRate -> {
+          log.info("getExchangeRate:: Retrieving an exchange rate, {} -> {}, exchangeRate: {}", from, to, exchangeRate.getExchangeRate());
+          return Future.succeededFuture(exchangeRate);
+        })
         .orElseGet(() -> Future.failedFuture("Cannot retrieve exchange rate from API")));
     } catch (Exception e) {
       log.error("Error when retrieving cacheable exchange rate", e);
