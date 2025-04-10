@@ -68,7 +68,7 @@ import org.folio.rest.jaxrs.model.InvoiceLine;
 import org.folio.rest.jaxrs.model.InvoiceLineCollection;
 import org.folio.rest.jaxrs.model.Voucher;
 import org.folio.rest.jaxrs.model.VoucherCollection;
-import org.folio.services.exchange.ExchangeRateProviderResolver;
+import org.folio.services.exchange.CacheableExchangeRateService;
 import org.folio.services.finance.FundService;
 import org.folio.services.finance.LedgerService;
 import org.folio.services.finance.budget.BudgetService;
@@ -135,14 +135,15 @@ public class InvoiceCancelServiceTest {
     PoLinePaymentStatusUpdateService poLinePaymentStatusUpdateService = new PoLinePaymentStatusUpdateService(
       invoiceLineService, baseInvoiceService, orderLineService);
 
-    ExchangeRateProviderResolver exchangeRateProviderResolver = new ExchangeRateProviderResolver();
     FiscalYearService fiscalYearService = new FiscalYearService(restClient);
     FundService fundService = new FundService(restClient);
     LedgerService ledgerService = new LedgerService(restClient);
     BudgetService budgetService = new BudgetService(restClient);
     ExpenseClassRetrieveService expenseClassRetrieveService = new ExpenseClassRetrieveService(restClient);
-    InvoiceWorkflowDataHolderBuilder holderBuilder = new InvoiceWorkflowDataHolderBuilder(exchangeRateProviderResolver,
-      fiscalYearService, fundService, ledgerService, baseTransactionService, budgetService, expenseClassRetrieveService);
+    CacheableExchangeRateService cacheableExchangeRateService = new CacheableExchangeRateService(restClient);
+    InvoiceWorkflowDataHolderBuilder holderBuilder = new InvoiceWorkflowDataHolderBuilder(
+      fiscalYearService, fundService, ledgerService, baseTransactionService,
+      budgetService, expenseClassRetrieveService, cacheableExchangeRateService);
 
     cancelService = new InvoiceCancelService(baseTransactionService, encumbranceService,
       voucherService, orderLineService, orderService, poLinePaymentStatusUpdateService, holderBuilder);
@@ -241,7 +242,7 @@ public class InvoiceCancelServiceTest {
       .onComplete(result -> {
         HttpException httpException = (HttpException) result.cause();
         assertEquals(500, httpException.getCode());
-        var error = httpException.getErrors().getErrors().get(0);
+        var error = httpException.getErrors().getErrors().getFirst();
         assertEquals(ERROR_UNRELEASING_ENCUMBRANCES.getCode(), error.getCode());
         vertxTestContext.completeNow();
       });
