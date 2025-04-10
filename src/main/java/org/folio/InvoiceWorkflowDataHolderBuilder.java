@@ -166,7 +166,7 @@ public class InvoiceWorkflowDataHolderBuilder {
 
   public Future<List<InvoiceWorkflowDataHolder>> withEncumbrances(List<InvoiceWorkflowDataHolder> holders, RequestContext requestContext) {
     List<String> trIds = holders.stream().map(InvoiceWorkflowDataHolder::getFundDistribution).map(FundDistribution::getEncumbrance).distinct().filter(Objects::nonNull).collect(toList());
-    return baseTransactionService.getTransactions(trIds, requestContext)
+    return baseTransactionService.getTransactionsByIds(trIds, requestContext)
       .map(transactions -> transactions.stream().collect(toMap(Transaction::getId, Function.identity())))
       .map(idTransactionMap -> holders.stream()
         .map(holder -> holder.withEncumbrance(idTransactionMap.get(holder.getFundDistribution().getEncumbrance())))

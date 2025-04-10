@@ -10,3 +10,4 @@
 /bin/
 /.project
 /.classpath
+/src/main/resources/postgres-conf.json

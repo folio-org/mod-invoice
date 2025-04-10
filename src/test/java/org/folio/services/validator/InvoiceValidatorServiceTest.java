@@ -61,13 +61,13 @@ public class InvoiceValidatorServiceTest {
     String fiscalYearId = UUID.randomUUID().toString();
     Invoice invoice = new Invoice()
       .withFiscalYearId(fiscalYearId)
-      .withStatus(Invoice.Status.APPROVED);
+      .withStatus(Invoice.Status.PAID);
     InvoiceLine invoiceLine = new InvoiceLine()
       .withReleaseEncumbrance(true)
       .withPoLineId(poLineId);
     List<InvoiceLine> invoiceLines = List.of(invoiceLine);
     Invoice invoiceFromStorage = new Invoice()
-      .withStatus(Invoice.Status.OPEN);
+      .withStatus(Invoice.Status.APPROVED);
     PoLine poLine = new PoLine()
       .withId(poLineId)
       .withPaymentStatus(PoLine.PaymentStatus.AWAITING_PAYMENT);

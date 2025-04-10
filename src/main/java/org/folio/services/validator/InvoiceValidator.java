@@ -14,8 +14,8 @@ import static org.folio.invoices.utils.ErrorCodes.LOCK_AND_CALCULATED_TOTAL_MISM
 import static org.folio.invoices.utils.ErrorCodes.PO_LINE_PAYMENT_STATUS_NOT_PRESENT;
 import static org.folio.invoices.utils.HelperUtils.convertIdsToCqlQuery;
 import static org.folio.invoices.utils.HelperUtils.isPostApproval;
-import static org.folio.invoices.utils.HelperUtils.isTransitionToApproved;
 import static org.folio.invoices.utils.HelperUtils.isTransitionToCancelled;
+import static org.folio.invoices.utils.HelperUtils.isTransitionToPaid;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_LINE_NUMBER;
 import static org.folio.rest.jaxrs.model.FundDistribution.DistributionType.AMOUNT;
 import static org.folio.rest.jaxrs.model.FundDistribution.DistributionType.PERCENTAGE;
@@ -137,7 +137,7 @@ public class InvoiceValidator {
     if (poLinePaymentStatus != null) {
       return Future.succeededFuture();
     }
-    if (!isTransitionToApproved(invoiceFromStorage, invoice) && !isTransitionToCancelled(invoiceFromStorage, invoice)) {
+    if (!isTransitionToPaid(invoiceFromStorage, invoice) && !isTransitionToCancelled(invoiceFromStorage, invoice)) {
       return Future.succeededFuture();
     }
     if (invoiceLines.stream().noneMatch(InvoiceLine::getReleaseEncumbrance)) {

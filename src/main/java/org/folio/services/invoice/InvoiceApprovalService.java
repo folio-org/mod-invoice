@@ -46,7 +46,6 @@ public class InvoiceApprovalService {
   private final InvoiceValidator validator;
   private final InvoiceWorkflowDataHolderBuilder holderBuilder;
   private final PendingPaymentWorkflowService pendingPaymentWorkflowService;
-  private final PoLinePaymentStatusUpdateService poLinePaymentStatusUpdateService;
   private final VendorRetrieveService vendorService;
   private final VoucherCommandService voucherCommandService;
   private final VoucherCreationService voucherCreationService;
@@ -58,7 +57,7 @@ public class InvoiceApprovalService {
       InvoiceFundDistributionService invoiceFundDistributionService, InvoiceLineService invoiceLineService,
       InvoiceValidator validator, InvoiceWorkflowDataHolderBuilder holderBuilder,
       PendingPaymentWorkflowService pendingPaymentWorkflowService,
-      PoLinePaymentStatusUpdateService poLinePaymentStatusUpdateService, VendorRetrieveService vendorService,
+      VendorRetrieveService vendorService,
       VoucherCommandService voucherCommandService, VoucherCreationService voucherCreationService,
       VoucherService voucherService) {
     this.budgetExpenseClassService = budgetExpenseClassService;
@@ -70,7 +69,6 @@ public class InvoiceApprovalService {
     this.validator = validator;
     this.holderBuilder = holderBuilder;
     this.pendingPaymentWorkflowService = pendingPaymentWorkflowService;
-    this.poLinePaymentStatusUpdateService = poLinePaymentStatusUpdateService;
     this.vendorService = vendorService;
     this.voucherCommandService = voucherCommandService;
     this.voucherCreationService = voucherCreationService;
@@ -85,8 +83,7 @@ public class InvoiceApprovalService {
    * @param invoice {@link Invoice}to be approved
    * @return CompletableFuture that indicates when transition is completed
    */
-  public Future<Void> approveInvoice(Invoice invoice, List<InvoiceLine> lines, String poLinePaymentStatus,
-      RequestContext requestContext) {
+  public Future<Void> approveInvoice(Invoice invoice, List<InvoiceLine> lines, RequestContext requestContext) {
     invoice.setApprovalDate(new Date());
     invoice.setApprovedBy(invoice.getMetadata().getUpdatedByUserId());
 
@@ -100,14 +97,17 @@ public class InvoiceApprovalService {
         .map(v -> holders))
       .compose(holders -> budgetExpenseClassService.checkExpenseClasses(holders, requestContext))
       .compose(holders -> pendingPaymentWorkflowService.handlePendingPaymentsCreation(holders, invoice, requestContext))
-      .compose(v -> poLinePaymentStatusUpdateService.updatePoLinePaymentStatusToApproveInvoice(lines,
-        poLinePaymentStatus, requestContext))
-      .compose(v -> prepareVoucher(invoice, requestContext))
-      .compose(voucher -> updateVoucherWithSystemCurrency(voucher, lines, requestContext))
-      .compose(voucher -> voucherCommandService.updateVoucherWithExchangeRate(voucher, invoice, requestContext))
-      .compose(voucher -> invoiceFundDistributionService.getAllFundDistributions(lines, invoice, requestContext)
-        .compose(fundDistributions -> voucherCreationService.handleVoucherWithLines(fundDistributions,
-          voucher, requestContext))
+      .compose(holders -> prepareVoucher(invoice, requestContext)
+        .compose(voucher -> updateVoucherWithSystemCurrency(voucher, lines, requestContext))
+        .compose(voucher -> voucherCommandService.updateVoucherWithExchangeRate(voucher, invoice, requestContext))
+        .compose(voucher -> invoiceFundDistributionService.getAllFundDistributions(lines, invoice, requestContext)
+          .compose(fundDistributions -> voucherCreationService.handleVoucherWithLines(fundDistributions,
+            voucher, requestContext))
+        ).recover(t -> {
+          log.error("approveInvoice:: error after creating the pending payments; rolling back...", t);
+          return pendingPaymentWorkflowService.rollbackCreationOfPendingPayments(holders, requestContext)
+            .compose(v -> Future.failedFuture(t));
+        })
       );
   }
 

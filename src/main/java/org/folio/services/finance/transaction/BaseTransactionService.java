@@ -51,7 +51,7 @@ public class BaseTransactionService {
       .onFailure(t -> logger.error("getTransactions failed, query={}", query, t));
   }
 
-  public Future<List<Transaction>> getTransactions(List<String> transactionIds, RequestContext requestContext) {
+  public Future<List<Transaction>> getTransactionsByIds(List<String> transactionIds, RequestContext requestContext) {
     if (!CollectionUtils.isEmpty(transactionIds)) {
       List<Future<TransactionCollection>> expenseClassesFutureList = StreamEx
         .ofSubLists(transactionIds, MAX_IDS_FOR_GET_RQ)
@@ -117,11 +117,15 @@ public class BaseTransactionService {
     return batchUpdate(transactions, requestContext);
   }
 
-
   public Future<Void> batchCancel(List<Transaction> transactions, RequestContext requestContext) {
     // NOTE: we will have to use transactionPatches when it is available (see MODINVOICE-521)
     transactions.forEach(tr -> tr.setInvoiceCancelled(true));
     return batchUpdate(transactions, requestContext);
+  }
+
+  public Future<Void> batchDelete(List<Transaction> transactions, RequestContext requestContext) {
+    List<String> ids = transactions.stream().map(Transaction::getId).toList();
+    return batchAllOrNothing(null, null, ids, null, requestContext);
   }
 
 }
