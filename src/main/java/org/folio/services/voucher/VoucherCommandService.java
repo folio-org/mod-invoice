@@ -8,7 +8,6 @@ import static org.folio.rest.impl.AbstractHelper.INVOICE_CONFIG_MODULE_NAME;
 import static org.folio.rest.impl.AbstractHelper.SYSTEM_CONFIG_QUERY;
 
 import java.util.List;
-import java.util.Objects;
 
 import org.apache.commons.lang3.StringUtils;
 import org.folio.invoices.rest.exceptions.HttpException;
@@ -71,10 +70,6 @@ public class VoucherCommandService {
   }
 
   public Future<Voucher> updateVoucherWithExchangeRate(Voucher voucher, Invoice invoice, RequestContext requestContext) {
-    if (Objects.nonNull(invoice.getExchangeRate())) {
-      voucher.setExchangeRate(invoice.getExchangeRate());
-      return Future.succeededFuture(voucher);
-    }
     return cacheableExchangeRateService.getExchangeRate(invoice.getCurrency(), voucher.getSystemCurrency(), invoice.getExchangeRate(), requestContext)
       .compose(exchangeRate -> {
         invoice.setExchangeRate(exchangeRate.getExchangeRate());
