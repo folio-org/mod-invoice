@@ -46,9 +46,9 @@ public class InvoiceFundDistributionService {
     return configurationService.getSystemCurrency(requestContext)
       .compose(systemCurrency -> cacheableExchangeRateService.getExchangeRate(invoice.getCurrency(), systemCurrency, invoice.getExchangeRate(), requestContext)
         .compose(exchangeRate -> {
-          var conversionQuery = HelperUtils.buildConversionQuery(invoice.getCurrency(), systemCurrency, exchangeRate.getExchangeRate());
-          var exchangeRateProvider = new CustomExchangeRateProvider();
-          var conversion = exchangeRateProvider.getCurrencyConversion(conversionQuery);
+          var query = HelperUtils.buildConversionQuery(invoice.getCurrency(), systemCurrency, exchangeRate.getExchangeRate());
+          var provider = new CustomExchangeRateProvider();
+          var conversion = provider.getCurrencyConversion(query);
           var fundDistributions = getInvoiceLineFundDistributions(invoiceLines, invoice, conversion);
           fundDistributions.addAll(getAdjustmentFundDistributions(invoice, conversion));
           return Future.succeededFuture(fundDistributions);

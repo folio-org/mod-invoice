@@ -50,9 +50,9 @@ public class CacheableExchangeRateService {
       var cacheKey = String.format("%s-%s", from, to);
       return Future.fromCompletionStage(asyncCache.get(cacheKey, (key, executor) -> getExchangeRateFromRemote(from, to, requestContext)))
         .compose(exchangeRateOptional -> exchangeRateOptional.map(Future::succeededFuture)
-          .orElseGet(() -> Future.failedFuture("Cannot retrieve exchange rate from API")));
+        .orElseGet(() -> Future.failedFuture("Cannot retrieve exchange rate from API")));
     } catch (Exception e) {
-      log.error("Error when retrieving consortium configuration", e);
+      log.error("Error when retrieving cacheable exchange rate", e);
       return Future.failedFuture(e);
     }
   }
@@ -66,6 +66,7 @@ public class CacheableExchangeRateService {
       .withQueryParameter(FROM, from)
       .withQueryParameter(TO, to);
     return restClient.get(requestEntry, ExchangeRate.class, requestContext)
-      .map(Optional::ofNullable).toCompletionStage().toCompletableFuture();
+      .map(Optional::ofNullable)
+      .toCompletionStage().toCompletableFuture();
   }
 }
