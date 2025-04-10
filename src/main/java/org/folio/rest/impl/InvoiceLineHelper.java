@@ -250,7 +250,7 @@ public class InvoiceLineHelper extends AbstractHelper {
       return deleteOrderInvoiceRelationshipIfNeeded(invoiceLine, invoiceLineFromStorage, requestContext);
     }
     if (!StringUtils.equals(invoiceLine.getPoLineId(), invoiceLineFromStorage.getPoLineId())) {
-      return orderLineService.getPoLine(invoiceLine.getPoLineId(), requestContext).compose(
+      return orderLineService.getPoLineById(invoiceLine.getPoLineId(), requestContext).compose(
         poLine -> orderService.getOrderInvoiceRelationshipByOrderIdAndInvoiceId(poLine.getPurchaseOrderId(), invoiceLine.getInvoiceId(), requestContext)
           .compose(relationships -> {
             if (relationships.getTotalRecords() == 0) {
@@ -550,7 +550,7 @@ public class InvoiceLineHelper extends AbstractHelper {
       return succeededFuture(null);
     String poLineId = (invoiceLineFromStorage == null || invoiceLine.getPoLineId() != null) ? invoiceLine.getPoLineId() :
       invoiceLineFromStorage.getPoLineId();
-    return orderLineService.getPoLine(poLineId, requestContext)
+    return orderLineService.getPoLineById(poLineId, requestContext)
       .compose(poLine -> orderService.getOrder(poLine.getPurchaseOrderId(), requestContext))
       .compose(order -> {
         if (invoiceLineFromStorage != null && invoiceLineFromStorage.getPoLineId() != null && invoiceLine.getPoLineId() == null) {
@@ -577,7 +577,7 @@ public class InvoiceLineHelper extends AbstractHelper {
     InvoiceLine invoiceLine = ilProcessing.getInvoiceLineFromStorage();
     if (invoiceLine.getPoLineId() == null)
       return succeededFuture(null);
-    return orderLineService.getPoLine(invoiceLine.getPoLineId(), requestContext)
+    return orderLineService.getPoLineById(invoiceLine.getPoLineId(), requestContext)
       .compose(poLine -> orderService.getOrder(poLine.getPurchaseOrderId(), requestContext))
       .compose(order -> removeInvoicePoNumber(order.getPoNumber(), order, ilProcessing, requestContext))
       .recover(throwable -> {

@@ -24,6 +24,7 @@ import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.rest.acq.model.orders.CompositePoLine;
 import org.folio.rest.acq.model.orders.OrderInvoiceRelationship;
 import org.folio.rest.acq.model.orders.OrderInvoiceRelationshipCollection;
+import org.folio.rest.acq.model.orders.PoLine;
 import org.folio.rest.core.RestClient;
 import org.folio.rest.core.models.RequestContext;
 import org.folio.rest.core.models.RequestEntry;
@@ -71,7 +72,7 @@ public class OrderServiceTest {
     doReturn(succeededFuture(poLine)).when(restClient).get(any(RequestEntry.class), eq(CompositePoLine.class), eq(requestContextMock));
     doReturn(succeededFuture(relationships)).when(restClient).get(any(RequestEntry.class), eq(OrderInvoiceRelationshipCollection.class), eq(requestContextMock));
     doReturn(succeededFuture(null)).when(restClient).delete(any(RequestEntry.class), eq(requestContextMock));
-    doReturn(succeededFuture(poLine)).when(orderLineService).getPoLine(poLineId, requestContextMock);
+    doReturn(succeededFuture(poLine)).when(orderLineService).getPoLineById(poLineId, requestContextMock);
 
     var future = orderService.deleteOrderInvoiceRelationshipByInvoiceIdAndLineId(invoiceId, poLineId, requestContextMock);
     vertxTestContext.assertComplete(future)
@@ -94,7 +95,7 @@ public class OrderServiceTest {
     doReturn(succeededFuture(poLine)).when(restClient).get(any(RequestEntry.class), eq(CompositePoLine.class), eq(requestContextMock));
     doReturn(succeededFuture(relationships)).when(restClient).get(any(RequestEntry.class), eq(OrderInvoiceRelationshipCollection.class), eq(requestContextMock));
 
-    doReturn(succeededFuture(poLine)).when(orderLineService).getPoLine(poLineId, requestContextMock);
+    doReturn(succeededFuture(poLine)).when(orderLineService).getPoLineById(poLineId, requestContextMock);
 
     var future = orderService.deleteOrderInvoiceRelationshipByInvoiceIdAndLineId(invoiceId, poLineId, requestContextMock);
 
@@ -146,7 +147,7 @@ public class OrderServiceTest {
       .when(restClient).put(any(RequestEntry.class), any(CompositePoLine.class), eq(requestContextMock));
 
     // when
-    Future<Void> future = orderLineServiceInject.updateCompositePoLines(List.of(new CompositePoLine()), requestContextMock);
+    Future<Void> future = orderLineServiceInject.updatePoLines(List.of(new PoLine()), requestContextMock);
 
     // then
     vertxTestContext.assertFailure(future)
@@ -170,7 +171,7 @@ public class OrderServiceTest {
       .when(restClient).get(any(RequestEntry.class), eq(CompositePoLine.class), eq(requestContextMock));
 
     // when
-    Future<CompositePoLine> future = orderLineServiceInject.getPoLine("id", requestContextMock);
+    Future<CompositePoLine> future = orderLineServiceInject.getPoLineById("id", requestContextMock);
 
     // then
     vertxTestContext.assertFailure(future)
