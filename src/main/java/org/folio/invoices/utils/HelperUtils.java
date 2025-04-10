@@ -9,7 +9,7 @@ import static org.folio.invoices.utils.ResourcePathResolver.VOUCHER_LINES;
 import static org.folio.rest.RestConstants.SEMAPHORE_MAX_ACTIVE_THREADS;
 import static org.folio.rest.impl.AbstractHelper.ID;
 import static org.folio.rest.jaxrs.model.FundDistribution.DistributionType.PERCENTAGE;
-import static org.folio.services.exchange.CentralExchangeRateProvider.RATE_KEY;
+import static org.folio.services.exchange.CustomExchangeRateProvider.RATE_KEY;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;

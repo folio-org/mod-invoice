@@ -7,7 +7,7 @@ import static org.folio.rest.acq.model.finance.Encumbrance.Status.UNRELEASED;
 import static org.folio.rest.acq.model.finance.Transaction.TransactionType.ENCUMBRANCE;
 import static org.folio.rest.acq.model.finance.Transaction.TransactionType.PENDING_PAYMENT;
 import static org.folio.rest.impl.AbstractHelper.DEFAULT_SYSTEM_CURRENCY;
-import static org.folio.services.exchange.CentralExchangeRateProvider.RATE_KEY;
+import static org.folio.services.exchange.CustomExchangeRateProvider.RATE_KEY;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasSize;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -52,7 +52,7 @@ import org.folio.rest.jaxrs.model.Error;
 import org.folio.rest.jaxrs.model.FundDistribution;
 import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.jaxrs.model.InvoiceLine;
-import org.folio.services.exchange.CentralExchangeRateProvider;
+import org.folio.services.exchange.CustomExchangeRateProvider;
 import org.folio.services.validator.FundAvailabilityHolderValidator;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -156,7 +156,7 @@ public class PendingPaymentWorkflowServiceTest {
     invoiceLine.getFundDistributions().add(invoiceLineFundDistribution);
 
     ConversionQuery conversionQuery = ConversionQueryBuilder.of().setTermCurrency(DEFAULT_SYSTEM_CURRENCY).set(RATE_KEY, exchangeRate).build();
-    ExchangeRateProvider exchangeRateProvider = new CentralExchangeRateProvider();
+    ExchangeRateProvider exchangeRateProvider = new CustomExchangeRateProvider();
     CurrencyConversion conversion = exchangeRateProvider.getCurrencyConversion(conversionQuery);
 
     List<InvoiceWorkflowDataHolder> holders = new ArrayList<>();
@@ -263,7 +263,7 @@ public class PendingPaymentWorkflowServiceTest {
     double exchangeRate = 1.3;
     ConversionQuery conversionQuery = ConversionQueryBuilder.of()
       .setTermCurrency(DEFAULT_SYSTEM_CURRENCY).set(RATE_KEY, exchangeRate).build();
-    ExchangeRateProvider exchangeRateProvider = new CentralExchangeRateProvider();
+    ExchangeRateProvider exchangeRateProvider = new CustomExchangeRateProvider();
     CurrencyConversion conversion = exchangeRateProvider.getCurrencyConversion(conversionQuery);
     InvoiceWorkflowDataHolder holder = new InvoiceWorkflowDataHolder()
       .withFundDistribution(fundDistribution)

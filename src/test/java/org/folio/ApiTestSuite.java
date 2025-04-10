@@ -45,8 +45,9 @@ import org.folio.schemas.xsd.BatchVoucherSchemaXSDTest;
 import org.folio.services.InvoiceLinesRetrieveServiceTest;
 import org.folio.services.InvoiceRetrieveServiceTest;
 import org.folio.services.VoucherLineServiceTest;
+import org.folio.services.exchange.CacheableExchangeRateServiceTest;
 import org.folio.services.finance.CurrentFiscalYearServiceTest;
-import org.folio.services.finance.CentralExchangeRateProviderTest;
+import org.folio.services.exchange.CustomExchangeRateProviderTest;
 import org.folio.services.finance.budget.BudgetExpenseClassTest;
 import org.folio.services.finance.budget.BudgetServiceTest;
 import org.folio.services.finance.expense.ExpenseClassRetrieveServiceTest;
@@ -286,7 +287,7 @@ public class ApiTestSuite {
   }
 
   @Nested
-  class CentralExchangeRateProviderNested extends CentralExchangeRateProviderTest {
+  class CustomExchangeRateProviderNested extends CustomExchangeRateProviderTest {
   }
 
   @Nested
@@ -357,4 +358,7 @@ public class ApiTestSuite {
   class EntityIdStorageDaoImplTestNested extends EntityIdStorageDaoImplTest{
   }
 
+  @Nested
+  class CacheableExchangeRateServiceTestNested extends CacheableExchangeRateServiceTest {
+  }
 }

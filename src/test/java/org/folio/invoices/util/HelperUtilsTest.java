@@ -1,6 +1,6 @@
 package org.folio.invoices.util;
 
-import static org.folio.services.exchange.CentralExchangeRateProvider.RATE_KEY;
+import static org.folio.services.exchange.CustomExchangeRateProvider.RATE_KEY;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.util.ArrayList;

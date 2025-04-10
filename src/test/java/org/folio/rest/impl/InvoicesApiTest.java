@@ -81,7 +81,7 @@ import static org.folio.rest.impl.ProtectionHelper.ACQUISITIONS_UNIT_IDS;
 import static org.folio.rest.impl.VouchersApiTest.VOUCHERS_LIST_PATH;
 import static org.folio.rest.jaxrs.model.FundDistribution.DistributionType.AMOUNT;
 import static org.folio.rest.jaxrs.model.FundDistribution.DistributionType.PERCENTAGE;
-import static org.folio.services.exchange.CentralExchangeRateProvider.RATE_KEY;
+import static org.folio.services.exchange.CustomExchangeRateProvider.RATE_KEY;
 import static org.folio.services.validator.InvoiceValidator.NO_INVOICE_LINES_ERROR_MSG;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.allOf;
@@ -164,7 +164,7 @@ import org.folio.rest.jaxrs.model.Voucher;
 import org.folio.rest.jaxrs.model.VoucherCollection;
 import org.folio.rest.jaxrs.model.VoucherLine;
 import org.folio.rest.jaxrs.model.VoucherLineCollection;
-import org.folio.services.exchange.CentralExchangeRateProvider;
+import org.folio.services.exchange.CustomExchangeRateProvider;
 import org.hamcrest.Matchers;
 import org.hamcrest.beans.HasProperty;
 import org.hamcrest.beans.HasPropertyWithValue;
@@ -1831,7 +1831,7 @@ public class InvoicesApiTest extends ApiTestBase {
     Map<String, Transaction> pendingPaymentMap = pendingPaymentCreated.stream()
       .collect(toMap((transaction)->transaction.getAwaitingPayment().getEncumbranceId(), Function.identity()));
     ConversionQuery conversionQuery = ConversionQueryBuilder.of().setTermCurrency(DEFAULT_SYSTEM_CURRENCY).set(RATE_KEY, 1.5).build();
-    ExchangeRateProvider exchangeRateProvider = new CentralExchangeRateProvider();
+    ExchangeRateProvider exchangeRateProvider = new CustomExchangeRateProvider();
     CurrencyConversion conversion = exchangeRateProvider.getCurrencyConversion(conversionQuery); //currency from MockServer
     fundDistributions.forEach(fundDistribution -> {
       MonetaryAmount amount = getFundDistributionAmount(fundDistribution, 10d, reqData.getCurrency()).with(conversion);

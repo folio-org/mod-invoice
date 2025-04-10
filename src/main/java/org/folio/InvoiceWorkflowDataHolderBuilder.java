@@ -31,7 +31,7 @@ import org.folio.rest.jaxrs.model.FundDistribution;
 import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.jaxrs.model.InvoiceLine;
 import org.folio.services.exchange.CacheableExchangeRateService;
-import org.folio.services.exchange.CentralExchangeRateProvider;
+import org.folio.services.exchange.CustomExchangeRateProvider;
 import org.folio.services.finance.FundService;
 import org.folio.services.finance.LedgerService;
 import org.folio.services.finance.budget.BudgetService;
@@ -197,7 +197,7 @@ public class InvoiceWorkflowDataHolderBuilder {
     return cacheableExchangeRateService.getExchangeRate(invoice.getCurrency(), fiscalYear.getCurrency(), invoice.getExchangeRate(), requestContext)
       .compose(exchangeRate -> {
         var conversionQuery = HelperUtils.buildConversionQuery(invoice.getCurrency(), fiscalYear.getCurrency(), exchangeRate.getExchangeRate());
-        var exchangeRateProvider = new CentralExchangeRateProvider();
+        var exchangeRateProvider = new CustomExchangeRateProvider();
         invoice.setExchangeRate(exchangeRateProvider.getExchangeRate(conversionQuery).getFactor().doubleValue());
         return Future.succeededFuture(exchangeRateProvider.getCurrencyConversion(conversionQuery));
       })

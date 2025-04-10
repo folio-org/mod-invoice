@@ -10,7 +10,7 @@ import org.folio.rest.jaxrs.model.InvoiceLine;
 import org.folio.services.adjusment.AdjustmentsService;
 import org.folio.services.configuration.ConfigurationService;
 import org.folio.services.exchange.CacheableExchangeRateService;
-import org.folio.services.exchange.CentralExchangeRateProvider;
+import org.folio.services.exchange.CustomExchangeRateProvider;
 import org.javamoney.moneta.Money;
 
 import javax.money.MonetaryAmount;
@@ -47,7 +47,7 @@ public class InvoiceFundDistributionService {
       .compose(systemCurrency -> cacheableExchangeRateService.getExchangeRate(invoice.getCurrency(), systemCurrency, invoice.getExchangeRate(), requestContext)
         .compose(exchangeRate -> {
           var conversionQuery = HelperUtils.buildConversionQuery(invoice.getCurrency(), systemCurrency, exchangeRate.getExchangeRate());
-          var exchangeRateProvider = new CentralExchangeRateProvider();
+          var exchangeRateProvider = new CustomExchangeRateProvider();
           var conversion = exchangeRateProvider.getCurrencyConversion(conversionQuery);
           var fundDistributions = getInvoiceLineFundDistributions(invoiceLines, invoice, conversion);
           fundDistributions.addAll(getAdjustmentFundDistributions(invoice, conversion));

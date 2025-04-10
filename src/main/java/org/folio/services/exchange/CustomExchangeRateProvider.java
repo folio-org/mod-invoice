@@ -14,10 +14,10 @@ import org.javamoney.moneta.convert.ExchangeRateBuilder;
 import org.javamoney.moneta.spi.DefaultNumberValue;
 import org.javamoney.moneta.spi.LazyBoundCurrencyConversion;
 
-public class CentralExchangeRateProvider implements ExchangeRateProvider {
+public class CustomExchangeRateProvider implements ExchangeRateProvider {
 
   private static final ProviderContext CONTEXT = ProviderContextBuilder.of("CUSTOM", RateType.DEFERRED, RateType.ANY)
-    .set("providerDescription", "Central exchange rate provider")
+    .set("providerDescription", "Custom exchange rate provider")
     .build();
   public static final String RATE_KEY = "factor";
 
