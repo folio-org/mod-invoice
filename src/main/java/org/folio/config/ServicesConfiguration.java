@@ -11,7 +11,7 @@ import org.folio.services.VendorRetrieveService;
 import org.folio.services.VoucherLineService;
 import org.folio.services.adjusment.AdjustmentsService;
 import org.folio.services.configuration.ConfigurationService;
-import org.folio.services.exchange.ExchangeRateProviderResolver;
+import org.folio.services.exchange.CacheableExchangeRateService;
 import org.folio.services.finance.FundService;
 import org.folio.services.finance.LedgerService;
 import org.folio.services.finance.budget.BudgetExpenseClassService;
@@ -87,11 +87,6 @@ public class ServicesConfiguration {
   }
 
   @Bean
-  ExchangeRateProviderResolver exchangeRateProviderResolver() {
-    return new ExchangeRateProviderResolver();
-  }
-
-  @Bean
   FundService fundService(RestClient restClient) {
     return new FundService(restClient);
   }
@@ -136,14 +131,15 @@ public class ServicesConfiguration {
   }
 
   @Bean
-  InvoiceWorkflowDataHolderBuilder holderBuilder(ExchangeRateProviderResolver exchangeRateProviderResolver,
-                                                 FiscalYearService fiscalYearService,
+  InvoiceWorkflowDataHolderBuilder holderBuilder(FiscalYearService fiscalYearService,
                                                  FundService fundService,
                                                  LedgerService ledgerService,
                                                  BaseTransactionService baseTransactionService,
                                                  BudgetService budgetService,
-                                                 ExpenseClassRetrieveService expenseClassRetrieveService) {
-    return new InvoiceWorkflowDataHolderBuilder(exchangeRateProviderResolver, fiscalYearService, fundService, ledgerService, baseTransactionService, budgetService, expenseClassRetrieveService);
+                                                 ExpenseClassRetrieveService expenseClassRetrieveService,
+                                                 CacheableExchangeRateService cacheableExchangeRateService) {
+    return new InvoiceWorkflowDataHolderBuilder(fiscalYearService, fundService, ledgerService,
+      baseTransactionService, budgetService, expenseClassRetrieveService, cacheableExchangeRateService);
   }
 
   @Bean
@@ -199,8 +195,9 @@ public class ServicesConfiguration {
 
   @Bean
   InvoiceFundDistributionService invoiceFundDistributionService(AdjustmentsService adjustmentsService,
-      ConfigurationService configurationService, ExchangeRateProviderResolver exchangeRateProviderResolver) {
-    return new InvoiceFundDistributionService(adjustmentsService, configurationService, exchangeRateProviderResolver);
+                                                                ConfigurationService configurationService,
+                                                                CacheableExchangeRateService cacheableExchangeRateService) {
+    return new InvoiceFundDistributionService(adjustmentsService, configurationService, cacheableExchangeRateService);
   }
 
   @Bean

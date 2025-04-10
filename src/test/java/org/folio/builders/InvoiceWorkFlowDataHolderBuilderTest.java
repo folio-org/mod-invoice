@@ -14,13 +14,14 @@ import org.folio.rest.jaxrs.model.Adjustment;
 import org.folio.rest.jaxrs.model.FundDistribution;
 import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.jaxrs.model.InvoiceLine;
-import org.folio.services.exchange.ExchangeRateProviderResolver;
+import org.folio.services.exchange.CacheableExchangeRateService;
 import org.folio.services.finance.FundService;
 import org.folio.services.finance.LedgerService;
 import org.folio.services.finance.budget.BudgetService;
 import org.folio.services.finance.expence.ExpenseClassRetrieveService;
 import org.folio.services.finance.fiscalyear.FiscalYearService;
 import org.folio.services.finance.transaction.BaseTransactionService;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -49,36 +50,46 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doReturn;
 
 public class InvoiceWorkFlowDataHolderBuilderTest {
+
   private InvoiceWorkflowDataHolderBuilder invoiceWorkflowDataHolderBuilder;
+
   @Mock
   private RestClient restClient;
   @Mock
   private Context ctxMock;
+
   private Map<String, String> okapiHeaders;
   private List<String> transactionIds;
-  private final String transactionId_1 = "c5732efb-9536-4a49-a22e-1ec6ca8a7922";
-  private final String transactionId_2 = "c6732efb-9536-4a49-a22e-1ec6ca8a7922";
+  private AutoCloseable openMocks;
 
   @BeforeEach
   public void initMocks() {
-    MockitoAnnotations.openMocks(this);
+    openMocks = MockitoAnnotations.openMocks(this);
     transactionIds = new ArrayList<>();
-    transactionIds.add(transactionId_1);
-    transactionIds.add(transactionId_2);
+    transactionIds.add("c5732efb-9536-4a49-a22e-1ec6ca8a7922");
+    transactionIds.add("c6732efb-9536-4a49-a22e-1ec6ca8a7922");
     okapiHeaders = new HashMap<>();
     okapiHeaders.put(OKAPI_URL, "http://localhost:" + mockPort);
     okapiHeaders.put(X_OKAPI_TOKEN.getName(), X_OKAPI_TOKEN.getValue());
     okapiHeaders.put(X_OKAPI_TENANT.getName(), X_OKAPI_TENANT.getValue());
     okapiHeaders.put(X_OKAPI_USER_ID.getName(), X_OKAPI_USER_ID.getValue());
-    ExchangeRateProviderResolver exchangeRateProviderResolver = new ExchangeRateProviderResolver();
     FiscalYearService fiscalYearService = new FiscalYearService(restClient);
     FundService fundService = new FundService(restClient);
     LedgerService ledgerService = new LedgerService(restClient);
     BaseTransactionService baseTransactionService = new BaseTransactionService(restClient);
     BudgetService budgetService = new BudgetService(restClient);
     ExpenseClassRetrieveService expenseClassRetrieveService = new ExpenseClassRetrieveService(restClient);
-    invoiceWorkflowDataHolderBuilder = new InvoiceWorkflowDataHolderBuilder(exchangeRateProviderResolver,fiscalYearService,fundService,ledgerService,
-      baseTransactionService,budgetService,expenseClassRetrieveService);
+    CacheableExchangeRateService cacheableExchangeRateService = new CacheableExchangeRateService(restClient);
+    invoiceWorkflowDataHolderBuilder = new InvoiceWorkflowDataHolderBuilder(
+      fiscalYearService, fundService, ledgerService, baseTransactionService,
+      budgetService, expenseClassRetrieveService, cacheableExchangeRateService);
+  }
+
+  @AfterEach
+  public void closeMocks() throws Exception {
+    if (openMocks != null) {
+      openMocks.close();
+    }
   }
 
   @Test
@@ -144,5 +155,4 @@ public class InvoiceWorkFlowDataHolderBuilderTest {
     List<String> holderTransactionList = listFuture.stream().map(holder -> holder.getExistingTransaction().getId()).collect(toList());
     Assertions.assertEquals(holderTransactionList, transactionIds);
   }
-
 }
