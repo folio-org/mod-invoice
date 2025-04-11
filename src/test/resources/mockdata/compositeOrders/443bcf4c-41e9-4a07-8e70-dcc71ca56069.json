@@ -8,7 +8,6 @@
     "poLineEstimatedPrice": 1.0
   },
   "rush": false,
-  "alerts": [],
   "claims": [],
   "source": "User",
   "details": {
@@ -51,7 +50,6 @@
   "paymentStatus": "Payment Not Required",
   "receiptStatus": "Awaiting Receipt",
   "claimingActive": false,
-  "reportingCodes": [],
   "titleOrPackage": "Test 7",
   "automaticExport": false,
   "purchaseOrderId": "65842f8e-b90d-44bb-a233-d750e5757510",

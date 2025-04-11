@@ -145,7 +145,7 @@ import org.folio.rest.acq.model.finance.FundCollection;
 import org.folio.rest.acq.model.finance.Ledger;
 import org.folio.rest.acq.model.finance.Transaction;
 import org.folio.rest.acq.model.finance.Transaction.TransactionType;
-import org.folio.rest.acq.model.orders.CompositePoLine;
+import org.folio.rest.acq.model.orders.PoLine;
 import org.folio.rest.acq.model.units.AcquisitionsUnitMembershipCollection;
 import org.folio.rest.jaxrs.model.Adjustment;
 import org.folio.rest.jaxrs.model.Adjustment.Prorate;
@@ -2248,9 +2248,9 @@ public class InvoicesApiTest extends ApiTestBase {
     InvoiceLine invoiceLine2 = getMinimalContentInvoiceLine(id).withPoLineId(null).withFundDistributions(List.of(getFundDistribution()));
     addMockEntry(INVOICE_LINES, JsonObject.mapFrom(invoiceLine2));
 
-    CompositePoLine poLine = getMockAsJson(String.format("%s%s.json", PO_LINE_MOCK_DATA_PATH, EXISTENT_PO_LINE_ID))
-      .mapTo(CompositePoLine.class)
-      .withPaymentStatus(CompositePoLine.PaymentStatus.AWAITING_PAYMENT);
+    PoLine poLine = getMockAsJson(String.format("%s%s.json", PO_LINE_MOCK_DATA_PATH, EXISTENT_PO_LINE_ID))
+      .mapTo(PoLine.class)
+      .withPaymentStatus(PoLine.PaymentStatus.AWAITING_PAYMENT);
     addMockEntry(ORDER_LINES, JsonObject.mapFrom(poLine));
 
     InvoiceLine invoiceLine3 = getMinimalContentInvoiceLine(id).withPoLineId(poLine.getId());
@@ -2261,8 +2261,8 @@ public class InvoicesApiTest extends ApiTestBase {
     verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, headers,"", 204);
     assertThat(Objects.requireNonNull(serverRqRs.get(INVOICES, HttpMethod.PUT)).getFirst().getString(STATUS), is(Invoice.Status.PAID.value()));
 
-    final List<CompositePoLine> updatedPoLines = getRqRsEntries(HttpMethod.PUT, ORDER_LINES).stream()
-      .map(line -> line.mapTo(CompositePoLine.class))
+    final List<PoLine> updatedPoLines = getRqRsEntries(HttpMethod.PUT, ORDER_LINES).stream()
+      .map(line -> line.mapTo(PoLine.class))
       .collect(Collectors.toList());
 
     assertThat(updatedPoLines, hasSize(1));
@@ -2329,8 +2329,8 @@ public class InvoicesApiTest extends ApiTestBase {
 
   private void validatePoLinesPaymentStatus() {
 
-    final List<CompositePoLine> updatedPoLines = getRqRsEntries(HttpMethod.PUT, ORDER_LINES).stream()
-      .map(poLine -> poLine.mapTo(CompositePoLine.class))
+    final List<PoLine> updatedPoLines = getRqRsEntries(HttpMethod.PUT, ORDER_LINES).stream()
+      .map(poLine -> poLine.mapTo(PoLine.class))
       .collect(Collectors.toList());
 
     assertThat(updatedPoLines, not(empty()));
@@ -2344,12 +2344,12 @@ public class InvoicesApiTest extends ApiTestBase {
     assertThat(invoiceLines.size(), equalTo(updatedPoLines.size()));
 
     for (Map.Entry<String, List<InvoiceLine>> poLineIdWithInvoiceLines : invoiceLines.entrySet()) {
-      CompositePoLine poLine = updatedPoLines.stream()
-        .filter(compositePoLine -> compositePoLine.getId().equals(poLineIdWithInvoiceLines.getKey()))
+      PoLine poLine = updatedPoLines.stream()
+        .filter(pol -> pol.getId().equals(poLineIdWithInvoiceLines.getKey()))
         .findFirst()
         .orElseThrow(NullPointerException::new);
-      CompositePoLine.PaymentStatus expectedStatus = poLineIdWithInvoiceLines.getValue().stream()
-                                                       .anyMatch(InvoiceLine::getReleaseEncumbrance) ? CompositePoLine.PaymentStatus.FULLY_PAID : CompositePoLine.PaymentStatus.PARTIALLY_PAID;
+      PoLine.PaymentStatus expectedStatus = poLineIdWithInvoiceLines.getValue().stream()
+                                                       .anyMatch(InvoiceLine::getReleaseEncumbrance) ? PoLine.PaymentStatus.FULLY_PAID : PoLine.PaymentStatus.PARTIALLY_PAID;
       assertThat(expectedStatus, is(poLine.getPaymentStatus()));
     }
   }
@@ -2386,7 +2386,7 @@ public class InvoicesApiTest extends ApiTestBase {
     assertThat(Objects.requireNonNull(serverRqRs.get(INVOICE_LINES, HttpMethod.GET)).getFirst().mapTo(InvoiceLineCollection.class).getTotalRecords(), equalTo(3));
     assertThat(serverRqRs.get(ORDER_LINES, HttpMethod.PUT), notNullValue());
     assertThat(serverRqRs.get(ORDER_LINES, HttpMethod.PUT), hasSize(1));
-    assertThat(Objects.requireNonNull(serverRqRs.get(ORDER_LINES, HttpMethod.PUT)).getFirst().mapTo(CompositePoLine.class).getPaymentStatus(), equalTo(CompositePoLine.PaymentStatus.PARTIALLY_PAID));
+    assertThat(Objects.requireNonNull(serverRqRs.get(ORDER_LINES, HttpMethod.PUT)).getFirst().mapTo(PoLine.class).getPaymentStatus(), equalTo(PoLine.PaymentStatus.PARTIALLY_PAID));
 
     List<JsonObject> invoiceLinesUpdates = serverRqRs.get(INVOICE_LINES, HttpMethod.PUT);
     List<InvoiceLine> lines = Objects.requireNonNull(invoiceLinesUpdates).stream()
@@ -2414,9 +2414,9 @@ public class InvoicesApiTest extends ApiTestBase {
     invoiceLine.setSubTotal(-invoiceLine.getSubTotal());
     invoiceLine.setTotal(-invoiceLine.getTotal());
 
-    CompositePoLine poLine = getMockAsJson(String.format("%s%s.json", PO_LINE_MOCK_DATA_PATH, EXISTENT_PO_LINE_ID)).mapTo(CompositePoLine.class);
+    PoLine poLine = getMockAsJson(String.format("%s%s.json", PO_LINE_MOCK_DATA_PATH, EXISTENT_PO_LINE_ID)).mapTo(PoLine.class);
     poLine.setId(EXISTENT_PO_LINE_ID);
-    poLine.setPaymentStatus(CompositePoLine.PaymentStatus.PARTIALLY_PAID);
+    poLine.setPaymentStatus(PoLine.PaymentStatus.PARTIALLY_PAID);
 
     addMockEntry(INVOICE_LINES, JsonObject.mapFrom(invoiceLine));
     addMockEntry(ORDER_LINES, JsonObject.mapFrom(poLine));
@@ -2623,10 +2623,10 @@ public class InvoicesApiTest extends ApiTestBase {
   void testUpdateValidInvoiceTransitionToPaidReleaseEncumbranceTrue() {
     logger.info("=== Test transition invoice to paid and releaseEncumbrance true for all invoice lines ===");
     List<InvoiceLine> invoiceLines = new ArrayList<>();
-    List<CompositePoLine> poLines = new ArrayList<>();
+    List<PoLine> poLines = new ArrayList<>();
     for (int i = 0; i < 3; i++) {
       invoiceLines.add(getMockAsJson(INVOICE_LINE_WITH_APPROVED_INVOICE_SAMPLE_PATH).mapTo(InvoiceLine.class));
-      poLines.add(getMockAsJson(String.format("%s%s.json", PO_LINE_MOCK_DATA_PATH, EXISTENT_PO_LINE_ID)).mapTo(CompositePoLine.class));
+      poLines.add(getMockAsJson(String.format("%s%s.json", PO_LINE_MOCK_DATA_PATH, EXISTENT_PO_LINE_ID)).mapTo(PoLine.class));
     }
 
     Invoice reqData = getMockAsJson(APPROVED_INVOICE_SAMPLE_PATH).mapTo(Invoice.class).withStatus(Invoice.Status.PAID);
@@ -2652,8 +2652,8 @@ public class InvoicesApiTest extends ApiTestBase {
     assertThat(getRqRsEntries(HttpMethod.GET, INVOICE_LINES).getFirst().mapTo(InvoiceLineCollection.class).getTotalRecords(), equalTo(3));
     assertThat(getRqRsEntries(HttpMethod.PUT, ORDER_LINES), hasSize(3));
     getRqRsEntries(HttpMethod.PUT, ORDER_LINES).stream()
-      .map(entries -> entries.mapTo(CompositePoLine.class))
-      .forEach(compositePoLine -> assertThat(compositePoLine.getPaymentStatus(), equalTo(CompositePoLine.PaymentStatus.FULLY_PAID)));
+      .map(entries -> entries.mapTo(PoLine.class))
+      .forEach(poLine -> assertThat(poLine.getPaymentStatus(), equalTo(PoLine.PaymentStatus.FULLY_PAID)));
     assertThatVoucherPaid();
 
     List<JsonObject> invoiceLinesUpdates = serverRqRs.get(INVOICE_LINES, HttpMethod.PUT);
