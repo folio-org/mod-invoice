@@ -128,7 +128,6 @@ import org.folio.rest.acq.model.finance.Ledger;
 import org.folio.rest.acq.model.finance.LedgerCollection;
 import org.folio.rest.acq.model.finance.Transaction;
 import org.folio.rest.acq.model.finance.TransactionCollection;
-import org.folio.rest.acq.model.orders.CompositePoLine;
 import org.folio.rest.acq.model.orders.CompositePurchaseOrder;
 import org.folio.rest.acq.model.orders.OrderInvoiceRelationshipCollection;
 import org.folio.rest.acq.model.orders.PoLine;
@@ -136,8 +135,26 @@ import org.folio.rest.acq.model.orders.PoLineCollection;
 import org.folio.rest.acq.model.units.AcquisitionsUnit;
 import org.folio.rest.acq.model.units.AcquisitionsUnitCollection;
 import org.folio.rest.acq.model.units.AcquisitionsUnitMembershipCollection;
-import org.folio.rest.jaxrs.model.*;
+import org.folio.rest.jaxrs.model.BatchVoucher;
+import org.folio.rest.jaxrs.model.BatchVoucherExport;
+import org.folio.rest.jaxrs.model.BatchVoucherExportCollection;
+import org.folio.rest.jaxrs.model.Config;
+import org.folio.rest.jaxrs.model.Configs;
+import org.folio.rest.jaxrs.model.Credentials;
+import org.folio.rest.jaxrs.model.Document;
+import org.folio.rest.jaxrs.model.DocumentCollection;
 import org.folio.rest.jaxrs.model.Error;
+import org.folio.rest.jaxrs.model.Errors;
+import org.folio.rest.jaxrs.model.ExportConfig;
+import org.folio.rest.jaxrs.model.ExportConfigCollection;
+import org.folio.rest.jaxrs.model.Invoice;
+import org.folio.rest.jaxrs.model.InvoiceCollection;
+import org.folio.rest.jaxrs.model.InvoiceDocument;
+import org.folio.rest.jaxrs.model.InvoiceLine;
+import org.folio.rest.jaxrs.model.InvoiceLineCollection;
+import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
+import org.folio.rest.jaxrs.model.Voucher;
+import org.folio.rest.jaxrs.model.VoucherCollection;
 import org.mockftpserver.fake.FakeFtpServer;
 import org.mockftpserver.fake.UserAccount;
 import org.mockftpserver.fake.filesystem.DirectoryEntry;
@@ -1269,7 +1286,7 @@ public class MockServer {
         ctx.response().setStatusCode(404).end(id);
       } else {
         // validate content against schema
-        CompositePoLine poLineSchema = poLine.mapTo(CompositePoLine.class);
+        PoLine poLineSchema = poLine.mapTo(PoLine.class);
         poLineSchema.setId(id);
         poLine = JsonObject.mapFrom(poLineSchema);
 
@@ -1280,7 +1297,7 @@ public class MockServer {
 
   private JsonObject getOrderLineById(String id) {
     if (ID_FOR_INTERNAL_SERVER_ERROR_PUT.equals(id)) {
-      CompositePoLine poLine = new CompositePoLine();
+      PoLine poLine = new PoLine();
       poLine.setId(ID_FOR_INTERNAL_SERVER_ERROR_PUT);
       return JsonObject.mapFrom(poLine);
     }

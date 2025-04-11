@@ -53,7 +53,6 @@ import org.folio.rest.acq.model.finance.Encumbrance;
 import org.folio.rest.acq.model.finance.BudgetCollection;
 import org.folio.rest.acq.model.finance.TransactionCollection;
 import org.folio.rest.acq.model.finance.Transaction.TransactionType;
-import org.folio.rest.acq.model.orders.CompositePoLine;
 import org.folio.rest.acq.model.orders.PoLine;
 import org.folio.rest.acq.model.orders.PoLineCollection;
 import org.folio.rest.acq.model.orders.PurchaseOrder;
@@ -264,7 +263,7 @@ public class InvoiceCancelServiceTest {
     Future<Void> future = cancelService.cancelInvoice(invoice, invoiceLines, null, requestContext);
     vertxTestContext.assertComplete(future)
       .onSuccess(result -> {
-        verify(restClient, times(2)).put(any(RequestEntry.class), any(CompositePoLine.class),
+        verify(restClient, times(2)).put(any(RequestEntry.class), any(PoLine.class),
           eq(requestContext));
         vertxTestContext.completeNow();
       })
@@ -441,7 +440,7 @@ public class InvoiceCancelServiceTest {
       .when(restClient).get(any(RequestEntry.class), eq(InvoiceCollection.class), eq(requestContext));
   }
 
-  private void setupUpdatePoLinesQuery(List<CompositePoLine> expectedPoLines) {
+  private void setupUpdatePoLinesQuery(List<PoLine> expectedPoLines) {
     expectedPoLines.forEach(expectedPoLine ->
       doReturn(succeededFuture(null))
         .when(restClient).put(any(RequestEntry.class), eq(expectedPoLine), eq(requestContext))
@@ -490,10 +489,10 @@ public class InvoiceCancelServiceTest {
     setupPoLineQuery(poLines);
     setupInvoiceLineQuery(relatedInvoiceLines);
     setupInvoiceQuery(relatedInvoices);
-    CompositePoLine expectedPoLine1 = JsonObject.mapFrom(poLines.get(0)).mapTo(CompositePoLine.class)
-        .withPaymentStatus(CompositePoLine.PaymentStatus.PARTIALLY_PAID);
-    CompositePoLine expectedPoLine2 = JsonObject.mapFrom(poLines.get(2)).mapTo(CompositePoLine.class)
-      .withPaymentStatus(CompositePoLine.PaymentStatus.AWAITING_PAYMENT);
+    PoLine expectedPoLine1 = JsonObject.mapFrom(poLines.get(0)).mapTo(PoLine.class)
+        .withPaymentStatus(PoLine.PaymentStatus.PARTIALLY_PAID);
+    PoLine expectedPoLine2 = JsonObject.mapFrom(poLines.get(2)).mapTo(PoLine.class)
+      .withPaymentStatus(PoLine.PaymentStatus.AWAITING_PAYMENT);
     setupUpdatePoLinesQuery(List.of(expectedPoLine1, expectedPoLine2));
   }
 
