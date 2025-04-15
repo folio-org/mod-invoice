@@ -8,13 +8,9 @@ import org.folio.CopilotGenerated;
 import org.folio.rest.core.RestClient;
 import org.folio.rest.core.models.RequestContext;
 import org.folio.rest.acq.model.finance.ExchangeRate;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
 
 import java.util.function.BiFunction;
 
@@ -29,22 +25,15 @@ import static org.mockito.Mockito.when;
 @CopilotGenerated(partiallyGenerated = true, model = "o3-mini")
 public class CacheableExchangeRateServiceTest {
 
-  @Mock private RestClient restClient;
-  @Mock private RequestContext requestContext;
-  @InjectMocks private CacheableExchangeRateService service;
-
-  private AutoCloseable openMocks;
+  private RestClient restClient;
+  private RequestContext requestContext;
+  private CacheableExchangeRateService service;
 
   @BeforeEach
   void setUp() {
-    openMocks = MockitoAnnotations.openMocks(this);
-  }
-
-  @AfterEach
-  void tearDown() throws Exception {
-    if (openMocks != null) {
-      openMocks.close();
-    }
+    restClient = mock(RestClient.class);
+    requestContext = mock(RequestContext.class);
+    service = new CacheableExchangeRateService(restClient, 1L);
   }
 
   @Test
@@ -105,7 +94,7 @@ public class CacheableExchangeRateServiceTest {
     var customException = new RuntimeException("Test Exception");
     var requestContext = mock(RequestContext.class);
     var restClient = mock(RestClient.class);
-    var service = new CacheableExchangeRateService(restClient);
+    var service = new CacheableExchangeRateService(restClient, 1L);
 
     // Create and inject a mocked asyncCache that throws an exception when get is called.
     var asyncCacheMock = mock(AsyncCache.class);

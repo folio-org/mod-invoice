@@ -96,6 +96,7 @@ import io.vertx.junit5.VertxTestContext;
 
 @ExtendWith(VertxExtension.class)
 public class InvoiceCancelServiceTest {
+
   private static final String RESOURCES_PATH = "src/test/resources";
   private static final String APPROVED_INVOICE_ID = "c0d08448-347b-418a-8c2f-5fb50248d67e";
   private static final String APPROVED_INVOICE_SAMPLE_PATH = INVOICE_MOCK_DATA_PATH + APPROVED_INVOICE_ID + ".json";
@@ -140,7 +141,7 @@ public class InvoiceCancelServiceTest {
     LedgerService ledgerService = new LedgerService(restClient);
     BudgetService budgetService = new BudgetService(restClient);
     ExpenseClassRetrieveService expenseClassRetrieveService = new ExpenseClassRetrieveService(restClient);
-    CacheableExchangeRateService cacheableExchangeRateService = new CacheableExchangeRateService(restClient);
+    CacheableExchangeRateService cacheableExchangeRateService = new CacheableExchangeRateService(restClient, 1L);
     InvoiceWorkflowDataHolderBuilder holderBuilder = new InvoiceWorkflowDataHolderBuilder(
       fiscalYearService, fundService, ledgerService, baseTransactionService,
       budgetService, expenseClassRetrieveService, cacheableExchangeRateService);

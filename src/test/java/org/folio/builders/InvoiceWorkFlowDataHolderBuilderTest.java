@@ -79,7 +79,7 @@ public class InvoiceWorkFlowDataHolderBuilderTest {
     BaseTransactionService baseTransactionService = new BaseTransactionService(restClient);
     BudgetService budgetService = new BudgetService(restClient);
     ExpenseClassRetrieveService expenseClassRetrieveService = new ExpenseClassRetrieveService(restClient);
-    CacheableExchangeRateService cacheableExchangeRateService = new CacheableExchangeRateService(restClient);
+    CacheableExchangeRateService cacheableExchangeRateService = new CacheableExchangeRateService(restClient, 1L);
     invoiceWorkflowDataHolderBuilder = new InvoiceWorkflowDataHolderBuilder(
       fiscalYearService, fundService, ledgerService, baseTransactionService,
       budgetService, expenseClassRetrieveService, cacheableExchangeRateService);

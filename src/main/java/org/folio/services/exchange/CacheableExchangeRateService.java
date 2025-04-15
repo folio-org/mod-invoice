@@ -27,13 +27,11 @@ public class CacheableExchangeRateService {
   private static final String FROM = "from";
   private static final String TO = "to";
 
-  @Value("${mod.invoice.exchange-rate.expiration.time.seconds:60}")
-  private long cacheExpirationTime;
-
   private final RestClient restClient;
   private final AsyncCache<String, Optional<ExchangeRate>> asyncCache;
 
-  public CacheableExchangeRateService(RestClient restClient) {
+  public CacheableExchangeRateService(RestClient restClient,
+                                      @Value("${mod.invoice.exchange-rate.expiration.time.seconds:60}") long cacheExpirationTime) {
     this.restClient = restClient;
     this.asyncCache = buildAsyncCache(Vertx.currentContext(), cacheExpirationTime);
   }
