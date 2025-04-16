@@ -28,10 +28,10 @@ public class JobProfileSnapshotCache {
 
   private static final Logger logger = LogManager.getLogger(JobProfileSnapshotCache.class);
 
+  private AsyncCache<String, Optional<ProfileSnapshotWrapper>> asyncCache;
+
   @Value("${mod.invoice.profile-snapshot-cache.expiration.time.seconds:3600}")
   private long cacheExpirationTime;
-
-  private AsyncCache<String, Optional<ProfileSnapshotWrapper>> asyncCache;
 
   @PostConstruct
   void init() {
