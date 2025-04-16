@@ -7,7 +7,7 @@ import static org.folio.rest.acq.model.finance.Encumbrance.Status.UNRELEASED;
 import static org.folio.rest.acq.model.finance.Transaction.TransactionType.ENCUMBRANCE;
 import static org.folio.rest.acq.model.finance.Transaction.TransactionType.PENDING_PAYMENT;
 import static org.folio.rest.impl.AbstractHelper.DEFAULT_SYSTEM_CURRENCY;
-import static org.folio.services.exchange.ExchangeRateProviderResolver.RATE_KEY;
+import static org.folio.services.exchange.CustomExchangeRateProvider.RATE_KEY;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasSize;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -52,7 +52,7 @@ import org.folio.rest.jaxrs.model.Error;
 import org.folio.rest.jaxrs.model.FundDistribution;
 import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.jaxrs.model.InvoiceLine;
-import org.folio.services.exchange.ExchangeRateProviderResolver;
+import org.folio.services.exchange.CustomExchangeRateProvider;
 import org.folio.services.validator.FundAvailabilityHolderValidator;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -65,8 +65,6 @@ import io.vertx.core.Vertx;
 
 public class PendingPaymentWorkflowServiceTest {
 
-  private PendingPaymentWorkflowService pendingPaymentWorkflowService;
-
   @Mock
   private RestClient restClient;
   @Mock
@@ -75,9 +73,9 @@ public class PendingPaymentWorkflowServiceTest {
   private EncumbranceService encumbranceService;
   @Mock
   private RequestContext requestContext;
+
+  private PendingPaymentWorkflowService pendingPaymentWorkflowService;
   private AutoCloseable mockitoMocks;
-
-
 
   @BeforeEach
   public void init() {
@@ -93,8 +91,8 @@ public class PendingPaymentWorkflowServiceTest {
   }
 
   @Test
+  @SuppressWarnings("unchecked")
   void updatePendingPayments() {
-
     String fiscalYearId = UUID.randomUUID().toString();
     String fundId = UUID.randomUUID().toString();
     String invoiceId = UUID.randomUUID().toString();
@@ -158,31 +156,29 @@ public class PendingPaymentWorkflowServiceTest {
     invoiceLine.getFundDistributions().add(invoiceLineFundDistribution);
 
     ConversionQuery conversionQuery = ConversionQueryBuilder.of().setTermCurrency(DEFAULT_SYSTEM_CURRENCY).set(RATE_KEY, exchangeRate).build();
-    ExchangeRateProvider exchangeRateProvider = new ExchangeRateProviderResolver().resolve(conversionQuery, new RequestContext(
-      Vertx.currentContext(), Collections.emptyMap()));
+    ExchangeRateProvider exchangeRateProvider = new CustomExchangeRateProvider();
     CurrencyConversion conversion = exchangeRateProvider.getCurrencyConversion(conversionQuery);
 
     List<InvoiceWorkflowDataHolder> holders = new ArrayList<>();
 
     InvoiceWorkflowDataHolder holder1 = new InvoiceWorkflowDataHolder()
-            .withInvoice(invoice)
-            .withInvoiceLine(invoiceLine)
-            .withFundDistribution(invoiceLineFundDistribution)
-            .withFiscalYear(fiscalYear)
-            .withExistingTransaction(existingInvoiceLineTransaction)
-            .withConversion(conversion);
+      .withInvoice(invoice)
+      .withInvoiceLine(invoiceLine)
+      .withFundDistribution(invoiceLineFundDistribution)
+      .withFiscalYear(fiscalYear)
+      .withExistingTransaction(existingInvoiceLineTransaction)
+      .withConversion(conversion);
 
     InvoiceWorkflowDataHolder holder2 = new InvoiceWorkflowDataHolder()
-            .withInvoice(invoice)
-            .withAdjustment(adjustment)
-            .withFundDistribution(invoiceFundDistribution)
-            .withFiscalYear(fiscalYear)
-            .withExistingTransaction(existingInvoiceTransaction)
-            .withConversion(conversion);
+      .withInvoice(invoice)
+      .withAdjustment(adjustment)
+      .withFundDistribution(invoiceFundDistribution)
+      .withFiscalYear(fiscalYear)
+      .withExistingTransaction(existingInvoiceTransaction)
+      .withConversion(conversion);
 
     holders.add(holder1);
     holders.add(holder2);
-
 
     doNothing().when(fundAvailabilityValidator).validate(anyList());
     when(restClient.postEmptyResponse(any(), any(), any())).thenReturn(succeededFuture());
@@ -191,16 +187,15 @@ public class PendingPaymentWorkflowServiceTest {
 
     pendingPaymentWorkflowService.handlePendingPaymentsUpdate(holders, requestContext);
 
-
     ArgumentCaptor<List<InvoiceWorkflowDataHolder>> argumentCaptor = ArgumentCaptor.forClass(List.class);
     verify(fundAvailabilityValidator).validate(argumentCaptor.capture());
     assertThat(argumentCaptor.getValue(), hasSize(2));
     List<InvoiceWorkflowDataHolder> holdersWithNewTransactions = argumentCaptor.getValue();
     Transaction newInvoiceTransaction = holdersWithNewTransactions.stream()
             .map(InvoiceWorkflowDataHolder::getNewTransaction)
-      .filter(transaction -> Objects.isNull(transaction.getSourceInvoiceLineId())).findFirst().get();
+      .filter(transaction -> Objects.isNull(transaction.getSourceInvoiceLineId())).findFirst().orElseThrow();
     Transaction newInvoiceLineTransaction = holdersWithNewTransactions.stream().map(InvoiceWorkflowDataHolder::getNewTransaction)
-      .filter(transaction -> Objects.nonNull(transaction.getSourceInvoiceLineId())).findFirst().get();
+      .filter(transaction -> Objects.nonNull(transaction.getSourceInvoiceLineId())).findFirst().orElseThrow();
 
     double expectedInvoiceLineTransactionAmount = BigDecimal.valueOf(60).multiply(BigDecimal.valueOf(exchangeRate)).doubleValue();
     assertEquals(expectedInvoiceLineTransactionAmount, newInvoiceLineTransaction.getAmount());
@@ -220,7 +215,6 @@ public class PendingPaymentWorkflowServiceTest {
     assertEquals(PENDING_PAYMENT, newInvoiceTransaction.getTransactionType());
     assertEquals(Transaction.Source.INVOICE, newInvoiceTransaction.getSource());
 
-
     ArgumentCaptor<Batch> transactionArgumentCaptor = ArgumentCaptor.forClass(Batch.class);
     verify(restClient, times(1))
       .postEmptyResponse(anyString(), transactionArgumentCaptor.capture(), eq(requestContext));
@@ -229,13 +223,13 @@ public class PendingPaymentWorkflowServiceTest {
     assertThat(transactions, hasSize(2));
 
     Transaction updateArgumentInvoiceTransaction = transactions.stream()
-      .filter(transaction -> Objects.isNull(transaction.getSourceInvoiceLineId())).findFirst().get();
+      .filter(transaction -> Objects.isNull(transaction.getSourceInvoiceLineId())).findFirst().orElseThrow();
 
     assertEquals(existingInvoiceTransaction.getId(), updateArgumentInvoiceTransaction.getId());
     assertEquals(expectedInvoiceTransactionAmount, updateArgumentInvoiceTransaction.getAmount());
 
     Transaction updateArgumentInvoiceLineTransaction = transactions.stream()
-      .filter(transaction -> Objects.nonNull(transaction.getSourceInvoiceLineId())).findFirst().get();
+      .filter(transaction -> Objects.nonNull(transaction.getSourceInvoiceLineId())).findFirst().orElseThrow();
 
     assertEquals(existingInvoiceLineTransaction.getId(), updateArgumentInvoiceLineTransaction.getId());
     assertEquals(expectedInvoiceLineTransactionAmount, updateArgumentInvoiceLineTransaction.getAmount());
@@ -269,8 +263,7 @@ public class PendingPaymentWorkflowServiceTest {
     double exchangeRate = 1.3;
     ConversionQuery conversionQuery = ConversionQueryBuilder.of()
       .setTermCurrency(DEFAULT_SYSTEM_CURRENCY).set(RATE_KEY, exchangeRate).build();
-    ExchangeRateProvider exchangeRateProvider = new ExchangeRateProviderResolver().resolve(conversionQuery,
-      new RequestContext(Vertx.currentContext(), Collections.emptyMap()));
+    ExchangeRateProvider exchangeRateProvider = new CustomExchangeRateProvider();
     CurrencyConversion conversion = exchangeRateProvider.getCurrencyConversion(conversionQuery);
     InvoiceWorkflowDataHolder holder = new InvoiceWorkflowDataHolder()
       .withFundDistribution(fundDistribution)
@@ -302,9 +295,9 @@ public class PendingPaymentWorkflowServiceTest {
       dataHolders, invoice, requestContext);
     assertEquals("Failed to create pending payments", future.cause().getMessage());
     HttpException httpException = (HttpException) future.cause();
-    Error error = httpException.getErrors().getErrors().get(0);
-    assertEquals("cause", error.getParameters().get(0).getKey());
-    assertEquals("test", error.getParameters().get(0).getValue());
+    Error error = httpException.getErrors().getErrors().getFirst();
+    assertEquals("cause", error.getParameters().getFirst().getKey());
+    assertEquals("test", error.getParameters().getFirst().getValue());
   }
 
   @Test

@@ -2,7 +2,6 @@ package org.folio.services.invoice;
 
 import io.vertx.core.Future;
 import io.vertx.core.json.JsonObject;
-import org.folio.rest.acq.model.orders.CompositePoLine;
 import org.folio.rest.acq.model.orders.PoLine;
 import org.folio.rest.core.models.RequestContext;
 import org.folio.rest.jaxrs.model.InvoiceLine;
@@ -21,6 +20,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import static org.folio.rest.acq.model.orders.PoLine.PaymentStatus.AWAITING_PAYMENT;
+import static org.folio.rest.acq.model.orders.PoLine.PaymentStatus.CANCELLED;
+import static org.folio.rest.acq.model.orders.PoLine.PaymentStatus.FULLY_PAID;
+import static org.folio.rest.acq.model.orders.PoLine.PaymentStatus.ONGOING;
+import static org.folio.rest.acq.model.orders.PoLine.PaymentStatus.PARTIALLY_PAID;
+import static org.folio.rest.acq.model.orders.PoLine.PaymentStatus.PAYMENT_NOT_REQUIRED;
+import static org.folio.rest.acq.model.orders.PoLine.PaymentStatus.PENDING;
 import static org.folio.rest.impl.ApiTestBase.getMockData;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -63,19 +69,29 @@ public class PoLinePaymentStatusUpdateServiceTest {
 
   @Test
   public void updatePoLinePaymentStatusToPayInvoiceUsingParameterTest() {
-    String poLineId = UUID.randomUUID().toString();
-    InvoiceLine invoiceLine = new InvoiceLine()
+    String poLineId1 = UUID.randomUUID().toString();
+    String poLineId2 = UUID.randomUUID().toString();
+    InvoiceLine invoiceLine1 = new InvoiceLine()
       .withReleaseEncumbrance(true)
-      .withPoLineId(poLineId);
-    List<InvoiceLine> invoiceLines = List.of(invoiceLine);
-    PoLine poLine = new PoLine()
-      .withId(poLineId)
-      .withPaymentStatus(PoLine.PaymentStatus.AWAITING_PAYMENT);
-    List<PoLine> poLines = List.of(poLine);
+      .withPoLineId(poLineId1);
+    InvoiceLine invoiceLine2 = new InvoiceLine()
+      .withReleaseEncumbrance(false)
+      .withPoLineId(poLineId2);
+    List<InvoiceLine> invoiceLines = List.of(invoiceLine1, invoiceLine2);
+    PoLine poLine1 = new PoLine()
+      .withId(poLineId1)
+      .withPaymentStatus(AWAITING_PAYMENT);
+    List<PoLine> poLines1 = List.of(poLine1);
+    PoLine poLine2 = new PoLine()
+      .withId(poLineId2)
+      .withPaymentStatus(AWAITING_PAYMENT);
+    List<PoLine> poLines2 = List.of(poLine2);
     String poLinePaymentStatus = "Fully Paid";
 
-    when(orderLineService.getPoLinesByIdAndQuery(anyList(), any(), eq(requestContext)))
-      .thenReturn(Future.succeededFuture(poLines));
+    when(orderLineService.getPoLinesByIdAndQuery(eq(List.of(poLineId1)), any(), eq(requestContext)))
+      .thenReturn(Future.succeededFuture(poLines1));
+    when(orderLineService.getPoLinesByIdAndQuery(eq(List.of(poLineId2)), any(), eq(requestContext)))
+      .thenReturn(Future.succeededFuture(poLines2));
     when(orderLineService.updatePoLines(anyList(), eq(requestContext)))
       .thenReturn(Future.succeededFuture());
 
@@ -83,9 +99,10 @@ public class PoLinePaymentStatusUpdateServiceTest {
       poLinePaymentStatus, requestContext);
 
     assertTrue(result.succeeded());
-    assertEquals(PoLine.PaymentStatus.FULLY_PAID, poLine.getPaymentStatus());
-    verify(orderLineService, times(1)).getPoLinesByIdAndQuery(anyList(), any(), eq(requestContext));
-    verify(orderLineService, times(1)).updatePoLines(anyList(), eq(requestContext));
+    assertEquals(FULLY_PAID, poLine1.getPaymentStatus());
+    assertEquals(PARTIALLY_PAID, poLine2.getPaymentStatus());
+    verify(orderLineService, times(2)).getPoLinesByIdAndQuery(anyList(), any(), eq(requestContext));
+    verify(orderLineService, times(2)).updatePoLines(anyList(), eq(requestContext));
   }
 
   @Test
@@ -97,7 +114,7 @@ public class PoLinePaymentStatusUpdateServiceTest {
     List<InvoiceLine> invoiceLines = List.of(invoiceLine);
     PoLine poLine = new PoLine()
       .withId(poLineId)
-      .withPaymentStatus(PoLine.PaymentStatus.AWAITING_PAYMENT);
+      .withPaymentStatus(AWAITING_PAYMENT);
     List<PoLine> poLines = List.of(poLine);
     String poLinePaymentStatus = "Cancelled";
 
@@ -110,7 +127,7 @@ public class PoLinePaymentStatusUpdateServiceTest {
       invoiceLines, poLinePaymentStatus, requestContext);
 
     assertTrue(result.succeeded());
-    assertEquals(PoLine.PaymentStatus.CANCELLED, poLine.getPaymentStatus());
+    assertEquals(CANCELLED, poLine.getPaymentStatus());
     verify(orderLineService, times(1)).getPoLinesByIdAndQuery(anyList(), any(), eq(requestContext));
     verify(orderLineService, times(1)).updatePoLines(anyList(), eq(requestContext));
   }
@@ -135,10 +152,19 @@ public class PoLinePaymentStatusUpdateServiceTest {
       .withReleaseEncumbrance(false)
       .withPoLineId(poLineId);
     List<InvoiceLine> invoiceLines = List.of(invoiceLine);
+    PoLine poLine = new PoLine()
+      .withId(poLineId)
+      .withPaymentStatus(PAYMENT_NOT_REQUIRED);
     String poLinePaymentStatus = "Cancelled";
+
+    when(orderLineService.getPoLinesByIdAndQuery(eq(List.of(poLineId)), any(), eq(requestContext)))
+      .thenReturn(Future.succeededFuture(List.of()));
+
     Future<Void> result = poLinePaymentStatusUpdateService.updatePoLinePaymentStatusToPayInvoice(invoiceLines,
       poLinePaymentStatus, requestContext);
+
     assertTrue(result.succeeded());
+    assertEquals(PAYMENT_NOT_REQUIRED, poLine.getPaymentStatus());
   }
 
   @Test
@@ -154,64 +180,62 @@ public class PoLinePaymentStatusUpdateServiceTest {
 
   @Test
   void testOrderLinePaymentStatusAwaitingPayment() throws IOException {
-    CompositePoLine poLine = new JsonObject(
+    PoLine poLine = new JsonObject(
       getMockData("mockdata/compositeOrders/e9496a5c-84d1-4f95-89ad-a764be51ca29.json"))
-      .mapTo(CompositePoLine.class);
-    Map<CompositePoLine, CompositePoLine.PaymentStatus> compositePoLinesWithStatus = Map.ofEntries(
-      Map.entry(poLine, CompositePoLine.PaymentStatus.FULLY_PAID));
-    boolean paymentRequired = poLinePaymentStatusUpdateService.isPaymentStatusUpdateRequired(compositePoLinesWithStatus, poLine);
+      .mapTo(PoLine.class);
+    Map<PoLine, PoLine.PaymentStatus> poLinesWithStatus = Map.ofEntries(Map.entry(poLine, FULLY_PAID));
+    boolean paymentRequired = poLinePaymentStatusUpdateService.isPaymentStatusUpdateRequired(poLinesWithStatus, poLine);
 
     Assertions.assertTrue(paymentRequired);
   }
 
   @Test
   void testOrderLinePaymentStatusPaymentNotRequiredIgnored() throws IOException {
-    CompositePoLine poLine = new JsonObject(
+    PoLine poLine = new JsonObject(
       getMockData("mockdata/compositeOrders/443bcf4c-41e9-4a07-8e70-dcc71ca56069.json"))
-      .mapTo(CompositePoLine.class);
-    Map<CompositePoLine, CompositePoLine.PaymentStatus> compositePoLinesWithStatus = Map.ofEntries(
-      Map.entry(poLine, CompositePoLine.PaymentStatus.FULLY_PAID));
-    boolean paymentRequired = poLinePaymentStatusUpdateService.isPaymentStatusUpdateRequired(compositePoLinesWithStatus, poLine);
+      .mapTo(PoLine.class);
+    Map<PoLine, PoLine.PaymentStatus> poLinesWithStatus = Map.ofEntries(Map.entry(poLine, FULLY_PAID));
+    boolean paymentRequired = poLinePaymentStatusUpdateService.isPaymentStatusUpdateRequired(poLinesWithStatus, poLine);
 
     Assertions.assertFalse(paymentRequired);
   }
 
   @Test
   @DisplayName("not decide to update status of POLines with ONGOING status")
-  void shouldReturnFalseWhenCompositeCheckingForUpdatePoLinePaymentStatusIsOngoing() throws IOException {
-    CompositePoLine ongoingCompositePoLine = new JsonObject(getMockData(String.format("%s%s.json", PO_LINE_MOCK_DATA_PATH, EXISTING_PO_LINE_ID)))
-      .mapTo(CompositePoLine.class)
-      .withPaymentStatus(CompositePoLine.PaymentStatus.ONGOING);
+  void shouldReturnFalseWhenCheckingForUpdatePoLinePaymentStatusIsOngoing() throws IOException {
+    PoLine ongoingpoLine = new JsonObject(getMockData(String.format("%s%s.json", PO_LINE_MOCK_DATA_PATH, EXISTING_PO_LINE_ID)))
+      .mapTo(PoLine.class)
+      .withPaymentStatus(ONGOING);
 
-    CompositePoLine fullyPaidCompositePoLine = new JsonObject(getMockData(String.format("%s%s.json", PO_LINE_MOCK_DATA_PATH, EXISTING_PO_LINE_ID)))
-      .mapTo(CompositePoLine.class)
-      .withPaymentStatus(CompositePoLine.PaymentStatus.FULLY_PAID);
+    PoLine fullyPaidpoLine = new JsonObject(getMockData(String.format("%s%s.json", PO_LINE_MOCK_DATA_PATH, EXISTING_PO_LINE_ID)))
+      .mapTo(PoLine.class)
+      .withPaymentStatus(FULLY_PAID);
 
-    Map<CompositePoLine, CompositePoLine.PaymentStatus> compositePoLinesWithStatus = new HashMap<>() {{
-      put(ongoingCompositePoLine, CompositePoLine.PaymentStatus.ONGOING);
-      put(fullyPaidCompositePoLine, CompositePoLine.PaymentStatus.FULLY_PAID);
+    Map<PoLine, PoLine.PaymentStatus> poLinesWithStatus = new HashMap<>() {{
+      put(ongoingpoLine, ONGOING);
+      put(fullyPaidpoLine, FULLY_PAID);
     }};
 
-    assertFalse(poLinePaymentStatusUpdateService.isPaymentStatusUpdateRequired(compositePoLinesWithStatus, ongoingCompositePoLine));
+    assertFalse(poLinePaymentStatusUpdateService.isPaymentStatusUpdateRequired(poLinesWithStatus, ongoingpoLine));
   }
 
   @Test
   @DisplayName("decide to update status of POLines with different statuses")
   void shouldReturnTrueWhenCompositeCheckingForUpdatePoLinePaymentStatusIsDifferentValues() throws IOException {
-    CompositePoLine ongoingCompositePoLine = new JsonObject(getMockData(String.format("%s%s.json", PO_LINE_MOCK_DATA_PATH, EXISTING_PO_LINE_ID)))
-      .mapTo(CompositePoLine.class)
-      .withPaymentStatus(CompositePoLine.PaymentStatus.ONGOING);
+    PoLine ongoingpoLine = new JsonObject(getMockData(String.format("%s%s.json", PO_LINE_MOCK_DATA_PATH, EXISTING_PO_LINE_ID)))
+      .mapTo(PoLine.class)
+      .withPaymentStatus(ONGOING);
 
-    CompositePoLine fullyPaidCompositePoLine = new JsonObject(getMockData(String.format("%s%s.json", PO_LINE_MOCK_DATA_PATH, EXISTING_PO_LINE_ID)))
-      .mapTo(CompositePoLine.class)
-      .withPaymentStatus(CompositePoLine.PaymentStatus.FULLY_PAID);
+    PoLine fullyPaidpoLine = new JsonObject(getMockData(String.format("%s%s.json", PO_LINE_MOCK_DATA_PATH, EXISTING_PO_LINE_ID)))
+      .mapTo(PoLine.class)
+      .withPaymentStatus(FULLY_PAID);
 
-    Map<CompositePoLine, CompositePoLine.PaymentStatus> compositePoLinesWithStatus = new HashMap<>() {{
-      put(ongoingCompositePoLine, CompositePoLine.PaymentStatus.ONGOING);
-      put(fullyPaidCompositePoLine, CompositePoLine.PaymentStatus.PENDING);
+    Map<PoLine, PoLine.PaymentStatus> poLinesWithStatus = new HashMap<>() {{
+      put(ongoingpoLine, ONGOING);
+      put(fullyPaidpoLine, PENDING);
     }};
 
-    assertTrue(poLinePaymentStatusUpdateService.isPaymentStatusUpdateRequired(compositePoLinesWithStatus, fullyPaidCompositePoLine));
+    assertTrue(poLinePaymentStatusUpdateService.isPaymentStatusUpdateRequired(poLinesWithStatus, fullyPaidpoLine));
   }
 
 }

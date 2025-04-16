@@ -18,7 +18,7 @@ import org.folio.rest.core.models.RequestContext;
 import org.folio.rest.core.models.RequestEntry;
 import org.folio.rest.jaxrs.model.FiscalYear;
 import org.folio.rest.jaxrs.model.FiscalYearCollection;
-import org.folio.services.exchange.ExchangeRateProviderResolver;
+import org.folio.services.exchange.CacheableExchangeRateService;
 import org.folio.services.finance.FundService;
 import org.folio.services.finance.LedgerService;
 import org.folio.services.finance.budget.BudgetService;
@@ -61,27 +61,26 @@ public class InvoiceFiscalYearsServiceTest {
 
   private AutoCloseable closeable;
   private InvoiceFiscalYearsService invoiceFiscalYearsService;
+
   @Mock
   private RestClient restClient;
   @Mock
   private RequestContext requestContext;
 
-
   @BeforeEach
   public void initMocks() {
     closeable = MockitoAnnotations.openMocks(this);
-    ExchangeRateProviderResolver exchangeRateProviderResolver = new ExchangeRateProviderResolver();
     FiscalYearService fiscalYearService = new FiscalYearService(restClient);
     FundService fundService = new FundService(restClient);
     LedgerService ledgerService = new LedgerService(restClient);
     BaseTransactionService baseTransactionService = new BaseTransactionService(restClient);
     BudgetService budgetService = new BudgetService(restClient);
     ExpenseClassRetrieveService expenseClassRetrieveService = new ExpenseClassRetrieveService(restClient);
+    CacheableExchangeRateService cacheableExchangeRateService = new CacheableExchangeRateService(restClient);
     InvoiceWorkflowDataHolderBuilder invoiceWorkflowDataHolderBuilder = new InvoiceWorkflowDataHolderBuilder(
-      exchangeRateProviderResolver, fiscalYearService, fundService, ledgerService, baseTransactionService, budgetService,
-      expenseClassRetrieveService);
-    invoiceFiscalYearsService = new InvoiceFiscalYearsService(invoiceWorkflowDataHolderBuilder, budgetService,
-      fiscalYearService);
+      fiscalYearService, fundService, ledgerService, baseTransactionService,
+      budgetService, expenseClassRetrieveService, cacheableExchangeRateService);
+    invoiceFiscalYearsService = new InvoiceFiscalYearsService(invoiceWorkflowDataHolderBuilder, budgetService, fiscalYearService);
   }
 
   @AfterEach
@@ -242,7 +241,7 @@ public class InvoiceFiscalYearsServiceTest {
         assertEquals(422, exception.getCode());
 
         Errors errors = exception.getErrors();
-        Error error = errors.getErrors().get(0);
+        Error error = errors.getErrors().getFirst();
         assertEquals(COULD_NOT_FIND_VALID_FISCAL_YEAR.getCode(), error.getCode());
         assertEquals(error.getParameters().get(0).getValue(), invoice.getId());
         assertEquals(error.getParameters().get(1).getValue(), List.of(fund1.getId(), fund2.getId()).toString());
@@ -312,7 +311,7 @@ public class InvoiceFiscalYearsServiceTest {
         assertEquals(422, exception.getCode());
 
         Errors errors = exception.getErrors();
-        Error error = errors.getErrors().get(0);
+        Error error = errors.getErrors().getFirst();
         assertEquals(COULD_NOT_FIND_VALID_FISCAL_YEAR.getCode(), error.getCode());
         assertEquals(error.getParameters().get(0).getValue(), invoice.getId());
         assertEquals(error.getParameters().get(1).getValue(), List.of(fund1.getId(), fund2.getId()).toString());
@@ -377,7 +376,7 @@ public class InvoiceFiscalYearsServiceTest {
         assertEquals(422, exception.getCode());
 
         Errors errors = exception.getErrors();
-        Error error = errors.getErrors().get(0);
+        Error error = errors.getErrors().getFirst();
         assertEquals(MORE_THAN_ONE_FISCAL_YEAR_SERIES.getCode(), error.getCode());
         assertEquals(error.getParameters().get(0).getValue(), invoice.getId());
         assertEquals(error.getParameters().get(1).getValue(), List.of("FY", "FYTEST").toString());
