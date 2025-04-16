@@ -21,14 +21,20 @@ import com.github.benmanes.caffeine.cache.AsyncCache;
 
 import io.vertx.core.Vertx;
 
+import javax.annotation.PostConstruct;
+
 @Component
 public class JobProfileSnapshotCache {
 
   private static final Logger logger = LogManager.getLogger(JobProfileSnapshotCache.class);
 
-  private final AsyncCache<String, Optional<ProfileSnapshotWrapper>> asyncCache;
+  @Value("${mod.invoice.profile-snapshot-cache.expiration.time.seconds:3600}")
+  private long cacheExpirationTime;
 
-  public JobProfileSnapshotCache(@Value("${mod.invoice.profile-snapshot-cache.expiration.time.seconds:3600}") long cacheExpirationTime) {
+  private AsyncCache<String, Optional<ProfileSnapshotWrapper>> asyncCache;
+
+  @PostConstruct
+  void init() {
     this.asyncCache = buildAsyncCache(Vertx.currentContext(), cacheExpirationTime);
   }
 

@@ -37,7 +37,7 @@ public class JobProfileSnapshotCacheTest extends ApiTestBase {
   private static final String JOB_PROFILE_SNAPSHOTS_MOCK = "jobProfileSnapshots";
   private static final String SNAPSHOT_ID_FOR_INTERNAL_SERVER_ERROR = "168f8a86-d26c-406e-813f-c7527f241ac3";
 
-  private final JobProfileSnapshotCache jobProfileSnapshotCache = new JobProfileSnapshotCache(1L);
+  private final JobProfileSnapshotCache jobProfileSnapshotCache = new JobProfileSnapshotCache();
 
   ProfileSnapshotWrapper jobProfileSnapshot = new ProfileSnapshotWrapper()
     .withId(UUID.randomUUID().toString())
@@ -54,6 +54,7 @@ public class JobProfileSnapshotCacheTest extends ApiTestBase {
       RestVerticle.OKAPI_HEADER_TENANT, TENANT_ID,
       RestVerticle.OKAPI_HEADER_TOKEN, "token",
       RestConstants.OKAPI_URL, "http://localhost:" + ApiTestSuite.mockPort);
+    this.jobProfileSnapshotCache.init();
   }
 
   @Test

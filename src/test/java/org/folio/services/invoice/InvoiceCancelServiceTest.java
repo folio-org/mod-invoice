@@ -141,7 +141,7 @@ public class InvoiceCancelServiceTest {
     LedgerService ledgerService = new LedgerService(restClient);
     BudgetService budgetService = new BudgetService(restClient);
     ExpenseClassRetrieveService expenseClassRetrieveService = new ExpenseClassRetrieveService(restClient);
-    CacheableExchangeRateService cacheableExchangeRateService = new CacheableExchangeRateService(restClient, 1L);
+    CacheableExchangeRateService cacheableExchangeRateService = new CacheableExchangeRateService(restClient);
     InvoiceWorkflowDataHolderBuilder holderBuilder = new InvoiceWorkflowDataHolderBuilder(
       fiscalYearService, fundService, ledgerService, baseTransactionService,
       budgetService, expenseClassRetrieveService, cacheableExchangeRateService);
