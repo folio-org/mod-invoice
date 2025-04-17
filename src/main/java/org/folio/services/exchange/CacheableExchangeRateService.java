@@ -12,6 +12,7 @@ import org.folio.rest.core.models.RequestEntry;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import javax.annotation.PostConstruct;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
@@ -27,14 +28,18 @@ public class CacheableExchangeRateService {
   private static final String FROM = "from";
   private static final String TO = "to";
 
+  private final RestClient restClient;
+  private AsyncCache<String, Optional<ExchangeRate>> asyncCache;
+
   @Value("${mod.invoice.exchange-rate.expiration.time.seconds:60}")
   private long cacheExpirationTime;
 
-  private final RestClient restClient;
-  private final AsyncCache<String, Optional<ExchangeRate>> asyncCache;
-
   public CacheableExchangeRateService(RestClient restClient) {
     this.restClient = restClient;
+  }
+
+  @PostConstruct
+  void init() {
     this.asyncCache = buildAsyncCache(Vertx.currentContext(), cacheExpirationTime);
   }
 
@@ -50,10 +55,10 @@ public class CacheableExchangeRateService {
       var cacheKey = String.format("%s-%s", from, to);
       return Future.fromCompletionStage(asyncCache.get(cacheKey, (key, executor) -> getExchangeRateFromRemote(from, to, requestContext)))
         .compose(exchangeRateOptional -> exchangeRateOptional.map(exchangeRate -> {
-          log.info("getExchangeRate:: Retrieving an exchange rate, {} -> {}, exchangeRate: {}", from, to, exchangeRate.getExchangeRate());
-          return Future.succeededFuture(exchangeRate);
-        })
-        .orElseGet(() -> Future.failedFuture("Cannot retrieve exchange rate from API")));
+            log.info("getExchangeRate:: Retrieving an exchange rate, {} -> {}, exchangeRate: {}", from, to, exchangeRate.getExchangeRate());
+            return Future.succeededFuture(exchangeRate);
+          })
+          .orElseGet(() -> Future.failedFuture("Cannot retrieve exchange rate from API")));
     } catch (Exception e) {
       log.error("Error when retrieving cacheable exchange rate", e);
       return Future.failedFuture(e);

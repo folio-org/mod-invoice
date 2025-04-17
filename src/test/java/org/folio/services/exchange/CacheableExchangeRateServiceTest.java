@@ -38,6 +38,7 @@ public class CacheableExchangeRateServiceTest {
   @BeforeEach
   void setUp() {
     openMocks = MockitoAnnotations.openMocks(this);
+    service.init();
   }
 
   @AfterEach
