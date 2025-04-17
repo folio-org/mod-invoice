@@ -1,7 +1,6 @@
 package org.folio.services.order;
 
 import io.vertx.core.Future;
-import org.folio.rest.acq.model.orders.CompositePoLine;
 import org.folio.rest.acq.model.orders.PoLine;
 import org.folio.rest.acq.model.orders.PoLineCollection;
 import org.folio.rest.core.RestClient;
@@ -103,7 +102,7 @@ public class OrderLineServiceTest {
       .withId(UUID.randomUUID().toString());
     List<PoLine> poLines = List.of(poLine);
 
-    when(restClient.put(any(RequestEntry.class), any(CompositePoLine.class), eq(requestContext)))
+    when(restClient.put(any(RequestEntry.class), any(PoLine.class), eq(requestContext)))
       .thenReturn(Future.succeededFuture());
 
     Future<Void> result = orderLineService.updatePoLines(poLines, requestContext);
