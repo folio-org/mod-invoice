@@ -1,11 +1,11 @@
 package org.folio.dataimport.cache;
 
 import static org.folio.rest.RestVerticle.OKAPI_HEADER_TOKEN;
+import static org.folio.utils.CacheUtils.buildAsyncCache;
 
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.TimeUnit;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -14,36 +14,33 @@ import org.folio.rest.RestConstants;
 import org.folio.rest.RestVerticle;
 import org.folio.rest.client.DataImportProfilesClient;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import com.github.benmanes.caffeine.cache.AsyncCache;
-import com.github.benmanes.caffeine.cache.Caffeine;
 
 import io.vertx.core.Vertx;
+
+import javax.annotation.PostConstruct;
 
 @Component
 public class JobProfileSnapshotCache {
 
   private static final Logger logger = LogManager.getLogger(JobProfileSnapshotCache.class);
 
+  private AsyncCache<String, Optional<ProfileSnapshotWrapper>> asyncCache;
+
   @Value("${mod.invoice.profile-snapshot-cache.expiration.time.seconds:3600}")
   private long cacheExpirationTime;
 
-  private AsyncCache<String, Optional<ProfileSnapshotWrapper>> cache;
-
-  @Autowired
-  public JobProfileSnapshotCache(Vertx vertx) {
-    cache = Caffeine.newBuilder()
-      .expireAfterAccess(cacheExpirationTime, TimeUnit.SECONDS)
-      .executor(task -> vertx.runOnContext(v -> task.run()))
-      .buildAsync();
+  @PostConstruct
+  void init() {
+    this.asyncCache = buildAsyncCache(Vertx.currentContext(), cacheExpirationTime);
   }
 
   public CompletableFuture<Optional<ProfileSnapshotWrapper>> get(String profileSnapshotId, Map<String, String> okapiHeaders) {
     try {
-      return cache.get(profileSnapshotId, (key, executor) -> loadJobProfileSnapshot(key, okapiHeaders));
+      return asyncCache.get(profileSnapshotId, (key, executor) -> loadJobProfileSnapshot(key, okapiHeaders));
     } catch (Exception e) {
       logger.warn("Error loading ProfileSnapshotWrapper by id: '{}'", profileSnapshotId, e);
       return CompletableFuture.failedFuture(e);
