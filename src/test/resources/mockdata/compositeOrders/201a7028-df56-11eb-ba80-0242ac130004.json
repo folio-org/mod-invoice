@@ -13,7 +13,7 @@
   "reEncumber": false,
   "vendor": "d0fb5aa0-cdf1-11e8-a8d5-f2801f1b9fd1",
   "workflowStatus": "Pending",
-  "compositePoLines": [
+  "poLines": [
     {
       "id": "5b10de9c-df56-11eb-ba80-0242ac130004",
       "purchaseOrderId" : "201a7028-df56-11eb-ba80-0242ac130004",

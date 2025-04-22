@@ -13,14 +13,12 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import io.vertx.core.Future;
-import io.vertx.core.json.JsonObject;
 import one.util.streamex.StreamEx;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.invoices.utils.HelperUtils;
 import org.folio.okapi.common.GenericCompositeFuture;
-import org.folio.rest.acq.model.orders.CompositePoLine;
 import org.folio.rest.acq.model.orders.PoLine;
 import org.folio.rest.acq.model.orders.PoLineCollection;
 import org.folio.rest.core.RestClient;
@@ -34,8 +32,6 @@ public class OrderLineService {
 
   private static final String ORDER_LINES_ENDPOINT = resourcesPath(ORDER_LINES);
   private static final String ORDER_LINES_BY_ID_ENDPOINT = ORDER_LINES_ENDPOINT + "/{id}";
-  private static final String ALERTS = "alerts";
-  private static final String REPORTING_CODES = "reportingCodes";
 
   private final RestClient restClient;
 
@@ -52,9 +48,9 @@ public class OrderLineService {
       .map(PoLineCollection::getPoLines);
   }
 
-  public Future<CompositePoLine> getPoLineById(String poLineId, RequestContext requestContext) {
+  public Future<PoLine> getPoLineById(String poLineId, RequestContext requestContext) {
     RequestEntry requestEntry = new RequestEntry(ORDER_LINES_BY_ID_ENDPOINT).withId(poLineId);
-    return restClient.get(requestEntry, CompositePoLine.class, requestContext)
+    return restClient.get(requestEntry, PoLine.class, requestContext)
       .recover(cause -> {
         if (ExceptionUtil.matches(cause, USER_NOT_A_MEMBER_OF_THE_ACQ)) {
           var typeParam = new Parameter().withKey("type").withValue("order");
@@ -93,19 +89,12 @@ public class OrderLineService {
       });
   }
 
-  public Future<Void> updatePoLine(CompositePoLine poLine, RequestContext requestContext) {
+  public Future<Void> updatePoLine(PoLine poLine, RequestContext requestContext) {
     RequestEntry requestEntry = new RequestEntry(ORDER_LINES_BY_ID_ENDPOINT).withId(poLine.getId());
     return restClient.put(requestEntry, poLine, requestContext);
   }
 
   public Future<Void> updatePoLines(List<PoLine> poLines, RequestContext requestContext) {
-    List<CompositePoLine> compositePoLines = poLines.stream()
-      .map(OrderLineService::convertToCompositePoLine)
-      .toList();
-    return updateCompositePoLines(compositePoLines, requestContext);
-  }
-
-  private Future<Void> updateCompositePoLines(List<CompositePoLine> poLines, RequestContext requestContext) {
     var futures = poLines.stream()
       .map(poLine -> updatePoLine(poLine, requestContext)
         .recover(cause -> {
@@ -120,13 +109,6 @@ public class OrderLineService {
         }))
       .collect(Collectors.toList());
     return GenericCompositeFuture.join(futures).mapEmpty();
-  }
-
-  private static CompositePoLine convertToCompositePoLine(PoLine poLine) {
-    var poLineJson = JsonObject.mapFrom(poLine);
-    poLineJson.remove(ALERTS);
-    poLineJson.remove(REPORTING_CODES);
-    return poLineJson.mapTo(CompositePoLine.class);
   }
 
 }
