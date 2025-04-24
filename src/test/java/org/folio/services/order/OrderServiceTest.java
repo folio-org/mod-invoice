@@ -21,9 +21,9 @@ import io.vertx.junit5.VertxExtension;
 import io.vertx.junit5.VertxTestContext;
 import org.folio.HttpStatus;
 import org.folio.invoices.rest.exceptions.HttpException;
-import org.folio.rest.acq.model.orders.CompositePoLine;
 import org.folio.rest.acq.model.orders.OrderInvoiceRelationship;
 import org.folio.rest.acq.model.orders.OrderInvoiceRelationshipCollection;
+import org.folio.rest.acq.model.orders.PoLine;
 import org.folio.rest.core.RestClient;
 import org.folio.rest.core.models.RequestContext;
 import org.folio.rest.core.models.RequestEntry;
@@ -63,15 +63,15 @@ public class OrderServiceTest {
     String invoiceId = UUID.randomUUID().toString();
     String poLineId = UUID.randomUUID().toString();
     String orderId = UUID.randomUUID().toString();
-    CompositePoLine poLine = new CompositePoLine().withId(poLineId).withPurchaseOrderId(orderId);
+    PoLine poLine = new PoLine().withId(poLineId).withPurchaseOrderId(orderId);
     OrderInvoiceRelationship relationship = new OrderInvoiceRelationship().withInvoiceId(invoiceId).withPurchaseOrderId(orderId);
     OrderInvoiceRelationshipCollection relationships = new OrderInvoiceRelationshipCollection().withOrderInvoiceRelationships(List.of(relationship)).withTotalRecords(1);
 
 
-    doReturn(succeededFuture(poLine)).when(restClient).get(any(RequestEntry.class), eq(CompositePoLine.class), eq(requestContextMock));
+    doReturn(succeededFuture(poLine)).when(restClient).get(any(RequestEntry.class), eq(PoLine.class), eq(requestContextMock));
     doReturn(succeededFuture(relationships)).when(restClient).get(any(RequestEntry.class), eq(OrderInvoiceRelationshipCollection.class), eq(requestContextMock));
     doReturn(succeededFuture(null)).when(restClient).delete(any(RequestEntry.class), eq(requestContextMock));
-    doReturn(succeededFuture(poLine)).when(orderLineService).getPoLine(poLineId, requestContextMock);
+    doReturn(succeededFuture(poLine)).when(orderLineService).getPoLineById(poLineId, requestContextMock);
 
     var future = orderService.deleteOrderInvoiceRelationshipByInvoiceIdAndLineId(invoiceId, poLineId, requestContextMock);
     vertxTestContext.assertComplete(future)
@@ -87,14 +87,14 @@ public class OrderServiceTest {
     String invoiceId = UUID.randomUUID().toString();
     String poLineId = UUID.randomUUID().toString();
     String orderId = UUID.randomUUID().toString();
-    CompositePoLine poLine = new CompositePoLine().withId(poLineId).withPurchaseOrderId(orderId);
+    PoLine poLine = new PoLine().withId(poLineId).withPurchaseOrderId(orderId);
     OrderInvoiceRelationshipCollection relationships = new OrderInvoiceRelationshipCollection().withOrderInvoiceRelationships(Collections.EMPTY_LIST).withTotalRecords(0);
 
 
-    doReturn(succeededFuture(poLine)).when(restClient).get(any(RequestEntry.class), eq(CompositePoLine.class), eq(requestContextMock));
+    doReturn(succeededFuture(poLine)).when(restClient).get(any(RequestEntry.class), eq(PoLine.class), eq(requestContextMock));
     doReturn(succeededFuture(relationships)).when(restClient).get(any(RequestEntry.class), eq(OrderInvoiceRelationshipCollection.class), eq(requestContextMock));
 
-    doReturn(succeededFuture(poLine)).when(orderLineService).getPoLine(poLineId, requestContextMock);
+    doReturn(succeededFuture(poLine)).when(orderLineService).getPoLineById(poLineId, requestContextMock);
 
     var future = orderService.deleteOrderInvoiceRelationshipByInvoiceIdAndLineId(invoiceId, poLineId, requestContextMock);
 
@@ -143,10 +143,10 @@ public class OrderServiceTest {
   void shouldRethrowUserNotAMemberOfTheAcqWhenUpdatePoLine(VertxTestContext vertxTestContext) {
     // given
     doReturn(failedFuture(new HttpException(HttpStatus.HTTP_FORBIDDEN.toInt(), USER_NOT_A_MEMBER_OF_THE_ACQ.toError())))
-      .when(restClient).put(any(RequestEntry.class), any(CompositePoLine.class), eq(requestContextMock));
+      .when(restClient).put(any(RequestEntry.class), any(PoLine.class), eq(requestContextMock));
 
     // when
-    Future<Void> future = orderLineServiceInject.updateCompositePoLines(List.of(new CompositePoLine()), requestContextMock);
+    Future<Void> future = orderLineServiceInject.updatePoLines(List.of(new PoLine()), requestContextMock);
 
     // then
     vertxTestContext.assertFailure(future)
@@ -167,10 +167,10 @@ public class OrderServiceTest {
   void shouldRethrowUserNotAMemberOfTheAcqWhenGetPoLine(VertxTestContext vertxTestContext) {
     // given
     doReturn(failedFuture(new HttpException(HttpStatus.HTTP_FORBIDDEN.toInt(), USER_NOT_A_MEMBER_OF_THE_ACQ.toError())))
-      .when(restClient).get(any(RequestEntry.class), eq(CompositePoLine.class), eq(requestContextMock));
+      .when(restClient).get(any(RequestEntry.class), eq(PoLine.class), eq(requestContextMock));
 
     // when
-    Future<CompositePoLine> future = orderLineServiceInject.getPoLine("id", requestContextMock);
+    Future<PoLine> future = orderLineServiceInject.getPoLineById("id", requestContextMock);
 
     // then
     vertxTestContext.assertFailure(future)

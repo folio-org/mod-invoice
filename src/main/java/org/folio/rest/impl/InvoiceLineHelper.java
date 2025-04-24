@@ -36,9 +36,9 @@ import org.folio.invoices.utils.InvoiceRestrictionsUtil;
 import org.folio.invoices.utils.ProtectedOperationType;
 import org.folio.models.InvoiceWorkflowDataHolder;
 import org.folio.okapi.common.GenericCompositeFuture;
-import org.folio.rest.acq.model.orders.CompositePoLine;
 import org.folio.rest.acq.model.orders.CompositePurchaseOrder;
 import org.folio.rest.acq.model.orders.OrderInvoiceRelationship;
+import org.folio.rest.acq.model.orders.PoLine;
 import org.folio.rest.core.models.RequestContext;
 import org.folio.rest.jaxrs.model.Adjustment;
 import org.folio.rest.jaxrs.model.Invoice;
@@ -250,7 +250,7 @@ public class InvoiceLineHelper extends AbstractHelper {
       return deleteOrderInvoiceRelationshipIfNeeded(invoiceLine, invoiceLineFromStorage, requestContext);
     }
     if (!StringUtils.equals(invoiceLine.getPoLineId(), invoiceLineFromStorage.getPoLineId())) {
-      return orderLineService.getPoLine(invoiceLine.getPoLineId(), requestContext).compose(
+      return orderLineService.getPoLineById(invoiceLine.getPoLineId(), requestContext).compose(
         poLine -> orderService.getOrderInvoiceRelationshipByOrderIdAndInvoiceId(poLine.getPurchaseOrderId(), invoiceLine.getInvoiceId(), requestContext)
           .compose(relationships -> {
             if (relationships.getTotalRecords() == 0) {
@@ -550,7 +550,7 @@ public class InvoiceLineHelper extends AbstractHelper {
       return succeededFuture(null);
     String poLineId = (invoiceLineFromStorage == null || invoiceLine.getPoLineId() != null) ? invoiceLine.getPoLineId() :
       invoiceLineFromStorage.getPoLineId();
-    return orderLineService.getPoLine(poLineId, requestContext)
+    return orderLineService.getPoLineById(poLineId, requestContext)
       .compose(poLine -> orderService.getOrder(poLine.getPurchaseOrderId(), requestContext))
       .compose(order -> {
         if (invoiceLineFromStorage != null && invoiceLineFromStorage.getPoLineId() != null && invoiceLine.getPoLineId() == null) {
@@ -577,7 +577,7 @@ public class InvoiceLineHelper extends AbstractHelper {
     InvoiceLine invoiceLine = ilProcessing.getInvoiceLineFromStorage();
     if (invoiceLine.getPoLineId() == null)
       return succeededFuture(null);
-    return orderLineService.getPoLine(invoiceLine.getPoLineId(), requestContext)
+    return orderLineService.getPoLineById(invoiceLine.getPoLineId(), requestContext)
       .compose(poLine -> orderService.getOrder(poLine.getPurchaseOrderId(), requestContext))
       .compose(order -> removeInvoicePoNumber(order.getPoNumber(), order, ilProcessing, requestContext))
       .recover(throwable -> {
@@ -608,7 +608,7 @@ public class InvoiceLineHelper extends AbstractHelper {
     if (!invoicePoNumbers.contains(orderPoNumber))
       return succeededFuture(null);
     // check the other invoice lines to see if one of them is linking to the same order
-    List<String> orderLineIds = order.getCompositePoLines().stream().map(CompositePoLine::getId).toList();
+    List<String> orderLineIds = order.getPoLines().stream().map(PoLine::getId).toList();
     return getRelatedLines(invoiceLine, requestContext).compose(lines -> {
       if (lines.stream().noneMatch(line -> orderLineIds.contains(line.getPoLineId()))) {
         List<String> newNumbers = invoicePoNumbers.stream().filter(n -> !n.equals(orderPoNumber)).collect(toList());

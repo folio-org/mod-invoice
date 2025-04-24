@@ -53,7 +53,6 @@ import org.folio.rest.acq.model.finance.Encumbrance;
 import org.folio.rest.acq.model.finance.BudgetCollection;
 import org.folio.rest.acq.model.finance.TransactionCollection;
 import org.folio.rest.acq.model.finance.Transaction.TransactionType;
-import org.folio.rest.acq.model.orders.CompositePoLine;
 import org.folio.rest.acq.model.orders.PoLine;
 import org.folio.rest.acq.model.orders.PoLineCollection;
 import org.folio.rest.acq.model.orders.PurchaseOrder;
@@ -68,7 +67,7 @@ import org.folio.rest.jaxrs.model.InvoiceLine;
 import org.folio.rest.jaxrs.model.InvoiceLineCollection;
 import org.folio.rest.jaxrs.model.Voucher;
 import org.folio.rest.jaxrs.model.VoucherCollection;
-import org.folio.services.exchange.ExchangeRateProviderResolver;
+import org.folio.services.exchange.CacheableExchangeRateService;
 import org.folio.services.finance.FundService;
 import org.folio.services.finance.LedgerService;
 import org.folio.services.finance.budget.BudgetService;
@@ -96,6 +95,7 @@ import io.vertx.junit5.VertxTestContext;
 
 @ExtendWith(VertxExtension.class)
 public class InvoiceCancelServiceTest {
+
   private static final String RESOURCES_PATH = "src/test/resources";
   private static final String APPROVED_INVOICE_ID = "c0d08448-347b-418a-8c2f-5fb50248d67e";
   private static final String APPROVED_INVOICE_SAMPLE_PATH = INVOICE_MOCK_DATA_PATH + APPROVED_INVOICE_ID + ".json";
@@ -135,14 +135,15 @@ public class InvoiceCancelServiceTest {
     PoLinePaymentStatusUpdateService poLinePaymentStatusUpdateService = new PoLinePaymentStatusUpdateService(
       invoiceLineService, baseInvoiceService, orderLineService);
 
-    ExchangeRateProviderResolver exchangeRateProviderResolver = new ExchangeRateProviderResolver();
     FiscalYearService fiscalYearService = new FiscalYearService(restClient);
     FundService fundService = new FundService(restClient);
     LedgerService ledgerService = new LedgerService(restClient);
     BudgetService budgetService = new BudgetService(restClient);
     ExpenseClassRetrieveService expenseClassRetrieveService = new ExpenseClassRetrieveService(restClient);
-    InvoiceWorkflowDataHolderBuilder holderBuilder = new InvoiceWorkflowDataHolderBuilder(exchangeRateProviderResolver,
-      fiscalYearService, fundService, ledgerService, baseTransactionService, budgetService, expenseClassRetrieveService);
+    CacheableExchangeRateService cacheableExchangeRateService = new CacheableExchangeRateService(restClient);
+    InvoiceWorkflowDataHolderBuilder holderBuilder = new InvoiceWorkflowDataHolderBuilder(
+      fiscalYearService, fundService, ledgerService, baseTransactionService,
+      budgetService, expenseClassRetrieveService, cacheableExchangeRateService);
 
     cancelService = new InvoiceCancelService(baseTransactionService, encumbranceService,
       voucherService, orderLineService, orderService, poLinePaymentStatusUpdateService, holderBuilder);
@@ -241,7 +242,7 @@ public class InvoiceCancelServiceTest {
       .onComplete(result -> {
         HttpException httpException = (HttpException) result.cause();
         assertEquals(500, httpException.getCode());
-        var error = httpException.getErrors().getErrors().get(0);
+        var error = httpException.getErrors().getErrors().getFirst();
         assertEquals(ERROR_UNRELEASING_ENCUMBRANCES.getCode(), error.getCode());
         vertxTestContext.completeNow();
       });
@@ -263,7 +264,7 @@ public class InvoiceCancelServiceTest {
     Future<Void> future = cancelService.cancelInvoice(invoice, invoiceLines, null, requestContext);
     vertxTestContext.assertComplete(future)
       .onSuccess(result -> {
-        verify(restClient, times(2)).put(any(RequestEntry.class), any(CompositePoLine.class),
+        verify(restClient, times(2)).put(any(RequestEntry.class), any(PoLine.class),
           eq(requestContext));
         vertxTestContext.completeNow();
       })
@@ -440,7 +441,7 @@ public class InvoiceCancelServiceTest {
       .when(restClient).get(any(RequestEntry.class), eq(InvoiceCollection.class), eq(requestContext));
   }
 
-  private void setupUpdatePoLinesQuery(List<CompositePoLine> expectedPoLines) {
+  private void setupUpdatePoLinesQuery(List<PoLine> expectedPoLines) {
     expectedPoLines.forEach(expectedPoLine ->
       doReturn(succeededFuture(null))
         .when(restClient).put(any(RequestEntry.class), eq(expectedPoLine), eq(requestContext))
@@ -489,10 +490,10 @@ public class InvoiceCancelServiceTest {
     setupPoLineQuery(poLines);
     setupInvoiceLineQuery(relatedInvoiceLines);
     setupInvoiceQuery(relatedInvoices);
-    CompositePoLine expectedPoLine1 = JsonObject.mapFrom(poLines.get(0)).mapTo(CompositePoLine.class)
-        .withPaymentStatus(CompositePoLine.PaymentStatus.PARTIALLY_PAID);
-    CompositePoLine expectedPoLine2 = JsonObject.mapFrom(poLines.get(2)).mapTo(CompositePoLine.class)
-      .withPaymentStatus(CompositePoLine.PaymentStatus.AWAITING_PAYMENT);
+    PoLine expectedPoLine1 = JsonObject.mapFrom(poLines.get(0)).mapTo(PoLine.class)
+        .withPaymentStatus(PoLine.PaymentStatus.PARTIALLY_PAID);
+    PoLine expectedPoLine2 = JsonObject.mapFrom(poLines.get(2)).mapTo(PoLine.class)
+      .withPaymentStatus(PoLine.PaymentStatus.AWAITING_PAYMENT);
     setupUpdatePoLinesQuery(List.of(expectedPoLine1, expectedPoLine2));
   }
 

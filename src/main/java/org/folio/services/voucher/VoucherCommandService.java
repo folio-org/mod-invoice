@@ -7,15 +7,10 @@ import static org.folio.rest.impl.AbstractHelper.CONFIG_QUERY;
 import static org.folio.rest.impl.AbstractHelper.INVOICE_CONFIG_MODULE_NAME;
 import static org.folio.rest.impl.AbstractHelper.SYSTEM_CONFIG_QUERY;
 
-import javax.money.convert.ConversionQuery;
-import javax.money.convert.ExchangeRate;
-import javax.money.convert.ExchangeRateProvider;
-
 import java.util.List;
 
 import org.apache.commons.lang3.StringUtils;
 import org.folio.invoices.rest.exceptions.HttpException;
-import org.folio.invoices.utils.HelperUtils;
 import org.folio.rest.core.models.RequestContext;
 import org.folio.rest.jaxrs.model.Config;
 import org.folio.rest.jaxrs.model.Invoice;
@@ -23,7 +18,7 @@ import org.folio.rest.jaxrs.model.Parameter;
 import org.folio.rest.jaxrs.model.SequenceNumber;
 import org.folio.rest.jaxrs.model.Voucher;
 import org.folio.services.configuration.ConfigurationService;
-import org.folio.services.exchange.ExchangeRateProviderResolver;
+import org.folio.services.exchange.CacheableExchangeRateService;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import io.vertx.core.Future;
@@ -34,12 +29,13 @@ public class VoucherCommandService {
   public static final String VOUCHER_NUMBER_CONFIG_NAME = "voucherNumber";
   public static final String VOUCHER_NUMBER_PREFIX_CONFIG = "voucherNumberPrefix";
   public static final String VOUCHER_NUMBER_PREFIX_CONFIG_QUERY = String.format(CONFIG_QUERY, INVOICE_CONFIG_MODULE_NAME, VOUCHER_NUMBER_CONFIG_NAME);
+
   @Autowired
   private VoucherNumberService voucherNumberService;
   @Autowired
   private ConfigurationService configurationService;
   @Autowired
-  private ExchangeRateProviderResolver exchangeRateProviderResolver;
+  private CacheableExchangeRateService cacheableExchangeRateService;
 
   /**
    * Build new {@link Voucher} based on processed {@link Invoice}
@@ -51,7 +47,7 @@ public class VoucherCommandService {
     Voucher voucher = new Voucher();
     voucher.setInvoiceId(invoice.getId());
     return getVoucherNumberWithPrefix(requestContext)
-                    .map(voucher::withVoucherNumber);
+      .map(voucher::withVoucherNumber);
   }
 
   public Future<String> generateVoucherNumber(RequestContext requestContext) {
@@ -59,12 +55,14 @@ public class VoucherCommandService {
       .map(SequenceNumber::getSequenceNumber);
   }
 
-
   public Future<String> getVoucherNumberWithPrefix(RequestContext requestContext) {
     return getVoucherNumberPrefix(requestContext)
-              .map(prefix -> { validateVoucherNumberPrefix(prefix); return prefix; })
-              .compose(prefix -> generateVoucherNumber(requestContext)
-                                            .map(sequenceNumber -> prefix + sequenceNumber));
+      .map(prefix -> {
+        validateVoucherNumberPrefix(prefix);
+        return prefix;
+      })
+      .compose(prefix -> generateVoucherNumber(requestContext)
+        .map(sequenceNumber -> prefix + sequenceNumber));
   }
 
   public boolean isVoucherNumberPrefixConfig(Config config) {
@@ -72,14 +70,12 @@ public class VoucherCommandService {
   }
 
   public Future<Voucher> updateVoucherWithExchangeRate(Voucher voucher, Invoice invoice, RequestContext requestContext) {
-    return requestContext.getContext().executeBlocking(event -> {
-      ConversionQuery conversionQuery = HelperUtils.buildConversionQuery(invoice, voucher.getSystemCurrency());
-      ExchangeRateProvider exchangeRateProvider = exchangeRateProviderResolver.resolve(conversionQuery, requestContext);
-      ExchangeRate exchangeRate = exchangeRateProvider.getExchangeRate(conversionQuery);
-      invoice.setExchangeRate(exchangeRate.getFactor().doubleValue());
-      voucher.setExchangeRate(exchangeRate.getFactor().doubleValue());
-      event.complete(voucher);
-    });
+    return cacheableExchangeRateService.getExchangeRate(invoice.getCurrency(), voucher.getSystemCurrency(), invoice.getExchangeRate(), requestContext)
+      .compose(exchangeRate -> {
+        invoice.setExchangeRate(exchangeRate.getExchangeRate());
+        voucher.setExchangeRate(exchangeRate.getExchangeRate());
+        return Future.succeededFuture(voucher);
+      });
   }
 
   private void validateVoucherNumberPrefix(String prefix) {
@@ -91,22 +87,17 @@ public class VoucherCommandService {
 
   private Future<String> getVoucherNumberPrefix(RequestContext requestContext) {
     return configurationService.getConfigurationsEntries(requestContext, SYSTEM_CONFIG_QUERY, VOUCHER_NUMBER_PREFIX_CONFIG_QUERY)
-            .map(configs ->
-               configs.getConfigs().stream()
-                    .filter(this::isVoucherNumberPrefixConfig)
-                    .map(config -> {
-                      if(config.getValue() != null) {
-                        String prefix = new JsonObject(config.getValue()).getString(VOUCHER_NUMBER_PREFIX_CONFIG);
-                        return StringUtils.isNotEmpty(prefix) ? prefix : EMPTY;
-                      } else {
-                        return EMPTY;
-                      }
-                    })
-                    .findFirst()
-                    .orElse(EMPTY)
-            );
+      .map(configs -> configs.getConfigs().stream()
+        .filter(this::isVoucherNumberPrefixConfig)
+        .map(config -> {
+          if (config.getValue() != null) {
+            String prefix = new JsonObject(config.getValue()).getString(VOUCHER_NUMBER_PREFIX_CONFIG);
+            return StringUtils.isNotEmpty(prefix) ? prefix : EMPTY;
+          } else {
+            return EMPTY;
+          }
+        })
+        .findFirst()
+        .orElse(EMPTY));
   }
-
-
-
 }

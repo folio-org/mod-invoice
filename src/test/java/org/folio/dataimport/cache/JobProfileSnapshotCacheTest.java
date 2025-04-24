@@ -24,7 +24,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
-import io.vertx.core.Vertx;
 import io.vertx.ext.unit.junit.RunTestOnContext;
 import io.vertx.junit5.VertxExtension;
 
@@ -38,8 +37,7 @@ public class JobProfileSnapshotCacheTest extends ApiTestBase {
   private static final String JOB_PROFILE_SNAPSHOTS_MOCK = "jobProfileSnapshots";
   private static final String SNAPSHOT_ID_FOR_INTERNAL_SERVER_ERROR = "168f8a86-d26c-406e-813f-c7527f241ac3";
 
-  private Vertx vertx = Vertx.vertx();
-  private JobProfileSnapshotCache jobProfileSnapshotCache = new JobProfileSnapshotCache(vertx);
+  private final JobProfileSnapshotCache jobProfileSnapshotCache = new JobProfileSnapshotCache();
 
   ProfileSnapshotWrapper jobProfileSnapshot = new ProfileSnapshotWrapper()
     .withId(UUID.randomUUID().toString())
@@ -56,6 +54,7 @@ public class JobProfileSnapshotCacheTest extends ApiTestBase {
       RestVerticle.OKAPI_HEADER_TENANT, TENANT_ID,
       RestVerticle.OKAPI_HEADER_TOKEN, "token",
       RestConstants.OKAPI_URL, "http://localhost:" + ApiTestSuite.mockPort);
+    this.jobProfileSnapshotCache.init();
   }
 
   @Test
@@ -69,8 +68,8 @@ public class JobProfileSnapshotCacheTest extends ApiTestBase {
     ProfileSnapshotWrapper actualProfileSnapshot = profileOptional.get();
     Assertions.assertEquals(jobProfileSnapshot.getId(), actualProfileSnapshot.getId());
     Assertions.assertFalse(actualProfileSnapshot.getChildSnapshotWrappers().isEmpty());
-    Assertions.assertEquals(jobProfileSnapshot.getChildSnapshotWrappers().get(0).getId(),
-      actualProfileSnapshot.getChildSnapshotWrappers().get(0).getId());
+    Assertions.assertEquals(jobProfileSnapshot.getChildSnapshotWrappers().getFirst().getId(),
+      actualProfileSnapshot.getChildSnapshotWrappers().getFirst().getId());
   }
 
   @Test
@@ -92,5 +91,4 @@ public class JobProfileSnapshotCacheTest extends ApiTestBase {
     CompletableFuture<Optional<ProfileSnapshotWrapper>> optionalFuture = jobProfileSnapshotCache.get(null, this.okapiHeaders);
     Assertions.assertThrows(ExecutionException.class, () -> optionalFuture.get(5, TimeUnit.SECONDS));
   }
-
 }

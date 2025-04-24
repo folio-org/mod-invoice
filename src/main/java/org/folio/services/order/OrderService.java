@@ -3,23 +3,21 @@ package org.folio.services.order;
 import static io.vertx.core.Future.succeededFuture;
 import static org.folio.invoices.utils.ErrorCodes.CANNOT_DELETE_INVOICE_LINE;
 import static org.folio.invoices.utils.HelperUtils.collectResultsOnSuccess;
-import static org.folio.invoices.utils.HelperUtils.convertIdsToCqlQuery;
 import static org.folio.invoices.utils.ResourcePathResolver.COMPOSITE_ORDER;
 import static org.folio.invoices.utils.ResourcePathResolver.ORDER_INVOICE_RELATIONSHIP;
 import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 
 import io.vertx.core.Future;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.invoices.rest.exceptions.HttpException;
-import org.folio.rest.acq.model.orders.CompositePoLine;
 import org.folio.rest.acq.model.orders.CompositePurchaseOrder;
 import org.folio.rest.acq.model.orders.OrderInvoiceRelationship;
 import org.folio.rest.acq.model.orders.OrderInvoiceRelationshipCollection;
+import org.folio.rest.acq.model.orders.PoLine;
 import org.folio.rest.acq.model.orders.PurchaseOrder;
 import org.folio.rest.acq.model.orders.PurchaseOrderCollection;
 import org.folio.rest.core.RestClient;
@@ -52,9 +50,9 @@ public class OrderService {
     this.orderLineService = orderLineService;
   }
 
-  public Future<List<CompositePoLine>> getOrderPoLines(String orderId, RequestContext requestContext) {
+  public Future<List<PoLine>> getOrderPoLines(String orderId, RequestContext requestContext) {
     return getOrder(orderId, requestContext)
-      .map(CompositePurchaseOrder::getCompositePoLines);
+      .map(CompositePurchaseOrder::getPoLines);
   }
 
   public Future<List<PurchaseOrder>> getOrders(String query, RequestContext requestContext) {
@@ -76,7 +74,7 @@ public class OrderService {
     if (invoiceLine.getPoLineId() == null) {
       return succeededFuture(null);
     }
-    return orderLineService.getPoLine(invoiceLine.getPoLineId(), requestContext)
+    return orderLineService.getPoLineById(invoiceLine.getPoLineId(), requestContext)
       .compose(poLine -> getOrderInvoiceRelationshipByOrderIdAndInvoiceId(poLine.getPurchaseOrderId(), invoiceLine.getInvoiceId(), requestContext)
         .compose(relationships -> {
           if (relationships.getTotalRecords() == 0) {
@@ -119,7 +117,7 @@ public class OrderService {
   }
 
   public Future<Void> deleteOrderInvoiceRelationshipByInvoiceIdAndLineId(String invoiceId, String poLineId, RequestContext requestContext) {
-    return orderLineService.getPoLine(poLineId, requestContext)
+    return orderLineService.getPoLineById(poLineId, requestContext)
       .compose(poLine -> getOrderInvoiceRelationshipByOrderIdAndInvoiceId(poLine.getPurchaseOrderId(), invoiceId, requestContext))
       .compose(relation -> {
           if (relation.getTotalRecords() > 0) {
@@ -133,7 +131,7 @@ public class OrderService {
     return getOrderInvoiceRelationshipByInvoiceId(invoiceId, requestContext)
       .compose(relation -> {
         if (relation.getTotalRecords() > 0) {
-          List<String> ids = relation.getOrderInvoiceRelationships().stream().map(OrderInvoiceRelationship::getId).collect(Collectors.toList());
+          List<String> ids = relation.getOrderInvoiceRelationships().stream().map(OrderInvoiceRelationship::getId).toList();
           return deleteOrderInvoiceRelations(ids, requestContext);
         }
         return succeededFuture(null);
@@ -141,11 +139,11 @@ public class OrderService {
   }
 
   public Future<Boolean> isInvoiceLineLastForOrder(InvoiceLine invoiceLine, RequestContext requestContext) {
-    return orderLineService.getPoLine(invoiceLine.getPoLineId(), requestContext)
-      .map(CompositePoLine::getPurchaseOrderId)
+    return orderLineService.getPoLineById(invoiceLine.getPoLineId(), requestContext)
+      .map(PoLine::getPurchaseOrderId)
       .compose(orderId -> getOrderPoLines(orderId, requestContext)
-        .map(compositePoLines -> compositePoLines.stream()
-          .map(CompositePoLine::getId).collect(Collectors.toList())))
+        .map(poLines -> poLines.stream()
+          .map(PoLine::getId).toList()))
       .compose(poLineIds -> invoiceLineService.getInvoiceLinesRelatedForOrder(poLineIds, invoiceLine.getInvoiceId(), requestContext))
       .map(invoiceLines -> invoiceLines.size() == 1);
   }
@@ -166,12 +164,6 @@ public class OrderService {
         throw new HttpException(404, CANNOT_DELETE_INVOICE_LINE, List.of(param, causeParam));
       });
   }
-
-  public Future<List<PurchaseOrder>> getOrdersByIdsAndQuery(List<String> ids, String query, RequestContext requestContext) {
-    String query2 = "(" + query + ") AND " + convertIdsToCqlQuery(ids);
-    return getOrders(query2, requestContext);
-  }
-
 
   private Future<Void> deleteOrderInvoiceRelations(List<String> relationIds, RequestContext requestContext) {
     List<Future<Void>> futures = new ArrayList<>();

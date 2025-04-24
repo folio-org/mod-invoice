@@ -128,14 +128,33 @@ import org.folio.rest.acq.model.finance.Ledger;
 import org.folio.rest.acq.model.finance.LedgerCollection;
 import org.folio.rest.acq.model.finance.Transaction;
 import org.folio.rest.acq.model.finance.TransactionCollection;
-import org.folio.rest.acq.model.orders.CompositePoLine;
 import org.folio.rest.acq.model.orders.CompositePurchaseOrder;
 import org.folio.rest.acq.model.orders.OrderInvoiceRelationshipCollection;
+import org.folio.rest.acq.model.orders.PoLine;
+import org.folio.rest.acq.model.orders.PoLineCollection;
 import org.folio.rest.acq.model.units.AcquisitionsUnit;
 import org.folio.rest.acq.model.units.AcquisitionsUnitCollection;
 import org.folio.rest.acq.model.units.AcquisitionsUnitMembershipCollection;
-import org.folio.rest.jaxrs.model.*;
+import org.folio.rest.jaxrs.model.BatchVoucher;
+import org.folio.rest.jaxrs.model.BatchVoucherExport;
+import org.folio.rest.jaxrs.model.BatchVoucherExportCollection;
+import org.folio.rest.jaxrs.model.Config;
+import org.folio.rest.jaxrs.model.Configs;
+import org.folio.rest.jaxrs.model.Credentials;
+import org.folio.rest.jaxrs.model.Document;
+import org.folio.rest.jaxrs.model.DocumentCollection;
 import org.folio.rest.jaxrs.model.Error;
+import org.folio.rest.jaxrs.model.Errors;
+import org.folio.rest.jaxrs.model.ExportConfig;
+import org.folio.rest.jaxrs.model.ExportConfigCollection;
+import org.folio.rest.jaxrs.model.Invoice;
+import org.folio.rest.jaxrs.model.InvoiceCollection;
+import org.folio.rest.jaxrs.model.InvoiceDocument;
+import org.folio.rest.jaxrs.model.InvoiceLine;
+import org.folio.rest.jaxrs.model.InvoiceLineCollection;
+import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
+import org.folio.rest.jaxrs.model.Voucher;
+import org.folio.rest.jaxrs.model.VoucherCollection;
 import org.mockftpserver.fake.FakeFtpServer;
 import org.mockftpserver.fake.UserAccount;
 import org.mockftpserver.fake.filesystem.DirectoryEntry;
@@ -393,6 +412,7 @@ public class MockServer {
     router.route(HttpMethod.GET, resourceByIdPath(VOUCHERS_STORAGE)).handler(this::handleGetVoucherById);
     router.route(HttpMethod.GET, resourceByIdPath(COMPOSITE_ORDER)).handler(this::handleGetOrderById);
     router.route(HttpMethod.GET, resourceByIdPath(ORDER_LINES)).handler(this::handleGetPoLineById);
+    router.route(HttpMethod.GET, resourcesPath(ORDER_LINES)).handler(this::handleGetPoLines);
     router.route(HttpMethod.GET, resourcesPath(ORDER_INVOICE_RELATIONSHIP)).handler(this::handleGetOrderInvoiceRelations);
     router.route(HttpMethod.GET, resourcesPath(VOUCHER_NUMBER_START)).handler(this::handleGetSequence);
     router.route(HttpMethod.GET, resourcesPath(VOUCHERS_STORAGE)).handler(this::handleGetVouchers);
@@ -1260,33 +1280,61 @@ public class MockServer {
 
     if (ID_FOR_INTERNAL_SERVER_ERROR.equals(id)) {
       serverResponse(ctx, 500, APPLICATION_JSON, INTERNAL_SERVER_ERROR.getReasonPhrase());
-    } else if (ID_FOR_INTERNAL_SERVER_ERROR_PUT.equals(id)) {
-      CompositePoLine poLine = new CompositePoLine();
-      poLine.setId(ID_FOR_INTERNAL_SERVER_ERROR_PUT);
-      serverResponse(ctx, 200, APPLICATION_JSON, JsonObject.mapFrom(poLine).encodePrettily());
     } else {
-      Supplier<JsonObject> getFromFile = () -> {
-        String filePath = String.format(MOCK_DATA_PATH_PATTERN, PO_LINES_MOCK_DATA_PATH, id);
-        try {
-          return new JsonObject(getMockData(filePath));
-        } catch (IOException e) {
-          return null;
-        }
-      };
-
-      // Attempt to find POLine in mock server memory
-      JsonObject poLine = getMockEntry(ResourcePathResolver.ORDER_LINES, id).orElseGet(getFromFile);
+      JsonObject poLine = getOrderLineById(id);
       if (poLine == null) {
         ctx.response().setStatusCode(404).end(id);
       } else {
         // validate content against schema
-        CompositePoLine poLineSchema = poLine.mapTo(CompositePoLine.class);
+        PoLine poLineSchema = poLine.mapTo(PoLine.class);
         poLineSchema.setId(id);
         poLine = JsonObject.mapFrom(poLineSchema);
 
         serverResponse(ctx, 200, APPLICATION_JSON, poLine.encodePrettily());
       }
     }
+  }
+
+  private JsonObject getOrderLineById(String id) {
+    if (ID_FOR_INTERNAL_SERVER_ERROR_PUT.equals(id)) {
+      PoLine poLine = new PoLine();
+      poLine.setId(ID_FOR_INTERNAL_SERVER_ERROR_PUT);
+      return JsonObject.mapFrom(poLine);
+    }
+    Supplier<JsonObject> getFromFile = () -> {
+      String filePath = String.format(MOCK_DATA_PATH_PATTERN, PO_LINES_MOCK_DATA_PATH, id);
+      try {
+        return new JsonObject(getMockData(filePath));
+      } catch (IOException e) {
+        return null;
+      }
+    };
+
+    // Attempt to find POLine in mock server memory
+    return getMockEntry(ResourcePathResolver.ORDER_LINES, id).orElseGet(getFromFile);
+  }
+
+  private void handleGetPoLines(RoutingContext ctx) {
+    logger.info("handleGetPoLines got: {}?{}", ctx.request().path(), ctx.request().query());
+
+    String queryParam = StringUtils.trimToEmpty(ctx.request().getParam("query"));
+    addServerRqQuery(ORDER_LINES, queryParam);
+    List<String> polIds = queryParam.startsWith("id==") ? extractIdsFromQuery(queryParam) : Collections.emptyList();
+
+    PoLineCollection poLineCollection = new PoLineCollection();
+    for (String id : polIds) {
+      JsonObject line = getOrderLineById(id);
+      if (line != null) {
+        poLineCollection.getPoLines().add(line.mapTo(PoLine.class));
+      }
+    }
+    poLineCollection.setTotalRecords(poLineCollection.getPoLines().size());
+
+    JsonObject poLines = JsonObject.mapFrom(poLineCollection);
+    logger.info(poLines.encodePrettily());
+
+    addServerRqRsData(HttpMethod.GET, ORDER_LINES, poLines);
+    serverResponse(ctx, 200, APPLICATION_JSON, poLines.encode());
   }
 
   private void serverResponse(RoutingContext ctx, int statusCode, String contentType, String body) {

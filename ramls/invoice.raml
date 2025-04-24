@@ -69,7 +69,8 @@ resourceTypes:
           poLinePaymentStatus:
             description: how to update the payment status of po lines when approving or cancelling the invoice;
               only applies to lines with releaseEncumbrance=true linked to po lines of one-time open orders;
-              required when approving or cancelling an invoice in a past fiscal year containing lines with releaseEncumbrance=true linked to po lines of one-time open orders.
+              required when approving or cancelling an invoice in a past fiscal year containing lines with releaseEncumbrance=true linked to po lines of one-time open orders;
+              invoice lines with releaseEncumbrance=false have their po line statuses changed from Awaiting Payment to Partially Paid
             type: string
             pattern: "No Change|Awaiting Payment|Partially Paid|Fully Paid|Cancelled"
             required: false
