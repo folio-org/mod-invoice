@@ -1,4 +1,16 @@
-## 6.1.0 - Unreleased
+## 6.0.1 - Released (Sunflower R1 2025)
+The focus of this release was to fix security issues in the software libaries.
+
+[Full Changelog](https://github.com/folio-org/mod-invoice/compare/v6.0.0...v6.0.1)
+
+### Bug Fixes
+* [MODINVOICE-592](https://folio-org.atlassian.net/browse/MODINVOICE-592) data-import-processing-core 4.4.3 fixing GraalVM vulns
+
+### Dependencies
+* Bump `data-import-processing-core` from `4.4.0` to `4.4.3`
+* Bump `org.graalvm.js:js` from `23.0.0` to `24.2.1`
+* Bump `org.graalvm.js:js-scriptengine` from `23.0.0` to `24.2.1`
+* `data-import-processing-core` bumps several other transitive dependencies, see https://github.com/folio-org/data-import-processing-core/pull/398/files
 
 ## 6.0.0 - Released (Sunflower R1 2025)
 The focus of this release was to implement improvements and do version upgrades.
