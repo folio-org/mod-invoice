@@ -1,7 +1,5 @@
 package org.folio;
 
-import static net.mguenther.kafka.junit.EmbeddedKafkaClusterConfig.defaultClusterConfig;
-
 import io.restassured.RestAssured;
 import io.vertx.core.DeploymentOptions;
 import io.vertx.core.Promise;
@@ -9,10 +7,22 @@ import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
 import io.vertx.junit5.VertxExtension;
 import io.vertx.junit5.VertxTestContext;
+
+import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Properties;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import net.mguenther.kafka.junit.EmbeddedKafkaCluster;
+
+import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.clients.consumer.ConsumerRecords;
+import org.apache.kafka.clients.consumer.KafkaConsumer;
+import org.apache.kafka.clients.producer.KafkaProducer;
+import org.apache.kafka.clients.producer.ProducerConfig;
+import org.apache.kafka.common.serialization.StringDeserializer;
+import org.apache.kafka.common.serialization.StringSerializer;
 import org.folio.builders.InvoiceWorkFlowDataHolderBuilderTest;
 import org.folio.converters.BatchVoucherModelConverterTest;
 import org.folio.converters.BatchedVoucherLinesModelConverterTest;
@@ -74,6 +84,8 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.testcontainers.kafka.KafkaContainer;
+import org.testcontainers.utility.DockerImageName;
 
 @ExtendWith(VertxExtension.class)
 public class ApiTestSuite {
@@ -86,7 +98,8 @@ public class ApiTestSuite {
   private static final String KAFKA_ENV = "ENV";
   private static final String OKAPI_URL_KEY = "OKAPI_URL";
 
-  public static EmbeddedKafkaCluster kafkaCluster;
+  private static final DockerImageName KAFKA_IMAGE_NAME = DockerImageName.parse("apache/kafka-native:3.8.0");
+  private static final KafkaContainer kafkaContainer = new KafkaContainer(KAFKA_IMAGE_NAME).withStartupAttempts(3);
   private static MockServer mockServer;
   public static Vertx vertx;
   private static boolean initialised;
@@ -104,11 +117,9 @@ public class ApiTestSuite {
     RestAssured.port = okapiPort;
     RestAssured.enableLoggingOfRequestAndResponseIfValidationFails();
 
-    kafkaCluster = EmbeddedKafkaCluster.provisionWith(defaultClusterConfig());
-    kafkaCluster.start();
-    String[] hostAndPort = kafkaCluster.getBrokerList().split(":");
-    System.setProperty(KAFKA_HOST, hostAndPort[0]);
-    System.setProperty(KAFKA_PORT, hostAndPort[1]);
+    kafkaContainer.start();
+    System.setProperty(KAFKA_HOST, kafkaContainer.getHost());
+    System.setProperty(KAFKA_PORT, kafkaContainer.getFirstMappedPort().toString());
     System.setProperty(KAFKA_ENV, KAFKA_ENV_VALUE);
     System.setProperty(OKAPI_URL_KEY, "http://localhost:" + mockPort);
 
@@ -132,7 +143,7 @@ public class ApiTestSuite {
   public static void after(VertxTestContext testContext) {
     vertx.close(ar -> {
       if (ar.succeeded()) {
-        kafkaCluster.stop();
+        kafkaContainer.stop();
         mockServer.close();
         testContext.completeNow();
       } else {
@@ -140,6 +151,35 @@ public class ApiTestSuite {
       }
     });
     initialised = false;
+  }
+
+  public static KafkaProducer<String, String> createKafkaProducer() {
+    Properties producerProperties = new Properties();
+    producerProperties.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaContainer.getBootstrapServers());
+    producerProperties.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
+    producerProperties.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
+    return new KafkaProducer<>(producerProperties);
+  }
+
+  public static KafkaConsumer<String, String> createKafkaConsumer() {
+    Properties consumerProperties = new Properties();
+    consumerProperties.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaContainer.getBootstrapServers());
+    consumerProperties.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
+    consumerProperties.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
+    consumerProperties.put(ConsumerConfig.GROUP_ID_CONFIG, "test-group");
+    consumerProperties.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+    return new KafkaConsumer<>(consumerProperties);
+  }
+
+  public static List<String> observeTopic(String topic, Duration duration) {
+    List<String> result = new ArrayList<>();
+    ConsumerRecords<String, String> records;
+    try (var kafkaConsumer = createKafkaConsumer()) {
+      kafkaConsumer.subscribe(List.of(topic));
+      records = kafkaConsumer.poll(duration);
+    }
+    records.forEach(rec -> result.add(rec.value()));
+    return result;
   }
 
   public static boolean isNotInitialised() {
