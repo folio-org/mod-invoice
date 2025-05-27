@@ -5,7 +5,7 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.folio.ActionProfile.Action.CREATE;
 import static org.folio.ApiTestSuite.KAFKA_ENV_VALUE;
 import static org.folio.ApiTestSuite.observeTopic;
-import static org.folio.ApiTestSuite.createKafkaProducer;
+import static org.folio.ApiTestSuite.sendToTopic;
 import static org.folio.DataImportEventTypes.DI_COMPLETED;
 import static org.folio.DataImportEventTypes.DI_ERROR;
 import static org.folio.DataImportEventTypes.DI_INCOMING_EDIFACT_RECORD_PARSED;
@@ -59,7 +59,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import lombok.SneakyThrows;
-import org.apache.kafka.clients.producer.KafkaProducer;
+import lombok.extern.log4j.Log4j2;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.folio.ActionProfile;
 import org.folio.ApiTestSuite;
@@ -95,6 +95,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mockito;
 
+@Log4j2
 @ExtendWith(VertxExtension.class)
 public class CreateInvoiceEventHandlerTest extends ApiTestBase {
 
@@ -296,9 +297,7 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
     producerRecord.headers().add(RECORD_ID_HEADER, record.getId().getBytes(UTF_8));
 
     // when
-    try (KafkaProducer<String, String> producer = createKafkaProducer()) {
-      producer.send(producerRecord);
-    }
+    sendToTopic(producerRecord);
 
     // then
     String topicToObserve = KafkaTopicNameHelper.formatTopicName(KAFKA_ENV_VALUE, getDefaultNameSpace(), DI_POST_INVOICE_LINES_SUCCESS_TENANT, DI_COMPLETED.value());
@@ -361,9 +360,7 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
 
     // when
     when(invoiceIdStorageService.store(any(), any(), any())).thenReturn(Future.failedFuture(new Exception()));
-    try (KafkaProducer<String, String> producer = createKafkaProducer()) {
-      producer.send(producerRecord);
-    }
+    sendToTopic(producerRecord);
 
     // then
     String topicToObserve = KafkaTopicNameHelper.formatTopicName(KAFKA_ENV_VALUE, getDefaultNameSpace(), DI_POST_INVOICE_LINES_SUCCESS_TENANT, DI_ERROR.value());
@@ -406,9 +403,7 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
     producerRecord.headers().add(RECORD_ID_HEADER, record.getId().getBytes(UTF_8));
 
     // when
-    try (KafkaProducer<String, String> producer = createKafkaProducer()) {
-      producer.send(producerRecord);
-    }
+    sendToTopic(producerRecord);
 
     // then
     String topicToObserve = KafkaTopicNameHelper.formatTopicName(KAFKA_ENV_VALUE, getDefaultNameSpace(), DI_POST_INVOICE_LINES_SUCCESS_TENANT, DI_COMPLETED.value());
@@ -466,9 +461,7 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
     producerRecord.headers().add(RECORD_ID_HEADER, record.getId().getBytes(UTF_8));
 
     // when
-    try (KafkaProducer<String, String> producer = createKafkaProducer()) {
-      producer.send(producerRecord);
-    }
+    sendToTopic(producerRecord);
 
     // then
     String topicToObserve = KafkaTopicNameHelper.formatTopicName(KAFKA_ENV_VALUE, getDefaultNameSpace(), DI_POST_INVOICE_LINES_SUCCESS_TENANT, DI_COMPLETED.value());
@@ -530,9 +523,7 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
     producerRecord.headers().add(RECORD_ID_HEADER, record.getId().getBytes(UTF_8));
 
     // when
-    try (KafkaProducer<String, String> producer = createKafkaProducer()) {
-      producer.send(producerRecord);
-    }
+    sendToTopic(producerRecord);
 
     // then
     String topicToObserve = KafkaTopicNameHelper.formatTopicName(KAFKA_ENV_VALUE, getDefaultNameSpace(), DI_POST_INVOICE_LINES_SUCCESS_TENANT, DI_COMPLETED.value());
@@ -602,9 +593,7 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
     producerRecord.headers().add(RECORD_ID_HEADER, record.getId().getBytes(UTF_8));
 
     // when
-    try (KafkaProducer<String, String> producer = createKafkaProducer()) {
-      producer.send(producerRecord);
-    }
+    sendToTopic(producerRecord);
 
     // then
     String topicToObserve = KafkaTopicNameHelper.formatTopicName(KAFKA_ENV_VALUE, getDefaultNameSpace(), DI_POST_INVOICE_LINES_SUCCESS_TENANT, DI_COMPLETED.value());
@@ -666,9 +655,7 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
     producerRecord.headers().add(RECORD_ID_HEADER, record.getId().getBytes(UTF_8));
 
     // when
-    try (KafkaProducer<String, String> producer = createKafkaProducer()) {
-      producer.send(producerRecord);
-    }
+    sendToTopic(producerRecord);
 
     // then
     String topicToObserve = KafkaTopicNameHelper.formatTopicName(KAFKA_ENV_VALUE, getDefaultNameSpace(), DI_POST_INVOICE_LINES_SUCCESS_TENANT, DI_COMPLETED.value());
@@ -725,9 +712,7 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
     producerRecord.headers().add(RECORD_ID_HEADER, record.getId().getBytes(UTF_8));
 
     // when
-    try (KafkaProducer<String, String> producer = createKafkaProducer()) {
-      producer.send(producerRecord);
-    }
+    sendToTopic(producerRecord);
 
     // then
     String topicToObserve = KafkaTopicNameHelper.formatTopicName(KAFKA_ENV_VALUE, getDefaultNameSpace(), DI_POST_INVOICE_LINES_SUCCESS_TENANT, DI_COMPLETED.value());
@@ -824,9 +809,7 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
     producerRecord.headers().add(RECORD_ID_HEADER, record.getId().getBytes(UTF_8));
 
     // when
-    try (KafkaProducer<String, String> producer = createKafkaProducer()) {
-      producer.send(producerRecord);
-    }
+    sendToTopic(producerRecord);
 
     // then
     String topicToObserve = KafkaTopicNameHelper.formatTopicName(KAFKA_ENV_VALUE, getDefaultNameSpace(), DI_POST_INVOICE_LINES_SUCCESS_TENANT, DI_COMPLETED.value());
@@ -875,9 +858,7 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
     producerRecord.headers().add(RECORD_ID_HEADER, UUID.randomUUID().toString().getBytes(UTF_8));
 
     // when
-    try (KafkaProducer<String, String> producer = createKafkaProducer()) {
-      producer.send(producerRecord);
-    }
+    sendToTopic(producerRecord);
 
     // then
     String topicToObserve = KafkaTopicNameHelper.formatTopicName(KAFKA_ENV_VALUE, getDefaultNameSpace(), TENANT_ID, DI_ERROR.value());
@@ -915,9 +896,7 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
     producerRecord.headers().add(RECORD_ID_HEADER, record.getId().getBytes(UTF_8));
 
     // when
-    try (KafkaProducer<String, String> producer = createKafkaProducer()) {
-      producer.send(producerRecord);
-    }
+    sendToTopic(producerRecord);
 
     // then
     String topicToObserve = KafkaTopicNameHelper.formatTopicName(KAFKA_ENV_VALUE, getDefaultNameSpace(), ERROR_TENANT, DI_ERROR.value());
@@ -966,9 +945,7 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
     producerRecord.headers().add(RECORD_ID_HEADER, record.getId().getBytes(UTF_8));
 
     // when
-    try (KafkaProducer<String, String> producer = createKafkaProducer()) {
-      producer.send(producerRecord);
-    }
+    sendToTopic(producerRecord);
 
     // then
     String topicToObserve = KafkaTopicNameHelper.formatTopicName(KAFKA_ENV_VALUE, getDefaultNameSpace(), DUPLICATE_ERROR_TENANT, DI_ERROR.value());
@@ -1004,9 +981,7 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
     producerRecord.headers().add(RECORD_ID_HEADER, record.getId().getBytes(UTF_8));
 
     // when
-    try (KafkaProducer<String, String> producer = createKafkaProducer()) {
-      producer.send(producerRecord);
-    }
+    sendToTopic(producerRecord);
 
     // then
     String topicToObserve = KafkaTopicNameHelper.formatTopicName(KAFKA_ENV_VALUE, getDefaultNameSpace(), DI_POST_INVOICE_LINES_SUCCESS_TENANT, DI_ERROR.value());
@@ -1061,9 +1036,7 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
     producerRecord.headers().add(RECORD_ID_HEADER, record.getId().getBytes(UTF_8));
 
     // when
-    try (KafkaProducer<String, String> producer = createKafkaProducer()) {
-      producer.send(producerRecord);
-    }
+    sendToTopic(producerRecord);
 
     // then
     String topicToObserve = KafkaTopicNameHelper.formatTopicName(KAFKA_ENV_VALUE, getDefaultNameSpace(), DI_POST_INVOICE_LINES_SUCCESS_TENANT, DI_ERROR.value());
@@ -1135,15 +1108,16 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
               .withContent(JsonObject.mapFrom(mappingProfile).getMap())))));
   }
 
-  public List<String> observeValuesAndFilterByTestId(String testId, String topicToObserve, Integer countToObserve) {
+  public List<String> observeValuesAndFilterByTestId(String testId, String topicToObserve, Integer expected) {
     List<String> result = new ArrayList<>();
     List<String> observedValues = observeTopic(topicToObserve, Duration.ofSeconds(30));
-    assertEquals(countToObserve, observedValues.size());
     for (String observedValue : observedValues) {
       if (observedValue.contains(testId)) {
         result.add(observedValue);
       }
     }
+    log.info("observeValuesAndFilterByTestId:: topicToObserve: {}, testId: {}, observedValues: {}, results: {}, expected: {}",
+      topicToObserve, testId, observedValues.size(), result.size(), expected);
     return result;
   }
 

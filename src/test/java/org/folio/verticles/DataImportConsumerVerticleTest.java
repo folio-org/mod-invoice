@@ -4,7 +4,7 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.folio.ActionProfile.Action.CREATE;
 import static org.folio.ApiTestSuite.KAFKA_ENV_VALUE;
 import static org.folio.ApiTestSuite.observeTopic;
-import static org.folio.ApiTestSuite.createKafkaProducer;
+import static org.folio.ApiTestSuite.sendToTopic;
 import static org.folio.DataImportEventTypes.DI_COMPLETED;
 import static org.folio.DataImportEventTypes.DI_INCOMING_EDIFACT_RECORD_PARSED;
 import static org.folio.DataImportEventTypes.DI_ERROR;
@@ -31,7 +31,6 @@ import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
-import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.folio.ActionProfile;
 import org.folio.ApiTestSuite;
@@ -124,9 +123,7 @@ public class DataImportConsumerVerticleTest extends ApiTestBase {
     producerRecord.headers().add(RECORD_ID_HEADER, recordId.getBytes(UTF_8));
 
     // when
-    try (KafkaProducer<String, String> producer = createKafkaProducer()) {
-      producer.send(producerRecord);
-    }
+    sendToTopic(producerRecord);
 
     // then
     String topicToObserve = KafkaTopicNameHelper.formatTopicName(KAFKA_ENV_VALUE, getDefaultNameSpace(), TENANT_ID, DI_COMPLETED.value());
@@ -163,9 +160,7 @@ public class DataImportConsumerVerticleTest extends ApiTestBase {
     ProducerRecord<String, String> producerRecord = new ProducerRecord<>(topic, "test-key", Json.encode(event));
 
     // when
-    try (KafkaProducer<String, String> producer = createKafkaProducer()) {
-      producer.send(producerRecord);
-    }
+    sendToTopic(producerRecord);
 
     // then
     String topicToObserve = KafkaTopicNameHelper.formatTopicName(KAFKA_ENV_VALUE, getDefaultNameSpace(), TENANT_ID, DI_ERROR.value());

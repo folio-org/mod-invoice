@@ -21,6 +21,7 @@ import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
+import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.folio.builders.InvoiceWorkFlowDataHolderBuilderTest;
@@ -169,6 +170,12 @@ public class ApiTestSuite {
     consumerProperties.put(ConsumerConfig.GROUP_ID_CONFIG, "test-group");
     consumerProperties.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
     return new KafkaConsumer<>(consumerProperties);
+  }
+
+  public static void sendToTopic(ProducerRecord<String, String> producerRecord) {
+    try (KafkaProducer<String, String> producer = createKafkaProducer()) {
+      producer.send(producerRecord);
+    }
   }
 
   public static List<String> observeTopic(String topic, Duration duration) {
