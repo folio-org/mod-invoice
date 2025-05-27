@@ -16,6 +16,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
+import lombok.SneakyThrows;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
@@ -172,9 +173,10 @@ public class ApiTestSuite {
     return new KafkaConsumer<>(consumerProperties);
   }
 
+  @SneakyThrows
   public static void sendToTopic(ProducerRecord<String, String> producerRecord) {
     try (KafkaProducer<String, String> producer = createKafkaProducer()) {
-      producer.send(producerRecord);
+      producer.send(producerRecord).get(10, TimeUnit.SECONDS);
     }
   }
 
