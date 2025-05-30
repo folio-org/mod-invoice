@@ -281,9 +281,9 @@ public class ApiTestBase {
           } else {
             JsonObject response = JsonObject.mapFrom(result.getEntity());
             if (response != null) {
-              fail(format("Failed to make post tenant. Received status code: {}, response: {}", result.getStatus(), response.encodePrettily()));
+              fail(format("Failed to make post tenant. Received status code: %s, response: %s", result.getStatus(), response.encodePrettily()));
             } else {
-              fail(format("Failed to make post tenant. Received status code: {}", result.getStatus()));
+              fail(format("Failed to make post tenant. Received status code: %s", result.getStatus()));
             }
           }
         });
