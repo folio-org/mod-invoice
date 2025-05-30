@@ -198,7 +198,8 @@ public class ApiTestBase {
         PostgresClient.setConfigFilePath(postgresConfigPath);
       }
       case "embedded" -> {
-        postgresSQLContainer = new PostgreSQLContainer<>(POSTGRES_IMAGE);
+        postgresSQLContainer = new PostgreSQLContainer<>(POSTGRES_IMAGE)
+          .withStartupAttempts(3);
         postgresSQLContainer.start();
         Envs.setEnv(
           postgresSQLContainer.getHost(),
