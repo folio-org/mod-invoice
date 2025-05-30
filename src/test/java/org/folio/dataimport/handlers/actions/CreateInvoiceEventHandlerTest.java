@@ -1110,14 +1110,28 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
 
   public List<String> observeValuesAndFilterByTestId(String testId, String topicToObserve, Integer expected) {
     List<String> result = new ArrayList<>();
-    List<String> observedValues = observeTopic(topicToObserve, Duration.ofSeconds(30));
-    for (String observedValue : observedValues) {
-      if (observedValue.contains(testId)) {
-        result.add(observedValue);
+    // Use polling with retries
+    int maxRetries = 10;
+    int retryCount = 0;
+    while (retryCount < maxRetries && result.size() < expected) {
+      List<String> observedValues = observeTopic(topicToObserve, Duration.ofSeconds(30));
+      for (String observedValue : observedValues) {
+        if (observedValue.contains(testId)) {
+          result.add(observedValue);
+        }
+      }
+      if (result.size() < expected) {
+        try {
+          Thread.sleep(1000); // Wait a bit before retrying
+          retryCount++;
+        } catch (InterruptedException e) {
+          Thread.currentThread().interrupt();
+          break;
+        }
       }
     }
     log.info("observeValuesAndFilterByTestId:: topicToObserve: {}, testId: {}, observedValues: {}, results: {}, expected: {}",
-      topicToObserve, testId, observedValues.size(), result.size(), expected);
+      topicToObserve, testId, result.size(), result.size(), expected);
     return result;
   }
 

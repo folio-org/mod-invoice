@@ -176,7 +176,7 @@ public class ApiTestSuite {
   @SneakyThrows
   public static void sendToTopic(ProducerRecord<String, String> producerRecord) {
     try (KafkaProducer<String, String> producer = createKafkaProducer()) {
-      producer.send(producerRecord).get(10, TimeUnit.SECONDS);
+      producer.send(producerRecord);
     }
   }
 
