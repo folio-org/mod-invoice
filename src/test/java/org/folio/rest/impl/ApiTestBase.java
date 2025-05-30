@@ -1,6 +1,5 @@
 package org.folio.rest.impl;
 
-import static java.lang.String.format;
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 import static javax.ws.rs.core.MediaType.APPLICATION_XML;
 import static org.folio.ApiTestSuite.mockPort;
@@ -9,15 +8,12 @@ import static org.folio.rest.RestVerticle.OKAPI_HEADER_TENANT;
 import static org.folio.rest.RestVerticle.OKAPI_HEADER_TOKEN;
 import static org.folio.rest.RestVerticle.OKAPI_USERID_HEADER;
 import static org.folio.rest.jaxrs.model.FundDistribution.DistributionType.PERCENTAGE;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.api.Assertions.fail;
 
 import io.restassured.RestAssured;
 import io.restassured.http.Header;
 import io.restassured.http.Headers;
 import io.restassured.response.Response;
 import io.vertx.core.DeploymentOptions;
-import io.vertx.core.Future;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
@@ -29,9 +25,7 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Stream;
@@ -41,6 +35,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.ApiTestSuite;
 import org.folio.rest.RestVerticle;
+import org.folio.rest.client.TenantClient;
 import org.folio.rest.jaxrs.model.Adjustment;
 import org.folio.rest.jaxrs.model.BatchVoucher;
 import org.folio.rest.jaxrs.model.FundDistribution;
@@ -109,9 +104,7 @@ public class ApiTestBase {
     "invoices.fiscal-year.update.execute"
   );
 
-  public static final JsonArray permissionsArray = new JsonArray(permissionsList);
   public static final String permissionsJsonArrayString = new JsonArray(permissionsList).encode();
-  public static final Header X_OKAPI_PERMISSION = new Header(UserPermissionsUtil.OKAPI_HEADER_PERMISSIONS, permissionsJsonArrayString);
 
   public static final List<String> permissionsWithoutApproveAndPayList = Arrays.asList(
     "invoice.invoices.item.put",
@@ -132,7 +125,6 @@ public class ApiTestBase {
     "invoices.fiscal-year.update.execute"
   );
 
-  public static final JsonArray permissionsWithoutPaidArray = new JsonArray(permissionsWithoutPaidList);
   public static final String permissionsWithoutPaidJsonArrayString = new JsonArray(permissionsWithoutPaidList).encode();
   public static final Header X_OKAPI_PERMISSION_WITHOUT_PAY = new Header(UserPermissionsUtil.OKAPI_HEADER_PERMISSIONS, permissionsWithoutPaidJsonArrayString);
 
@@ -146,8 +138,6 @@ public class ApiTestBase {
   private static String useExternalDatabase;
   protected static Vertx vertx;
   protected static final String TENANT_ID = "diku";
-
-  public static final String OKAPI_URL_ENV = "OKAPI_URL";
 
   @BeforeAll
   public static void before(final VertxTestContext context) throws Exception {
@@ -223,71 +213,39 @@ public class ApiTestBase {
     }
   }
 
-  public static String constructModuleName() {
-    return ModuleName.getModuleName().replace("_", "-") + "-" + ModuleName.getModuleVersion();
-  }
-
-  private static void deployVerticle(final VertxTestContext testContext) {
+  private static void deployVerticle(VertxTestContext context) {
     port = NetworkUtils.nextFreePort();
     String okapiUrl = "http://localhost:" + port;
-    final DeploymentOptions options = new DeploymentOptions()
-      .setConfig(new JsonObject()
-        .put(HTTP_PORT, port));
-    vertx.deployVerticle(RestVerticle.class.getName(), options).onComplete(deployVerticleAr -> {
-      if (deployVerticleAr.failed()) {
-        testContext.failNow(deployVerticleAr.cause());
-        return;
+    DeploymentOptions options = new DeploymentOptions()
+      .setConfig(new JsonObject().put(HTTP_PORT, port));
+
+    TenantClient tenantClient = new TenantClient(okapiUrl, TENANT_ID, TOKEN);
+    vertx.deployVerticle(RestVerticle.class.getName(), options, res -> {
+      if (res.failed()) {
+        context.failNow(res.cause());
+      } else {
+        postTenant(context, tenantClient);
       }
+    });
+  }
 
-      TenantAPI tenantAPI = new TenantAPI();
-      TenantAttributes tenantAttributes = new TenantAttributes();
-      tenantAttributes.setModuleTo(constructModuleName());
-      Map<String, String> okapiHeaders = new HashMap<>();
-      okapiHeaders.put(OKAPI_HEADER_TOKEN, TOKEN);
-      okapiHeaders.put(OKAPI_URL_ENV, okapiUrl);
-      okapiHeaders.put(OKAPI_HEADER_TENANT, TENANT_ID);
-
-      Future<javax.ws.rs.core.Response> future = Future.future(promise ->
-        tenantAPI.postTenant(tenantAttributes, okapiHeaders, promise, vertx.getOrCreateContext()));
-
-      future.onComplete(postResult -> {
-        if (postResult.failed()) {
-          testContext.failNow(postResult.cause());
-          return;
-        }
-        testContext.verify(() -> {
-          javax.ws.rs.core.Response result = postResult.result();
-          if (result.getStatus() == 204) {
-            testContext.completeNow();
-          } else if (result.getStatus() == 201) {
-            Future<javax.ws.rs.core.Response> future2 =
-              Future.future(promise -> tenantAPI.getTenantByOperationId(((TenantJob)result.getEntity()).getId(), 60000,
-                okapiHeaders, promise, vertx.getOrCreateContext()));
-
-            future2.onComplete(getResult -> testContext.verify(() -> {
-              if (getResult.failed()) {
-                testContext.failNow(getResult.cause());
-                return;
-              }
-              TenantJob tenantJob = (TenantJob) getResult.result().getEntity();
-              assertTrue(tenantJob.getComplete(), "Tenant job should be complete.");
-
-              String error = tenantJob.getError();
-              if (error != null) {
-                assertTrue(error.contains("EventDescriptor was not registered for eventType"), "Error message should contain expected text.");
-              }
-              testContext.completeNow();
-            }));
-          } else {
-            JsonObject response = JsonObject.mapFrom(result.getEntity());
-            if (response != null) {
-              fail(format("Failed to make post tenant. Received status code: %s, response: %s", result.getStatus(), response.encodePrettily()));
-            } else {
-              fail(format("Failed to make post tenant. Received status code: %s", result.getStatus()));
-            }
-          }
+  private static void postTenant(VertxTestContext context, TenantClient tenantClient) {
+    TenantAttributes tenantAttributes = new TenantAttributes();
+    tenantClient.postTenant(tenantAttributes).onComplete(res -> {
+      if (res.succeeded() && res.result().statusCode() == 201) {
+        String operationId = res.result().bodyAsJson(TenantJob.class).getId();
+        tenantClient.getTenantByOperationId(operationId, 60000)
+          .onComplete(context.succeeding(res2 -> context.verify(() -> {
+            Assertions.assertTrue(res2.bodyAsJson(TenantJob.class).getComplete());
+            context.completeNow();
+          })));
+      } else {
+        context.verify(() -> {
+          Assertions.assertEquals("Failed to make post tenant. Received status code 400",
+            res.result().bodyAsString());
+          context.completeNow();
         });
-      });
+      }
     });
   }
 
