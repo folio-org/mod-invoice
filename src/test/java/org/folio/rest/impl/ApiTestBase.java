@@ -1,5 +1,6 @@
 package org.folio.rest.impl;
 
+import static java.lang.String.format;
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 import static javax.ws.rs.core.MediaType.APPLICATION_XML;
 import static org.folio.ApiTestSuite.mockPort;
@@ -176,6 +177,7 @@ public class ApiTestBase {
     if (runningOnOwn) {
       if ("embedded".equals(useExternalDatabase)) {
         PostgresClient.stopPostgresTester();
+        postgresSQLContainer.stop();
       }
       logger.info("Running test on own, un-initialising suite manually");
       ApiTestSuite.after(context);
@@ -277,7 +279,12 @@ public class ApiTestBase {
               testContext.completeNow();
             }));
           } else {
-            fail("Failed to make post tenant. Received status code " + result.getStatus());
+            JsonObject response = JsonObject.mapFrom(result.getEntity());
+            if (response != null) {
+              fail(format("Failed to make post tenant. Received status code: {}, response: {}", result.getStatus(), response.encodePrettily()));
+            } else {
+              fail(format("Failed to make post tenant. Received status code: {}", result.getStatus()));
+            }
           }
         });
       });
