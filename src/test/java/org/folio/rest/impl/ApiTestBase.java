@@ -58,6 +58,7 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.testcontainers.containers.PostgreSQLContainer;
+import org.testcontainers.containers.wait.strategy.Wait;
 
 public class ApiTestBase {
 
@@ -86,9 +87,10 @@ public class ApiTestBase {
   public static final String BASE_MOCK_DATA_PATH = "mockdata/";
   static final String INVOICE_LINE_NUMBER_VALUE = "1";
   static final String VOUCHER_NUMBER_VALUE = "1";
-  static final String LANG_PARAM = "lang";
   static final String ID_FOR_INTERNAL_SERVER_ERROR = "168f8a86-d26c-406e-813f-c7527f241ac3";
   static final String ID_FOR_INTERNAL_SERVER_ERROR_PUT = "bad500bb-bbbb-500b-bbbb-bbbbbbbbbbbb";
+  static final int READY_MESSAGE_TIMES = 2;
+  static final int STARTUP_ATTEMPTS = 3;
 
   public static final String MIN_INVOICE_ID = UUID.randomUUID().toString();
 
@@ -199,7 +201,8 @@ public class ApiTestBase {
       }
       case "embedded" -> {
         postgresSQLContainer = new PostgreSQLContainer<>(POSTGRES_IMAGE)
-          .withStartupAttempts(3);
+          .withStartupAttempts(STARTUP_ATTEMPTS)
+          .waitingFor(Wait.forLogMessage(".*database system is ready to accept connections.*\\n", READY_MESSAGE_TIMES));
         postgresSQLContainer.start();
         Envs.setEnv(
           postgresSQLContainer.getHost(),

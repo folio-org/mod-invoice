@@ -161,7 +161,7 @@ public class FtpUploadService implements FileExchangeService {
   @Override
   public Future<Void> testConnection(String username, String password) {
     return login(username, password)
-      .onSuccess(this::disconnect)
+      .onComplete(res -> disconnect(res.result()))
       .mapEmpty();
   }
 
