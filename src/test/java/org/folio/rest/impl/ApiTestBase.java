@@ -8,12 +8,15 @@ import static org.folio.rest.RestVerticle.OKAPI_HEADER_TENANT;
 import static org.folio.rest.RestVerticle.OKAPI_HEADER_TOKEN;
 import static org.folio.rest.RestVerticle.OKAPI_USERID_HEADER;
 import static org.folio.rest.jaxrs.model.FundDistribution.DistributionType.PERCENTAGE;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.is;
 
 import io.restassured.RestAssured;
 import io.restassured.http.Header;
 import io.restassured.http.Headers;
 import io.restassured.response.Response;
 import io.vertx.core.DeploymentOptions;
+import io.vertx.core.Future;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
@@ -46,16 +49,13 @@ import org.folio.rest.jaxrs.model.TenantJob;
 import org.folio.rest.persist.Criteria.Criterion;
 import org.folio.rest.persist.PostgresClient;
 import org.folio.rest.tools.utils.Envs;
-import org.folio.rest.tools.utils.ModuleName;
 import org.folio.rest.tools.utils.NetworkUtils;
 import org.folio.utils.UserPermissionsUtil;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
-import org.testcontainers.containers.Network;
 import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.containers.wait.strategy.Wait;
 
 public class ApiTestBase {
 
@@ -149,7 +149,9 @@ public class ApiTestBase {
     }
     vertx = Vertx.vertx();
     runDatabase();
-    deployVerticle(context);
+    deployVerticle()
+    .compose(x -> postTenant())
+    .onComplete(context.succeedingThenComplete());
   }
 
   @BeforeEach
@@ -217,40 +219,29 @@ public class ApiTestBase {
     }
   }
 
-  private static void deployVerticle(VertxTestContext context) {
+  private static Future<String> deployVerticle() {
     port = NetworkUtils.nextFreePort();
-    String okapiUrl = "http://localhost:" + port;
     DeploymentOptions options = new DeploymentOptions()
       .setConfig(new JsonObject().put(HTTP_PORT, port));
-
-    TenantClient tenantClient = new TenantClient(okapiUrl, TENANT_ID, TOKEN);
-    vertx.deployVerticle(RestVerticle.class.getName(), options, res -> {
-      if (res.failed()) {
-        context.failNow(res.cause());
-      } else {
-        postTenant(context, tenantClient);
-      }
-    });
+    return vertx.deployVerticle(RestVerticle.class.getName(), options);
   }
 
-  private static void postTenant(VertxTestContext context, TenantClient tenantClient) {
+  private static Future<Void> postTenant() {
+    String okapiUrl = "http://localhost:" + port;
+    TenantClient tenantClient = new TenantClient(okapiUrl, TENANT_ID, TOKEN);
     TenantAttributes tenantAttributes = new TenantAttributes();
-    tenantClient.postTenant(tenantAttributes).onComplete(res -> {
-      if (res.succeeded() && res.result().statusCode() == 201) {
-        String operationId = res.result().bodyAsJson(TenantJob.class).getId();
-        tenantClient.getTenantByOperationId(operationId, 60000)
-          .onComplete(context.succeeding(res2 -> context.verify(() -> {
-            Assertions.assertTrue(res2.bodyAsJson(TenantJob.class).getComplete());
-            context.completeNow();
-          })));
-      } else {
-        context.verify(() -> {
-          Assertions.assertEquals("Failed to make post tenant. Received status code 400",
-            res.result().bodyAsString());
-          context.completeNow();
+    return tenantClient.postTenant(tenantAttributes)
+        .compose(res -> {
+          assertThat("POST " + okapiUrl + " returns " + res.bodyAsString(),
+              res.statusCode(), is(201));
+          String operationId = res.bodyAsJson(TenantJob.class).getId();
+          return tenantClient.getTenantByOperationId(operationId, 60000);
+        })
+        .map(res -> {
+          assertThat("GET /_/tenant/{id} returns " + res.bodyAsString(),
+              res.bodyAsJson(TenantJob.class).getComplete(), is(true));
+          return null;
         });
-      }
-    });
   }
 
   private static void clearTable(VertxTestContext context) {
