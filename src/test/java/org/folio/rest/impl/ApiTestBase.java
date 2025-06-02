@@ -34,6 +34,7 @@ import org.apache.commons.io.IOUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.ApiTestSuite;
+import org.folio.postgres.testing.PostgresTesterContainer;
 import org.folio.rest.RestVerticle;
 import org.folio.rest.client.TenantClient;
 import org.folio.rest.jaxrs.model.Adjustment;
@@ -45,17 +46,12 @@ import org.folio.rest.jaxrs.model.TenantAttributes;
 import org.folio.rest.jaxrs.model.TenantJob;
 import org.folio.rest.persist.Criteria.Criterion;
 import org.folio.rest.persist.PostgresClient;
-import org.folio.rest.tools.utils.Envs;
-import org.folio.rest.tools.utils.ModuleName;
 import org.folio.rest.tools.utils.NetworkUtils;
 import org.folio.utils.UserPermissionsUtil;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
-import org.testcontainers.containers.Network;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.containers.wait.strategy.Wait;
 
 public class ApiTestBase {
 
@@ -86,7 +82,6 @@ public class ApiTestBase {
   static final String VOUCHER_NUMBER_VALUE = "1";
   static final String ID_FOR_INTERNAL_SERVER_ERROR = "168f8a86-d26c-406e-813f-c7527f241ac3";
   static final String ID_FOR_INTERNAL_SERVER_ERROR_PUT = "bad500bb-bbbb-500b-bbbb-bbbbbbbbbbbb";
-  static final int STARTUP_ATTEMPTS = 3;
 
   public static final String MIN_INVOICE_ID = UUID.randomUUID().toString();
 
@@ -128,14 +123,10 @@ public class ApiTestBase {
   public static final String permissionsWithoutPaidJsonArrayString = new JsonArray(permissionsWithoutPaidList).encode();
   public static final Header X_OKAPI_PERMISSION_WITHOUT_PAY = new Header(UserPermissionsUtil.OKAPI_HEADER_PERMISSIONS, permissionsWithoutPaidJsonArrayString);
 
-  public static final String POSTGRES_IMAGE = "postgres:16-alpine";
-  private static PostgreSQLContainer<?> postgresSQLContainer;
-
   private static final String INVOICES_TABLE = "records_invoices";
   protected static final String TOKEN = "token";
   private static final String HTTP_PORT = "http.port";
   private static int port;
-  private static String useExternalDatabase;
   protected static Vertx vertx;
   protected static final String TENANT_ID = "diku";
 
@@ -164,11 +155,8 @@ public class ApiTestBase {
 
   @AfterAll
   public static void after(final VertxTestContext context) {
+    PostgresClient.stopPostgresTester();
     if (runningOnOwn) {
-      if ("embedded".equals(useExternalDatabase)) {
-        PostgresClient.stopPostgresTester();
-        postgresSQLContainer.stop();
-      }
       logger.info("Running test on own, un-initialising suite manually");
       ApiTestSuite.after(context);
     } else {
@@ -176,45 +164,9 @@ public class ApiTestBase {
     }
   }
 
-  private static void runDatabase() throws Exception {
-    PostgresClient.stopPostgresTester();
-    PostgresClient.closeAllClients();
-    useExternalDatabase = System.getProperty(
-      "org.folio.invoice.test.database",
-      "embedded");
-
-    try {
-      switch (useExternalDatabase) {
-        case "environment" -> System.out.println("Using environment settings");
-        case "external" -> {
-          String postgresConfigPath = System.getProperty(
-            "org.folio.invoice.test.config",
-            "/postgres-conf-local.json");
-          PostgresClient.setConfigFilePath(postgresConfigPath);
-        }
-        case "embedded" -> {
-          postgresSQLContainer = new PostgreSQLContainer<>(POSTGRES_IMAGE)
-            .withStartupAttempts(STARTUP_ATTEMPTS);
-          postgresSQLContainer.start();
-          Envs.setEnv(
-            postgresSQLContainer.getHost(),
-            postgresSQLContainer.getFirstMappedPort(),
-            postgresSQLContainer.getUsername(),
-            postgresSQLContainer.getPassword(),
-            postgresSQLContainer.getDatabaseName()
-          );
-        }
-        default -> {
-          String message = "No understood database choice made." +
-            "Please set org.folio.invoice.test.database" +
-            "to 'external', 'environment' or 'embedded'";
-          throw new Exception(message);
-        }
-      }
-    } catch (Exception e) {
-      logger.error("Failed to start Postgres test-container", e);
-      throw e;
-    }
+  private static void runDatabase() {
+    logger.info("Start container database");
+    PostgresClient.setPostgresTester(new PostgresTesterContainer());
   }
 
   private static void deployVerticle(VertxTestContext context) {
