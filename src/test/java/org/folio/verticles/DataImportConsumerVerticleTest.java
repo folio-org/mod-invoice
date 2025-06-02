@@ -3,7 +3,8 @@ package org.folio.verticles;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.folio.ActionProfile.Action.CREATE;
 import static org.folio.ApiTestSuite.KAFKA_ENV_VALUE;
-import static org.folio.ApiTestSuite.kafkaCluster;
+import static org.folio.ApiTestSuite.observeTopic;
+import static org.folio.ApiTestSuite.sendToTopic;
 import static org.folio.DataImportEventTypes.DI_COMPLETED;
 import static org.folio.DataImportEventTypes.DI_INCOMING_EDIFACT_RECORD_PARSED;
 import static org.folio.DataImportEventTypes.DI_ERROR;
@@ -16,19 +17,21 @@ import static org.folio.rest.jaxrs.model.ProfileType.ACTION_PROFILE;
 import static org.folio.rest.jaxrs.model.ProfileType.JOB_PROFILE;
 import static org.folio.rest.jaxrs.model.ProfileType.MAPPING_PROFILE;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import io.vertx.junit5.VertxExtension;
+import java.time.Duration;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.TimeUnit;
 
+import org.apache.kafka.clients.producer.ProducerRecord;
 import org.folio.ActionProfile;
 import org.folio.ApiTestSuite;
 import org.folio.DataImportEventPayload;
@@ -46,9 +49,6 @@ import org.junit.jupiter.api.Test;
 
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
-import net.mguenther.kafka.junit.KeyValue;
-import net.mguenther.kafka.junit.ObserveKeyValues;
-import net.mguenther.kafka.junit.SendKeyValues;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 @ExtendWith(VertxExtension.class)
@@ -119,24 +119,25 @@ public class DataImportConsumerVerticleTest extends ApiTestBase {
     String recordId = UUID.randomUUID().toString();
     String topic = KafkaTopicNameHelper.formatTopicName(KAFKA_ENV_VALUE, getDefaultNameSpace(), TENANT_ID, dataImportEventPayload.getEventType());
     Event event = new Event().withEventPayload(Json.encode(dataImportEventPayload));
-    KeyValue<String, String> record = new KeyValue<>("test-key", Json.encode(event));
-    record.addHeader(RECORD_ID_HEADER, recordId, UTF_8);
-    SendKeyValues<String, String> request = SendKeyValues.to(topic, Collections.singletonList(record)).useDefaults();
+    ProducerRecord<String, String>  producerRecord = new ProducerRecord<>(topic, "test-key", Json.encode(event));
+    producerRecord.headers().add(RECORD_ID_HEADER, recordId.getBytes(UTF_8));
 
     // when
-    kafkaCluster.send(request);
+    sendToTopic(producerRecord);
 
     // then
     String topicToObserve = KafkaTopicNameHelper.formatTopicName(KAFKA_ENV_VALUE, getDefaultNameSpace(), TENANT_ID, DI_COMPLETED.value());
-    List<KeyValue<String, String>> observedRecords = kafkaCluster.observe(ObserveKeyValues.on(topicToObserve, 1)
-      .observeFor(40, TimeUnit.SECONDS)
-      .build());
+    List<String> observedRecords = observeTopic(topicToObserve, Duration.ofSeconds(40));
+    assertFalse(observedRecords.isEmpty());
+    assertEquals(1, observedRecords.size());
 
-    assertEquals(recordId, new String(observedRecords.get(0).getHeaders().lastHeader(RECORD_ID_HEADER).value(), UTF_8));
+    Event observedRecord = new JsonObject(observedRecords.getFirst()).mapTo(Event.class);
+    DataImportEventPayload consumedEventPayload = new JsonObject(observedRecord.getEventPayload()).mapTo(DataImportEventPayload.class);
+    assertEquals(recordId, consumedEventPayload.getContext().get(RECORD_ID_HEADER));
   }
 
   @Test
-  public void shouldPublishDiErrorEventWhenProcessingCoreHandlerFailed() throws InterruptedException {
+  public void shouldPublishDiErrorEventWhenProcessingCoreHandlerFailed() {
     // given
     EventHandler mockedEventHandler = mock(EventHandler.class);
     when(mockedEventHandler.isEligible(any(DataImportEventPayload.class))).thenReturn(true);
@@ -156,17 +157,16 @@ public class DataImportConsumerVerticleTest extends ApiTestBase {
 
     String topic = KafkaTopicNameHelper.formatTopicName(KAFKA_ENV_VALUE, getDefaultNameSpace(), TENANT_ID, dataImportEventPayload.getEventType());
     Event event = new Event().withEventPayload(Json.encode(dataImportEventPayload));
-    KeyValue<String, String> record = new KeyValue<>("test-key", Json.encode(event));
-    SendKeyValues<String, String> request = SendKeyValues.to(topic, Collections.singletonList(record)).useDefaults();
+    ProducerRecord<String, String> producerRecord = new ProducerRecord<>(topic, "test-key", Json.encode(event));
 
     // when
-    kafkaCluster.send(request);
+    sendToTopic(producerRecord);
 
     // then
     String topicToObserve = KafkaTopicNameHelper.formatTopicName(KAFKA_ENV_VALUE, getDefaultNameSpace(), TENANT_ID, DI_ERROR.value());
-    kafkaCluster.observeValues(ObserveKeyValues.on(topicToObserve, 1)
-      .observeFor(30, TimeUnit.SECONDS)
-      .build());
+    List<String> observedRecords = observeTopic(topicToObserve, Duration.ofSeconds(30));
+    assertFalse(observedRecords.isEmpty());
+    assertEquals(1, observedRecords.size());
   }
 
 }

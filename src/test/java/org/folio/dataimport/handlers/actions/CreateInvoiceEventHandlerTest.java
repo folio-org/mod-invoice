@@ -4,7 +4,8 @@ import static io.vertx.core.Future.succeededFuture;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.folio.ActionProfile.Action.CREATE;
 import static org.folio.ApiTestSuite.KAFKA_ENV_VALUE;
-import static org.folio.ApiTestSuite.kafkaCluster;
+import static org.folio.ApiTestSuite.observeTopic;
+import static org.folio.ApiTestSuite.sendToTopic;
 import static org.folio.DataImportEventTypes.DI_COMPLETED;
 import static org.folio.DataImportEventTypes.DI_ERROR;
 import static org.folio.DataImportEventTypes.DI_INCOMING_EDIFACT_RECORD_PARSED;
@@ -50,19 +51,16 @@ import io.vertx.core.json.jackson.DatabindCodec;
 import io.vertx.junit5.VertxExtension;
 import io.vertx.junit5.VertxTestContext;
 import java.io.IOException;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.TimeUnit;
 import lombok.SneakyThrows;
-import net.mguenther.kafka.junit.KeyValue;
-import net.mguenther.kafka.junit.ObserveKeyValues;
-import net.mguenther.kafka.junit.ReadKeyValues;
-import net.mguenther.kafka.junit.SendKeyValues;
-import org.apache.commons.collections4.CollectionUtils;
+import lombok.extern.log4j.Log4j2;
+import org.apache.kafka.clients.producer.ProducerRecord;
 import org.folio.ActionProfile;
 import org.folio.ApiTestSuite;
 import org.folio.DataImportEventPayload;
@@ -97,6 +95,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mockito;
 
+@Log4j2
 @ExtendWith(VertxExtension.class)
 public class CreateInvoiceEventHandlerTest extends ApiTestBase {
 
@@ -107,7 +106,6 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
   private static final String TOKEN = "test-token";
   private static final String PO_LINE_ID_1 = "0000edd1-b463-41ba-bf64-1b1d9f9d0001";
   private static final String PO_LINE_ID_3 = "0000edd1-b463-41ba-bf64-1b1d9f9d0003";
-  private static final String GROUP_ID = "test-consumers-group";
   private static final String JOB_PROFILE_SNAPSHOTS_MOCK = "jobProfileSnapshots";
   private static final String JOB_PROFILE_SNAPSHOT_ID_KEY = "JOB_PROFILE_SNAPSHOT_ID";
   private static final String ERROR_MSG_KEY = "ERROR";
@@ -274,7 +272,7 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
   }
 
   @Test
-  public void shouldCreateInvoiceAndPublishDiCompletedEvent() throws InterruptedException {
+  public void shouldCreateInvoiceAndPublishDiCompletedEvent() {
     // given
     Record record = new Record().withParsedRecord(new ParsedRecord().withContent(edifactParsedContent)).withId(RECORD_ID);
     ProfileSnapshotWrapper profileSnapshotWrapper = buildProfileSnapshotWrapper(jobProfile, actionProfile, mappingProfile);
@@ -295,13 +293,11 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
 
     String topic = KafkaTopicNameHelper.formatTopicName(KAFKA_ENV_VALUE, getDefaultNameSpace(), DI_POST_INVOICE_LINES_SUCCESS_TENANT, dataImportEventPayload.getEventType());
     Event event = new Event().withEventPayload(Json.encode(dataImportEventPayload));
-    KeyValue<String, String> kafkaRecord = new KeyValue<>("test-key", Json.encode(event));
-    kafkaRecord.addHeader(RECORD_ID_HEADER, record.getId(), UTF_8);
-    SendKeyValues<String, String> request = SendKeyValues.to(topic, Collections.singletonList(kafkaRecord))
-      .useDefaults();
+    ProducerRecord<String, String> producerRecord = new ProducerRecord<>(topic, "test-key", Json.encode(event));
+    producerRecord.headers().add(RECORD_ID_HEADER, record.getId().getBytes(UTF_8));
 
     // when
-    kafkaCluster.send(request);
+    sendToTopic(producerRecord);
 
     // then
     String topicToObserve = KafkaTopicNameHelper.formatTopicName(KAFKA_ENV_VALUE, getDefaultNameSpace(), DI_POST_INVOICE_LINES_SUCCESS_TENANT, DI_COMPLETED.value());
@@ -338,8 +334,7 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
   }
 
   @Test
-  public void shouldNotProcessEventWhenRecordToInvoiceFutureFails()
-    throws InterruptedException {
+  public void shouldNotProcessEventWhenRecordToInvoiceFutureFails() {
     // given
     Record record = new Record().withParsedRecord(new ParsedRecord().withContent(edifactParsedContent)).withId(RECORD_ID);
     ProfileSnapshotWrapper profileSnapshotWrapper = buildProfileSnapshotWrapper(jobProfile, actionProfile, mappingProfile);
@@ -360,14 +355,12 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
 
     String topic = KafkaTopicNameHelper.formatTopicName(KAFKA_ENV_VALUE, getDefaultNameSpace(), DI_POST_INVOICE_LINES_SUCCESS_TENANT, dataImportEventPayload.getEventType());
     Event event = new Event().withEventPayload(Json.encode(dataImportEventPayload));
-    KeyValue<String, String> kafkaRecord = new KeyValue<>("test-key", Json.encode(event));
-    kafkaRecord.addHeader(RECORD_ID_HEADER, record.getId(), UTF_8);
-    SendKeyValues<String, String> request = SendKeyValues.to(topic, Collections.singletonList(kafkaRecord))
-      .useDefaults();
+    ProducerRecord<String, String>  producerRecord = new ProducerRecord<>(topic, "test-key", Json.encode(event));
+    producerRecord.headers().add(RECORD_ID_HEADER, record.getId().getBytes(UTF_8));
 
     // when
     when(invoiceIdStorageService.store(any(), any(), any())).thenReturn(Future.failedFuture(new Exception()));
-    kafkaCluster.send(request);
+    sendToTopic(producerRecord);
 
     // then
     String topicToObserve = KafkaTopicNameHelper.formatTopicName(KAFKA_ENV_VALUE, getDefaultNameSpace(), DI_POST_INVOICE_LINES_SUCCESS_TENANT, DI_ERROR.value());
@@ -381,7 +374,7 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
 
 
   @Test
-  public void shouldCreateInvoiceLinesWithCorrectOrderFromEdifactFile() throws IOException, InterruptedException {
+  public void shouldCreateInvoiceLinesWithCorrectOrderFromEdifactFile() throws IOException {
     // given
     String parsedEdifact = getMockData(String.format(MOCK_DATA_PATH_PATTERN, EDIFACTS_MOCK_DATA_PATH, FIVE_INVOICE_LINES_FILE));
 
@@ -406,13 +399,11 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
 
     String topic = KafkaTopicNameHelper.formatTopicName(KAFKA_ENV_VALUE, getDefaultNameSpace(), DI_POST_INVOICE_LINES_SUCCESS_TENANT, dataImportEventPayload.getEventType());
     Event event = new Event().withEventPayload(Json.encode(dataImportEventPayload));
-    KeyValue<String, String> kafkaRecord = new KeyValue<>("test-key", Json.encode(event));
-    kafkaRecord.addHeader(RECORD_ID_HEADER, record.getId(), UTF_8);
-    SendKeyValues<String, String> request = SendKeyValues.to(topic, Collections.singletonList(kafkaRecord))
-      .useDefaults();
+    ProducerRecord<String, String>  producerRecord = new ProducerRecord<>(topic, "test-key", Json.encode(event));
+    producerRecord.headers().add(RECORD_ID_HEADER, record.getId().getBytes(UTF_8));
 
     // when
-    kafkaCluster.send(request);
+    sendToTopic(producerRecord);
 
     // then
     String topicToObserve = KafkaTopicNameHelper.formatTopicName(KAFKA_ENV_VALUE, getDefaultNameSpace(), DI_POST_INVOICE_LINES_SUCCESS_TENANT, DI_COMPLETED.value());
@@ -436,7 +427,7 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
   }
 
   @Test
-  public void shouldMatchPoLinesByPoLineNumberAndCreateInvoiceLinesWithDescriptionFromPoLines() throws IOException, InterruptedException {
+  public void shouldMatchPoLinesByPoLineNumberAndCreateInvoiceLinesWithDescriptionFromPoLines() throws IOException {
     // given
     PoLine poLine1 = Json.decodeValue(getMockData(String.format(MOCK_DATA_PATH_PATTERN, PO_LINES_MOCK_DATA_PATH, PO_LINE_ID_1)), PoLine.class);
     PoLine poLine3 = Json.decodeValue(getMockData(String.format(MOCK_DATA_PATH_PATTERN, PO_LINES_MOCK_DATA_PATH, PO_LINE_ID_3)), PoLine.class);
@@ -466,13 +457,11 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
 
     String topic = KafkaTopicNameHelper.formatTopicName(KAFKA_ENV_VALUE, getDefaultNameSpace(), DI_POST_INVOICE_LINES_SUCCESS_TENANT, dataImportEventPayload.getEventType());
     Event event = new Event().withEventPayload(Json.encode(dataImportEventPayload));
-    KeyValue<String, String> kafkaRecord = new KeyValue<>("test-key", Json.encode(event));
-    kafkaRecord.addHeader(RECORD_ID_HEADER, record.getId(), UTF_8);
-    SendKeyValues<String, String> request = SendKeyValues.to(topic, Collections.singletonList(kafkaRecord))
-      .useDefaults();
+    ProducerRecord<String, String>  producerRecord = new ProducerRecord<>(topic, "test-key", Json.encode(event));
+    producerRecord.headers().add(RECORD_ID_HEADER, record.getId().getBytes(UTF_8));
 
     // when
-    kafkaCluster.send(request);
+    sendToTopic(producerRecord);
 
     // then
     String topicToObserve = KafkaTopicNameHelper.formatTopicName(KAFKA_ENV_VALUE, getDefaultNameSpace(), DI_POST_INVOICE_LINES_SUCCESS_TENANT, DI_COMPLETED.value());
@@ -500,7 +489,7 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
   }
 
   @Test
-  public void shouldMatchPoLinesByRefNumberAndCreateInvoiceLinesWithDescriptionFromPoLines() throws IOException, InterruptedException {
+  public void shouldMatchPoLinesByRefNumberAndCreateInvoiceLinesWithDescriptionFromPoLines() throws IOException {
     // given
     PoLine poLine1 = Json.decodeValue(getMockData(String.format(MOCK_DATA_PATH_PATTERN, PO_LINES_MOCK_DATA_PATH, PO_LINE_ID_1)), PoLine.class);
     PoLine poLine3 = Json.decodeValue(getMockData(String.format(MOCK_DATA_PATH_PATTERN, PO_LINES_MOCK_DATA_PATH, PO_LINE_ID_3)), PoLine.class);
@@ -530,13 +519,11 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
 
     String topic = KafkaTopicNameHelper.formatTopicName(KAFKA_ENV_VALUE, getDefaultNameSpace(), DI_POST_INVOICE_LINES_SUCCESS_TENANT, dataImportEventPayload.getEventType());
     Event event = new Event().withEventPayload(Json.encode(dataImportEventPayload));
-    KeyValue<String, String> kafkaRecord = new KeyValue<>("test-key", Json.encode(event));
-    kafkaRecord.addHeader(RECORD_ID_HEADER, record.getId(), UTF_8);
-    SendKeyValues<String, String> request = SendKeyValues.to(topic, Collections.singletonList(kafkaRecord))
-      .useDefaults();
+    ProducerRecord<String, String>  producerRecord = new ProducerRecord<>(topic, "test-key", Json.encode(event));
+    producerRecord.headers().add(RECORD_ID_HEADER, record.getId().getBytes(UTF_8));
 
     // when
-    kafkaCluster.send(request);
+    sendToTopic(producerRecord);
 
     // then
     String topicToObserve = KafkaTopicNameHelper.formatTopicName(KAFKA_ENV_VALUE, getDefaultNameSpace(), DI_POST_INVOICE_LINES_SUCCESS_TENANT, DI_COMPLETED.value());
@@ -574,7 +561,7 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
   }
 
   @Test
-  public void shouldMatchPoLinesByPoLineNumberAndCreateInvoiceLinesWithPoLinesFundDistributions() throws IOException, InterruptedException {
+  public void shouldMatchPoLinesByPoLineNumberAndCreateInvoiceLinesWithPoLinesFundDistributions() throws IOException {
     // given
     PoLine poLine1 = Json.decodeValue(getMockData(String.format(MOCK_DATA_PATH_PATTERN, PO_LINES_MOCK_DATA_PATH, PO_LINE_ID_1)), PoLine.class);
     PoLine poLine3 = Json.decodeValue(getMockData(String.format(MOCK_DATA_PATH_PATTERN, PO_LINES_MOCK_DATA_PATH, PO_LINE_ID_3)), PoLine.class);
@@ -602,13 +589,11 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
 
     String topic = KafkaTopicNameHelper.formatTopicName(KAFKA_ENV_VALUE, getDefaultNameSpace(), DI_POST_INVOICE_LINES_SUCCESS_TENANT, dataImportEventPayload.getEventType());
     Event event = new Event().withEventPayload(Json.encode(dataImportEventPayload));
-    KeyValue<String, String> kafkaRecord = new KeyValue<>("test-key", Json.encode(event));
-    kafkaRecord.addHeader(RECORD_ID_HEADER, record.getId(), UTF_8);
-    SendKeyValues<String, String> request = SendKeyValues.to(topic, Collections.singletonList(kafkaRecord))
-      .useDefaults();
+    ProducerRecord<String, String>  producerRecord = new ProducerRecord<>(topic, "test-key", Json.encode(event));
+    producerRecord.headers().add(RECORD_ID_HEADER, record.getId().getBytes(UTF_8));
 
     // when
-    kafkaCluster.send(request);
+    sendToTopic(producerRecord);
 
     // then
     String topicToObserve = KafkaTopicNameHelper.formatTopicName(KAFKA_ENV_VALUE, getDefaultNameSpace(), DI_POST_INVOICE_LINES_SUCCESS_TENANT, DI_COMPLETED.value());
@@ -638,7 +623,7 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
   }
 
   @Test
-  public void shouldNotLinkInvoiceLinesToPoLinesWhenMultiplePoLinesAreMatchedByRefNumber() throws IOException, InterruptedException {
+  public void shouldNotLinkInvoiceLinesToPoLinesWhenMultiplePoLinesAreMatchedByRefNumber() throws IOException {
     // given
     PoLine poLine1 = Json.decodeValue(getMockData(String.format(MOCK_DATA_PATH_PATTERN, PO_LINES_MOCK_DATA_PATH, PO_LINE_ID_1)), PoLine.class);
     PoLine poLine3 = Json.decodeValue(getMockData(String.format(MOCK_DATA_PATH_PATTERN, PO_LINES_MOCK_DATA_PATH, PO_LINE_ID_3)), PoLine.class);
@@ -666,13 +651,11 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
 
     String topic = KafkaTopicNameHelper.formatTopicName(KAFKA_ENV_VALUE, getDefaultNameSpace(), DI_POST_INVOICE_LINES_SUCCESS_TENANT, dataImportEventPayload.getEventType());
     Event event = new Event().withEventPayload(Json.encode(dataImportEventPayload));
-    KeyValue<String, String> kafkaRecord = new KeyValue<>("test-key", Json.encode(event));
-    kafkaRecord.addHeader(RECORD_ID_HEADER, record.getId(), UTF_8);
-    SendKeyValues<String, String> request = SendKeyValues.to(topic, Collections.singletonList(kafkaRecord))
-      .useDefaults();
+    ProducerRecord<String, String>  producerRecord = new ProducerRecord<>(topic, "test-key", Json.encode(event));
+    producerRecord.headers().add(RECORD_ID_HEADER, record.getId().getBytes(UTF_8));
 
     // when
-    kafkaCluster.send(request);
+    sendToTopic(producerRecord);
 
     // then
     String topicToObserve = KafkaTopicNameHelper.formatTopicName(KAFKA_ENV_VALUE, getDefaultNameSpace(), DI_POST_INVOICE_LINES_SUCCESS_TENANT, DI_COMPLETED.value());
@@ -697,7 +680,7 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
   }
 
   @Test
-  public void shouldMatchPoLineByPoLineNumberAndLeaveEmptyInvoiceLineFundDistributionExpenseClassIdWhenMatchedPoLineHasDifferentExpenseClasses() throws IOException, InterruptedException {
+  public void shouldMatchPoLineByPoLineNumberAndLeaveEmptyInvoiceLineFundDistributionExpenseClassIdWhenMatchedPoLineHasDifferentExpenseClasses() throws IOException {
     // given
     PoLine poLine3 = Json.decodeValue(getMockData(String.format(MOCK_DATA_PATH_PATTERN, PO_LINES_MOCK_DATA_PATH, PO_LINE_ID_3)), PoLine.class);
     PoLineCollection poLineCollection = new PoLineCollection().withPoLines(List.of(poLine3));
@@ -725,13 +708,11 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
 
     String topic = KafkaTopicNameHelper.formatTopicName(KAFKA_ENV_VALUE, getDefaultNameSpace(), DI_POST_INVOICE_LINES_SUCCESS_TENANT, dataImportEventPayload.getEventType());
     Event event = new Event().withEventPayload(Json.encode(dataImportEventPayload));
-    KeyValue<String, String> kafkaRecord = new KeyValue<>("test-key", Json.encode(event));
-    kafkaRecord.addHeader(RECORD_ID_HEADER, record.getId(), UTF_8);
-    SendKeyValues<String, String> request = SendKeyValues.to(topic, Collections.singletonList(kafkaRecord))
-      .useDefaults();
+    ProducerRecord<String, String>  producerRecord = new ProducerRecord<>(topic, "test-key", Json.encode(event));
+    producerRecord.headers().add(RECORD_ID_HEADER, record.getId().getBytes(UTF_8));
 
     // when
-    kafkaCluster.send(request);
+    sendToTopic(producerRecord);
 
     // then
     String topicToObserve = KafkaTopicNameHelper.formatTopicName(KAFKA_ENV_VALUE, getDefaultNameSpace(), DI_POST_INVOICE_LINES_SUCCESS_TENANT, DI_COMPLETED.value());
@@ -764,7 +745,7 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
   }
 
   @Test
-  void shouldCreateInvoiceLinesWithFundDistributionsWhenFundDistributionMappingIsSpecified() throws InterruptedException {
+  void shouldCreateInvoiceLinesWithFundDistributionsWhenFundDistributionMappingIsSpecified() {
     // given
     String expectedFundId = "7fbd5d84-62d1-44c6-9c45-6cb173998bbd";
     String expectedFundCode = "AFRICAHIST";
@@ -824,13 +805,11 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
 
     String topic = KafkaTopicNameHelper.formatTopicName(KAFKA_ENV_VALUE, getDefaultNameSpace(), DI_POST_INVOICE_LINES_SUCCESS_TENANT, dataImportEventPayload.getEventType());
     Event event = new Event().withEventPayload(Json.encode(dataImportEventPayload));
-    KeyValue<String, String> kafkaRecord = new KeyValue<>("test-key", Json.encode(event));
-    kafkaRecord.addHeader(RECORD_ID_HEADER, record.getId(), UTF_8);
-    SendKeyValues<String, String> request = SendKeyValues.to(topic, Collections.singletonList(kafkaRecord))
-      .useDefaults();
+    ProducerRecord<String, String>  producerRecord = new ProducerRecord<>(topic, "test-key", Json.encode(event));
+    producerRecord.headers().add(RECORD_ID_HEADER, record.getId().getBytes(UTF_8));
 
     // when
-    kafkaCluster.send(request);
+    sendToTopic(producerRecord);
 
     // then
     String topicToObserve = KafkaTopicNameHelper.formatTopicName(KAFKA_ENV_VALUE, getDefaultNameSpace(), DI_POST_INVOICE_LINES_SUCCESS_TENANT, DI_COMPLETED.value());
@@ -857,7 +836,7 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
   }
 
   @Test
-  public void shouldPublishDiErrorEventWhenHasNoSourceRecord() throws InterruptedException {
+  public void shouldPublishDiErrorEventWhenHasNoSourceRecord() {
     // given
     ProfileSnapshotWrapper profileSnapshotWrapper = buildProfileSnapshotWrapper(jobProfile, actionProfile, mappingProfile);
     addMockEntry(JOB_PROFILE_SNAPSHOTS_MOCK, profileSnapshotWrapper);
@@ -875,13 +854,11 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
 
     String topic = KafkaTopicNameHelper.formatTopicName(KAFKA_ENV_VALUE, getDefaultNameSpace(), TENANT_ID, dataImportEventPayload.getEventType());
     Event event = new Event().withEventPayload(Json.encode(dataImportEventPayload));
-    KeyValue<String, String> kafkaRecord = new KeyValue<>("test-key", Json.encode(event));
-    kafkaRecord.addHeader(RECORD_ID_HEADER, UUID.randomUUID().toString(), UTF_8);
-    SendKeyValues<String, String> request = SendKeyValues.to(topic, Collections.singletonList(kafkaRecord))
-      .useDefaults();
+    ProducerRecord<String, String>  producerRecord = new ProducerRecord<>(topic, "test-key", Json.encode(event));
+    producerRecord.headers().add(RECORD_ID_HEADER, UUID.randomUUID().toString().getBytes(UTF_8));
 
     // when
-    kafkaCluster.send(request);
+    sendToTopic(producerRecord);
 
     // then
     String topicToObserve = KafkaTopicNameHelper.formatTopicName(KAFKA_ENV_VALUE, getDefaultNameSpace(), TENANT_ID, DI_ERROR.value());
@@ -894,7 +871,7 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
   }
 
   @Test
-  public void shouldPublishDiErrorEventWhenPostInvoiceToStorageFailed() throws InterruptedException {
+  public void shouldPublishDiErrorEventWhenPostInvoiceToStorageFailed() {
     // given
     ProfileSnapshotWrapper profileSnapshotWrapper = buildProfileSnapshotWrapper(jobProfile, actionProfile, mappingProfile);
     addMockEntry(JOB_PROFILE_SNAPSHOTS_MOCK, profileSnapshotWrapper);
@@ -915,13 +892,11 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
 
     String topic = KafkaTopicNameHelper.formatTopicName(KAFKA_ENV_VALUE, getDefaultNameSpace(), ERROR_TENANT, dataImportEventPayload.getEventType());
     Event event = new Event().withEventPayload(Json.encode(dataImportEventPayload));
-    KeyValue<String, String> kafkaRecord = new KeyValue<>("test-key", Json.encode(event));
-    kafkaRecord.addHeader(RECORD_ID_HEADER, record.getId(), UTF_8);
-    SendKeyValues<String, String> request = SendKeyValues.to(topic, Collections.singletonList(kafkaRecord))
-      .useDefaults();
+    ProducerRecord<String, String>  producerRecord = new ProducerRecord<>(topic, "test-key", Json.encode(event));
+    producerRecord.headers().add(RECORD_ID_HEADER, record.getId().getBytes(UTF_8));
 
     // when
-    kafkaCluster.send(request);
+    sendToTopic(producerRecord);
 
     // then
     String topicToObserve = KafkaTopicNameHelper.formatTopicName(KAFKA_ENV_VALUE, getDefaultNameSpace(), ERROR_TENANT, DI_ERROR.value());
@@ -945,7 +920,7 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
   }
 
   @Test
-  public void shouldNotPublishDiErrorEventWhenDuplicateException() throws InterruptedException {
+  public void shouldNotPublishDiErrorEventWhenDuplicateException() {
     // given
     ProfileSnapshotWrapper profileSnapshotWrapper = buildProfileSnapshotWrapper(jobProfile, actionProfile, mappingProfile);
     addMockEntry(JOB_PROFILE_SNAPSHOTS_MOCK, profileSnapshotWrapper);
@@ -966,13 +941,11 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
 
     String topic = KafkaTopicNameHelper.formatTopicName(KAFKA_ENV_VALUE, getDefaultNameSpace(), DUPLICATE_ERROR_TENANT, dataImportEventPayload.getEventType());
     Event event = new Event().withEventPayload(Json.encode(dataImportEventPayload));
-    KeyValue<String, String> kafkaRecord = new KeyValue<>("test-key", Json.encode(event));
-    kafkaRecord.addHeader(RECORD_ID_HEADER, record.getId(), UTF_8);
-    SendKeyValues<String, String> request = SendKeyValues.to(topic, Collections.singletonList(kafkaRecord))
-      .useDefaults();
+    ProducerRecord<String, String>  producerRecord = new ProducerRecord<>(topic, "test-key", Json.encode(event));
+    producerRecord.headers().add(RECORD_ID_HEADER, record.getId().getBytes(UTF_8));
 
     // when
-    kafkaCluster.send(request);
+    sendToTopic(producerRecord);
 
     // then
     String topicToObserve = KafkaTopicNameHelper.formatTopicName(KAFKA_ENV_VALUE, getDefaultNameSpace(), DUPLICATE_ERROR_TENANT, DI_ERROR.value());
@@ -982,7 +955,7 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
   }
 
   @Test
-  public void shouldPublishDiErrorWithInvoiceLineErrorWhenOneOfInvoiceLinesCreationFailed() throws IOException, InterruptedException {
+  public void shouldPublishDiErrorWithInvoiceLineErrorWhenOneOfInvoiceLinesCreationFailed() throws IOException {
     // given
     Record record = new Record().withParsedRecord(new ParsedRecord().withContent(parsedContentInvoiceLine3HasNoSubTotal))
       .withId(RECORD_ID);
@@ -1004,13 +977,11 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
 
     String topic = KafkaTopicNameHelper.formatTopicName(KAFKA_ENV_VALUE, getDefaultNameSpace(), DI_POST_INVOICE_LINES_SUCCESS_TENANT, dataImportEventPayload.getEventType());
     Event event = new Event().withEventPayload(Json.encode(dataImportEventPayload));
-    KeyValue<String, String> kafkaRecord = new KeyValue<>("test-key", Json.encode(event));
-    kafkaRecord.addHeader(RECORD_ID_HEADER, record.getId(), UTF_8);
-    SendKeyValues<String, String> request = SendKeyValues.to(topic, Collections.singletonList(kafkaRecord))
-      .useDefaults();
+    ProducerRecord<String, String>  producerRecord = new ProducerRecord<>(topic, "test-key", Json.encode(event));
+    producerRecord.headers().add(RECORD_ID_HEADER, record.getId().getBytes(UTF_8));
 
     // when
-    kafkaCluster.send(request);
+    sendToTopic(producerRecord);
 
     // then
     String topicToObserve = KafkaTopicNameHelper.formatTopicName(KAFKA_ENV_VALUE, getDefaultNameSpace(), DI_POST_INVOICE_LINES_SUCCESS_TENANT, DI_ERROR.value());
@@ -1039,7 +1010,7 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
   }
 
   @Test
-  public void shouldPublishDiErrorWhenMappingProfileHasInvalidMappingSyntax() throws InterruptedException {
+  public void shouldPublishDiErrorWhenMappingProfileHasInvalidMappingSyntax() {
     // given
     Record record = new Record().withParsedRecord(new ParsedRecord().withContent(parsedContentInvoiceLine3HasNoSubTotal))
       .withId(RECORD_ID);
@@ -1061,13 +1032,11 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
 
     String topic = KafkaTopicNameHelper.formatTopicName(KAFKA_ENV_VALUE, getDefaultNameSpace(), DI_POST_INVOICE_LINES_SUCCESS_TENANT, dataImportEventPayload.getEventType());
     Event event = new Event().withEventPayload(Json.encode(dataImportEventPayload));
-    KeyValue<String, String> kafkaRecord = new KeyValue<>("test-key", Json.encode(event));
-    kafkaRecord.addHeader(RECORD_ID_HEADER, record.getId(), UTF_8);
-    SendKeyValues<String, String> request = SendKeyValues.to(topic, Collections.singletonList(kafkaRecord))
-      .useDefaults();
+    ProducerRecord<String, String>  producerRecord = new ProducerRecord<>(topic, "test-key", Json.encode(event));
+    producerRecord.headers().add(RECORD_ID_HEADER, record.getId().getBytes(UTF_8));
 
     // when
-    kafkaCluster.send(request);
+    sendToTopic(producerRecord);
 
     // then
     String topicToObserve = KafkaTopicNameHelper.formatTopicName(KAFKA_ENV_VALUE, getDefaultNameSpace(), DI_POST_INVOICE_LINES_SUCCESS_TENANT, DI_ERROR.value());
@@ -1139,19 +1108,30 @@ public class CreateInvoiceEventHandlerTest extends ApiTestBase {
               .withContent(JsonObject.mapFrom(mappingProfile).getMap())))));
   }
 
-  public List<String> observeValuesAndFilterByTestId(String testId, String topicToObserve, Integer countToObserve) throws InterruptedException {
+  public List<String> observeValuesAndFilterByTestId(String testId, String topicToObserve, Integer expected) {
     List<String> result = new ArrayList<>();
-    List<String> observedValues = kafkaCluster.readValues(ReadKeyValues.from(topicToObserve).build());
-    if (CollectionUtils.isEmpty(observedValues)) {
-      observedValues = kafkaCluster.observeValues(ObserveKeyValues.on(topicToObserve, countToObserve)
-        .observeFor(30, TimeUnit.SECONDS)
-        .build());
-    }
-    for (String observedValue : observedValues) {
-      if (observedValue.contains(testId)) {
-        result.add(observedValue);
+    // Use polling with retries
+    int maxRetries = 10;
+    int retryCount = 0;
+    while (retryCount < maxRetries && result.size() < expected) {
+      List<String> observedValues = observeTopic(topicToObserve, Duration.ofSeconds(30));
+      for (String observedValue : observedValues) {
+        if (observedValue.contains(testId)) {
+          result.add(observedValue);
+        }
+      }
+      if (result.size() < expected) {
+        try {
+          Thread.sleep(1000); // Wait a bit before retrying
+          retryCount++;
+        } catch (InterruptedException e) {
+          Thread.currentThread().interrupt();
+          break;
+        }
       }
     }
+    log.info("observeValuesAndFilterByTestId:: topicToObserve: {}, testId: {}, observedValues: {}, results: {}, expected: {}",
+      topicToObserve, testId, result.size(), result.size(), expected);
     return result;
   }
 

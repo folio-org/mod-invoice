@@ -8,8 +8,8 @@ import static org.folio.rest.RestVerticle.OKAPI_HEADER_TENANT;
 import static org.folio.rest.RestVerticle.OKAPI_HEADER_TOKEN;
 import static org.folio.rest.RestVerticle.OKAPI_USERID_HEADER;
 import static org.folio.rest.jaxrs.model.FundDistribution.DistributionType.PERCENTAGE;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.api.Assertions.fail;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.is;
 
 import io.restassured.RestAssured;
 import io.restassured.http.Header;
@@ -20,6 +20,8 @@ import io.vertx.core.Future;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
+import io.vertx.ext.web.client.WebClient;
+import io.vertx.ext.web.client.WebClientOptions;
 import io.vertx.junit5.VertxTestContext;
 import java.io.IOException;
 import java.io.InputStream;
@@ -28,9 +30,7 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Stream;
@@ -39,7 +39,9 @@ import org.apache.commons.io.IOUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.ApiTestSuite;
+import org.folio.postgres.testing.PostgresTesterContainer;
 import org.folio.rest.RestVerticle;
+import org.folio.rest.client.TenantClient;
 import org.folio.rest.jaxrs.model.Adjustment;
 import org.folio.rest.jaxrs.model.BatchVoucher;
 import org.folio.rest.jaxrs.model.FundDistribution;
@@ -49,15 +51,13 @@ import org.folio.rest.jaxrs.model.TenantAttributes;
 import org.folio.rest.jaxrs.model.TenantJob;
 import org.folio.rest.persist.Criteria.Criterion;
 import org.folio.rest.persist.PostgresClient;
-import org.folio.rest.tools.utils.Envs;
-import org.folio.rest.tools.utils.ModuleName;
 import org.folio.rest.tools.utils.NetworkUtils;
+import org.folio.rest.tools.utils.VertxUtils;
 import org.folio.utils.UserPermissionsUtil;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
-import org.testcontainers.containers.PostgreSQLContainer;
 
 public class ApiTestBase {
 
@@ -86,7 +86,6 @@ public class ApiTestBase {
   public static final String BASE_MOCK_DATA_PATH = "mockdata/";
   static final String INVOICE_LINE_NUMBER_VALUE = "1";
   static final String VOUCHER_NUMBER_VALUE = "1";
-  static final String LANG_PARAM = "lang";
   static final String ID_FOR_INTERNAL_SERVER_ERROR = "168f8a86-d26c-406e-813f-c7527f241ac3";
   static final String ID_FOR_INTERNAL_SERVER_ERROR_PUT = "bad500bb-bbbb-500b-bbbb-bbbbbbbbbbbb";
 
@@ -106,9 +105,7 @@ public class ApiTestBase {
     "invoices.fiscal-year.update.execute"
   );
 
-  public static final JsonArray permissionsArray = new JsonArray(permissionsList);
   public static final String permissionsJsonArrayString = new JsonArray(permissionsList).encode();
-  public static final Header X_OKAPI_PERMISSION = new Header(UserPermissionsUtil.OKAPI_HEADER_PERMISSIONS, permissionsJsonArrayString);
 
   public static final List<String> permissionsWithoutApproveAndPayList = Arrays.asList(
     "invoice.invoices.item.put",
@@ -129,22 +126,15 @@ public class ApiTestBase {
     "invoices.fiscal-year.update.execute"
   );
 
-  public static final JsonArray permissionsWithoutPaidArray = new JsonArray(permissionsWithoutPaidList);
   public static final String permissionsWithoutPaidJsonArrayString = new JsonArray(permissionsWithoutPaidList).encode();
   public static final Header X_OKAPI_PERMISSION_WITHOUT_PAY = new Header(UserPermissionsUtil.OKAPI_HEADER_PERMISSIONS, permissionsWithoutPaidJsonArrayString);
-
-  public static final String POSTGRES_IMAGE = "postgres:16-alpine";
-  private static PostgreSQLContainer<?> postgresSQLContainer;
 
   private static final String INVOICES_TABLE = "records_invoices";
   protected static final String TOKEN = "token";
   private static final String HTTP_PORT = "http.port";
   private static int port;
-  private static String useExternalDatabase;
   protected static Vertx vertx;
   protected static final String TENANT_ID = "diku";
-
-  public static final String OKAPI_URL_ENV = "OKAPI_URL";
 
   @BeforeAll
   public static void before(final VertxTestContext context) throws Exception {
@@ -156,7 +146,9 @@ public class ApiTestBase {
     }
     vertx = Vertx.vertx();
     runDatabase();
-    deployVerticle(context);
+    deployVerticle()
+    .compose(x -> postTenant())
+    .onComplete(context.succeedingThenComplete());
   }
 
   @BeforeEach
@@ -171,10 +163,8 @@ public class ApiTestBase {
 
   @AfterAll
   public static void after(final VertxTestContext context) {
+    PostgresClient.stopPostgresTester();
     if (runningOnOwn) {
-      if ("embedded".equals(useExternalDatabase)) {
-        PostgresClient.stopPostgresTester();
-      }
       logger.info("Running test on own, un-initialising suite manually");
       ApiTestSuite.after(context);
     } else {
@@ -182,102 +172,43 @@ public class ApiTestBase {
     }
   }
 
-  private static void runDatabase() throws Exception {
-    PostgresClient.stopPostgresTester();
-    PostgresClient.closeAllClients();
-    useExternalDatabase = System.getProperty(
-      "org.folio.invoice.test.database",
-      "embedded");
-
-    switch (useExternalDatabase) {
-      case "environment" -> System.out.println("Using environment settings");
-      case "external" -> {
-        String postgresConfigPath = System.getProperty(
-          "org.folio.invoice.test.config",
-          "/postgres-conf-local.json");
-        PostgresClient.setConfigFilePath(postgresConfigPath);
-      }
-      case "embedded" -> {
-        postgresSQLContainer = new PostgreSQLContainer<>(POSTGRES_IMAGE);
-        postgresSQLContainer.start();
-        Envs.setEnv(
-          postgresSQLContainer.getHost(),
-          postgresSQLContainer.getFirstMappedPort(),
-          postgresSQLContainer.getUsername(),
-          postgresSQLContainer.getPassword(),
-          postgresSQLContainer.getDatabaseName()
-        );
-      }
-      default -> {
-        String message = "No understood database choice made." +
-          "Please set org.folio.invoice.test.database" +
-          "to 'external', 'environment' or 'embedded'";
-        throw new Exception(message);
-      }
-    }
+  private static void runDatabase() {
+    logger.info("Start container database");
+    PostgresClient.setPostgresTester(new PostgresTesterContainer());
   }
 
-  public static String constructModuleName() {
-    return ModuleName.getModuleName().replace("_", "-") + "-" + ModuleName.getModuleVersion();
-  }
-
-  private static void deployVerticle(final VertxTestContext testContext) {
+  private static Future<String> deployVerticle() {
     port = NetworkUtils.nextFreePort();
+    DeploymentOptions options = new DeploymentOptions()
+      .setConfig(new JsonObject().put(HTTP_PORT, port));
+    return vertx.deployVerticle(RestVerticle.class.getName(), options);
+  }
+
+  private static Future<Void> postTenant() {
     String okapiUrl = "http://localhost:" + port;
-    final DeploymentOptions options = new DeploymentOptions()
-      .setConfig(new JsonObject()
-        .put(HTTP_PORT, port));
-    vertx.deployVerticle(RestVerticle.class.getName(), options).onComplete(deployVerticleAr -> {
-      if (deployVerticleAr.failed()) {
-        testContext.failNow(deployVerticleAr.cause());
-        return;
-      }
-
-      TenantAPI tenantAPI = new TenantAPI();
-      TenantAttributes tenantAttributes = new TenantAttributes();
-      tenantAttributes.setModuleTo(constructModuleName());
-      Map<String, String> okapiHeaders = new HashMap<>();
-      okapiHeaders.put(OKAPI_HEADER_TOKEN, TOKEN);
-      okapiHeaders.put(OKAPI_URL_ENV, okapiUrl);
-      okapiHeaders.put(OKAPI_HEADER_TENANT, TENANT_ID);
-
-      Future<javax.ws.rs.core.Response> future = Future.future(promise ->
-        tenantAPI.postTenant(tenantAttributes, okapiHeaders, promise, vertx.getOrCreateContext()));
-
-      future.onComplete(postResult -> {
-        if (postResult.failed()) {
-          testContext.failNow(postResult.cause());
-          return;
-        }
-        testContext.verify(() -> {
-          javax.ws.rs.core.Response result = postResult.result();
-          if (result.getStatus() == 204) {
-            testContext.completeNow();
-          } else if (result.getStatus() == 201) {
-            Future<javax.ws.rs.core.Response> future2 =
-              Future.future(promise -> tenantAPI.getTenantByOperationId(((TenantJob)result.getEntity()).getId(), 60000,
-                okapiHeaders, promise, vertx.getOrCreateContext()));
-
-            future2.onComplete(getResult -> testContext.verify(() -> {
-              if (getResult.failed()) {
-                testContext.failNow(getResult.cause());
-                return;
-              }
-              TenantJob tenantJob = (TenantJob) getResult.result().getEntity();
-              assertTrue(tenantJob.getComplete(), "Tenant job should be complete.");
-
-              String error = tenantJob.getError();
-              if (error != null) {
-                assertTrue(error.contains("EventDescriptor was not registered for eventType"), "Error message should contain expected text.");
-              }
-              testContext.completeNow();
-            }));
-          } else {
-            fail("Failed to make post tenant. Received status code " + result.getStatus());
-          }
+    TenantClient tenantClient = new TenantClient(okapiUrl, TENANT_ID, TOKEN, getWebClient());
+    TenantAttributes tenantAttributes = new TenantAttributes();
+    return tenantClient.postTenant(tenantAttributes)
+        .compose(res -> {
+          assertThat("POST " + okapiUrl + " returns " + res.bodyAsString(),
+              res.statusCode(), is(201));
+          String operationId = res.bodyAsJson(TenantJob.class).getId();
+          return tenantClient.getTenantByOperationId(operationId, 60000);
+        })
+        .map(res -> {
+          assertThat("GET /_/tenant/{id} returns " + res.bodyAsString(),
+              res.bodyAsJson(TenantJob.class).getComplete(), is(true));
+          return null;
         });
-      });
-    });
+  }
+
+  private static WebClient getWebClient() {
+    WebClientOptions options = new WebClientOptions();
+    options.setLogActivity(true);
+    options.setKeepAlive(true);
+    options.setConnectTimeout(2000);
+    options.setIdleTimeout(5000);
+    return WebClient.create(VertxUtils.getVertxFromContextOrNew(), options);
   }
 
   private static void clearTable(VertxTestContext context) {
