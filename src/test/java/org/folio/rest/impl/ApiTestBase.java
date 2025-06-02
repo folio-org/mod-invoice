@@ -53,6 +53,7 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
+import org.testcontainers.containers.Network;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
 
@@ -85,7 +86,6 @@ public class ApiTestBase {
   static final String VOUCHER_NUMBER_VALUE = "1";
   static final String ID_FOR_INTERNAL_SERVER_ERROR = "168f8a86-d26c-406e-813f-c7527f241ac3";
   static final String ID_FOR_INTERNAL_SERVER_ERROR_PUT = "bad500bb-bbbb-500b-bbbb-bbbbbbbbbbbb";
-  static final int READY_MESSAGE_TIMES = 2;
   static final int STARTUP_ATTEMPTS = 3;
 
   public static final String MIN_INVOICE_ID = UUID.randomUUID().toString();
@@ -183,33 +183,37 @@ public class ApiTestBase {
       "org.folio.invoice.test.database",
       "embedded");
 
-    switch (useExternalDatabase) {
-      case "environment" -> System.out.println("Using environment settings");
-      case "external" -> {
-        String postgresConfigPath = System.getProperty(
-          "org.folio.invoice.test.config",
-          "/postgres-conf-local.json");
-        PostgresClient.setConfigFilePath(postgresConfigPath);
+    try {
+      switch (useExternalDatabase) {
+        case "environment" -> System.out.println("Using environment settings");
+        case "external" -> {
+          String postgresConfigPath = System.getProperty(
+            "org.folio.invoice.test.config",
+            "/postgres-conf-local.json");
+          PostgresClient.setConfigFilePath(postgresConfigPath);
+        }
+        case "embedded" -> {
+          postgresSQLContainer = new PostgreSQLContainer<>(POSTGRES_IMAGE)
+            .withStartupAttempts(STARTUP_ATTEMPTS);
+          postgresSQLContainer.start();
+          Envs.setEnv(
+            postgresSQLContainer.getHost(),
+            postgresSQLContainer.getFirstMappedPort(),
+            postgresSQLContainer.getUsername(),
+            postgresSQLContainer.getPassword(),
+            postgresSQLContainer.getDatabaseName()
+          );
+        }
+        default -> {
+          String message = "No understood database choice made." +
+            "Please set org.folio.invoice.test.database" +
+            "to 'external', 'environment' or 'embedded'";
+          throw new Exception(message);
+        }
       }
-      case "embedded" -> {
-        postgresSQLContainer = new PostgreSQLContainer<>(POSTGRES_IMAGE)
-          .withStartupAttempts(STARTUP_ATTEMPTS)
-          .waitingFor(Wait.forLogMessage(".*database system is ready to accept connections.*\\n", READY_MESSAGE_TIMES));
-        postgresSQLContainer.start();
-        Envs.setEnv(
-          postgresSQLContainer.getHost(),
-          postgresSQLContainer.getFirstMappedPort(),
-          postgresSQLContainer.getUsername(),
-          postgresSQLContainer.getPassword(),
-          postgresSQLContainer.getDatabaseName()
-        );
-      }
-      default -> {
-        String message = "No understood database choice made." +
-          "Please set org.folio.invoice.test.database" +
-          "to 'external', 'environment' or 'embedded'";
-        throw new Exception(message);
-      }
+    } catch (Exception e) {
+      logger.error("Failed to start Postgres test-container", e);
+      throw e;
     }
   }
 
