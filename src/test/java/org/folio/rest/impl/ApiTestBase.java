@@ -20,6 +20,8 @@ import io.vertx.core.Future;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
+import io.vertx.ext.web.client.WebClient;
+import io.vertx.ext.web.client.WebClientOptions;
 import io.vertx.junit5.VertxTestContext;
 import java.io.IOException;
 import java.io.InputStream;
@@ -49,14 +51,13 @@ import org.folio.rest.jaxrs.model.TenantAttributes;
 import org.folio.rest.jaxrs.model.TenantJob;
 import org.folio.rest.persist.Criteria.Criterion;
 import org.folio.rest.persist.PostgresClient;
-import org.folio.rest.tools.utils.Envs;
 import org.folio.rest.tools.utils.NetworkUtils;
+import org.folio.rest.tools.utils.VertxUtils;
 import org.folio.utils.UserPermissionsUtil;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
-import org.testcontainers.containers.PostgreSQLContainer;
 
 public class ApiTestBase {
 
@@ -185,7 +186,7 @@ public class ApiTestBase {
 
   private static Future<Void> postTenant() {
     String okapiUrl = "http://localhost:" + port;
-    TenantClient tenantClient = new TenantClient(okapiUrl, TENANT_ID, TOKEN);
+    TenantClient tenantClient = new TenantClient(okapiUrl, TENANT_ID, TOKEN, getWebClient());
     TenantAttributes tenantAttributes = new TenantAttributes();
     return tenantClient.postTenant(tenantAttributes)
         .compose(res -> {
@@ -199,6 +200,15 @@ public class ApiTestBase {
               res.bodyAsJson(TenantJob.class).getComplete(), is(true));
           return null;
         });
+  }
+
+  private static WebClient getWebClient() {
+    WebClientOptions options = new WebClientOptions();
+    options.setLogActivity(true);
+    options.setKeepAlive(true);
+    options.setConnectTimeout(2000);
+    options.setIdleTimeout(5000);
+    return WebClient.create(VertxUtils.getVertxFromContextOrNew(), options);
   }
 
   private static void clearTable(VertxTestContext context) {
