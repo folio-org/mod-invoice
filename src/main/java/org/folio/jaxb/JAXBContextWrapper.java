@@ -6,6 +6,7 @@ import static javax.xml.bind.Marshaller.JAXB_FORMATTED_OUTPUT;
 import java.io.File;
 import java.util.List;
 
+import javax.xml.XMLConstants;
 import javax.xml.bind.JAXBContext;
 import javax.xml.bind.JAXBException;
 import javax.xml.bind.Marshaller;
@@ -62,7 +63,12 @@ public final class JAXBContextWrapper {
     final String SCHEMA_PATH = "ramls" + File.separator + "schemas" + File.separator;
     List<StreamSource> streamSourceList = JAXBUtil.xsdSchemasAsStreamResources(SCHEMA_PATH, schemas);
     StreamSource[] streamSources = new StreamSource[streamSourceList.size()];
-    return SchemaFactory.newInstance(W3C_XML_SCHEMA_NS_URI)
-      .newSchema(streamSourceList.toArray(streamSources));
+    var schemaFactory = SchemaFactory.newInstance(W3C_XML_SCHEMA_NS_URI);
+    // prevent XML external entity injection (XXE)
+    // https://cheatsheetseries.owasp.org/cheatsheets/XML_External_Entity_Prevention_Cheat_Sheet.html#schemafactory
+    // https://semgrep.dev/docs/cheat-sheets/java-xxe#3g-schemafactory
+    schemaFactory.setProperty(XMLConstants.ACCESS_EXTERNAL_DTD, "");
+    schemaFactory.setProperty(XMLConstants.ACCESS_EXTERNAL_SCHEMA, "");
+    return schemaFactory.newSchema(streamSourceList.toArray(streamSources));
   }
 }
