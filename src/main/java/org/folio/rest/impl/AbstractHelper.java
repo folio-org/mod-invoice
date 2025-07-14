@@ -27,8 +27,6 @@ public abstract class AbstractHelper {
   protected final Logger logger = LogManager.getLogger(this.getClass());
 
   public static final String ID = "id";
-  public static final String LOCALE_SETTINGS = "localeSettings";
-  public static final String SYSTEM_CONFIG_MODULE_NAME = "ORG";
   public static final String INVOICE_CONFIG_MODULE_NAME = "INVOICE";
   public static final String SEARCH_PARAMS = "?limit=%s&offset=%s%s";
 
