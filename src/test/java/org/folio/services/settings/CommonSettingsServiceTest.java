@@ -117,6 +117,6 @@ class CommonSettingsServiceTest {
     Future<List<CommonSetting>> result = commonSettingsService.loadSettings(requestEntry, requestContext);
 
     assertEquals(1, result.result().size());
-    assertEquals("key", result.result().get(0).getKey());
+    assertEquals("key", result.result().getFirst().getKey());
   }
 }

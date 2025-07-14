@@ -11,6 +11,7 @@ import static org.mockito.Mockito.when;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.BiFunction;
 
+import org.folio.CopilotGenerated;
 import org.folio.rest.core.models.RequestContext;
 import org.folio.services.settings.CommonSettingsService;
 import org.junit.jupiter.api.BeforeEach;
@@ -24,6 +25,7 @@ import com.github.benmanes.caffeine.cache.AsyncCache;
 
 import io.vertx.core.Future;
 
+@CopilotGenerated(partiallyGenerated = true, model = "Claude Sonnet 4")
 @ExtendWith(MockitoExtension.class)
 class CommonSettingsCacheTest {
 
