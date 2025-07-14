@@ -79,8 +79,7 @@ import static org.folio.rest.impl.VoucherLinesApiTest.VOUCHER_LINES_MOCK_DATA_PA
 import static org.folio.rest.impl.VouchersApiTest.VOUCHERS_LIST_PATH;
 import static org.folio.rest.impl.VouchersApiTest.VOUCHER_MOCK_DATA_PATH;
 import static org.folio.services.AcquisitionsUnitsService.ACQUISITIONS_UNIT_ID;
-import static org.folio.services.voucher.VoucherCommandService.VOUCHER_NUMBER_CONFIG_NAME;
-import static org.folio.services.voucher.VoucherCommandService.VOUCHER_NUMBER_PREFIX_CONFIG;
+import static org.folio.services.settings.CommonSettingsService.VOUCHER_NUMBER_PREFIX_KEY;
 import static org.junit.Assert.fail;
 
 import java.io.IOException;
@@ -1722,8 +1721,8 @@ public class MockServer {
       case INVALID_PREFIX_CONFIG_TENANT : {
         Config voucherNumberPrefixConfig = new Config()
           .withModule(INVOICE_CONFIG_MODULE_NAME)
-          .withConfigName(VOUCHER_NUMBER_CONFIG_NAME)
-          .withValue(new JsonObject().put(VOUCHER_NUMBER_PREFIX_CONFIG, INVALID_PREFIX).toString());
+          .withConfigName("voucherNumber")
+          .withValue(new JsonObject().put(VOUCHER_NUMBER_PREFIX_KEY, INVALID_PREFIX).toString());
         configs.withConfigs(Collections.singletonList(voucherNumberPrefixConfig)).setTotalRecords(1);
         serverResponse(ctx, 200, APPLICATION_JSON, JsonObject.mapFrom(configs).encodePrettily());
         return;
@@ -1731,7 +1730,7 @@ public class MockServer {
       case PREFIX_CONFIG_WITHOUT_VALUE_TENANT : {
         Config voucherNumberPrefixConfig = new Config()
           .withModule(INVOICE_CONFIG_MODULE_NAME)
-          .withConfigName(VOUCHER_NUMBER_CONFIG_NAME);
+          .withConfigName("voucherNumber");
         configs.withConfigs(Collections.singletonList(voucherNumberPrefixConfig)).setTotalRecords(1);
         serverResponse(ctx, 200, APPLICATION_JSON, JsonObject.mapFrom(configs).encodePrettily());
         return;
@@ -1739,7 +1738,7 @@ public class MockServer {
       case PREFIX_CONFIG_WITH_NON_EXISTING_VALUE_TENANT : {
         Config voucherNumberPrefixConfig = new Config()
           .withModule(INVOICE_CONFIG_MODULE_NAME)
-          .withConfigName(VOUCHER_NUMBER_CONFIG_NAME)
+          .withConfigName("voucherNumber")
           .withValue("{\"allowVoucherNumberEdit\":false}");
         configs.withConfigs(Collections.singletonList(voucherNumberPrefixConfig)).setTotalRecords(1);
         serverResponse(ctx, 200, APPLICATION_JSON, JsonObject.mapFrom(configs).encodePrettily());
@@ -1753,8 +1752,8 @@ public class MockServer {
           .withValue("{\"locale\":\"en-US\",\"timezone\":\"Pacific/Yap\",\"currency\":\"GBP\"}");
         Config voucherNumberPrefixConfig = new Config()
           .withModule(INVOICE_CONFIG_MODULE_NAME)
-          .withConfigName(VOUCHER_NUMBER_CONFIG_NAME)
-          .withValue(new JsonObject().put(VOUCHER_NUMBER_PREFIX_CONFIG, TEST_PREFIX).toString());
+          .withConfigName("voucherNumber")
+          .withValue(new JsonObject().put(VOUCHER_NUMBER_PREFIX_KEY, TEST_PREFIX).toString());
         configs.getConfigs().add(localeConfig);
         configs.getConfigs().add(voucherNumberPrefixConfig);
         configs.withTotalRecords(configs.getConfigs().size());

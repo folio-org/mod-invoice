@@ -50,7 +50,6 @@ import static org.folio.invoices.utils.ResourcePathResolver.VOUCHERS_STORAGE;
 import static org.folio.invoices.utils.ResourcePathResolver.VOUCHER_LINES;
 import static org.folio.invoices.utils.ResourcePathResolver.VOUCHER_NUMBER_STORAGE;
 import static org.folio.rest.RestConstants.MAX_IDS_FOR_GET_RQ;
-import static org.folio.rest.impl.AbstractHelper.DEFAULT_SYSTEM_CURRENCY;
 import static org.folio.rest.impl.InvoiceLinesApiTest.APPROVED_INVOICE_LINE_WITH_APPROVED_INVOICE_SAMPLE_PATH;
 import static org.folio.rest.impl.InvoiceLinesApiTest.INVOICE_LINES_LIST_PATH;
 import static org.folio.rest.impl.InvoiceLinesApiTest.INVOICE_LINES_MOCK_DATA_PATH;
@@ -82,6 +81,7 @@ import static org.folio.rest.impl.VouchersApiTest.VOUCHERS_LIST_PATH;
 import static org.folio.rest.jaxrs.model.FundDistribution.DistributionType.AMOUNT;
 import static org.folio.rest.jaxrs.model.FundDistribution.DistributionType.PERCENTAGE;
 import static org.folio.services.exchange.CustomExchangeRateProvider.RATE_KEY;
+import static org.folio.services.settings.CommonSettingsService.CURRENCY_DEFAULT;
 import static org.folio.services.validator.InvoiceValidator.NO_INVOICE_LINES_ERROR_MSG;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.allOf;
@@ -520,7 +520,7 @@ public class InvoicesApiTest extends ApiTestBase {
     assertThat(vouchersCreated, hasSize(1));
     Voucher voucherCreated = vouchersCreated.getFirst().mapTo(Voucher.class);
     assertThat(voucherCreated.getVoucherNumber(), equalTo(TEST_PREFIX + VOUCHER_NUMBER_VALUE));
-    assertThat(voucherCreated.getSystemCurrency(), equalTo(DEFAULT_SYSTEM_CURRENCY));
+    assertThat(voucherCreated.getSystemCurrency(), equalTo(CURRENCY_DEFAULT));
     verifyTransitionToApproved(voucherCreated, invoiceLines, updatedInvoice, 5);
     verifyVoucherLineWithExpenseClasses();
     checkVoucherAcqUnitIdsList(voucherCreated, reqData);
@@ -576,7 +576,7 @@ public class InvoicesApiTest extends ApiTestBase {
     assertThat(vouchersCreated, hasSize(1));
     Voucher voucherCreated = vouchersCreated.getFirst().mapTo(Voucher.class);
     assertThat(voucherCreated.getVoucherNumber(), equalTo(TEST_PREFIX + VOUCHER_NUMBER_VALUE));
-    assertThat(voucherCreated.getSystemCurrency(), equalTo(DEFAULT_SYSTEM_CURRENCY));
+    assertThat(voucherCreated.getSystemCurrency(), equalTo(CURRENCY_DEFAULT));
     verifyTransitionToApproved(voucherCreated, invoiceLines, updatedInvoice, 5);
     verifyVoucherLineWithExpenseClasses();
     checkVoucherAcqUnitIdsList(voucherCreated, reqData);
@@ -638,7 +638,7 @@ public class InvoicesApiTest extends ApiTestBase {
     assertThat(vouchersCreated, hasSize(1));
     Voucher voucherCreated = vouchersCreated.getFirst().mapTo(Voucher.class);
     assertThat(voucherCreated.getVoucherNumber(), equalTo(TEST_PREFIX + VOUCHER_NUMBER_VALUE));
-    assertThat(voucherCreated.getSystemCurrency(), equalTo(DEFAULT_SYSTEM_CURRENCY));
+    assertThat(voucherCreated.getSystemCurrency(), equalTo(CURRENCY_DEFAULT));
     verifyTransitionToApproved(voucherCreated, Collections.singletonList(invoiceLine), updatedInvoice, 1);
     checkVoucherAcqUnitIdsList(voucherCreated, invoice);
   }
@@ -686,7 +686,7 @@ public class InvoicesApiTest extends ApiTestBase {
     assertThat(vouchersCreated, hasSize(1));
     Voucher voucherCreated = vouchersCreated.getFirst().mapTo(Voucher.class);
     assertThat(voucherCreated.getVoucherNumber(), equalTo(TEST_PREFIX + VOUCHER_NUMBER_VALUE));
-    assertThat(voucherCreated.getSystemCurrency(), equalTo(DEFAULT_SYSTEM_CURRENCY));
+    assertThat(voucherCreated.getSystemCurrency(), equalTo(CURRENCY_DEFAULT));
     verifyTransitionToApproved(voucherCreated, Collections.singletonList(invoiceLine), updatedInvoice, 2);
     checkVoucherAcqUnitIdsList(voucherCreated, invoice);
 
@@ -890,7 +890,7 @@ public class InvoicesApiTest extends ApiTestBase {
     assertThat(vouchersCreated, hasSize(1));
     Voucher voucherCreated = vouchersCreated.getFirst().mapTo(Voucher.class);
     assertThat(voucherCreated.getVoucherNumber(), equalTo(TEST_PREFIX + VOUCHER_NUMBER_VALUE));
-    assertThat(voucherCreated.getSystemCurrency(), equalTo(DEFAULT_SYSTEM_CURRENCY));
+    assertThat(voucherCreated.getSystemCurrency(), equalTo(CURRENCY_DEFAULT));
     List<JsonObject> fundsSearches = serverRqRs.get(FUNDS, HttpMethod.GET);
     List<Fund> funds = Objects.requireNonNull(fundsSearches).getFirst().mapTo(FundCollection.class).getFunds();
     verifyTransitionToApproved(voucherCreated, Collections.singletonList(invoiceLine), updatedInvoice,  getExpectedVoucherLinesQuantity(funds));
@@ -933,7 +933,7 @@ public class InvoicesApiTest extends ApiTestBase {
     assertThat(vouchersCreated, hasSize(1));
     Voucher voucherCreated = vouchersCreated.getFirst().mapTo(Voucher.class);
     assertThat(voucherCreated.getVoucherNumber(), equalTo(TEST_PREFIX + VOUCHER_NUMBER_VALUE));
-    assertThat(voucherCreated.getSystemCurrency(), equalTo(DEFAULT_SYSTEM_CURRENCY));
+    assertThat(voucherCreated.getSystemCurrency(), equalTo(CURRENCY_DEFAULT));
     List<JsonObject> fundsSearches = serverRqRs.get(FUNDS, HttpMethod.GET);
     List<Fund> funds = Objects.requireNonNull(fundsSearches).getFirst().mapTo(FundCollection.class).getFunds();
     verifyTransitionToApproved(voucherCreated, Collections.singletonList(invoiceLine), updatedInvoice,  getExpectedVoucherLinesQuantity(funds));
@@ -976,7 +976,7 @@ public class InvoicesApiTest extends ApiTestBase {
     assertThat(vouchersCreated, hasSize(1));
     Voucher voucherCreated = vouchersCreated.getFirst().mapTo(Voucher.class);
     assertThat(voucherCreated.getVoucherNumber(), equalTo(TEST_PREFIX + VOUCHER_NUMBER_VALUE));
-    assertThat(voucherCreated.getSystemCurrency(), equalTo(DEFAULT_SYSTEM_CURRENCY));
+    assertThat(voucherCreated.getSystemCurrency(), equalTo(CURRENCY_DEFAULT));
     List<JsonObject> fundsSearches = serverRqRs.get(FUNDS, HttpMethod.GET);
     List<Fund> funds = Objects.requireNonNull(fundsSearches).getFirst().mapTo(FundCollection.class).getFunds();
     verifyTransitionToApproved(voucherCreated, Collections.singletonList(invoiceLine), updatedInvoice,  getExpectedVoucherLinesQuantity(funds));
@@ -1284,7 +1284,7 @@ public class InvoicesApiTest extends ApiTestBase {
     assertThat(vouchersCreated, notNullValue());
     assertThat(vouchersCreated, hasSize(1));
     Voucher voucherCreated = vouchersCreated.getFirst().mapTo(Voucher.class);
-    assertThat(voucherCreated.getSystemCurrency(), equalTo(DEFAULT_SYSTEM_CURRENCY));
+    assertThat(voucherCreated.getSystemCurrency(), equalTo(CURRENCY_DEFAULT));
     assertThat(voucherCreated.getVoucherNumber(), equalTo(VOUCHER_NUMBER_VALUE));
     List<JsonObject> fundsSearches = serverRqRs.get(FUNDS, HttpMethod.GET);
     List<Fund> funds = Objects.requireNonNull(fundsSearches).getFirst().mapTo(FundCollection.class).getFunds();
@@ -1830,7 +1830,7 @@ public class InvoicesApiTest extends ApiTestBase {
 
     Map<String, Transaction> pendingPaymentMap = pendingPaymentCreated.stream()
       .collect(toMap((transaction)->transaction.getAwaitingPayment().getEncumbranceId(), Function.identity()));
-    ConversionQuery conversionQuery = ConversionQueryBuilder.of().setTermCurrency(DEFAULT_SYSTEM_CURRENCY).set(RATE_KEY, 1.5).build();
+    ConversionQuery conversionQuery = ConversionQueryBuilder.of().setTermCurrency(CURRENCY_DEFAULT).set(RATE_KEY, 1.5).build();
     ExchangeRateProvider exchangeRateProvider = new CustomExchangeRateProvider();
     CurrencyConversion conversion = exchangeRateProvider.getCurrencyConversion(conversionQuery); //currency from MockServer
     fundDistributions.forEach(fundDistribution -> {

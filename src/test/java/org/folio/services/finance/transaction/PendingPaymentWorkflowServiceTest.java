@@ -6,8 +6,8 @@ import static org.folio.rest.acq.model.finance.Encumbrance.Status.RELEASED;
 import static org.folio.rest.acq.model.finance.Encumbrance.Status.UNRELEASED;
 import static org.folio.rest.acq.model.finance.Transaction.TransactionType.ENCUMBRANCE;
 import static org.folio.rest.acq.model.finance.Transaction.TransactionType.PENDING_PAYMENT;
-import static org.folio.rest.impl.AbstractHelper.DEFAULT_SYSTEM_CURRENCY;
 import static org.folio.services.exchange.CustomExchangeRateProvider.RATE_KEY;
+import static org.folio.services.settings.CommonSettingsService.CURRENCY_DEFAULT;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasSize;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -155,7 +155,7 @@ public class PendingPaymentWorkflowServiceTest {
 
     invoiceLine.getFundDistributions().add(invoiceLineFundDistribution);
 
-    ConversionQuery conversionQuery = ConversionQueryBuilder.of().setTermCurrency(DEFAULT_SYSTEM_CURRENCY).set(RATE_KEY, exchangeRate).build();
+    ConversionQuery conversionQuery = ConversionQueryBuilder.of().setTermCurrency(CURRENCY_DEFAULT).set(RATE_KEY, exchangeRate).build();
     ExchangeRateProvider exchangeRateProvider = new CustomExchangeRateProvider();
     CurrencyConversion conversion = exchangeRateProvider.getCurrencyConversion(conversionQuery);
 
@@ -262,7 +262,7 @@ public class PendingPaymentWorkflowServiceTest {
       .withPoLineId(poLineId);
     double exchangeRate = 1.3;
     ConversionQuery conversionQuery = ConversionQueryBuilder.of()
-      .setTermCurrency(DEFAULT_SYSTEM_CURRENCY).set(RATE_KEY, exchangeRate).build();
+      .setTermCurrency(CURRENCY_DEFAULT).set(RATE_KEY, exchangeRate).build();
     ExchangeRateProvider exchangeRateProvider = new CustomExchangeRateProvider();
     CurrencyConversion conversion = exchangeRateProvider.getCurrencyConversion(conversionQuery);
     InvoiceWorkflowDataHolder holder = new InvoiceWorkflowDataHolder()
