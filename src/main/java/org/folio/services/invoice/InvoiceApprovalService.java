@@ -12,7 +12,7 @@ import org.folio.rest.jaxrs.model.InvoiceLine;
 import org.folio.rest.jaxrs.model.Parameter;
 import org.folio.rest.jaxrs.model.Voucher;
 import org.folio.services.VendorRetrieveService;
-import org.folio.services.configuration.ConfigurationService;
+import org.folio.services.caches.CommonSettingsCache;
 import org.folio.services.finance.budget.BudgetExpenseClassService;
 import org.folio.services.finance.fiscalyear.CurrentFiscalYearService;
 import org.folio.services.finance.transaction.EncumbranceService;
@@ -29,8 +29,6 @@ import static io.vertx.core.Future.succeededFuture;
 import static java.util.Objects.nonNull;
 import static org.folio.invoices.utils.ErrorCodes.ORG_IS_NOT_VENDOR;
 import static org.folio.invoices.utils.ErrorCodes.ORG_NOT_FOUND;
-import static org.folio.rest.impl.AbstractHelper.SYSTEM_CONFIG_QUERY;
-import static org.folio.services.voucher.VoucherCommandService.VOUCHER_NUMBER_PREFIX_CONFIG_QUERY;
 import static org.folio.utils.FutureUtils.asFuture;
 
 
@@ -38,7 +36,7 @@ import static org.folio.utils.FutureUtils.asFuture;
 public class InvoiceApprovalService {
 
   private final BudgetExpenseClassService budgetExpenseClassService;
-  private final ConfigurationService configurationService;
+  private final CommonSettingsCache commonSettingsCache;
   private final CurrentFiscalYearService currentFiscalYearService;
   private final EncumbranceService encumbranceService;
   private final InvoiceFundDistributionService invoiceFundDistributionService;
@@ -52,7 +50,7 @@ public class InvoiceApprovalService {
   private final VoucherService voucherService;
 
 
-  public InvoiceApprovalService(BudgetExpenseClassService budgetExpenseClassService, ConfigurationService configurationService,
+  public InvoiceApprovalService(BudgetExpenseClassService budgetExpenseClassService, CommonSettingsCache commonSettingsCache,
       CurrentFiscalYearService currentFiscalYearService, EncumbranceService encumbranceService,
       InvoiceFundDistributionService invoiceFundDistributionService, InvoiceLineService invoiceLineService,
       InvoiceValidator validator, InvoiceWorkflowDataHolderBuilder holderBuilder,
@@ -61,7 +59,7 @@ public class InvoiceApprovalService {
       VoucherCommandService voucherCommandService, VoucherCreationService voucherCreationService,
       VoucherService voucherService) {
     this.budgetExpenseClassService = budgetExpenseClassService;
-    this.configurationService = configurationService;
+    this.commonSettingsCache = commonSettingsCache;
     this.currentFiscalYearService = currentFiscalYearService;
     this.encumbranceService = encumbranceService;
     this.invoiceFundDistributionService = invoiceFundDistributionService;
@@ -87,12 +85,11 @@ public class InvoiceApprovalService {
     invoice.setApprovalDate(new Date());
     invoice.setApprovedBy(invoice.getMetadata().getUpdatedByUserId());
 
-    return configurationService.getConfigurationsEntries(requestContext, SYSTEM_CONFIG_QUERY, VOUCHER_NUMBER_PREFIX_CONFIG_QUERY)
-      .compose(v -> vendorService.getVendor(invoice.getVendorId(), requestContext))
+    return vendorService.getVendor(invoice.getVendorId(), requestContext)
       .compose(organization -> asFuture(() -> validateBeforeApproval(organization, invoice, lines)))
       .compose(v -> holderBuilder.buildCompleteHolders(invoice, lines, requestContext))
       .compose(holders -> encumbranceService.updateInvoiceLinesEncumbranceLinks(holders,
-          holders.get(0).getFiscalYear().getId(), requestContext)
+          holders.getFirst().getFiscalYear().getId(), requestContext)
         .compose(linesToUpdate -> invoiceLineService.persistInvoiceLines(linesToUpdate, requestContext))
         .map(v -> holders))
       .compose(holders -> budgetExpenseClassService.checkExpenseClasses(holders, requestContext))
@@ -167,14 +164,13 @@ public class InvoiceApprovalService {
     return voucher;
   }
 
-  private Future<Voucher> updateVoucherWithSystemCurrency(Voucher voucher, List<InvoiceLine> lines,
-      RequestContext requestContext) {
-    if (!CollectionUtils.isEmpty(lines) && !CollectionUtils.isEmpty(lines.get(0).getFundDistributions())) {
-      String fundId = lines.get(0).getFundDistributions().get(0).getFundId();
+  private Future<Voucher> updateVoucherWithSystemCurrency(Voucher voucher, List<InvoiceLine> lines, RequestContext requestContext) {
+    if (!CollectionUtils.isEmpty(lines) && !CollectionUtils.isEmpty(lines.getFirst().getFundDistributions())) {
+      String fundId = lines.getFirst().getFundDistributions().getFirst().getFundId();
       return currentFiscalYearService.getCurrentFiscalYearByFund(fundId, requestContext)
         .map(fiscalYear -> voucher.withSystemCurrency(fiscalYear.getCurrency()));
     }
-    return configurationService.getSystemCurrency(requestContext)
+    return commonSettingsCache.getSystemCurrency(requestContext)
       .map(voucher::withSystemCurrency);
   }
 

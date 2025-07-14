@@ -36,6 +36,8 @@ import io.vertx.core.Context;
 import io.vertx.core.Future;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
+import lombok.extern.log4j.Log4j2;
+
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.collections4.ListUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -74,8 +76,9 @@ import org.folio.services.voucher.VoucherService;
 import org.folio.spring.SpringContextUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 
+@Log4j2
 public class InvoiceHelper extends AbstractHelper {
-  private final ProtectionHelper protectionHelper;
+
   @Autowired
   private AdjustmentsService adjustmentsService;
   @Autowired
@@ -110,7 +113,9 @@ public class InvoiceHelper extends AbstractHelper {
   private PaymentCreditWorkflowService paymentCreditWorkflowService;
   @Autowired
   private PoLinePaymentStatusUpdateService poLinePaymentStatusUpdateService;
-  private RequestContext requestContext;
+
+  private final ProtectionHelper protectionHelper;
+  private final RequestContext requestContext;
 
   public InvoiceHelper(Map<String, String> okapiHeaders, Context ctx) {
     super(okapiHeaders, ctx);
