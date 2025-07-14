@@ -27,17 +27,11 @@ public abstract class AbstractHelper {
   protected final Logger logger = LogManager.getLogger(this.getClass());
 
   public static final String ID = "id";
-  public static final String DEFAULT_SYSTEM_CURRENCY = "USD";
-  public static final String LOCALE_SETTINGS = "localeSettings";
-  public static final String SYSTEM_CONFIG_MODULE_NAME = "ORG";
   public static final String INVOICE_CONFIG_MODULE_NAME = "INVOICE";
-  public static final String CONFIG_QUERY = "module==%s and configName==%s";
   public static final String SEARCH_PARAMS = "?limit=%s&offset=%s%s";
-  public static final String SYSTEM_CONFIG_QUERY = String.format(CONFIG_QUERY, SYSTEM_CONFIG_MODULE_NAME, LOCALE_SETTINGS);
 
   protected final Map<String, String> okapiHeaders;
   protected final Context ctx;
-
 
   public AbstractHelper(Map<String, String> okapiHeaders, Context ctx) {
     this.okapiHeaders = okapiHeaders;

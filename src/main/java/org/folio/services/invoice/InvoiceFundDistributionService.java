@@ -8,7 +8,7 @@ import org.folio.rest.jaxrs.model.FundDistribution;
 import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.jaxrs.model.InvoiceLine;
 import org.folio.services.adjusment.AdjustmentsService;
-import org.folio.services.configuration.ConfigurationService;
+import org.folio.services.caches.CommonSettingsCache;
 import org.folio.services.exchange.CacheableExchangeRateService;
 import org.folio.services.exchange.CustomExchangeRateProvider;
 import org.javamoney.moneta.Money;
@@ -30,20 +30,19 @@ import static org.folio.invoices.utils.HelperUtils.getFundDistributionAmount;
 public class InvoiceFundDistributionService {
 
   private final AdjustmentsService adjustmentsService;
-  private final ConfigurationService configurationService;
+  private final CommonSettingsCache commonSettingsCache;
   private final CacheableExchangeRateService cacheableExchangeRateService;
 
   public InvoiceFundDistributionService(AdjustmentsService adjustmentsService,
-                                        ConfigurationService configurationService,
+                                        CommonSettingsCache commonSettingsCache,
                                         CacheableExchangeRateService cacheableExchangeRateService) {
     this.adjustmentsService = adjustmentsService;
-    this.configurationService = configurationService;
+    this.commonSettingsCache = commonSettingsCache;
     this.cacheableExchangeRateService = cacheableExchangeRateService;
   }
 
-  public Future<List<FundDistribution>> getAllFundDistributions(List<InvoiceLine> invoiceLines, Invoice invoice,
-                                                                RequestContext requestContext) {
-    return configurationService.getSystemCurrency(requestContext)
+  public Future<List<FundDistribution>> getAllFundDistributions(List<InvoiceLine> invoiceLines, Invoice invoice, RequestContext requestContext) {
+    return commonSettingsCache.getSystemCurrency(requestContext)
       .compose(systemCurrency -> cacheableExchangeRateService.getExchangeRate(invoice.getCurrency(), systemCurrency, invoice.getExchangeRate(), requestContext)
         .compose(exchangeRate -> {
           var query = HelperUtils.buildConversionQuery(invoice.getCurrency(), systemCurrency, exchangeRate.getExchangeRate());

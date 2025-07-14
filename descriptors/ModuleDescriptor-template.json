@@ -64,6 +64,7 @@
           ],
           "modulePermissions": [
             "configuration.entries.collection.get",
+            "mod-settings.global.read.stripes-core.prefs.manage",
             "invoice-storage.invoices.collection.get",
             "invoice-storage.invoices.item.put",
             "invoice-storage.invoices.item.get",
@@ -582,6 +583,10 @@
     {
       "id": "configuration",
       "version": "2.0"
+    },
+    {
+      "id": "settings",
+      "version": "1.2"
     },
     {
       "id": "finance.funds",

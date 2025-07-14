@@ -22,6 +22,7 @@ import static org.folio.invoices.utils.ResourcePathResolver.BATCH_VOUCHER_STORAG
 import static org.folio.invoices.utils.ResourcePathResolver.BUDGETS;
 import static org.folio.invoices.utils.ResourcePathResolver.BUDGET_EXPENSE_CLASSES;
 import static org.folio.invoices.utils.ResourcePathResolver.COMPOSITE_ORDER;
+import static org.folio.invoices.utils.ResourcePathResolver.CONFIGURATION_ENTRIES;
 import static org.folio.invoices.utils.ResourcePathResolver.CURRENT_BUDGET;
 import static org.folio.invoices.utils.ResourcePathResolver.EXPENSE_CLASSES_URL;
 import static org.folio.invoices.utils.ResourcePathResolver.FINANCE_BATCH_TRANSACTIONS;
@@ -37,6 +38,7 @@ import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_LINE_NUMBER;
 import static org.folio.invoices.utils.ResourcePathResolver.LEDGERS;
 import static org.folio.invoices.utils.ResourcePathResolver.ORDER_INVOICE_RELATIONSHIP;
 import static org.folio.invoices.utils.ResourcePathResolver.ORDER_LINES;
+import static org.folio.invoices.utils.ResourcePathResolver.SETTINGS_ENTRIES;
 import static org.folio.invoices.utils.ResourcePathResolver.VOUCHERS_STORAGE;
 import static org.folio.invoices.utils.ResourcePathResolver.VOUCHER_LINES;
 import static org.folio.invoices.utils.ResourcePathResolver.VOUCHER_NUMBER_START;
@@ -65,8 +67,6 @@ import static org.folio.rest.impl.BatchVoucherImplTest.BATCH_VOUCHER_MOCK_DATA_P
 import static org.folio.rest.impl.DocumentsApiTest.INVOICE_DOCUMENTS_SAMPLE_PATH;
 import static org.folio.rest.impl.DocumentsApiTest.INVOICE_SAMPLE_DOCUMENTS_PATH;
 import static org.folio.rest.impl.InvoiceHelper.INVOICE_CONFIG_MODULE_NAME;
-import static org.folio.rest.impl.InvoiceHelper.LOCALE_SETTINGS;
-import static org.folio.rest.impl.InvoiceHelper.SYSTEM_CONFIG_MODULE_NAME;
 import static org.folio.rest.impl.InvoiceLinesApiTest.INVOICE_LINES_MOCK_DATA_PATH;
 import static org.folio.rest.impl.InvoicesApiTest.BAD_QUERY;
 import static org.folio.rest.impl.InvoicesApiTest.EXISTING_LEDGER_ID;
@@ -79,8 +79,9 @@ import static org.folio.rest.impl.VoucherLinesApiTest.VOUCHER_LINES_MOCK_DATA_PA
 import static org.folio.rest.impl.VouchersApiTest.VOUCHERS_LIST_PATH;
 import static org.folio.rest.impl.VouchersApiTest.VOUCHER_MOCK_DATA_PATH;
 import static org.folio.services.AcquisitionsUnitsService.ACQUISITIONS_UNIT_ID;
-import static org.folio.services.voucher.VoucherCommandService.VOUCHER_NUMBER_CONFIG_NAME;
-import static org.folio.services.voucher.VoucherCommandService.VOUCHER_NUMBER_PREFIX_CONFIG;
+import static org.folio.services.settings.CommonSettingsService.CURRENCY_KEY;
+import static org.folio.services.settings.CommonSettingsService.TENANT_LOCALE_SETTINGS;
+import static org.folio.services.settings.CommonSettingsService.VOUCHER_NUMBER_PREFIX_KEY;
 import static org.junit.Assert.fail;
 
 import java.io.IOException;
@@ -132,6 +133,9 @@ import org.folio.rest.acq.model.orders.CompositePurchaseOrder;
 import org.folio.rest.acq.model.orders.OrderInvoiceRelationshipCollection;
 import org.folio.rest.acq.model.orders.PoLine;
 import org.folio.rest.acq.model.orders.PoLineCollection;
+import org.folio.rest.acq.model.settings.CommonSetting;
+import org.folio.rest.acq.model.settings.CommonSettingsCollection;
+import org.folio.rest.acq.model.settings.Value;
 import org.folio.rest.acq.model.units.AcquisitionsUnit;
 import org.folio.rest.acq.model.units.AcquisitionsUnitCollection;
 import org.folio.rest.acq.model.units.AcquisitionsUnitMembershipCollection;
@@ -422,7 +426,8 @@ public class MockServer {
     router.route(HttpMethod.GET, resourcesPath(BUDGETS)).handler(this::handleGetBudgetRecords);
     router.route(HttpMethod.GET, resourcesPath(LEDGERS)).handler(this::handleGetLedgerRecords);
     router.route(HttpMethod.GET, resourceByIdPath(LEDGERS)).handler(this::handleGetLedgerRecordsById);
-    router.route(HttpMethod.GET, "/configurations/entries").handler(this::handleConfigurationModuleResponse);
+    router.route(HttpMethod.GET, resourcesPath(CONFIGURATION_ENTRIES)).handler(this::handleConfigurationModuleResponse);
+    router.route(HttpMethod.GET, resourcesPath(SETTINGS_ENTRIES)).handler(this::handleSettingsModuleResponse);
     router.route(HttpMethod.GET, "/invoice-storage/invoices/:id/documents").handler(this::handleGetInvoiceDocuments);
     router.route(HttpMethod.GET, "/invoice-storage/invoices/:id/documents/:documentId").handler(this::handleGetInvoiceDocumentById);
     router.route(HttpMethod.GET, resourcesPath(ACQUISITIONS_MEMBERSHIPS)).handler(this::handleGetAcquisitionsMemberships);
@@ -1708,59 +1713,30 @@ public class MockServer {
 
   private void handleConfigurationModuleResponse(RoutingContext ctx) {
     String tenant = ctx.request().getHeader(OKAPI_HEADER_TENANT);
-    Configs configs = new Configs();
-    switch (tenant) {
-      case NON_EXIST_CONFIG_TENANT : {
-        configs.setTotalRecords(0);
-        serverResponse(ctx, 200, APPLICATION_JSON, JsonObject.mapFrom(configs).encodePrettily());
-        return;
-      }
-      case ERROR_CONFIG_TENANT : {
-        serverResponse(ctx, 500, TEXT_PLAIN, INTERNAL_SERVER_ERROR.getReasonPhrase());
-        return;
-      }
-      case INVALID_PREFIX_CONFIG_TENANT : {
-        Config voucherNumberPrefixConfig = new Config()
-          .withModule(INVOICE_CONFIG_MODULE_NAME)
-          .withConfigName(VOUCHER_NUMBER_CONFIG_NAME)
-          .withValue(new JsonObject().put(VOUCHER_NUMBER_PREFIX_CONFIG, INVALID_PREFIX).toString());
-        configs.withConfigs(Collections.singletonList(voucherNumberPrefixConfig)).setTotalRecords(1);
-        serverResponse(ctx, 200, APPLICATION_JSON, JsonObject.mapFrom(configs).encodePrettily());
-        return;
-      }
-      case PREFIX_CONFIG_WITHOUT_VALUE_TENANT : {
-        Config voucherNumberPrefixConfig = new Config()
-          .withModule(INVOICE_CONFIG_MODULE_NAME)
-          .withConfigName(VOUCHER_NUMBER_CONFIG_NAME);
-        configs.withConfigs(Collections.singletonList(voucherNumberPrefixConfig)).setTotalRecords(1);
-        serverResponse(ctx, 200, APPLICATION_JSON, JsonObject.mapFrom(configs).encodePrettily());
-        return;
-      }
-      case PREFIX_CONFIG_WITH_NON_EXISTING_VALUE_TENANT : {
-        Config voucherNumberPrefixConfig = new Config()
-          .withModule(INVOICE_CONFIG_MODULE_NAME)
-          .withConfigName(VOUCHER_NUMBER_CONFIG_NAME)
-          .withValue("{\"allowVoucherNumberEdit\":false}");
-        configs.withConfigs(Collections.singletonList(voucherNumberPrefixConfig)).setTotalRecords(1);
-        serverResponse(ctx, 200, APPLICATION_JSON, JsonObject.mapFrom(configs).encodePrettily());
-        return;
-      }
-      default: {
-
-        Config localeConfig = new Config()
-          .withModule(SYSTEM_CONFIG_MODULE_NAME)
-          .withConfigName(LOCALE_SETTINGS)
-          .withValue("{\"locale\":\"en-US\",\"timezone\":\"Pacific/Yap\",\"currency\":\"GBP\"}");
-        Config voucherNumberPrefixConfig = new Config()
-          .withModule(INVOICE_CONFIG_MODULE_NAME)
-          .withConfigName(VOUCHER_NUMBER_CONFIG_NAME)
-          .withValue(new JsonObject().put(VOUCHER_NUMBER_PREFIX_CONFIG, TEST_PREFIX).toString());
-        configs.getConfigs().add(localeConfig);
-        configs.getConfigs().add(voucherNumberPrefixConfig);
-        configs.withTotalRecords(configs.getConfigs().size());
-      }
-      serverResponse(ctx, 200, APPLICATION_JSON, JsonObject.mapFrom(configs).encodePrettily());
+    if (tenant.equals(ERROR_CONFIG_TENANT)) {
+      serverResponse(ctx, 500, TEXT_PLAIN, INTERNAL_SERVER_ERROR.getReasonPhrase());
+      return;
+    } else if (tenant.equals(NON_EXIST_CONFIG_TENANT)) {
+      serverResponse(ctx, 200, APPLICATION_JSON, JsonObject.mapFrom(new Config()).encodePrettily());
+      return;
     }
+    String configValue = switch (tenant) {
+      case INVALID_PREFIX_CONFIG_TENANT -> new JsonObject().put(VOUCHER_NUMBER_PREFIX_KEY, INVALID_PREFIX).toString();
+      case PREFIX_CONFIG_WITHOUT_VALUE_TENANT -> null;
+      case PREFIX_CONFIG_WITH_NON_EXISTING_VALUE_TENANT -> "{\"allowVoucherNumberEdit\":false}";
+      default -> new JsonObject().put(VOUCHER_NUMBER_PREFIX_KEY, TEST_PREFIX).toString();
+    };
+    var configs = new Configs().withTotalRecords(1)
+      .withConfigs(List.of(new Config().withModule(INVOICE_CONFIG_MODULE_NAME).withConfigName("voucherNumber").withValue(configValue)));
+    serverResponse(ctx, 200, APPLICATION_JSON, JsonObject.mapFrom(configs).encodePrettily());
+  }
+
+  private void handleSettingsModuleResponse(RoutingContext ctx) {
+    var settingsCollection = new CommonSettingsCollection()
+      .withItems(List.of(new CommonSetting()
+        .withKey(TENANT_LOCALE_SETTINGS)
+        .withValue(new Value().withAdditionalProperty(CURRENCY_KEY, "GBP"))));
+    serverResponse(ctx, 200, APPLICATION_JSON, JsonObject.mapFrom(settingsCollection).encodePrettily());
   }
 
   private void handleGetBudgetRecords(RoutingContext ctx) {
