@@ -7,6 +7,7 @@ import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_LINES;
 import static org.folio.invoices.utils.ResourcePathResolver.VOUCHERS_STORAGE;
 import static org.folio.invoices.utils.ResourcePathResolver.VOUCHER_LINES;
 import static org.folio.rest.RestConstants.SEMAPHORE_MAX_ACTIVE_THREADS;
+import static org.folio.rest.RestVerticle.OKAPI_USERID_HEADER;
 import static org.folio.rest.impl.AbstractHelper.ID;
 import static org.folio.rest.jaxrs.model.FundDistribution.DistributionType.PERCENTAGE;
 import static org.folio.services.exchange.CustomExchangeRateProvider.RATE_KEY;
@@ -319,4 +320,9 @@ public class HelperUtils {
   public static boolean isNotFound(Throwable t) {
     return t instanceof HttpException && ((HttpException) t).getCode() == 404;
   }
+
+  public static String getCurrentUserId(Map<String, String> okapiHeaders) {
+    return okapiHeaders.get(OKAPI_USERID_HEADER);
+  }
+
 }

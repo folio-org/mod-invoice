@@ -10,7 +10,7 @@ import org.folio.services.InvoiceRetrieveService;
 import org.folio.services.VendorRetrieveService;
 import org.folio.services.VoucherLineService;
 import org.folio.services.adjusment.AdjustmentsService;
-import org.folio.services.configuration.ConfigurationService;
+import org.folio.services.caches.CommonSettingsCache;
 import org.folio.services.exchange.CacheableExchangeRateService;
 import org.folio.services.finance.FundService;
 import org.folio.services.finance.LedgerService;
@@ -64,11 +64,6 @@ public class ServicesConfiguration {
 
   @Bean VoucherCommandService voucherCommandService() {
     return new VoucherCommandService();
-  }
-
-  @Bean
-  ConfigurationService tenantConfigurationService(RestClient restClient) {
-    return new ConfigurationService(restClient);
   }
 
   @Bean
@@ -195,20 +190,20 @@ public class ServicesConfiguration {
 
   @Bean
   InvoiceFundDistributionService invoiceFundDistributionService(AdjustmentsService adjustmentsService,
-                                                                ConfigurationService configurationService,
+                                                                CommonSettingsCache commonSettingsCache,
                                                                 CacheableExchangeRateService cacheableExchangeRateService) {
-    return new InvoiceFundDistributionService(adjustmentsService, configurationService, cacheableExchangeRateService);
+    return new InvoiceFundDistributionService(adjustmentsService, commonSettingsCache, cacheableExchangeRateService);
   }
 
   @Bean
   InvoiceApprovalService invoiceApprovalService(BudgetExpenseClassService budgetExpenseClassService,
-      ConfigurationService configurationService, CurrentFiscalYearService currentFiscalYearService,
-      EncumbranceService encumbranceService, InvoiceFundDistributionService invoiceFundDistributionService,
-      InvoiceLineService invoiceLineService, InvoiceValidator validator, InvoiceWorkflowDataHolderBuilder holderBuilder,
-      PendingPaymentWorkflowService pendingPaymentWorkflowService,
-      VendorRetrieveService vendorService, VoucherCommandService voucherCommandService,
-      VoucherCreationService voucherCreationService, VoucherService voucherService) {
-    return new InvoiceApprovalService(budgetExpenseClassService, configurationService, currentFiscalYearService,
+                                                CommonSettingsCache commonSettingsCache, CurrentFiscalYearService currentFiscalYearService,
+                                                EncumbranceService encumbranceService, InvoiceFundDistributionService invoiceFundDistributionService,
+                                                InvoiceLineService invoiceLineService, InvoiceValidator validator, InvoiceWorkflowDataHolderBuilder holderBuilder,
+                                                PendingPaymentWorkflowService pendingPaymentWorkflowService,
+                                                VendorRetrieveService vendorService, VoucherCommandService voucherCommandService,
+                                                VoucherCreationService voucherCreationService, VoucherService voucherService) {
+    return new InvoiceApprovalService(budgetExpenseClassService, commonSettingsCache, currentFiscalYearService,
       encumbranceService, invoiceFundDistributionService, invoiceLineService, validator, holderBuilder,
       pendingPaymentWorkflowService, vendorService, voucherCommandService, voucherCreationService, voucherService);
   }
