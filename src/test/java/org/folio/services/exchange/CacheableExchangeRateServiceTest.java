@@ -18,6 +18,7 @@ import org.mockito.MockitoAnnotations;
 
 import java.util.function.BiFunction;
 
+import static org.folio.rest.acq.model.finance.ExchangeRate.OperationMode.MULTIPLY;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -53,7 +54,7 @@ public class CacheableExchangeRateServiceTest {
     var from = "USD";
     var to = "USD";
 
-    service.getExchangeRate(from, to, null, requestContext)
+    service.getExchangeRate(from, to, null, MULTIPLY.name(), requestContext)
       .onComplete(ar -> testContext.verify(() -> {
         var rate = ar.result();
         assertEquals(from, rate.getFrom());
@@ -69,7 +70,7 @@ public class CacheableExchangeRateServiceTest {
     var to = "EUR";
     var customExchangeRate = 2d;
 
-    service.getExchangeRate(from, to, customExchangeRate, requestContext)
+    service.getExchangeRate(from, to, customExchangeRate, MULTIPLY.name(), requestContext)
       .onComplete(ar -> testContext.verify(() -> {
         var rate = ar.result();
         assertEquals(from, rate.getFrom());
@@ -88,7 +89,7 @@ public class CacheableExchangeRateServiceTest {
     when(restClient.get(any(org.folio.rest.core.models.RequestEntry.class), eq(ExchangeRate.class), eq(requestContext)))
       .thenReturn(Future.succeededFuture(remoteRate));
 
-    service.getExchangeRate(from, to, null, requestContext)
+    service.getExchangeRate(from, to, null, MULTIPLY.name(), requestContext)
       .onComplete(ar -> testContext.verify(() -> {
         var rate = ar.result();
         assertEquals(from, rate.getFrom());
@@ -117,7 +118,7 @@ public class CacheableExchangeRateServiceTest {
     field.setAccessible(true);
     field.set(service, asyncCacheMock);
 
-    var future = service.getExchangeRate(from, to, null, requestContext);
+    var future = service.getExchangeRate(from, to, null, MULTIPLY.name(), requestContext);
     future.onComplete(ar -> testContext.verify(() -> {
       assertTrue(ar.failed());
       assertEquals(customException, ar.cause());

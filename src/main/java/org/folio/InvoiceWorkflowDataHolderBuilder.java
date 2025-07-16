@@ -194,11 +194,12 @@ public class InvoiceWorkflowDataHolderBuilder {
                                                                           RequestContext requestContext) {
     var invoice = holder.getInvoice();
     var fiscalYear = holder.getFiscalYear();
-    return cacheableExchangeRateService.getExchangeRate(invoice.getCurrency(), fiscalYear.getCurrency(), invoice.getExchangeRate(), requestContext)
+    return cacheableExchangeRateService.getExchangeRate(invoice.getCurrency(), fiscalYear.getCurrency(), invoice.getExchangeRate(), invoice.getOperationMode(), requestContext)
       .compose(exchangeRate -> {
         var query = HelperUtils.buildConversionQuery(invoice.getCurrency(), fiscalYear.getCurrency(), exchangeRate.getExchangeRate());
-        var provider = new CustomExchangeRateProvider();
+        var provider = new CustomExchangeRateProvider(exchangeRate.getOperationMode());
         invoice.setExchangeRate(provider.getExchangeRate(query).getFactor().doubleValue());
+        invoice.setOperationMode(exchangeRate.getOperationMode().name());
         return Future.succeededFuture(provider.getCurrencyConversion(query));
       })
       .map(conversion -> holders.stream()
