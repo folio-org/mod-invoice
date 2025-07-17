@@ -12,7 +12,9 @@ import javax.money.convert.RateType;
 import org.folio.invoices.rest.exceptions.HttpException;
 import org.javamoney.moneta.convert.ExchangeRateBuilder;
 import org.javamoney.moneta.spi.DefaultNumberValue;
-import org.javamoney.moneta.spi.LazyBoundCurrencyConversion;
+import org.folio.rest.acq.model.finance.ExchangeRate.OperationMode;
+
+import static org.folio.rest.acq.model.finance.ExchangeRate.OperationMode.MULTIPLY;
 
 public class CustomExchangeRateProvider implements ExchangeRateProvider {
 
@@ -20,6 +22,16 @@ public class CustomExchangeRateProvider implements ExchangeRateProvider {
     .set("providerDescription", "Custom exchange rate provider")
     .build();
   public static final String RATE_KEY = "factor";
+
+  private final OperationMode operationMode;
+
+  public CustomExchangeRateProvider() {
+    this.operationMode = MULTIPLY;
+  }
+
+  public CustomExchangeRateProvider(OperationMode operationMode) {
+    this.operationMode = operationMode;
+  }
 
   @Override
   public ProviderContext getContext() {
@@ -41,6 +53,6 @@ public class CustomExchangeRateProvider implements ExchangeRateProvider {
 
   @Override
   public CurrencyConversion getCurrencyConversion(ConversionQuery conversionQuery) {
-    return new LazyBoundCurrencyConversion(conversionQuery, this, ConversionContext.of(this.getContext().getProviderName(), RateType.ANY));
+    return new ManualCurrencyConversion(conversionQuery, this, ConversionContext.of(this.getContext().getProviderName(), RateType.ANY), operationMode);
   }
 }

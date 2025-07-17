@@ -41,10 +41,12 @@ public class VoucherCommandService {
   }
 
   public Future<Voucher> updateVoucherWithExchangeRate(Voucher voucher, Invoice invoice, RequestContext requestContext) {
-    return cacheableExchangeRateService.getExchangeRate(invoice.getCurrency(), voucher.getSystemCurrency(), invoice.getExchangeRate(), requestContext)
+    return cacheableExchangeRateService.getExchangeRate(invoice.getCurrency(), voucher.getSystemCurrency(), invoice.getExchangeRate(), invoice.getOperationMode(), requestContext)
       .compose(exchangeRate -> {
         invoice.setExchangeRate(exchangeRate.getExchangeRate());
+        invoice.setOperationMode(exchangeRate.getOperationMode().name());
         voucher.setExchangeRate(exchangeRate.getExchangeRate());
+        voucher.setOperationMode(exchangeRate.getOperationMode().name());
         return Future.succeededFuture(voucher);
       });
   }

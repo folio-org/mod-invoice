@@ -43,10 +43,10 @@ public class InvoiceFundDistributionService {
 
   public Future<List<FundDistribution>> getAllFundDistributions(List<InvoiceLine> invoiceLines, Invoice invoice, RequestContext requestContext) {
     return commonSettingsCache.getSystemCurrency(requestContext)
-      .compose(systemCurrency -> cacheableExchangeRateService.getExchangeRate(invoice.getCurrency(), systemCurrency, invoice.getExchangeRate(), requestContext)
+      .compose(systemCurrency -> cacheableExchangeRateService.getExchangeRate(invoice.getCurrency(), systemCurrency, invoice.getExchangeRate(), invoice.getOperationMode(), requestContext)
         .compose(exchangeRate -> {
           var query = HelperUtils.buildConversionQuery(invoice.getCurrency(), systemCurrency, exchangeRate.getExchangeRate());
-          var provider = new CustomExchangeRateProvider();
+          var provider = new CustomExchangeRateProvider(exchangeRate.getOperationMode());
           var conversion = provider.getCurrencyConversion(query);
           var fundDistributions = getInvoiceLineFundDistributions(invoiceLines, invoice, conversion);
           fundDistributions.addAll(getAdjustmentFundDistributions(invoice, conversion));

@@ -50,6 +50,7 @@ import static org.folio.invoices.utils.ResourcePathResolver.VOUCHERS_STORAGE;
 import static org.folio.invoices.utils.ResourcePathResolver.VOUCHER_LINES;
 import static org.folio.invoices.utils.ResourcePathResolver.VOUCHER_NUMBER_STORAGE;
 import static org.folio.rest.RestConstants.MAX_IDS_FOR_GET_RQ;
+import static org.folio.rest.acq.model.finance.ExchangeRate.OperationMode.MULTIPLY;
 import static org.folio.rest.impl.InvoiceLinesApiTest.APPROVED_INVOICE_LINE_WITH_APPROVED_INVOICE_SAMPLE_PATH;
 import static org.folio.rest.impl.InvoiceLinesApiTest.INVOICE_LINES_LIST_PATH;
 import static org.folio.rest.impl.InvoiceLinesApiTest.INVOICE_LINES_MOCK_DATA_PATH;
@@ -1748,6 +1749,7 @@ public class InvoicesApiTest extends ApiTestBase {
     reqData.setStatus(Invoice.Status.APPROVED);
     reqData.setCurrency("GBP");
     reqData.setExchangeRate(1.5d);
+    reqData.setOperationMode(MULTIPLY.name());
 
     String id = reqData.getId();
 
