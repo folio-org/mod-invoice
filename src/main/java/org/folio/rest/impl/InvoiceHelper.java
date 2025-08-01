@@ -164,7 +164,7 @@ public class InvoiceHelper extends AbstractHelper {
             logger.error("validateFiscalYearId:: More than one fiscal years found: invoice '{}'", invoice.getId());
             throw new HttpException(422, MULTIPLE_ADJUSTMENTS_FISCAL_YEARS, parameters);
           }
-          invoice.setFiscalYearId(uniqueFiscalYears.stream().findFirst().get().getId());
+          invoice.setFiscalYearId(uniqueFiscalYears.stream().findFirst().orElseThrow().getId());
           return null;
         });
     }
@@ -266,7 +266,7 @@ public class InvoiceHelper extends AbstractHelper {
    * Handles update of the invoice. First retrieve the invoice from storage, validate, handle invoice status transition and update
    * to storage.
    *
-   * @param invoice updated {@link Invoice} invoice
+   * @param invoice             updated {@link Invoice} invoice
    * @param poLinePaymentStatus - paymentStatus to use to update po lines when approving or cancelling invoices (optional)
    * @return completable future holding response indicating success (204 No Content) or error if failed
    */
@@ -316,7 +316,7 @@ public class InvoiceHelper extends AbstractHelper {
   }
 
   private Future<Void> validateAndHandleInvoiceStatusTransition(Invoice invoice, Invoice invoiceFromStorage,
-      String poLinePaymentStatus) {
+                                                                String poLinePaymentStatus) {
     return validateAcqUnitsOnUpdate(invoice, invoiceFromStorage)
       .map(ok -> {
         validator.validateInvoice(invoice, invoiceFromStorage);
@@ -341,7 +341,7 @@ public class InvoiceHelper extends AbstractHelper {
           return updatedInvoiceLines;
         })
         .compose(updatedInvoiceLines -> handleInvoiceStatusTransition(invoice, invoiceFromStorage,
-            updatedInvoiceLines, poLinePaymentStatus)
+          updatedInvoiceLines, poLinePaymentStatus)
           .map(aVoid -> {
             updateInvoiceLinesStatus(invoice, updatedInvoiceLines);
             return null;
@@ -393,10 +393,22 @@ public class InvoiceHelper extends AbstractHelper {
   }
 
   private void recalculateAdjustmentData(Invoice updatedInvoice, Invoice invoiceFromStorage, List<InvoiceLine> invoiceLines) {
+    // If invoice adjustment type was changed from "Not Prorated", remove any FundDistributions from these adjustments
+    if (updatedInvoice.getAdjustments().stream().anyMatch(InvoiceHelper::isProratedWithFundDistribution)) {
+      var correctedAdjustments = updatedInvoice.getAdjustments()
+        .stream().filter(InvoiceHelper::isProratedWithFundDistribution)
+        .map(adjustment -> adjustment.withFundDistributions(null))
+        .toList();
+      updatedInvoice.setAdjustments(correctedAdjustments);
+    }
     // If invoice was approved, the totals are already fixed and should not be recalculated
     if (!isPostApproval(invoiceFromStorage)) {
       processProratedAdjustments(updatedInvoice, invoiceFromStorage, invoiceLines);
     }
+  }
+
+  public static boolean isProratedWithFundDistribution(Adjustment adjustment) {
+    return adjustment.getProrate() != Adjustment.Prorate.NOT_PRORATED && !adjustment.getFundDistributions().isEmpty();
   }
 
   private void processProratedAdjustments(Invoice updatedInvoice, Invoice invoiceFromStorage, List<InvoiceLine> lines) {
@@ -414,7 +426,8 @@ public class InvoiceHelper extends AbstractHelper {
   }
 
   private void updateInvoiceLinesStatus(Invoice invoice, List<InvoiceLine> invoiceLines) {
-    invoiceLines.forEach(invoiceLine -> invoiceLine.withInvoiceLineStatus(InvoiceLine.InvoiceLineStatus.fromValue(invoice.getStatus().value())));
+    invoiceLines.forEach(invoiceLine ->
+      invoiceLine.withInvoiceLineStatus(InvoiceLine.InvoiceLineStatus.fromValue(invoice.getStatus().value())));
   }
 
   private void setSystemGeneratedData(Invoice invoiceFromStorage, Invoice invoice) {
@@ -423,7 +436,7 @@ public class InvoiceHelper extends AbstractHelper {
   }
 
   private Future<Void> handleInvoiceStatusTransition(Invoice invoice, Invoice invoiceFromStorage,
-      List<InvoiceLine> invoiceLines, String poLinePaymentStatus) {
+                                                     List<InvoiceLine> invoiceLines, String poLinePaymentStatus) {
     verifyTransitionOnPaidStatus(invoiceFromStorage, invoice);
     if (isTransitionToApproved(invoiceFromStorage, invoice)) {
       return invoiceApprovalService.approveInvoice(invoice, invoiceLines, requestContext);
@@ -445,7 +458,7 @@ public class InvoiceHelper extends AbstractHelper {
   private void verifyTransitionOnPaidStatus(Invoice invoiceFromStorage, Invoice invoice) {
     // Once an invoice is Paid, it should no longer transition to other statuses, except Cancelled.
     if (invoiceFromStorage.getStatus() == Invoice.Status.PAID && invoice.getStatus() != Invoice.Status.CANCELLED &&
-        invoice.getStatus() != invoiceFromStorage.getStatus()) {
+      invoice.getStatus() != invoiceFromStorage.getStatus()) {
       var parameter = new Parameter().withKey("invoiceId").withValue(invoice.getId());
       logger.error("verifyTransitionOnPaidStatus:: Invalid invoice '{}' transition on paid status", invoice.getId());
       throw new HttpException(422, INVALID_INVOICE_TRANSITION_ON_PAID_STATUS, List.of(parameter));
@@ -463,8 +476,8 @@ public class InvoiceHelper extends AbstractHelper {
   /**
    * Handles transition of given invoice to PAID status.
    */
-  private Future<Void> payInvoice(Invoice invoice, List<InvoiceLine> invoiceLines, String poLinePaymentStatus,
-    RequestContext requestContext) {
+  private Future<Void> payInvoice(Invoice invoice, List<InvoiceLine> invoiceLines,
+                                  String poLinePaymentStatus, RequestContext requestContext) {
     //  Set payment date, when the invoice is being paid.
     invoice.setPaymentDate(invoice.getMetadata().getUpdatedDate());
     return holderBuilder.buildCompleteHolders(invoice, invoiceLines, requestContext)
@@ -492,5 +505,4 @@ public class InvoiceHelper extends AbstractHelper {
       .compose(holders -> encumbranceService.updateInvoiceLinesEncumbranceLinks(holders, newFiscalYearId, requestContext))
       .compose(linesToUpdate -> invoiceLineService.persistInvoiceLines(linesToUpdate, requestContext));
   }
-
 }

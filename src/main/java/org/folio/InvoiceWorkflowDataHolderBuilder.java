@@ -104,7 +104,6 @@ public class InvoiceWorkflowDataHolderBuilder {
     return holders;
   }
 
-
   public Future<List<InvoiceWorkflowDataHolder>> withFunds(List<InvoiceWorkflowDataHolder> holders, RequestContext requestContext) {
     List<String> fundIds = holders.stream().map(InvoiceWorkflowDataHolder::getFundId).distinct().collect(toList());
     return fundService.getFunds(fundIds, requestContext)

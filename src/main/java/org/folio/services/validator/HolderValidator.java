@@ -5,6 +5,5 @@ import java.util.List;
 import org.folio.models.InvoiceWorkflowDataHolder;
 
 public interface HolderValidator {
-
-    void validate(List<InvoiceWorkflowDataHolder> entity);
+  void validate(List<InvoiceWorkflowDataHolder> entity);
 }

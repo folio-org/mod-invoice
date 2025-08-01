@@ -21,5 +21,4 @@ public interface InvoiceService {
   Future<Boolean> recalculateTotals(Invoice invoice, RequestContext requestContext);
   Future<Void> updateInvoicesTotals(InvoiceCollection invoiceCollection, RequestContext requestContext);
   Future<String> generateFolioInvoiceNumber(RequestContext requestContext);
-
 }

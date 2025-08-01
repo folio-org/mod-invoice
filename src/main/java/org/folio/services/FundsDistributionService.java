@@ -27,11 +27,11 @@ public class FundsDistributionService {
       .collect(Collectors.groupingBy(InvoiceWorkflowDataHolder::getInvoiceLine));
 
     lineHoldersMap.forEach((invoiceLine, invoiceWorkflowDataHolder) -> {
-      CurrencyUnit invoiceCurrency = Monetary.getCurrency(holders.get(0).getInvoiceCurrency());
+      CurrencyUnit invoiceCurrency = Monetary.getCurrency(holders.getFirst().getInvoiceCurrency());
       CurrencyConversion conversion = invoiceWorkflowDataHolder.stream()
         .map(InvoiceWorkflowDataHolder::getConversion)
         .findFirst()
-        .get();
+        .orElseThrow();
 
       MonetaryAmount expectedTotal = Money.of(invoiceLine.getTotal(), invoiceCurrency)
         .with(conversion)
@@ -56,9 +56,9 @@ public class FundsDistributionService {
       Optional<Transaction> resultTransaction = Optional.of(invoiceWorkflowDataHolder)
         .map(holder -> {
           if (remainder.isNegative()) {
-            return holder.get(0);
+            return holder.getFirst();
           } else {
-            return holder.get(holder.size() - 1);
+            return holder.getLast();
           }
         })
         .map(InvoiceWorkflowDataHolder::getNewTransaction);

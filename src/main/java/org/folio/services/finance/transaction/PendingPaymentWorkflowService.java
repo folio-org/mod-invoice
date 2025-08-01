@@ -38,14 +38,12 @@ public class PendingPaymentWorkflowService {
   private final EncumbranceService encumbranceService;
   private final HolderValidator holderValidator;
 
-
   public PendingPaymentWorkflowService(BaseTransactionService baseTransactionService,
                                        EncumbranceService encumbranceService,
                                        HolderValidator validator) {
     this.baseTransactionService = baseTransactionService;
     this.encumbranceService = encumbranceService;
     this.holderValidator = validator;
-
   }
 
   public Future<List<InvoiceWorkflowDataHolder>> handlePendingPaymentsCreation(List<InvoiceWorkflowDataHolder> dataHolders,
@@ -111,7 +109,9 @@ public class PendingPaymentWorkflowService {
     // Release encumbrances that are no longer relevant
     List<Transaction> transactionsToRelease = poLineTransactions.stream()
       .filter(tr -> !RELEASED.equals(tr.getEncumbrance().getStatus()) &&
-        holders.stream().noneMatch(holder -> sameFundAndPoLine(tr, holder)))
+        holders.stream()
+          .filter(holder -> Objects.nonNull(holder.getInvoiceLine()))
+          .noneMatch(holder -> sameFundAndPoLine(tr, holder)))
       .toList();
     if (transactionsToRelease.isEmpty()) {
       return succeededFuture();
@@ -122,7 +122,8 @@ public class PendingPaymentWorkflowService {
   }
 
   private boolean sameFundAndPoLine(Transaction transaction, InvoiceWorkflowDataHolder holder) {
-    return transaction.getFromFundId().equals(holder.getFundId()) && transaction.getEncumbrance().getSourcePoLineId().equals(holder.getInvoiceLine().getPoLineId());
+    return transaction.getFromFundId().equals(holder.getFundId())
+      && transaction.getEncumbrance().getSourcePoLineId().equals(holder.getInvoiceLine().getPoLineId());
   }
 
   private List<InvoiceWorkflowDataHolder> withNewPendingPayments(List<InvoiceWorkflowDataHolder> dataHolders) {
@@ -155,24 +156,23 @@ public class PendingPaymentWorkflowService {
     Metadata metadata = Optional.ofNullable(holder.getExistingTransaction()).map(tr ->
       JsonObject.mapFrom(tr.getMetadata()).mapTo(Metadata.class)).orElse(null);
     return buildBaseTransaction(holder)
-            .withId(transactionId)
-            .withVersion(version)
-            .withTransactionType(Transaction.TransactionType.PENDING_PAYMENT)
-            .withAwaitingPayment(awaitingPayment)
-            .withAmount(convertToDoubleWithRounding(amount))
-            .withSourceInvoiceLineId(holder.getInvoiceLineId())
-            .withMetadata(metadata);
+      .withId(transactionId)
+      .withVersion(version)
+      .withTransactionType(Transaction.TransactionType.PENDING_PAYMENT)
+      .withAwaitingPayment(awaitingPayment)
+      .withAmount(convertToDoubleWithRounding(amount))
+      .withSourceInvoiceLineId(holder.getInvoiceLineId())
+      .withMetadata(metadata);
   }
 
   protected Transaction buildBaseTransaction(InvoiceWorkflowDataHolder holder) {
-
     return new Transaction()
-            .withSource(Transaction.Source.INVOICE)
-            .withCurrency(holder.getFyCurrency())
-            .withFiscalYearId(holder.getFiscalYear().getId())
-            .withSourceInvoiceId(holder.getInvoice().getId())
-            .withFromFundId(holder.getFundId())
-            .withExpenseClassId(holder.getExpenseClassId());
+      .withSource(Transaction.Source.INVOICE)
+      .withCurrency(holder.getFyCurrency())
+      .withFiscalYearId(holder.getFiscalYear().getId())
+      .withSourceInvoiceId(holder.getInvoice().getId())
+      .withFromFundId(holder.getFundId())
+      .withExpenseClassId(holder.getExpenseClassId());
   }
 
   private Future<Void> unreleaseReleasedEncumbrances(List<InvoiceWorkflowDataHolder> holders, RequestContext requestContext) {
