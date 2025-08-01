@@ -86,6 +86,7 @@ import static org.folio.services.settings.CommonSettingsService.CURRENCY_DEFAULT
 import static org.folio.services.validator.InvoiceValidator.NO_INVOICE_LINES_ERROR_MSG;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.allOf;
+import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.endsWith;
@@ -121,6 +122,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -174,6 +176,8 @@ import org.javamoney.moneta.Money;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 
 @ExtendWith(VertxExtension.class)
 public class InvoicesApiTest extends ApiTestBase {
@@ -222,6 +226,7 @@ public class InvoicesApiTest extends ApiTestBase {
   public static final String EXISTING_LEDGER_ID = "a3ec5552-c4a4-4a15-a57c-0046db536369";
   public static final String EXPENSE_CLASSES_MOCK_DATA_PATH = BASE_MOCK_DATA_PATH + "expense-classes/";
   public static final String EXPENSE_CLASSES_LIST_PATH = EXPENSE_CLASSES_MOCK_DATA_PATH + "expense-classes.json";
+  private static final String SOURCE_PO_LINE_ID = "0610be6d-0ddd-494b-b867-19f63d8b5d6d";
 
   @Test
   void testGetInvoicingInvoices() {
@@ -306,9 +311,7 @@ public class InvoicesApiTest extends ApiTestBase {
     String endpointQuery = String.format("%s?query=%s", INVOICE_PATH,  ID_FOR_INTERNAL_SERVER_ERROR);
 
     verifyGet(endpointQuery, APPLICATION_JSON, 500);
-
   }
-
 
   @Test
   void testShouldAlwaysRecalculateTotalAndSubTotalWhenGetInvoicingInvoicesById() {
@@ -460,6 +463,102 @@ public class InvoicesApiTest extends ApiTestBase {
 
     verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, "", 204);
     assertThat(getInvoiceUpdates().getFirst().getString(FOLIO_INVOICE_NUMBER), not(newInvoiceNumber));
+  }
+
+  @ParameterizedTest
+  @CsvSource({
+    "By line,false",
+    "By amount,false",
+    "By quantity,false",
+    "Not prorated,true"
+  })
+  void testUpdateValidInvoiceWithVariableAdjustmentProrateAndFundDistribution(String prorate, boolean expected) {
+    var invoice = getMockAsJson(OPEN_INVOICE_SAMPLE_PATH).mapTo(Invoice.class);
+    invoice.getAdjustments().add(new Adjustment()
+      .withProrate(Prorate.fromValue(prorate))
+      .withDescription("Description")
+      .withType(Type.AMOUNT)
+      .withValue(50d)
+      .withRelationToTotal(Adjustment.RelationToTotal.IN_ADDITION_TO)
+      .withFundDistributions(List.of(new FundDistribution()
+        .withDistributionType(PERCENTAGE)
+        .withValue(100d)
+        .withFundId(EXISTING_FUND_ID))));
+
+    var invoiceLines = getMockAsJson(INVOICE_LINES_LIST_PATH).mapTo(InvoiceLineCollection.class).getInvoiceLines();
+    invoiceLines.forEach(il -> {
+      il.setId(UUID.randomUUID().toString());
+      il.setInvoiceId(invoice.getId());
+      il.getFundDistributions().forEach(fd -> fd.setCode(null));
+      addMockEntry(INVOICE_LINES, JsonObject.mapFrom(il));
+    });
+
+    var jsonBody = JsonObject.mapFrom(invoice).encode();
+    verifyPut(String.format(INVOICE_ID_PATH, invoice.getId()), jsonBody, "", 204);
+    assertThat(getInvoiceRetrievals(), hasSize(1));
+    assertThat(getInvoiceLineSearches(), hasSize(1));
+
+    var updatedInvoice = Objects.requireNonNull(serverRqRs.get(INVOICES, HttpMethod.PUT)).getFirst().mapTo(Invoice.class);
+    assertThat(updatedInvoice.getAdjustments(), hasSize(1));
+
+    var invoiceHasAnyAdjFd = updatedInvoice.getAdjustments().stream().noneMatch(ad -> ad.getFundDistributions().isEmpty());
+    assertThat(invoiceHasAnyAdjFd, equalTo(expected));
+  }
+
+  @Test
+  void testApproveValidInvoiceWithDifferentAdjustmentFundDistribution() {
+    var encumbranceId = randomUUID().toString();
+    addMockEntry(FINANCE_TRANSACTIONS, new Transaction()
+      .withId(encumbranceId)
+      .withFiscalYearId(FISCAL_YEAR_ID)
+      .withTransactionType(TransactionType.ENCUMBRANCE)
+      .withAmount(10.00)
+      .withCurrency("USD")
+      .withFromFundId(EXISTING_FUND_ID)
+      .withToFundId(EXISTING_FUND_ID)
+      .withEncumbrance(new Encumbrance().withSourcePoLineId(SOURCE_PO_LINE_ID)));
+
+    var invoice = getMockAsJson(REVIEWED_INVOICE_WITH_EXISTING_VOUCHER_SAMPLE_PATH).mapTo(Invoice.class);
+    invoice.getAdjustments().add(new Adjustment()
+      .withProrate(Prorate.NOT_PRORATED)
+      .withDescription("Description")
+      .withType(Type.AMOUNT)
+      .withValue(50d)
+      .withRelationToTotal(Adjustment.RelationToTotal.IN_ADDITION_TO)
+      .withFundDistributions(List.of(new FundDistribution()
+        .withDistributionType(PERCENTAGE)
+        .withValue(100d)
+        .withFundId(EXISTING_FUND_ID))));
+    invoice.setStatus(Invoice.Status.APPROVED);
+
+    var invoiceLine = getMockAsJson(INVOICE_LINE_WITH_APPROVED_INVOICE_SAMPLE_PATH).mapTo(InvoiceLine.class);
+    invoiceLine.withId(encumbranceId)
+      .withInvoiceId(invoice.getId())
+      .withAdjustmentsTotal(0d)
+      .withAdjustments(emptyList())
+      .withSubTotal(10d)
+      .withFundDistributions(List.of(new FundDistribution()
+        .withDistributionType(FundDistribution.DistributionType.PERCENTAGE)
+        .withFundId(EXISTING_FUND_ID_2)
+        .withValue(100d)
+        .withEncumbrance(encumbranceId)));
+    addMockEntry(INVOICE_LINES, JsonObject.mapFrom(invoiceLine));
+
+    var headers = prepareHeaders(X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID);
+    var jsonBody = JsonObject.mapFrom(invoice).encode();
+    verifyPut(String.format(INVOICE_ID_PATH, invoice.getId()), jsonBody, headers, "", 204);
+
+    var batchCalls = serverRqRs.get(FINANCE_BATCH_TRANSACTIONS, HttpMethod.POST);
+    assertThat(batchCalls, hasSize(2));
+
+    var pendingPaymentCreated = batchCalls.stream()
+      .map(entries -> entries.mapTo(Batch.class))
+      .map(Batch::getTransactionsToCreate)
+      .flatMap(Collection::stream)
+      .toList();
+    assertThat(pendingPaymentCreated, hasSize(2));
+    assertThat(pendingPaymentCreated, Every.everyItem(hasProperty("transactionType", is(TransactionType.PENDING_PAYMENT))));
+    assertThat(pendingPaymentCreated.stream().map(Transaction::getAmount).toList(), containsInAnyOrder(50d, 10d));
   }
 
   @Test
@@ -829,7 +928,6 @@ public class InvoicesApiTest extends ApiTestBase {
       .withCode("FC")
       .withFundStatus(Fund.FundStatus.ACTIVE);
 
-
     Ledger ledger = new Ledger()
       .withId(ledgerId)
       .withRestrictExpenditures(false);
@@ -1026,8 +1124,6 @@ public class InvoicesApiTest extends ApiTestBase {
     assertThat(error.getCode(), equalTo(LOCK_AND_CALCULATED_TOTAL_MISMATCH.getCode()));
   }
 
-
-
   @Test
   void testTransitionFromOpenToApprovedWithMixedTypesFundDistributionsInvalidSummary() {
     logger.info("=== Test transition invoice to Approved ===");
@@ -1193,8 +1289,7 @@ public class InvoicesApiTest extends ApiTestBase {
 
   @Test
   void testInvoiceTransitionFailureOnPaidStatus() {
-    logger.info(
-      "=== Test invoice cannot be transitioned to \"Open\", \"Reviewed\" or \"Approved\" status if it is in \"Paid\" status ===");
+    logger.info("=== Test invoice cannot be transitioned to \"Open\", \"Reviewed\" or \"Approved\" status if it is in \"Paid\" status ===");
 
     for (Status status : Invoice.Status.values()) {
       if (status != Invoice.Status.PAID && status != Status.CANCELLED) {
@@ -1299,7 +1394,6 @@ public class InvoicesApiTest extends ApiTestBase {
 
     InvoiceLine invoiceLine = getMockAsJson(INVOICE_LINE_WITH_APPROVED_INVOICE_SAMPLE_PATH).mapTo(InvoiceLine.class);
 
-
     Invoice reqData = getMockAsJson(REVIEWED_INVOICE_WITH_EXISTING_VOUCHER_SAMPLE_PATH).mapTo(Invoice.class);
     invoiceLine.setId(UUID.randomUUID().toString());
     invoiceLine.setInvoiceId(reqData.getId());
@@ -1326,7 +1420,6 @@ public class InvoicesApiTest extends ApiTestBase {
     assertThat(voucherLinesSearches, hasSize(1));
     VoucherLineCollection voucherLineCollection = voucherLinesSearches.getFirst().mapTo(VoucherLineCollection.class);
     assertThat(voucherLinesDeletions, hasSize(voucherLineCollection.getTotalRecords()));
-
 
     Voucher updatedVoucher = vouchersUpdated.getFirst().mapTo(Voucher.class);
     Invoice updatedInvoice = Objects.requireNonNull(serverRqRs.get(INVOICES, HttpMethod.PUT)).getFirst().mapTo(Invoice.class);
@@ -1384,12 +1477,10 @@ public class InvoicesApiTest extends ApiTestBase {
 
     InvoiceLine invoiceLine = getMockAsJson(INVOICE_LINE_WITH_APPROVED_INVOICE_SAMPLE_PATH).mapTo(InvoiceLine.class);
 
-
     Invoice reqData = getMockAsJson(REVIEWED_INVOICE_WITH_EXISTING_VOUCHER_SAMPLE_PATH).mapTo(Invoice.class);
     invoiceLine.setId(UUID.randomUUID().toString());
     invoiceLine.setInvoiceId(reqData.getId());
     addMockEntry(INVOICE_LINES, JsonObject.mapFrom(invoiceLine));
-
 
     reqData.setStatus(Invoice.Status.APPROVED);
     reqData.setCurrency(INVALID_CURRENCY);
@@ -1461,7 +1552,6 @@ public class InvoicesApiTest extends ApiTestBase {
   }
 
   private Errors transitionToApprovedWithoutPermission(Headers headers) {
-
     Invoice reqData = getMockAsJson(InvoicesApiTest.REVIEWED_INVOICE_SAMPLE_PATH).mapTo(Invoice.class);
     reqData.setStatus(Status.APPROVED);
     String id = reqData.getId();
@@ -1473,7 +1563,6 @@ public class InvoicesApiTest extends ApiTestBase {
   }
 
   private Errors transitionToPaidWithoutPermission(Headers headers) {
-
     Invoice reqData = getMockAsJson(InvoicesApiTest.APPROVED_INVOICE_SAMPLE_PATH).mapTo(Invoice.class);
     reqData.setStatus(Status.PAID);
     String id = reqData.getId();
@@ -1504,7 +1593,6 @@ public class InvoicesApiTest extends ApiTestBase {
     assertThat(errors, notNullValue());
     assertThat(errors.getErrors(), hasSize(1));
     assertThat(errors.getErrors().getFirst().getMessage(), equalTo(NO_INVOICE_LINES_ERROR_MSG));
-
   }
 
   @Test
@@ -1767,7 +1855,7 @@ public class InvoicesApiTest extends ApiTestBase {
       .withFromFundId(EXISTING_FUND_ID)
       .withToFundId(EXISTING_FUND_ID)
       .withEncumbrance(new Encumbrance()
-        .withSourcePoLineId("0610be6d-0ddd-494b-b867-19f63d8b5d6d"));
+        .withSourcePoLineId(SOURCE_PO_LINE_ID));
     addMockEntry(FINANCE_TRANSACTIONS, enc1);
     Transaction enc2 = new Transaction()
       .withId(UUID.randomUUID().toString())
@@ -1778,7 +1866,7 @@ public class InvoicesApiTest extends ApiTestBase {
       .withFromFundId(EXISTING_FUND_ID_2)
       .withToFundId(EXISTING_FUND_ID_2)
       .withEncumbrance(new Encumbrance()
-        .withSourcePoLineId("0610be6d-0ddd-494b-b867-19f63d8b5d6d"));
+        .withSourcePoLineId(SOURCE_PO_LINE_ID));
     addMockEntry(FINANCE_TRANSACTIONS, enc2);
     Transaction enc3 = new Transaction()
       .withId(UUID.randomUUID().toString())
@@ -1789,7 +1877,7 @@ public class InvoicesApiTest extends ApiTestBase {
       .withFromFundId(EXISTING_FUND_ID_3)
       .withToFundId(EXISTING_FUND_ID_3)
       .withEncumbrance(new Encumbrance()
-        .withSourcePoLineId("0610be6d-0ddd-494b-b867-19f63d8b5d6d"));
+        .withSourcePoLineId(SOURCE_PO_LINE_ID));
     addMockEntry(FINANCE_TRANSACTIONS, enc3);
 
     invoiceLine.setSubTotal(10d);
@@ -1853,7 +1941,6 @@ public class InvoicesApiTest extends ApiTestBase {
 
     String id = reqData.getId();
 
-
     String jsonBody = JsonObject.mapFrom(reqData).encode();
     Headers headers = prepareHeaders(X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID);
 
@@ -1862,7 +1949,6 @@ public class InvoicesApiTest extends ApiTestBase {
       .as(Errors.class);
 
     assertEquals(ACCOUNTING_CODE_NOT_PRESENT.getCode(), errors.getErrors().getFirst().getCode());
-
   }
 
   @Test
@@ -1875,7 +1961,6 @@ public class InvoicesApiTest extends ApiTestBase {
     assertThat(errors, notNullValue());
     assertThat(errors.getErrors(), hasSize(1));
     assertThat(errors.getErrors().getFirst().getMessage(), equalTo(javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR.getReasonPhrase()));
-
   }
 
   @Test
@@ -2101,7 +2186,6 @@ public class InvoicesApiTest extends ApiTestBase {
         .filter(Objects::nonNull)
         .distinct().collect(Collectors.toList()), hasSize(voucherLine.getSourceIds().size()));
     });
-
   }
 
   private double calculateVoucherLineAmount(List<FundDistribution> fundDistributions, Voucher voucher) {
@@ -2233,7 +2317,6 @@ public class InvoicesApiTest extends ApiTestBase {
         .doubleValue();
       assertEquals(invNonProratedAdjs, sumPaymentsByNonProratedAdjs);
     });
-
   }
 
   @Test
@@ -2330,7 +2413,6 @@ public class InvoicesApiTest extends ApiTestBase {
   }
 
   private void validatePoLinesPaymentStatus() {
-
     final List<PoLine> updatedPoLines = getRqRsEntries(HttpMethod.PUT, ORDER_LINES).stream()
       .map(poLine -> poLine.mapTo(PoLine.class))
       .collect(Collectors.toList());
@@ -2457,7 +2539,6 @@ public class InvoicesApiTest extends ApiTestBase {
   @Test
   void testPutInvoiceByIdChangeStatusToPayedFundsNotFound() {
     logger.info("=== Test Put Invoice By Id Funds not found ===");
-
 
     Invoice reqData = getMockAsJson(APPROVED_INVOICE_SAMPLE_PATH).mapTo(Invoice.class).withStatus(Invoice.Status.PAID);
     String id = reqData.getId();
@@ -2603,7 +2684,6 @@ public class InvoicesApiTest extends ApiTestBase {
         addMockEntry(FUNDS, fund);
       });
 
-
     addMockEntry(LEDGERS, JsonObject.mapFrom(new Ledger().withId(EXISTING_LEDGER_ID).withRestrictEncumbrance(true)));
     addMockEntry(INVOICE_LINES, JsonObject.mapFrom(invoiceLine));
     prepareMockVoucher(id);
@@ -2698,7 +2778,6 @@ public class InvoicesApiTest extends ApiTestBase {
   @Test
   @Disabled
   void testUpdateInvoiceByIdWithInvalidFormat() throws IOException {
-
     String jsonBody  = getMockData(APPROVED_INVOICE_SAMPLE_PATH);
     Headers headers = prepareHeaders(X_OKAPI_URL, X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID);
     verifyPut(String.format(INVOICE_ID_PATH, ID_BAD_FORMAT), jsonBody, headers, TEXT_PLAIN, 400);
@@ -2725,7 +2804,6 @@ public class InvoicesApiTest extends ApiTestBase {
     // Check that invoice in the response and the one in storage are the same
     compareRecordWithSentToStorage(respData);
   }
-
 
   @Test
   void testCreateInvoiceWithLockedTotalAndTwoAdjustmentsAndNoInvoiceLinesProvided() throws IOException {
@@ -2755,8 +2833,7 @@ public class InvoicesApiTest extends ApiTestBase {
 
   @Test
   void testCreateInvoiceWithTwoProratedAdjustmentsNoLines() throws IOException {
-    logger.info(
-      "=== Test create invoice with 1 prorated and 1 not prorated adjustments with no lines - adjustmentTotal should always be calculated irrespective if there are any invoiceLines or not===");
+    logger.info("=== Test create invoice with 1 prorated and 1 not prorated adjustments with no lines - adjustmentTotal should always be calculated irrespective if there are any invoiceLines or not===");
 
     // === Preparing invoice for test ===
     Invoice invoice = new JsonObject(getMockData(REVIEWED_INVOICE_SAMPLE_PATH)).mapTo(Invoice.class);
@@ -2813,7 +2890,7 @@ public class InvoicesApiTest extends ApiTestBase {
 
     // ===  Preparing invoice for test  ===
     Invoice invoice = new JsonObject(getMockData(APPROVED_INVOICE_SAMPLE_PATH)).mapTo(Invoice.class);
-//    invoice.setLockTotal(false);
+    // invoice.setLockTotal(false);
     invoice.setAdjustments(null);
     invoice.setTotal(null);
 
@@ -2856,7 +2933,6 @@ public class InvoicesApiTest extends ApiTestBase {
     String body = getMockData(APPROVED_INVOICE_SAMPLE_PATH);
 
     verifyPostResponse(INVOICE_PATH, body, prepareHeaders(INVOICE_NUMBER_ERROR_X_OKAPI_TENANT), APPLICATION_JSON, 500);
-
   }
 
   @Test
@@ -2996,7 +3072,6 @@ public class InvoicesApiTest extends ApiTestBase {
     assertThat(serverRqRs.row(INVOICES).get(HttpMethod.PUT), nullValue());
   }
 
-
   @Test
   void testUpdateTagsForPaidStatusInvoice(){
     logger.info("=== allow to update  tags fields for the paid invoices ===");
@@ -3135,8 +3210,6 @@ public class InvoicesApiTest extends ApiTestBase {
       .flatMap(invoiceLine -> invoiceLine.getFundDistributions().stream())
       .filter(fundDistribution -> StringUtils.isNotEmpty(fundDistribution.getEncumbrance()))
       .count();
-
-
 
     assertThat(getRqRsEntries(HttpMethod.GET, FINANCE_TRANSACTIONS), hasSize(2));
     assertThat(getRqRsEntries(HttpMethod.GET, FUNDS), hasSize(1));

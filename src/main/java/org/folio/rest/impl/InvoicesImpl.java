@@ -40,6 +40,7 @@ import io.vertx.core.json.JsonObject;
 public class InvoicesImpl extends BaseApi implements org.folio.rest.jaxrs.resource.Invoice {
 
   private static final Logger logger = LogManager.getLogger(InvoicesImpl.class);
+
   private static final String NOT_SUPPORTED = "Not supported"; // To overcome sonarcloud warning
   private static final String INVOICE_LOCATION_PREFIX = "/invoice/invoices/%s";
   private static final String INVOICE_LINE_LOCATION_PREFIX = "/invoice/invoice-lines/%s";
@@ -89,7 +90,6 @@ public class InvoicesImpl extends BaseApi implements org.folio.rest.jaxrs.resour
   @Override
   public void putInvoiceInvoicesById(String id, String poLinePaymentStatus, Invoice invoice,
       Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
-
     invoice.setId(id);
 
     InvoiceHelper invoiceHelper = new InvoiceHelper(okapiHeaders, vertxContext);
@@ -99,7 +99,6 @@ public class InvoicesImpl extends BaseApi implements org.folio.rest.jaxrs.resour
         logger.error("Failed to update invoice with id={}", invoice.getId(), t);
         handleErrorResponse(asyncResultHandler, invoiceHelper, t);
       });
-
   }
 
   @Validate

@@ -32,15 +32,15 @@ public class FundAvailabilityHolderValidator implements HolderValidator {
       .filter(InvoiceWorkflowDataHolder::isRestrictExpenditures)
       .collect(groupingBy(InvoiceWorkflowDataHolder::getBudget));
 
-    Map<String, String> fundHoldersMap =dataHolders.stream()
+    Map<String, String> fundHoldersMap = dataHolders.stream()
       .filter(InvoiceWorkflowDataHolder::isRestrictExpenditures)
       .map(InvoiceWorkflowDataHolder::getFund)
-      .filter(Objects::nonNull).collect(Collectors.toMap(Fund::getId, Fund::getCode,(fundEntityKey, fundEntityDupKey) -> fundEntityKey));
+      .filter(Objects::nonNull)
+      .collect(Collectors.toMap(Fund::getId, Fund::getCode,(fundEntityKey, fundEntityDupKey) -> fundEntityKey));
 
     List<String> failedBudgetIds = budgetHoldersMap.entrySet()
       .stream()
-      .filter(entry -> Objects.nonNull(entry.getKey()
-        .getAllowableExpenditure()))
+      .filter(entry -> Objects.nonNull(entry.getKey().getAllowableExpenditure()))
       .filter(entry -> {
         MonetaryAmount totalExpendedAmount = calculateTotalExpendedAmount(entry.getValue());
         return isRemainingAmountExceed(entry.getKey(), totalExpendedAmount);
@@ -53,14 +53,12 @@ public class FundAvailabilityHolderValidator implements HolderValidator {
       Parameter parameter = new Parameter().withKey(FUNDS)
         .withValue(failedBudgetIds.stream().map(fundHoldersMap::get)
         .toList().toString());
-      throw new HttpException(422, FUND_CANNOT_BE_PAID.toError()
-        .withParameters(Collections.singletonList(parameter)));
+      throw new HttpException(422, FUND_CANNOT_BE_PAID.toError().withParameters(Collections.singletonList(parameter)));
     }
   }
 
   private MonetaryAmount calculateTotalExpendedAmount(List<InvoiceWorkflowDataHolder> dataHolders) {
-    CurrencyUnit currency = Monetary.getCurrency(dataHolders.get(0)
-      .getFyCurrency());
+    CurrencyUnit currency = Monetary.getCurrency(dataHolders.getFirst().getFyCurrency());
     return dataHolders.stream()
       .map(holder -> {
         MonetaryAmount newTransactionAmount = Money.of(holder.getNewTransaction()
@@ -97,5 +95,4 @@ public class FundAvailabilityHolderValidator implements HolderValidator {
 
     return afterApproveExpended.isGreaterThan(totalAmountCanBeExpended);
   }
-
 }

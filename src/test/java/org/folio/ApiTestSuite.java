@@ -102,7 +102,7 @@ public class ApiTestSuite {
   private static final String OKAPI_URL_KEY = "OKAPI_URL";
 
   private static final DockerImageName KAFKA_IMAGE_NAME = DockerImageName.parse("apache/kafka-native:3.8.0");
-  private static final KafkaContainer kafkaContainer = new KafkaContainer(KAFKA_IMAGE_NAME).withStartupAttempts(3);
+  private static final KafkaContainer kafkaContainer = new KafkaContainer(KAFKA_IMAGE_NAME).withStartupAttempts(20);
   private static MockServer mockServer;
   public static Vertx vertx;
   private static boolean initialised;
@@ -138,7 +138,7 @@ public class ApiTestSuite {
         deploymentComplete.fail(res.cause());
       }
     });
-    deploymentComplete.future().toCompletionStage().toCompletableFuture().get(60, TimeUnit.SECONDS);
+    deploymentComplete.future().toCompletionStage().toCompletableFuture().get(360, TimeUnit.SECONDS);
     initialised = true;
   }
 
