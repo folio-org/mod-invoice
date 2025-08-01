@@ -394,9 +394,9 @@ public class InvoiceHelper extends AbstractHelper {
   private void recalculateAdjustmentData(Invoice updatedInvoice, Invoice invoiceFromStorage, List<InvoiceLine> invoiceLines) {
     // If invoice adjustment prorate was changed from "Not prorated", remove any fund distributions from these adjustments
     var adjustments = updatedInvoice.getAdjustments();
-    if (adjustments.stream().anyMatch(InvoiceHelper::isProrateWithFundDistribution)) {
+    if (adjustments.stream().anyMatch(InvoiceHelper::isNotProrateWithFundDistribution)) {
       updatedInvoice.setAdjustments(adjustments.stream()
-        .map(adj -> InvoiceHelper.isProrateWithFundDistribution(adj) ? adj.withFundDistributions(null) : adj)
+        .map(adj -> InvoiceHelper.isNotProrateWithFundDistribution(adj) ? adj.withFundDistributions(null) : adj)
         .toList());
     }
     // If invoice was approved, the totals are already fixed and should not be recalculated
@@ -405,7 +405,7 @@ public class InvoiceHelper extends AbstractHelper {
     }
   }
 
-  public static boolean isProrateWithFundDistribution(Adjustment adjustment) {
+  public static boolean isNotProrateWithFundDistribution(Adjustment adjustment) {
     return adjustment.getProrate() != Adjustment.Prorate.NOT_PRORATED && !adjustment.getFundDistributions().isEmpty();
   }
 
