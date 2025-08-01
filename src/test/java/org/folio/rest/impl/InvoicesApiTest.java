@@ -86,6 +86,7 @@ import static org.folio.services.settings.CommonSettingsService.CURRENCY_DEFAULT
 import static org.folio.services.validator.InvoiceValidator.NO_INVOICE_LINES_ERROR_MSG;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.allOf;
+import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.endsWith;
@@ -557,7 +558,7 @@ public class InvoicesApiTest extends ApiTestBase {
       .toList();
     assertThat(pendingPaymentCreated, hasSize(2));
     assertThat(pendingPaymentCreated, Every.everyItem(hasProperty("transactionType", is(TransactionType.PENDING_PAYMENT))));
-    assertThat(pendingPaymentCreated.stream().filter(fd -> Set.of(50d, 10d).contains(fd.getAmount())).toList(), hasSize(2));
+    assertThat(pendingPaymentCreated.stream().map(Transaction::getAmount).toList(), containsInAnyOrder(50d, 10d));
   }
 
   @Test

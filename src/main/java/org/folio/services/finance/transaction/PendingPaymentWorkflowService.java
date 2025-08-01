@@ -148,8 +148,8 @@ public class PendingPaymentWorkflowService {
     if (fundDistribution.getEncumbrance() != null) {
       boolean releaseEncumbrance = Optional.ofNullable(holder.getInvoiceLine()).map(InvoiceLine::getReleaseEncumbrance).orElse(false);
       awaitingPayment = new AwaitingPayment()
-              .withEncumbranceId(fundDistribution.getEncumbrance())
-              .withReleaseEncumbrance(releaseEncumbrance);
+        .withEncumbranceId(fundDistribution.getEncumbrance())
+        .withReleaseEncumbrance(releaseEncumbrance);
     }
     String transactionId = Optional.ofNullable(holder.getExistingTransaction()).map(Transaction::getId).orElse(null);
     Integer version = Optional.ofNullable(holder.getExistingTransaction()).map(Transaction::getVersion).orElse(null);
