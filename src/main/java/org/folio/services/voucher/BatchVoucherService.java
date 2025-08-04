@@ -9,10 +9,10 @@ import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
 import javax.xml.stream.XMLStreamException;
 
 import io.vertx.core.Future;
-import io.vertx.core.json.JsonObject;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.converters.BatchVoucherModelConverter;
+import org.folio.dbschema.ObjectMapperTool;
 import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.jaxb.XMLConverter;
 import org.folio.rest.core.RestClient;
@@ -44,7 +44,7 @@ public class BatchVoucherService {
 
   public String convertBatchVoucher(BatchVoucher batchVoucher, String contentType) {
     if (contentType.equalsIgnoreCase(APPLICATION_JSON)){
-      return JsonObject.mapFrom(batchVoucher).encodePrettily();
+      return ObjectMapperTool.valueAsString(batchVoucher);
     }
     if (contentType.equalsIgnoreCase(APPLICATION_XML)) {
       BatchVoucherType xmlBatchVoucher = batchVoucherModelConverter.convert(batchVoucher);
