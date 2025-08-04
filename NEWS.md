@@ -6,7 +6,7 @@ The focus of this release was to change Voucher export dates to human-readable t
 [Full Changelog](https://github.com/folio-org/mod-invoice/compare/v5.9.2...v5.9.3)
 
 ### Stories
-* [MODINVOICE-595](https://folio-org.atlassian.net/browse/MODINVOICE-595) - Use system user token in DI kafka handlers
+* [MODINVOICE-595](https://folio-org.atlassian.net/browse/MODINVOICE-595) - Voucher export dates have changed from human-readable timestamp to epoch long format (Ramsons)
 
 
 ## 5.9.2 - Released (Ramsons R2 2024 Bug Fix)
