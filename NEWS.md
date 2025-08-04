@@ -1,3 +1,11 @@
+## 6.0.2 - Released (Sunflower R1 2025 Bug Fix)
+The focus of this release was to change Voucher export dates to human-readable timestamps from epoch long format.
+
+[Full Changelog](https://github.com/folio-org/mod-invoice/compare/v6.0.1...v6.0.2)
+
+### Stories
+* [MODINVOICE-601](https://folio-org.atlassian.net/browse/MODINVOICE-601) - Voucher export dates have changed from human-readable timestamp to epoch long format (Sunflower)
+
 ## 6.0.1 - Released (Sunflower R1 2025)
 The focus of this release was to fix security issues in the software libaries.
 
