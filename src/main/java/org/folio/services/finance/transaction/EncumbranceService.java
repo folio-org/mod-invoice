@@ -34,8 +34,9 @@ public class EncumbranceService {
 
   public Future<List<Transaction>> getEncumbrancesByPoLineIds(List<String> poLineIds, String fiscalYearId,
       RequestContext requestContext) {
+    List<String> distinctPoLineIds = poLineIds.stream().distinct().collect(toList());
     List<Future<TransactionCollection>> transactionsFutureList = StreamEx
-      .ofSubLists(poLineIds, MAX_IDS_FOR_GET_RQ)
+      .ofSubLists(distinctPoLineIds, MAX_IDS_FOR_GET_RQ)
       .map(lineIds -> buildEncumbranceChunckQueryByPoLineIds(lineIds, fiscalYearId))
       .map(query -> baseTransactionService.getTransactions(query, 0, Integer.MAX_VALUE, requestContext))
       .collect(toList());
@@ -45,7 +46,7 @@ public class EncumbranceService {
         transactionCollections.stream().flatMap(col -> col.getTransactions().stream()).collect(toList())
       )
       .onFailure(t -> logger.error("Error getting encumbrances by po line ids, poLineIds={}, fiscalYearId={}",
-        poLineIds, fiscalYearId, t));
+        distinctPoLineIds, fiscalYearId, t));
   }
 
   private String buildEncumbranceChunckQueryByPoLineIds(List<String> poLineIds, String fiscalYearId) {
