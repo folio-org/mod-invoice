@@ -3,6 +3,7 @@ package org.folio.services.finance.transaction;
 import io.vertx.core.Future;
 import io.vertx.junit5.VertxExtension;
 import io.vertx.junit5.VertxTestContext;
+import org.folio.CopilotGenerated;
 import org.folio.models.InvoiceWorkflowDataHolder;
 import org.folio.rest.acq.model.finance.Encumbrance;
 import org.folio.rest.acq.model.finance.Transaction;
@@ -238,4 +239,59 @@ public class EncumbranceServiceTest {
       });
 
   }
+
+  @Test
+  @CopilotGenerated(model = "Claude Sonnet 4")
+  @DisplayName("remove duplicate poLineIds when getting encumbrances")
+  void shouldRemoveDuplicatePoLineIdsWhenGettingEncumbrances(VertxTestContext vertxTestContext) {
+    String fiscalYearId = UUID.randomUUID().toString();
+    String poLineId1 = UUID.randomUUID().toString();
+    String poLineId2 = UUID.randomUUID().toString();
+
+    // Create input list with duplicates
+    List<String> poLineIdsWithDuplicates = List.of(poLineId1, poLineId2, poLineId1, poLineId2, poLineId1);
+
+    Transaction encumbrance1 = new Transaction()
+      .withId(UUID.randomUUID().toString())
+      .withFiscalYearId(fiscalYearId)
+      .withFromFundId(UUID.randomUUID().toString())
+      .withEncumbrance(new Encumbrance().withSourcePoLineId(poLineId1));
+    Transaction encumbrance2 = new Transaction()
+      .withId(UUID.randomUUID().toString())
+      .withFiscalYearId(fiscalYearId)
+      .withFromFundId(UUID.randomUUID().toString())
+      .withEncumbrance(new Encumbrance().withSourcePoLineId(poLineId2));
+
+    TransactionCollection transactionCollection = new TransactionCollection();
+    transactionCollection.setTotalRecords(2);
+    transactionCollection.setTransactions(List.of(encumbrance1, encumbrance2));
+
+    ArgumentCaptor<RequestEntry> requestEntryCaptor = ArgumentCaptor.forClass(RequestEntry.class);
+    when(restClient.get(requestEntryCaptor.capture(), any(), eq(requestContext)))
+      .thenReturn(Future.succeededFuture(transactionCollection));
+
+    Future<List<Transaction>> future = encumbranceService.getEncumbrancesByPoLineIds(poLineIdsWithDuplicates,
+      fiscalYearId, requestContext);
+
+    vertxTestContext.assertComplete(future)
+      .onComplete(ar -> {
+        List<Transaction> result = ar.result();
+        assertEquals(2, result.size());
+        assertEquals(encumbrance1, result.getFirst());
+        assertEquals(encumbrance2, result.get(1));
+
+        verify(restClient, times(1))
+          .get(any(RequestEntry.class), any(), eq(requestContext));
+
+        List<RequestEntry> requestEntries = requestEntryCaptor.getAllValues();
+        assertEquals("/finance/transactions", requestEntries.getFirst().getBaseEndpoint());
+        String expectedQuery = String.format(
+          "transactionType==Encumbrance AND fiscalYearId==%s AND encumbrance.sourcePoLineId==(%s or %s)",
+          fiscalYearId, poLineId1, poLineId2);
+        assertEquals(encodeQuery(expectedQuery), requestEntries.getFirst().getQueryParams().get("query"));
+
+        vertxTestContext.completeNow();
+      });
+  }
+
 }
