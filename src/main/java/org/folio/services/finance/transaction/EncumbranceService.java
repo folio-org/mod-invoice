@@ -34,7 +34,7 @@ public class EncumbranceService {
 
   public Future<List<Transaction>> getEncumbrancesByPoLineIds(List<String> poLineIds, String fiscalYearId,
       RequestContext requestContext) {
-    List<String> distinctPoLineIds = poLineIds.stream().distinct().collect(toList());
+    List<String> distinctPoLineIds = poLineIds.stream().distinct().toList();
     List<Future<TransactionCollection>> transactionsFutureList = StreamEx
       .ofSubLists(distinctPoLineIds, MAX_IDS_FOR_GET_RQ)
       .map(lineIds -> buildEncumbranceChunckQueryByPoLineIds(lineIds, fiscalYearId))
