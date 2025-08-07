@@ -16,6 +16,7 @@ import static org.folio.invoices.utils.HelperUtils.isTransitionToCancelled;
 import static org.folio.invoices.utils.HelperUtils.isTransitionToPaid;
 import static org.folio.invoices.utils.ProtectedOperationType.UPDATE;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICES;
+import static org.folio.rest.RestConstants.SEMAPHORE_MAX_ACTIVE_THREADS;
 import static org.folio.utils.UserPermissionsUtil.userHasDesiredPermission;
 import static org.folio.utils.UserPermissionsUtil.verifyUserHasAssignPermission;
 import static org.folio.utils.UserPermissionsUtil.verifyUserHasFiscalYearUpdatePermission;
@@ -152,9 +153,8 @@ public class InvoiceHelper extends AbstractHelper {
       .collect(Collectors.toSet());
 
     if (CollectionUtils.isNotEmpty(fundIds)) {
-      return HelperUtils.executeWithSemaphores(fundIds,
-          fundId -> currentFiscalYearService.getCurrentFiscalYearByFund(fundId, requestContext),
-          requestContext)
+      return HelperUtils.executeWithSemaphores(requestContext.getContext(), SEMAPHORE_MAX_ACTIVE_THREADS, false, fundIds,
+          fundId -> currentFiscalYearService.getCurrentFiscalYearByFund(fundId, requestContext))
         .map(fiscalYears -> {
           Set<FiscalYear> uniqueFiscalYears = new HashSet<>(fiscalYears);
           if (uniqueFiscalYears.size() > 1) {
