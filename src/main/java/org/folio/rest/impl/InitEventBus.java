@@ -12,9 +12,7 @@ import io.vertx.core.AsyncResult;
 import io.vertx.core.Context;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
-import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
-import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.eventbus.Message;
 import io.vertx.core.eventbus.MessageConsumer;
 import io.vertx.core.json.JsonObject;
@@ -35,29 +33,17 @@ public class InitEventBus implements PostDeployVerticle {
 
   @Override
   public void init(Vertx vertx, Context context, Handler<AsyncResult<Boolean>> resultHandler) {
-    vertx.executeBlocking(blockingCodeFuture -> {
-      EventBus eb = vertx.eventBus();
-
+    vertx.executeBlocking(() -> {
       // Create consumers and assign handlers
-      Promise<Void> batchVoucherPersistRegistrationHandler = Promise.promise();
-      MessageConsumer<JsonObject> batchVoucherPersist = eb.localConsumer(MessageAddress.BATCH_VOUCHER_PERSIST_TOPIC.address);
-      batchVoucherPersist.handler(batchVoucherProcessHandler)
-        .completionHandler(batchVoucherPersistRegistrationHandler);
-
-      batchVoucherPersistRegistrationHandler.future().onComplete(result -> {
+      MessageConsumer<JsonObject> batchVoucherPersist = vertx.eventBus().localConsumer(MessageAddress.BATCH_VOUCHER_PERSIST_TOPIC.address);
+      return batchVoucherPersist.handler(batchVoucherProcessHandler).completion().onComplete(result -> {
         if (result.succeeded()) {
-          blockingCodeFuture.complete();
+          resultHandler.handle(Future.succeededFuture(true));
         } else {
-          blockingCodeFuture.fail(result.cause());
+          logger.error(result.cause());
+          resultHandler.handle(Future.failedFuture(result.cause()));
         }
       });
-    }, result -> {
-      if (result.succeeded()) {
-        resultHandler.handle(Future.succeededFuture(true));
-      } else {
-        logger.error(result.cause());
-        resultHandler.handle(Future.failedFuture(result.cause()));
-      }
     });
   }
 }

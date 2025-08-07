@@ -18,13 +18,12 @@ import org.apache.sshd.sftp.spring.integration.ApacheSshdSftpSessionFactory;
 import org.folio.HttpStatus;
 import org.folio.exceptions.FtpException;
 import org.folio.rest.jaxrs.model.ExportConfig;
+import org.folio.utils.FutureUtils;
 import org.springframework.integration.file.remote.session.Session;
 import org.springframework.integration.file.remote.session.SessionFactory;
 
-import io.vertx.core.AsyncResult;
 import io.vertx.core.Context;
 import io.vertx.core.Future;
-import io.vertx.core.Handler;
 import io.vertx.core.Promise;
 
 public class SftpUploadService implements FileExchangeService {
@@ -61,20 +60,13 @@ public class SftpUploadService implements FileExchangeService {
     return factory;
   }
 
-  public Future<Session<SftpClient.DirEntry>> login(String username, String password) {
-    Promise<Session<SftpClient.DirEntry>> promise = Promise.promise();
-    SessionFactory<SftpClient.DirEntry> sshdFactory;
-    Session<SftpClient.DirEntry> session;
-
+  public Session<SftpClient.DirEntry> login(String username, String password) throws FtpException {
     try {
-      sshdFactory = getSshdSessionFactory(username, password);
-      session = sshdFactory.getSession();
-      promise.complete(session);
+      SessionFactory<SftpClient.DirEntry> sshdFactory = getSshdSessionFactory(username, password);
+      return sshdFactory.getSession();
     } catch (Exception e) {
-      promise.fail(new FtpException(HttpStatus.HTTP_FORBIDDEN.toInt(), String.format("Unable to connect to %s:%d", server, port)));
+      throw new FtpException(HttpStatus.HTTP_FORBIDDEN.toInt(), String.format("Unable to connect to %s:%d", server, port));
     }
-
-    return promise.future();
   }
 
   public Future<String> upload(Context ctx, String username, String password, String folder, String filename, String content) {
@@ -87,7 +79,8 @@ public class SftpUploadService implements FileExchangeService {
       remoteAbsPath = DEFAULT_WORKING_DIR + FILE_SEPARATOR + filename;
     }
 
-    ctx.owner().executeBlocking(blockingFeature -> login(username, password).compose(session -> {
+    return ctx.owner().executeBlocking(() -> {
+      var session = login(username, password);
       try (InputStream inputStream = new ByteArrayInputStream(content.getBytes()); session) {
         logger.info("Start uploading file to SFTP path: {}", remoteAbsPath);
         if (StringUtils.isNotEmpty(folder)) {
@@ -97,18 +90,24 @@ public class SftpUploadService implements FileExchangeService {
         }
         session.write(inputStream, remoteAbsPath);
         logger.info("File was uploaded to SFTP successfully to path: {}", remoteAbsPath);
-        blockingFeature.complete("Uploaded successfully");
+        return "Uploaded successfully";
       } catch (Exception e) {
         logger.error("Error uploading the file {}", remoteAbsPath, e);
-        blockingFeature.fail(new CompletionException(e));
+        throw new CompletionException(e);
       } finally {
         if (Objects.nonNull(session) && session.isOpen()) {
           session.close();
         }
       }
-      return promise.future();
-    }).onFailure(blockingFeature::fail), false, asyncResultHandler(promise));
-    return promise.future();
+    }, false).onComplete(result -> {
+      if (result.succeeded()) {
+        logger.debug("Success upload to SFTP");
+        promise.complete(result.result());
+      } else {
+        logger.error("Failed upload to Sftp", result.cause());
+        promise.fail(result.cause());
+      }
+    });
   }
 
   private void createRemoteDirectoryIfAbsent(Session<SftpClient.DirEntry> session, String folder) throws IOException {
@@ -127,18 +126,6 @@ public class SftpUploadService implements FileExchangeService {
     }
   }
 
-  private Handler<AsyncResult<String>> asyncResultHandler(Promise<String> promise) {
-    return result -> {
-      if (result.succeeded()) {
-        logger.debug("Success upload to SFTP");
-        promise.complete(result.result());
-      } else {
-        logger.error("Failed upload to Sftp", result.cause());
-        promise.fail(result.cause());
-      }
-    };
-  }
-
   @Override
   public ExportConfig.FtpFormat getExchangeConnectionFormat() {
     return ExportConfig.FtpFormat.SFTP;
@@ -146,8 +133,9 @@ public class SftpUploadService implements FileExchangeService {
 
   @Override
   public Future<Void> testConnection(String username, String password) {
-    return login(username, password)
+    return FutureUtils.asFuture(() -> login(username, password))
       .onSuccess(Session::close)
       .mapEmpty();
   }
+
 }

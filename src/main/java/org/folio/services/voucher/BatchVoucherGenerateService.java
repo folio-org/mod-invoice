@@ -10,7 +10,6 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
 import io.vertx.core.json.JsonObject;
 import org.apache.logging.log4j.LogManager;
@@ -18,6 +17,7 @@ import org.apache.logging.log4j.Logger;
 import org.folio.converters.AddressConverter;
 import org.folio.dbschema.ObjectMapperTool;
 import org.folio.invoices.rest.exceptions.HttpException;
+import org.folio.okapi.common.GenericCompositeFuture;
 import org.folio.rest.acq.model.Address;
 import org.folio.rest.acq.model.FundDistribution;
 import org.folio.rest.acq.model.Organization;
@@ -86,7 +86,7 @@ public class BatchVoucherGenerateService {
           .onFailure(t -> logger.error("buildBatchVoucherObject:: Error retrieving invoices", t));
         Future<Map<String, List<InvoiceLine>>> invoiceLines = invoiceLinesRetrieveService.getInvoiceLineMap(vouchers, requestContext)
           .onFailure(t -> logger.error("buildBatchVoucherObject:: Error retrieving invoice lines", t));
-        return CompositeFuture.join(voucherLines, invoices, invoiceLines)
+        return GenericCompositeFuture.join(List.of(voucherLines, invoices, invoiceLines))
           .compose(v -> buildBatchVoucher(batchVoucherExport, vouchers, voucherLines.result(), invoices.result(), invoiceLines.result(), requestContext));
       });
   }

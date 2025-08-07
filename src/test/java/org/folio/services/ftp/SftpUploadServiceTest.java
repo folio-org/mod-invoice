@@ -202,7 +202,7 @@ public class SftpUploadServiceTest {
     var future = helper.upload(context, USERNAME, PASSWORD, EXPORT_FOLDER_NAME+"/test/long/path", FILENAME , JsonObject.mapFrom(batchVoucher).encodePrettily())
       .onSuccess(logger::info)
       .onFailure(logger::info)
-      .onComplete(logger::info);
+      .onComplete(r -> logger.info(r));
     vertxTestContext.assertFailure(future)
       .onComplete(result -> vertxTestContext.completeNow());
   }

@@ -15,9 +15,9 @@ public class InvoiceDocumentRestClient extends RestClient {
     return getVertxWebClient(requestContext.getContext())
       .postAbs(buildAbsEndpoint(caseInsensitiveHeader, endpoint))
       .putHeaders(caseInsensitiveHeader)
-      .expect(SUCCESS_RESPONSE_PREDICATE)
       // TODO: consider to make streaming transfer for large files
       .sendJson(document)
+      .compose(RestClient::convertHttpResponse)
       .map(bufferHttpResponse -> bufferHttpResponse.bodyAsJsonObject().mapTo(InvoiceDocument.class))
       .onFailure(logger::error);
   }

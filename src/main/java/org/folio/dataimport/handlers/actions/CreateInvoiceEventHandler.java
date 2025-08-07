@@ -23,7 +23,6 @@ import io.vertx.core.Vertx;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
-import io.vertxconcurrent.Semaphore;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -35,8 +34,6 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
-import org.apache.commons.collections4.CollectionUtils;
-import org.apache.commons.collections4.MapUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -165,7 +162,7 @@ public class CreateInvoiceEventHandler implements EventHandler {
           });
       }).onFailure(failure -> {
         logger.error("Error creating invoice recordId and instanceId relationship by jobExecutionId: '{}' and " +
-            "recordId: '{}' ", dataImportEventPayload.getJobExecutionId(), recordId, failure);
+          "recordId: '{}' ", dataImportEventPayload.getJobExecutionId(), recordId, failure);
         future.completeExceptionally(failure);
       });
     } catch (Exception e) {
@@ -206,8 +203,8 @@ public class CreateInvoiceEventHandler implements EventHandler {
         if (associatedPoLineMap.size() < invoiceLinesAmount) {
           associatedPoLineMap.keySet().forEach(invoiceLineNoToRefNo2::remove);
           return getAssociatedPoLinesByRefNumbers(invoiceLineNoToRefNo2, new RequestContext(Vertx.currentContext(), okapiHeaders)).map(poLinesMap -> {
-              associatedPoLineMap.putAll(poLinesMap);
-              return associatedPoLineMap;
+            associatedPoLineMap.putAll(poLinesMap);
+            return associatedPoLineMap;
           });
         }
         return succeededFuture(associatedPoLineMap);
@@ -291,26 +288,8 @@ public class CreateInvoiceEventHandler implements EventHandler {
 
 
   private Future<Map<Integer, PoLine>> getAssociatedPoLinesByRefNumbers(Map<Integer, List<String>> refNumberList, RequestContext requestContext) {
-    if (MapUtils.isEmpty(refNumberList)) {
-      return Future.succeededFuture(new HashMap<>());
-    }
-    return requestContext.getContext()
-      .<List<Future<Pair<Integer, PoLine>>>>executeBlocking(promise -> {
-        List<Future<Pair<Integer, PoLine>>> futures = new ArrayList<>();
-        Semaphore semaphore = new Semaphore(maxActiveThreads, Vertx.currentContext().owner());
-        for (Map.Entry<Integer, List<String>> entry : refNumberList.entrySet()) {
-          semaphore.acquire(() -> {
-            var future = getLinePair(entry, requestContext)
-              .onComplete(asyncResult -> semaphore.release());
-            futures.add(future);
-            // complete executeBlocking promise when all operations started
-            if (futures.size() == refNumberList.size()) {
-              promise.complete(futures);
-            }
-          });
-        }
-      })
-      .compose(HelperUtils::collectResultsOnSuccess)
+    return HelperUtils.executeWithSemaphores(requestContext.getContext(), maxActiveThreads, false, refNumberList.entrySet(),
+        entry -> getLinePair(entry, requestContext))
       .map(poLinePairs -> poLinePairs.stream()
         .filter(Objects::nonNull)
         .collect(Collectors.toMap(Pair::getKey, Pair::getValue)));
@@ -431,37 +410,14 @@ public class CreateInvoiceEventHandler implements EventHandler {
   }
 
   private Future<List<Pair<InvoiceLine, String>>> saveInvoiceLines(List<InvoiceLine> invoiceLines, Map<String, String> okapiHeaders) {
-    List<Future<Pair<InvoiceLine, String>>> futures = new ArrayList<>();
-
-    if (CollectionUtils.isEmpty(invoiceLines)) {
-      return Future.succeededFuture(new ArrayList<>());
-    }
-
     InvoiceLineHelper helper = new InvoiceLineHelper(okapiHeaders, Vertx.currentContext());
-    return Vertx.currentContext()
-      .<List<Future<Pair<InvoiceLine, String>>>>executeBlocking(promise -> {
-        Semaphore semaphore = new Semaphore(maxActiveThreads, true, Vertx.currentContext().owner());
-        for (InvoiceLine invoiceLine : invoiceLines) {
-          semaphore.acquire(() -> {
-            var future = helper.createInvoiceLine(invoiceLine)
-              .compose(createdInvoiceLine -> {
-                Pair<InvoiceLine, String> invoiceLineToMsg = Pair.of(createdInvoiceLine, null);
-                return Future.succeededFuture(invoiceLineToMsg);
-              }, err -> {
-                logger.error("Failed to create invoice line {}, {}", invoiceLine, err);
-                Pair<InvoiceLine, String> invoiceLineToMsg = Pair.of(invoiceLine, err.getMessage());
-                return Future.succeededFuture(invoiceLineToMsg);
-              })
-              .onComplete(asyncResult -> semaphore.release());
-            futures.add(future);
-            // complete executeBlocking promise when all operations processed
-            if (futures.size() == invoiceLines.size()) {
-              promise.complete(futures);
-            }
-          });
-        }
-      })
-      .compose(HelperUtils::collectResultsOnSuccess);
+    return HelperUtils.executeWithSemaphores(Vertx.currentContext(), maxActiveThreads, true, invoiceLines, invoiceLine ->
+      helper.createInvoiceLine(invoiceLine)
+        .compose(createdInvoiceLine -> Future.succeededFuture(Pair.of(createdInvoiceLine, null)),
+          err -> {
+            logger.error("Failed to create invoice line {}, {}", invoiceLine, err);
+            return Future.succeededFuture(Pair.of(invoiceLine, err.getMessage()));
+          }));
   }
 
   private List<InvoiceLine> mapInvoiceLinesArrayToList(JsonArray invoiceLinesArray) {

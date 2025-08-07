@@ -21,6 +21,7 @@ import org.folio.HttpStatus;
 import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.invoices.utils.HelperUtils;
 import org.folio.invoices.utils.ProtectedOperationType;
+import org.folio.okapi.common.GenericCompositeFuture;
 import org.folio.rest.acq.model.units.AcquisitionsUnit;
 import org.folio.rest.acq.model.units.AcquisitionsUnitMembership;
 import org.folio.rest.core.models.RequestContext;
@@ -29,7 +30,6 @@ import org.folio.services.AcquisitionsUnitsService;
 import org.folio.spring.SpringContextUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 
-import io.vertx.core.CompositeFuture;
 import io.vertx.core.Context;
 import io.vertx.core.Future;
 import one.util.streamex.StreamEx;
@@ -168,7 +168,7 @@ public class ProtectionHelper extends AbstractHelper {
   Future<List<String>> getAcqUnitIdsForSearch(String userId) {
     var unitsForUser = getAcqUnitIdsForUser(userId);
     var unitsAllowRead = getOpenForReadAcqUnitIds();
-    return CompositeFuture.join(unitsForUser, unitsAllowRead)
+    return GenericCompositeFuture.join(List.of(unitsForUser, unitsAllowRead))
       .map(rcf -> StreamEx.of(unitsForUser.result(), unitsAllowRead.result())
         .flatCollection(strings -> strings)
         .distinct()
