@@ -43,35 +43,26 @@ public class InitAPIs implements InitAPI {
 
   @Override
   public void init(Vertx vertx, Context context, Handler<AsyncResult<Boolean>> resultHandler) {
-    vertx.executeBlocking(handler -> {
+    vertx.executeBlocking(() -> {
       SerializationConfig serializationConfig = ObjectMapperTool.getMapper().getSerializationConfig();
       DeserializationConfig deserializationConfig = ObjectMapperTool.getMapper().getDeserializationConfig();
 
       DatabindCodec.mapper().setConfig(serializationConfig);
-      DatabindCodec.prettyMapper().setConfig(serializationConfig);
       DatabindCodec.mapper().setConfig(deserializationConfig);
-      DatabindCodec.prettyMapper().setConfig(deserializationConfig);
 
       SpringContextUtil.init(vertx, context, ApplicationConfig.class);
       SpringContextUtil.autowireDependencies(this, context);
 
       initJavaMoney();
 
-      deployDataImportConsumerVerticle(vertx).onComplete(ar -> {
-        if (ar.failed() && isConsumerVerticleMandatory) {
-          handler.fail(ar.cause());
+      return deployDataImportConsumerVerticle(vertx).onComplete(result -> {
+        if (result.failed() && isConsumerVerticleMandatory) {
+          log.error("Failure to init API", result.cause());
+          resultHandler.handle(Future.failedFuture(result.cause()));
         } else {
-          handler.complete();
+          resultHandler.handle(Future.succeededFuture(true));
         }
       });
-    },
-    result -> {
-      if (result.succeeded()) {
-        resultHandler.handle(Future.succeededFuture(true));
-      } else {
-        log.error("Failure to init API", result.cause());
-        resultHandler.handle(Future.failedFuture(result.cause()));
-      }
     });
   }
 

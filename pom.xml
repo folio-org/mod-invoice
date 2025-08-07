@@ -26,10 +26,10 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
     <!--Dependencies-->
-    <raml-module-builder.version>35.4.0</raml-module-builder.version>
-    <spring.version>6.2.3</spring.version>
+    <raml-module-builder.version>36.0.0-SNAPSHOT</raml-module-builder.version>
+    <spring.version>7.0.2</spring.version>
     <jaxb-api.version>2.3.3</jaxb-api.version>
-    <vertx.version>4.5.13</vertx.version>
+    <vertx.version>5.0.6</vertx.version>
     <rest-assured.version>5.5.5</rest-assured.version>
     <sshd.version>2.15.0</sshd.version>
     <assertj-core.version>3.27.3</assertj-core.version>
