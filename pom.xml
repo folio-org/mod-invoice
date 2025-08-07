@@ -28,7 +28,7 @@
     <!--Dependencies-->
     <raml-module-builder.version>35.4.0</raml-module-builder.version>
     <spring.version>6.2.9</spring.version>
-    <jaxb-api.version>4.0.5</jaxb-api.version>
+    <jaxb-api.version>2.3.3</jaxb-api.version>
     <vertx.version>5.0.1</vertx.version>
     <rest-assured.version>5.5.1</rest-assured.version>
     <sshd.version>2.15.0</sshd.version>
@@ -133,6 +133,7 @@
     <dependency>
       <groupId>io.vertx</groupId>
       <artifactId>vertx-rx-java</artifactId>
+      <version>4.5.17</version>
       <scope>provided</scope>
     </dependency>
     <dependency>
@@ -170,7 +171,7 @@
     <dependency>
       <groupId>org.jvnet.jaxb2_commons</groupId>
       <artifactId>jaxb2-basics-runtime</artifactId>
-      <version>2.0.12</version>
+      <version>1.11.1</version>
     </dependency>
     <dependency>
       <groupId>commons-net</groupId>
@@ -267,7 +268,7 @@
     <dependency>
       <groupId>jakarta.xml.bind</groupId>
       <artifactId>jakarta.xml.bind-api</artifactId>
-      <version>4.0.2</version>
+      <version>${jaxb-api.version}</version>
     </dependency>
     <dependency>
       <groupId>org.glassfish.jaxb</groupId>
@@ -726,12 +727,12 @@
             <plugin>
               <groupId>org.jvnet.jaxb2_commons</groupId>
               <artifactId>jaxb2-basics</artifactId>
-              <version>1.11.1-PUBLISHED-BY-MISTAKE</version>
+              <version>1.11.1</version>
             </plugin>
             <plugin>
               <groupId>org.jvnet.jaxb2_commons</groupId>
               <artifactId>jaxb2-basics-annotate</artifactId>
-              <version>1.1.0</version>
+              <version>1.0.2</version>
             </plugin>
           </plugins>
           <args>
