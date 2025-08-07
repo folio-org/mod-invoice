@@ -12,11 +12,16 @@ import java.util.Locale;
 import java.util.TimeZone;
 import java.util.UUID;
 
+import io.vertx.core.AsyncResult;
+import io.vertx.core.Completable;
 import io.vertx.core.Context;
+import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
 import io.vertx.junit5.VertxExtension;
 import io.vertx.junit5.VertxTestContext;
+
+import org.apache.commons.net.ftp.FTPClient;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.exceptions.FtpException;
@@ -96,7 +101,7 @@ public class FtpUploadServiceTest {
         }
         logger.info(message);
       })
-      .onComplete(logger::info);
+      .onComplete(r -> logger.info(r));
 
     vertxTestContext.assertFailure(future)
       .onComplete(result -> vertxTestContext.completeNow());
@@ -167,7 +172,7 @@ public class FtpUploadServiceTest {
         logger.error(t);
         Assertions.fail(t.getMessage());
       })
-      .onComplete(logger::info);
+      .onComplete(r -> logger.info(r));
     vertxTestContext.assertComplete(future)
       .onSuccess(result -> vertxTestContext.completeNow());
   }
@@ -190,7 +195,7 @@ public class FtpUploadServiceTest {
     var future = helper.upload(context,username_valid, password_valid, user_home_dir, "/invalid/path/"+filename, JsonObject.mapFrom(batchVoucher).encodePrettily())
       .onSuccess(m -> Assertions.fail("Expected upload failure but got " + m))
       .onFailure(logger::info)
-      .onComplete(logger::info);
+      .onComplete(r -> logger.info(r));
     vertxTestContext.assertFailure(future)
       .onComplete(result -> vertxTestContext.completeNow());
   }
@@ -239,7 +244,7 @@ public class FtpUploadServiceTest {
         logger.error(t);
         Assertions.fail(t.getMessage());
       })
-      .onComplete(logger::info);
+      .onComplete(r -> logger.info(r));
     vertxTestContext.assertComplete(future)
       .onSuccess(result -> vertxTestContext.completeNow());
   }

@@ -286,7 +286,7 @@ public class MockServer {
     // Setup Mock Server...
     HttpServer server = vertx.createHttpServer();
     Promise<HttpServer> deploymentComplete = Promise.promise();
-    server.requestHandler(defineRoutes()).listen(port, result -> {
+    server.requestHandler(defineRoutes()).listen(port).onComplete(result -> {
       if (result.succeeded()) {
         deploymentComplete.complete(result.result());
       } else {
@@ -319,7 +319,7 @@ public class MockServer {
       fakeFtpServer.stop();
     }
 
-    vertx.close(res -> {
+    vertx.close().onComplete(res -> {
       if (res.failed()) {
         logger.error("Failed to shut down mock server", res.cause());
         fail(res.cause().getMessage());
