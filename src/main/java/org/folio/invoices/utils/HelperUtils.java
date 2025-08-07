@@ -6,7 +6,6 @@ import static org.folio.invoices.utils.ResourcePathResolver.INVOICES;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_LINES;
 import static org.folio.invoices.utils.ResourcePathResolver.VOUCHERS_STORAGE;
 import static org.folio.invoices.utils.ResourcePathResolver.VOUCHER_LINES;
-import static org.folio.rest.RestConstants.SEMAPHORE_MAX_ACTIVE_THREADS;
 import static org.folio.rest.RestVerticle.OKAPI_USERID_HEADER;
 import static org.folio.rest.impl.AbstractHelper.ID;
 import static org.folio.rest.jaxrs.model.FundDistribution.DistributionType.PERCENTAGE;
@@ -22,6 +21,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.IntStream;
@@ -32,6 +32,8 @@ import javax.money.MonetaryAmount;
 import javax.money.convert.ConversionQuery;
 import javax.money.convert.ConversionQueryBuilder;
 
+import io.vertx.core.Context;
+import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertxconcurrent.Semaphore;
 import lombok.extern.log4j.Log4j2;
@@ -41,7 +43,6 @@ import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.okapi.common.GenericCompositeFuture;
-import org.folio.rest.core.models.RequestContext;
 import org.folio.rest.impl.ProtectionHelper;
 import org.folio.rest.jaxrs.model.Adjustment;
 import org.folio.rest.jaxrs.model.FundDistribution;
@@ -189,24 +190,27 @@ public class HelperUtils {
       .map(CompositeFuture::list);
   }
 
-  public static <I, O> Future<List<O>> executeWithSemaphores(Collection<I> collection,
-                                                             FunctionReturningFuture<I, O> f, RequestContext requestContext) {
-    if (CollectionUtils.isEmpty(collection))
-      return Future.succeededFuture(List.of());
-    return requestContext.getContext().<List<Future<O>>>executeBlocking(promise -> {
-      Semaphore semaphore = new Semaphore(SEMAPHORE_MAX_ACTIVE_THREADS, Vertx.currentContext().owner());
+  public static <I, O> Future<List<O>> executeWithSemaphores(Context context, int threadCount, boolean fair,
+                                                             Collection<I> collection, Function<I, Future<O>> f) {
+    if (CollectionUtils.isEmpty(collection)) {
+      return Future.succeededFuture(new ArrayList<>());
+    }
+    Promise<List<Future<O>>> promise = Promise.promise();
+    context.executeBlocking(() -> {
+      Semaphore semaphore = new Semaphore(threadCount, fair, Vertx.currentContext().owner());
       List<Future<O>> futures = new ArrayList<>();
       for (I item : collection) {
         semaphore.acquire(() -> {
-          Future<O> future = f.apply(item)
-            .onComplete(asyncResult -> semaphore.release());
+          Future<O> future = f.apply(item).onComplete(asyncResult -> semaphore.release());
           futures.add(future);
           if (futures.size() == collection.size()) {
             promise.complete(futures);
           }
         });
       }
-    }).compose(HelperUtils::collectResultsOnSuccess);
+      return futures;
+    });
+    return promise.future().compose(HelperUtils::collectResultsOnSuccess);
   }
 
   public interface FunctionReturningFuture<I, O> {
