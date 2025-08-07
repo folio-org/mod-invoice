@@ -1,6 +1,5 @@
 package org.folio.services.voucher;
 
-import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
 import org.apache.commons.lang3.StringUtils;
 import org.folio.invoices.utils.HelperUtils;
@@ -84,7 +83,7 @@ public class VoucherCreationService {
       .map(this::groupFundsByExternalAcctNo);
     var fundsGroupedByExternalAcctNoFuture = groupFundDistrByFundIdByExpenseClassExtNo(fundDistributions, requestContext);
 
-    return CompositeFuture.join(groupedFundDistrosFuture, fundsGroupedByExternalAcctNoFuture)
+    return GenericCompositeFuture.join(List.of(groupedFundDistrosFuture, fundsGroupedByExternalAcctNoFuture))
       .map(cf -> mapExternalAcctNoToFundDistros(fundsGroupedByExternalAcctNoFuture.result(), groupedFundDistrosFuture.result()));
   }
 
