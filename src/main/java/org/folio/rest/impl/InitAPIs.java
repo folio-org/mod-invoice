@@ -20,7 +20,7 @@ import io.vertx.core.Context;
 import io.vertx.core.DeploymentOptions;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
-import io.vertx.core.Promise;
+import io.vertx.core.ThreadingModel;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.jackson.DatabindCodec;
 
@@ -39,7 +39,7 @@ public class InitAPIs implements InitAPI {
 
   @Override
   public void init(Vertx vertx, Context context, Handler<AsyncResult<Boolean>> resultHandler) {
-    vertx.executeBlocking(handler -> {
+    vertx.executeBlocking(() -> {
       SerializationConfig serializationConfig = ObjectMapperTool.getMapper().getSerializationConfig();
       DeserializationConfig deserializationConfig = ObjectMapperTool.getMapper().getDeserializationConfig();
 
@@ -53,34 +53,23 @@ public class InitAPIs implements InitAPI {
 
       initJavaMoney();
 
-      deployDataImportConsumerVerticle(vertx).onComplete(ar -> {
-        if (ar.failed() && isConsumerVerticleMandatory) {
-          handler.fail(ar.cause());
+      return deployDataImportConsumerVerticle(vertx).onComplete(result -> {
+        if (result.succeeded()) {
+          resultHandler.handle(Future.succeededFuture(true));
         } else {
-          handler.complete();
+          log.error("Failure to init API", result.cause());
+          resultHandler.handle(Future.failedFuture(result.cause()));
         }
       });
-    },
-    result -> {
-      if (result.succeeded()) {
-        resultHandler.handle(Future.succeededFuture(true));
-      } else {
-        log.error("Failure to init API", result.cause());
-        resultHandler.handle(Future.failedFuture(result.cause()));
-      }
     });
   }
 
   private Future<String> deployDataImportConsumerVerticle(Vertx vertx) {
-    Promise<String> promise = Promise.promise();
     AbstractApplicationContext springContext = vertx.getOrCreateContext().get("springContext");
-
     DeploymentOptions deploymentOptions = new DeploymentOptions()
       .setInstances(dataImportConsumerVerticleNumber)
-      .setWorker(true);
-    vertx.deployVerticle(() -> springContext.getBean(DataImportConsumerVerticle.class), deploymentOptions, promise);
-
-    return promise.future()
+      .setThreadingModel(ThreadingModel.WORKER);
+    return vertx.deployVerticle(() -> springContext.getBean(DataImportConsumerVerticle.class), deploymentOptions)
       .onSuccess(ar -> log.info("DataImportConsumerVerticle verticle was successfully started"))
       .onFailure(e -> log.error("DataImportConsumerVerticle verticle was not successfully started", e));
   }
