@@ -13,3 +13,9 @@ updates:
         dependency-type: "development"
       prod-deps:
         dependency-type: "production"
+    ignore:
+      - dependency-name: "org.jvnet.jaxb2_commons:jaxb2-basics"
+      - dependency-name: "org.jvnet.jaxb2_commons:jaxb2-basics-runtime"
+      - dependency-name: "org.jvnet.jaxb2_commons:jaxb2-basics-annotate"
+      - dependency-name: "jakarta.xml.bind:jakarta.xml.bind-api"
+      - dependency-name: "org.glassfish.jaxb:jaxb-runtime"

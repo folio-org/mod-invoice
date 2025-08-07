@@ -133,6 +133,7 @@
     <dependency>
       <groupId>io.vertx</groupId>
       <artifactId>vertx-rx-java</artifactId>
+      <version>4.5.17</version>
       <scope>provided</scope>
     </dependency>
     <dependency>
@@ -267,7 +268,7 @@
     <dependency>
       <groupId>jakarta.xml.bind</groupId>
       <artifactId>jakarta.xml.bind-api</artifactId>
-      <version>2.3.3</version>
+      <version>${jaxb-api.version}</version>
     </dependency>
     <dependency>
       <groupId>org.glassfish.jaxb</groupId>
