@@ -22,6 +22,8 @@ import org.springframework.stereotype.Component;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Promise;
 
+import java.util.UUID;
+
 @Component
 @Scope(ConfigurableBeanFactory.SCOPE_PROTOTYPE)
 public class DataImportConsumerVerticle extends AbstractVerticle {
@@ -64,15 +66,16 @@ public class DataImportConsumerVerticle extends AbstractVerticle {
       .loadLimit(loadLimit)
       .globalLoadSensor(GLOBAL_LOAD_SENSOR)
       .subscriptionDefinition(subscriptionDefinition)
+      .groupInstanceId(getClass().getSimpleName() + "-" + UUID.randomUUID())
       .build();
 
     consumerWrapper.start(dataImportKafkaHandler, PomReaderUtil.INSTANCE.constructModuleVersionAndVersion(PomReaderUtil.INSTANCE.getModuleName(), PomReaderUtil.INSTANCE.getVersion()))
-      .onComplete(ar -> startPromise.handle(ar));
+      .onComplete(startPromise);
   }
 
   @Override
   public void stop(Promise<Void> stopPromise) {
-    consumerWrapper.stop().onComplete(stopPromise::handle);
+    consumerWrapper.stop().onComplete(stopPromise);
   }
 
 }
