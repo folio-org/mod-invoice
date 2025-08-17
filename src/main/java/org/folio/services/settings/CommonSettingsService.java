@@ -27,7 +27,8 @@ import one.util.streamex.StreamEx;
 @RequiredArgsConstructor
 public class CommonSettingsService {
 
-  public static final String VOUCHER_NUMBER_PREFIX_KEY = "USD";
+  public static final String TENANT_LOCALE_SETTINGS = "tenantLocaleSettings";
+  public static final String VOUCHER_NUMBER_PREFIX_KEY = "voucherNumberPrefix";
 
   public static final String CURRENCY_KEY = "currency";
   public static final String CURRENCY_DEFAULT = "USD";

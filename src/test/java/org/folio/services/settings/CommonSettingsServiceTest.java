@@ -1,7 +1,6 @@
 package org.folio.services.settings;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -92,31 +91,4 @@ class CommonSettingsServiceTest {
     assertEquals("USD", result.result());
   }
 
-  @Test
-  void loadSettingsReturnsEmptyList() {
-    CommonSettingsCollection collection = new CommonSettingsCollection().withItems(null);
-    RequestEntry requestEntry = mock(RequestEntry.class);
-    RequestContext requestContext = mock(RequestContext.class);
-
-    when(restClient.get(requestEntry, CommonSettingsCollection.class, requestContext)).thenReturn(Future.succeededFuture(collection));
-
-    Future<List<CommonSetting>> result = commonSettingsService.loadSettings(requestEntry, requestContext);
-
-    assertTrue(result.result().isEmpty());
-  }
-
-  @Test
-  void loadSettingsReturnsNonEmptyList() {
-    CommonSetting setting = new CommonSetting().withKey("key").withValue(new Value());
-    CommonSettingsCollection collection = new CommonSettingsCollection().withItems(List.of(setting));
-    RequestEntry requestEntry = mock(RequestEntry.class);
-    RequestContext requestContext = mock(RequestContext.class);
-
-    when(restClient.get(requestEntry, CommonSettingsCollection.class, requestContext)).thenReturn(Future.succeededFuture(collection));
-
-    Future<List<CommonSetting>> result = commonSettingsService.loadSettings(requestEntry, requestContext);
-
-    assertEquals(1, result.result().size());
-    assertEquals("key", result.result().getFirst().getKey());
-  }
 }

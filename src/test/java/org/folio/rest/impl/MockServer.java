@@ -22,7 +22,6 @@ import static org.folio.invoices.utils.ResourcePathResolver.BATCH_VOUCHER_STORAG
 import static org.folio.invoices.utils.ResourcePathResolver.BUDGETS;
 import static org.folio.invoices.utils.ResourcePathResolver.BUDGET_EXPENSE_CLASSES;
 import static org.folio.invoices.utils.ResourcePathResolver.COMPOSITE_ORDER;
-import static org.folio.invoices.utils.ResourcePathResolver.CONFIGURATION_ENTRIES;
 import static org.folio.invoices.utils.ResourcePathResolver.CURRENT_BUDGET;
 import static org.folio.invoices.utils.ResourcePathResolver.EXPENSE_CLASSES_URL;
 import static org.folio.invoices.utils.ResourcePathResolver.FINANCE_BATCH_TRANSACTIONS;
@@ -35,6 +34,7 @@ import static org.folio.invoices.utils.ResourcePathResolver.INVOICES;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_DOCUMENTS;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_LINES;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_LINE_NUMBER;
+import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_STORAGE_SETTINGS;
 import static org.folio.invoices.utils.ResourcePathResolver.LEDGERS;
 import static org.folio.invoices.utils.ResourcePathResolver.ORDER_INVOICE_RELATIONSHIP;
 import static org.folio.invoices.utils.ResourcePathResolver.ORDER_LINES;
@@ -112,6 +112,8 @@ import org.folio.invoices.utils.ResourcePathResolver;
 import org.folio.rest.acq.model.BatchGroup;
 import org.folio.rest.acq.model.BatchGroupCollection;
 import org.folio.rest.acq.model.SequenceNumber;
+import org.folio.rest.acq.model.Setting;
+import org.folio.rest.acq.model.SettingCollection;
 import org.folio.rest.acq.model.VoucherLine;
 import org.folio.rest.acq.model.VoucherLineCollection;
 import org.folio.rest.acq.model.finance.Budget;
@@ -426,7 +428,7 @@ public class MockServer {
     router.route(HttpMethod.GET, resourcesPath(BUDGETS)).handler(this::handleGetBudgetRecords);
     router.route(HttpMethod.GET, resourcesPath(LEDGERS)).handler(this::handleGetLedgerRecords);
     router.route(HttpMethod.GET, resourceByIdPath(LEDGERS)).handler(this::handleGetLedgerRecordsById);
-    router.route(HttpMethod.GET, resourcesPath(CONFIGURATION_ENTRIES)).handler(this::handleConfigurationModuleResponse);
+    router.route(HttpMethod.GET, resourcesPath(INVOICE_STORAGE_SETTINGS)).handler(this::handleInvoiceStorageSettingsResponse);
     router.route(HttpMethod.GET, resourcesPath(SETTINGS_ENTRIES)).handler(this::handleSettingsModuleResponse);
     router.route(HttpMethod.GET, "/invoice-storage/invoices/:id/documents").handler(this::handleGetInvoiceDocuments);
     router.route(HttpMethod.GET, "/invoice-storage/invoices/:id/documents/:documentId").handler(this::handleGetInvoiceDocumentById);
@@ -1711,7 +1713,7 @@ public class MockServer {
     }
   }
 
-  private void handleConfigurationModuleResponse(RoutingContext ctx) {
+  private void handleInvoiceStorageSettingsResponse(RoutingContext ctx) {
     String tenant = ctx.request().getHeader(OKAPI_HEADER_TENANT);
     if (tenant.equals(ERROR_CONFIG_TENANT)) {
       serverResponse(ctx, 500, TEXT_PLAIN, INTERNAL_SERVER_ERROR.getReasonPhrase());
@@ -1720,15 +1722,15 @@ public class MockServer {
       serverResponse(ctx, 200, APPLICATION_JSON, JsonObject.mapFrom(new Config()).encodePrettily());
       return;
     }
-    String configValue = switch (tenant) {
+    String settingValue = switch (tenant) {
       case INVALID_PREFIX_CONFIG_TENANT -> new JsonObject().put(VOUCHER_NUMBER_PREFIX_KEY, INVALID_PREFIX).toString();
       case PREFIX_CONFIG_WITHOUT_VALUE_TENANT -> null;
       case PREFIX_CONFIG_WITH_NON_EXISTING_VALUE_TENANT -> "{\"allowVoucherNumberEdit\":false}";
       default -> new JsonObject().put(VOUCHER_NUMBER_PREFIX_KEY, TEST_PREFIX).toString();
     };
-    var configs = new Configs().withTotalRecords(1)
-      .withConfigs(List.of(new Config().withModule(INVOICE_CONFIG_MODULE_NAME).withConfigName("voucherNumber").withValue(configValue)));
-    serverResponse(ctx, 200, APPLICATION_JSON, JsonObject.mapFrom(configs).encodePrettily());
+    var settings = new SettingCollection().withTotalRecords(1)
+      .withSettings(List.of(new Setting().withKey("voucherNumber").withValue(settingValue)));
+    serverResponse(ctx, 200, APPLICATION_JSON, JsonObject.mapFrom(settings).encodePrettily());
   }
 
   private void handleSettingsModuleResponse(RoutingContext ctx) {
