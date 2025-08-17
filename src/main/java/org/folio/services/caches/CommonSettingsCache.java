@@ -1,10 +1,8 @@
 package org.folio.services.caches;
 
-import static org.folio.invoices.utils.ResourcePathResolver.CONFIGURATION_ENTRIES;
+import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_STORAGE_SETTINGS;
 import static org.folio.invoices.utils.ResourcePathResolver.SETTINGS_ENTRIES;
 import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
-import static org.folio.services.settings.CommonSettingsService.SETTINGS_QUERY;
-import static org.folio.services.settings.CommonSettingsService.VOUCHER_NUMBER_PREFIX_CONFIG_QUERY;
 import static org.folio.utils.CacheUtils.buildAsyncCache;
 
 import java.util.function.BiFunction;
@@ -30,10 +28,13 @@ import lombok.extern.log4j.Log4j2;
 @RequiredArgsConstructor
 public class CommonSettingsCache {
 
+  public static final String GLOBAL_SETTINGS_QUERY = "(scope==stripes-core.prefs.manage and key==tenantLocaleSettings)";
   private static final String UNIQUE_CACHE_KEY_PATTERN = "%s_%s_%s";
 
   @Value("${mod.invoice.cache.settings-entries.expiration-time.seconds:30}")
   private long cacheExpirationTime;
+  @Value("${mod.invoice.cache.settings-entries.bypass-cache:false}")
+  private boolean byPassCache;
 
   private final CommonSettingsService commonSettingsService;
   private AsyncCache<String, String> voucherNumberPrefixCache;
@@ -47,25 +48,35 @@ public class CommonSettingsCache {
   }
 
   public Future<String> getVoucherNumberPrefix(RequestContext requestContext) {
-    return loadSettingsData(requestContext, resourcesPath(CONFIGURATION_ENTRIES), VOUCHER_NUMBER_PREFIX_CONFIG_QUERY,
-      voucherNumberPrefixCache, commonSettingsService::getVoucherNumberPrefix);
+    return cacheData(resourcesPath(INVOICE_STORAGE_SETTINGS), null,
+      voucherNumberPrefixCache, commonSettingsService::getVoucherNumberPrefix, requestContext);
   }
 
   public Future<String> getSystemCurrency(RequestContext requestContext) {
-    return loadSettingsData(requestContext, resourcesPath(SETTINGS_ENTRIES), SETTINGS_QUERY,
-      systemCurrencyCache, commonSettingsService::getSystemCurrency);
+    return cacheData(resourcesPath(SETTINGS_ENTRIES), GLOBAL_SETTINGS_QUERY,
+      systemCurrencyCache, commonSettingsService::getSystemCurrency, requestContext);
   }
 
-  private <T> Future<T> loadSettingsData(RequestContext requestContext,
-                                         String entriesUrl, String query,
-                                         AsyncCache<String, T> cache,
-                                         BiFunction<RequestEntry, RequestContext, Future<T>> configExtractor) {
-    var requestEntry = new RequestEntry(entriesUrl).withQuery(query).withOffset(0).withLimit(Integer.MAX_VALUE);
+
+  private <T> Future<T> cacheData(String url, String query, AsyncCache<String, T> cache,
+                                  BiFunction<RequestEntry, RequestContext, Future<T>> configExtractor,
+                                  RequestContext requestContext) {
+    var requestEntry = new RequestEntry(url).withQuery(query).withOffset(0).withLimit(Integer.MAX_VALUE);
     var cacheKey = buildUniqueKey(requestEntry, requestContext);
+    log.debug("loadSettingsData:: Loading setting data, url: '{}', query: '{}', bypass-cache mode: '{}'", url, query, byPassCache);
+    if (byPassCache) {
+      return extractData(configExtractor, requestContext, requestEntry);
+    }
     return Future.fromCompletionStage(cache.get(cacheKey, (key, executor) ->
-      configExtractor.apply(requestEntry, requestContext)
-        .onFailure(t -> log.error("Error loading tenant configuration, tenantId: '{}'", TenantTool.tenantId(requestContext.getHeaders()), t))
+      extractData(configExtractor, requestContext, requestEntry)
         .toCompletionStage().toCompletableFuture()));
+  }
+
+  private <T> Future<T> extractData(BiFunction<RequestEntry, RequestContext, Future<T>> extractor,
+                                    RequestContext requestContext, RequestEntry requestEntry) {
+    var tenantId = TenantTool.tenantId(requestContext.getHeaders());
+    return extractor.apply(requestEntry, requestContext)
+      .onFailure(t -> log.error("Error loading configuration, tenantId: '{}'", tenantId, t));
   }
 
   private String buildUniqueKey(RequestEntry requestEntry, RequestContext requestContext) {
