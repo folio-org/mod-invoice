@@ -66,7 +66,6 @@ import static org.folio.rest.impl.BatchVoucherExportsApiTest.BATCH_VOUCHER_EXPOR
 import static org.folio.rest.impl.BatchVoucherImplTest.BATCH_VOUCHER_MOCK_DATA_PATH;
 import static org.folio.rest.impl.DocumentsApiTest.INVOICE_DOCUMENTS_SAMPLE_PATH;
 import static org.folio.rest.impl.DocumentsApiTest.INVOICE_SAMPLE_DOCUMENTS_PATH;
-import static org.folio.rest.impl.InvoiceHelper.INVOICE_CONFIG_MODULE_NAME;
 import static org.folio.rest.impl.InvoiceLinesApiTest.INVOICE_LINES_MOCK_DATA_PATH;
 import static org.folio.rest.impl.InvoicesApiTest.BAD_QUERY;
 import static org.folio.rest.impl.InvoicesApiTest.EXISTING_LEDGER_ID;
@@ -144,8 +143,6 @@ import org.folio.rest.acq.model.units.AcquisitionsUnitMembershipCollection;
 import org.folio.rest.jaxrs.model.BatchVoucher;
 import org.folio.rest.jaxrs.model.BatchVoucherExport;
 import org.folio.rest.jaxrs.model.BatchVoucherExportCollection;
-import org.folio.rest.jaxrs.model.Config;
-import org.folio.rest.jaxrs.model.Configs;
 import org.folio.rest.jaxrs.model.Credentials;
 import org.folio.rest.jaxrs.model.Document;
 import org.folio.rest.jaxrs.model.DocumentCollection;
@@ -1719,7 +1716,7 @@ public class MockServer {
       serverResponse(ctx, 500, TEXT_PLAIN, INTERNAL_SERVER_ERROR.getReasonPhrase());
       return;
     } else if (tenant.equals(NON_EXIST_CONFIG_TENANT)) {
-      serverResponse(ctx, 200, APPLICATION_JSON, JsonObject.mapFrom(new Config()).encodePrettily());
+      serverResponse(ctx, 200, APPLICATION_JSON, JsonObject.mapFrom(new Setting()).encodePrettily());
       return;
     }
     String settingValue = switch (tenant) {
