@@ -38,8 +38,8 @@ public class ResourcePathResolver {
   public static final String EXPENSE_CLASSES_URL = "expenseClassUrl";
   public static final String BUDGET_EXPENSE_CLASSES = "finance-storage.budget-expense-classes";
   public static final String FINANCE_EXCHANGE_RATE = "finance/exchange-rate";
-  public static final String CONFIGURATION_ENTRIES = "configurations/entries";
   public static final String SETTINGS_ENTRIES = "settings/entries";
+  public static final String INVOICE_STORAGE_SETTINGS = "invoice/settings";
   public static final String FISCAL_YEARS = "fiscalYears";
   public static final String EXCHANGE_RATE = "exchangeRate";
 
@@ -76,8 +76,8 @@ public class ResourcePathResolver {
     apis.put(BUDGET_EXPENSE_CLASSES, "/finance-storage/budget-expense-classes");
     apis.put(EXPENSE_CLASSES_URL, "/finance/expense-classes");
     apis.put(FINANCE_EXCHANGE_RATE, "/finance/exchange-rate");
-    apis.put(CONFIGURATION_ENTRIES, "/configurations/entries");
     apis.put(SETTINGS_ENTRIES, "/settings/entries");
+    apis.put(INVOICE_STORAGE_SETTINGS, "/invoice-storage/settings");
     apis.put(FISCAL_YEARS, "/finance/fiscal-years");
     apis.put(EXCHANGE_RATE, "/finance/exchange-rate");
 
