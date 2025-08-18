@@ -1,3 +1,15 @@
+## 6.0.3 - Released (Sunflower R1 2025 Bug Fix)
+The focus of this release was to provide consumer configuration for preventing rebalancing issues.
+
+[Full Changelog](https://github.com/folio-org/mod-invoice/compare/v6.0.2...v6.0.3)
+
+### Stories
+* [MODINVOICE-607](https://folio-org.atlassian.net/browse/MODINVOICE-607) - Configure consumer groupInstanceId
+
+### Dependencies
+* Bump `folio-kafka-wrapper` from `3.3.0` to `3.3.2`
+
+
 ## 6.0.2 - Released (Sunflower R1 2025 Bug Fix)
 The focus of this release was to change Voucher export dates to human-readable timestamps from epoch long format.
 
