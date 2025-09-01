@@ -1,5 +1,6 @@
 ## 6.1.0 - Unreleased
 * [MODINV-1246](https://folio-org.atlassian.net/browse/MODINV-1246) - Prevent XXE, disable external access in JAXBContextWrapper SchemaFactory
+* [MODDATAIMP-1225](https://folio-org.atlassian.net/browse/MODDATAIMP-1225) - Change dependency on `data-import-converter-storage` interface to optional
 
 ## 6.0.0 - Released (Sunflower R1 2025)
 The focus of this release was to implement improvements and do version upgrades.
