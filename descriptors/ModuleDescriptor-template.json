@@ -683,16 +683,16 @@
     {
       "id" : "orders-storage.order-invoice-relationships",
       "version": "1.0"
-    },
-    {
-      "id": "data-import-converter-storage",
-      "version": "1.4"
     }
   ],
   "optional": [
     {
       "id": "orders",
       "version": "13.0"
+    },
+    {
+      "id": "data-import-converter-storage",
+      "version": "1.4"
     }
   ],
   "permissionSets": [
