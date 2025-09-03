@@ -221,6 +221,10 @@ public class InvoiceCancelService {
     return encumbranceService.getEncumbrancesByPoLineIds(poLineIds, fiscalYearId, requestContext)
       .map(transactions -> transactions.stream()
         .filter(tr -> RELEASED.equals(tr.getEncumbrance().getStatus()))
+        // only unrelease encumbrances with expended + credited + awaiting payment = 0
+        .filter(tr -> tr.getEncumbrance().getAmountExpended() == 0
+          && tr.getEncumbrance().getAmountCredited() == 0
+          && tr.getEncumbrance().getAmountAwaitingPayment() == 0)
         .toList())
       .compose(transactions -> {
         if (transactions.isEmpty())
