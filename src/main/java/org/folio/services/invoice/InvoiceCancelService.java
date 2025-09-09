@@ -30,6 +30,7 @@ import org.folio.rest.core.models.RequestContext;
 import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.jaxrs.model.InvoiceLine;
 import org.folio.rest.jaxrs.model.Parameter;
+import org.folio.services.finance.EncumbranceUtils;
 import org.folio.services.finance.transaction.BaseTransactionService;
 import org.folio.services.finance.transaction.EncumbranceService;
 import org.folio.services.order.OrderLineService;
@@ -221,6 +222,8 @@ public class InvoiceCancelService {
     return encumbranceService.getEncumbrancesByPoLineIds(poLineIds, fiscalYearId, requestContext)
       .map(transactions -> transactions.stream()
         .filter(tr -> RELEASED.equals(tr.getEncumbrance().getStatus()))
+        // only unrelease encumbrances with expended + credited + awaiting payment = 0
+        .filter(EncumbranceUtils::allowTransactionToUnrelease)
         .toList())
       .compose(transactions -> {
         if (transactions.isEmpty())
