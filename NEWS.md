@@ -1,4 +1,5 @@
 ## 6.1.0 - Unreleased
+* [MODINVOICE-526](https://folio-org.atlassian.net/browse/MODINVOICE-526) - Do not process event if JobExecution status is Cancelled
 * [MODINV-1246](https://folio-org.atlassian.net/browse/MODINV-1246) - Prevent XXE, disable external access in JAXBContextWrapper SchemaFactory
 * [MODDATAIMP-1225](https://folio-org.atlassian.net/browse/MODDATAIMP-1225) - Change dependency on `data-import-converter-storage` interface to optional
 

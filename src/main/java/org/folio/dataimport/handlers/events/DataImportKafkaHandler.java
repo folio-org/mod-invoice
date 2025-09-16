@@ -26,6 +26,7 @@ import org.folio.processing.mapping.mapper.reader.record.edifact.EdifactReaderFa
 import org.folio.rest.RestVerticle;
 import org.folio.rest.core.RestClient;
 import org.folio.rest.jaxrs.model.Event;
+import org.folio.dataimport.cache.CancelledJobsIdsCache;
 import org.folio.services.invoice.InvoiceIdStorageService;
 import org.folio.utils.UserPermissionsUtil;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -50,11 +51,15 @@ public class DataImportKafkaHandler implements AsyncRecordHandler<String, String
   private final Logger logger = LogManager.getLogger(DataImportKafkaHandler.class);
   private final Vertx vertx;
   private final JobProfileSnapshotCache profileSnapshotCache;
+  private final CancelledJobsIdsCache cancelledJobsIdsCache;
 
   @Autowired
-  public DataImportKafkaHandler(RestClient restClient, Vertx vertx, JobProfileSnapshotCache profileSnapshotCache) {
+  public DataImportKafkaHandler(RestClient restClient, Vertx vertx,
+                                JobProfileSnapshotCache profileSnapshotCache,
+                                CancelledJobsIdsCache cancelledJobsIdsCache) {
     this.vertx = vertx;
     this.profileSnapshotCache = profileSnapshotCache;
+    this.cancelledJobsIdsCache = cancelledJobsIdsCache;
     MappingManager.registerReaderFactory(new EdifactReaderFactory());
     MappingManager.registerWriterFactory(new InvoiceWriterFactory());
     EventManager.registerEventHandler(new CreateInvoiceEventHandler(restClient,
@@ -72,6 +77,12 @@ public class DataImportKafkaHandler implements AsyncRecordHandler<String, String
       String jobExecutionId = extractValueFromHeaders(kafkaRecord.headers(), JOB_EXECUTION_ID_HEADER);
 
       logger.info("Data import event payload has been received with event type: {}, jobExecutionId: {}, recordId: {}, chunkId: {}", eventPayload.getEventType(), jobExecutionId, recordId, chunkId);
+      if (cancelledJobsIdsCache.contains(jobExecutionId)) {
+        logger.info("handle:: Skipping processing of event, topic: '{}', jobExecutionId: '{}' because the job has been cancelled",
+          kafkaRecord.topic(),jobExecutionId);
+        return Future.succeededFuture(kafkaRecord.key());
+      }
+
       eventPayload.getContext().put(RECORD_ID_HEADER, recordId);
       populateContextWithOkapiUserAndPerms(kafkaRecord, eventPayload);
 
