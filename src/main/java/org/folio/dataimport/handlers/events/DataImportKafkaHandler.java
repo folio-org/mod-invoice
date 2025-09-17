@@ -42,19 +42,21 @@ import io.vertx.kafka.client.producer.KafkaHeader;
 @Component
 public class DataImportKafkaHandler implements AsyncRecordHandler<String, String> {
 
+  private final Logger logger = LogManager.getLogger(DataImportKafkaHandler.class);
+
   public static final String JOB_PROFILE_SNAPSHOT_ID_KEY = "JOB_PROFILE_SNAPSHOT_ID";
   private static final String RECORD_ID_HEADER = "recordId";
   private static final String CHUNK_ID_HEADER = "chunkId";
   private static final String JOB_EXECUTION_ID_HEADER = "jobExecutionId";
   private static final String PROFILE_SNAPSHOT_NOT_FOUND_MSG = "JobProfileSnapshot was not found by id '%s'";
 
-  private final Logger logger = LogManager.getLogger(DataImportKafkaHandler.class);
   private final Vertx vertx;
   private final JobProfileSnapshotCache profileSnapshotCache;
   private final CancelledJobsIdsCache cancelledJobsIdsCache;
 
   @Autowired
-  public DataImportKafkaHandler(RestClient restClient, Vertx vertx,
+  public DataImportKafkaHandler(RestClient restClient,
+                                Vertx vertx,
                                 JobProfileSnapshotCache profileSnapshotCache,
                                 CancelledJobsIdsCache cancelledJobsIdsCache) {
     this.vertx = vertx;
@@ -97,6 +99,9 @@ public class DataImportKafkaHandler implements AsyncRecordHandler<String, String
           if (throwable != null) {
             promise.fail(throwable);
           } else if (DI_ERROR.value().equals(processedPayload.getEventType())) {
+            String errorMessage = processedPayload.getContext().get("ERROR");
+            logger.error("handle:: Failed to process data import event payload, jobExecutionId: {}, recordId: {}, chunkId: {}, error: {}",
+              jobExecutionId, recordId, chunkId, errorMessage);
             promise.fail("Failed to process data import event payload");
           } else {
             promise.complete(kafkaRecord.key());

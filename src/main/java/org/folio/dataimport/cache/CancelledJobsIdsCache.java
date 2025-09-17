@@ -2,13 +2,11 @@ package org.folio.dataimport.cache;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
-import lombok.extern.log4j.Log4j2;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.util.concurrent.TimeUnit;
 
-@Log4j2
 @Component
 public class CancelledJobsIdsCache {
 
@@ -36,7 +34,7 @@ public class CancelledJobsIdsCache {
    * @return {@code true} if the cache contains the {@code jobId}, {@code false} otherwise
    */
   public boolean contains(String jobId) {
-    return jobId != null && cache.asMap().containsKey(jobId);
+    return jobId != null && cache.getIfPresent(jobId) != null;
   }
 
 }
