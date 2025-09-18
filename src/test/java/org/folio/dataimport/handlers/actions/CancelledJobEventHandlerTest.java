@@ -1,4 +1,4 @@
-package org.folio.verticles;
+package org.folio.dataimport.handlers.actions;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.folio.ApiTestSuite.KAFKA_ENV_VALUE;
@@ -52,7 +52,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 @ExtendWith(VertxExtension.class)
-public class CancelledJobExecutionConsumerVerticleTest extends ApiTestBase {
+public class CancelledJobEventHandlerTest extends ApiTestBase {
 
   private static final String JOB_PROFILE_SNAPSHOTS_MOCK_PATH = "/job-execution-service/jobProfileSnapshots";
   private static final String OKAPI_URL = "http://localhost:" + ApiTestSuite.mockPort;
