@@ -10,6 +10,7 @@ import org.folio.dataimport.cache.JobProfileSnapshotCache;
 import org.folio.processing.events.EventManager;
 import org.folio.rest.jaxrs.model.Event;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -46,6 +47,11 @@ public class DataImportKafkaHandlerTest {
   @BeforeEach
   public void setUp() {
     eventManagerMock = Mockito.mockStatic(EventManager.class);
+  }
+
+  @AfterEach
+  public void tearDown() {
+    eventManagerMock.close();
   }
 
   @Test
