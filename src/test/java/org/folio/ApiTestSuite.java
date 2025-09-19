@@ -31,6 +31,7 @@ import org.folio.converters.BatchedVoucherLinesModelConverterTest;
 import org.folio.converters.BatchedVoucherModelConverterTest;
 import org.folio.dao.EntityIdStorageDaoImplTest;
 import org.folio.dataimport.cache.JobProfileSnapshotCacheTest;
+import org.folio.dataimport.handlers.events.DataImportKafkaHandlerTest;
 import org.folio.dataimport.handlers.actions.CreateInvoiceEventHandlerTest;
 import org.folio.invoices.util.HelperUtilsTest;
 import org.folio.jaxb.DefaultJAXBRootElementNameResolverTest;
@@ -82,6 +83,7 @@ import org.folio.services.validator.InvoiceValidatorServiceTest;
 import org.folio.services.validator.ProtectedFieldsValidatorTest;
 import org.folio.services.voucher.BatchVoucherGenerateServiceTest;
 import org.folio.services.voucher.UploadBatchVoucherExportServiceTest;
+import org.folio.verticles.CancelledJobConsumerVerticleTest;
 import org.folio.verticles.DataImportConsumerVerticleTest;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -414,4 +416,10 @@ public class ApiTestSuite {
 
   @Nested
   class ManualCurrencyConversionTestNested extends ManualCurrencyConversionTest {}
+
+  @Nested
+  class CancelledJobEventHandlerTestNested extends DataImportKafkaHandlerTest {}
+
+  @Nested
+  class CancelledJobConsumerVerticleTestNested extends CancelledJobConsumerVerticleTest {}
 }
