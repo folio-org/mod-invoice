@@ -1,158 +1,110 @@
 package org.folio.dataimport.handlers.actions;
 
-import static java.nio.charset.StandardCharsets.UTF_8;
-import static org.folio.ApiTestSuite.KAFKA_ENV_VALUE;
-import static org.folio.ApiTestSuite.observeTopic;
-import static org.folio.ApiTestSuite.sendToTopic;
-import static org.folio.DataImportEventTypes.DI_COMPLETED;
-import static org.folio.DataImportEventTypes.DI_ERROR;
-import static org.folio.DataImportEventTypes.DI_INCOMING_EDIFACT_RECORD_PARSED;
-import static org.folio.DataImportEventTypes.DI_JOB_CANCELLED;
-import static org.folio.dataimport.handlers.events.DataImportKafkaHandler.JOB_PROFILE_SNAPSHOT_ID_KEY;
-import static org.folio.kafka.KafkaTopicNameHelper.getDefaultNameSpace;
-import static org.folio.rest.impl.MockServer.addMockEntry;
-import static org.folio.rest.jaxrs.model.EntityType.EDIFACT_INVOICE;
-import static org.folio.rest.jaxrs.model.EntityType.INVOICE;
-import static org.folio.rest.jaxrs.model.ProfileType.ACTION_PROFILE;
-import static org.folio.rest.jaxrs.model.ProfileType.JOB_PROFILE;
-import static org.folio.rest.jaxrs.model.ProfileType.MAPPING_PROFILE;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-
+import io.vertx.core.buffer.Buffer;
 import io.vertx.core.json.Json;
-import io.vertx.core.json.JsonObject;
-import io.vertx.junit5.VertxExtension;
-import java.time.Duration;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.UUID;
-import java.util.concurrent.TimeUnit;
-
-import io.vertx.junit5.VertxTestContext;
-import lombok.SneakyThrows;
-import org.apache.kafka.clients.producer.ProducerRecord;
-import org.folio.ActionProfile;
-import org.folio.ApiTestSuite;
+import io.vertx.kafka.client.consumer.KafkaConsumerRecord;
+import io.vertx.kafka.client.producer.KafkaHeader;
 import org.folio.DataImportEventPayload;
-import org.folio.JobProfile;
-import org.folio.MappingProfile;
-import org.folio.kafka.KafkaTopicNameHelper;
+import org.folio.dataimport.cache.CancelledJobsIdsCache;
+import org.folio.dataimport.cache.JobProfileSnapshotCache;
+import org.folio.dataimport.handlers.events.DataImportKafkaHandler;
 import org.folio.processing.events.EventManager;
-import org.folio.processing.events.services.handler.EventHandler;
-import org.folio.rest.impl.ApiTestBase;
+import org.folio.rest.core.RestClient;
 import org.folio.rest.jaxrs.model.Event;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.MockedStatic;
+import org.mockito.Mockito;
+import org.mockito.junit.jupiter.MockitoExtension;
 
-@ExtendWith(VertxExtension.class)
-public class CancelledJobEventHandlerTest extends ApiTestBase {
+import java.util.List;
+import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 
-  private static final String JOB_PROFILE_SNAPSHOTS_MOCK_PATH = "/job-execution-service/jobProfileSnapshots";
-  private static final String OKAPI_URL = "http://localhost:" + ApiTestSuite.mockPort;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.when;
 
-  private final JobProfile jobProfile = new JobProfile()
-    .withId(UUID.randomUUID().toString())
-    .withName("Create invoice from EDIFACT")
-    .withDataType(JobProfile.DataType.EDIFACT);
 
-  private final ActionProfile actionProfile = new ActionProfile()
-    .withId(UUID.randomUUID().toString())
-    .withAction(ActionProfile.Action.CREATE)
-    .withFolioRecord(ActionProfile.FolioRecord.INVOICE);
+@ExtendWith(MockitoExtension.class)
+public class CancelledJobEventHandlerTest {
 
-  private final MappingProfile mappingProfile = new MappingProfile()
-    .withId(UUID.randomUUID().toString())
-    .withIncomingRecordType(EDIFACT_INVOICE)
-    .withExistingRecordType(INVOICE);
+  @Mock
+  private CancelledJobsIdsCache cancelledJobsIdsCache;
+  @Mock
+  private JobProfileSnapshotCache profileSnapshotCache;
 
-  private final ProfileSnapshotWrapper profileSnapshotWrapper = new ProfileSnapshotWrapper()
-    .withId(UUID.randomUUID().toString())
-    .withProfileId(jobProfile.getId())
-    .withContentType(JOB_PROFILE)
-    .withContent(JsonObject.mapFrom(jobProfile).getMap())
-    .withChildSnapshotWrappers(Collections.singletonList(
-      new ProfileSnapshotWrapper()
-        .withProfileId(actionProfile.getId())
-        .withContentType(ACTION_PROFILE)
-        .withContent(JsonObject.mapFrom(actionProfile).getMap())
-        .withChildSnapshotWrappers(Collections.singletonList(
-          new ProfileSnapshotWrapper()
-            .withProfileId(mappingProfile.getId())
-            .withContentType(MAPPING_PROFILE)
-            .withContent(JsonObject.mapFrom(mappingProfile).getMap())))));
+  @InjectMocks
+  private DataImportKafkaHandler kafkaHandler;
 
-  @SneakyThrows
+  private MockedStatic<EventManager> eventManagerMock;
+
   @BeforeEach
-  public void setUp(final VertxTestContext context) {
-    super.setUp(context);
-    EventManager.clearEventHandlers();
-    addMockEntry(JOB_PROFILE_SNAPSHOTS_MOCK_PATH, profileSnapshotWrapper);
+  public void setUp() {
+    eventManagerMock = Mockito.mockStatic(EventManager.class);
   }
 
   @Test
-  public void shouldSkipEventProcessingWhenJobWasCancelled() throws InterruptedException {
-
+  public void shouldSkipProcessing_whenJobIsCancelled() {
     // Arrange
-    // 1. Mock a handler to ensure it's never called for a cancelled job
-    EventHandler mockedEventHandler = mock(EventHandler.class);
-    when(mockedEventHandler.isEligible(any(DataImportEventPayload.class))).thenReturn(true);
-    EventManager.registerEventHandler(mockedEventHandler);
-
-    String tenantId = TENANT_ID;
     String jobExecutionId = UUID.randomUUID().toString();
+    KafkaConsumerRecord<String, String> kafkaRecord = mock(KafkaConsumerRecord.class);
+    KafkaHeader header = mock(KafkaHeader.class);
 
-    // 2. Send a cancellation event to the specific topic
-    Event cancellationEvent = new Event().withEventPayload(jobExecutionId);
-    String cancellationTopic = KafkaTopicNameHelper.formatTopicName(KAFKA_ENV_VALUE, getDefaultNameSpace(), tenantId, DI_JOB_CANCELLED.value());
-    ProducerRecord<String, String> cancellationRecord = new ProducerRecord<>(cancellationTopic, Json.encode(cancellationEvent));
-    cancellationRecord.headers().add(TENANT_ID, tenantId.getBytes(UTF_8));
-
-    sendToTopic(cancellationRecord);
-
-    // 3. Wait for a moment to ensure the consumer processes the cancellation and updates the cache
-    TimeUnit.SECONDS.sleep(1);
-
-    // 4. Prepare a regular data import event for the SAME jobExecutionId
-    DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
-      .withEventType(DI_INCOMING_EDIFACT_RECORD_PARSED.value())
-      .withTenant(tenantId)
-      .withOkapiUrl(OKAPI_URL)
-      .withToken(TOKEN)
-      .withContext(new HashMap<>() {{
-        put(JOB_PROFILE_SNAPSHOT_ID_KEY, profileSnapshotWrapper.getId());
-      }})
-      .withProfileSnapshot(profileSnapshotWrapper);
-
-    String dataImportTopic = KafkaTopicNameHelper.formatTopicName(KAFKA_ENV_VALUE, getDefaultNameSpace(), tenantId, dataImportEventPayload.getEventType());
-    Event dataImportEvent = new Event().withEventPayload(Json.encode(dataImportEventPayload));
-    ProducerRecord<String, String> dataImportRecord = new ProducerRecord<>(dataImportTopic, "test-key", Json.encode(dataImportEvent));
-    // This header is crucial for the handler to identify the job
-    dataImportRecord.headers().add("jobExecutionId", jobExecutionId.getBytes(UTF_8));
+    when(header.key()).thenReturn("jobExecutionId");
+    when(header.value()).thenReturn(Buffer.buffer(jobExecutionId));
+    when(kafkaRecord.headers()).thenReturn(List.of(header));
+    when(cancelledJobsIdsCache.contains(anyString())).thenReturn(true);
 
     // Act
-    // 5. Send the data import event, which should be ignored
-    sendToTopic(dataImportRecord);
+    kafkaHandler.handle(kafkaRecord);
 
     // Assert
-    String completedTopic = KafkaTopicNameHelper.formatTopicName(KAFKA_ENV_VALUE, getDefaultNameSpace(), tenantId, DI_COMPLETED.value());
-    String errorTopic = KafkaTopicNameHelper.formatTopicName(KAFKA_ENV_VALUE, getDefaultNameSpace(), tenantId, DI_ERROR.value());
+    eventManagerMock.verify(() -> EventManager.handleEvent(any(), any()), never());
+  }
 
-    // 6. Observe the output topics for a short duration
-    List<String> completedRecords = observeTopic(completedTopic, Duration.ofSeconds(5));
-    List<String> errorRecords = observeTopic(errorTopic, Duration.ofSeconds(5));
+  @Test
+  public void shouldProcessEvent_whenJobIsNotCancelled() {
 
-    // 7. Verify that no events were published, proving the handler skipped the event
-    assertTrue(completedRecords.isEmpty(), "DI_COMPLETED topic should be empty because the job was cancelled");
-    assertTrue(errorRecords.isEmpty(), "DI_ERROR topic should be empty because the job was cancelled");
+    // Arrange
+    String jobExecutionId = UUID.randomUUID().toString();
+    String profileSnapshotId = UUID.randomUUID().toString();
 
-    // 8. As an extra check, verify that the core logic handler was never invoked
-    verify(mockedEventHandler, never()).handle(any(DataImportEventPayload.class));
+    DataImportEventPayload payload = new DataImportEventPayload()
+      .withContext(new java.util.HashMap<>() {{
+        put("JOB_PROFILE_SNAPSHOT_ID", profileSnapshotId);
+      }});
+    Event event = new Event().withEventPayload(Json.encode(payload));
+
+    KafkaConsumerRecord<String, String> kafkaRecord = mock(KafkaConsumerRecord.class);
+    KafkaHeader header = mock(KafkaHeader.class);
+
+    when(header.key()).thenReturn("jobExecutionId");
+    when(header.value()).thenReturn(Buffer.buffer(jobExecutionId));
+    when(kafkaRecord.headers()).thenReturn(List.of(header));
+    when(kafkaRecord.value()).thenReturn(Json.encode(event));
+
+    // The cache does NOT contain our jobExecutionId.
+    when(cancelledJobsIdsCache.contains(jobExecutionId)).thenReturn(false);
+
+    // We mock dependencies that are called AFTER cache validation.
+    when(profileSnapshotCache.get(anyString(), any()))
+      .thenReturn(CompletableFuture.completedFuture(java.util.Optional.of(new ProfileSnapshotWrapper())));
+
+    eventManagerMock.when(() -> EventManager.handleEvent(any(), any()))
+      .thenReturn(CompletableFuture.completedFuture(new DataImportEventPayload()));
+
+    // Act
+    kafkaHandler.handle(kafkaRecord);
+
+    // Assert
+    eventManagerMock.verify(() -> EventManager.handleEvent(any(), any()), times(1));
   }
 }

@@ -83,6 +83,7 @@ import org.folio.services.validator.InvoiceValidatorServiceTest;
 import org.folio.services.validator.ProtectedFieldsValidatorTest;
 import org.folio.services.voucher.BatchVoucherGenerateServiceTest;
 import org.folio.services.voucher.UploadBatchVoucherExportServiceTest;
+import org.folio.verticles.CancelledJobConsumerVerticleTest;
 import org.folio.verticles.DataImportConsumerVerticleTest;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -418,4 +419,7 @@ public class ApiTestSuite {
 
   @Nested
   class CancelledJobEventHandlerTestNested extends CancelledJobEventHandlerTest {}
+
+  @Nested
+  class CancelledJobConsumerVerticleTestNested extends CancelledJobConsumerVerticleTest {}
 }

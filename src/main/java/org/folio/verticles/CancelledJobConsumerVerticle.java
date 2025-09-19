@@ -97,7 +97,7 @@ public class CancelledJobConsumerVerticle extends AbstractVerticle {
   }
 
   @SuppressWarnings("squid:S2629")
-  private Future<String> handle(KafkaConsumerRecord<String, String> kafkaRecord) {
+  protected Future<String> handle(KafkaConsumerRecord<String, String> kafkaRecord) {
     try {
       String tenantId = extractHeader(kafkaRecord.headers(), TENANT_ID);
       logger.debug("handle:: Received cancelled job event, key: '{}', tenantId: '{}'", kafkaRecord.key(), tenantId);
@@ -106,9 +106,10 @@ public class CancelledJobConsumerVerticle extends AbstractVerticle {
       cancelledJobsIdsCache.put(jobId);
       logger.info("handle:: Processed cancelled job, jobId: '{}', tenantId: '{}', topic: '{}'",
         jobId, tenantId, kafkaRecord.topic());
+
       return Future.succeededFuture(kafkaRecord.key());
     } catch (Exception e) {
-      logger.warn("handle:: Failed to process cancelled job, key: '{}', from topic: '{}'",
+      logger.error("handle:: Failed to process cancelled job, key: '{}', from topic: '{}'",
         kafkaRecord.key(), kafkaRecord.topic(), e);
       return Future.failedFuture(e);
     }

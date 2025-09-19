@@ -72,19 +72,18 @@ public class DataImportKafkaHandler implements AsyncRecordHandler<String, String
   public Future<String> handle(KafkaConsumerRecord<String, String> kafkaRecord) {
     try {
       Promise<String> promise = Promise.promise();
-      Event event = DatabindCodec.mapper().readValue(kafkaRecord.value(), Event.class);
-      DataImportEventPayload eventPayload = Json.decodeValue(event.getEventPayload(), DataImportEventPayload.class);
       String recordId = extractValueFromHeaders(kafkaRecord.headers(), RECORD_ID_HEADER);
       String chunkId = extractValueFromHeaders(kafkaRecord.headers(), CHUNK_ID_HEADER);
       String jobExecutionId = extractValueFromHeaders(kafkaRecord.headers(), JOB_EXECUTION_ID_HEADER);
 
-      logger.info("Data import event payload has been received with event type: {}, jobExecutionId: {}, recordId: {}, chunkId: {}", eventPayload.getEventType(), jobExecutionId, recordId, chunkId);
+      logger.info("Data import event payload has been received with jobExecutionId: {}, recordId: {}, chunkId: {}", jobExecutionId, recordId, chunkId);
       if (cancelledJobsIdsCache.contains(jobExecutionId)) {
-        logger.info("handle:: Skipping processing of event, topic: '{}', jobExecutionId: '{}' because the job has been cancelled",
-          kafkaRecord.topic(),jobExecutionId);
+        logger.info("handle:: Skipping processing of event with jobExecutionId: '{}' because the job has been cancelled", jobExecutionId);
         return Future.succeededFuture(kafkaRecord.key());
       }
 
+      Event event = DatabindCodec.mapper().readValue(kafkaRecord.value(), Event.class);
+      DataImportEventPayload eventPayload = Json.decodeValue(event.getEventPayload(), DataImportEventPayload.class);
       eventPayload.getContext().put(RECORD_ID_HEADER, recordId);
       populateContextWithOkapiUserAndPerms(kafkaRecord, eventPayload);
 
