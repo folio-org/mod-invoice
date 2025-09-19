@@ -1,4 +1,4 @@
-package org.folio.dataimport.handlers.actions;
+package org.folio.dataimport.handlers.events;
 
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.json.Json;
@@ -7,14 +7,13 @@ import io.vertx.kafka.client.producer.KafkaHeader;
 import org.folio.DataImportEventPayload;
 import org.folio.dataimport.cache.CancelledJobsIdsCache;
 import org.folio.dataimport.cache.JobProfileSnapshotCache;
-import org.folio.dataimport.handlers.events.DataImportKafkaHandler;
 import org.folio.processing.events.EventManager;
-import org.folio.rest.core.RestClient;
 import org.folio.rest.jaxrs.model.Event;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentMatchers;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
@@ -25,8 +24,6 @@ import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -34,7 +31,7 @@ import static org.mockito.Mockito.when;
 
 
 @ExtendWith(MockitoExtension.class)
-public class CancelledJobEventHandlerTest {
+public class DataImportKafkaHandlerTest {
 
   @Mock
   private CancelledJobsIdsCache cancelledJobsIdsCache;
@@ -61,13 +58,13 @@ public class CancelledJobEventHandlerTest {
     when(header.key()).thenReturn("jobExecutionId");
     when(header.value()).thenReturn(Buffer.buffer(jobExecutionId));
     when(kafkaRecord.headers()).thenReturn(List.of(header));
-    when(cancelledJobsIdsCache.contains(anyString())).thenReturn(true);
+    when(cancelledJobsIdsCache.contains(ArgumentMatchers.anyString())).thenReturn(true);
 
     // Act
     kafkaHandler.handle(kafkaRecord);
 
     // Assert
-    eventManagerMock.verify(() -> EventManager.handleEvent(any(), any()), never());
+    eventManagerMock.verify(() -> EventManager.handleEvent(ArgumentMatchers.any(), ArgumentMatchers.any()), never());
   }
 
   @Test
@@ -95,16 +92,16 @@ public class CancelledJobEventHandlerTest {
     when(cancelledJobsIdsCache.contains(jobExecutionId)).thenReturn(false);
 
     // We mock dependencies that are called AFTER cache validation.
-    when(profileSnapshotCache.get(anyString(), any()))
+    when(profileSnapshotCache.get(ArgumentMatchers.anyString(), ArgumentMatchers.any()))
       .thenReturn(CompletableFuture.completedFuture(java.util.Optional.of(new ProfileSnapshotWrapper())));
 
-    eventManagerMock.when(() -> EventManager.handleEvent(any(), any()))
+    eventManagerMock.when(() -> EventManager.handleEvent(ArgumentMatchers.any(), ArgumentMatchers.any()))
       .thenReturn(CompletableFuture.completedFuture(new DataImportEventPayload()));
 
     // Act
     kafkaHandler.handle(kafkaRecord);
 
     // Assert
-    eventManagerMock.verify(() -> EventManager.handleEvent(any(), any()), times(1));
+    eventManagerMock.verify(() -> EventManager.handleEvent(ArgumentMatchers.any(), ArgumentMatchers.any()), times(1));
   }
 }
