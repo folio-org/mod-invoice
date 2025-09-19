@@ -416,10 +416,4 @@ public class ApiTestSuite {
 
   @Nested
   class ManualCurrencyConversionTestNested extends ManualCurrencyConversionTest {}
-
-  @Nested
-  class CancelledJobEventHandlerTestNested extends DataImportKafkaHandlerTest {}
-
-  @Nested
-  class CancelledJobConsumerVerticleTestNested extends CancelledJobConsumerVerticleTest {}
 }
