@@ -102,6 +102,9 @@ public class BaseTransactionService {
   }
 
   public Future<Void> batchUpdate(List<Transaction> transactions, RequestContext requestContext) {
+    if (CollectionUtils.isEmpty(transactions)) {
+      return Future.succeededFuture();
+    }
     return batchAllOrNothing(null, transactions, null, null, requestContext);
   }
 
@@ -112,6 +115,9 @@ public class BaseTransactionService {
   }
 
   public Future<Void> batchUnrelease(List<Transaction> transactions, RequestContext requestContext) {
+    if (CollectionUtils.isEmpty(transactions)) {
+      return Future.succeededFuture();
+    }
     // NOTE: we will have to use transactionPatches when it is available (see MODINVOICE-521)
     transactions.forEach(tr -> tr.getEncumbrance().setStatus(Encumbrance.Status.UNRELEASED));
     return batchUpdate(transactions, requestContext);
