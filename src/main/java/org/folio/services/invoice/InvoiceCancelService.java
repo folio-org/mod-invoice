@@ -219,7 +219,7 @@ public class InvoiceCancelService {
   }
 
   private Future<Void> reverseCreditEncumbrancesForPoLines(String invoiceId, List<PoLine> poLines,
-                                                    Invoice invoiceFromStorage, RequestContext requestContext) {
+                                                           Invoice invoiceFromStorage, RequestContext requestContext) {
     if (poLines.isEmpty()) {
       return succeededFuture(null);
     }
