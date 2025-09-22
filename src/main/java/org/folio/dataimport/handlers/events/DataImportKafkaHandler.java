@@ -26,6 +26,7 @@ import org.folio.processing.mapping.mapper.reader.record.edifact.EdifactReaderFa
 import org.folio.rest.RestVerticle;
 import org.folio.rest.core.RestClient;
 import org.folio.rest.jaxrs.model.Event;
+import org.folio.dataimport.cache.CancelledJobsIdsCache;
 import org.folio.services.invoice.InvoiceIdStorageService;
 import org.folio.utils.UserPermissionsUtil;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -41,20 +42,26 @@ import io.vertx.kafka.client.producer.KafkaHeader;
 @Component
 public class DataImportKafkaHandler implements AsyncRecordHandler<String, String> {
 
+  private final Logger logger = LogManager.getLogger(DataImportKafkaHandler.class);
+
   public static final String JOB_PROFILE_SNAPSHOT_ID_KEY = "JOB_PROFILE_SNAPSHOT_ID";
   private static final String RECORD_ID_HEADER = "recordId";
   private static final String CHUNK_ID_HEADER = "chunkId";
   private static final String JOB_EXECUTION_ID_HEADER = "jobExecutionId";
   private static final String PROFILE_SNAPSHOT_NOT_FOUND_MSG = "JobProfileSnapshot was not found by id '%s'";
 
-  private final Logger logger = LogManager.getLogger(DataImportKafkaHandler.class);
   private final Vertx vertx;
   private final JobProfileSnapshotCache profileSnapshotCache;
+  private final CancelledJobsIdsCache cancelledJobsIdsCache;
 
   @Autowired
-  public DataImportKafkaHandler(RestClient restClient, Vertx vertx, JobProfileSnapshotCache profileSnapshotCache) {
+  public DataImportKafkaHandler(RestClient restClient,
+                                Vertx vertx,
+                                JobProfileSnapshotCache profileSnapshotCache,
+                                CancelledJobsIdsCache cancelledJobsIdsCache) {
     this.vertx = vertx;
     this.profileSnapshotCache = profileSnapshotCache;
+    this.cancelledJobsIdsCache = cancelledJobsIdsCache;
     MappingManager.registerReaderFactory(new EdifactReaderFactory());
     MappingManager.registerWriterFactory(new InvoiceWriterFactory());
     EventManager.registerEventHandler(new CreateInvoiceEventHandler(restClient,
@@ -65,13 +72,18 @@ public class DataImportKafkaHandler implements AsyncRecordHandler<String, String
   public Future<String> handle(KafkaConsumerRecord<String, String> kafkaRecord) {
     try {
       Promise<String> promise = Promise.promise();
-      Event event = DatabindCodec.mapper().readValue(kafkaRecord.value(), Event.class);
-      DataImportEventPayload eventPayload = Json.decodeValue(event.getEventPayload(), DataImportEventPayload.class);
       String recordId = extractValueFromHeaders(kafkaRecord.headers(), RECORD_ID_HEADER);
       String chunkId = extractValueFromHeaders(kafkaRecord.headers(), CHUNK_ID_HEADER);
       String jobExecutionId = extractValueFromHeaders(kafkaRecord.headers(), JOB_EXECUTION_ID_HEADER);
 
-      logger.info("Data import event payload has been received with event type: {}, jobExecutionId: {}, recordId: {}, chunkId: {}", eventPayload.getEventType(), jobExecutionId, recordId, chunkId);
+      logger.info("Data import event payload has been received with jobExecutionId: {}, recordId: {}, chunkId: {}", jobExecutionId, recordId, chunkId);
+      if (cancelledJobsIdsCache.contains(jobExecutionId)) {
+        logger.info("handle:: Skipping processing of event with jobExecutionId: '{}' because the job has been cancelled", jobExecutionId);
+        return Future.succeededFuture(kafkaRecord.key());
+      }
+
+      Event event = DatabindCodec.mapper().readValue(kafkaRecord.value(), Event.class);
+      DataImportEventPayload eventPayload = Json.decodeValue(event.getEventPayload(), DataImportEventPayload.class);
       eventPayload.getContext().put(RECORD_ID_HEADER, recordId);
       populateContextWithOkapiUserAndPerms(kafkaRecord, eventPayload);
 
@@ -86,6 +98,9 @@ public class DataImportKafkaHandler implements AsyncRecordHandler<String, String
           if (throwable != null) {
             promise.fail(throwable);
           } else if (DI_ERROR.value().equals(processedPayload.getEventType())) {
+            String errorMessage = processedPayload.getContext().get("ERROR");
+            logger.error("handle:: Failed to process data import event payload, jobExecutionId: {}, recordId: {}, chunkId: {}, error: {}",
+              jobExecutionId, recordId, chunkId, errorMessage);
             promise.fail("Failed to process data import event payload");
           } else {
             promise.complete(kafkaRecord.key());
