@@ -187,7 +187,7 @@ public class InvoiceCancelServiceTest {
 
   @ParameterizedTest
   @CsvSource({"Unreleased,2", "Released,3"})
-  public void cancelPaidInvoiceWithCreditAmountToReverseTest(String encumbranceStatusValue, int batchCalls,
+  public void cancelPaidInvoiceWithCreditAmountToReverseTest(String encumbranceStatusValue, int batchPostCalls,
                                                              VertxTestContext vertxTestContext) throws IOException {
     var fiscalYearId = UUID.randomUUID().toString();
     var orderId = UUID.randomUUID().toString();
@@ -196,38 +196,6 @@ public class InvoiceCancelServiceTest {
     var invoiceLineId = UUID.randomUUID().toString();
     var encumbranceId = UUID.randomUUID().toString();
     var encumbranceStatus = Encumbrance.Status.fromValue(encumbranceStatusValue);
-
-    // Purchase Orders, Purchase Order Lines
-    var orders = List.of(new PurchaseOrder()
-      .withId(orderId)
-      .withWorkflowStatus(WorkflowStatus.OPEN));
-    var poLines = List.of(new PoLine()
-      .withId(poLineId)
-      .withPurchaseOrderId(orderId)
-      .withPaymentStatus(FULLY_PAID));
-
-    // Invoice, invoice lines
-    var invoice = new Invoice()
-      .withId(invoiceId)
-      .withSubTotal(-5.0)
-      .withFiscalYearId(fiscalYearId)
-      .withStatus(Invoice.Status.PAID);
-    var invoiceLines = List.of(
-      new InvoiceLine()
-        .withId(invoiceLineId)
-        .withPoLineId(poLineId)
-        .withTotal(-5.0)
-        .withInvoiceLineStatus(InvoiceLine.InvoiceLineStatus.PAID));
-
-    // Credit transactions
-    var transactions = List.of(
-      new Transaction()
-        .withId(UUID.randomUUID().toString())
-        .withTransactionType(TransactionType.CREDIT)
-        .withPaymentEncumbranceId(encumbranceId)
-        .withVoidedAmount(5.0)
-        .withInvoiceCancelled(true)
-        .withCurrency("USD"));
 
     // Get Budget
     when(restClient.get(any(RequestEntry.class), eq(Budget.class), eq(requestContext)))
@@ -251,33 +219,27 @@ public class InvoiceCancelServiceTest {
        .withVouchers(List.of(getMockAs(VOUCHER_SAMPLE_PATH, Voucher.class)))
        .withTotalRecords(1)));
 
-    // Put Voucher
-    when(restClient.put(any(RequestEntry.class), any(Voucher.class), eq(requestContext)))
-      .thenReturn(succeededFuture(null));
-
-    // Get Purchase Orders
-    when(restClient.get(any(RequestEntry.class), eq(PurchaseOrderCollection.class), eq(requestContext)))
-      .thenReturn(succeededFuture(new PurchaseOrderCollection()
-        .withPurchaseOrders(orders)
-        .withTotalRecords(orders.size())));
-
-    // Get Purchase Order Lines
-    when(restClient.get(any(RequestEntry.class), eq(PoLineCollection.class), eq(requestContext)))
-      .thenReturn(succeededFuture(new PoLineCollection()
-        .withPoLines(poLines)
-        .withTotalRecords(poLines.size())));
+    // Credit transactions
+    var credits = List.of(
+      new Transaction()
+        .withId(UUID.randomUUID().toString())
+        .withTransactionType(TransactionType.CREDIT)
+        .withPaymentEncumbranceId(encumbranceId)
+        .withVoidedAmount(5.0)
+        .withInvoiceCancelled(true)
+        .withCurrency("USD"));
 
     // Get Credit transactions
     when(restClient.get(argThat((RequestEntry entry) ->
       entry != null && getQuery(entry).contains(encode("sourceInvoiceId==%s".formatted(invoiceId)))
     ), eq(TransactionCollection.class), eq(requestContext)))
       .thenReturn(succeededFuture(new TransactionCollection()
-        .withTransactions(transactions)
-        .withTotalRecords(transactions.size())));
+        .withTransactions(credits)
+        .withTotalRecords(credits.size())));
 
     // Batch Post Credit transactions
     when(restClient.postEmptyResponse(any(), eq(new Batch()
-        .withTransactionsToUpdate(transactions)), eq(requestContext)))
+        .withTransactionsToUpdate(credits)), eq(requestContext)))
       .thenReturn(succeededFuture(null));
 
     // Encumbrance transactions
@@ -310,6 +272,10 @@ public class InvoiceCancelServiceTest {
           .withAmount(10d)))), eq(requestContext)))
       .thenReturn(succeededFuture(null));
 
+    // Put Voucher
+    when(restClient.put(any(RequestEntry.class), any(Voucher.class), eq(requestContext)))
+      .thenReturn(succeededFuture(null));
+
     // Batch Post Encumbrance transactions - Encumbrance Status Change
     if (RELEASED == encumbranceStatus) {
       var unreleasedEncumbrance = JsonObject.mapFrom(encumbrances.getFirst()).mapTo(Transaction.class);
@@ -319,6 +285,19 @@ public class InvoiceCancelServiceTest {
         .withTransactionsToUpdate(List.of(unreleasedEncumbrance))), eq(requestContext)))
         .thenReturn(succeededFuture(null));
     }
+
+    // Invoice, invoice lines
+    var invoice = new Invoice()
+      .withId(invoiceId)
+      .withSubTotal(-5.0)
+      .withFiscalYearId(fiscalYearId)
+      .withStatus(Invoice.Status.PAID);
+    var invoiceLines = List.of(
+      new InvoiceLine()
+        .withId(invoiceLineId)
+        .withPoLineId(poLineId)
+        .withTotal(-5.0)
+        .withInvoiceLineStatus(InvoiceLine.InvoiceLineStatus.PAID));
 
     // Get Invoices
     when(restClient.get(any(RequestEntry.class), eq(InvoiceCollection.class), eq(requestContext)))
@@ -332,6 +311,27 @@ public class InvoiceCancelServiceTest {
         .withInvoiceLines(invoiceLines)
         .withTotalRecords(invoiceLines.size())));
 
+    // Purchase Orders, Purchase Order Lines
+    var orders = List.of(new PurchaseOrder()
+      .withId(orderId)
+      .withWorkflowStatus(WorkflowStatus.OPEN));
+    var poLines = List.of(new PoLine()
+      .withId(poLineId)
+      .withPurchaseOrderId(orderId)
+      .withPaymentStatus(PoLine.PaymentStatus.FULLY_PAID));
+
+    // Get Purchase Orders
+    when(restClient.get(any(RequestEntry.class), eq(PurchaseOrderCollection.class), eq(requestContext)))
+      .thenReturn(succeededFuture(new PurchaseOrderCollection()
+        .withPurchaseOrders(orders)
+        .withTotalRecords(orders.size())));
+
+    // Get Purchase Order Lines
+    when(restClient.get(any(RequestEntry.class), eq(PoLineCollection.class), eq(requestContext)))
+      .thenReturn(succeededFuture(new PoLineCollection()
+        .withPoLines(poLines)
+        .withTotalRecords(poLines.size())));
+
     // Put Purchase Order Lines
     when(restClient.put(any(RequestEntry.class), eq(poLines.getFirst()), eq(requestContext)))
       .thenReturn(succeededFuture(null));
@@ -340,7 +340,7 @@ public class InvoiceCancelServiceTest {
     vertxTestContext.assertComplete(future)
       .onSuccess(result -> {
         // Verify that batch update was called and check the encumbrance amounts were correctly updated
-        verify(restClient, times(batchCalls)).postEmptyResponse(
+        verify(restClient, times(batchPostCalls)).postEmptyResponse(
           eq("/finance/transactions/batch-all-or-nothing"),
           any(Batch.class),
           eq(requestContext)
