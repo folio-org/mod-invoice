@@ -222,7 +222,7 @@ public class InvoiceCancelService {
 
   private Future<Void> reverseCreditEncumbrancesForPoLines(String invoiceId, List<InvoiceLine> invoiceLines, List<PoLine> poLines,
                                                            Invoice invoiceFromStorage, RequestContext requestContext) {
-    if (poLines.isEmpty() || !isHasCredit(invoiceLines)) {
+    if (poLines.isEmpty() || !hasCreditAmountToReverse(invoiceLines)) {
       return succeededFuture(null);
     }
     var poLineIds = poLines.stream().map(PoLine::getId).distinct().toList();
@@ -237,10 +237,10 @@ public class InvoiceCancelService {
         var updateEncumbrances = new ArrayList<Transaction>();
         transactionsVsEncumbrances.getRight()
           .forEach(encumbrance -> {
-            var creditAmountToReverse = getCreditReverseAmount(encumbrance, transactionsVsEncumbrances.getLeft());
-            if (creditAmountToReverse > 0) {
+            var reverseAmount = getCreditAmountToReverse(encumbrance, transactionsVsEncumbrances.getLeft());
+            if (reverseAmount > 0) {
               var currency = Monetary.getCurrency(encumbrance.getCurrency());
-              var newAmount = sumMoney(encumbrance.getAmount(), creditAmountToReverse, currency);
+              var newAmount = sumMoney(encumbrance.getAmount(), reverseAmount, currency);
               updateEncumbrances.add(encumbrance.withAmount(newAmount));
             }
           });
@@ -254,11 +254,11 @@ public class InvoiceCancelService {
       });
   }
 
-  private boolean isHasCredit(List<InvoiceLine> invoiceLines) {
+  private boolean hasCreditAmountToReverse(List<InvoiceLine> invoiceLines) {
     return invoiceLines.stream().anyMatch(invoiceLine -> invoiceLine.getTotal() < 0);
   }
 
-  private Double getCreditReverseAmount(Transaction encumbrance, List<Transaction> transactions) {
+  private Double getCreditAmountToReverse(Transaction encumbrance, List<Transaction> transactions) {
     return transactions.stream()
       .filter(transaction -> CREDIT == transaction.getTransactionType())
       .filter(transaction -> StringUtils.equals(encumbrance.getId(), transaction.getPaymentEncumbranceId()))
