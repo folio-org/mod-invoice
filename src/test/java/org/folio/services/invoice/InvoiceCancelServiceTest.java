@@ -29,6 +29,7 @@ import static org.folio.rest.impl.ApiTestBase.X_OKAPI_USER_ID;
 import static org.folio.services.finance.transaction.BaseTransactionServiceTest.X_OKAPI_TENANT;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.times;
@@ -36,6 +37,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.io.IOException;
+import java.net.URLEncoder;
+import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -83,6 +86,8 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.mockito.stubbing.Answer;
@@ -180,12 +185,140 @@ public class InvoiceCancelServiceTest {
       .onFailure(vertxTestContext::failNow);
   }
 
+  @ParameterizedTest
+  @ValueSource(strings = {"Unreleased", "Released"})
+  public void cancelApprovedInvoiceReverseCreditTest(String encumbranceStatusValue, VertxTestContext vertxTestContext) throws IOException {
+    var fiscalYearId = UUID.randomUUID().toString();
+    var orderId = UUID.randomUUID().toString();
+    var poLineId = UUID.randomUUID().toString();
+    var invoiceId = UUID.randomUUID().toString();
+    var invoiceLineId = UUID.randomUUID().toString();
+    var encumbranceId = UUID.randomUUID().toString();
+    var encumbranceStatus = Encumbrance.Status.fromValue(encumbranceStatusValue);
+
+    // Purchase Orders, Purchase Order Lines
+    var orders = List.of(new PurchaseOrder()
+      .withId(orderId)
+      .withWorkflowStatus(WorkflowStatus.OPEN));
+    var poLines = List.of(new PoLine()
+      .withId(poLineId)
+      .withPurchaseOrderId(orderId));
+
+    // Invoice, invoice lines
+    var invoice = new Invoice()
+      .withId(invoiceId)
+      .withFiscalYearId(fiscalYearId)
+      .withStatus(Invoice.Status.APPROVED);
+    var invoiceLines = List.of(
+      new InvoiceLine()
+        .withId(invoiceLineId)
+        .withPoLineId(poLineId)
+        .withTotal(-5.0));
+
+    // Credit transactions
+    var transactions = List.of(
+      new Transaction()
+        .withId(UUID.randomUUID().toString())
+        .withTransactionType(TransactionType.CREDIT)
+        .withPaymentEncumbranceId(encumbranceId)
+        .withVoidedAmount(5.0)
+        .withInvoiceCancelled(true)
+        .withCurrency("USD"));
+
+    // Encumbrance transactions
+    var encumbrances = List.of(
+      new Transaction()
+        .withId(encumbranceId)
+        .withTransactionType(TransactionType.ENCUMBRANCE)
+        .withEncumbrance(new Encumbrance().withStatus(encumbranceStatus)
+          .withAmountAwaitingPayment(0d)
+          .withAmountExpended(0d)
+          .withAmountCredited(0d)
+          .withInitialAmountEncumbered(10d))
+        .withAmount(5.0)
+        .withCurrency("USD"));
+
+    // Get Credit transactions
+    when(restClient.get(argThat((RequestEntry entry) ->
+      entry != null && getQuery(entry).contains(encode("sourceInvoiceId==%s".formatted(invoiceId)))
+    ), eq(TransactionCollection.class), eq(requestContext)))
+    .thenReturn(succeededFuture(new TransactionCollection()
+      .withTransactions(transactions)
+      .withTotalRecords(transactions.size())));
+
+    // Get Encumbrances transactions
+    when(restClient.get(argThat((RequestEntry entry) ->
+      entry != null &&
+      getQuery(entry).contains(encode("transactionType==Encumbrance")) &&
+      getQuery(entry).contains(encode("fiscalYearId==%s".formatted(fiscalYearId)))
+    ), eq(TransactionCollection.class), eq(requestContext)))
+      .thenReturn(succeededFuture(new TransactionCollection()
+        .withTransactions(encumbrances)
+        .withTotalRecords(encumbrances.size())));
+
+    when(restClient.get(any(RequestEntry.class), eq(PurchaseOrderCollection.class), eq(requestContext)))
+      .thenReturn(succeededFuture(new PurchaseOrderCollection()
+        .withPurchaseOrders(orders)
+        .withTotalRecords(orders.size())));
+    when(restClient.get(any(RequestEntry.class), eq(PoLineCollection.class), eq(requestContext)))
+      .thenReturn(succeededFuture(new PoLineCollection()
+        .withPoLines(poLines)
+        .withTotalRecords(poLines.size())));
+
+    setupGetBudget(false);
+    setupGetBudgets(false);
+    setupUpdateVoucher();
+
+    // Batch Credit transactions
+    when(restClient.postEmptyResponse(any(), eq(new Batch()
+        .withTransactionsToUpdate(transactions)), eq(requestContext)))
+      .thenReturn(succeededFuture(null));
+
+    // Batch Encumbrance transactions - Credit Amount Reversed
+    when(restClient.postEmptyResponse(any(), eq(new Batch()
+        .withTransactionsToUpdate(List.of(JsonObject.mapFrom(encumbrances.getFirst())
+          .mapTo(Transaction.class)
+          .withAmount(10d)))), eq(requestContext)))
+      .thenReturn(succeededFuture(null));
+
+    // Batch Encumbrance transactions - Encumbrance Status Changed F
+    if (RELEASED == encumbranceStatus) {
+      var unreleasedEncumbrance = JsonObject.mapFrom(encumbrances.getFirst()).mapTo(Transaction.class);
+      unreleasedEncumbrance.setAmount(10d);
+      unreleasedEncumbrance.getEncumbrance().setStatus(UNRELEASED);
+      when(restClient.postEmptyResponse(any(), eq(new Batch()
+        .withTransactionsToUpdate(List.of(unreleasedEncumbrance))), eq(requestContext)))
+        .thenReturn(succeededFuture(null));
+    }
+
+    var future = cancelService.cancelInvoice(invoice, invoiceLines, null, requestContext);
+    vertxTestContext.assertComplete(future)
+      .onSuccess(result -> {
+        // Verify that batch update was called and check the encumbrance amounts were correctly updated
+        verify(restClient, times(UNRELEASED == encumbranceStatus ? 2 : 3)).postEmptyResponse(
+          eq("/finance/transactions/batch-all-or-nothing"),
+          any(Batch.class),
+          eq(requestContext)
+        );
+        vertxTestContext.completeNow();
+      })
+      .onFailure(vertxTestContext::failNow);
+  }
+
+  private String getQuery(RequestEntry entry) {
+    return entry.getQueryParams().get("query").toString();
+  }
+
+  private String encode(String query) {
+    return URLEncoder.encode(query, Charset.defaultCharset());
+  }
+
   @Test
   public void validateCancelInvoiceTest(VertxTestContext vertxTestContext) throws IOException {
     Invoice invoice = getMockAs(OPENED_INVOICE_SAMPLE_PATH, Invoice.class);
     List<InvoiceLine> invoiceLines = getMockAs(INVOICE_LINES_LIST_PATH, InvoiceLineCollection.class).getInvoiceLines();
 
-    var future =  cancelService.cancelInvoice(invoice, invoiceLines, null, requestContext);
+    var future = cancelService.cancelInvoice(invoice, invoiceLines, null, requestContext);
     vertxTestContext.assertFailure(future)
       .onComplete(result -> {
         var exception = (HttpException) result.cause();

@@ -9,6 +9,7 @@ import static org.folio.rest.RestConstants.MAX_IDS_FOR_GET_RQ;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -24,6 +25,7 @@ import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.jaxrs.model.InvoiceLine;
 
 public class EncumbranceService {
+
   private static final Logger logger = LogManager.getLogger();
 
   private final BaseTransactionService baseTransactionService;
@@ -37,7 +39,7 @@ public class EncumbranceService {
     List<String> distinctPoLineIds = poLineIds.stream().distinct().toList();
     List<Future<TransactionCollection>> transactionsFutureList = StreamEx
       .ofSubLists(distinctPoLineIds, MAX_IDS_FOR_GET_RQ)
-      .map(lineIds -> buildEncumbranceChunckQueryByPoLineIds(lineIds, fiscalYearId))
+      .map(lineIds -> buildEncumbranceChunkQueryByPoLineIds(lineIds, fiscalYearId))
       .map(query -> baseTransactionService.getTransactions(query, 0, Integer.MAX_VALUE, requestContext))
       .collect(toList());
 
@@ -49,7 +51,7 @@ public class EncumbranceService {
         distinctPoLineIds, fiscalYearId, t));
   }
 
-  private String buildEncumbranceChunckQueryByPoLineIds(List<String> poLineIds, String fiscalYearId) {
+  private String buildEncumbranceChunkQueryByPoLineIds(List<String> poLineIds, String fiscalYearId) {
     String transactionTypeFilter = "transactionType==Encumbrance";
     String fiscalYearFilter = fiscalYearId == null ? "" : String.format(" AND fiscalYearId==%s", fiscalYearId);
     String idFilter = " AND " + convertIdsToCqlQuery(poLineIds, "encumbrance.sourcePoLineId", true);
@@ -85,7 +87,7 @@ public class EncumbranceService {
     return getEncumbrancesByPoLineIds(poLineIds, fiscalYearId, requestContext)
       .map(encumbrances -> updateFundDistributionsWithEncumbrances(relevantHolders, encumbrances))
       .onFailure(t -> logger.error("Error updating invoice lines encumbrance links, invoiceId={}, fiscalYearId={}",
-        relevantHolders.get(0).getInvoice().getId(), fiscalYearId, t));
+        relevantHolders.getFirst().getInvoice().getId(), fiscalYearId, t));
   }
 
   private List<String> getPoLineIds(List<InvoiceWorkflowDataHolder> holders) {
@@ -103,7 +105,7 @@ public class EncumbranceService {
         .filter(enc -> enc.getEncumbrance().getSourcePoLineId().equals(holder.getInvoiceLine().getPoLineId()) &&
           enc.getFromFundId().equals(holder.getFundId()) &&
           Objects.equals(enc.getExpenseClassId(), holder.getFundDistribution().getExpenseClassId()))
-        .collect(toList());
+        .collect(Collectors.toCollection(ArrayList::new));
       FundDistribution fundDistribution = holder.getFundDistribution();
       if (matchingEncumbrances.isEmpty()) {
         if (fundDistribution.getEncumbrance() != null) {
@@ -114,7 +116,7 @@ public class EncumbranceService {
           }
         }
       } else {
-        Transaction encumbrance = matchingEncumbrances.get(0);
+        Transaction encumbrance = matchingEncumbrances.getFirst();
         if (!encumbrance.getId().equals(fundDistribution.getEncumbrance())) {
           fundDistribution.withEncumbrance(encumbrance.getId());
           holder.withEncumbrance(encumbrance);
