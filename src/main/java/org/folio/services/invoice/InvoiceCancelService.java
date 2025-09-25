@@ -184,7 +184,7 @@ public class InvoiceCancelService {
     log.info("updateOrUnreleaseEncumbrances:: Updating or unreleasing encumbrances, invoiceId={}...", invoiceId);
     return orderLineService.getPoLinesByIdAndQuery(poLineIds, this::queryToGetPoLinesWithRightPaymentStatusByIds, requestContext)
       .compose(poLines -> selectPoLinesWithOpenOrders(poLines, requestContext))
-      .compose(poLines -> reverseCreditEncumbrancesForPoLines(invoiceId, invoiceLines, poLines, invoiceFromStorage, requestContext).map(v -> poLines))
+      .compose(poLines -> reverseCreditEncumbrancesForPoLines(invoiceId, invoiceLines, poLines, invoiceFromStorage, requestContext).map(poLines))
       .compose(poLines -> unreleaseEncumbrancesForPoLines(invoiceLines, poLines, invoiceFromStorage, requestContext))
       .recover(t -> {
         log.error("updateOrUnreleaseEncumbrances:: Failed to update or unrelease encumbrance for po lines, invoiceId={}", invoiceId, t);
@@ -232,7 +232,7 @@ public class InvoiceCancelService {
         .map(encumbrances -> Pair.of(transactions, encumbrances)))
       .map(transactionsVsEncumbrances -> {
         if (CollectionUtils.isEmpty(transactionsVsEncumbrances.getLeft())) {
-          return List.<Transaction>of();
+          return null;
         }
         var updateEncumbrances = new ArrayList<Transaction>();
         transactionsVsEncumbrances.getRight()
@@ -247,7 +247,7 @@ public class InvoiceCancelService {
           return updateEncumbrances;
       })
       .compose(encumbrances -> {
-        if (encumbrances.isEmpty()) {
+        if (CollectionUtils.isEmpty(encumbrances)) {
           return succeededFuture(null);
         }
         return baseTransactionService.batchUpdate(encumbrances, requestContext);
