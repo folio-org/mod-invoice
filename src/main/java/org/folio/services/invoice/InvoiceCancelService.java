@@ -12,15 +12,11 @@ import static org.folio.rest.acq.model.finance.Encumbrance.Status.RELEASED;
 import static org.folio.rest.acq.model.finance.Transaction.TransactionType.CREDIT;
 import static org.folio.rest.acq.model.finance.Transaction.TransactionType.PAYMENT;
 import static org.folio.rest.acq.model.finance.Transaction.TransactionType.PENDING_PAYMENT;
-import static org.folio.utils.MoneyUtils.sumMoney;
 
-import java.util.ArrayList;
 import java.util.List;
 
 import io.vertx.core.Future;
 import lombok.extern.log4j.Log4j2;
-import org.apache.commons.lang.StringUtils;
-import org.apache.commons.lang3.tuple.Pair;
 import org.folio.InvoiceWorkflowDataHolderBuilder;
 import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.models.InvoiceWorkflowDataHolder;
@@ -40,8 +36,6 @@ import org.folio.services.order.OrderLineService;
 import org.folio.services.order.OrderService;
 import org.folio.services.voucher.VoucherService;
 import org.springframework.util.CollectionUtils;
-
-import javax.money.Monetary;
 
 @Log4j2
 public class InvoiceCancelService {
@@ -184,7 +178,6 @@ public class InvoiceCancelService {
     log.info("updateOrUnreleaseEncumbrances:: Updating or unreleasing encumbrances, invoiceId={}...", invoiceId);
     return orderLineService.getPoLinesByIdAndQuery(poLineIds, this::queryToGetPoLinesWithRightPaymentStatusByIds, requestContext)
       .compose(poLines -> selectPoLinesWithOpenOrders(poLines, requestContext))
-      .compose(poLines -> reverseCreditEncumbrancesForPoLines(invoiceId, invoiceLines, poLines, invoiceFromStorage, requestContext).map(poLines))
       .compose(poLines -> unreleaseEncumbrancesForPoLines(invoiceLines, poLines, invoiceFromStorage, requestContext))
       .recover(t -> {
         log.error("updateOrUnreleaseEncumbrances:: Failed to update or unrelease encumbrance for po lines, invoiceId={}", invoiceId, t);
@@ -220,55 +213,9 @@ public class InvoiceCancelService {
     return OPEN_ORDERS_QUERY + AND + convertIdsToCqlQuery(orderIds);
   }
 
-  private Future<Void> reverseCreditEncumbrancesForPoLines(String invoiceId, List<InvoiceLine> invoiceLines, List<PoLine> poLines,
-                                                           Invoice invoiceFromStorage, RequestContext requestContext) {
-    if (poLines.isEmpty() || !hasCreditAmountToReverse(invoiceLines)) {
-      return succeededFuture(null);
-    }
-    var poLineIds = poLines.stream().map(PoLine::getId).distinct().toList();
-    var fiscalYearId = invoiceFromStorage.getFiscalYearId();
-    return getTransactions(invoiceId, requestContext)
-      .compose(transactions -> encumbranceService.getEncumbrancesByPoLineIds(poLineIds, fiscalYearId, requestContext)
-        .map(encumbrances -> Pair.of(transactions, encumbrances)))
-      .map(transactionsVsEncumbrances -> {
-        if (CollectionUtils.isEmpty(transactionsVsEncumbrances.getLeft())) {
-          return null;
-        }
-        var updateEncumbrances = new ArrayList<Transaction>();
-        transactionsVsEncumbrances.getRight()
-          .forEach(encumbrance -> {
-            var reverseAmount = getCreditAmountToReverse(encumbrance, transactionsVsEncumbrances.getLeft());
-            if (reverseAmount > 0) {
-              var currency = Monetary.getCurrency(encumbrance.getCurrency());
-              var newAmount = sumMoney(encumbrance.getAmount(), reverseAmount, currency);
-              updateEncumbrances.add(encumbrance.withAmount(newAmount));
-            }
-          });
-          return updateEncumbrances;
-      })
-      .compose(encumbrances -> {
-        if (CollectionUtils.isEmpty(encumbrances)) {
-          return succeededFuture(null);
-        }
-        return baseTransactionService.batchUpdate(encumbrances, requestContext);
-      });
-  }
-
-  private boolean hasCreditAmountToReverse(List<InvoiceLine> invoiceLines) {
-    return invoiceLines.stream().anyMatch(invoiceLine -> invoiceLine.getTotal() < 0);
-  }
-
-  private Double getCreditAmountToReverse(Transaction encumbrance, List<Transaction> transactions) {
-    return transactions.stream()
-      .filter(transaction -> CREDIT == transaction.getTransactionType())
-      .filter(transaction -> StringUtils.equals(encumbrance.getId(), transaction.getPaymentEncumbranceId()))
-      .map(Transaction::getVoidedAmount)
-      .findFirst().orElse(0d);
-  }
-
   private Future<Void> unreleaseEncumbrancesForPoLines(List<InvoiceLine> invoiceLines, List<PoLine> poLines,
                                                        Invoice invoiceFromStorage, RequestContext requestContext) {
-    if (poLines.isEmpty()) {
+    if (CollectionUtils.isEmpty(poLines)) {
       return succeededFuture(null);
     }
     var poLineIds = invoiceLines.stream()
@@ -284,7 +231,7 @@ public class InvoiceCancelService {
         .filter(EncumbranceUtils::allowEncumbranceToUnrelease)
         .toList())
       .compose(encumbrances -> {
-        if (encumbrances.isEmpty()) {
+        if (CollectionUtils.isEmpty(encumbrances)) {
           return succeededFuture(null);
         }
         return baseTransactionService.batchUnrelease(encumbrances, requestContext);
