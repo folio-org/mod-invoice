@@ -52,6 +52,7 @@ public class InvoicesImpl extends BaseApi implements org.folio.rest.jaxrs.resour
   @Override
   public void postInvoiceInvoices(Invoice invoice, Map<String, String> okapiHeaders,
       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+    logger.info("For testing redeployment...");
     InvoiceHelper helper = new InvoiceHelper(okapiHeaders, vertxContext);
     RequestContext requestContext = new RequestContext(vertxContext, okapiHeaders);
     helper.createInvoice(invoice, requestContext)
