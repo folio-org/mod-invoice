@@ -148,7 +148,7 @@ public class InvoicesImpl extends BaseApi implements org.folio.rest.jaxrs.resour
 
   @Validate
   @Override
-  public void putInvoiceInvoiceLinesById(String invoiceLineId, InvoiceLine invoiceLine,
+  public void putInvoiceInvoiceLinesById(String invoiceLineId, boolean skipPoNumbers, InvoiceLine invoiceLine,
       Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     InvoiceLineHelper invoiceLinesHelper = new InvoiceLineHelper(okapiHeaders, vertxContext);
 
@@ -156,7 +156,7 @@ public class InvoicesImpl extends BaseApi implements org.folio.rest.jaxrs.resour
       invoiceLine.setId(invoiceLineId);
     }
 
-    invoiceLinesHelper.updateInvoiceLine(invoiceLine, new RequestContext(vertxContext, okapiHeaders))
+    invoiceLinesHelper.updateInvoiceLine(invoiceLine, skipPoNumbers, new RequestContext(vertxContext, okapiHeaders))
       .onSuccess(v -> asyncResultHandler.handle(succeededFuture(invoiceLinesHelper.buildNoContentResponse())))
       .onFailure(t -> handleErrorResponse(asyncResultHandler, invoiceLinesHelper, t));
   }
