@@ -196,6 +196,13 @@ resourceTypes:
         description: Return an invoice line with given {id}
       put:
         description: Update an invoice line with given {id}
+        queryParameters:
+          skipPoNumbers:
+            displayName: Skip updating PO numbers on the Invoice to avoid potential deadlocks
+            type: boolean
+            example: true
+            required: false
+            default: false
       delete:
         description: Delete an invoice line with given {id}
     /fund-distributions/validate:

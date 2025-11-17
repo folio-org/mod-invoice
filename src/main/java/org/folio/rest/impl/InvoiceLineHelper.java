@@ -158,7 +158,7 @@ public class InvoiceLineHelper extends AbstractHelper {
 
     // 3. Compare if anything has changed
     return !(Objects.equals(existingTotal, invoiceLine.getTotal()) && Objects.equals(subTotal, invoiceLine.getSubTotal())
-        && Objects.equals(adjustmentsTotal, invoiceLine.getAdjustmentsTotal()));
+      && Objects.equals(adjustmentsTotal, invoiceLine.getAdjustmentsTotal()));
   }
 
   /**
@@ -170,8 +170,8 @@ public class InvoiceLineHelper extends AbstractHelper {
    */
   private boolean areTotalsEqual(InvoiceLine invoiceLine1, InvoiceLine invoiceLine2) {
     return Objects.equals(invoiceLine1.getTotal(), invoiceLine2.getTotal())
-        && Objects.equals(invoiceLine1.getSubTotal(), invoiceLine2.getSubTotal())
-        && Objects.equals(invoiceLine1.getAdjustmentsTotal(), invoiceLine2.getAdjustmentsTotal());
+      && Objects.equals(invoiceLine1.getSubTotal(), invoiceLine2.getSubTotal())
+      && Objects.equals(invoiceLine1.getAdjustmentsTotal(), invoiceLine2.getAdjustmentsTotal());
   }
 
   /**
@@ -203,10 +203,10 @@ public class InvoiceLineHelper extends AbstractHelper {
     return invoiceLineService.updateInvoiceLine(invoiceLine, requestContext);
   }
 
-  public Future<Void> updateInvoiceLine(InvoiceLine invoiceLine, RequestContext requestContext) {
+  public Future<Void> updateInvoiceLine(InvoiceLine invoiceLine, boolean skipPoNumbers, RequestContext requestContext) {
     ILProcessing ilProcessing = new ILProcessing();
     ilProcessing.setInvoiceLine(invoiceLine);
-
+    ilProcessing.setPoNumber(skipPoNumbers);
     return getInvoiceLine(ilProcessing, invoiceLine.getId(), requestContext)
       .compose(v -> invoiceService.getInvoiceById(ilProcessing.getInvoiceLineFromStorage().getInvoiceId(),
         requestContext))
@@ -221,8 +221,7 @@ public class InvoiceLineHelper extends AbstractHelper {
       .map(holders -> {
         var invoice = ilProcessing.getInvoice();
         // Validate if invoice line update is allowed
-        validator.validateProtectedFields(invoice, ilProcessing.getInvoiceLine(),
-          ilProcessing.getInvoiceLineFromStorage());
+        validator.validateProtectedFields(invoice, ilProcessing.getInvoiceLine(), ilProcessing.getInvoiceLineFromStorage());
         validator.validateLineAdjustmentsOnUpdate(invoiceLine, invoice);
         invoiceLine.setInvoiceLineNumber(ilProcessing.getInvoiceLineFromStorage().getInvoiceLineNumber());
         unlinkEncumbranceFromChangedFunds(invoiceLine, ilProcessing.getInvoiceLineFromStorage());
@@ -241,7 +240,7 @@ public class InvoiceLineHelper extends AbstractHelper {
         .filter(fdStorage -> fdStorage.getEncumbrance() != null)
         .anyMatch(distributionFromStorage ->
           distributionFromStorage.getEncumbrance().equals(distribution.getEncumbrance())
-          && !distributionFromStorage.getFundId().equals(distribution.getFundId())))
+            && !distributionFromStorage.getFundId().equals(distribution.getFundId())))
       .forEach(distribution -> distribution.setEncumbrance(null));
   }
 
@@ -254,10 +253,10 @@ public class InvoiceLineHelper extends AbstractHelper {
         poLine -> orderService.getOrderInvoiceRelationshipByOrderIdAndInvoiceId(poLine.getPurchaseOrderId(), invoiceLine.getInvoiceId(), requestContext)
           .compose(relationships -> {
             if (relationships.getTotalRecords() == 0) {
-
               OrderInvoiceRelationship orderInvoiceRelationship = new OrderInvoiceRelationship();
               orderInvoiceRelationship.withInvoiceId(invoiceLine.getInvoiceId()).withPurchaseOrderId(poLine.getPurchaseOrderId());
-
+              logger.info("updateOrderInvoiceRelationship:: Recreating order-invoice relationship was updated for invoice id={}, line id={}",
+                invoiceLine.getInvoiceId(), invoiceLine.getId());
               return deleteOrderInvoiceRelationshipIfNeeded(invoiceLine, invoiceLineFromStorage, requestContext)
                 .compose(v -> orderService.createOrderInvoiceRelationship(orderInvoiceRelationship, requestContext)
                   .compose(relationship -> succeededFuture(null))
@@ -266,13 +265,14 @@ public class InvoiceLineHelper extends AbstractHelper {
             return succeededFuture(null);
           }));
     }
-
+    logger.info("updateOrderInvoiceRelationship:: No order-invoice relationship was updated for invoice id={}, line id={}",
+      invoiceLine.getInvoiceId(), invoiceLine.getId());
     //  Don't create/update the relationship in case ids match
     return succeededFuture(null);
   }
 
   private Future<Void> deleteOrderInvoiceRelationshipIfNeeded(InvoiceLine invoiceLine,
-      InvoiceLine invoiceLineFromStorage, RequestContext requestContext) {
+                                                              InvoiceLine invoiceLineFromStorage, RequestContext requestContext) {
     // if the stored invoice line does not have a link, there is no relationship to delete
     if (invoiceLineFromStorage.getPoLineId() == null) {
       return succeededFuture(null);
@@ -333,14 +333,14 @@ public class InvoiceLineHelper extends AbstractHelper {
     String query = QUERY_PARAM_START_WITH + lineId;
     return invoiceService.getInvoices(query, 0, Integer.MAX_VALUE, requestContext)
       .compose(invoiceCollection -> {
-      if (!invoiceCollection.getInvoices().isEmpty()) {
-        ilProcessing.setInvoice(invoiceCollection.getInvoices().getFirst());
-        return succeededFuture(null);
-      }
-      var param = new Parameter().withKey("invoiceLineId").withValue(lineId);
-      logger.error("getInvoiceIfExists:: Cannot delete invoice line: {}", lineId);
-      throw new HttpException(404, CANNOT_DELETE_INVOICE_LINE, List.of(param));
-    });
+        if (!invoiceCollection.getInvoices().isEmpty()) {
+          ilProcessing.setInvoice(invoiceCollection.getInvoices().getFirst());
+          return succeededFuture(null);
+        }
+        var param = new Parameter().withKey("invoiceLineId").withValue(lineId);
+        logger.error("getInvoiceIfExists:: Cannot delete invoice line: {}", lineId);
+        throw new HttpException(404, CANNOT_DELETE_INVOICE_LINE, List.of(param));
+      });
   }
 
   /**
@@ -404,7 +404,7 @@ public class InvoiceLineHelper extends AbstractHelper {
   }
 
   private Future<List<InvoiceWorkflowDataHolder>> generateNewInvoiceLineNumber(List<InvoiceWorkflowDataHolder> holders,
-      ILProcessing ilProcessing, RequestContext requestContext) {
+                                                                               ILProcessing ilProcessing, RequestContext requestContext) {
     String invoiceId = ilProcessing.getInvoice().getId();
     return invoiceLineService.generateLineNumber(invoiceId, requestContext)
       .map(number -> {
@@ -445,7 +445,7 @@ public class InvoiceLineHelper extends AbstractHelper {
    * @return list of other lines which are updated after applying prorated adjustment(s)
    */
   private Future<List<InvoiceLine>> applyProratedAdjustments(InvoiceLine invoiceLine, Invoice invoice,
-      RequestContext requestContext) {
+                                                             RequestContext requestContext) {
 
     // Exclude adjustment recalculation if no prorated ones are found or if no pending (id is null) Invoice Line level adjustments are found
     if (adjustmentsService.getProratedAdjustments(invoice).isEmpty()
@@ -486,7 +486,7 @@ public class InvoiceLineHelper extends AbstractHelper {
   }
 
   private Future<Void> updateInvoiceAndAffectedLines(ILProcessing ilProcessing, List<InvoiceLine> lines,
-      RequestContext requestContext) {
+                                                     RequestContext requestContext) {
 
     Invoice invoice = ilProcessing.getInvoice();
     return persistInvoiceLines(invoice, lines, requestContext)
@@ -526,7 +526,6 @@ public class InvoiceLineHelper extends AbstractHelper {
 
   private Future<Void> updateInvoiceAndLines(ILProcessing ilProcessing, RequestContext requestContext) {
     Invoice invoice = ilProcessing.getInvoice();
-
     // If no prorated adjustments, just update invoice details
     if (adjustmentsService.getProratedAdjustments(invoice).isEmpty()) {
       return updateInvoice(ilProcessing, requestContext);
@@ -536,7 +535,6 @@ public class InvoiceLineHelper extends AbstractHelper {
       .map(lines -> adjustmentsService.applyProratedAdjustments(lines, invoice))
       .compose(lines -> persistInvoiceLines(invoice, lines, requestContext))
       .compose(ok -> updateInvoice(ilProcessing, requestContext));
-
   }
 
   /**
@@ -545,14 +543,18 @@ public class InvoiceLineHelper extends AbstractHelper {
   private Future<Void> updateInvoicePoNumbers(ILProcessing ilProcessing, RequestContext requestContext) {
     InvoiceLine invoiceLine = ilProcessing.getInvoiceLine();
     InvoiceLine invoiceLineFromStorage = ilProcessing.getInvoiceLineFromStorage();
-
-    if (!isPoNumbersUpdateNeeded(invoiceLineFromStorage, invoiceLine))
+    if (!isPoNumbersUpdateNeeded(invoiceLineFromStorage, invoiceLine) || Boolean.TRUE.equals(ilProcessing.getSkipPoNumbers())) {
+      logger.info("updateInvoicePoNumbers:: No invoice PO numbers were updated for id={}, line id={}",
+        invoiceLine.getInvoiceId(), invoiceLine.getId());
       return succeededFuture(null);
+    }
     String poLineId = (invoiceLineFromStorage == null || invoiceLine.getPoLineId() != null) ? invoiceLine.getPoLineId() :
       invoiceLineFromStorage.getPoLineId();
     return orderLineService.getPoLineById(poLineId, requestContext)
       .compose(poLine -> orderService.getOrder(poLine.getPurchaseOrderId(), requestContext))
       .compose(order -> {
+        logger.info("updateInvoicePoNumbers:: Updating invoice PO numbers for id={}, line id={}",
+          invoiceLine.getInvoiceId(), invoiceLine.getId());
         if (invoiceLineFromStorage != null && invoiceLineFromStorage.getPoLineId() != null && invoiceLine.getPoLineId() == null) {
           return removeInvoicePoNumber(order.getPoNumber(), order, ilProcessing, requestContext);
         } else {
@@ -568,9 +570,9 @@ public class InvoiceLineHelper extends AbstractHelper {
       });
   }
 
-
   /**
    * Delete the invoice's poNumbers field, following an invoice line removal.
+   *
    * @param requestContext - used to start new requests
    */
   private Future<Void> deleteInvoicePoNumbers(ILProcessing ilProcessing, RequestContext requestContext) {
@@ -592,23 +594,26 @@ public class InvoiceLineHelper extends AbstractHelper {
    * @return false if we can tell right away that an update of the invoice poNumbers is not needed.
    */
   private boolean isPoNumbersUpdateNeeded(InvoiceLine invoiceLineFromStorage, InvoiceLine invoiceLine) {
-    return !((invoiceLineFromStorage == null && invoiceLine.getPoLineId() == null) ||
-      (invoiceLine.getPoLineId() == null && invoiceLineFromStorage != null && invoiceLineFromStorage.getPoLineId() == null));
+    return !((invoiceLineFromStorage == null && invoiceLine.getPoLineId() == null)
+      || (invoiceLine.getPoLineId() == null && invoiceLineFromStorage != null && invoiceLineFromStorage.getPoLineId() == null));
   }
 
   /**
    * Removes orderPoNumber from the invoice's poNumbers field if needed.
    */
   private Future<Void> removeInvoicePoNumber(String orderPoNumber, CompositePurchaseOrder order,
-      ILProcessing ilProcessing, RequestContext requestContext) {
+                                             ILProcessing ilProcessing, RequestContext requestContext) {
 
     Invoice invoice = ilProcessing.getInvoice();
     InvoiceLine invoiceLine = ilProcessing.getInvoiceLineFromStorage();
     List<String> invoicePoNumbers = invoice.getPoNumbers();
-    if (!invoicePoNumbers.contains(orderPoNumber))
+    if (!invoicePoNumbers.contains(orderPoNumber)) {
       return succeededFuture(null);
+    }
     // check the other invoice lines to see if one of them is linking to the same order
-    List<String> orderLineIds = order.getPoLines().stream().map(PoLine::getId).toList();
+    List<String> orderLineIds = order.getPoLines().stream()
+      .map(PoLine::getId)
+      .toList();
     return getRelatedLines(invoiceLine, requestContext).compose(lines -> {
       if (lines.stream().noneMatch(line -> orderLineIds.contains(line.getPoLineId()))) {
         List<String> newNumbers = invoicePoNumbers.stream().filter(n -> !n.equals(orderPoNumber)).collect(toList());
@@ -632,20 +637,22 @@ public class InvoiceLineHelper extends AbstractHelper {
   }
 
   private List<String> addPoNumberToList(List<String> numbers, String newNumber) {
-    if (newNumber == null)
+    if (newNumber == null) {
       return numbers;
-    if (numbers == null)
+    }
+    if (numbers == null) {
       return List.of(newNumber);
-    if (numbers.contains(newNumber))
+    }
+    if (numbers.contains(newNumber)) {
       return numbers;
+    }
     var newNumbers = new ArrayList<>(numbers);
     newNumbers.add(newNumber);
     return newNumbers;
   }
 
   private List<InvoiceWorkflowDataHolder> updateInvoiceFiscalYear(List<InvoiceWorkflowDataHolder> holders,
-      ILProcessing ilProcessing) {
-
+                                                                  ILProcessing ilProcessing) {
     if (holders.isEmpty())
       return holders;
     Invoice invoice = ilProcessing.getInvoice();
@@ -671,28 +678,44 @@ public class InvoiceLineHelper extends AbstractHelper {
     private InvoiceLine invoiceLine;
     private InvoiceLine invoiceLineFromStorage;
     private boolean invoiceSerializationNeeded = false;
+    private boolean skipPoNumbers = false;
 
     Invoice getInvoice() {
       return invoice;
     }
+
     InvoiceLine getInvoiceLine() {
       return invoiceLine;
     }
+
     InvoiceLine getInvoiceLineFromStorage() {
       return invoiceLineFromStorage;
     }
+
     boolean getInvoiceSerializationNeeded() {
       return invoiceSerializationNeeded;
     }
+
+    Boolean getSkipPoNumbers() {
+      return skipPoNumbers;
+    }
+
     void setInvoice(Invoice invoice) {
       this.invoice = invoice;
     }
+
     void setInvoiceLine(InvoiceLine invoiceLine) {
       this.invoiceLine = invoiceLine;
     }
+
     void setInvoiceLineFromStorage(InvoiceLine invoiceLineFromStorage) {
       this.invoiceLineFromStorage = invoiceLineFromStorage;
     }
+
+    void setPoNumber(boolean skipPoNumbers) {
+      this.skipPoNumbers = skipPoNumbers;
+    }
+
     void setInvoiceSerializationNeeded() {
       this.invoiceSerializationNeeded = true;
     }
