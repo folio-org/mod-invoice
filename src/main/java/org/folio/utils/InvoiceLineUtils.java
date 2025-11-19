@@ -22,22 +22,18 @@ public class InvoiceLineUtils {
     var hasTagsAdded = Objects.isNull(storage.getTags())
       && Objects.nonNull(request.getTags())
       && !CollectionUtils.sizeIsEmpty(request.getTags().getTagList());
-
     var hasTagsRemoved = Objects.isNull(request.getTags())
       && Objects.nonNull(storage.getTags())
       && !CollectionUtils.sizeIsEmpty(storage.getTags().getTagList());
-
     var hasTagsChanged = Objects.nonNull(storage.getTags())
       && Objects.nonNull(request.getTags())
       && !CollectionUtils.isEqualCollection(storage.getTags().getTagList(), request.getTags().getTagList());
-
     var hasSubInfoChanged = !StringUtils.equals(storage.getSubscriptionInfo(), request.getSubscriptionInfo());
     var hasSubStartChanged = areDatesNotEqual(storage.getSubscriptionStart(), request.getSubscriptionStart());
     var hasSubEndChanged = areDatesNotEqual(storage.getSubscriptionEnd(), request.getSubscriptionEnd());
-
     var hasCommentChanged = !StringUtils.equals(storage.getComment(), request.getComment());
 
-    log.info("getIgnoreMissingBudgets:: has subInfoChanged={}, subStartChanged={}, subEndChanged={}, commentChanged={}, tagsAdded={}, tagsRemoved={}, tagsChanged={}",
+    log.info("isIgnoreMissingBudgets:: has subInfoChanged={}, subStartChanged={}, subEndChanged={}, commentChanged={}, tagsAdded={}, tagsRemoved={}, tagsChanged={}",
       hasSubInfoChanged, hasSubStartChanged, hasSubEndChanged, hasCommentChanged, hasTagsAdded, hasTagsRemoved, hasTagsChanged);
     return hasSubInfoChanged
       || hasSubStartChanged
