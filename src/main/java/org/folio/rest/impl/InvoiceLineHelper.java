@@ -29,6 +29,7 @@ import java.util.Objects;
 
 import io.vertx.core.Context;
 import io.vertx.core.Future;
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.folio.InvoiceWorkflowDataHolderBuilder;
 import org.folio.invoices.rest.exceptions.HttpException;
@@ -54,6 +55,7 @@ import org.folio.services.order.OrderLineService;
 import org.folio.services.order.OrderService;
 import org.folio.services.validator.InvoiceLineValidator;
 import org.folio.spring.SpringContextUtil;
+import org.folio.utils.InvoiceLineUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 
 public class InvoiceLineHelper extends AbstractHelper {
@@ -208,30 +210,50 @@ public class InvoiceLineHelper extends AbstractHelper {
     ilProcessing.setInvoiceLine(invoiceLine);
     ilProcessing.setPoNumber(skipPoNumbers);
     return getInvoiceLine(ilProcessing, invoiceLine.getId(), requestContext)
-      .compose(v -> invoiceService.getInvoiceById(ilProcessing.getInvoiceLineFromStorage().getInvoiceId(),
-        requestContext))
+      .compose(v -> invoiceService.getInvoiceById(ilProcessing.getInvoiceLineFromStorage().getInvoiceId(), requestContext))
       .map(invoice -> {
         ilProcessing.setInvoice(invoice);
         return null;
       })
-      .compose(invoice -> holderBuilder.buildCompleteHolders(ilProcessing.getInvoice(),
-        Collections.singletonList(ilProcessing.getInvoiceLine()), requestContext))
-      .compose(holders -> budgetExpenseClassService.checkExpenseClasses(holders, requestContext))
-      .map(holders -> updateInvoiceFiscalYear(holders, ilProcessing))
-      .map(holders -> {
-        var invoice = ilProcessing.getInvoice();
-        // Validate if invoice line update is allowed
-        validator.validateProtectedFields(invoice, ilProcessing.getInvoiceLine(), ilProcessing.getInvoiceLineFromStorage());
-        validator.validateLineAdjustmentsOnUpdate(invoiceLine, invoice);
-        invoiceLine.setInvoiceLineNumber(ilProcessing.getInvoiceLineFromStorage().getInvoiceLineNumber());
-        unlinkEncumbranceFromChangedFunds(invoiceLine, ilProcessing.getInvoiceLineFromStorage());
-        return null;
+      .compose(v -> {
+        var ignoreMissingBudgets = InvoiceLineUtils.isIgnoreMissingBudgets(ilProcessing.getInvoiceLineFromStorage(), ilProcessing.getInvoiceLine());
+        logger.info("updateInvoiceLine:: Ignoring missing budgets={}, invoice id={}, line id={}", ignoreMissingBudgets, invoiceLine.getInvoiceId(), invoiceLine.getId());
+        return holderBuilder.buildCompleteHolders(ilProcessing.getInvoice(), Collections.singletonList(ilProcessing.getInvoiceLine()), ignoreMissingBudgets, requestContext)
+          .compose(holders -> {
+            if (ignoreMissingBudgets && CollectionUtils.isEmpty(holders)) {
+              return processInvoiceLineWithoutFinance(invoiceLine, ilProcessing);
+            }
+            return processInvoiceLineWithFinance(invoiceLine, holders, ilProcessing, requestContext);
+          });
       })
       .compose(v -> protectionHelper.isOperationRestricted(ilProcessing.getInvoice().getAcqUnitIds(), UPDATE))
       .compose(ok -> applyAdjustmentsAndUpdateLine(ilProcessing, requestContext))
       .compose(ok -> updateOrderInvoiceRelationship(invoiceLine, ilProcessing.getInvoiceLineFromStorage(), requestContext))
       .compose(ok -> updateInvoicePoNumbers(ilProcessing, requestContext))
       .compose(v -> persistInvoiceIfNeeded(ilProcessing, requestContext));
+  }
+
+  private Future<Object> processInvoiceLineWithFinance(InvoiceLine invoiceLine, List<InvoiceWorkflowDataHolder> holders, ILProcessing ilProcessing, RequestContext requestContext) {
+    return budgetExpenseClassService.checkExpenseClasses(holders, requestContext)
+      .map(updatedHolders -> updateInvoiceFiscalYear(holders, ilProcessing))
+      .map(updatedHolders -> {
+        validateInvoiceLineBeforeUpdate(invoiceLine, ilProcessing);
+        unlinkEncumbranceFromChangedFunds(invoiceLine, ilProcessing.getInvoiceLineFromStorage());
+        return null;
+      });
+  }
+
+  private Future<Object> processInvoiceLineWithoutFinance(InvoiceLine invoiceLine, ILProcessing ilProcessing) {
+    validateInvoiceLineBeforeUpdate(invoiceLine, ilProcessing);
+    return Future.succeededFuture();
+  }
+
+  // Validate if invoice line update is allowed
+  private void validateInvoiceLineBeforeUpdate(InvoiceLine invoiceLine, ILProcessing ilProcessing) {
+    var invoice = ilProcessing.getInvoice();
+    validator.validateProtectedFields(invoice, ilProcessing.getInvoiceLine(), ilProcessing.getInvoiceLineFromStorage());
+    validator.validateLineAdjustmentsOnUpdate(invoiceLine, invoice);
+    invoiceLine.setInvoiceLineNumber(ilProcessing.getInvoiceLineFromStorage().getInvoiceLineNumber());
   }
 
   private void unlinkEncumbranceFromChangedFunds(InvoiceLine invoiceLine, InvoiceLine invoiceLineFromStorage) {
@@ -292,19 +314,20 @@ public class InvoiceLineHelper extends AbstractHelper {
     }
 
     // Re-apply prorated adjustments if available
-    return applyProratedAdjustments(invoiceLine, invoice, requestContext).compose(affectedLines -> {
-      // Recalculate totals before update which also indicates if invoice requires update
-      calculateInvoiceLineTotals(invoiceLine, invoice);
-      // Update invoice line in storage
-      return updateInvoiceLineToStorage(invoiceLine, requestContext).compose(v -> {
-        // Trigger invoice update event only if this is required
-        if (!affectedLines.isEmpty() || !areTotalsEqual(invoiceLine, invoiceLineFromStorage)) {
-          return updateInvoiceAndAffectedLines(ilProcessing, affectedLines, requestContext);
-        } else {
-          return succeededFuture(null);
-        }
+    return applyProratedAdjustments(invoiceLine, invoice, requestContext)
+      .compose(affectedLines -> {
+        // Recalculate totals before update which also indicates if invoice requires update
+        calculateInvoiceLineTotals(invoiceLine, invoice);
+        // Update invoice line in storage
+        return updateInvoiceLineToStorage(invoiceLine, requestContext).compose(v -> {
+          // Trigger invoice update event only if this is required
+          if (!affectedLines.isEmpty() || !areTotalsEqual(invoiceLine, invoiceLineFromStorage)) {
+            return updateInvoiceAndAffectedLines(ilProcessing, affectedLines, requestContext);
+          } else {
+            return succeededFuture(null);
+          }
+        });
       });
-    });
   }
 
   /**
@@ -364,7 +387,7 @@ public class InvoiceLineHelper extends AbstractHelper {
       .compose(v -> protectionHelper.isOperationRestricted(ilProcessing.getInvoice().getAcqUnitIds(),
         ProtectedOperationType.CREATE))
       .compose(invoice -> holderBuilder.buildCompleteHolders(ilProcessing.getInvoice(),
-          Collections.singletonList(ilProcessing.getInvoiceLine()), requestContext)
+          Collections.singletonList(ilProcessing.getInvoiceLine()), false, requestContext)
         .compose(holders -> budgetExpenseClassService.checkExpenseClasses(holders, requestContext))
         .compose(holders -> generateNewInvoiceLineNumber(holders, ilProcessing, requestContext))
         .map(holders -> updateInvoiceFiscalYear(holders, ilProcessing))
@@ -446,7 +469,6 @@ public class InvoiceLineHelper extends AbstractHelper {
    */
   private Future<List<InvoiceLine>> applyProratedAdjustments(InvoiceLine invoiceLine, Invoice invoice,
                                                              RequestContext requestContext) {
-
     // Exclude adjustment recalculation if no prorated ones are found or if no pending (id is null) Invoice Line level adjustments are found
     if (adjustmentsService.getProratedAdjustments(invoice).isEmpty()
       && adjustmentsService.getPendingInvoiceLineAdjustments(invoiceLine).isEmpty()) {
@@ -455,18 +477,19 @@ public class InvoiceLineHelper extends AbstractHelper {
     invoiceLine.getAdjustments()
       .forEach(adjustment -> adjustment.setProrate(Adjustment.Prorate.NOT_PRORATED));
 
-    return getRelatedLines(invoiceLine, requestContext).map(lines -> {
-      // Create new list adding current line as well
-      List<InvoiceLine> allLines = new ArrayList<>(lines);
-      allLines.add(invoiceLine);
+    return getRelatedLines(invoiceLine, requestContext)
+      .map(lines -> {
+        // Create new list adding current line as well
+        List<InvoiceLine> allLines = new ArrayList<>(lines);
+        allLines.add(invoiceLine);
 
-      // Re-apply prorated adjustments and return only those related lines which were updated after re-applying prorated
-      // adjustment(s)
-      return adjustmentsService.applyProratedAdjustments(allLines, invoice)
-        .stream()
-        .filter(line -> !line.equals(invoiceLine))
-        .collect(toList());
-    });
+        // Re-apply prorated adjustments and return only those related lines which were updated after re-applying prorated
+        // adjustment(s)
+        return adjustmentsService.applyProratedAdjustments(allLines, invoice)
+          .stream()
+          .filter(line -> !line.equals(invoiceLine))
+          .collect(toList());
+      });
   }
 
   /**
@@ -712,12 +735,12 @@ public class InvoiceLineHelper extends AbstractHelper {
       this.invoiceLineFromStorage = invoiceLineFromStorage;
     }
 
-    void setPoNumber(boolean skipPoNumbers) {
-      this.skipPoNumbers = skipPoNumbers;
-    }
-
     void setInvoiceSerializationNeeded() {
       this.invoiceSerializationNeeded = true;
+    }
+
+    void setPoNumber(boolean skipPoNumbers) {
+      this.skipPoNumbers = skipPoNumbers;
     }
   }
 }

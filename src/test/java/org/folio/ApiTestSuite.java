@@ -35,6 +35,7 @@ import org.folio.dataimport.handlers.events.DataImportKafkaHandlerTest;
 import org.folio.dataimport.handlers.actions.CreateInvoiceEventHandlerTest;
 import org.folio.invoices.util.HelperUtilsTest;
 import org.folio.jaxb.DefaultJAXBRootElementNameResolverTest;
+import org.folio.utils.InvoiceLineUtilsTest;
 import org.folio.jaxb.JAXBUtilTest;
 import org.folio.jaxb.XMLConverterTest;
 import org.folio.rest.RestVerticle;
@@ -422,4 +423,7 @@ public class ApiTestSuite {
 
   @Nested
   class CancelledJobConsumerVerticleTestNested extends CancelledJobConsumerVerticleTest {}
+
+  @Nested
+  class InvoiceLineUtilsTestNested extends InvoiceLineUtilsTest {}
 }

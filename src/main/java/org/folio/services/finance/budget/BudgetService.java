@@ -1,6 +1,5 @@
 package org.folio.services.finance.budget;
 
-import static java.util.stream.Collectors.toList;
 import static org.folio.invoices.utils.ErrorCodes.BUDGET_NOT_FOUND;
 import static org.folio.invoices.utils.ErrorCodes.BUDGET_NOT_FOUND_USING_FISCAL_YEAR_ID;
 import static org.folio.invoices.utils.HelperUtils.collectResultsOnSuccess;
@@ -8,6 +7,7 @@ import static org.folio.invoices.utils.HelperUtils.convertIdsToCqlQuery;
 import static org.folio.invoices.utils.ResourcePathResolver.BUDGETS;
 import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
@@ -37,35 +37,42 @@ public class BudgetService {
   }
 
   public Future<List<Budget>> getBudgetsByFundIds(Collection<String> fundIds, String invoiceFiscalYearId,
-      RequestContext requestContext) {
-    List<Future<Budget>> futures = fundIds.stream()
-      .distinct()
-      .map(fundId -> getBudgetByFundId(fundId, invoiceFiscalYearId, requestContext))
-      .collect(toList());
-
-    return collectResultsOnSuccess(futures);
+                                                  boolean ignoreMissingBudgets, RequestContext requestContext) {
+    var futures = new ArrayList<Future<Budget>>();
+    for (String fundId : fundIds.stream().distinct().toList()) {
+      futures.add(getBudgetByFundId(fundId, invoiceFiscalYearId, ignoreMissingBudgets, requestContext));
+    }
+    return collectResultsOnSuccess(futures)
+      .map(budgets -> budgets.stream()
+        .filter(Objects::nonNull)
+        .toList());
   }
 
-  private Future<Budget> getBudgetByFundId(String fundId, String invoiceFiscalYearId, RequestContext requestContext) {
-    if (invoiceFiscalYearId == null)
+  private Future<Budget> getBudgetByFundId(String fundId, String invoiceFiscalYearId,
+                                           boolean ignoreMissingBudgets, RequestContext requestContext) {
+    if (invoiceFiscalYearId == null) {
       return getActiveBudgetByFundId(fundId, requestContext);
-    return getBudgetByFundIdAndFiscalYearId(fundId, invoiceFiscalYearId, requestContext);
+    }
+    return getBudgetByFundIdAndFiscalYearId(fundId, invoiceFiscalYearId, ignoreMissingBudgets, requestContext);
   }
 
   private Future<Budget> getBudgetByFundIdAndFiscalYearId(String fundId, String fiscalYearId,
-      RequestContext requestContext) {
+                                                          boolean ignoreMissingBudgets, RequestContext requestContext) {
     RequestEntry requestEntry = new RequestEntry(BUDGETS_ENDPOINT)
       .withQuery(String.format(QUERY_BY_FUND_ID_AND_FISCAL_YEAR_ID, fundId, fiscalYearId));
     return restClient.get(requestEntry, BudgetCollection.class, requestContext)
-      .map(budgetCollection -> {
+      .compose(budgetCollection -> {
         if (budgetCollection.getBudgets().isEmpty()) {
+          if (ignoreMissingBudgets) {
+            return Future.succeededFuture(null);
+          }
           List<Parameter> parameters = List.of(
             new Parameter().withKey("fundId").withValue(fundId),
             new Parameter().withKey("fiscalYearId").withValue(fiscalYearId)
           );
           throw new HttpException(404, BUDGET_NOT_FOUND_USING_FISCAL_YEAR_ID.toError().withParameters(parameters));
         }
-        return budgetCollection.getBudgets().get(0);
+        return Future.succeededFuture(budgetCollection.getBudgets().getFirst());
       });
   }
 

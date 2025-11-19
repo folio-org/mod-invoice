@@ -87,7 +87,7 @@ public class InvoiceApprovalService {
 
     return vendorService.getVendor(invoice.getVendorId(), requestContext)
       .compose(organization -> asFuture(() -> validateBeforeApproval(organization, invoice, lines)))
-      .compose(v -> holderBuilder.buildCompleteHolders(invoice, lines, requestContext))
+      .compose(v -> holderBuilder.buildCompleteHolders(invoice, lines, false, requestContext))
       .compose(holders -> encumbranceService.updateInvoiceLinesEncumbranceLinks(holders,
           holders.getFirst().getFiscalYear().getId(), requestContext)
         .compose(linesToUpdate -> invoiceLineService.persistInvoiceLines(linesToUpdate, requestContext))

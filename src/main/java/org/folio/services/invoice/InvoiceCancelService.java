@@ -127,7 +127,7 @@ public class InvoiceCancelService {
    */
   private Future<Void> validateBudgetsStatus(Invoice invoice, List<InvoiceLine> lines, RequestContext requestContext) {
     List<InvoiceWorkflowDataHolder> dataHolders = holderBuilder.buildHoldersSkeleton(lines, invoice);
-    return holderBuilder.withBudgets(dataHolders, requestContext)
+    return holderBuilder.withBudgets(dataHolders, false, requestContext)
       .onFailure(t -> log.error("validateBudgetsStatus:: Could not find an active budget for the invoice with id {}",
         invoice.getId(), t))
       .mapEmpty();
