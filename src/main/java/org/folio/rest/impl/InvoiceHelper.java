@@ -295,7 +295,7 @@ public class InvoiceHelper extends AbstractHelper {
 
 
   private Future<Void> handleExchangeRateChange(Invoice invoice, List<InvoiceLine> invoiceLines) {
-    return holderBuilder.buildCompleteHolders(invoice, invoiceLines, requestContext)
+    return holderBuilder.buildCompleteHolders(invoice, invoiceLines, false, requestContext)
       .compose(holders -> holderBuilder.withExistingTransactions(holders, requestContext))
       .compose(holders -> pendingPaymentWorkflowService.handlePendingPaymentsUpdate(holders, requestContext))
       .compose(aVoid -> updateVoucher(invoice, invoiceLines));
@@ -478,7 +478,7 @@ public class InvoiceHelper extends AbstractHelper {
                                   String poLinePaymentStatus, RequestContext requestContext) {
     //  Set payment date, when the invoice is being paid.
     invoice.setPaymentDate(invoice.getMetadata().getUpdatedDate());
-    return holderBuilder.buildCompleteHolders(invoice, invoiceLines, requestContext)
+    return holderBuilder.buildCompleteHolders(invoice, invoiceLines, false, requestContext)
       .compose(holders -> paymentCreditWorkflowService.handlePaymentsAndCreditsCreation(holders, requestContext))
       .compose(v -> Future.join(
         poLinePaymentStatusUpdateService.updatePoLinePaymentStatusToPayInvoice(invoiceLines, poLinePaymentStatus, requestContext),

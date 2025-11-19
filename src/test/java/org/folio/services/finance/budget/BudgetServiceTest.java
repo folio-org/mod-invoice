@@ -37,7 +37,6 @@ import static org.mockito.Mockito.when;
 
 @ExtendWith(VertxExtension.class)
 public class BudgetServiceTest {
-  AutoCloseable closeable;
 
   @InjectMocks
   private BudgetService budgetService;
@@ -47,6 +46,7 @@ public class BudgetServiceTest {
 
   @Mock
   private RequestContext requestContext;
+  private AutoCloseable closeable;
 
   @BeforeEach
   public void initMocks() {
@@ -69,7 +69,7 @@ public class BudgetServiceTest {
     when(restClient.get(any(RequestEntry.class), any(), any()))
       .thenReturn(Future.succeededFuture(budgetCollection));
 
-    Future<List<Budget>> f = budgetService.getBudgetsByFundIds(fundIds, invoiceFiscalYearId, requestContext);
+    Future<List<Budget>> f = budgetService.getBudgetsByFundIds(fundIds, invoiceFiscalYearId, false, requestContext);
 
     vertxTestContext.assertFailure(f)
       .onComplete(result -> {
@@ -77,7 +77,7 @@ public class BudgetServiceTest {
         HttpException exception = (HttpException) result.cause();
         assertEquals(404, exception.getCode());
         Errors errors = exception.getErrors();
-        Error error = errors.getErrors().get(0);
+        Error error = errors.getErrors().getFirst();
         assertEquals(BUDGET_NOT_FOUND_USING_FISCAL_YEAR_ID.getCode(), error.getCode());
         vertxTestContext.completeNow();
       });
@@ -98,17 +98,17 @@ public class BudgetServiceTest {
     when(restClient.get(requestEntryCaptor.capture(), any(), any()))
       .thenReturn(Future.succeededFuture(budgetCollection));
 
-    Future<List<Budget>> f = budgetService.getBudgetsByFundIds(fundIds, invoiceFiscalYearId, requestContext);
+    Future<List<Budget>> f = budgetService.getBudgetsByFundIds(fundIds, invoiceFiscalYearId, false, requestContext);
 
     vertxTestContext.assertComplete(f)
       .onComplete(result -> {
         verify(restClient, times(1)).get(any(RequestEntry.class), any(), any());
         List<RequestEntry> requestEntries = requestEntryCaptor.getAllValues();
-        assertEquals(requestEntries.get(0).getBaseEndpoint(), resourcesPath(BUDGETS));
-        assertEquals(requestEntries.get(0).getQueryParams().get("query"), encodeQuery(query));
+        assertEquals(requestEntries.getFirst().getBaseEndpoint(), resourcesPath(BUDGETS));
+        assertEquals(requestEntries.getFirst().getQueryParams().get("query"), encodeQuery(query));
         List<Budget> budgets = result.result();
         assertEquals(1, budgets.size());
-        assertEquals(budget.getId(), budgets.get(0).getId());
+        assertEquals(budget.getId(), budgets.getFirst().getId());
         vertxTestContext.completeNow();
       });
   }
@@ -123,19 +123,18 @@ public class BudgetServiceTest {
     when(restClient.get(requestEntryCaptor.capture(), any(), any()))
       .thenReturn(Future.succeededFuture(budget));
 
-    Future<List<Budget>> f = budgetService.getBudgetsByFundIds(fundIds, null, requestContext);
+    Future<List<Budget>> f = budgetService.getBudgetsByFundIds(fundIds, null, false, requestContext);
 
     vertxTestContext.assertComplete(f)
       .onComplete(result -> {
         verify(restClient, times(1)).get(any(RequestEntry.class), any(), any());
         List<RequestEntry> requestEntries = requestEntryCaptor.getAllValues();
-        assertEquals(requestEntries.get(0).getBaseEndpoint(), "/finance/funds/{id}/budget");
-        assertEquals(requestEntries.get(0).getPathParams().get("id"), fundId);
+        assertEquals("/finance/funds/{id}/budget", requestEntries.getFirst().getBaseEndpoint());
+        assertEquals(requestEntries.getFirst().getPathParams().get("id"), fundId);
         List<Budget> budgets = result.result();
         assertEquals(1, budgets.size());
-        assertEquals(budget.getId(), budgets.get(0).getId());
+        assertEquals(budget.getId(), budgets.getFirst().getId());
         vertxTestContext.completeNow();
       });
   }
-
 }

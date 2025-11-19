@@ -12,8 +12,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import io.vertx.core.json.JsonObject;
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.invoices.rest.exceptions.HttpException;
@@ -71,16 +73,21 @@ public class InvoiceWorkflowDataHolderBuilder {
 
   public Future<List<InvoiceWorkflowDataHolder>> buildCompleteHolders(Invoice invoice,
                                                                       List<InvoiceLine> invoiceLines,
+                                                                      boolean ignoreMissingBudgets,
                                                                       RequestContext requestContext) {
     List<InvoiceWorkflowDataHolder> dataHolders = buildHoldersSkeleton(invoiceLines, invoice);
     return withFunds(dataHolders, requestContext)
       .compose(holders -> withLedgers(holders, requestContext))
-      .compose(holders -> withBudgets(holders, requestContext))
-      .map(this::checkMultipleFiscalYears)
-      .compose(holders -> withFiscalYear(holders, requestContext))
-      .compose(holders -> withEncumbrances(holders, requestContext))
-      .compose(holders -> withExpenseClasses(holders, requestContext))
-      .compose(holders -> withExchangeRate(holders, requestContext));
+      .compose(holders -> withBudgets(holders, ignoreMissingBudgets, requestContext))
+      .compose(holders -> {
+        if (ignoreMissingBudgets) {
+          return Future.succeededFuture();
+        }
+        return withFiscalYear(checkMultipleFiscalYears(holders), requestContext)
+          .compose(updatedHolders -> withEncumbrances(updatedHolders, requestContext))
+          .compose(updatedHolders -> withExpenseClasses(updatedHolders, requestContext))
+          .compose(updatedHolders -> withExchangeRate(updatedHolders, requestContext));
+      });
   }
 
   public List<InvoiceWorkflowDataHolder> buildHoldersSkeleton(List<InvoiceLine> lines, Invoice invoice) {
@@ -122,17 +129,23 @@ public class InvoiceWorkflowDataHolderBuilder {
         .collect(toList()));
   }
 
-  public Future<List<InvoiceWorkflowDataHolder>> withBudgets(List<InvoiceWorkflowDataHolder> holders, RequestContext requestContext) {
+  public Future<List<InvoiceWorkflowDataHolder>> withBudgets(List<InvoiceWorkflowDataHolder> holders,
+                                                             boolean ignoreMissingBudgets, RequestContext requestContext) {
     if (holders.isEmpty()) {
       return succeededFuture(holders);
     }
     List<String> fundIds = holders.stream().map(InvoiceWorkflowDataHolder::getFundId).distinct().collect(toList());
     String invoiceFiscalYearId = holders.getFirst().getInvoice().getFiscalYearId();
-    return budgetService.getBudgetsByFundIds(fundIds, invoiceFiscalYearId, requestContext)
-      .map(budgets -> budgets.stream().collect(toMap(Budget::getFundId, Function.identity())))
-      .map(fundIdBudgetMap -> holders.stream()
-        .map(holder -> holder.withBudget(fundIdBudgetMap.get(holder.getFundId())))
-        .collect(toList()));
+    return budgetService.getBudgetsByFundIds(fundIds, invoiceFiscalYearId, ignoreMissingBudgets, requestContext)
+      .map(budgets -> {
+        if (ignoreMissingBudgets && CollectionUtils.isEmpty(budgets)) {
+          return List.of();
+        }
+        var fundIdBudgetMap = budgets.stream().collect(toMap(Budget::getFundId, Function.identity()));
+        return holders.stream()
+          .map(holder -> holder.withBudget(fundIdBudgetMap.get(holder.getFundId())))
+          .collect(Collectors.toCollection(ArrayList::new));
+      });
   }
 
   public List<InvoiceWorkflowDataHolder> checkMultipleFiscalYears(List<InvoiceWorkflowDataHolder> holders) {
