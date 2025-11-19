@@ -58,11 +58,11 @@ public class InvoiceLineUtils {
    */
   private static boolean areDatesNotEqual(Date date1, Date date2) {
     if (Objects.isNull(date1) && Objects.isNull(date2)) {
-      return false; // Both null = equal
+      return false;
     }
     if (Objects.isNull(date1) || Objects.isNull(date2)) {
-      return true; // One is null, one is not = not equal
+      return true;
     }
-    return !DateUtils.isSameInstant(date1, date2); // Both non-null = compare them
+    return !DateUtils.isSameInstant(date1, date2);
   }
 }
