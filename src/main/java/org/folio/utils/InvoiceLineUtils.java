@@ -19,33 +19,20 @@ public class InvoiceLineUtils {
    * Returns true if changes detected, false if all fields are identical.
    */
   public boolean isIgnoreMissingBudgets(InvoiceLine storage, InvoiceLine request) {
-    // Example: storage=null, request=[x,y,z]
     var hasTagsAdded = Objects.isNull(storage.getTags())
       && Objects.nonNull(request.getTags())
       && !CollectionUtils.sizeIsEmpty(request.getTags().getTagList());
 
-    // Example: storage=[x,y,z], request=null
     var hasTagsRemoved = Objects.isNull(request.getTags())
       && Objects.nonNull(storage.getTags())
       && !CollectionUtils.sizeIsEmpty(storage.getTags().getTagList());
 
-    // Example: storage=[x,y,z], request=[x,y,w]
-    // Example: storage=[x,y,z], request=[]
-    // Example: storage=[], request=[x,y,z]
     var hasTagsChanged = Objects.nonNull(storage.getTags())
       && Objects.nonNull(request.getTags())
       && !CollectionUtils.isEqualCollection(storage.getTags().getTagList(), request.getTags().getTagList());
 
     var hasSubInfoChanged = !StringUtils.equals(storage.getSubscriptionInfo(), request.getSubscriptionInfo());
-
-    // Example: storage=null, request=2025-01-01
-    // Example: storage=2025-01-01, request=null (removed)
-    // Example: storage=2025-01-01, request=2025-01-02 (changed)
     var hasSubStartChanged = areDatesNotEqual(storage.getSubscriptionStart(), request.getSubscriptionStart());
-
-    // For example: storage=null, request=2025-01-01
-    // For example: storage=2025-01-01, request=null (removed)
-    // For example: storage=2025-01-01, request=2025-01-02 (changed)
     var hasSubEndChanged = areDatesNotEqual(storage.getSubscriptionEnd(), request.getSubscriptionEnd());
 
     var hasCommentChanged = !StringUtils.equals(storage.getComment(), request.getComment());
