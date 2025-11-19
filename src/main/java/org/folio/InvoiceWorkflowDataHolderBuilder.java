@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import io.vertx.core.json.JsonObject;
 import org.apache.commons.collections4.CollectionUtils;
@@ -143,7 +144,7 @@ public class InvoiceWorkflowDataHolderBuilder {
         var fundIdBudgetMap = budgets.stream().collect(toMap(Budget::getFundId, Function.identity()));
         return holders.stream()
           .map(holder -> holder.withBudget(fundIdBudgetMap.get(holder.getFundId())))
-          .collect(toList());
+          .collect(Collectors.toCollection(ArrayList::new));
       });
   }
 
