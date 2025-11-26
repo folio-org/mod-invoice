@@ -20,7 +20,6 @@ import org.folio.rest.core.models.RequestContext;
 
 import io.vertx.core.Future;
 import one.util.streamex.StreamEx;
-import org.folio.rest.jaxrs.model.FundDistribution;
 import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.jaxrs.model.InvoiceLine;
 
@@ -98,15 +97,13 @@ public class EncumbranceService {
   }
 
   private List<InvoiceLine> updateFundDistributionsWithEncumbrances(List<InvoiceWorkflowDataHolder> holders,
-      List<Transaction> encumbrances) {
-    List<InvoiceLine> linesToUpdate = new ArrayList<>();
+                                                                    List<Transaction> encumbrances) {
+    var linesToUpdate = new ArrayList<InvoiceLine>();
     for (InvoiceWorkflowDataHolder holder : holders) {
-      List<Transaction> matchingEncumbrances = encumbrances.stream()
-        .filter(enc -> enc.getEncumbrance().getSourcePoLineId().equals(holder.getInvoiceLine().getPoLineId()) &&
-          enc.getFromFundId().equals(holder.getFundId()) &&
-          Objects.equals(enc.getExpenseClassId(), holder.getFundDistribution().getExpenseClassId()))
+      var matchingEncumbrances = encumbrances.stream()
+        .filter(enc -> shouldChangeFundDistributions(holder, enc))
         .collect(Collectors.toCollection(ArrayList::new));
-      FundDistribution fundDistribution = holder.getFundDistribution();
+      var fundDistribution = holder.getFundDistribution();
       if (matchingEncumbrances.isEmpty()) {
         if (fundDistribution.getEncumbrance() != null) {
           fundDistribution.withEncumbrance(null);
@@ -116,7 +113,7 @@ public class EncumbranceService {
           }
         }
       } else {
-        Transaction encumbrance = matchingEncumbrances.getFirst();
+        var encumbrance = matchingEncumbrances.getFirst();
         if (!encumbrance.getId().equals(fundDistribution.getEncumbrance())) {
           fundDistribution.withEncumbrance(encumbrance.getId());
           holder.withEncumbrance(encumbrance);
@@ -129,4 +126,10 @@ public class EncumbranceService {
     return linesToUpdate;
   }
 
+  private boolean shouldChangeFundDistributions(InvoiceWorkflowDataHolder holder, Transaction enc) {
+    var isMatchPoLineId = enc.getEncumbrance().getSourcePoLineId().equals(holder.getInvoiceLine().getPoLineId());
+    var isMatchFundId = enc.getFromFundId().equals(holder.getFundId());
+    logger.info("shouldChangeFundDistributions:: Matching poLineId={}, fundId={}", isMatchPoLineId, isMatchFundId);
+    return isMatchPoLineId && isMatchFundId;
+  }
 }
