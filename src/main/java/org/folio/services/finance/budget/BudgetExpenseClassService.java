@@ -12,7 +12,6 @@ import java.util.stream.Collectors;
 
 import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.models.InvoiceWorkflowDataHolder;
-import org.folio.okapi.common.GenericCompositeFuture;
 import org.folio.rest.acq.model.finance.Budget;
 import org.folio.rest.acq.model.finance.BudgetExpenseClass;
 import org.folio.rest.acq.model.finance.BudgetExpenseClassCollection;
@@ -45,7 +44,7 @@ public class BudgetExpenseClassService {
       .filter(holder -> Objects.nonNull(holder.getFundDistribution().getExpenseClassId()))
       .map(holder -> checkExpenseClass(holder, requestContext))
       .collect(Collectors.toList());
-    return GenericCompositeFuture.join(futures)
+    return Future.join(futures)
       .map(aVoid -> holders);
 
   }

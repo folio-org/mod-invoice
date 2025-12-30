@@ -42,7 +42,6 @@ import org.apache.commons.collections4.map.CaseInsensitiveMap;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.folio.invoices.rest.exceptions.HttpException;
-import org.folio.okapi.common.GenericCompositeFuture;
 import org.folio.rest.impl.ProtectionHelper;
 import org.folio.rest.jaxrs.model.Adjustment;
 import org.folio.rest.jaxrs.model.FundDistribution;
@@ -186,7 +185,7 @@ public class HelperUtils {
    * @return Future with resulting objects
    */
   public static <T> Future<List<T>> collectResultsOnSuccess(List<Future<T>> futures) {
-    return GenericCompositeFuture.join(new ArrayList<>(futures))
+    return Future.join(new ArrayList<>(futures))
       .map(CompositeFuture::list);
   }
 

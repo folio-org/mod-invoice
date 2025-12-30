@@ -1,11 +1,9 @@
 package org.folio.services.voucher;
 
-import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
 import org.apache.commons.lang3.StringUtils;
 import org.folio.invoices.utils.HelperUtils;
 import org.folio.models.FundExtNoExpenseClassExtNoPair;
-import org.folio.okapi.common.GenericCompositeFuture;
 import org.folio.rest.acq.model.finance.ExpenseClass;
 import org.folio.rest.acq.model.finance.Fund;
 import org.folio.rest.core.models.RequestContext;
@@ -84,7 +82,7 @@ public class VoucherCreationService {
       .map(this::groupFundsByExternalAcctNo);
     var fundsGroupedByExternalAcctNoFuture = groupFundDistrByFundIdByExpenseClassExtNo(fundDistributions, requestContext);
 
-    return CompositeFuture.join(groupedFundDistrosFuture, fundsGroupedByExternalAcctNoFuture)
+    return Future.join(groupedFundDistrosFuture, fundsGroupedByExternalAcctNoFuture)
       .map(cf -> mapExternalAcctNoToFundDistros(fundsGroupedByExternalAcctNoFuture.result(), groupedFundDistrosFuture.result()));
   }
 
@@ -180,7 +178,7 @@ public class VoucherCreationService {
    */
   private Future<Void> deleteVoucherLinesIfExist(String voucherId, RequestContext requestContext) {
     return getVoucherLineIdsByVoucherId(voucherId, requestContext)
-      .compose(ids -> GenericCompositeFuture.join(ids.stream()
+      .compose(ids -> Future.join(ids.stream()
         .map(lineId -> voucherLineService.deleteVoucherLine(lineId, requestContext))
         .collect(toList())))
       .mapEmpty();
@@ -205,7 +203,7 @@ public class VoucherCreationService {
     var futures = voucherLines.stream()
       .map(lineId -> voucherLineService.createVoucherLine(lineId, requestContext))
       .collect(toList());
-    return GenericCompositeFuture.join(futures).mapEmpty();
+    return Future.join(futures).mapEmpty();
   }
 
   private Function<FundDistribution, String> getExpenseClassExtNo(Map<String, ExpenseClass> expenseClassByIds) {

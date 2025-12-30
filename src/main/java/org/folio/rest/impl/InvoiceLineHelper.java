@@ -36,7 +36,6 @@ import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.invoices.utils.InvoiceRestrictionsUtil;
 import org.folio.invoices.utils.ProtectedOperationType;
 import org.folio.models.InvoiceWorkflowDataHolder;
-import org.folio.okapi.common.GenericCompositeFuture;
 import org.folio.rest.acq.model.orders.CompositePurchaseOrder;
 import org.folio.rest.acq.model.orders.OrderInvoiceRelationship;
 import org.folio.rest.acq.model.orders.PoLine;
@@ -530,7 +529,7 @@ public class InvoiceLineHelper extends AbstractHelper {
       })
       .collect(toList());
 
-    return GenericCompositeFuture.join(futures).mapEmpty();
+    return Future.join(futures).mapEmpty();
   }
 
   private Future<Void> updateInvoice(ILProcessing ilProcessing, RequestContext requestContext) {
