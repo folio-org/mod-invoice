@@ -30,6 +30,7 @@
     <spring.version>7.0.2</spring.version>
     <jaxb-api.version>2.3.3</jaxb-api.version>
     <vertx.version>5.0.6</vertx.version>
+    <vertx-rx.version>4.5.23</vertx-rx.version> <!-- Update to match vertx version when 5.x is available -->
     <rest-assured.version>5.5.5</rest-assured.version>
     <sshd.version>2.15.0</sshd.version>
     <assertj-core.version>3.27.3</assertj-core.version>
@@ -133,7 +134,7 @@
     <dependency>
       <groupId>io.vertx</groupId>
       <artifactId>vertx-rx-java</artifactId>
-      <version>4.5.17</version>
+      <version>${vertx-rx.version}</version>
       <scope>provided</scope>
     </dependency>
     <dependency>
