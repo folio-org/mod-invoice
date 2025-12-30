@@ -55,14 +55,15 @@ public class InitAPIs implements InitAPI {
 
       initJavaMoney();
 
-      return deployDataImportConsumerVerticle(vertx).onComplete(result -> {
-        if (result.failed() && isConsumerVerticleMandatory) {
-          log.error("Failure to init API", result.cause());
-          resultHandler.handle(Future.failedFuture(result.cause()));
-        } else {
-          resultHandler.handle(Future.succeededFuture(true));
-        }
-      });
+      deployDataImportConsumerVerticle(vertx);
+      return true;
+    }).onComplete(result -> {
+      if (result.failed() && isConsumerVerticleMandatory) {
+        log.error("Failure to init API", result.cause());
+        resultHandler.handle(Future.failedFuture(result.cause()));
+      } else {
+        resultHandler.handle(Future.succeededFuture(true));
+      }
     });
   }
 
@@ -74,14 +75,10 @@ public class InitAPIs implements InitAPI {
       deployVerticle(vertx, springContext, CancelledJobConsumerVerticle.class, cancelledJobConsumerVerticleNumber, ThreadingModel.EVENT_LOOP)
     );
 
-    return Future.all(deploymentFutures).onComplete(ar -> {
-        if (ar.succeeded()) {
-          log.info("All consumer verticles deployed successfully.");
-        } else {
-          log.error("Failed to deploy one or more consumer verticles", ar.cause());
-        }
-      })
-      .map((Void) null);
+    return Future.all(deploymentFutures)
+      .onSuccess(v -> log.info("All consumer verticles deployed successfully."))
+      .onFailure(t -> log.error("Failed to deploy one or more consumer verticles", t))
+      .mapEmpty();
   }
 
   /**
