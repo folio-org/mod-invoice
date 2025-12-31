@@ -31,9 +31,9 @@
     <jaxb-api.version>2.3.3</jaxb-api.version>
     <vertx.version>5.0.6</vertx.version>
     <vertx-rx.version>4.5.23</vertx-rx.version> <!-- Update to match vertx version when 5.x is available -->
-    <rest-assured.version>5.5.5</rest-assured.version>
+    <rest-assured.version>6.0.0</rest-assured.version>
     <sshd.version>2.16.0</sshd.version>
-    <assertj-core.version>3.27.3</assertj-core.version>
+    <assertj-core.version>3.27.6</assertj-core.version>
     <aspectj.version>1.9.25.1</aspectj.version>
     <log4j.version>2.25.3</log4j.version>
     <streamex.version>0.8.4</streamex.version>
@@ -62,7 +62,7 @@
     <!--Test dependencies-->
     <testcontainers.version>2.0.3</testcontainers.version>
     <awaitility.version>4.3.0</awaitility.version>
-    <mockito.version>5.18.0</mockito.version>
+    <mockito.version>5.21.0</mockito.version>
     <junit-bom.version>6.0.1</junit-bom.version>
 
     <!--Sonar exclusions-->
@@ -213,7 +213,7 @@
     <dependency>
       <groupId>org.folio.okapi</groupId>
       <artifactId>okapi-testing</artifactId>
-      <version>6.2.3</version>
+      <version>7.0.1</version>
       <scope>test</scope>
     </dependency>
     <dependency>
