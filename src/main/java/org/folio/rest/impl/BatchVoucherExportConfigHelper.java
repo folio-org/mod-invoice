@@ -7,6 +7,7 @@ import static org.folio.invoices.utils.ResourcePathResolver.resourceByIdPath;
 import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
 
 import java.net.URISyntaxException;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletionException;
 
@@ -26,7 +27,6 @@ import org.folio.services.voucher.BatchVoucherExportConfigService;
 import org.folio.spring.SpringContextUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 
-import io.vertx.core.CompositeFuture;
 import io.vertx.core.Context;
 import io.vertx.core.Future;
 
@@ -98,7 +98,7 @@ public class BatchVoucherExportConfigHelper extends AbstractHelper {
     Future<ExportConfig> exportConfigFuture = getExportConfig(id);
     Future<Credentials> credentialsFuture = getExportConfigCredentials(id);
 
-    return CompositeFuture.join(exportConfigFuture, credentialsFuture)
+    return Future.join(exportConfigFuture, credentialsFuture)
       .map(cf -> {
         try {
           ExportConfig config = exportConfigFuture.result();

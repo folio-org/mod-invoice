@@ -29,7 +29,6 @@ import org.folio.services.AcquisitionsUnitsService;
 import org.folio.spring.SpringContextUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 
-import io.vertx.core.CompositeFuture;
 import io.vertx.core.Context;
 import io.vertx.core.Future;
 import one.util.streamex.StreamEx;
@@ -168,7 +167,7 @@ public class ProtectionHelper extends AbstractHelper {
   Future<List<String>> getAcqUnitIdsForSearch(String userId) {
     var unitsForUser = getAcqUnitIdsForUser(userId);
     var unitsAllowRead = getOpenForReadAcqUnitIds();
-    return CompositeFuture.join(unitsForUser, unitsAllowRead)
+    return Future.join(unitsForUser, unitsAllowRead)
       .map(rcf -> StreamEx.of(unitsForUser.result(), unitsAllowRead.result())
         .flatCollection(strings -> strings)
         .distinct()

@@ -73,8 +73,7 @@ public class CancelledJobConsumerVerticle extends AbstractVerticle {
       .build();
 
     consumerWrapper.start(this::handle, moduleName)
-      .onSuccess(v ->
-        logger.info("start:: CancelledJobExecutionConsumerVerticle verticle was started, consumer group: '{}'", groupName))
+      .onSuccess(v -> logger.info("start:: CancelledJobExecutionConsumerVerticle verticle was started, consumer group: '{}'", groupName))
       .onFailure(e -> logger.error("start:: Failed to start CancelledJobExecutionConsumerVerticle verticle", e))
       .onComplete(startPromise);
   }

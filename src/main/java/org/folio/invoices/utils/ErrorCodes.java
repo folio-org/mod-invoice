@@ -24,7 +24,6 @@ public enum ErrorCodes {
   CANNOT_MIX_TYPES_FOR_ZERO_PRICE("cannotMixTypesForZeroPrice", "Fund distribution types cannot be mixed for a price of 0"),
   ADJUSTMENT_FUND_DISTRIBUTIONS_SUMMARY_MISMATCH("adjustmentFundDistributionsSummaryMismatch", "Fund distributions summary should be 100 % or equal to subtotal for every non-prorated adjustment"),
   VOUCHER_UPDATE_FAILURE("voucherUpdateFailure", "Voucher record cannot be updated"),
-  MOD_CONFIG_ERROR("configNotAvailable", "The mod-configuration is not available"),
   PROHIBITED_FIELD_CHANGING("protectedFieldChanging", "Field can't be modified"),
   FUNDS_NOT_FOUND("fundsNotFound", "Fund records are not found"),
   EXTERNAL_ACCOUNT_NUMBER_IS_MISSING("externalAccountNoIsMissing", "Fund record does not contain an externalAccountNo."),

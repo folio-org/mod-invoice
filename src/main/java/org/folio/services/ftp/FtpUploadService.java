@@ -18,11 +18,8 @@ import org.folio.exceptions.FtpException;
 import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.rest.jaxrs.model.ExportConfig;
 
-import io.vertx.core.AsyncResult;
 import io.vertx.core.Context;
 import io.vertx.core.Future;
-import io.vertx.core.Handler;
-import io.vertx.core.Promise;
 
 public class FtpUploadService implements FileExchangeService {
 
@@ -58,86 +55,63 @@ public class FtpUploadService implements FileExchangeService {
     return StringUtils.isEmpty(proto) || proto.equalsIgnoreCase("FTP");
   }
 
-  @SuppressWarnings("java:S5332")
   public Future<FTPClient> login(String username, String password) {
+    return ctx.owner().executeBlocking(() -> doLogin(username, password), false)
+      .onFailure(e -> logger.error("Failed login to FTP", e));
+  }
+
+  private FTPClient doLogin(String username, String password) throws FtpException, IOException {
     FTPClient ftpClient = new FTPClient();
-    Promise<FTPClient> promise = Promise.promise();
-    ctx.owner().executeBlocking(blockingFeature -> {
-      try {
-        ftpClient.connect(server, port);
-        ftpClient.setDefaultTimeout(30000);
-        ftpClient.addProtocolCommandListener(FTPVertxCommandLogger.getDefListener(logger));
-        ftpClient.setControlKeepAliveTimeout(Duration.ofSeconds(30));
-        ftpClient.setBufferSize(1024 * 1024);
-        ftpClient.setPassiveNatWorkaroundStrategy(new DefaultServerResolver(ftpClient));
-        logger.info("Connected to {}:{}", server, port);
+    try {
+      ftpClient.connect(server, port);
+      ftpClient.setDefaultTimeout(30000);
+      ftpClient.addProtocolCommandListener(FTPVertxCommandLogger.getDefListener(logger));
+      ftpClient.setControlKeepAliveTimeout(Duration.ofSeconds(30));
+      ftpClient.setBufferSize(1024 * 1024);
+      ftpClient.setPassiveNatWorkaroundStrategy(new DefaultServerResolver(ftpClient));
+      logger.info("Connected to {}:{}", server, port);
 
-        if (ftpClient.login(username, password)) {
-          blockingFeature.complete(ftpClient);
-        } else {
-          blockingFeature.fail(new FtpException(ftpClient.getReplyCode(), ftpClient.getReplyString().trim()));
-        }
-      } catch (Exception e) {
-        logger.error("Error Connecting FTP server {} on port {}", server, port, e);
-        blockingFeature.fail(e);
-        disconnect(ftpClient);
-      }
-    }, false, asyncResultHandler(promise));
-    return promise.future();
-  }
-
-  private Handler<AsyncResult<FTPClient>> asyncResultHandler(Promise<FTPClient> promise) {
-    return result -> {
-      if (result.succeeded()) {
-        logger.debug("Success login to FTP");
-        promise.complete(result.result());
+      if (ftpClient.login(username, password)) {
+        return ftpClient;
       } else {
-        logger.error("Failed login to FTP", result.cause());
-        promise.fail(result.cause());
+        throw new FtpException(ftpClient.getReplyCode(), ftpClient.getReplyString().trim());
       }
-    };
-  }
-
-  private Handler<AsyncResult<String>> asyncResult(Promise<String> promise) {
-    return result -> {
-      if (result.succeeded()) {
-        logger.info("Success upload to FTP");
-        promise.complete(result.result());
-      } else {
-        logger.error("Failed upload to FTP", result.cause());
-        promise.fail(result.cause());
-      }
-    };
+    } catch (Exception e) {
+      logger.error("Error Connecting FTP server {} on port {}", server, port, e);
+      disconnect(ftpClient);
+      throw e;
+    }
   }
 
   public Future<String> upload(Context ctx, String username, String password, String folder, String filename, String content) {
-    Promise<String> promise = Promise.promise();
-    ctx.owner().executeBlocking(blockingFeature -> login(username, password).compose(ftpClient -> {
-      try (InputStream is = new ByteArrayInputStream(content.getBytes())) {
-        ftpClient.setFileType(FTP.BINARY_FILE_TYPE);
-        ftpClient.enterLocalPassiveMode();
-        if (StringUtils.isNotBlank(folder)) {
-          changeWorkingDirectory(folder, ftpClient);
-        } else {
-          logger.warn("upload:: folder is empty using default working directory={}", DEFAULT_WORKING_DIR);
-          changeWorkingDirectory(DEFAULT_WORKING_DIR, ftpClient);
-        }
-        if (ftpClient.storeFile(filename, is)) {
-          logger.info("Batch voucher uploaded on FTP {}", filename);
-          blockingFeature.complete(ftpClient.getReplyString().trim());
-        } else {
-          blockingFeature.fail(new FtpException(ftpClient.getReplyCode(), ftpClient.getReplyString().trim()));
-        }
-      } catch (Exception e) {
-        logger.error("Error uploading file {}", filename, e);
-        blockingFeature.fail(new CompletionException(e));
-      } finally {
-        disconnect(ftpClient);
-      }
-      return promise.future();
-    }), false, asyncResult(promise));
+    return ctx.owner().executeBlocking(() -> {
+      var ftpClient = doLogin(username, password);
+      return doUpload(ftpClient, folder, filename, content);
+    }, false).onFailure(e -> logger.error("Failed upload to FTP", e));
+  }
 
-    return promise.future();
+  private String doUpload(FTPClient ftpClient, String folder, String filename, String content) {
+    try (InputStream is = new ByteArrayInputStream(content.getBytes())) {
+      ftpClient.setFileType(FTP.BINARY_FILE_TYPE);
+      ftpClient.enterLocalPassiveMode();
+      if (StringUtils.isNotBlank(folder)) {
+        changeWorkingDirectory(folder, ftpClient);
+      } else {
+        logger.warn("upload:: folder is empty using default working directory={}", DEFAULT_WORKING_DIR);
+        changeWorkingDirectory(DEFAULT_WORKING_DIR, ftpClient);
+      }
+      if (ftpClient.storeFile(filename, is)) {
+        logger.info("Batch voucher uploaded on FTP {}", filename);
+        return ftpClient.getReplyString().trim();
+      } else {
+        throw new FtpException(ftpClient.getReplyCode(), ftpClient.getReplyString().trim());
+      }
+    } catch (Exception e) {
+      logger.error("Error uploading file {}", filename, e);
+      throw new CompletionException(e);
+    } finally {
+      disconnect(ftpClient);
+    }
   }
 
   private void changeWorkingDirectory(String folder, FTPClient ftpClient) throws IOException {

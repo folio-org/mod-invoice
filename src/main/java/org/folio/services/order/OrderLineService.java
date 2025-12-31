@@ -18,7 +18,6 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.invoices.utils.HelperUtils;
-import org.folio.okapi.common.GenericCompositeFuture;
 import org.folio.rest.acq.model.orders.PoLine;
 import org.folio.rest.acq.model.orders.PoLineCollection;
 import org.folio.rest.core.RestClient;
@@ -108,7 +107,7 @@ public class OrderLineService {
           }
         }))
       .collect(Collectors.toList());
-    return GenericCompositeFuture.join(futures).mapEmpty();
+    return Future.join(futures).mapEmpty();
   }
 
 }

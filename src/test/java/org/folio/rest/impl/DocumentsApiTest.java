@@ -173,7 +173,7 @@ public class DocumentsApiTest extends ApiTestBase {
 
   private void prepareRequestHeaders(HttpRequest<Buffer> request) {
 
-    MultiMap headers = new HeadersMultiMap();
+    MultiMap headers = HeadersMultiMap.httpHeaders();
     headers.add(X_OKAPI_URL.getName(), X_OKAPI_URL.getValue())
             .add(X_OKAPI_TENANT.getName(), X_OKAPI_TENANT.getValue())
             .add(X_OKAPI_TOKEN.getName(), X_OKAPI_TOKEN.getValue())

@@ -13,7 +13,6 @@ import java.util.List;
 import io.vertx.core.Future;
 import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.invoices.utils.HelperUtils;
-import org.folio.okapi.common.GenericCompositeFuture;
 import org.folio.rest.core.RestClient;
 import org.folio.rest.core.models.RequestContext;
 import org.folio.rest.core.models.RequestEntry;
@@ -86,7 +85,7 @@ public class InvoiceLineService {
     var futures = lines.stream()
       .map(invoiceLine -> persistInvoiceLine(invoiceLine, requestContext))
       .collect(toList());
-    return GenericCompositeFuture.join(futures).mapEmpty();
+    return Future.join(futures).mapEmpty();
   }
 
   public Future<Void> updateInvoiceLine(InvoiceLine invoiceLine, RequestContext requestContext) {

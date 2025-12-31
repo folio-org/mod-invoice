@@ -26,10 +26,11 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
     <!--Dependencies-->
-    <raml-module-builder.version>35.4.0</raml-module-builder.version>
-    <spring.version>6.2.3</spring.version>
+    <raml-module-builder.version>36.0.0-SNAPSHOT</raml-module-builder.version>
+    <spring.version>7.0.2</spring.version>
     <jaxb-api.version>2.3.3</jaxb-api.version>
-    <vertx.version>4.5.13</vertx.version>
+    <vertx.version>5.0.6</vertx.version>
+    <vertx-rx.version>4.5.23</vertx-rx.version> <!-- Update to match vertx version when 5.x is available -->
     <rest-assured.version>5.5.5</rest-assured.version>
     <sshd.version>2.15.0</sshd.version>
     <assertj-core.version>3.27.3</assertj-core.version>
@@ -42,9 +43,9 @@
     <folio-module-descriptor-validator.version>1.0.0</folio-module-descriptor-validator.version>
     <mod-configuration-client.version>5.11.0</mod-configuration-client.version>
     <mod-di-converter-storage-client.version>2.3.1</mod-di-converter-storage-client.version>
-    <folio-di-support.version>3.0.0</folio-di-support.version>
-    <folio-kafka-wrapper.version>3.4.0-SNAPSHOT</folio-kafka-wrapper.version>
-    <data-import-processing-core.version>4.5.0-SNAPSHOT</data-import-processing-core.version>
+    <folio-di-support.version>4.0.0-SNAPSHOT</folio-di-support.version>
+    <folio-kafka-wrapper.version>4.0.0-SNAPSHOT</folio-kafka-wrapper.version>
+    <data-import-processing-core.version>5.0.0-SNAPSHOT</data-import-processing-core.version>
 
     <!--Maven plugin dependencies-->
     <build-helper-maven-plugin.version>3.6.0</build-helper-maven-plugin.version>
@@ -133,6 +134,7 @@
     <dependency>
       <groupId>io.vertx</groupId>
       <artifactId>vertx-rx-java</artifactId>
+      <version>${vertx-rx.version}</version>
       <scope>provided</scope>
     </dependency>
     <dependency>
@@ -267,7 +269,7 @@
     <dependency>
       <groupId>jakarta.xml.bind</groupId>
       <artifactId>jakarta.xml.bind-api</artifactId>
-      <version>2.3.3</version>
+      <version>${jaxb-api.version}</version>
     </dependency>
     <dependency>
       <groupId>org.glassfish.jaxb</groupId>

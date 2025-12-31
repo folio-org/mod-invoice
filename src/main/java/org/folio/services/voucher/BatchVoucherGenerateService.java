@@ -10,7 +10,6 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
 import io.vertx.core.json.JsonObject;
 import org.apache.logging.log4j.LogManager;
@@ -86,7 +85,7 @@ public class BatchVoucherGenerateService {
           .onFailure(t -> logger.error("buildBatchVoucherObject:: Error retrieving invoices", t));
         Future<Map<String, List<InvoiceLine>>> invoiceLines = invoiceLinesRetrieveService.getInvoiceLineMap(vouchers, requestContext)
           .onFailure(t -> logger.error("buildBatchVoucherObject:: Error retrieving invoice lines", t));
-        return CompositeFuture.join(voucherLines, invoices, invoiceLines)
+        return Future.join(voucherLines, invoices, invoiceLines)
           .compose(v -> buildBatchVoucher(batchVoucherExport, vouchers, voucherLines.result(), invoices.result(), invoiceLines.result(), requestContext));
       });
   }

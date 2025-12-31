@@ -8,8 +8,6 @@ import static org.folio.rest.RestConstants.OKAPI_URL;
 
 import java.util.Map;
 
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.okapi.common.WebClientFactory;
 import org.folio.rest.core.models.RequestContext;
@@ -20,27 +18,17 @@ import io.vertx.core.Future;
 import io.vertx.core.MultiMap;
 import io.vertx.core.Promise;
 import io.vertx.core.http.HttpMethod;
+import io.vertx.core.http.HttpResponseExpectation;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.client.HttpResponse;
 import io.vertx.ext.web.client.WebClient;
 import io.vertx.ext.web.client.WebClientOptions;
-import io.vertx.ext.web.client.predicate.ErrorConverter;
-import io.vertx.ext.web.client.predicate.ResponsePredicate;
+import lombok.extern.log4j.Log4j2;
 
+@Log4j2
 public class RestClient {
 
-  private static final Logger log = LogManager.getLogger(RestClient.class);
-  private static final ErrorConverter ERROR_CONVERTER = ErrorConverter.createFullBody(
-    result -> {
-      String error = result.response().bodyAsString();
-      if (isErrorsMessageJson(error)) {
-        return new HttpException(result.response().statusCode(), mapToErrors(error));
-      }
-      return new HttpException(result.response().statusCode(), error);
-    });
-  protected static final ResponsePredicate SUCCESS_RESPONSE_PREDICATE =
-    ResponsePredicate.create(ResponsePredicate.SC_SUCCESS, ERROR_CONVERTER);
-  public static final String REQUEST_MESSAGE_LOG_INFO = "Calling {} {}";
+  private static final String REQUEST_MESSAGE_LOG_INFO = "Calling {} {}";
 
   public <T> Future<T> post(RequestEntry requestEntry, T entity, Class<T> responseType, RequestContext requestContext) {
     return post(requestEntry.buildEndpoint(), entity, responseType, requestContext);
@@ -52,8 +40,8 @@ public class RestClient {
     return getVertxWebClient(requestContext.getContext())
       .postAbs(buildAbsEndpoint(caseInsensitiveHeader, endpoint))
       .putHeaders(caseInsensitiveHeader)
-      .expect(SUCCESS_RESPONSE_PREDICATE)
       .sendJson(entity)
+      .compose(RestClient::convertHttpResponse)
       .map(HttpResponse::bodyAsJsonObject)
       .map(body -> body.mapTo(responseType))
       .onFailure(log::error);
@@ -66,8 +54,8 @@ public class RestClient {
     return getVertxWebClient(requestContext.getContext())
       .postAbs(buildAbsEndpoint(caseInsensitiveHeader, endpoint))
       .putHeaders(caseInsensitiveHeader)
-      .expect(SUCCESS_RESPONSE_PREDICATE)
       .send()
+      .compose(RestClient::convertHttpResponse)
       .onFailure(log::error)
       .mapEmpty();
   }
@@ -78,8 +66,8 @@ public class RestClient {
     return getVertxWebClient(requestContext.getContext())
       .postAbs(buildAbsEndpoint(caseInsensitiveHeader, endpoint))
       .putHeaders(caseInsensitiveHeader)
-      .expect(SUCCESS_RESPONSE_PREDICATE)
       .sendJson(entity)
+      .compose(RestClient::convertHttpResponse)
       .onFailure(log::error)
       .mapEmpty();
   }
@@ -101,8 +89,8 @@ public class RestClient {
     return getVertxWebClient(requestContext.getContext())
       .putAbs(buildAbsEndpoint(caseInsensitiveHeader, endpoint))
       .putHeaders(caseInsensitiveHeader)
-      .expect(SUCCESS_RESPONSE_PREDICATE)
       .sendJson(recordData)
+      .compose(RestClient::convertHttpResponse)
       .onFailure(log::error)
       .mapEmpty();
   }
@@ -119,8 +107,8 @@ public class RestClient {
     getVertxWebClient(requestContext.getContext())
       .deleteAbs(buildAbsEndpoint(caseInsensitiveHeader, endpointById))
       .putHeaders(caseInsensitiveHeader)
-      .expect(SUCCESS_RESPONSE_PREDICATE)
       .send()
+      .compose(RestClient::convertHttpResponse)
       .onSuccess(f -> promise.complete())
       .onFailure(t -> handleErrorResponse(promise, t, skipError404));
 
@@ -170,8 +158,8 @@ public class RestClient {
     getVertxWebClient(requestContext.getContext())
       .getAbs(absEndpoint)
       .putHeaders(caseInsensitiveHeader)
-      .expect(SUCCESS_RESPONSE_PREDICATE)
       .send()
+      .compose(RestClient::convertHttpResponse)
       .map(HttpResponse::bodyAsJsonObject)
       .map(jsonObject -> jsonObject.mapTo(responseType))
       .onSuccess(promise::complete)
@@ -180,7 +168,17 @@ public class RestClient {
     return promise.future();
   }
 
-  protected WebClient getVertxWebClient(Context context) {
+  protected static <T> Future<HttpResponse<T>> convertHttpResponse(HttpResponse<T> response) {
+    if (HttpResponseExpectation.SC_SUCCESS.test(response)) {
+      return Future.succeededFuture(response);
+    }
+    String error = response.bodyAsString();
+    return Future.failedFuture(isErrorsMessageJson(error)
+      ? new HttpException(response.statusCode(), mapToErrors(error))
+      : new HttpException(response.statusCode(), error));
+  }
+
+  protected static WebClient getVertxWebClient(Context context) {
     WebClientOptions options = new WebClientOptions();
     options.setLogActivity(true);
     options.setKeepAlive(true);
@@ -189,8 +187,9 @@ public class RestClient {
     return WebClientFactory.getWebClient(context.owner(), options);
   }
 
-  protected String buildAbsEndpoint(MultiMap okapiHeaders, String endpoint) {
+  protected static String buildAbsEndpoint(MultiMap okapiHeaders, String endpoint) {
     var okapiURL = okapiHeaders.get(OKAPI_URL);
     return okapiURL + endpoint;
   }
+
 }
