@@ -81,7 +81,7 @@ import static org.folio.services.AcquisitionsUnitsService.ACQUISITIONS_UNIT_ID;
 import static org.folio.services.settings.CommonSettingsService.CURRENCY_KEY;
 import static org.folio.services.settings.CommonSettingsService.TENANT_LOCALE_SETTINGS;
 import static org.folio.services.settings.CommonSettingsService.VOUCHER_NUMBER_PREFIX_KEY;
-import static org.junit.Assert.fail;
+import static org.junit.jupiter.api.Assertions.fail;
 
 import java.io.IOException;
 import java.time.Instant;

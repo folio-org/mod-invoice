@@ -18,20 +18,15 @@ import org.folio.rest.RestConstants;
 import org.folio.rest.RestVerticle;
 import org.folio.rest.impl.ApiTestBase;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
-import org.junit.Rule;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
-import io.vertx.ext.unit.junit.RunTestOnContext;
 import io.vertx.junit5.VertxExtension;
 
 @ExtendWith(VertxExtension.class)
 public class JobProfileSnapshotCacheTest extends ApiTestBase {
-
-  @Rule
-  public RunTestOnContext rule = new RunTestOnContext();
 
   private static final String TENANT_ID = "diku";
   private static final String JOB_PROFILE_SNAPSHOTS_MOCK = "jobProfileSnapshots";
