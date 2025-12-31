@@ -96,7 +96,7 @@ import org.testcontainers.utility.DockerImageName;
 @ExtendWith(VertxExtension.class)
 public class ApiTestSuite {
 
-  private static final int okapiPort = NetworkUtils.nextFreePort();
+  public static final int okapiPort = NetworkUtils.nextFreePort();
   public static final int mockPort = NetworkUtils.nextFreePort();
   public static final String KAFKA_ENV_VALUE = "test-env";
   private static final String KAFKA_HOST = "KAFKA_HOST";

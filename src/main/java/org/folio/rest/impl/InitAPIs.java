@@ -55,15 +55,15 @@ public class InitAPIs implements InitAPI {
 
       initJavaMoney();
 
-      deployDataImportConsumerVerticle(vertx);
+      deployDataImportConsumerVerticle(vertx).onComplete(result -> {
+        if (result.failed() && isConsumerVerticleMandatory) {
+          log.error("Failure to init API", result.cause());
+          resultHandler.handle(Future.failedFuture(result.cause()));
+        } else {
+          resultHandler.handle(Future.succeededFuture(true));
+        }
+      });
       return true;
-    }).onComplete(result -> {
-      if (result.failed() && isConsumerVerticleMandatory) {
-        log.error("Failure to init API", result.cause());
-        resultHandler.handle(Future.failedFuture(result.cause()));
-      } else {
-        resultHandler.handle(Future.succeededFuture(true));
-      }
     });
   }
 

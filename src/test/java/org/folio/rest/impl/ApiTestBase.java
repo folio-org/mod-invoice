@@ -3,11 +3,13 @@ package org.folio.rest.impl;
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 import static javax.ws.rs.core.MediaType.APPLICATION_XML;
 import static org.folio.ApiTestSuite.mockPort;
+import static org.folio.ApiTestSuite.okapiPort;
 import static org.folio.rest.RestConstants.OKAPI_URL;
 import static org.folio.rest.RestVerticle.OKAPI_HEADER_TENANT;
 import static org.folio.rest.RestVerticle.OKAPI_HEADER_TOKEN;
 import static org.folio.rest.RestVerticle.OKAPI_USERID_HEADER;
 import static org.folio.rest.jaxrs.model.FundDistribution.DistributionType.PERCENTAGE;
+import static org.folio.utils.FutureUtils.asFuture;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
 
@@ -15,32 +17,37 @@ import io.restassured.RestAssured;
 import io.restassured.http.Header;
 import io.restassured.http.Headers;
 import io.restassured.response.Response;
-import io.vertx.core.DeploymentOptions;
+import io.vertx.core.AbstractVerticle;
+import io.vertx.core.Context;
 import io.vertx.core.Future;
 import io.vertx.core.Vertx;
+import io.vertx.core.impl.VertxImpl;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.client.WebClient;
 import io.vertx.ext.web.client.WebClientOptions;
 import io.vertx.junit5.VertxTestContext;
+import lombok.SneakyThrows;
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Stream;
+import javax.annotation.PostConstruct;
 import javax.ws.rs.core.HttpHeaders;
 import org.apache.commons.io.IOUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.ApiTestSuite;
 import org.folio.postgres.testing.PostgresTesterContainer;
-import org.folio.rest.RestVerticle;
 import org.folio.rest.client.TenantClient;
 import org.folio.rest.jaxrs.model.Adjustment;
 import org.folio.rest.jaxrs.model.BatchVoucher;
@@ -51,13 +58,13 @@ import org.folio.rest.jaxrs.model.TenantAttributes;
 import org.folio.rest.jaxrs.model.TenantJob;
 import org.folio.rest.persist.Criteria.Criterion;
 import org.folio.rest.persist.PostgresClient;
-import org.folio.rest.tools.utils.NetworkUtils;
 import org.folio.rest.tools.utils.VertxUtils;
 import org.folio.utils.UserPermissionsUtil;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
+import org.springframework.context.support.AbstractApplicationContext;
 
 public class ApiTestBase {
 
@@ -129,26 +136,25 @@ public class ApiTestBase {
   public static final String permissionsWithoutPaidJsonArrayString = new JsonArray(permissionsWithoutPaidList).encode();
   public static final Header X_OKAPI_PERMISSION_WITHOUT_PAY = new Header(UserPermissionsUtil.OKAPI_HEADER_PERMISSIONS, permissionsWithoutPaidJsonArrayString);
 
+  private static final String CONTEXT_BEAN_NAME = "context";
+  private static final String SPRING_CONTEXT_KEY = "springContext";
   private static final String INVOICES_TABLE = "records_invoices";
   protected static final String TOKEN = "token";
-  private static final String HTTP_PORT = "http.port";
-  private static int port;
-  protected static Vertx vertx;
   protected static final String TENANT_ID = "diku";
+  protected static Vertx vertx;
 
   @BeforeAll
   public static void before(final VertxTestContext context) throws Exception {
-
     if (ApiTestSuite.isNotInitialised()) {
       logger.info("Running test on own, initialising suite manually");
       runningOnOwn = true;
       ApiTestSuite.before();
     }
-    vertx = Vertx.vertx();
+    vertx = ApiTestSuite.vertx;
     runDatabase();
-    deployVerticle()
-    .compose(x -> postTenant())
-    .onComplete(context.succeedingThenComplete());
+    postTenant()
+      .compose(v -> asFuture(() -> initSpringBeans()))
+      .onComplete(context.succeedingThenComplete());
   }
 
   @BeforeEach
@@ -177,15 +183,47 @@ public class ApiTestBase {
     PostgresClient.setPostgresTester(new PostgresTesterContainer());
   }
 
-  private static Future<String> deployVerticle() {
-    port = NetworkUtils.nextFreePort();
-    DeploymentOptions options = new DeploymentOptions()
-      .setConfig(new JsonObject().put(HTTP_PORT, port));
-    return vertx.deployVerticle(RestVerticle.class.getName(), options);
+  private static void initSpringBeans() {
+    invokePostConstructMethods(getFirstContextFromVertx(vertx));
+  }
+
+  public static void invokePostConstructMethods(AbstractApplicationContext springContext) {
+    Arrays.stream(springContext.getBeanDefinitionNames())
+      .map(springContext::getBean)
+      .forEach(bean -> Arrays.stream(bean.getClass().getDeclaredMethods())
+        .filter(method -> method.isAnnotationPresent(PostConstruct.class))
+        .forEach(method -> invokeMethod(bean, method)));
+  }
+
+  @SneakyThrows
+  private static void invokeMethod(Object bean, Method method) {
+    method.setAccessible(true);
+    method.invoke(bean);
+  }
+
+  private static AbstractApplicationContext getFirstContextFromVertx(Vertx vertx) {
+    return vertx.deploymentIDs().stream()
+      .flatMap(id -> ((VertxImpl) vertx).deploymentManager().deployment(id).deployment().instances().stream())
+      .map(ApiTestBase::extractContext)
+      .filter(Objects::nonNull)
+      .findFirst()
+      .orElseThrow(() -> new IllegalStateException("Spring context was not created"));
+  }
+
+  private static AbstractApplicationContext extractContext(Object deployable) {
+    try {
+      var field = AbstractVerticle.class.getDeclaredField(CONTEXT_BEAN_NAME);
+      field.setAccessible(true);
+      var context = (Context) field.get(deployable);
+      return context.get(SPRING_CONTEXT_KEY);
+    } catch (IllegalAccessException | NoSuchFieldException ex) {
+      logger.warn("Failed to extract spring context: {}", ex.getMessage());
+      return null;
+    }
   }
 
   private static Future<Void> postTenant() {
-    String okapiUrl = "http://localhost:" + port;
+    String okapiUrl = "http://localhost:" + okapiPort;
     TenantClient tenantClient = new TenantClient(okapiUrl, TENANT_ID, TOKEN, getWebClient());
     TenantAttributes tenantAttributes = new TenantAttributes();
     return tenantClient.postTenant(tenantAttributes)
