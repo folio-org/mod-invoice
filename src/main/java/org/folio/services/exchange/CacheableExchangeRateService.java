@@ -13,7 +13,7 @@ import org.folio.rest.core.models.RequestEntry;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import javax.annotation.PostConstruct;
+import jakarta.annotation.PostConstruct;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;

@@ -21,7 +21,7 @@ import com.github.benmanes.caffeine.cache.AsyncCache;
 
 import io.vertx.core.Vertx;
 
-import javax.annotation.PostConstruct;
+import jakarta.annotation.PostConstruct;
 
 @Component
 public class JobProfileSnapshotCache {
