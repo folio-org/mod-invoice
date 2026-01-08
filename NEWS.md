@@ -1,5 +1,14 @@
 ## 6.0.0 - Unreleased
 
+## 5.9.4 - Released (Ramsons R2 2024 Bug Fix)
+The primary focus of this release was to implement RMB logging improvements and security fixes
+
+[Full Changelog](https://github.com/folio-org/mod-invoice/compare/v5.9.3...v5.9.4)
+
+### Stories
+* [MODINVOICE-623](https://folio-org.atlassian.net/browse/MODINVOICE-623) - Ramsons CSP - RMB Logging release - RMB 35.3.2
+
+
 ## 5.9.3 - Released (Ramsons R2 2024 Bug Fix)
 The focus of this release was to change Voucher export dates to human-readable timestamps from epoch long format.
 
