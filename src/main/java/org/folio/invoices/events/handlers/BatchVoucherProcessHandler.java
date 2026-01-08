@@ -39,8 +39,6 @@ public class BatchVoucherProcessHandler implements Handler<Message<JsonObject>> 
     JsonObject body = message.body();
     Map<String, String> okapiHeaders = getOkapiHeaders(message);
 
-    logger.debug("Received message body: {}", body);
-
     BatchVoucherPersistHelper manager = new BatchVoucherPersistHelper(okapiHeaders, ctx);
     UploadBatchVoucherExportHelper uploadService = new UploadBatchVoucherExportHelper(okapiHeaders, ctx);
 

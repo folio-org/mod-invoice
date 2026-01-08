@@ -116,7 +116,7 @@ public class BatchVoucherExportConfigHelper extends AbstractHelper {
         return helper.testConnection(username, credentials.getPassword())
           .compose(aVoid -> Future.succeededFuture(String.format("Successfully logged in to %s with username: %s", exchangeConnectionFormat, username)))
           .recover(throwable -> {
-            logger.error("Could not login to {} with username: {}", exchangeConnectionFormat, username, throwable);
+            logger.error("Could not login to {}", exchangeConnectionFormat, throwable);
             return Future.failedFuture(new FtpException(HttpStatus.HTTP_FORBIDDEN.toInt(), username));
           });
       });

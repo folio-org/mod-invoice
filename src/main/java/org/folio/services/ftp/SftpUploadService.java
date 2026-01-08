@@ -82,14 +82,14 @@ public class SftpUploadService implements FileExchangeService {
     return ctx.owner().executeBlocking(() -> {
       var session = login(username, password);
       try (InputStream inputStream = new ByteArrayInputStream(content.getBytes()); session) {
-        logger.info("Start uploading file to SFTP path: {}", remoteAbsPath);
+        logger.debug("Start uploading file to SFTP path: {}", remoteAbsPath);
         if (StringUtils.isNotEmpty(folder)) {
           createRemoteDirectoryIfAbsent(session, folder);
         } else {
           createRemoteDirectoryIfAbsent(session, DEFAULT_WORKING_DIR);
         }
         session.write(inputStream, remoteAbsPath);
-        logger.info("File was uploaded to SFTP successfully to path: {}", remoteAbsPath);
+        logger.debug("File was uploaded to SFTP successfully to path: {}", remoteAbsPath);
         return "Uploaded successfully";
       } catch (Exception e) {
         logger.error("Error uploading the file {}", remoteAbsPath, e);
@@ -122,7 +122,7 @@ public class SftpUploadService implements FileExchangeService {
         if (i == folders.length - 1) return;
         path.append(folders[i + 1]).append("/");
       }
-      logger.info("A directory has been created: {}", folder);
+      logger.debug("A directory has been created: {}", folder);
     }
   }
 

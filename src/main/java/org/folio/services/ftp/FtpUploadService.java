@@ -69,7 +69,7 @@ public class FtpUploadService implements FileExchangeService {
       ftpClient.setControlKeepAliveTimeout(Duration.ofSeconds(30));
       ftpClient.setBufferSize(1024 * 1024);
       ftpClient.setPassiveNatWorkaroundStrategy(new DefaultServerResolver(ftpClient));
-      logger.info("Connected to {}:{}", server, port);
+      logger.debug("Connected to {}:{}", server, port);
 
       if (ftpClient.login(username, password)) {
         return ftpClient;
@@ -101,7 +101,7 @@ public class FtpUploadService implements FileExchangeService {
         changeWorkingDirectory(DEFAULT_WORKING_DIR, ftpClient);
       }
       if (ftpClient.storeFile(filename, is)) {
-        logger.info("Batch voucher uploaded on FTP {}", filename);
+        logger.debug("Batch voucher uploaded on FTP {}", filename);
         return ftpClient.getReplyString().trim();
       } else {
         throw new FtpException(ftpClient.getReplyCode(), ftpClient.getReplyString().trim());
