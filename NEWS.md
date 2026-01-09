@@ -1,3 +1,12 @@
+## 6.0.4 - Released (Sunflower R1 2025 Bug Fix)
+The primary focus of the release was to update to RMB 35.4.2 and Vertx 4.5.23
+
+[Full Changelog](https://github.com/folio-org/mod-invoice/compare/v6.0.3...v6.0.4)
+
+### Stories
+* [MODINVOICE-624](https://folio-org.atlassian.net/browse/MODINVOICE-624) - Sunflower CSP - RMB Logging release
+
+
 ## 6.0.3 - Released (Sunflower R1 2025 Bug Fix)
 The focus of this release was to provide consumer configuration for preventing rebalancing issues.
 
