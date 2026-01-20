@@ -27,10 +27,10 @@
 
     <!--Dependencies-->
     <raml-module-builder.version>36.0.0-SNAPSHOT</raml-module-builder.version>
-    <spring.version>7.0.2</spring.version>
+    <spring.version>7.0.3</spring.version>
     <jaxb-api.version>2.3.3</jaxb-api.version>
-    <vertx.version>5.0.6</vertx.version>
-    <vertx-rx.version>4.5.23</vertx-rx.version> <!-- Update to match vertx version when 5.x is available -->
+    <vertx.version>5.0.7</vertx.version>
+    <vertx-rx.version>4.5.24</vertx-rx.version> <!-- Update to match vertx version when 5.x is available -->
     <rest-assured.version>6.0.0</rest-assured.version>
     <sshd.version>2.16.0</sshd.version>
     <assertj-core.version>3.27.6</assertj-core.version>
@@ -42,7 +42,7 @@
     <!--Folio dependencies properties-->
     <folio-module-descriptor-validator.version>1.0.1</folio-module-descriptor-validator.version>
     <mod-configuration-client.version>5.12.0</mod-configuration-client.version>
-    <mod-di-converter-storage-client.version>2.4.2</mod-di-converter-storage-client.version>
+    <mod-di-converter-storage-client.version>2.4.3</mod-di-converter-storage-client.version>
     <folio-di-support.version>4.0.0-SNAPSHOT</folio-di-support.version>
     <folio-kafka-wrapper.version>4.0.0-SNAPSHOT</folio-kafka-wrapper.version>
     <data-import-processing-core.version>5.0.0-SNAPSHOT</data-import-processing-core.version>
@@ -63,7 +63,7 @@
     <testcontainers.version>2.0.3</testcontainers.version>
     <awaitility.version>4.3.0</awaitility.version>
     <mockito.version>5.21.0</mockito.version>
-    <junit-bom.version>6.0.1</junit-bom.version>
+    <junit-bom.version>6.0.2</junit-bom.version>
 
     <!--Sonar exclusions-->
     <sonar.exclusions>**/models/*.java</sonar.exclusions>
