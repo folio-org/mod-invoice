@@ -5,6 +5,8 @@ import io.vertx.core.json.JsonObject;
 import org.folio.InvoiceWorkflowDataHolderBuilder;
 import org.folio.models.InvoiceWorkflowDataHolder;
 import org.folio.rest.acq.model.finance.FiscalYear;
+import org.folio.rest.acq.model.finance.Fund;
+import org.folio.rest.acq.model.finance.FundCollection;
 import org.folio.rest.acq.model.finance.Transaction;
 import org.folio.rest.acq.model.finance.TransactionCollection;
 import org.folio.rest.core.RestClient;
@@ -154,5 +156,66 @@ public class InvoiceWorkFlowDataHolderBuilderTest {
     List<InvoiceWorkflowDataHolder> listFuture = invoiceWorkflowDataHolderBuilder.withExistingTransactions(holders, requestContext).result();
     List<String> holderTransactionList = listFuture.stream().map(holder -> holder.getExistingTransaction().getId()).collect(toList());
     Assertions.assertEquals(holderTransactionList, transactionIds);
+  }
+
+  @Test
+  void withFunds_shouldPopulateFundCodeFromFundData() {
+    String fundId1 = UUID.randomUUID().toString();
+    String fundId2 = UUID.randomUUID().toString();
+    String fundCode1 = "HIST";
+    String fundCode2 = "SCIENCE";
+    String ledgerId = UUID.randomUUID().toString();
+
+    Fund fund1 = new Fund()
+      .withId(fundId1)
+      .withCode(fundCode1)
+      .withLedgerId(ledgerId)
+      .withExternalAccountNo("12345");
+
+    Fund fund2 = new Fund()
+      .withId(fundId2)
+      .withCode(fundCode2)
+      .withLedgerId(ledgerId)
+      .withExternalAccountNo("67890");
+
+    FundCollection fundCollection = new FundCollection()
+      .withFunds(List.of(fund1, fund2))
+      .withTotalRecords(2);
+
+    // First distribution has no code (should be populated)
+    FundDistribution fundDistribution1 = new FundDistribution()
+      .withFundId(fundId1)
+      .withDistributionType(FundDistribution.DistributionType.PERCENTAGE)
+      .withValue(50d);
+
+    // Second distribution has incorrect code (should be updated)
+    FundDistribution fundDistribution2 = new FundDistribution()
+      .withFundId(fundId2)
+      .withCode("WRONG-CODE")
+      .withDistributionType(FundDistribution.DistributionType.PERCENTAGE)
+      .withValue(50d);
+
+    Invoice invoice = new Invoice()
+      .withId(UUID.randomUUID().toString())
+      .withAdjustments(Collections.emptyList());
+
+    InvoiceLine invoiceLine = new InvoiceLine()
+      .withId(UUID.randomUUID().toString())
+      .withFundDistributions(List.of(fundDistribution1, fundDistribution2));
+
+    List<InvoiceWorkflowDataHolder> holders = invoiceWorkflowDataHolderBuilder.buildHoldersSkeleton(
+      List.of(invoiceLine), invoice);
+
+    RequestContext requestContext = new RequestContext(ctxMock, okapiHeaders);
+    doReturn(succeededFuture(fundCollection)).when(restClient)
+      .get(any(RequestEntry.class), eq(FundCollection.class), any(RequestContext.class));
+
+    List<InvoiceWorkflowDataHolder> result = invoiceWorkflowDataHolderBuilder.withFunds(holders, requestContext).result();
+
+    Assertions.assertEquals(2, result.size());
+    Assertions.assertEquals(fundCode1, result.get(0).getFundDistribution().getCode());
+    Assertions.assertEquals(fundCode2, result.get(1).getFundDistribution().getCode());
+    Assertions.assertEquals(fund1, result.get(0).getFund());
+    Assertions.assertEquals(fund2, result.get(1).getFund());
   }
 }

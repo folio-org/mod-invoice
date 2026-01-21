@@ -5,6 +5,7 @@ import static java.util.stream.Collectors.groupingBy;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toMap;
 import static java.util.stream.Collectors.toSet;
+import static org.apache.commons.lang3.StringUtils.isEmpty;
 import static org.folio.invoices.utils.ErrorCodes.MULTIPLE_FISCAL_YEARS;
 
 import java.util.ArrayList;
@@ -116,8 +117,27 @@ public class InvoiceWorkflowDataHolderBuilder {
     return fundService.getFunds(fundIds, requestContext)
       .map(funds -> funds.stream().collect(toMap(Fund::getId, Function.identity())))
       .map(idFundMap -> holders.stream()
-        .map(holder -> holder.withFund(idFundMap.get(holder.getFundId())))
+        .map(holder -> {
+          Fund fund = idFundMap.get(holder.getFundId());
+          holder.withFund(fund);
+          populateFundCode(holder.getFundDistribution(), fund);
+          return holder;
+        })
         .collect(toList()));
+  }
+
+  private void populateFundCode(FundDistribution fundDistribution, Fund fund) {
+    String actualFundCode = fund.getCode();
+    String existingCode = fundDistribution.getCode();
+
+    if (isEmpty(existingCode)) {
+      logger.info("populateFundCode:: Populating missing fund code for fundId={}, code={}",
+        fund.getId(), actualFundCode);
+    } else if (!existingCode.equals(actualFundCode)) {
+      logger.info("populateFundCode:: Updating fund code for fundId={}, from={}, to={}",
+        fund.getId(), existingCode, actualFundCode);
+    }
+    fundDistribution.setCode(actualFundCode);
   }
 
   public Future<List<InvoiceWorkflowDataHolder>> withLedgers(List<InvoiceWorkflowDataHolder> holders, RequestContext requestContext) {
