@@ -1,16 +1,12 @@
 package org.folio.services.settings;
 
 import static org.apache.commons.lang3.StringUtils.EMPTY;
-
-import java.util.List;
-import java.util.Optional;
+import static org.folio.invoices.utils.ResourcePathResolver.LOCALE_SETTINGS;
+import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
 
 import org.apache.commons.lang3.StringUtils;
 import org.folio.rest.acq.model.Setting;
 import org.folio.rest.acq.model.SettingCollection;
-import org.folio.rest.acq.model.settings.CommonSetting;
-import org.folio.rest.acq.model.settings.CommonSettingsCollection;
-import org.folio.rest.acq.model.settings.Value;
 import org.folio.rest.core.RestClient;
 import org.folio.rest.core.models.RequestContext;
 import org.folio.rest.core.models.RequestEntry;
@@ -27,7 +23,6 @@ import one.util.streamex.StreamEx;
 @RequiredArgsConstructor
 public class CommonSettingsService {
 
-  public static final String TENANT_LOCALE_SETTINGS = "tenantLocaleSettings";
   public static final String VOUCHER_NUMBER_PREFIX_KEY = "voucherNumberPrefix";
 
   public static final String CURRENCY_KEY = "currency";
@@ -51,20 +46,22 @@ public class CommonSettingsService {
         .orElse(EMPTY));
   }
 
+  /**
+   * Get system currency from the tenant locale settings via <code>/locale</code> endpoint
+   *
+   * @param requestEntry  the request entry
+   * @param requestContext the request context
+   * @return a future containing the system currency if it exists, otherwise {@link #CURRENCY_DEFAULT}
+   */
   public Future<String> getSystemCurrency(RequestEntry requestEntry, RequestContext requestContext) {
-    return getGlobalSetting(CURRENCY_KEY, CURRENCY_DEFAULT, requestEntry, requestContext);
-  }
-
-  private Future<String> getGlobalSetting(String key, String defaultValue, RequestEntry requestEntry, RequestContext requestContext) {
-    return restClient.get(requestEntry, CommonSettingsCollection.class, requestContext)
-      .map(settingsCollection -> Optional.ofNullable(settingsCollection.getItems()).orElse(List.of()))
-      .map(settings -> settings.stream()
-        .findFirst()
-        .map(CommonSetting::getValue)
-        .map(Value::getAdditionalProperties)
-        .map(properties -> properties.get(key))
-        .map(Object::toString)
-        .orElse(defaultValue));
+    return restClient.getAsJsonObject(resourcesPath(LOCALE_SETTINGS), requestContext)
+      .map(jsonObject -> {
+        if (jsonObject == null) {
+          return CURRENCY_DEFAULT;
+        }
+        var currency = jsonObject.getString(CURRENCY_KEY);
+        return StringUtils.isNotBlank(currency) ? currency : CURRENCY_DEFAULT;
+      });
   }
 
 }
