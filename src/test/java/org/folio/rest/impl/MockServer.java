@@ -36,9 +36,9 @@ import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_LINES;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_LINE_NUMBER;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_STORAGE_SETTINGS;
 import static org.folio.invoices.utils.ResourcePathResolver.LEDGERS;
+import static org.folio.invoices.utils.ResourcePathResolver.LOCALE_SETTINGS;
 import static org.folio.invoices.utils.ResourcePathResolver.ORDER_INVOICE_RELATIONSHIP;
 import static org.folio.invoices.utils.ResourcePathResolver.ORDER_LINES;
-import static org.folio.invoices.utils.ResourcePathResolver.SETTINGS_ENTRIES;
 import static org.folio.invoices.utils.ResourcePathResolver.VOUCHERS_STORAGE;
 import static org.folio.invoices.utils.ResourcePathResolver.VOUCHER_LINES;
 import static org.folio.invoices.utils.ResourcePathResolver.VOUCHER_NUMBER_START;
@@ -79,7 +79,6 @@ import static org.folio.rest.impl.VouchersApiTest.VOUCHERS_LIST_PATH;
 import static org.folio.rest.impl.VouchersApiTest.VOUCHER_MOCK_DATA_PATH;
 import static org.folio.services.AcquisitionsUnitsService.ACQUISITIONS_UNIT_ID;
 import static org.folio.services.settings.CommonSettingsService.CURRENCY_KEY;
-import static org.folio.services.settings.CommonSettingsService.TENANT_LOCALE_SETTINGS;
 import static org.folio.services.settings.CommonSettingsService.VOUCHER_NUMBER_PREFIX_KEY;
 import static org.junit.jupiter.api.Assertions.fail;
 
@@ -134,9 +133,6 @@ import org.folio.rest.acq.model.orders.CompositePurchaseOrder;
 import org.folio.rest.acq.model.orders.OrderInvoiceRelationshipCollection;
 import org.folio.rest.acq.model.orders.PoLine;
 import org.folio.rest.acq.model.orders.PoLineCollection;
-import org.folio.rest.acq.model.settings.CommonSetting;
-import org.folio.rest.acq.model.settings.CommonSettingsCollection;
-import org.folio.rest.acq.model.settings.Value;
 import org.folio.rest.acq.model.units.AcquisitionsUnit;
 import org.folio.rest.acq.model.units.AcquisitionsUnitCollection;
 import org.folio.rest.acq.model.units.AcquisitionsUnitMembershipCollection;
@@ -426,7 +422,7 @@ public class MockServer {
     router.route(HttpMethod.GET, resourcesPath(LEDGERS)).handler(this::handleGetLedgerRecords);
     router.route(HttpMethod.GET, resourceByIdPath(LEDGERS)).handler(this::handleGetLedgerRecordsById);
     router.route(HttpMethod.GET, resourcesPath(INVOICE_STORAGE_SETTINGS)).handler(this::handleInvoiceStorageSettingsResponse);
-    router.route(HttpMethod.GET, resourcesPath(SETTINGS_ENTRIES)).handler(this::handleSettingsModuleResponse);
+    router.route(HttpMethod.GET, resourcesPath(LOCALE_SETTINGS)).handler(this::handleLocaleSettingsResponse);
     router.route(HttpMethod.GET, "/invoice-storage/invoices/:id/documents").handler(this::handleGetInvoiceDocuments);
     router.route(HttpMethod.GET, "/invoice-storage/invoices/:id/documents/:documentId").handler(this::handleGetInvoiceDocumentById);
     router.route(HttpMethod.GET, resourcesPath(ACQUISITIONS_MEMBERSHIPS)).handler(this::handleGetAcquisitionsMemberships);
@@ -1730,12 +1726,8 @@ public class MockServer {
     serverResponse(ctx, 200, APPLICATION_JSON, JsonObject.mapFrom(settings).encodePrettily());
   }
 
-  private void handleSettingsModuleResponse(RoutingContext ctx) {
-    var settingsCollection = new CommonSettingsCollection()
-      .withItems(List.of(new CommonSetting()
-        .withKey(TENANT_LOCALE_SETTINGS)
-        .withValue(new Value().withAdditionalProperty(CURRENCY_KEY, "GBP"))));
-    serverResponse(ctx, 200, APPLICATION_JSON, JsonObject.mapFrom(settingsCollection).encodePrettily());
+  private void handleLocaleSettingsResponse(RoutingContext ctx) {
+    serverResponse(ctx, 200, APPLICATION_JSON, new JsonObject().put(CURRENCY_KEY, "GBP").encodePrettily());
   }
 
   private void handleGetBudgetRecords(RoutingContext ctx) {

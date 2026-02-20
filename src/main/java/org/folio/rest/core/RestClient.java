@@ -168,6 +168,23 @@ public class RestClient {
     return promise.future();
   }
 
+  public Future<JsonObject> getAsJsonObject(String endpoint, RequestContext requestContext) {
+    var caseInsensitiveHeader = convertToCaseInsensitiveMap(requestContext.getHeaders());
+    var absEndpoint = buildAbsEndpoint(caseInsensitiveHeader, endpoint);
+
+    Promise<JsonObject> promise = Promise.promise();
+    getVertxWebClient(requestContext.getContext())
+      .getAbs(absEndpoint)
+      .putHeaders(caseInsensitiveHeader)
+      .send()
+      .compose(RestClient::convertHttpResponse)
+      .map(HttpResponse::bodyAsJsonObject)
+      .onSuccess(promise::complete)
+      .onFailure(t -> handleGetMethodErrorResponse(promise, t, false));
+
+    return promise.future();
+  }
+
   protected static <T> Future<HttpResponse<T>> convertHttpResponse(HttpResponse<T> response) {
     if (HttpResponseExpectation.SC_SUCCESS.test(response)) {
       return Future.succeededFuture(response);

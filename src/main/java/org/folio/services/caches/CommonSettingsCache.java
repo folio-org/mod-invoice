@@ -1,7 +1,7 @@
 package org.folio.services.caches;
 
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_STORAGE_SETTINGS;
-import static org.folio.invoices.utils.ResourcePathResolver.SETTINGS_ENTRIES;
+import static org.folio.invoices.utils.ResourcePathResolver.LOCALE_SETTINGS;
 import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
 import static org.folio.utils.CacheUtils.buildAsyncCache;
 
@@ -28,7 +28,6 @@ import lombok.extern.log4j.Log4j2;
 @RequiredArgsConstructor
 public class CommonSettingsCache {
 
-  public static final String GLOBAL_SETTINGS_QUERY = "(scope==stripes-core.prefs.manage and key==tenantLocaleSettings)";
   private static final String UNIQUE_CACHE_KEY_PATTERN = "%s_%s_%s";
 
   @Value("${mod.invoice.cache.settings-entries.expiration-time.seconds:30}")
@@ -53,10 +52,9 @@ public class CommonSettingsCache {
   }
 
   public Future<String> getSystemCurrency(RequestContext requestContext) {
-    return cacheData(resourcesPath(SETTINGS_ENTRIES), GLOBAL_SETTINGS_QUERY,
+    return cacheData(resourcesPath(LOCALE_SETTINGS), null,
       systemCurrencyCache, commonSettingsService::getSystemCurrency, requestContext);
   }
-
 
   private <T> Future<T> cacheData(String url, String query, AsyncCache<String, T> cache,
                                   BiFunction<RequestEntry, RequestContext, Future<T>> configExtractor,
