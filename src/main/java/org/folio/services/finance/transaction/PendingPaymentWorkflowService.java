@@ -1,5 +1,6 @@
 package org.folio.services.finance.transaction;
 
+import static io.vertx.core.Future.failedFuture;
 import static io.vertx.core.Future.succeededFuture;
 import static java.util.stream.Collectors.toList;
 import static org.folio.invoices.utils.ErrorCodes.PENDING_PAYMENT_ERROR;
@@ -21,6 +22,7 @@ import org.apache.commons.collections4.CollectionUtils;
 import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.models.InvoiceWorkflowDataHolder;
 import org.folio.rest.acq.model.finance.AwaitingPayment;
+import org.folio.rest.acq.model.finance.Encumbrance;
 import org.folio.rest.acq.model.finance.Metadata;
 import org.folio.rest.acq.model.finance.Transaction;
 import org.folio.rest.core.models.RequestContext;
@@ -50,8 +52,24 @@ public class PendingPaymentWorkflowService {
       Invoice invoice, RequestContext requestContext) {
     List<InvoiceWorkflowDataHolder> holders = withNewPendingPayments(dataHolders);
     holderValidator.validate(holders);
-    return createPendingPayments(holders, requestContext)
-      .compose(s -> cleanupOldEncumbrances(holders, invoice, requestContext))
+    List<Transaction> transactionsToCreate = getPendingPaymentsToCreate(holders);
+    return getOldEncumbrancesToRelease(holders, invoice, requestContext)
+      .compose(transactionsToUpdate -> {
+        if (transactionsToCreate == null && transactionsToUpdate == null) {
+          return succeededFuture();
+        }
+        return baseTransactionService.batchAllOrNothing(transactionsToCreate, transactionsToUpdate,
+          null, null, requestContext);
+      })
+      .recover(t -> {
+        log.error("handlePendingPaymentsCreation: Failed to create pending payments and release old encumbrances", t);
+        if (t instanceof HttpException he) {
+          return failedFuture(new HttpException(he.getCode(), he.getErrors()));
+        }
+        var causeParam = new Parameter().withKey("cause").withValue(t.getMessage());
+        Error error = PENDING_PAYMENT_ERROR.toError().withParameters(List.of(causeParam));
+        return failedFuture(new HttpException(500, error));
+      })
       .map(v -> dataHolders);
   }
 
@@ -74,17 +92,16 @@ public class PendingPaymentWorkflowService {
       .onFailure(t -> log.error("rollbackCreationOfPendingPayments:: error", t));
   }
 
-  private Future<Void> createPendingPayments(List<InvoiceWorkflowDataHolder> holders, RequestContext requestContext) {
+  private List<Transaction> getPendingPaymentsToCreate(List<InvoiceWorkflowDataHolder> holders) {
     if (CollectionUtils.isEmpty(holders)) {
-      return succeededFuture();
+      return null;
     }
-    List<Transaction> transactionsToCreate = holders.stream()
+    return holders.stream()
       .map(InvoiceWorkflowDataHolder::getNewTransaction)
       .toList();
-    return baseTransactionService.batchCreate(transactionsToCreate, requestContext);
   }
 
-  private Future<Void> cleanupOldEncumbrances(List<InvoiceWorkflowDataHolder> holders, Invoice invoice,
+  private Future<List<Transaction>> getOldEncumbrancesToRelease(List<InvoiceWorkflowDataHolder> holders, Invoice invoice,
       RequestContext requestContext) {
     List<String> poLineIds = holders.stream()
       .filter(holder -> holder.getInvoiceLine() != null)
@@ -92,33 +109,20 @@ public class PendingPaymentWorkflowService {
       .collect(toList());
     String fiscalYearId = invoice.getFiscalYearId();
     return encumbranceService.getEncumbrancesByPoLineIds(poLineIds, fiscalYearId, requestContext)
-      .compose(transactions -> cleanupOldEncumbrances(transactions, holders, requestContext))
-      .recover(t -> {
-        log.error("cleanupOldEncumbrances: Failed to release encumbrances. poLineIds: {}", poLineIds, t);
-        if (t instanceof HttpException he) {
-          return Future.failedFuture(new HttpException(he.getCode(), he.getErrors()));
+      .map(poLineTransactions -> {
+        List<Transaction> transactionsToRelease = poLineTransactions.stream()
+          .filter(tr -> !RELEASED.equals(tr.getEncumbrance().getStatus()) &&
+            holders.stream()
+              .filter(holder -> Objects.nonNull(holder.getInvoiceLine()))
+              .noneMatch(holder -> sameFundAndPoLine(tr, holder)))
+          .toList();
+        if (transactionsToRelease.isEmpty()) {
+          return null;
         }
-        var causeParam = new Parameter().withKey("cause").withValue(t.getMessage());
-        Error error = PENDING_PAYMENT_ERROR.toError().withParameters(List.of(causeParam));
-        return Future.failedFuture(new HttpException(500, error));
+        // NOTE: we will have to use transactionPatches when it is available (see MODINVOICE-521)
+        transactionsToRelease.forEach(tr -> tr.getEncumbrance().setStatus(Encumbrance.Status.RELEASED));
+        return transactionsToRelease;
       });
-  }
-
-  private Future<Void> cleanupOldEncumbrances(List<Transaction> poLineTransactions, List<InvoiceWorkflowDataHolder> holders,
-      RequestContext requestContext) {
-    // Release encumbrances that are no longer relevant
-    List<Transaction> transactionsToRelease = poLineTransactions.stream()
-      .filter(tr -> !RELEASED.equals(tr.getEncumbrance().getStatus()) &&
-        holders.stream()
-          .filter(holder -> Objects.nonNull(holder.getInvoiceLine()))
-          .noneMatch(holder -> sameFundAndPoLine(tr, holder)))
-      .toList();
-    if (transactionsToRelease.isEmpty()) {
-      return succeededFuture();
-    }
-    return baseTransactionService.batchRelease(transactionsToRelease, requestContext)
-      .onSuccess(result -> log.debug("Number of encumbrances released due to invoice lines fund distributions being different from PO lines fund distributions: {}", transactionsToRelease.size()))
-      .onFailure(result -> log.error("Failed cleaning up unlinked encumbrances", result.getCause()));
   }
 
   private boolean sameFundAndPoLine(Transaction transaction, InvoiceWorkflowDataHolder holder) {

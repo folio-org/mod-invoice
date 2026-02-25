@@ -236,7 +236,7 @@ public class PendingPaymentWorkflowServiceTest {
   }
 
   @Test
-  void errorInCleanupOldEncumbrances() {
+  void errorInHandlePendingPaymentsCreation() {
     String fiscalYearId = UUID.randomUUID().toString();
     String fundId1 = UUID.randomUUID().toString();
     String fundId2 = UUID.randomUUID().toString();
@@ -280,13 +280,8 @@ public class PendingPaymentWorkflowServiceTest {
     doNothing().when(fundAvailabilityValidator).validate(anyList());
     when(restClient.postEmptyResponse(anyString(), any(), eq(requestContext)))
       .thenAnswer(invocation -> {
-        if (!((Batch)invocation.getArgument(1)).getTransactionsToCreate().isEmpty()) {
-          // successful creation of pending payments
-          return succeededFuture();
-        } else {
-          // fail when updating encumbrances
-          return failedFuture(new Exception("test"));
-        }
+        // fail when creating pending payments and updating encumbrances
+        return failedFuture(new Exception("test"));
       });
     when(encumbranceService.getEncumbrancesByPoLineIds(anyList(), eq(fiscalYearId), eq(requestContext)))
       .thenReturn(succeededFuture(List.of(encumbrance)));
