@@ -549,7 +549,7 @@ public class InvoicesApiTest extends ApiTestBase {
     verifyPut(String.format(INVOICE_ID_PATH, invoice.getId()), jsonBody, headers, "", 204);
 
     var batchCalls = serverRqRs.get(FINANCE_BATCH_TRANSACTIONS, HttpMethod.POST);
-    assertThat(batchCalls, hasSize(2));
+    assertThat(batchCalls, hasSize(1));
 
     var pendingPaymentCreated = batchCalls.stream()
       .map(entries -> entries.mapTo(Batch.class))
