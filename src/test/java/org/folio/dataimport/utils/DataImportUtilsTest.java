@@ -18,7 +18,7 @@ public class DataImportUtilsTest {
   private static final String TENANT = "diku";
   private static final String TOKEN = "token";
   private static final String OKAPI_URL = "okapi_url";
-  private static final String PERMISSIONS_ARRAY = "[\"invoices.acquisitions-units-assignments.assign\"]";
+  private static final String PERMISSIONS_ARRAY = "[\"invoices.acquisitions-units-assignments.create.execute\"]";
   private static final String USER_ID = "userId";
 
   @Test

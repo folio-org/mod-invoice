@@ -24,7 +24,7 @@
           "methods": ["POST"],
           "pathPattern": "/invoice/invoices",
           "permissionsRequired": ["invoice.invoices.item.post"],
-          "permissionsDesired": ["invoices.acquisitions-units-assignments.assign"],
+          "permissionsDesired": ["invoices.acquisitions-units-assignments.create.execute"],
           "modulePermissions": [
             "invoice-storage.invoices.item.post",
             "invoice-storage.invoice-number.get",
@@ -55,7 +55,7 @@
           "pathPattern": "/invoice/invoices/{id}",
           "permissionsRequired": ["invoice.invoices.item.put"],
           "permissionsDesired": [
-            "invoices.acquisitions-units-assignments.manage",
+            "invoices.acquisitions-units-assignments.manage.execute",
             "invoices.fiscal-year.update.execute",
             "invoice.item.approve.execute",
             "invoice.item.pay.execute",
@@ -932,22 +932,24 @@
       "replaces": ["invoices.bypass-acquisition-units"]
     },
     {
-      "permissionName": "invoices.acquisitions-units-assignments.assign",
+      "permissionName": "invoices.acquisitions-units-assignments.create.execute",
       "displayName": "Acquisitions unit assignment - create unit assignment",
-      "description": "Assign new invoice to acquisitions units"
+      "description": "Assign new invoice to acquisitions units",
+      "replaces": ["invoices.acquisitions-units-assignments.assign"]
     },
     {
-      "permissionName": "invoices.acquisitions-units-assignments.manage",
+      "permissionName": "invoices.acquisitions-units-assignments.manage.execute",
       "displayName": "Acquisitions units assignment - manage unit assignments",
-      "description": "Manage unit assignments during invoice update"
+      "description": "Manage unit assignments during invoice update",
+      "replaces": ["invoices.acquisitions-units-assignments.manage"]
     },
     {
       "permissionName": "invoices.acquisitions-units-assignments.all",
       "displayName": "All invoice acquisitions-unit-assignments permissions",
       "description": "All permissions for the acquisitions-unit-assignments",
       "subPermissions": [
-        "invoices.acquisitions-units-assignments.assign",
-        "invoices.acquisitions-units-assignments.manage"
+        "invoices.acquisitions-units-assignments.create.execute",
+        "invoices.acquisitions-units-assignments.manage.execute"
       ]
     },
     {
@@ -1090,16 +1092,6 @@
         "batch-voucher.batch-voucher-exports.all"
       ],
       "visible": false
-    },
-    {
-      "permissionName": "invoices.acquisitions-units-assignments.assign",
-      "displayName": "Ability to assign acquisition unit and create invoice",
-      "description": "Ability to assign acquisition unit and create invoice"
-    },
-    {
-      "permissionName": "invoices.acquisitions-units-assignments.manage",
-      "displayName": "Ability to manage acquisition unit and update invoice",
-      "description": "Ability to manage acquisition unit and update invoice"
     }
   ],
   "metadata": {

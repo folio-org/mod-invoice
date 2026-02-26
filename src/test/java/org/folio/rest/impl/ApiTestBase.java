@@ -98,8 +98,8 @@ public class ApiTestBase {
     "invoice.item.approve.execute",
     "invoice.item.pay.execute",
     "invoice.invoices.item.put",
-    "invoices.acquisitions-units-assignments.manage",
-    "invoices.acquisitions-units-assignments.assign",
+    "invoices.acquisitions-units-assignments.manage.execute",
+    "invoices.acquisitions-units-assignments.create.execute",
     "invoices.fiscal-year.update.execute"
   );
 
@@ -107,8 +107,8 @@ public class ApiTestBase {
 
   public static final List<String> permissionsWithoutApproveAndPayList = Arrays.asList(
     "invoice.invoices.item.put",
-    "invoices.acquisitions-units-assignments.manage",
-    "invoices.acquisitions-units-assignments.assign",
+    "invoices.acquisitions-units-assignments.manage.execute",
+    "invoices.acquisitions-units-assignments.create.execute",
     "invoices.fiscal-year.update.execute"
   );
 
@@ -119,8 +119,8 @@ public class ApiTestBase {
   public static final List<String> permissionsWithoutPaidList = Arrays.asList(
     "invoice.item.approve.execute",
     "invoice.invoices.item.put",
-    "invoices.acquisitions-units-assignments.manage",
-    "invoices.acquisitions-units-assignments.assign",
+    "invoices.acquisitions-units-assignments.manage.execute",
+    "invoices.acquisitions-units-assignments.create.execute",
     "invoices.fiscal-year.update.execute"
   );
 
