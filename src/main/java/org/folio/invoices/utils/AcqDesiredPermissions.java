@@ -6,8 +6,8 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 public enum AcqDesiredPermissions {
-  ASSIGN("invoices.acquisitions-units-assignments.assign"),
-  MANAGE("invoices.acquisitions-units-assignments.manage"),
+  ASSIGN("invoices.acquisitions-units-assignments.create.execute"),
+  MANAGE("invoices.acquisitions-units-assignments.manage.execute"),
   APPROVE("invoice.item.approve.execute"),
   PAY("invoice.item.pay.execute"),
   CANCEL("invoice.item.cancel.execute"),

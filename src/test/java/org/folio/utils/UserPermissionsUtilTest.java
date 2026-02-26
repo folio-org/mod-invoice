@@ -43,7 +43,7 @@ public class UserPermissionsUtilTest {
   void shouldThrowExceptionWhenApprovePermissionIsAbsent() {
     List<String> permissionsList = Arrays.asList(
       "invoice.invoices.item.put",
-      "invoices.acquisitions-units-assignments.manage",
+      "invoices.acquisitions-units-assignments.manage.execute",
       "invoices.fiscal-year.update.execute"
     );
 
@@ -82,7 +82,7 @@ public class UserPermissionsUtilTest {
   void shouldThrowCorrectErrorCodeWhenPayPermissionIsAbsent() {
     List<String> permissionsList = Arrays.asList(
       "invoice.invoices.item.put",
-      "invoices.acquisitions-units-assignments.manage",
+      "invoices.acquisitions-units-assignments.manage.execute",
       "invoices.fiscal-year.update.execute"
     );
 
@@ -143,7 +143,7 @@ public class UserPermissionsUtilTest {
   void shouldThrowCorrectErrorCodeWhenAssignPermissionIsAbsent() {
     List<String> permissionsList = Arrays.asList(
       "invoice.invoices.item.put",
-      "invoices.acquisitions-units-assignments.manage",
+      "invoices.acquisitions-units-assignments.manage.execute",
       "invoices.fiscal-year.update.execute"
     );
 
@@ -169,9 +169,9 @@ public class UserPermissionsUtilTest {
 
     List<String> permissionsList = Arrays.asList(
       "invoice.invoices.item.put",
-      "invoices.acquisitions-units-assignments.manage",
+      "invoices.acquisitions-units-assignments.manage.execute",
       "invoices.fiscal-year.update.execute",
-      "invoices.acquisitions-units-assignments.assign"
+      "invoices.acquisitions-units-assignments.create.execute"
     );
 
     String permissionsJsonArrayString = new JsonArray(permissionsList).encode();
@@ -192,7 +192,7 @@ public class UserPermissionsUtilTest {
   @DisplayName("should throw exception when manage permission is absent")
   void shouldThrowExceptionWhenManagePermissionIsAbsent() {
     List<String> permissionsList = List.of(
-      "invoices.acquisitions-units-assignments.assign"
+      "invoices.acquisitions-units-assignments.create.execute"
     );
 
     String permissionsJsonArrayString = new JsonArray(permissionsList).encode();
@@ -215,8 +215,8 @@ public class UserPermissionsUtilTest {
   void shouldNotThrowExceptionWhenManagePermissionIsAssigned() {
     // Create a list of permissions
     List<String> permissionsList = Arrays.asList(
-      "invoices.acquisitions-units-assignments.manage",
-      "invoices.acquisitions-units-assignments.assign"
+      "invoices.acquisitions-units-assignments.manage.execute",
+      "invoices.acquisitions-units-assignments.create.execute"
     );
 
     String permissionsJsonArrayString = new JsonArray(permissionsList).encode();
@@ -237,7 +237,7 @@ public class UserPermissionsUtilTest {
   @DisplayName("should throw exception when fiscal year update permission is absent")
   void shouldThrowExceptionWhenFiscalYearUpdatePermissionIsAbsent() {
     List<String> permissionsList = List.of(
-      "invoices.acquisitions-units-assignments.assign"
+      "invoices.acquisitions-units-assignments.create.execute"
     );
 
     String permissionsJsonArrayString = new JsonArray(permissionsList).encode();
@@ -261,7 +261,7 @@ public class UserPermissionsUtilTest {
     // Create a list of permissions
     List<String> permissionsList = Arrays.asList(
       "invoices.fiscal-year.update.execute",
-      "invoices.acquisitions-units-assignments.assign"
+      "invoices.acquisitions-units-assignments.create.execute"
     );
 
     String permissionsJsonArrayString = new JsonArray(permissionsList).encode();
