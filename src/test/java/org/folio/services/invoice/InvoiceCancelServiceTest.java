@@ -240,6 +240,7 @@ public class InvoiceCancelServiceTest {
     String fundId1 = UUID.randomUUID().toString();
     String fundId2 = UUID.randomUUID().toString();
     String orderId = UUID.randomUUID().toString();
+    String poLineId = UUID.randomUUID().toString();
     Invoice invoice = new Invoice()
       .withId(invoiceId)
       .withFiscalYearId(fiscalYearId)
@@ -249,7 +250,9 @@ public class InvoiceCancelServiceTest {
     InvoiceLine invoiceLine = new InvoiceLine()
       .withId(UUID.randomUUID().toString())
       .withInvoiceId(invoiceId)
-      .withFundDistributions(List.of(invoiceLineFundDistribution));
+      .withFundDistributions(List.of(invoiceLineFundDistribution))
+      .withPoLineId(poLineId)
+      .withReleaseEncumbrance(true);
     List<InvoiceLine> invoiceLines = List.of(invoiceLine);
     Budget budget = new Budget()
       .withId(UUID.randomUUID().toString())
@@ -260,7 +263,7 @@ public class InvoiceCancelServiceTest {
       .withId(orderId)
       .withWorkflowStatus(PurchaseOrder.WorkflowStatus.OPEN);
     PoLine poLine = new PoLine()
-      .withId(UUID.randomUUID().toString())
+      .withId(poLineId)
       .withPurchaseOrderId(orderId)
       .withFundDistribution(List.of(poLineFundDistribution));
 

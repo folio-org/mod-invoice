@@ -15,6 +15,7 @@ import static org.folio.rest.acq.model.finance.Transaction.TransactionType.PENDI
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Objects;
 
 import io.vertx.core.Future;
 import lombok.extern.log4j.Log4j2;
@@ -143,7 +144,9 @@ public class InvoiceCancelService {
   private Future<Void> checkBudgetsForUnlinkedEncumbrancesToUnrelease(Invoice invoice, List<InvoiceLine> invoiceLines,
       RequestContext requestContext) {
     var poLineIds = invoiceLines.stream()
+      .filter(InvoiceLine::getReleaseEncumbrance)
       .map(InvoiceLine::getPoLineId)
+      .filter(Objects::nonNull)
       .distinct()
       .toList();
     if (poLineIds.isEmpty()) {
@@ -210,7 +213,9 @@ public class InvoiceCancelService {
   private Future<Void> updateOrUnreleaseEncumbrances(List<InvoiceLine> invoiceLines, Invoice invoiceFromStorage,
                                                      RequestContext requestContext) {
     var poLineIds = invoiceLines.stream()
+      .filter(InvoiceLine::getReleaseEncumbrance)
       .map(InvoiceLine::getPoLineId)
+      .filter(Objects::nonNull)
       .distinct()
       .toList();
     if (poLineIds.isEmpty()) {
@@ -220,7 +225,7 @@ public class InvoiceCancelService {
     log.info("updateOrUnreleaseEncumbrances:: Updating or unreleasing encumbrances, invoiceId={}...", invoiceId);
     return orderLineService.getPoLinesByIdAndQuery(poLineIds, this::queryToGetPoLinesWithRightPaymentStatusByIds, requestContext)
       .compose(poLines -> selectPoLinesWithOpenOrders(poLines, requestContext))
-      .compose(poLines -> unreleaseEncumbrancesForPoLines(invoiceLines, poLines, invoiceFromStorage, requestContext))
+      .compose(poLines -> unreleaseEncumbrancesForPoLines(poLines, invoiceFromStorage, requestContext))
       .recover(t -> {
         log.error("updateOrUnreleaseEncumbrances:: Failed to update or unrelease encumbrance for po lines, invoiceId={}", invoiceId, t);
         var causeParam = new Parameter().withKey("cause").withValue(requireNonNullElse(t.getCause(), t).toString());
@@ -255,15 +260,13 @@ public class InvoiceCancelService {
     return OPEN_ORDERS_QUERY + AND + convertIdsToCqlQuery(orderIds);
   }
 
-  private Future<Void> unreleaseEncumbrancesForPoLines(List<InvoiceLine> invoiceLines, List<PoLine> poLines,
-                                                       Invoice invoiceFromStorage, RequestContext requestContext) {
+  private Future<Void> unreleaseEncumbrancesForPoLines(List<PoLine> poLines, Invoice invoiceFromStorage,
+      RequestContext requestContext) {
     if (CollectionUtils.isEmpty(poLines)) {
       return succeededFuture(null);
     }
-    var poLineIds = invoiceLines.stream()
-      .filter(InvoiceLine::getReleaseEncumbrance)
-      .map(InvoiceLine::getPoLineId)
-      .distinct()
+    var poLineIds = poLines.stream()
+      .map(PoLine::getId)
       .toList();
     var fiscalYearId = invoiceFromStorage.getFiscalYearId();
     return encumbranceService.getEncumbrancesByPoLineIds(poLineIds, fiscalYearId, requestContext)
