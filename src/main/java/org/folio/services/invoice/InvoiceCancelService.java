@@ -13,6 +13,7 @@ import static org.folio.rest.acq.model.finance.Transaction.TransactionType.CREDI
 import static org.folio.rest.acq.model.finance.Transaction.TransactionType.PAYMENT;
 import static org.folio.rest.acq.model.finance.Transaction.TransactionType.PENDING_PAYMENT;
 
+import java.util.Collection;
 import java.util.List;
 
 import io.vertx.core.Future;
@@ -26,10 +27,12 @@ import org.folio.rest.acq.model.finance.TransactionCollection;
 import org.folio.rest.acq.model.orders.PoLine;
 import org.folio.rest.acq.model.orders.PurchaseOrder;
 import org.folio.rest.core.models.RequestContext;
+import org.folio.rest.jaxrs.model.FundDistribution;
 import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.jaxrs.model.InvoiceLine;
 import org.folio.rest.jaxrs.model.Parameter;
 import org.folio.services.finance.EncumbranceUtils;
+import org.folio.services.finance.budget.BudgetService;
 import org.folio.services.finance.transaction.BaseTransactionService;
 import org.folio.services.finance.transaction.EncumbranceService;
 import org.folio.services.order.OrderLineService;
@@ -52,6 +55,7 @@ public class InvoiceCancelService {
   private final OrderService orderService;
   private final PoLinePaymentStatusUpdateService poLinePaymentStatusUpdateService;
   private final InvoiceWorkflowDataHolderBuilder holderBuilder;
+  private final BudgetService budgetService;
 
   public InvoiceCancelService(BaseTransactionService baseTransactionService,
                               EncumbranceService encumbranceService,
@@ -59,7 +63,8 @@ public class InvoiceCancelService {
                               OrderLineService orderLineService,
                               OrderService orderService,
                               PoLinePaymentStatusUpdateService poLinePaymentStatusUpdateService,
-                              InvoiceWorkflowDataHolderBuilder holderBuilder) {
+                              InvoiceWorkflowDataHolderBuilder holderBuilder,
+                              BudgetService budgetService) {
     this.baseTransactionService = baseTransactionService;
     this.encumbranceService = encumbranceService;
     this.voucherService = voucherService;
@@ -67,6 +72,7 @@ public class InvoiceCancelService {
     this.orderService = orderService;
     this.poLinePaymentStatusUpdateService = poLinePaymentStatusUpdateService;
     this.holderBuilder = holderBuilder;
+    this.budgetService = budgetService;
   }
 
   /**
@@ -128,8 +134,44 @@ public class InvoiceCancelService {
   private Future<Void> validateBudgetsStatus(Invoice invoice, List<InvoiceLine> lines, RequestContext requestContext) {
     List<InvoiceWorkflowDataHolder> dataHolders = holderBuilder.buildHoldersSkeleton(lines, invoice);
     return holderBuilder.withBudgets(dataHolders, false, requestContext)
+      .compose(holders -> checkBudgetsForUnlinkedEncumbrancesToUnrelease(invoice, lines, requestContext))
       .onFailure(t -> log.error("validateBudgetsStatus:: Could not find an active budget for the invoice with id {}",
         invoice.getId(), t))
+      .mapEmpty();
+  }
+
+  private Future<Void> checkBudgetsForUnlinkedEncumbrancesToUnrelease(Invoice invoice, List<InvoiceLine> invoiceLines,
+      RequestContext requestContext) {
+    var poLineIds = invoiceLines.stream()
+      .map(InvoiceLine::getPoLineId)
+      .distinct()
+      .toList();
+    if (poLineIds.isEmpty()) {
+      return succeededFuture();
+    }
+    var fundIdsFromInvoiceLines = invoiceLines.stream()
+      .filter(InvoiceLine::getReleaseEncumbrance)
+      .map(InvoiceLine::getFundDistributions)
+      .flatMap(Collection::stream)
+      .map(FundDistribution::getFundId)
+      .distinct()
+      .toList();
+    String invoiceFiscalYearId = invoice.getFiscalYearId();
+    return orderLineService.getPoLinesByIdAndQuery(poLineIds, this::queryToGetPoLinesWithRightPaymentStatusByIds, requestContext)
+      .compose(poLines -> selectPoLinesWithOpenOrders(poLines, requestContext))
+      .map(poLines -> poLines.stream()
+          .map(PoLine::getFundDistribution)
+          .flatMap(Collection::stream)
+          .map(org.folio.rest.acq.model.orders.FundDistribution::getFundId)
+          .distinct()
+          .filter(fundId-> !fundIdsFromInvoiceLines.contains(fundId))
+          .toList())
+      .compose(fundIds -> {
+        if (fundIds.isEmpty()) {
+          return succeededFuture();
+        }
+        return budgetService.getBudgetsByFundIds(fundIds, invoiceFiscalYearId, false, requestContext);
+      })
       .mapEmpty();
   }
 
