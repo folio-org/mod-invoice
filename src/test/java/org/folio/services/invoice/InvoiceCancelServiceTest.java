@@ -28,6 +28,7 @@ import static org.folio.rest.impl.ApiTestBase.X_OKAPI_TOKEN;
 import static org.folio.rest.impl.ApiTestBase.X_OKAPI_USER_ID;
 import static org.folio.services.finance.transaction.BaseTransactionServiceTest.X_OKAPI_TENANT;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doReturn;
@@ -61,10 +62,12 @@ import org.folio.rest.acq.model.orders.PurchaseOrderCollection;
 import org.folio.rest.core.RestClient;
 import org.folio.rest.core.models.RequestContext;
 import org.folio.rest.core.models.RequestEntry;
+import org.folio.rest.jaxrs.model.FundDistribution;
 import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.jaxrs.model.InvoiceCollection;
 import org.folio.rest.jaxrs.model.InvoiceLine;
 import org.folio.rest.jaxrs.model.InvoiceLineCollection;
+import org.folio.rest.jaxrs.model.Parameter;
 import org.folio.rest.jaxrs.model.Voucher;
 import org.folio.rest.jaxrs.model.VoucherCollection;
 import org.folio.services.exchange.CacheableExchangeRateService;
@@ -145,8 +148,8 @@ public class InvoiceCancelServiceTest {
       fiscalYearService, fundService, ledgerService, baseTransactionService,
       budgetService, expenseClassRetrieveService, cacheableExchangeRateService);
 
-    cancelService = new InvoiceCancelService(baseTransactionService, encumbranceService,
-      voucherService, orderLineService, orderService, poLinePaymentStatusUpdateService, holderBuilder);
+    cancelService = new InvoiceCancelService(baseTransactionService, encumbranceService, voucherService,
+      orderLineService, orderService, poLinePaymentStatusUpdateService, holderBuilder, budgetService);
   }
 
   @AfterEach
@@ -228,6 +231,59 @@ public class InvoiceCancelServiceTest {
         assertEquals(BUDGET_NOT_FOUND.getDescription(), exception.getMessage());
         vertxTestContext.completeNow();
       });
+  }
+
+  @Test
+  public void errorWithInactiveBudgetInLinkedPol(VertxTestContext vertxTestContext) {
+    String invoiceId = UUID.randomUUID().toString();
+    String fiscalYearId = UUID.randomUUID().toString();
+    String fundId1 = UUID.randomUUID().toString();
+    String fundId2 = UUID.randomUUID().toString();
+    String orderId = UUID.randomUUID().toString();
+    String poLineId = UUID.randomUUID().toString();
+    Invoice invoice = new Invoice()
+      .withId(invoiceId)
+      .withFiscalYearId(fiscalYearId)
+      .withStatus(Invoice.Status.PAID);
+    FundDistribution invoiceLineFundDistribution = new FundDistribution()
+      .withFundId(fundId1);
+    InvoiceLine invoiceLine = new InvoiceLine()
+      .withId(UUID.randomUUID().toString())
+      .withInvoiceId(invoiceId)
+      .withFundDistributions(List.of(invoiceLineFundDistribution))
+      .withPoLineId(poLineId)
+      .withReleaseEncumbrance(true);
+    List<InvoiceLine> invoiceLines = List.of(invoiceLine);
+    Budget budget = new Budget()
+      .withId(UUID.randomUUID().toString())
+      .withBudgetStatus(Budget.BudgetStatus.ACTIVE);
+    var poLineFundDistribution = new org.folio.rest.acq.model.orders.FundDistribution()
+      .withFundId(fundId2);
+    PurchaseOrder order = new PurchaseOrder()
+      .withId(orderId)
+      .withWorkflowStatus(PurchaseOrder.WorkflowStatus.OPEN);
+    PoLine poLine = new PoLine()
+      .withId(poLineId)
+      .withPurchaseOrderId(orderId)
+      .withFundDistribution(List.of(poLineFundDistribution));
+
+    when(restClient.get(any(RequestEntry.class), eq(BudgetCollection.class), eq(requestContext)))
+      .thenReturn(succeededFuture(new BudgetCollection().withBudgets(List.of(budget)).withTotalRecords(1)))
+      .thenReturn(succeededFuture(new BudgetCollection().withBudgets(List.of()).withTotalRecords(0)));
+    when(restClient.get(any(RequestEntry.class), eq(PoLineCollection.class), eq(requestContext)))
+      .thenReturn(succeededFuture(new PoLineCollection().withPoLines(List.of(poLine)).withTotalRecords(1)));
+    when(restClient.get(any(RequestEntry.class), eq(PurchaseOrderCollection.class), eq(requestContext)))
+      .thenReturn(succeededFuture(new PurchaseOrderCollection().withPurchaseOrders(List.of(order)).withTotalRecords(1)));
+
+    Future<Void> future = cancelService.cancelInvoice(invoice, invoiceLines, null, requestContext);
+    assertTrue(future.failed());
+    var exception = (HttpException)future.cause();
+    assertEquals(404, exception.getCode());
+    assertEquals(BUDGET_NOT_FOUND_USING_FISCAL_YEAR_ID.getDescription(), exception.getMessage());
+    List<Parameter> parameters = exception.getErrors().getErrors().getFirst().getParameters();
+    assertEquals(fundId2, parameters.getFirst().getValue());
+    assertEquals(fiscalYearId, parameters.get(1).getValue());
+    vertxTestContext.completeNow();
   }
 
   @Test
