@@ -18,7 +18,6 @@ import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.jaxrs.model.InvoiceLine;
 import org.folio.services.exchange.CacheableExchangeRateService;
 import org.folio.services.finance.FundService;
-import org.folio.services.finance.LedgerService;
 import org.folio.services.finance.budget.BudgetService;
 import org.folio.services.finance.expence.ExpenseClassRetrieveService;
 import org.folio.services.finance.fiscalyear.FiscalYearService;
@@ -77,13 +76,12 @@ public class InvoiceWorkFlowDataHolderBuilderTest {
     okapiHeaders.put(X_OKAPI_USER_ID.getName(), X_OKAPI_USER_ID.getValue());
     FiscalYearService fiscalYearService = new FiscalYearService(restClient);
     FundService fundService = new FundService(restClient);
-    LedgerService ledgerService = new LedgerService(restClient);
     BaseTransactionService baseTransactionService = new BaseTransactionService(restClient);
     BudgetService budgetService = new BudgetService(restClient);
     ExpenseClassRetrieveService expenseClassRetrieveService = new ExpenseClassRetrieveService(restClient);
     CacheableExchangeRateService cacheableExchangeRateService = new CacheableExchangeRateService(restClient);
     invoiceWorkflowDataHolderBuilder = new InvoiceWorkflowDataHolderBuilder(
-      fiscalYearService, fundService, ledgerService, baseTransactionService,
+      fiscalYearService, fundService, baseTransactionService,
       budgetService, expenseClassRetrieveService, cacheableExchangeRateService);
   }
 

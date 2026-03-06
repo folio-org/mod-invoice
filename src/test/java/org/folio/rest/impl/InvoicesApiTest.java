@@ -15,7 +15,6 @@ import static org.folio.invoices.utils.ErrorCodes.ADJUSTMENT_FUND_DISTRIBUTIONS_
 import static org.folio.invoices.utils.ErrorCodes.BUDGET_NOT_FOUND;
 import static org.folio.invoices.utils.ErrorCodes.EXTERNAL_ACCOUNT_NUMBER_IS_MISSING;
 import static org.folio.invoices.utils.ErrorCodes.FUNDS_NOT_FOUND;
-import static org.folio.invoices.utils.ErrorCodes.FUND_CANNOT_BE_PAID;
 import static org.folio.invoices.utils.ErrorCodes.FUND_DISTRIBUTIONS_NOT_PRESENT;
 import static org.folio.invoices.utils.ErrorCodes.GENERIC_ERROR_CODE;
 import static org.folio.invoices.utils.ErrorCodes.INCORRECT_FUND_DISTRIBUTION_TOTAL;
@@ -122,7 +121,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -829,31 +827,6 @@ public class InvoicesApiTest extends ApiTestBase {
     var expectedVoucherAmount = Money.of(invLineWithRecalculatedTotals.getTotal(), invoice.getCurrency()).multiply(conversionFactor).getNumber().doubleValue();
     assertEquals(expectedVoucherAmount, voucher.getAmount());
     assertEquals(expectedVoucherAmount, voucherLinesTotal);
-  }
-
-  @Test
-  void testTransitionFromOpenToApprovedWithNotEnoughMoney() {
-    Invoice reqData = getMockAsJson(OPEN_INVOICE_SAMPLE_PATH).mapTo(Invoice.class);
-    String id = reqData.getId();
-    InvoiceLine invoiceLine = getMinimalContentInvoiceLine(id);
-    invoiceLine.setSubTotal(60d);
-    invoiceLine.setId(UUID.randomUUID().toString());
-    FundDistribution amountDistribution = new FundDistribution()
-      .withFundId(FUND_ID_WITH_NOT_ENOUGH_AMOUNT_IN_BUDGET)
-      .withDistributionType(AMOUNT)
-      .withValue(60d);
-
-    invoiceLine.getFundDistributions().add(amountDistribution);
-
-    addMockEntry(INVOICE_LINES, JsonObject.mapFrom(invoiceLine));
-
-    reqData.setStatus(Invoice.Status.APPROVED);
-
-    String jsonBody = JsonObject.mapFrom(reqData).encode();
-    Headers headers = prepareHeaders(X_OKAPI_URL, X_OKAPI_TENANT, X_OKAPI_TOKEN, X_OKAPI_USER_ID);
-    Errors errors = verifyPut(String.format(INVOICE_ID_PATH, id), jsonBody, headers, APPLICATION_JSON, 422).as(Errors.class);
-    assertThat(errors.getErrors().getFirst().getCode(), equalTo(FUND_CANNOT_BE_PAID.getCode()));
-    assertThat(errors.getErrors().getFirst().getMessage(), equalTo(FUND_CANNOT_BE_PAID.getDescription()));
   }
 
   @Test

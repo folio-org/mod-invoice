@@ -20,7 +20,6 @@ import org.folio.rest.jaxrs.model.FiscalYear;
 import org.folio.rest.jaxrs.model.FiscalYearCollection;
 import org.folio.services.exchange.CacheableExchangeRateService;
 import org.folio.services.finance.FundService;
-import org.folio.services.finance.LedgerService;
 import org.folio.services.finance.budget.BudgetService;
 import org.folio.services.finance.expence.ExpenseClassRetrieveService;
 import org.folio.services.finance.fiscalyear.FiscalYearService;
@@ -72,13 +71,12 @@ public class InvoiceFiscalYearsServiceTest {
     closeable = MockitoAnnotations.openMocks(this);
     FiscalYearService fiscalYearService = new FiscalYearService(restClient);
     FundService fundService = new FundService(restClient);
-    LedgerService ledgerService = new LedgerService(restClient);
     BaseTransactionService baseTransactionService = new BaseTransactionService(restClient);
     BudgetService budgetService = new BudgetService(restClient);
     ExpenseClassRetrieveService expenseClassRetrieveService = new ExpenseClassRetrieveService(restClient);
     CacheableExchangeRateService cacheableExchangeRateService = new CacheableExchangeRateService(restClient);
     InvoiceWorkflowDataHolderBuilder invoiceWorkflowDataHolderBuilder = new InvoiceWorkflowDataHolderBuilder(
-      fiscalYearService, fundService, ledgerService, baseTransactionService,
+      fiscalYearService, fundService, baseTransactionService,
       budgetService, expenseClassRetrieveService, cacheableExchangeRateService);
     invoiceFiscalYearsService = new InvoiceFiscalYearsService(invoiceWorkflowDataHolderBuilder, budgetService, fiscalYearService);
   }

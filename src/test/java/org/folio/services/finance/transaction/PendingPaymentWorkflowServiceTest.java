@@ -2,6 +2,8 @@ package org.folio.services.finance.transaction;
 
 import static io.vertx.core.Future.failedFuture;
 import static io.vertx.core.Future.succeededFuture;
+import static org.folio.invoices.utils.ResourcePathResolver.FINANCE_BATCH_TRANSACTIONS;
+import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
 import static org.folio.rest.acq.model.finance.Encumbrance.Status.RELEASED;
 import static org.folio.rest.acq.model.finance.Encumbrance.Status.UNRELEASED;
 import static org.folio.rest.acq.model.finance.Transaction.TransactionType.ENCUMBRANCE;
@@ -17,7 +19,6 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -53,7 +54,6 @@ import org.folio.rest.jaxrs.model.FundDistribution;
 import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.jaxrs.model.InvoiceLine;
 import org.folio.services.exchange.CustomExchangeRateProvider;
-import org.folio.services.validator.FundAvailabilityHolderValidator;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -68,8 +68,6 @@ public class PendingPaymentWorkflowServiceTest {
   @Mock
   private RestClient restClient;
   @Mock
-  private FundAvailabilityHolderValidator fundAvailabilityValidator;
-  @Mock
   private EncumbranceService encumbranceService;
   @Mock
   private RequestContext requestContext;
@@ -81,8 +79,7 @@ public class PendingPaymentWorkflowServiceTest {
   public void init() {
     mockitoMocks = MockitoAnnotations.openMocks(this);
     BaseTransactionService baseTransactionService = new BaseTransactionService(restClient);
-    pendingPaymentWorkflowService = new PendingPaymentWorkflowService(baseTransactionService, encumbranceService,
-      fundAvailabilityValidator);
+    pendingPaymentWorkflowService = new PendingPaymentWorkflowService(baseTransactionService, encumbranceService);
   }
 
   @AfterEach
@@ -180,24 +177,26 @@ public class PendingPaymentWorkflowServiceTest {
     holders.add(holder1);
     holders.add(holder2);
 
-    doNothing().when(fundAvailabilityValidator).validate(anyList());
     when(restClient.postEmptyResponse(any(), any(), any())).thenReturn(succeededFuture());
 
     when(requestContext.getContext()).thenReturn(Vertx.vertx().getOrCreateContext());
 
     pendingPaymentWorkflowService.handlePendingPaymentsUpdate(holders, requestContext);
 
-    ArgumentCaptor<List<InvoiceWorkflowDataHolder>> argumentCaptor = ArgumentCaptor.forClass(List.class);
-    verify(fundAvailabilityValidator).validate(argumentCaptor.capture());
-    assertThat(argumentCaptor.getValue(), hasSize(2));
-    List<InvoiceWorkflowDataHolder> holdersWithNewTransactions = argumentCaptor.getValue();
-    Transaction newInvoiceTransaction = holdersWithNewTransactions.stream()
-            .map(InvoiceWorkflowDataHolder::getNewTransaction)
+    ArgumentCaptor<Batch> transactionArgumentCaptor = ArgumentCaptor.forClass(Batch.class);
+    verify(restClient, times(1))
+      .postEmptyResponse(anyString(), transactionArgumentCaptor.capture(), eq(requestContext));
+    Batch batch = transactionArgumentCaptor.getValue();
+    List<Transaction> transactions = batch.getTransactionsToUpdate();
+    assertThat(transactions, hasSize(2));
+
+    Transaction newInvoiceTransaction = transactions.stream()
       .filter(transaction -> Objects.isNull(transaction.getSourceInvoiceLineId())).findFirst().orElseThrow();
-    Transaction newInvoiceLineTransaction = holdersWithNewTransactions.stream().map(InvoiceWorkflowDataHolder::getNewTransaction)
+    Transaction newInvoiceLineTransaction = transactions.stream()
       .filter(transaction -> Objects.nonNull(transaction.getSourceInvoiceLineId())).findFirst().orElseThrow();
 
     double expectedInvoiceLineTransactionAmount = BigDecimal.valueOf(60).multiply(BigDecimal.valueOf(exchangeRate)).doubleValue();
+    assertEquals(existingInvoiceLineTransaction.getId(), newInvoiceLineTransaction.getId());
     assertEquals(expectedInvoiceLineTransactionAmount, newInvoiceLineTransaction.getAmount());
     assertEquals(fundId, newInvoiceLineTransaction.getFromFundId());
     assertEquals(fiscalYearId, newInvoiceLineTransaction.getFiscalYearId());
@@ -207,6 +206,7 @@ public class PendingPaymentWorkflowServiceTest {
     assertEquals(Transaction.Source.INVOICE, newInvoiceLineTransaction.getSource());
 
     double expectedInvoiceTransactionAmount = BigDecimal.valueOf(30.5).multiply(BigDecimal.valueOf(exchangeRate)).doubleValue();
+    assertEquals(existingInvoiceTransaction.getId(), newInvoiceTransaction.getId());
     assertEquals(expectedInvoiceTransactionAmount, newInvoiceTransaction.getAmount());
     assertEquals(fundId, newInvoiceTransaction.getFromFundId());
     assertEquals(fiscalYearId, newInvoiceTransaction.getFiscalYearId());
@@ -214,25 +214,62 @@ public class PendingPaymentWorkflowServiceTest {
     assertNull(newInvoiceTransaction.getSourceInvoiceLineId());
     assertEquals(PENDING_PAYMENT, newInvoiceTransaction.getTransactionType());
     assertEquals(Transaction.Source.INVOICE, newInvoiceTransaction.getSource());
+  }
 
-    ArgumentCaptor<Batch> transactionArgumentCaptor = ArgumentCaptor.forClass(Batch.class);
-    verify(restClient, times(1))
-      .postEmptyResponse(anyString(), transactionArgumentCaptor.capture(), eq(requestContext));
-    Batch batch = transactionArgumentCaptor.getValue();
-    List<Transaction> transactions = batch.getTransactionsToUpdate();
-    assertThat(transactions, hasSize(2));
+  @Test
+  void forwardExceptionWhenUpdatingPendingPayments() {
+    String fiscalYearId = UUID.randomUUID().toString();
+    String fundId = UUID.randomUUID().toString();
+    String invoiceId = UUID.randomUUID().toString();
+    String invoiceLineId = UUID.randomUUID().toString();
+    String poLineId = UUID.randomUUID().toString();
+    FiscalYear fiscalYear = new FiscalYear()
+      .withId(fiscalYearId)
+      .withCurrency("USD");
+    FundDistribution fundDistribution = new FundDistribution()
+      .withDistributionType(FundDistribution.DistributionType.AMOUNT)
+      .withFundId(fundId)
+      .withValue(1.0);
+    Invoice invoice = new Invoice()
+      .withId(invoiceId)
+      .withSubTotal(50d)
+      .withCurrency("EUR")
+      .withFiscalYearId(fiscalYearId);
+    InvoiceLine invoiceLine = new InvoiceLine()
+      .withSubTotal(60d)
+      .withTotal(60d)
+      .withId(invoiceLineId)
+      .withPoLineId(poLineId);
+    double exchangeRate = 1.3;
+    ConversionQuery conversionQuery = ConversionQueryBuilder.of()
+      .setTermCurrency(CURRENCY_DEFAULT).set(RATE_KEY, exchangeRate).build();
+    ExchangeRateProvider exchangeRateProvider = new CustomExchangeRateProvider();
+    CurrencyConversion conversion = exchangeRateProvider.getCurrencyConversion(conversionQuery);
+    InvoiceWorkflowDataHolder holder = new InvoiceWorkflowDataHolder()
+      .withFundDistribution(fundDistribution)
+      .withInvoice(invoice)
+      .withInvoiceLine(invoiceLine)
+      .withConversion(conversion)
+      .withFiscalYear(fiscalYear);
+    List<InvoiceWorkflowDataHolder> holders = List.of(holder);
 
-    Transaction updateArgumentInvoiceTransaction = transactions.stream()
-      .filter(transaction -> Objects.isNull(transaction.getSourceInvoiceLineId())).findFirst().orElseThrow();
+    when(restClient.postEmptyResponse(eq(resourcesPath(FINANCE_BATCH_TRANSACTIONS)), any(), eq(requestContext)))
+      .thenAnswer(invocation -> {
+        // simulate an error coming from mod-finance-storage
+        Error error = new Error()
+          .withCode("budgetRestrictedExpendituresError")
+          .withMessage("Expenditure restriction does not allow this operation");
+        return failedFuture(new HttpException(422, error));
+      });
 
-    assertEquals(existingInvoiceTransaction.getId(), updateArgumentInvoiceTransaction.getId());
-    assertEquals(expectedInvoiceTransactionAmount, updateArgumentInvoiceTransaction.getAmount());
+    Future<Void> future = pendingPaymentWorkflowService.handlePendingPaymentsUpdate(holders, requestContext);
 
-    Transaction updateArgumentInvoiceLineTransaction = transactions.stream()
-      .filter(transaction -> Objects.nonNull(transaction.getSourceInvoiceLineId())).findFirst().orElseThrow();
-
-    assertEquals(existingInvoiceLineTransaction.getId(), updateArgumentInvoiceLineTransaction.getId());
-    assertEquals(expectedInvoiceLineTransactionAmount, updateArgumentInvoiceLineTransaction.getAmount());
+    assertTrue(future.failed());
+    HttpException httpException = (HttpException) future.cause();
+    assertEquals(422, httpException.getCode());
+    Error error = httpException.getErrors().getErrors().getFirst();
+    assertEquals("budgetRestrictedExpendituresError", error.getCode());
+    assertEquals("Expenditure restriction does not allow this operation", error.getMessage());
   }
 
   @Test
@@ -277,8 +314,7 @@ public class PendingPaymentWorkflowServiceTest {
         .withEncumbrance(new Encumbrance()
           .withStatus(UNRELEASED));
 
-    doNothing().when(fundAvailabilityValidator).validate(anyList());
-    when(restClient.postEmptyResponse(anyString(), any(), eq(requestContext)))
+    when(restClient.postEmptyResponse(eq(resourcesPath(FINANCE_BATCH_TRANSACTIONS)), any(), eq(requestContext)))
       .thenAnswer(invocation -> {
         // fail when creating pending payments and updating encumbrances
         return failedFuture(new Exception("test"));
@@ -288,6 +324,8 @@ public class PendingPaymentWorkflowServiceTest {
 
     Future<List<InvoiceWorkflowDataHolder>> future = pendingPaymentWorkflowService.handlePendingPaymentsCreation(
       dataHolders, invoice, requestContext);
+
+    assertTrue(future.failed());
     assertEquals("Failed to create pending payments", future.cause().getMessage());
     HttpException httpException = (HttpException) future.cause();
     Error error = httpException.getErrors().getErrors().getFirst();

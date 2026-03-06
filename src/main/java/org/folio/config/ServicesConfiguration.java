@@ -13,7 +13,6 @@ import org.folio.services.adjusment.AdjustmentsService;
 import org.folio.services.caches.CommonSettingsCache;
 import org.folio.services.exchange.CacheableExchangeRateService;
 import org.folio.services.finance.FundService;
-import org.folio.services.finance.LedgerService;
 import org.folio.services.finance.budget.BudgetExpenseClassService;
 import org.folio.services.finance.budget.BudgetService;
 import org.folio.services.finance.expence.ExpenseClassRetrieveService;
@@ -33,7 +32,6 @@ import org.folio.services.invoice.InvoiceService;
 import org.folio.services.invoice.PoLinePaymentStatusUpdateService;
 import org.folio.services.order.OrderLineService;
 import org.folio.services.order.OrderService;
-import org.folio.services.validator.FundAvailabilityHolderValidator;
 import org.folio.services.validator.InvoiceValidator;
 import org.folio.services.validator.VoucherValidator;
 import org.folio.services.voucher.BatchVoucherExportConfigService;
@@ -72,11 +70,6 @@ public class ServicesConfiguration {
   }
 
   @Bean
-  LedgerService ledgerService(RestClient restClient) {
-    return new LedgerService(restClient);
-  }
-
-  @Bean
   CurrentFiscalYearService currentFiscalYearService(RestClient restClient, FundService fundService) {
     return new CurrentFiscalYearService(restClient, fundService);
   }
@@ -88,19 +81,13 @@ public class ServicesConfiguration {
 
   @Bean
   PendingPaymentWorkflowService pendingPaymentService(BaseTransactionService baseTransactionService,
-                                                      EncumbranceService encumbranceService,
-                                                      FundAvailabilityHolderValidator fundAvailabilityValidator) {
-    return new PendingPaymentWorkflowService(baseTransactionService, encumbranceService, fundAvailabilityValidator);
+                                                      EncumbranceService encumbranceService) {
+    return new PendingPaymentWorkflowService(baseTransactionService, encumbranceService);
   }
 
   @Bean
   PaymentCreditWorkflowService paymentCreditService(BaseTransactionService baseTransactionService) {
     return new PaymentCreditWorkflowService(baseTransactionService);
-  }
-
-  @Bean
-  FundAvailabilityHolderValidator budgetValidationService() {
-    return new FundAvailabilityHolderValidator();
   }
 
   @Bean
@@ -128,12 +115,11 @@ public class ServicesConfiguration {
   @Bean
   InvoiceWorkflowDataHolderBuilder holderBuilder(FiscalYearService fiscalYearService,
                                                  FundService fundService,
-                                                 LedgerService ledgerService,
                                                  BaseTransactionService baseTransactionService,
                                                  BudgetService budgetService,
                                                  ExpenseClassRetrieveService expenseClassRetrieveService,
                                                  CacheableExchangeRateService cacheableExchangeRateService) {
-    return new InvoiceWorkflowDataHolderBuilder(fiscalYearService, fundService, ledgerService,
+    return new InvoiceWorkflowDataHolderBuilder(fiscalYearService, fundService,
       baseTransactionService, budgetService, expenseClassRetrieveService, cacheableExchangeRateService);
   }
 
