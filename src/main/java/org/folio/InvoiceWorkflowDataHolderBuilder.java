@@ -4,7 +4,6 @@ import static io.vertx.core.Future.succeededFuture;
 import static java.util.stream.Collectors.groupingBy;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toMap;
-import static java.util.stream.Collectors.toSet;
 import static org.apache.commons.lang3.StringUtils.isEmpty;
 import static org.folio.invoices.utils.ErrorCodes.MULTIPLE_FISCAL_YEARS;
 
@@ -25,7 +24,6 @@ import org.folio.models.InvoiceWorkflowDataHolder;
 import org.folio.rest.acq.model.finance.Budget;
 import org.folio.rest.acq.model.finance.ExpenseClass;
 import org.folio.rest.acq.model.finance.Fund;
-import org.folio.rest.acq.model.finance.Ledger;
 import org.folio.rest.acq.model.finance.Transaction;
 import org.folio.rest.acq.model.finance.TransactionCollection;
 import org.folio.rest.core.models.RequestContext;
@@ -36,7 +34,6 @@ import org.folio.rest.jaxrs.model.InvoiceLine;
 import org.folio.services.exchange.CacheableExchangeRateService;
 import org.folio.services.exchange.CustomExchangeRateProvider;
 import org.folio.services.finance.FundService;
-import org.folio.services.finance.LedgerService;
 import org.folio.services.finance.budget.BudgetService;
 import org.folio.services.finance.expence.ExpenseClassRetrieveService;
 import org.folio.services.finance.fiscalyear.FiscalYearService;
@@ -50,7 +47,6 @@ public class InvoiceWorkflowDataHolderBuilder {
 
   private final FiscalYearService fiscalYearService;
   private final FundService fundService;
-  private final LedgerService ledgerService;
   private final BaseTransactionService baseTransactionService;
   private final BudgetService budgetService;
   private final ExpenseClassRetrieveService expenseClassRetrieveService;
@@ -58,14 +54,12 @@ public class InvoiceWorkflowDataHolderBuilder {
 
   public InvoiceWorkflowDataHolderBuilder(FiscalYearService fiscalYearService,
                                           FundService fundService,
-                                          LedgerService ledgerService,
                                           BaseTransactionService baseTransactionService,
                                           BudgetService budgetService,
                                           ExpenseClassRetrieveService expenseClassRetrieveService,
                                           CacheableExchangeRateService cacheableExchangeRateService) {
     this.fiscalYearService = fiscalYearService;
     this.fundService = fundService;
-    this.ledgerService = ledgerService;
     this.baseTransactionService = baseTransactionService;
     this.budgetService = budgetService;
     this.expenseClassRetrieveService = expenseClassRetrieveService;
@@ -78,7 +72,6 @@ public class InvoiceWorkflowDataHolderBuilder {
                                                                       RequestContext requestContext) {
     List<InvoiceWorkflowDataHolder> dataHolders = buildHoldersSkeleton(invoiceLines, invoice);
     return withFunds(dataHolders, requestContext)
-      .compose(holders -> withLedgers(holders, requestContext))
       .compose(holders -> withBudgets(holders, ignoreMissingBudgets, requestContext))
       .compose(holders -> {
         if (ignoreMissingBudgets) {
@@ -138,15 +131,6 @@ public class InvoiceWorkflowDataHolderBuilder {
         fund.getId(), existingCode, actualFundCode);
     }
     fundDistribution.setCode(actualFundCode);
-  }
-
-  public Future<List<InvoiceWorkflowDataHolder>> withLedgers(List<InvoiceWorkflowDataHolder> holders, RequestContext requestContext) {
-    List<String> ledgerIds = holders.stream().map(InvoiceWorkflowDataHolder::getLedgerId).distinct().collect(toList());
-    return ledgerService.retrieveRestrictedLedgersByIds(ledgerIds, requestContext)
-      .map(ledgers -> ledgers.stream().map(Ledger::getId).collect(toSet()))
-      .map(ids -> holders.stream()
-        .map(holder -> holder.withRestrictExpenditures(ids.contains(holder.getLedgerId())))
-        .collect(toList()));
   }
 
   public Future<List<InvoiceWorkflowDataHolder>> withBudgets(List<InvoiceWorkflowDataHolder> holders,

@@ -78,7 +78,6 @@ import org.folio.services.invoice.InvoiceIdStorageServiceTest;
 import org.folio.services.invoice.PoLinePaymentStatusUpdateServiceTest;
 import org.folio.services.order.OrderLineServiceTest;
 import org.folio.services.order.OrderServiceTest;
-import org.folio.services.validator.FundAvailabilityHolderValidatorTest;
 import org.folio.services.validator.InvoiceLineHolderValidatorTest;
 import org.folio.services.validator.InvoiceValidatorServiceTest;
 import org.folio.services.validator.ProtectedFieldsValidatorTest;
@@ -341,10 +340,6 @@ public class ApiTestSuite {
 
   @Nested
   class CustomExchangeRateProviderNested extends CustomExchangeRateProviderTest {
-  }
-
-  @Nested
-  class FundAvailabilityHolderValidatorTestNested extends FundAvailabilityHolderValidatorTest {
   }
 
   @Nested
