@@ -7,7 +7,6 @@ import java.util.Optional;
 
 import javax.money.convert.CurrencyConversion;
 
-import org.folio.rest.acq.model.Organization;
 import org.folio.rest.acq.model.finance.Budget;
 import org.folio.rest.acq.model.finance.ExpenseClass;
 import org.folio.rest.acq.model.finance.FiscalYear;
@@ -21,7 +20,6 @@ import org.folio.rest.jaxrs.model.InvoiceLine;
 public class InvoiceWorkflowDataHolder {
 
     private Budget budget;
-    private boolean restrictExpenditures;
     private FiscalYear fiscalYear;
     private InvoiceLine invoiceLine;
     private FundDistribution fundDistribution;
@@ -32,7 +30,6 @@ public class InvoiceWorkflowDataHolder {
     private Transaction newTransaction;
     private Transaction existingTransaction;
     private CurrencyConversion conversion;
-    private Organization organization;
 
     public String getLedgerId() {
         return fund.getLedgerId();
@@ -116,15 +113,6 @@ public class InvoiceWorkflowDataHolder {
         return fund;
     }
 
-    public boolean isRestrictExpenditures() {
-        return restrictExpenditures;
-    }
-
-    public InvoiceWorkflowDataHolder withRestrictExpenditures(boolean restrictExpenditures) {
-        this.restrictExpenditures = restrictExpenditures;
-        return this;
-    }
-
     public String getExpenseClassId() {
         return fundDistribution.getExpenseClassId();
     }
@@ -180,13 +168,4 @@ public class InvoiceWorkflowDataHolder {
         this.conversion = conversion;
         return this;
     }
-
-  public InvoiceWorkflowDataHolder withOrganization(Organization organization) {
-    this.organization = organization;
-    return this;
-  }
-
-  public Organization getOrganization() {
-    return organization;
-  }
 }
