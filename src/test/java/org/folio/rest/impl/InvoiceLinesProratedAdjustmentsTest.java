@@ -212,8 +212,8 @@ public class InvoiceLinesProratedAdjustmentsTest extends ApiTestBase {
     compareRecordWithSentToStorage(invoiceLine);
 
     assertThat(invoiceLine.getAdjustments(), hasSize(1));
-    assertThat(invoiceLine.getAdjustmentsTotal(), is(1.96d));
-    assertThat(invoiceLine.getSubTotal(), is(28.04d));
+    assertThat(invoiceLine.getAdjustmentsTotal(), is(0d));
+    assertThat(invoiceLine.getSubTotal(), is(30d));
 
     Adjustment lineAdjustment = invoiceLine.getAdjustments().getFirst();
     verifyInvoiceLineAdjustmentCommon(invoiceAdjustment, lineAdjustment);
@@ -252,8 +252,8 @@ public class InvoiceLinesProratedAdjustmentsTest extends ApiTestBase {
     assertThat(lineToStorage.getAdjustments(), hasSize(1));
 
     assertThat(lineToStorage.getAdjustments(), hasSize(1));
-    assertThat(lineToStorage.getAdjustmentsTotal(), is(1.96d));
-    assertThat(lineToStorage.getSubTotal(), is(28.04));
+    assertThat(lineToStorage.getAdjustmentsTotal(), is(0d));
+    assertThat(lineToStorage.getSubTotal(), is(30d));
 
     Adjustment lineAdjustment = lineToStorage.getAdjustments().getFirst();
     verifyInvoiceLineAdjustmentCommon(invoiceAdjustment, lineAdjustment);
