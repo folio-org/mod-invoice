@@ -13,7 +13,6 @@ import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
 import java.util.Objects;
-import java.util.UUID;
 import java.util.function.BiFunction;
 import java.util.function.Predicate;
 
@@ -21,7 +20,6 @@ import javax.money.CurrencyUnit;
 import javax.money.Monetary;
 import javax.money.MonetaryAmount;
 
-import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.rest.jaxrs.model.Adjustment;
@@ -62,13 +60,12 @@ public class AdjustmentsService {
     CurrencyUnit currencyUnit = Monetary.getCurrency(invoice.getCurrency());
     sortByInvoiceLineNumber(lines);
     List<InvoiceLine> updatedProratedLines = new ArrayList<>();
-    List<InvoiceLine> updatedLinesWithAdjustments = updateLinesWithIncludedInAdjustments(lines, currencyUnit);
     List<Adjustment> proratedAdjustments = getProratedAdjustments(invoice);
     for (Adjustment adjustment : proratedAdjustments) {
       List<InvoiceLine> updatedLinesByProrate = switch (adjustment.getProrate()) {
-        case BY_LINE -> applyProratedAdjustmentByLines(adjustment, updatedLinesWithAdjustments, currencyUnit);
-        case BY_AMOUNT -> applyProratedAdjustmentByAmountWithIncludedIn(adjustment, updatedLinesWithAdjustments, currencyUnit);
-        case BY_QUANTITY -> applyProratedAdjustmentByQuantity(adjustment, updatedLinesWithAdjustments, currencyUnit);
+        case BY_LINE -> applyProratedAdjustmentByLines(adjustment, lines, currencyUnit);
+        case BY_AMOUNT -> applyProratedAdjustmentByAmount(adjustment, lines, currencyUnit);
+        case BY_QUANTITY -> applyProratedAdjustmentByQuantity(adjustment, lines, currencyUnit);
         default -> {
           logger.warn("Unexpected {} adjustment's prorate type for invoice with id={}", adjustment.getProrate(), invoice.getId());
           yield List.of();
@@ -84,50 +81,6 @@ public class AdjustmentsService {
 
   public List<Adjustment> getPendingInvoiceLineAdjustments(InvoiceLine invoiceLine) {
     return invoiceLine.getAdjustments().stream().filter(adjustment -> Objects.isNull(adjustment.getId())).toList();
-  }
-
-  private List<InvoiceLine> updateLinesWithIncludedInAdjustments(List<InvoiceLine> lines, CurrencyUnit currencyUnit) {
-    List<InvoiceLine> updatedLinesWithAdjustments = new ArrayList<>();
-    for (InvoiceLine line : lines) {
-      List<Adjustment> updatedAdjustments = new ArrayList<>();
-      for (Adjustment adjustment : line.getAdjustments()) {
-        if (isIncludedInOnInvoiceLineLevel(adjustment)) {
-          updatedAdjustments.add(addIncludedInAdjustment(currencyUnit, line, adjustment));
-        } else {
-          updatedAdjustments.add(adjustment);
-        }
-      }
-      line.withAdjustments(updatedAdjustments);
-      updatedLinesWithAdjustments.add(line);
-    }
-    return updatedLinesWithAdjustments;
-  }
-
-  private Adjustment addIncludedInAdjustment(CurrencyUnit currencyUnit, InvoiceLine line, Adjustment adjustment) {
-    Adjustment preparedAdjustment = prepareIncludedInAdjustmentValue(adjustment, currencyUnit, line);
-    // Invoice Line level adjustment have both id and adjustmentId not populated and to distinguish
-    // them from the Invoice level adjustments, their id always matches their adjustmentId
-    if (StringUtils.isEmpty(adjustment.getId())) {
-      preparedAdjustment.setId(UUID.randomUUID().toString());
-    }
-    if (StringUtils.isEmpty(adjustment.getAdjustmentId())) {
-      preparedAdjustment.withAdjustmentId(preparedAdjustment.getId());
-    }
-    return preparedAdjustment;
-  }
-
-  private boolean isIncludedInOnInvoiceLineLevel(Adjustment adjustment) {
-    return adjustment.getRelationToTotal() == Adjustment.RelationToTotal.INCLUDED_IN
-      && StringUtils.isEmpty(adjustment.getId()) && StringUtils.isEmpty(adjustment.getAdjustmentId());
-  }
-
-  private List<InvoiceLine> applyProratedAdjustmentByAmountWithIncludedIn(Adjustment adjustment, List<InvoiceLine> lines,
-                                                                          CurrencyUnit currencyUnit) {
-    if (adjustment.getRelationToTotal() == Adjustment.RelationToTotal.INCLUDED_IN) {
-      return applyProratedAmountTypeIncludedInAdjustments(adjustment, lines, currencyUnit);
-    } else {
-      return applyProratedAdjustmentByAmount(adjustment, lines, currencyUnit);
-    }
   }
 
   public void processProratedAdjustments(List<InvoiceLine> lines, Invoice invoice) {
@@ -192,7 +145,13 @@ public class AdjustmentsService {
     MonetaryAmount subTotal = summarizeSubTotals(lines, currencyUnit, false);
     Adjustment amountAdjustment = JsonObject.mapFrom(adjustment)
       .mapTo(adjustment.getClass());
-    amountAdjustment.setValue(subTotal.with(MonetaryOperators.percent(adjustment.getValue())).with(Monetary.getDefaultRounding()).getNumber().doubleValue());
+    MonetaryAmount amount;
+    if (adjustment.getRelationToTotal() == Adjustment.RelationToTotal.INCLUDED_IN) {
+      amount = subTotal.multiply(adjustment.getValue()).divide(100 + adjustment.getValue()).with(Monetary.getDefaultRounding());
+    } else {
+      amount = subTotal.with(MonetaryOperators.percent(adjustment.getValue())).with(Monetary.getDefaultRounding());
+    }
+    amountAdjustment.setValue(amount.getNumber().doubleValue());
     amountAdjustment.setType(Adjustment.Type.AMOUNT);
     return amountAdjustment;
   }
@@ -244,48 +203,6 @@ public class AdjustmentsService {
     }
 
     return updatedLines;
-  }
-
-  private List<InvoiceLine> applyProratedAmountTypeIncludedInAdjustments(Adjustment adjustment, List<InvoiceLine> lines,
-                                                                         CurrencyUnit currencyUnit) {
-    List<InvoiceLine> updatedLines = new ArrayList<>();
-    for (InvoiceLine line : lines) {
-      if (hasAdjustmentOnInvoiceLine(adjustment, line)) {
-        continue;
-      }
-      Adjustment preparedAdjustment = prepareIncludedInAdjustmentValue(adjustment, currencyUnit, line);
-      if (addAdjustmentToLine(line.getAdjustments(), preparedAdjustment)) {
-        updatedLines.add(line);
-      }
-    }
-    return updatedLines;
-  }
-
-  private boolean hasAdjustmentOnInvoiceLine(Adjustment adjustment, InvoiceLine line) {
-    boolean foundByAdjustmentId = line.getAdjustments().stream()
-      .map(Adjustment::getAdjustmentId)
-      .filter(Objects::nonNull)
-      .anyMatch(lineAdjustmentId -> lineAdjustmentId.equals(adjustment.getId()));
-
-    return Objects.nonNull(adjustment.getId()) && foundByAdjustmentId;
-  }
-
-  private Adjustment prepareIncludedInAdjustmentValue(Adjustment adjustment, CurrencyUnit currencyUnit, InvoiceLine line) {
-    MonetaryAmount lineSubtotal = Money.of(line.getSubTotal(), currencyUnit);
-
-    MonetaryAmount amountAdjustmentValue = lineSubtotal
-      .multiply(adjustment.getValue())
-      .divide(Money.of(100, currencyUnit)
-        .add(Money.of(adjustment.getValue(), currencyUnit)).getNumber().doubleValue())
-      .with(Monetary.getDefaultRounding());
-
-    Adjustment preparedAdjustment = prepareAdjustmentForLine(adjustment.withType(Adjustment.Type.AMOUNT))
-      .withValue(amountAdjustmentValue.getNumber().doubleValue());
-
-    line.withSubTotal(lineSubtotal.subtract(amountAdjustmentValue).getNumber().doubleValue());
-    line.withAdjustmentsTotal(amountAdjustmentValue.getNumber().doubleValue());
-
-    return preparedAdjustment;
   }
 
   /**

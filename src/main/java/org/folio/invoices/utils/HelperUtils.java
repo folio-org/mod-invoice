@@ -109,8 +109,7 @@ public class HelperUtils {
   public static MonetaryAmount calculateAdjustmentsTotal(List<Adjustment> adjustments, MonetaryAmount subTotal) {
     return adjustments.stream()
       // Only allow "Included In" in the calculation if its adjustmentId is not empty (i.e. excluded Invoice level template-like adjustments)
-      .filter(adj -> adj.getRelationToTotal() == Adjustment.RelationToTotal.IN_ADDITION_TO
-        || (adj.getRelationToTotal() == Adjustment.RelationToTotal.INCLUDED_IN && StringUtils.isNotEmpty(adj.getAdjustmentId())))
+      .filter(adj -> adj.getRelationToTotal() == Adjustment.RelationToTotal.IN_ADDITION_TO)
       .map(adj -> calculateAdjustment(adj, subTotal))
       .collect(MonetaryFunctions.summarizingMonetary(subTotal.getCurrency()))
       .getSum()
@@ -210,10 +209,6 @@ public class HelperUtils {
       return futures;
     });
     return promise.future().compose(HelperUtils::collectResultsOnSuccess);
-  }
-
-  public interface FunctionReturningFuture<I, O> {
-    Future<O> apply(I item);
   }
 
   public static double calculateVoucherAmount(Voucher voucher, List<VoucherLine> voucherLines) {

@@ -25,6 +25,7 @@ import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.nullValue;
 import static org.hamcrest.collection.IsCollectionWithSize.hasSize;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.vertx.junit5.VertxExtension;
 import java.util.ArrayList;
@@ -1049,7 +1050,7 @@ public class InvoicesProratedAdjustmentsTest extends ApiTestBase {
 
     Invoice invoiceToStorage = getInvoiceUpdates().getFirst().mapTo(Invoice.class);
     assertThat(invoiceToStorage.getAdjustments(), hasSize(1));
-    assertThat(invoiceToStorage.getAdjustmentsTotal(), is(1.96d));
+    assertThat(invoiceToStorage.getAdjustmentsTotal(), is(0d));
     Adjustment invoiceAdjustment = invoiceToStorage.getAdjustments().getFirst();
     assertThat(invoiceAdjustment.getId(), not(is(emptyOrNullString())));
 
@@ -1057,8 +1058,8 @@ public class InvoicesProratedAdjustmentsTest extends ApiTestBase {
       .forEach(id -> {
         InvoiceLine lineToStorage = getLineToStorageById(id);
         assertThat(lineToStorage.getAdjustments(), hasSize(1));
-        assertThat(lineToStorage.getAdjustmentsTotal(), is(1.96d));
-        assertThat(lineToStorage.getSubTotal(), is(28.04d));
+        assertThat(lineToStorage.getAdjustmentsTotal(), is(0d));
+        assertThat(lineToStorage.getSubTotal(), is(30d));
 
         Adjustment lineAdjustment = lineToStorage.getAdjustments().getFirst();
         verifyInvoiceLineAdjustmentCommon(invoiceAdjustment, lineAdjustment);
@@ -1104,21 +1105,24 @@ public class InvoicesProratedAdjustmentsTest extends ApiTestBase {
 
     Invoice invoiceToStorage = getInvoiceUpdates().getFirst().mapTo(Invoice.class);
     assertThat(invoiceToStorage.getAdjustments(), hasSize(1));
-    assertThat(invoiceToStorage.getAdjustmentsTotal(), is(5.88d));
+    assertThat(invoiceToStorage.getAdjustmentsTotal(), is(0d));
     Adjustment invoiceAdjustment = invoiceToStorage.getAdjustments().getFirst();
     assertThat(invoiceAdjustment.getId(), not(is(emptyOrNullString())));
 
-    Stream.of(invoiceLine1.getId(), invoiceLine2.getId(), invoiceLine3.getId())
-      .forEach(id -> {
-        InvoiceLine lineToStorage = getLineToStorageById(id);
-        assertThat(lineToStorage.getAdjustments(), hasSize(1));
-        assertThat(lineToStorage.getAdjustmentsTotal(), is(1.96d));
-        assertThat(lineToStorage.getSubTotal(), is(28.04d));
+    double totalAdjustmentAmount = 0;
+    for (String id : List.of(invoiceLine1.getId(), invoiceLine2.getId(), invoiceLine3.getId())) {
+      InvoiceLine lineToStorage = getLineToStorageById(id);
+      assertThat(lineToStorage.getAdjustments(), hasSize(1));
+      assertThat(lineToStorage.getAdjustmentsTotal(), is(0d));
+      assertThat(lineToStorage.getSubTotal(), is(30d));
 
-        Adjustment lineAdjustment = lineToStorage.getAdjustments().getFirst();
-        verifyInvoiceLineAdjustmentCommon(invoiceAdjustment, lineAdjustment);
-        assertThat(lineAdjustment.getValue(), is(1.96d));
-      });
+      Adjustment lineAdjustment = lineToStorage.getAdjustments().getFirst();
+      verifyInvoiceLineAdjustmentCommon(invoiceAdjustment, lineAdjustment);
+      double adjustmentAmount = lineAdjustment.getValue();
+      assertTrue(adjustmentAmount == 1.96d || adjustmentAmount == 1.97d);
+      totalAdjustmentAmount += adjustmentAmount;
+    }
+    assertThat(totalAdjustmentAmount, is(Math.round(100. * 30 * 3 * 7 / (100 + 7)) / 100.));
   }
 
   private InvoiceLine getLineToStorageById(String invoiceLineId) {
