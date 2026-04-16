@@ -1,7 +1,48 @@
-## 6.1.0 - Unreleased
-* [MODINVOICE-526](https://folio-org.atlassian.net/browse/MODINVOICE-526) - Do not process event if JobExecution status is Cancelled
-* [MODINV-1246](https://folio-org.atlassian.net/browse/MODINV-1246) - Prevent XXE, disable external access in JAXBContextWrapper SchemaFactory
-* [MODDATAIMP-1225](https://folio-org.atlassian.net/browse/MODDATAIMP-1225) - Change dependency on `data-import-converter-storage` interface to optional
+## 6.1.0 - Released (Trillium R1 2025)
+The primary focus of this release was to upgrade to Vert.x 5.0, improve exchange rate handling, fix encumbrance issues and enhance invoice processing.
+
+[Full Changelog](https://github.com/folio-org/mod-invoice/compare/v6.0.0...v6.1.0)
+
+### Stories
+* [MODINVOICE-640](https://folio-org.atlassian.net/browse/MODINVOICE-640) - Revert changes to included-in adjustment effects to totals
+* [MODINVOICE-632](https://folio-org.atlassian.net/browse/MODINVOICE-632) - Cancel invoice: new validation for linked poline budgets
+* [MODINVOICE-631](https://folio-org.atlassian.net/browse/MODINVOICE-631) - Rely on mod-finance-storage to check budget restrictions
+* [MODINVOICE-630](https://folio-org.atlassian.net/browse/MODINVOICE-630) - Update GitHub Workflows for Maven
+* [MODINVOICE-627](https://folio-org.atlassian.net/browse/MODINVOICE-627) - Use GET /locale to get tenant language & locale setting selections
+* [MODINVOICE-626](https://folio-org.atlassian.net/browse/MODINVOICE-626) - Create pending payments and release old encumbrances in the same batch call
+* [MODINVOICE-619](https://folio-org.atlassian.net/browse/MODINVOICE-619) - Populate the fundCode dynamically for invoice lines using the fundId if it is missing
+* [MODINVOICE-606](https://folio-org.atlassian.net/browse/MODINVOICE-606) - Upgrade module to Vert.x 5.0
+* [MODINVOICE-604](https://folio-org.atlassian.net/browse/MODINVOICE-604) - Introduce internal Settings API and migrate voucher number prefixes
+* [MODINVOICE-598](https://folio-org.atlassian.net/browse/MODINVOICE-598) - Setup dependabot for your module
+* [MODINVOICE-594](https://folio-org.atlassian.net/browse/MODINVOICE-594) - Use mod-settings to get Language & locale setting selections
+* [MODINVOICE-591](https://folio-org.atlassian.net/browse/MODINVOICE-591) - SYSTEM_USER_ENABLED env var implementation via standard mechanism, not via JAVA_OPTS
+* [MODINVOICE-590](https://folio-org.atlassian.net/browse/MODINVOICE-590) - Replace net.mguenther.kafka:kafka-junit (EOL)
+* [MODINVOICE-587](https://folio-org.atlassian.net/browse/MODINVOICE-587) - New poLine paymentStatus updates
+* [MODINVOICE-585](https://folio-org.atlassian.net/browse/MODINVOICE-585) - Update order paymentStatus with parameter when paying instead of approving
+* [MODINVOICE-579](https://folio-org.atlassian.net/browse/MODINVOICE-579) - Switch to using the Finance Exchange Rate API
+* [MODINVOICE-578](https://folio-org.atlassian.net/browse/MODINVOICE-578) - Sensitive data in logs cleanup
+* [MODINVOICE-573](https://folio-org.atlassian.net/browse/MODINVOICE-573) - Update po line paymentStatus when approving or cancelling an invoice against a previous fiscal year
+* [MODINVOICE-526](https://folio-org.atlassian.net/browse/MODINVOICE-526) - Subscribe to JobExecution status change and add cache
+
+### Bug Fixes
+* [MODINVOICE-618](https://folio-org.atlassian.net/browse/MODINVOICE-618) - Cannot edit invoice line comments, subscription info or add tags for invoice lines where budget from prior FY is closed
+* [MODINVOICE-613](https://folio-org.atlassian.net/browse/MODINVOICE-613) - Incorrect encumbrances on orders with paid and cancelled invoices
+* [MODINVOICE-608](https://folio-org.atlassian.net/browse/MODINVOICE-608) - Negative encumbrances on orders with paid invoices - LOC
+* [MODINVOICE-603](https://folio-org.atlassian.net/browse/MODINVOICE-603) - Prevent having duplicated transactions for update
+* [MODINVOICE-600](https://folio-org.atlassian.net/browse/MODINVOICE-600) - Improve handling of cross-funds invoice payments with adjustments
+
+### Dependencies
+* Bump `raml-module-builder` from `35.4.0` to `36.0.0`
+* Bump `vertx` from `4.5.13` to `5.0.8`
+* Bump `spring` from `6.2.3` to `7.0.6`
+* Bump `log4j` from `2.24.3` to `2.25.3`
+* Bump `folio-di-support` from `3.0.0` to `4.0.0`
+* Bump `folio-kafka-wrapper` from `3.3.0` to `4.0.0`
+* Bump `data-import-processing-core` from `4.4.0` to `5.0.0`
+* Bump `sshd` from `2.15.0` to `2.17.1`
+* Bump `caffeine` from `3.2.0` to `3.2.3`
+* Bump `junit-jupiter` from `5.12.0` to `6.0.3`
+* Bump `rest-assured` from `5.5.1` to `6.0.0`
 
 ## 6.0.0 - Released (Sunflower R1 2025)
 The focus of this release was to implement improvements and do version upgrades.

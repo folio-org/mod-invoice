@@ -3,7 +3,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>org.folio</groupId>
   <artifactId>mod-invoice</artifactId>
-  <version>6.1.0-SNAPSHOT</version>
+  <version>7.0.0-SNAPSHOT</version>
   <packaging>jar</packaging>
 
   <licenses>
@@ -26,7 +26,7 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
     <!--Dependencies-->
-    <raml-module-builder.version>36.0.0-SNAPSHOT</raml-module-builder.version>
+    <raml-module-builder.version>36.0.0</raml-module-builder.version>
     <spring.version>7.0.6</spring.version>
     <jaxb-api.version>2.3.3</jaxb-api.version>
     <vertx.version>5.0.8</vertx.version>
@@ -43,9 +43,9 @@
     <folio-module-descriptor-validator.version>1.0.1</folio-module-descriptor-validator.version>
     <mod-configuration-client.version>5.12.1</mod-configuration-client.version>
     <mod-di-converter-storage-client.version>2.4.3</mod-di-converter-storage-client.version>
-    <folio-di-support.version>4.0.0-SNAPSHOT</folio-di-support.version>
-    <folio-kafka-wrapper.version>4.0.0-SNAPSHOT</folio-kafka-wrapper.version>
-    <data-import-processing-core.version>5.0.0-SNAPSHOT</data-import-processing-core.version>
+    <folio-di-support.version>4.0.0</folio-di-support.version>
+    <folio-kafka-wrapper.version>4.0.0</folio-kafka-wrapper.version>
+    <data-import-processing-core.version>5.0.0</data-import-processing-core.version>
 
     <!--Maven plugin dependencies-->
     <build-helper-maven-plugin.version>3.6.1</build-helper-maven-plugin.version>
