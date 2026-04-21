@@ -27,22 +27,22 @@
 
     <!--Dependencies-->
     <raml-module-builder.version>36.0.0</raml-module-builder.version>
-    <spring.version>7.0.6</spring.version>
+    <spring.version>7.0.7</spring.version>
     <jaxb-api.version>2.3.3</jaxb-api.version>
-    <vertx.version>5.0.8</vertx.version>
-    <vertx-rx.version>4.5.25</vertx-rx.version> <!-- Update to match vertx version when 5.x is available -->
+    <vertx.version>5.0.11</vertx.version>
+    <vertx-rx.version>4.5.26</vertx-rx.version> <!-- Update to match vertx version when 5.x is available -->
     <rest-assured.version>6.0.0</rest-assured.version>
     <sshd.version>2.17.1</sshd.version>
     <assertj-core.version>3.27.7</assertj-core.version>
     <aspectj.version>1.9.25.1</aspectj.version>
-    <log4j.version>2.25.3</log4j.version>
+    <log4j.version>2.25.4</log4j.version>
     <streamex.version>0.8.4</streamex.version>
     <caffeine.version>3.2.3</caffeine.version>
 
     <!--Folio dependencies properties-->
     <folio-module-descriptor-validator.version>1.0.1</folio-module-descriptor-validator.version>
     <mod-configuration-client.version>5.12.1</mod-configuration-client.version>
-    <mod-di-converter-storage-client.version>2.4.3</mod-di-converter-storage-client.version>
+    <mod-di-converter-storage-client.version>2.5.0</mod-di-converter-storage-client.version>
     <folio-di-support.version>4.0.0</folio-di-support.version>
     <folio-kafka-wrapper.version>4.0.0</folio-kafka-wrapper.version>
     <data-import-processing-core.version>5.0.0</data-import-processing-core.version>
@@ -60,7 +60,7 @@
     <copy-rename-maven-plugin.version>1.0.1</copy-rename-maven-plugin.version>
 
     <!--Test dependencies-->
-    <testcontainers.version>2.0.3</testcontainers.version>
+    <testcontainers.version>2.0.5</testcontainers.version>
     <awaitility.version>4.3.0</awaitility.version>
     <mockito.version>5.23.0</mockito.version>
     <junit-bom.version>6.0.3</junit-bom.version>
@@ -177,7 +177,7 @@
     <dependency>
       <groupId>commons-net</groupId>
       <artifactId>commons-net</artifactId>
-      <version>3.12.0</version>
+      <version>3.13.0</version>
     </dependency>
     <dependency>
       <groupId>commons-lang</groupId>
