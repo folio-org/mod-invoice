@@ -92,7 +92,7 @@ public class InvoiceCancelService {
                                     RequestContext requestContext) {
     String invoiceId = invoiceFromStorage.getId();
     log.info("cancelInvoice:: Cancelling invoice {}...", invoiceId);
-    Vertx vertx = Vertx.vertx();
+    Vertx vertx =  requestContext.getContext().owner();
     return Future.succeededFuture()
       .map(v -> {
         validateCancelInvoice(invoiceFromStorage);
