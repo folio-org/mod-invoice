@@ -108,7 +108,7 @@ public class InvoiceCancelService {
       .compose(v -> cancelVoucher(invoiceId, requestContext))
       .compose(v -> poLinePaymentStatusUpdateService.updatePoLinePaymentStatusToCancelInvoice(invoiceFromStorage,
         lines, poLinePaymentStatus, requestContext))
-      .compose(v -> vertx.timer(50)) // wait for order to have a chance to reopen automatically
+      .compose(v -> vertx.timer(200)) // wait for order to have a chance to reopen automatically
       .compose(v -> updateOrUnreleaseEncumbrances(lines, invoiceFromStorage, requestContext))
       .onSuccess(v -> log.info("cancelInvoice:: Invoice {} cancelled successfully", invoiceId))
       .onFailure(t -> log.error("cancelInvoice:: Failed to cancel invoice {}", invoiceId, t));
