@@ -18,6 +18,7 @@ import java.util.List;
 import java.util.Objects;
 
 import io.vertx.core.Future;
+import io.vertx.core.Vertx;
 import lombok.extern.log4j.Log4j2;
 import org.folio.InvoiceWorkflowDataHolderBuilder;
 import org.folio.invoices.rest.exceptions.HttpException;
@@ -91,7 +92,7 @@ public class InvoiceCancelService {
                                     RequestContext requestContext) {
     String invoiceId = invoiceFromStorage.getId();
     log.info("cancelInvoice:: Cancelling invoice {}...", invoiceId);
-
+    Vertx vertx =  requestContext.getContext().owner();
     return Future.succeededFuture()
       .map(v -> {
         validateCancelInvoice(invoiceFromStorage);
@@ -105,9 +106,13 @@ public class InvoiceCancelService {
         return null;
       })
       .compose(v -> cancelVoucher(invoiceId, requestContext))
-      .compose(v -> updateOrUnreleaseEncumbrances(lines, invoiceFromStorage, requestContext))
       .compose(v -> poLinePaymentStatusUpdateService.updatePoLinePaymentStatusToCancelInvoice(invoiceFromStorage,
         lines, poLinePaymentStatus, requestContext))
+      .onSuccess(v -> {
+        // Wait 1s for orders to reopen and unrelease encumbrances asynchronously
+        vertx.timer(1000)
+          .compose(v2 -> updateOrUnreleaseEncumbrances(lines, invoiceFromStorage, requestContext));
+      })
       .onSuccess(v -> log.info("cancelInvoice:: Invoice {} cancelled successfully", invoiceId))
       .onFailure(t -> log.error("cancelInvoice:: Failed to cancel invoice {}", invoiceId, t));
   }

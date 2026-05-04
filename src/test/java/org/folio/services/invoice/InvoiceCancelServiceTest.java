@@ -285,19 +285,15 @@ public class InvoiceCancelServiceTest {
   }
 
   @Test
-  public void errorUnreleasingEncumbrances(VertxTestContext vertxTestContext) throws IOException {
+  public void noErrorReportedWhenUnreleaseEncumbrancesFails(VertxTestContext vertxTestContext) throws IOException {
     Invoice invoice = getMockAs(APPROVED_INVOICE_SAMPLE_PATH, Invoice.class);
     List<InvoiceLine> invoiceLines = getMockAs(INVOICE_LINES_LIST_PATH, InvoiceLineCollection.class).getInvoiceLines();
 
     setupRestCalls(invoice, false, true);
 
     Future<Void> future = cancelService.cancelInvoice(invoice, invoiceLines, null, requestContext);
-    vertxTestContext.assertFailure(future)
-      .onComplete(result -> {
-        HttpException httpException = (HttpException) result.cause();
-        assertEquals(500, httpException.getCode());
-        var error = httpException.getErrors().getErrors().getFirst();
-        assertEquals(ERROR_UNRELEASING_ENCUMBRANCES.getCode(), error.getCode());
+    vertxTestContext.assertComplete(future)
+      .onSuccess(result -> {
         vertxTestContext.completeNow();
       });
   }
