@@ -10,6 +10,7 @@ import static org.folio.TestMockDataConstants.MOCK_PENDING_PAYMENTS_LIST;
 import static org.folio.TestMockDataConstants.MOCK_CREDITS_LIST;
 import static org.folio.TestMockDataConstants.MOCK_PAYMENTS_LIST;
 import static org.folio.invoices.utils.ErrorCodes.BUDGET_NOT_FOUND;
+import static org.folio.invoices.utils.ErrorCodes.CANCEL_TRANSACTIONS_ERROR;
 import static org.folio.invoices.utils.ErrorCodes.CANNOT_CANCEL_INVOICE;
 import static org.folio.invoices.utils.ErrorCodes.BUDGET_NOT_FOUND_USING_FISCAL_YEAR_ID;
 import static org.folio.invoices.utils.ErrorCodes.ERROR_UNRELEASING_ENCUMBRANCES;
@@ -26,6 +27,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -232,6 +234,45 @@ public class InvoiceCancelServiceTest {
   }
 
   @Test
+  public void errorCancellingTransactions(VertxTestContext vertxTestContext) throws IOException {
+    String invoiceId = UUID.randomUUID().toString();
+    String fiscalYearId = UUID.randomUUID().toString();
+    String fundId1 = UUID.randomUUID().toString();
+    String poLineId = UUID.randomUUID().toString();
+    Invoice invoice = new Invoice()
+      .withId(invoiceId)
+      .withFiscalYearId(fiscalYearId)
+      .withStatus(Invoice.Status.PAID);
+    FundDistribution invoiceLineFundDistribution = new FundDistribution()
+      .withFundId(fundId1);
+    InvoiceLine invoiceLine = new InvoiceLine()
+      .withId(UUID.randomUUID().toString())
+      .withInvoiceId(invoiceId)
+      .withFundDistributions(List.of(invoiceLineFundDistribution))
+      .withPoLineId(poLineId)
+      .withReleaseEncumbrance(true);
+    List<InvoiceLine> invoiceLines = List.of(invoiceLine);
+    List<PoLine> poLines = List.of(
+      new PoLine().withId(UUID.randomUUID().toString()),
+      new PoLine().withId(UUID.randomUUID().toString())
+    );
+
+    setupHolderBuilderCalls();
+    setupPoLineQuery(poLines);
+    setupGetTransactions(invoice);
+    when(baseTransactionService.batchCancel(anyList(), eq(requestContext)))
+      .thenReturn(failedFuture(new HttpException(422, "test")));
+
+    Future<Void> future = cancelService.cancelInvoice(invoice, invoiceLines, null, requestContext);
+    assertTrue(future.failed());
+    var exception = (HttpException)future.cause();
+    assertEquals(500, exception.getCode());
+    assertEquals(CANCEL_TRANSACTIONS_ERROR.getDescription(), exception.getMessage());
+    assertEquals("test", exception.getErrors().getErrors().getFirst().getParameters().get(1).getValue());
+    vertxTestContext.completeNow();
+  }
+
+  @Test
   public void errorUnreleasingEncumbrances(VertxTestContext vertxTestContext) throws IOException {
     Invoice invoice = getMockAs(APPROVED_INVOICE_SAMPLE_PATH, Invoice.class);
     List<InvoiceLine> invoiceLines = getMockAs(INVOICE_LINES_LIST_PATH, InvoiceLineCollection.class).getInvoiceLines();
@@ -280,9 +321,9 @@ public class InvoiceCancelServiceTest {
       new PoLine().withId(UUID.randomUUID().toString())
     );
     setupHolderBuilderCalls();
+    setupPoLineQuery(poLines);
     setupGetTransactions(invoice);
     setupCancelTransactions();
-    setupPoLineQuery(poLines);
     setupUpdateVoucher();
     setupPaymentStatusCalls();
   }
@@ -341,7 +382,7 @@ public class InvoiceCancelServiceTest {
         .withPoLineId(poLines.getFirst().getId())
         .withReleaseEncumbrance(true)
     );
-    setupInvoiceLineQuery(relatedInvoiceLines);
+    setupInvoiceLineQuery(invoice.getId(), invoice.getFiscalYearId(), relatedInvoiceLines);
     String orderId = UUID.randomUUID().toString();
     List<Transaction> transactions = List.of(
       new Transaction().withId(UUID.randomUUID().toString())
@@ -362,12 +403,20 @@ public class InvoiceCancelServiceTest {
   }
 
   private void setupPoLineQuery(List<PoLine> poLines) {
-    when(orderLineService.getPoLinesByIdAndQuery(anyList(), any(), eq(requestContext)))
+    when(orderLineService.getPoLinesByIdAndQuery(anyList(), argThat(fn -> {
+      String expectedQuery = "purchaseOrder.workflowStatus=Open AND paymentStatus==(\"Awaiting Payment\" OR " +
+      "\"Partially Paid\" OR \"Fully Paid\" OR \"Ongoing\" OR \"Payment Not Required\") AND id==(id)";
+      return fn.apply(List.of("id")).equals(expectedQuery);
+    }), eq(requestContext)))
       .thenReturn(succeededFuture(poLines));
   }
 
-  private void setupInvoiceLineQuery(List<InvoiceLine> invoiceLines) {
-    when(invoiceLineService.getInvoiceLinesByIdsAndQuery(anyList(), any(), eq(requestContext)))
+  private void setupInvoiceLineQuery(String invoiceId, String fiscalYearId, List<InvoiceLine> invoiceLines) {
+    when(invoiceLineService.getInvoiceLinesByIdsAndQuery(anyList(), argThat(fn -> {
+      String expectedQuery = "invoiceId<>" + invoiceId + " AND invoiceLineStatus==(\"Paid\" OR \"Approved\") AND " +
+        "releaseEncumbrance==true AND invoices.fiscalYearId==" + fiscalYearId + " AND poLineId==(id)";
+      return fn.apply(List.of("id")).equals(expectedQuery);
+    }), eq(requestContext)))
       .thenReturn(succeededFuture(invoiceLines));
   }
 
