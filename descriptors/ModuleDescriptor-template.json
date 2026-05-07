@@ -71,7 +71,6 @@
             "invoice-storage.invoice-lines.item.put",
             "invoice-storage.invoice-lines.collection.get",
             "orders.acquisition-units.bypass.execute",
-            "orders.collection.get",
             "orders.po-lines.collection.get",
             "orders.po-lines.item.put",
             "orders.po-lines.item.get",

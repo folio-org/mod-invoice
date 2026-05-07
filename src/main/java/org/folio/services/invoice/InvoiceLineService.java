@@ -3,14 +3,18 @@ package org.folio.services.invoice;
 import static java.util.stream.Collectors.toList;
 import static org.folio.invoices.utils.ErrorCodes.INVOICE_LINE_NOT_FOUND;
 import static org.folio.invoices.utils.HelperUtils.INVOICE_ID;
+import static org.folio.invoices.utils.HelperUtils.collectResultsOnSuccess;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_LINES;
 import static org.folio.invoices.utils.ResourcePathResolver.INVOICE_LINE_NUMBER;
 import static org.folio.invoices.utils.ResourcePathResolver.resourceByIdPath;
 import static org.folio.invoices.utils.ResourcePathResolver.resourcesPath;
+import static org.folio.rest.RestConstants.MAX_IDS_FOR_GET_RQ;
 
 import java.util.List;
+import java.util.function.Function;
 
 import io.vertx.core.Future;
+import one.util.streamex.StreamEx;
 import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.invoices.utils.HelperUtils;
 import org.folio.rest.core.RestClient;
@@ -79,6 +83,18 @@ public class InvoiceLineService {
     return getInvoiceLinesByInvoiceId(invoiceId, requestContext)
       .map(invoiceLines -> invoiceLines.getInvoiceLines().stream()
         .filter(invoiceLine -> orderPoLineIds.contains(invoiceLine.getPoLineId())).collect(toList()));
+  }
+
+  public Future<List<InvoiceLine>> getInvoiceLinesByIdsAndQuery(List<String> ids,
+      Function<List<String>, String> queryFunction, RequestContext requestContext) {
+    List<Future<List<InvoiceLine>>> futureList = StreamEx
+      .ofSubLists(ids, MAX_IDS_FOR_GET_RQ)
+      .map(queryFunction)
+      .map(query -> getInvoiceLinesByQuery(query, requestContext))
+      .toList();
+
+    return collectResultsOnSuccess(futureList)
+      .map(col -> col.stream().flatMap(List::stream).toList());
   }
 
   public Future<Void> persistInvoiceLines(List<InvoiceLine> lines,  RequestContext requestContext) {

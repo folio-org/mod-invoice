@@ -4,6 +4,8 @@ import io.vertx.core.Future;
 import io.vertx.core.json.JsonObject;
 import org.folio.rest.acq.model.orders.PoLine;
 import org.folio.rest.core.models.RequestContext;
+import org.folio.rest.jaxrs.model.Invoice;
+import org.folio.rest.jaxrs.model.InvoiceCollection;
 import org.folio.rest.jaxrs.model.InvoiceLine;
 import org.folio.services.order.OrderLineService;
 import org.junit.jupiter.api.AfterEach;
@@ -15,11 +17,13 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import static io.vertx.core.Future.succeededFuture;
 import static org.folio.rest.acq.model.orders.PoLine.PaymentStatus.AWAITING_PAYMENT;
 import static org.folio.rest.acq.model.orders.PoLine.PaymentStatus.CANCELLED;
 import static org.folio.rest.acq.model.orders.PoLine.PaymentStatus.FULLY_PAID;
@@ -33,6 +37,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -129,6 +134,83 @@ public class PoLinePaymentStatusUpdateServiceTest {
     assertTrue(result.succeeded());
     assertEquals(CANCELLED, poLine.getPaymentStatus());
     verify(orderLineService, times(1)).getPoLinesByIdAndQuery(anyList(), any(), eq(requestContext));
+    verify(orderLineService, times(1)).updatePoLines(anyList(), eq(requestContext));
+  }
+
+  @Test
+  public void updatePoLinePaymentStatusToCancelInvoiceTest() {
+    Invoice invoice = new Invoice()
+      .withId(UUID.randomUUID().toString())
+      .withStatus(Invoice.Status.PAID)
+      .withFiscalYearId("0fc631d6-45fb-494d-8b48-321f7a2fccf6");
+    invoice.setFiscalYearId("0fc631d6-45fb-494d-8b48-321f7a2fccf6");
+    List<InvoiceLine> invoiceLines = List.of(
+      new InvoiceLine().withId("1077f1a2-9c4d-4ff0-9152-adb5646d2107").withPoLineId("f9c7a38d-3f8e-4758-b303-a12d365fbf57"),
+      new InvoiceLine().withId("736a8649-1f7b-45cb-92d9-8aa83a169e9f").withPoLineId("0818c22e-d469-431a-9277-b6849a39e523"),
+      new InvoiceLine().withId("e6666187-e626-432d-87bc-a4bd4b697679").withPoLineId("a36d30c0-6031-4ae8-889b-9408d98b7ee4")
+    );
+    List<PoLine> poLines = new ArrayList<>();
+    for (InvoiceLine invoiceLine : invoiceLines) {
+      poLines.add(new PoLine()
+        .withId(invoiceLine.getPoLineId())
+        .withPaymentStatus(FULLY_PAID));
+    }
+    List<Invoice> relatedInvoices = List.of(
+      new Invoice().withId("52a6cd6f-33dc-41ac-8bb3-cf14c8fabd40"),
+      new Invoice().withId("6c39878d-fd46-4083-a287-1a70b4f06828")
+    );
+    List<InvoiceLine> relatedInvoiceLines = List.of(
+      // invoice line linked to a filtered invoice, no invoice line linked to the same po line has releaseEncumbrance=true,
+      // the po line will be set to PARTIALLY_PAID
+      new InvoiceLine()
+        .withId("846ef0f9-1eab-4a4d-8329-9a717994ea72")
+        .withInvoiceId(relatedInvoices.get(0).getId())
+        .withPoLineId(poLines.get(0).getId())
+        .withReleaseEncumbrance(false),
+      // invoice line linked to a filtered invoice, no invoice line linked to the same po line has releaseEncumbrance=true,
+      // the po line will be set to PARTIALLY_PAID
+      new InvoiceLine()
+        .withId("8e2d8bb6-de5b-4ed0-bb10-983e31ec7711")
+        .withInvoiceId(relatedInvoices.get(1).getId())
+        .withPoLineId(poLines.get(0).getId())
+        .withReleaseEncumbrance(false),
+      // invoice line linked to a filtered invoice with releaseEncumbrance=true, the po line will not be changed
+      new InvoiceLine()
+        .withId("c63f293d-077d-4f00-9d5d-a3160da975db")
+        .withInvoiceId(relatedInvoices.get(1).getId())
+        .withPoLineId(poLines.get(1).getId())
+        .withReleaseEncumbrance(true),
+      // invoice line not linked to a filtered invoice, the po line will be set to AWAITING_PAYMENT
+      new InvoiceLine()
+        .withId("f384585f-fc57-4f96-bca4-292e0e080a88")
+        .withInvoiceId("89910180-9828-4408-825d-8f70af3ae14d")
+        .withPoLineId(poLines.get(2).getId())
+        .withReleaseEncumbrance(false)
+    );
+    InvoiceCollection invoiceCollection = new InvoiceCollection()
+      .withInvoices(relatedInvoices)
+      .withTotalRecords(relatedInvoices.size());
+    PoLine expectedPoLine1 = JsonObject.mapFrom(poLines.get(0)).mapTo(PoLine.class)
+      .withPaymentStatus(PoLine.PaymentStatus.PARTIALLY_PAID);
+    PoLine expectedPoLine2 = JsonObject.mapFrom(poLines.get(2)).mapTo(PoLine.class)
+      .withPaymentStatus(PoLine.PaymentStatus.AWAITING_PAYMENT);
+
+    when(orderLineService.getPoLinesByIdAndQuery(anyList(), any(), eq(requestContext)))
+      .thenReturn(succeededFuture(poLines));
+    when(invoiceLineService.getInvoiceLinesByIdsAndQuery(anyList(), any(), eq(requestContext)))
+      .thenReturn(succeededFuture(relatedInvoiceLines));
+    when(invoiceService.getInvoices(anyString(), eq(0), eq(Integer.MAX_VALUE), eq(requestContext)))
+      .thenReturn(succeededFuture(invoiceCollection));
+    when(orderLineService.updatePoLines(List.of(expectedPoLine1, expectedPoLine2), requestContext))
+      .thenReturn(succeededFuture(null));
+
+    Future<Void> result = poLinePaymentStatusUpdateService.updatePoLinePaymentStatusToCancelInvoice(invoice,
+      invoiceLines, null, requestContext);
+
+    assertTrue(result.succeeded());
+    verify(orderLineService, times(1)).getPoLinesByIdAndQuery(anyList(), any(), eq(requestContext));
+    verify(invoiceLineService, times(1)).getInvoiceLinesByIdsAndQuery(anyList(), any(), eq(requestContext));
+    verify(invoiceService, times(1)).getInvoices(anyString(), eq(0), eq(Integer.MAX_VALUE), eq(requestContext));
     verify(orderLineService, times(1)).updatePoLines(anyList(), eq(requestContext));
   }
 

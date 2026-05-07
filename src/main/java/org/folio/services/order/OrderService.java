@@ -18,8 +18,6 @@ import org.folio.rest.acq.model.orders.CompositePurchaseOrder;
 import org.folio.rest.acq.model.orders.OrderInvoiceRelationship;
 import org.folio.rest.acq.model.orders.OrderInvoiceRelationshipCollection;
 import org.folio.rest.acq.model.orders.PoLine;
-import org.folio.rest.acq.model.orders.PurchaseOrder;
-import org.folio.rest.acq.model.orders.PurchaseOrderCollection;
 import org.folio.rest.core.RestClient;
 import org.folio.rest.core.models.RequestContext;
 import org.folio.rest.core.models.RequestEntry;
@@ -55,20 +53,10 @@ public class OrderService {
       .map(CompositePurchaseOrder::getPoLines);
   }
 
-  public Future<List<PurchaseOrder>> getOrders(String query, RequestContext requestContext) {
-    RequestEntry requestEntry = new RequestEntry(ORDERS_ENDPOINT)
-      .withQuery(query)
-      .withOffset(0)
-      .withLimit(Integer.MAX_VALUE);
-    return restClient.get(requestEntry,  PurchaseOrderCollection.class, requestContext)
-      .map(PurchaseOrderCollection::getPurchaseOrders);
-  }
-
   public Future<CompositePurchaseOrder> getOrder(String orderId, RequestContext requestContext) {
     RequestEntry requestEntry = new RequestEntry(ORDERS_BY_ID_ENDPOINT).withId(orderId);
     return restClient.get(requestEntry, CompositePurchaseOrder.class, requestContext);
   }
-
 
   public Future<Void> createInvoiceOrderRelation(InvoiceLine invoiceLine, RequestContext requestContext) {
     if (invoiceLine.getPoLineId() == null) {

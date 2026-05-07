@@ -1,7 +1,6 @@
 package org.folio.services.invoice;
 
 import static io.vertx.core.Future.succeededFuture;
-import static java.util.Collections.emptyList;
 import static java.util.Objects.requireNonNullElse;
 import static org.folio.invoices.utils.ErrorCodes.CANCEL_TRANSACTIONS_ERROR;
 import static org.folio.invoices.utils.ErrorCodes.CANNOT_CANCEL_INVOICE;
@@ -27,18 +26,15 @@ import org.folio.rest.acq.model.finance.Transaction;
 import org.folio.rest.acq.model.finance.Transaction.TransactionType;
 import org.folio.rest.acq.model.finance.TransactionCollection;
 import org.folio.rest.acq.model.orders.PoLine;
-import org.folio.rest.acq.model.orders.PurchaseOrder;
 import org.folio.rest.core.models.RequestContext;
 import org.folio.rest.jaxrs.model.FundDistribution;
 import org.folio.rest.jaxrs.model.Invoice;
 import org.folio.rest.jaxrs.model.InvoiceLine;
 import org.folio.rest.jaxrs.model.Parameter;
-import org.folio.services.finance.EncumbranceUtils;
 import org.folio.services.finance.budget.BudgetService;
 import org.folio.services.finance.transaction.BaseTransactionService;
 import org.folio.services.finance.transaction.EncumbranceService;
 import org.folio.services.order.OrderLineService;
-import org.folio.services.order.OrderService;
 import org.folio.services.voucher.VoucherService;
 import org.springframework.util.CollectionUtils;
 
@@ -47,14 +43,14 @@ public class InvoiceCancelService {
 
   private static final String PO_LINES_WITH_RIGHT_PAYMENT_STATUS_QUERY =
     "paymentStatus==(\"Awaiting Payment\" OR \"Partially Paid\" OR \"Fully Paid\" OR \"Ongoing\" OR \"Payment Not Required\")";
-  private static final String OPEN_ORDERS_QUERY = "workflowStatus==\"Open\"";
+  private static final String PO_LINES_WITH_OPEN_ORDER = "purchaseOrder.workflowStatus=Open";
   private static final String AND = " AND ";
 
   private final BaseTransactionService baseTransactionService;
   private final EncumbranceService encumbranceService;
   private final VoucherService voucherService;
   private final OrderLineService orderLineService;
-  private final OrderService orderService;
+  private final InvoiceLineService invoiceLineService;
   private final PoLinePaymentStatusUpdateService poLinePaymentStatusUpdateService;
   private final InvoiceWorkflowDataHolderBuilder holderBuilder;
   private final BudgetService budgetService;
@@ -63,7 +59,7 @@ public class InvoiceCancelService {
                               EncumbranceService encumbranceService,
                               VoucherService voucherService,
                               OrderLineService orderLineService,
-                              OrderService orderService,
+                              InvoiceLineService invoiceLineService,
                               PoLinePaymentStatusUpdateService poLinePaymentStatusUpdateService,
                               InvoiceWorkflowDataHolderBuilder holderBuilder,
                               BudgetService budgetService) {
@@ -71,7 +67,7 @@ public class InvoiceCancelService {
     this.encumbranceService = encumbranceService;
     this.voucherService = voucherService;
     this.orderLineService = orderLineService;
-    this.orderService = orderService;
+    this.invoiceLineService = invoiceLineService;
     this.poLinePaymentStatusUpdateService = poLinePaymentStatusUpdateService;
     this.holderBuilder = holderBuilder;
     this.budgetService = budgetService;
@@ -165,8 +161,7 @@ public class InvoiceCancelService {
       .distinct()
       .toList();
     String invoiceFiscalYearId = invoice.getFiscalYearId();
-    return orderLineService.getPoLinesByIdAndQuery(poLineIds, this::queryToGetPoLinesWithRightPaymentStatusByIds, requestContext)
-      .compose(poLines -> selectPoLinesWithOpenOrders(poLines, requestContext))
+    return orderLineService.getPoLinesByIdAndQuery(poLineIds, this::queryToGetPoLinesOfOpenOrdersWithRightPaymentStatusByIds, requestContext)
       .map(poLines -> poLines.stream()
           .map(PoLine::getFundDistribution)
           .flatMap(Collection::stream)
@@ -215,7 +210,7 @@ public class InvoiceCancelService {
     return voucherService.cancelInvoiceVoucher(invoiceId, requestContext);
   }
 
-  private Future<Void> updateOrUnreleaseEncumbrances(List<InvoiceLine> invoiceLines, Invoice invoiceFromStorage,
+  protected Future<Void> updateOrUnreleaseEncumbrances(List<InvoiceLine> invoiceLines, Invoice invoiceFromStorage,
                                                      RequestContext requestContext) {
     var poLineIds = invoiceLines.stream()
       .filter(InvoiceLine::getReleaseEncumbrance)
@@ -228,8 +223,8 @@ public class InvoiceCancelService {
     }
     var invoiceId = invoiceFromStorage.getId();
     log.info("updateOrUnreleaseEncumbrances:: Updating or unreleasing encumbrances, invoiceId={}...", invoiceId);
-    return orderLineService.getPoLinesByIdAndQuery(poLineIds, this::queryToGetPoLinesWithRightPaymentStatusByIds, requestContext)
-      .compose(poLines -> selectPoLinesWithOpenOrders(poLines, requestContext))
+    return orderLineService.getPoLinesByIdAndQuery(poLineIds, this::queryToGetPoLinesOfOpenOrdersWithRightPaymentStatusByIds, requestContext)
+      .compose(poLines -> filterPoLinesNotLinkedToInvoiceLineWithReleaseEncumbrance(invoiceFromStorage, poLines, requestContext))
       .compose(poLines -> unreleaseEncumbrancesForPoLines(poLines, invoiceFromStorage, requestContext))
       .recover(t -> {
         log.error("updateOrUnreleaseEncumbrances:: Failed to update or unrelease encumbrance for po lines, invoiceId={}", invoiceId, t);
@@ -240,29 +235,32 @@ public class InvoiceCancelService {
       });
   }
 
-  private String queryToGetPoLinesWithRightPaymentStatusByIds(List<String> poLineIds) {
-    return PO_LINES_WITH_RIGHT_PAYMENT_STATUS_QUERY + AND + convertIdsToCqlQuery(poLineIds);
+  private String queryToGetPoLinesOfOpenOrdersWithRightPaymentStatusByIds(List<String> poLineIds) {
+    return PO_LINES_WITH_OPEN_ORDER + AND + PO_LINES_WITH_RIGHT_PAYMENT_STATUS_QUERY + AND + convertIdsToCqlQuery(poLineIds);
   }
 
-  private Future<List<PoLine>> selectPoLinesWithOpenOrders(List<PoLine> poLines, RequestContext requestContext) {
+  private Future<List<PoLine>> filterPoLinesNotLinkedToInvoiceLineWithReleaseEncumbrance(Invoice invoiceFromStorage, List<PoLine> poLines,
+      RequestContext requestContext) {
+    // Keep only the po lines that are not linked to an approved/paid invoice line with releaseEncumbrance=true in the same FY
     if (poLines.isEmpty()) {
-      return succeededFuture(emptyList());
+      return succeededFuture(poLines);
     }
-    List<String> orderIds = poLines.stream()
-      .map(PoLine::getPurchaseOrderId)
-      .distinct()
-      .toList();
-    return orderService.getOrders(queryToGetOpenOrdersByIds(orderIds), requestContext)
-      .map(orders -> {
-        List<String> openOrderIds = orders.stream().map(PurchaseOrder::getId).toList();
-        return poLines.stream()
-          .filter(poLine -> openOrderIds.contains(poLine.getPurchaseOrderId()))
-          .toList();
-      });
+    String invoiceId = invoiceFromStorage.getId();
+    String fiscalYearId = invoiceFromStorage.getFiscalYearId();
+    List<String> poLineIds = poLines.stream().map(PoLine::getId).toList();
+    return invoiceLineService.getInvoiceLinesByIdsAndQuery(poLineIds,
+        ids -> queryToGetRelatedInvoiceLinesByPoLineIds(invoiceId, fiscalYearId, ids), requestContext)
+      .map(relatedInvoiceLines -> poLines.stream()
+        .filter(poLine -> relatedInvoiceLines.stream().noneMatch(invoiceLine -> poLine.getId().equals(invoiceLine.getPoLineId())))
+        .toList());
   }
 
-  private String queryToGetOpenOrdersByIds(List<String> orderIds) {
-    return OPEN_ORDERS_QUERY + AND + convertIdsToCqlQuery(orderIds);
+  private String queryToGetRelatedInvoiceLinesByPoLineIds(String invoiceId, String fiscalYearId, List<String> poLineIds) {
+    return "invoiceId<>" + invoiceId + AND +
+      "invoiceLineStatus==(\"Paid\" OR \"Approved\")" + AND +
+      "releaseEncumbrance==true" + AND +
+      (fiscalYearId == null ? "" : "invoices.fiscalYearId==" + fiscalYearId + AND) +
+      convertIdsToCqlQuery(poLineIds, "poLineId", true);
   }
 
   private Future<Void> unreleaseEncumbrancesForPoLines(List<PoLine> poLines, Invoice invoiceFromStorage,
@@ -277,8 +275,6 @@ public class InvoiceCancelService {
     return encumbranceService.getEncumbrancesByPoLineIds(poLineIds, fiscalYearId, requestContext)
       .map(encumbrances -> encumbrances.stream()
         .filter(encumbrance -> RELEASED.equals(encumbrance.getEncumbrance().getStatus()))
-        // only unrelease encumbrances with expended + credited + awaiting payment = 0
-        .filter(EncumbranceUtils::allowEncumbranceToUnrelease)
         .toList())
       .compose(encumbrances -> {
         if (CollectionUtils.isEmpty(encumbrances)) {
