@@ -35,6 +35,7 @@ import org.folio.dataimport.handlers.events.DataImportKafkaHandlerTest;
 import org.folio.dataimport.handlers.actions.CreateInvoiceEventHandlerTest;
 import org.folio.invoices.util.HelperUtilsTest;
 import org.folio.jaxb.DefaultJAXBRootElementNameResolverTest;
+import org.folio.services.invoice.InvoiceLineServiceTest;
 import org.folio.utils.InvoiceLineUtilsTest;
 import org.folio.jaxb.JAXBUtilTest;
 import org.folio.jaxb.XMLConverterTest;
@@ -400,6 +401,10 @@ public class ApiTestSuite {
 
   @Nested
   class InvoiceIdStorageServiceTestNested extends InvoiceIdStorageServiceTest {
+  }
+
+  @Nested
+  class InvoiceLineServiceTestNested extends InvoiceLineServiceTest {
   }
 
   @Nested
