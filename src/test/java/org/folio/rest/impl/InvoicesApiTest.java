@@ -3032,6 +3032,8 @@ public class InvoicesApiTest extends ApiTestBase {
     allProtectedFieldsModification.put(InvoiceProtectedFields.VOUCHER_NUMBER, "some_voucher_number");
     allProtectedFieldsModification.put(InvoiceProtectedFields.PAYMENT_ID, UUID.randomUUID().toString());
     allProtectedFieldsModification.put(InvoiceProtectedFields.VENDOR_ID, UUID.randomUUID().toString());
+    allProtectedFieldsModification.put(InvoiceProtectedFields.SUB_TOTAL, 99.99d);
+    allProtectedFieldsModification.put(InvoiceProtectedFields.TOTAL, 99.99d);
 
     List<String> poNumbers = invoice.getPoNumbers();
     poNumbers.addFirst("AB267798XYZ");
