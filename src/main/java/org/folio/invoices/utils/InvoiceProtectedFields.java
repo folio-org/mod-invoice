@@ -22,7 +22,8 @@ public enum InvoiceProtectedFields implements ProtectedField<Invoice> {
   PO_NUMBERS("poNumbers", Invoice::getPoNumbers),
   VENDOR_ID("vendorId", Invoice::getVendorId),
   SUB_TOTAL("subTotal", Invoice::getSubTotal),
-  TOTAL("total", Invoice::getTotal);
+  TOTAL("total", Invoice::getTotal),
+  NEXT_INVOICE_LINE_NUMBER("nextInvoiceLineNumber", Invoice::getNextInvoiceLineNumber);
 
   InvoiceProtectedFields(String field, Function<Invoice, Object> getter) {
     this.field = field;
