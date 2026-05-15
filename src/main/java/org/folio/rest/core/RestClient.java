@@ -8,6 +8,7 @@ import static org.folio.rest.RestConstants.OKAPI_URL;
 
 import java.util.Map;
 
+import io.vertx.core.http.PoolOptions;
 import org.folio.invoices.rest.exceptions.HttpException;
 import org.folio.okapi.common.WebClientFactory;
 import org.folio.rest.core.models.RequestContext;
@@ -169,6 +170,7 @@ public class RestClient {
       .getAbs(absEndpoint)
       .putHeaders(caseInsensitiveHeader)
       .send()
+      .onSuccess(response -> log.info("get:: successfully called {}, response status: {}", endpoint, response.statusCode()))
       .compose(RestClient::convertHttpResponse)
       .map(HttpResponse::bodyAsJsonObject)
       .map(jsonObject -> jsonObject.mapTo(responseType))
