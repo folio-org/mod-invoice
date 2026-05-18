@@ -316,6 +316,7 @@ public class InvoiceHelper extends AbstractHelper {
 
   private Future<Void> validateAndHandleInvoiceStatusTransition(Invoice invoice, Invoice invoiceFromStorage,
                                                                 String poLinePaymentStatus) {
+    invoice.setNextInvoiceLineNumber(invoiceFromStorage.getNextInvoiceLineNumber()); // ignore any change of nextInvoiceLineNumber
     return validateAcqUnitsOnUpdate(invoice, invoiceFromStorage)
       .map(ok -> {
         validator.validateInvoice(invoice, invoiceFromStorage);
