@@ -1,4 +1,13 @@
-## 6.1.0 - Released (Trillium R1 2025)
+## 6.1.0 - Released (Trillium R1 2026 Bug Fix)
+The primary focus of this release was to fix issues with readonly properties inside acq models schema.
+
+[Full Changelog](https://github.com/folio-org/mod-invoice/compare/v6.1.0...v6.1.1)
+
+### Bug Fixes
+* [MODINVOICE-648](https://folio-org.atlassian.net/browse/MODINVOICE-648) - "Sub total" and "Calculated total amount" missing from Invoice version history
+* [MODINVOICE-647](https://folio-org.atlassian.net/browse/MODINVOICE-647) - Invoice line number is reused after deletion
+
+## 6.1.0 - Released (Trillium R1 2026)
 The primary focus of this release was to upgrade to Vert.x 5.0, improve exchange rate handling, fix encumbrance issues and enhance invoice processing.
 
 [Full Changelog](https://github.com/folio-org/mod-invoice/compare/v6.0.0...v6.1.0)
