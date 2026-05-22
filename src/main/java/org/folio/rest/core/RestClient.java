@@ -29,7 +29,7 @@ import lombok.extern.log4j.Log4j2;
 public class RestClient {
 
   private static final String REQUEST_MESSAGE_LOG_INFO = "Calling {} {}";
-  private static final String HTTP_POOL_MAX_SIZE_PROPERTY = "mod.invoice.restclient.pool.size";
+  private static final String HTTP_POOL_MAX_SIZE_PARAM = "mod.invoice.restclient.pool.size";
   private static final int HTTP_POOL_MAX_SIZE_DEFAULT = 10;
   private static final int HTTP_POOL_MAX_SIZE = resolveHttpPoolSize();
 
@@ -218,7 +218,7 @@ public class RestClient {
   }
 
   private static int resolveHttpPoolSize() {
-    String poolSize = System.getProperty(HTTP_POOL_MAX_SIZE_PROPERTY, System.getenv(HTTP_POOL_MAX_SIZE_PROPERTY));
+    String poolSize = System.getProperty(HTTP_POOL_MAX_SIZE_PARAM, System.getenv(HTTP_POOL_MAX_SIZE_PARAM));
     return poolSize != null ? Integer.parseInt(poolSize) : HTTP_POOL_MAX_SIZE_DEFAULT;
   }
 
