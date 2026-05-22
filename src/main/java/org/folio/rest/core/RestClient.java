@@ -9,7 +9,6 @@ import static org.folio.rest.RestConstants.OKAPI_URL;
 import java.util.Map;
 
 import org.folio.invoices.rest.exceptions.HttpException;
-import org.folio.okapi.common.WebClientFactory;
 import org.folio.rest.core.models.RequestContext;
 import org.folio.rest.core.models.RequestEntry;
 
@@ -19,6 +18,7 @@ import io.vertx.core.MultiMap;
 import io.vertx.core.Promise;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.core.http.HttpResponseExpectation;
+import io.vertx.core.http.PoolOptions;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.client.HttpResponse;
 import io.vertx.ext.web.client.WebClient;
@@ -29,6 +29,9 @@ import lombok.extern.log4j.Log4j2;
 public class RestClient {
 
   private static final String REQUEST_MESSAGE_LOG_INFO = "Calling {} {}";
+  private static final String HTTP_POOL_MAX_SIZE_PARAM = "mod.invoice.restclient.pool.size";
+  private static final int HTTP_POOL_MAX_SIZE_DEFAULT = 10;
+  private static final int HTTP_POOL_MAX_SIZE = resolveHttpPoolSize();
 
   public <T> Future<T> post(RequestEntry requestEntry, T entity, Class<T> responseType, RequestContext requestContext) {
     return post(requestEntry.buildEndpoint(), entity, responseType, requestContext);
@@ -115,15 +118,16 @@ public class RestClient {
     return promise.future();
   }
 
-  private <T>void handleGetMethodErrorResponse(Promise<T> promise, Throwable t, boolean skipError404) {
+  private <T>void handleGetMethodErrorResponse(Promise<T> promise, Throwable t, boolean skipError404, String endpoint) {
     if (skipError404 && t instanceof HttpException && ((HttpException) t).getCode() == 404) {
       log.warn(t);
       promise.complete();
     } else {
-      log.error(t);
+      log.error("handleGetMethodErrorResponse:: failed to call GET {}", endpoint, t);
       promise.fail(t);
     }
   }
+
   private void handleErrorResponse(Promise<Void> promise, Throwable t, boolean skipError404) {
     if (skipError404 && t instanceof HttpException && ((HttpException) t).getCode() == 404){
       log.warn(t);
@@ -163,7 +167,7 @@ public class RestClient {
       .map(HttpResponse::bodyAsJsonObject)
       .map(jsonObject -> jsonObject.mapTo(responseType))
       .onSuccess(promise::complete)
-      .onFailure(t -> handleGetMethodErrorResponse(promise, t, skipError404));
+      .onFailure(t -> handleGetMethodErrorResponse(promise, t, skipError404, endpoint));
 
     return promise.future();
   }
@@ -180,7 +184,7 @@ public class RestClient {
       .compose(RestClient::convertHttpResponse)
       .map(HttpResponse::bodyAsJsonObject)
       .onSuccess(promise::complete)
-      .onFailure(t -> handleGetMethodErrorResponse(promise, t, false));
+      .onFailure(t -> handleGetMethodErrorResponse(promise, t, false, endpoint));
 
     return promise.future();
   }
@@ -201,12 +205,21 @@ public class RestClient {
     options.setKeepAlive(true);
     options.setConnectTimeout(2000);
     options.setIdleTimeout(5000);
-    return WebClientFactory.getWebClient(context.owner(), options);
+
+    PoolOptions poolOptions = new PoolOptions()
+      .setHttp1MaxSize(HTTP_POOL_MAX_SIZE);
+
+    return WebClientProvider.getWebClient(context.owner(), options, poolOptions);
   }
 
   protected static String buildAbsEndpoint(MultiMap okapiHeaders, String endpoint) {
     var okapiURL = okapiHeaders.get(OKAPI_URL);
     return okapiURL + endpoint;
+  }
+
+  private static int resolveHttpPoolSize() {
+    String poolSize = System.getProperty(HTTP_POOL_MAX_SIZE_PARAM, System.getenv(HTTP_POOL_MAX_SIZE_PARAM));
+    return poolSize != null ? Integer.parseInt(poolSize) : HTTP_POOL_MAX_SIZE_DEFAULT;
   }
 
 }
