@@ -241,6 +241,93 @@ public class EncumbranceServiceTest {
   }
 
   @Test
+  @DisplayName("link a distinct encumbrance to each FD when a PO line has multiple expense classes on the same fund")
+  void shouldMatchEncumbrancesPerExpenseClassWhenSameFund(VertxTestContext vertxTestContext) {
+    String fiscalYearId = UUID.randomUUID().toString();
+    String poLineId = UUID.randomUUID().toString();
+    String fundId = UUID.randomUUID().toString();
+    String expenseClassA = UUID.randomUUID().toString();
+    String expenseClassB = UUID.randomUUID().toString();
+
+    Transaction encA = new Transaction()
+      .withId(UUID.randomUUID().toString())
+      .withFiscalYearId(fiscalYearId)
+      .withFromFundId(fundId)
+      .withExpenseClassId(expenseClassA)
+      .withEncumbrance(new Encumbrance().withSourcePoLineId(poLineId));
+    Transaction encB = new Transaction()
+      .withId(UUID.randomUUID().toString())
+      .withFiscalYearId(fiscalYearId)
+      .withFromFundId(fundId)
+      .withExpenseClassId(expenseClassB)
+      .withEncumbrance(new Encumbrance().withSourcePoLineId(poLineId));
+
+    FundDistribution fdA = new FundDistribution().withFundId(fundId).withExpenseClassId(expenseClassA);
+    FundDistribution fdB = new FundDistribution().withFundId(fundId).withExpenseClassId(expenseClassB);
+    InvoiceLine line = new InvoiceLine().withPoLineId(poLineId).withFundDistributions(List.of(fdA, fdB));
+    InvoiceWorkflowDataHolder holderA = new InvoiceWorkflowDataHolder().withInvoiceLine(line).withFundDistribution(fdA);
+    InvoiceWorkflowDataHolder holderB = new InvoiceWorkflowDataHolder().withInvoiceLine(line).withFundDistribution(fdB);
+
+    TransactionCollection transactionCollection = new TransactionCollection()
+      .withTotalRecords(2)
+      .withTransactions(List.of(encB, encA));
+    when(restClient.get(any(RequestEntry.class), any(), eq(requestContext)))
+      .thenReturn(Future.succeededFuture(transactionCollection));
+
+    Future<List<InvoiceLine>> future = encumbranceService.updateInvoiceLinesEncumbranceLinks(
+      List.of(holderA, holderB), fiscalYearId, requestContext);
+
+    vertxTestContext.assertComplete(future)
+      .onComplete(ar -> {
+        assertEquals(encA.getId(), fdA.getEncumbrance());
+        assertEquals(encB.getId(), fdB.getEncumbrance());
+        assertEquals(encA, holderA.getEncumbrance());
+        assertEquals(encB, holderB.getEncumbrance());
+        vertxTestContext.completeNow();
+      });
+  }
+
+  @Test
+  @DisplayName("fall back to fund-only match when invoice line FD expense class no longer matches any encumbrance")
+  void shouldFallBackToFundMatchWhenExpenseClassChangedOnlyInPol(VertxTestContext vertxTestContext) {
+    String fiscalYearId = UUID.randomUUID().toString();
+    String poLineId = UUID.randomUUID().toString();
+    String fundId = UUID.randomUUID().toString();
+    String oldExpenseClass = UUID.randomUUID().toString();
+    String newExpenseClass = UUID.randomUUID().toString();
+
+    Transaction encumbrance = new Transaction()
+      .withId(UUID.randomUUID().toString())
+      .withFiscalYearId(fiscalYearId)
+      .withFromFundId(fundId)
+      .withExpenseClassId(newExpenseClass)
+      .withEncumbrance(new Encumbrance().withSourcePoLineId(poLineId));
+
+    FundDistribution fd = new FundDistribution()
+      .withFundId(fundId)
+      .withExpenseClassId(oldExpenseClass)
+      .withEncumbrance(UUID.randomUUID().toString());
+    InvoiceLine line = new InvoiceLine().withPoLineId(poLineId).withFundDistributions(List.of(fd));
+    InvoiceWorkflowDataHolder holder = new InvoiceWorkflowDataHolder().withInvoiceLine(line).withFundDistribution(fd);
+
+    TransactionCollection transactionCollection = new TransactionCollection()
+      .withTotalRecords(1)
+      .withTransactions(List.of(encumbrance));
+    when(restClient.get(any(RequestEntry.class), any(), eq(requestContext)))
+      .thenReturn(Future.succeededFuture(transactionCollection));
+
+    Future<List<InvoiceLine>> future = encumbranceService.updateInvoiceLinesEncumbranceLinks(
+      List.of(holder), fiscalYearId, requestContext);
+
+    vertxTestContext.assertComplete(future)
+      .onComplete(ar -> {
+        assertEquals(encumbrance.getId(), fd.getEncumbrance());
+        assertEquals(encumbrance, holder.getEncumbrance());
+        vertxTestContext.completeNow();
+      });
+  }
+
+  @Test
   @CopilotGenerated(model = "Claude Sonnet 4")
   @DisplayName("remove duplicate poLineIds when getting encumbrances")
   void shouldRemoveDuplicatePoLineIdsWhenGettingEncumbrances(VertxTestContext vertxTestContext) {
