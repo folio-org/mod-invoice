@@ -7,9 +7,10 @@ import static org.folio.invoices.utils.HelperUtils.convertIdsToCqlQuery;
 import static org.folio.rest.RestConstants.MAX_IDS_FOR_GET_RQ;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
-import java.util.stream.Collectors;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -98,13 +99,12 @@ public class EncumbranceService {
 
   private List<InvoiceLine> updateFundDistributionsWithEncumbrances(List<InvoiceWorkflowDataHolder> holders,
                                                                     List<Transaction> encumbrances) {
+    Map<InvoiceWorkflowDataHolder, Transaction> matched = matchEncumbrancesToHolders(holders, encumbrances);
     var linesToUpdate = new ArrayList<InvoiceLine>();
     for (InvoiceWorkflowDataHolder holder : holders) {
-      var matchingEncumbrances = encumbrances.stream()
-        .filter(enc -> shouldChangeFundDistributions(holder, enc))
-        .collect(Collectors.toCollection(ArrayList::new));
       var fundDistribution = holder.getFundDistribution();
-      if (matchingEncumbrances.isEmpty()) {
+      var encumbrance = matched.get(holder);
+      if (encumbrance == null) {
         if (fundDistribution.getEncumbrance() != null) {
           fundDistribution.withEncumbrance(null);
           holder.withEncumbrance(null);
@@ -112,24 +112,47 @@ public class EncumbranceService {
             linesToUpdate.add(holder.getInvoiceLine());
           }
         }
-      } else {
-        var encumbrance = matchingEncumbrances.getFirst();
-        if (!encumbrance.getId().equals(fundDistribution.getEncumbrance())) {
-          fundDistribution.withEncumbrance(encumbrance.getId());
-          holder.withEncumbrance(encumbrance);
-          if (!linesToUpdate.contains(holder.getInvoiceLine())) {
-            linesToUpdate.add(holder.getInvoiceLine());
-          }
+      } else if (!encumbrance.getId().equals(fundDistribution.getEncumbrance())) {
+        fundDistribution.withEncumbrance(encumbrance.getId());
+        holder.withEncumbrance(encumbrance);
+        if (!linesToUpdate.contains(holder.getInvoiceLine())) {
+          linesToUpdate.add(holder.getInvoiceLine());
         }
       }
     }
     return linesToUpdate;
   }
 
-  private boolean shouldChangeFundDistributions(InvoiceWorkflowDataHolder holder, Transaction enc) {
-    var isMatchPoLineId = enc.getEncumbrance().getSourcePoLineId().equals(holder.getInvoiceLine().getPoLineId());
-    var isMatchFundId = enc.getFromFundId().equals(holder.getFundId());
-    logger.info("shouldChangeFundDistributions:: Matching poLineId={}, fundId={}", isMatchPoLineId, isMatchFundId);
-    return isMatchPoLineId && isMatchFundId;
+  private Map<InvoiceWorkflowDataHolder, Transaction> matchEncumbrancesToHolders(List<InvoiceWorkflowDataHolder> holders,
+                                                                                 List<Transaction> encumbrances) {
+    Map<InvoiceWorkflowDataHolder, Transaction> matched = new HashMap<>();
+
+    // Pass 1: pair each holder with the encumbrance matching fund AND expense class.
+    for (InvoiceWorkflowDataHolder holder : holders) {
+      encumbrances.stream()
+        .filter(enc -> matchesPoLineAndFund(holder, enc))
+        .filter(enc -> Objects.equals(enc.getExpenseClassId(), holder.getFundDistribution().getExpenseClassId()))
+        .findFirst()
+        .ifPresent(enc -> matched.put(holder, enc));
+    }
+
+    // Pass 2: fallback on fund only (handles POLs whose expense class was changed
+    // without updating the invoice line).
+    for (InvoiceWorkflowDataHolder holder : holders) {
+      if (matched.containsKey(holder)) {
+        continue;
+      }
+      encumbrances.stream()
+        .filter(enc -> matchesPoLineAndFund(holder, enc))
+        .findFirst()
+        .ifPresent(enc -> matched.put(holder, enc));
+    }
+
+    return matched;
+  }
+
+  private boolean matchesPoLineAndFund(InvoiceWorkflowDataHolder holder, Transaction enc) {
+    return enc.getEncumbrance().getSourcePoLineId().equals(holder.getInvoiceLine().getPoLineId())
+      && enc.getFromFundId().equals(holder.getFundId());
   }
 }
