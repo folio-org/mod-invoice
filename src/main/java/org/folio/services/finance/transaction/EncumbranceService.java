@@ -125,7 +125,6 @@ public class EncumbranceService {
     return linesToUpdate;
   }
 
-  // Match by poLineId, fundId and expenseClassId.
   private Map<InvoiceWorkflowDataHolder, Transaction> matchEncumbrancesToHolders(List<InvoiceWorkflowDataHolder> holders,
                                                                                  List<Transaction> encumbrances) {
     Map<InvoiceWorkflowDataHolder, Transaction> matched = new HashMap<>();
