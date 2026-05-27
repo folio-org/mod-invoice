@@ -8,11 +8,9 @@ import static org.folio.rest.RestConstants.MAX_IDS_FOR_GET_RQ;
 
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -128,34 +126,26 @@ public class EncumbranceService {
   private Map<InvoiceWorkflowDataHolder, Transaction> matchEncumbrancesToHolders(List<InvoiceWorkflowDataHolder> holders,
                                                                                  List<Transaction> encumbrances) {
     Map<InvoiceWorkflowDataHolder, Transaction> matched = new HashMap<>();
-    Set<String> claimed = new HashSet<>();
 
     // Pass 1: pair each holder with the encumbrance matching fund AND expense class.
     for (InvoiceWorkflowDataHolder holder : holders) {
       encumbrances.stream()
-        .filter(enc -> !claimed.contains(enc.getId()))
         .filter(enc -> matchesPoLineAndFund(holder, enc))
         .filter(enc -> Objects.equals(enc.getExpenseClassId(), holder.getFundDistribution().getExpenseClassId()))
         .findFirst()
-        .ifPresent(enc -> {
-          matched.put(holder, enc);
-          claimed.add(enc.getId());
-        });
+        .ifPresent(enc -> matched.put(holder, enc));
     }
 
-    // Pass 2: fallback (handles POLs whose expense class was changed).
+    // Pass 2: fallback on fund only (handles POLs whose expense class was changed
+    // without updating the invoice line).
     for (InvoiceWorkflowDataHolder holder : holders) {
       if (matched.containsKey(holder)) {
         continue;
       }
       encumbrances.stream()
-        .filter(enc -> !claimed.contains(enc.getId()))
         .filter(enc -> matchesPoLineAndFund(holder, enc))
         .findFirst()
-        .ifPresent(enc -> {
-          matched.put(holder, enc);
-          claimed.add(enc.getId());
-        });
+        .ifPresent(enc -> matched.put(holder, enc));
     }
 
     return matched;
