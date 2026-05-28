@@ -1,4 +1,12 @@
-## 6.1.0 - Released (Trillium R1 2026 Bug Fix)
+## 6.1.2 - Released (Trillium R1 2026 Bug Fix)
+The primary focus of this release was to fix "Connection closed" error issue during EDIFACT file import
+
+[Full Changelog](https://github.com/folio-org/mod-invoice/compare/v6.1.1...v6.1.2)
+
+### Bug Fixes
+* [MODINVOICE-652](https://folio-org.atlassian.net/browse/MODINVOICE-652) - Data Import App Crashes when Loading Large EDI Files
+
+## 6.1.1 - Released (Trillium R1 2026 Bug Fix)
 The primary focus of this release was to fix issues with readonly properties inside acq models schema.
 
 [Full Changelog](https://github.com/folio-org/mod-invoice/compare/v6.1.0...v6.1.1)
