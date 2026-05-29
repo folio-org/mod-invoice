@@ -1,3 +1,11 @@
+## 6.1.3 - Released (Trillium R1 2026 Bug Fix)
+The primary focus of this release was to fix issue with encumbrance processing for PO lines with a single fund distribution and multiple expense classes.
+
+[Full Changelog](https://github.com/folio-org/mod-invoice/compare/v6.1.2...v6.1.3)
+
+### Bug Fixes
+* [MODINVOICE-654](https://folio-org.atlassian.net/browse/MODINVOICE-654) - Encumbrance is not processed for PO lines with a single fund distribution and multiple expense classes
+
 ## 6.1.2 - Released (Trillium R1 2026 Bug Fix)
 The primary focus of this release was to fix "Connection closed" error issue during EDIFACT file import
 
