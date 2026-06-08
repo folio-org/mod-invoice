@@ -1,7 +1,6 @@
 package org.folio.services.invoice;
 
 import io.vertx.core.Future;
-import one.util.streamex.StreamEx;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
@@ -21,16 +20,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import static io.vertx.core.Future.succeededFuture;
 import static java.util.Collections.emptyList;
 import static java.util.function.Predicate.not;
 import static java.util.stream.Collectors.groupingBy;
-import static org.folio.invoices.utils.HelperUtils.collectResultsOnSuccess;
 import static org.folio.invoices.utils.HelperUtils.convertIdsToCqlQuery;
-import static org.folio.rest.RestConstants.MAX_IDS_FOR_GET_RQ;
 import static org.folio.rest.acq.model.orders.PoLine.PaymentStatus.FULLY_PAID;
 import static org.folio.rest.acq.model.orders.PoLine.PaymentStatus.ONGOING;
 import static org.folio.rest.acq.model.orders.PoLine.PaymentStatus.PAYMENT_NOT_REQUIRED;
@@ -105,7 +101,7 @@ public class PoLinePaymentStatusUpdateService {
         logger.info("updatePoLinePaymentStatus:: There are po lines linked to the invoice that might need a paymentStatus update;" +
           " retrieving paid invoice lines linked to the po lines...");
         List<String> filteredPoLineIds = filteredPoLines.stream().map(PoLine::getId).toList();
-        return getInvoiceLinesByPoLineIdsAndQuery(filteredPoLineIds,
+        return invoiceLineService.getInvoiceLinesByIdsAndQuery(filteredPoLineIds,
           ids -> queryToGetRelatedPaidInvoiceLinesByPoLineIds(invoiceId, ids), requestContext)
           .compose(relatedInvoiceLines -> {
             if (relatedInvoiceLines.isEmpty()) {
@@ -262,18 +258,6 @@ public class PoLinePaymentStatusUpdateService {
   private String queryToGetRelatedPaidInvoiceLinesByPoLineIds(String invoiceId, List<String> poLineIds) {
     return "invoiceId<>" + invoiceId + " AND invoiceLineStatus==(\"Paid\") AND " +
       convertIdsToCqlQuery(poLineIds, "poLineId", true);
-  }
-
-  private Future<List<InvoiceLine>> getInvoiceLinesByPoLineIdsAndQuery(List<String> poLineIds,
-      Function<List<String>, String> queryFunction, RequestContext requestContext) {
-    List<Future<List<InvoiceLine>>> futureList = StreamEx
-      .ofSubLists(poLineIds, MAX_IDS_FOR_GET_RQ)
-      .map(queryFunction)
-      .map(query -> invoiceLineService.getInvoiceLinesByQuery(query, requestContext))
-      .toList();
-
-    return collectResultsOnSuccess(futureList)
-      .map(col -> col.stream().flatMap(List::stream).toList());
   }
 
   private Future<List<Invoice>> getInvoicesByIdsAndQuery(List<String> invoiceIds, String query,

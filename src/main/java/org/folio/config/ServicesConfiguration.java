@@ -199,13 +199,14 @@ public class ServicesConfiguration {
                                             EncumbranceService encumbranceService,
                                             VoucherService voucherService,
                                             OrderLineService orderLineService,
-                                            OrderService orderService,
+                                            InvoiceLineService invoiceLineService,
                                             PoLinePaymentStatusUpdateService poLinePaymentStatusUpdateService,
                                             InvoiceWorkflowDataHolderBuilder invoiceWorkflowDataHolderBuilder,
                                             BudgetService budgetService) {
     return new InvoiceCancelService(baseTransactionService, encumbranceService, voucherService, orderLineService,
-      orderService, poLinePaymentStatusUpdateService, invoiceWorkflowDataHolderBuilder, budgetService);
+      invoiceLineService, poLinePaymentStatusUpdateService, invoiceWorkflowDataHolderBuilder, budgetService);
   }
+
   @Bean
   BatchVoucherService batchVoucherService(RestClient restClient) {
     return new BatchVoucherService(restClient);
