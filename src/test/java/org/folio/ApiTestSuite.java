@@ -36,6 +36,8 @@ import org.folio.dataimport.handlers.actions.CreateInvoiceEventHandlerTest;
 import org.folio.invoices.util.HelperUtilsTest;
 import org.folio.jaxb.DefaultJAXBRootElementNameResolverTest;
 import org.folio.services.invoice.InvoiceLineServiceTest;
+import org.folio.services.validator.InvoiceValidatorTest;
+import org.folio.rest.core.WebClientProviderTest;
 import org.folio.utils.InvoiceLineUtilsTest;
 import org.folio.jaxb.JAXBUtilTest;
 import org.folio.jaxb.XMLConverterTest;
@@ -104,7 +106,7 @@ public class ApiTestSuite {
   private static final String KAFKA_ENV = "ENV";
   private static final String OKAPI_URL_KEY = "OKAPI_URL";
 
-  private static final DockerImageName KAFKA_IMAGE_NAME = DockerImageName.parse("apache/kafka-native:3.8.0");
+  private static final DockerImageName KAFKA_IMAGE_NAME = DockerImageName.parse("apache/kafka-native:4.2.0");
   private static final KafkaContainer kafkaContainer = new KafkaContainer(KAFKA_IMAGE_NAME).withStartupAttempts(20);
   private static MockServer mockServer;
   public static Vertx vertx;
@@ -426,4 +428,10 @@ public class ApiTestSuite {
 
   @Nested
   class InvoiceLineUtilsTestNested extends InvoiceLineUtilsTest {}
+
+  @Nested
+  class InvoiceValidatorTestNested extends InvoiceValidatorTest {}
+
+  @Nested
+  class WebClientProviderTestNested extends WebClientProviderTest {}
 }

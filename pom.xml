@@ -29,7 +29,7 @@
     <raml-module-builder.version>36.0.0</raml-module-builder.version>
     <spring.version>7.0.6</spring.version>
     <jaxb-api.version>2.3.3</jaxb-api.version>
-    <vertx.version>5.0.8</vertx.version>
+    <vertx.version>5.0.12</vertx.version>
     <vertx-rx.version>4.5.25</vertx-rx.version> <!-- Update to match vertx version when 5.x is available -->
     <rest-assured.version>6.0.0</rest-assured.version>
     <sshd.version>2.17.1</sshd.version>
@@ -44,7 +44,7 @@
     <mod-configuration-client.version>5.12.1</mod-configuration-client.version>
     <mod-di-converter-storage-client.version>2.4.3</mod-di-converter-storage-client.version>
     <folio-di-support.version>4.0.0</folio-di-support.version>
-    <folio-kafka-wrapper.version>4.0.0</folio-kafka-wrapper.version>
+    <folio-kafka-wrapper.version>4.1.0-SNAPSHOT</folio-kafka-wrapper.version>
     <data-import-processing-core.version>5.0.0</data-import-processing-core.version>
 
     <!--Maven plugin dependencies-->
