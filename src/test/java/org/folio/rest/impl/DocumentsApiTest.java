@@ -31,7 +31,6 @@ import io.vertx.core.MultiMap;
 import io.vertx.core.Vertx;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.http.HttpMethod;
-import io.vertx.core.http.impl.headers.HeadersMultiMap;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.client.HttpRequest;
 import io.vertx.ext.web.client.HttpResponse;
@@ -78,7 +77,6 @@ public class DocumentsApiTest extends ApiTestBase {
       fail(context.causeOfFailure());
     }
   }
-
 
 
   @Test
@@ -146,7 +144,7 @@ public class DocumentsApiTest extends ApiTestBase {
     context.verify(() -> {
       assertEquals(201, response.statusCode());
       assertNotNull(response.headers().get(CONTENT_TYPE));
-      assertEquals(1 , MockServer.serverRqRs.get(INVOICE_DOCUMENTS, HttpMethod.POST).size());
+      assertEquals(1, MockServer.serverRqRs.get(INVOICE_DOCUMENTS, HttpMethod.POST).size());
       assertNotNull(new JsonObject(response.body()).mapTo(InvoiceDocument.class).getDocumentMetadata().getId());
     });
     context.completeNow();
@@ -173,7 +171,7 @@ public class DocumentsApiTest extends ApiTestBase {
 
   private void prepareRequestHeaders(HttpRequest<Buffer> request) {
 
-    MultiMap headers = HeadersMultiMap.httpHeaders();
+    MultiMap headers = MultiMap.caseInsensitiveMultiMap();
     headers.add(X_OKAPI_URL.getName(), X_OKAPI_URL.getValue())
             .add(X_OKAPI_TENANT.getName(), X_OKAPI_TENANT.getValue())
             .add(X_OKAPI_TOKEN.getName(), X_OKAPI_TOKEN.getValue())
