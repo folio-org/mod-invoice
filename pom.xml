@@ -29,7 +29,7 @@
     <raml-module-builder.version>36.0.0</raml-module-builder.version>
     <spring.version>7.0.8</spring.version>
     <jaxb-api.version>2.3.3</jaxb-api.version>
-    <vertx.version>5.1.2</vertx.version>
+    <vertx.version>5.1.3</vertx.version>
     <vertx-rx.version>4.5.28</vertx-rx.version> <!-- Update to match vertx version when 5.x is available -->
     <rest-assured.version>6.0.0</rest-assured.version>
     <sshd.version>2.18.0</sshd.version>
