@@ -1,3 +1,8 @@
+## WIP
+
+### Stories
+* [MODINVOICE-665](https://folio-org.atlassian.net/browse/MODINVOICE-665) - Upgrade from Java 21 to Java 25
+
 ## 6.1.0 - Released (Trillium R1 2025)
 The primary focus of this release was to upgrade to Vert.x 5.0, improve exchange rate handling, fix encumbrance issues and enhance invoice processing.
 
