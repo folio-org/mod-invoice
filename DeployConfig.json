@@ -1,0 +1,384 @@
+{
+  "description": "mod-invoice configuration template. Default values are calibrated against a reference bugfest environment (tebfcon-mod-invoice revision 15, image 6.1.3); see ADR-0013 (Module configuration management) for the governance model behind this file. mod-invoice is a RAML Module Builder (Vert.x) module: it reads its database settings from DB_* variables, consumes and publishes data-import Kafka events, has no secret store, and takes its HTTP port from the http.port system property in JAVA_OPTIONS. Its Spring context also resolves the dotted mod.invoice.* and dataimport.* properties from the environment. Resource values and JVM limits must be adjusted to the target host capacity.",
+  "moduleDefaults": {
+    "resources": [
+      {
+        "name": "cpu",
+        "value": "64",
+        "description": "CPU request/limit for the mod-invoice container"
+      },
+      {
+        "name": "memory",
+        "value": "1440",
+        "description": "Memory hard limit for the mod-invoice container in MiB"
+      },
+      {
+        "name": "memoryReservation",
+        "value": "1152",
+        "description": "Memory reservation (soft limit) for the mod-invoice container in MiB"
+      }
+    ],
+    "java": [
+      {
+        "name": "xmx",
+        "value": "922m",
+        "description": "Maximum Java heap size. Value taken from bugfest; with MaxMetaspaceSize it leaves about 390 MiB of the container for non-heap memory"
+      },
+      {
+        "name": "MaxMetaspaceSize",
+        "value": "128m",
+        "description": "Maximum Java metaspace size. Value taken from bugfest"
+      },
+      {
+        "name": "MetaspaceSize",
+        "value": "88m",
+        "description": "Threshold for the first metaspace garbage collection, not a limit. Value taken from bugfest"
+      }
+    ],
+    "deployment": {
+      "isHaSupported": true,
+      "replicasRecommendedCount": 2,
+      "description": "mod-invoice is stateless apart from its data-import deduplication table in PostgreSQL; Kafka consumer groups spread data-import events across replicas. Two replicas are recommended for availability."
+    },
+    "kong": {
+      "timeouts": {
+        "connect": "60s",
+        "send": "60s",
+        "read": "60s"
+      },
+      "description": "Default Kong proxy timeouts are sufficient for mod-invoice endpoints. Use this only if different from default Kong configuration."
+    },
+    "EnvVars": [
+      {
+        "name": "DB_HOST",
+        "value": null,
+        "description": "PostgreSQL host (write instance)",
+        "type": "DB",
+        "essential": true
+      },
+      {
+        "name": "DB_PORT",
+        "value": "5432",
+        "description": "PostgreSQL port",
+        "type": "DB",
+        "essential": true
+      },
+      {
+        "name": "DB_USERNAME",
+        "value": null,
+        "description": "PostgreSQL username, usually supplied from the secret store",
+        "type": "DB",
+        "essential": true
+      },
+      {
+        "name": "DB_PASSWORD",
+        "value": null,
+        "description": "PostgreSQL password, usually supplied from the secret store",
+        "type": "DB",
+        "essential": true
+      },
+      {
+        "name": "DB_DATABASE",
+        "value": null,
+        "description": "PostgreSQL database name; the module keeps its data-import deduplication table in a per-tenant schema there",
+        "type": "DB",
+        "essential": true
+      },
+      {
+        "name": "DB_HOST_READER",
+        "value": null,
+        "description": "Optional synchronously replicated read instance host; reads go to DB_HOST when unset",
+        "type": "DB",
+        "essential": false
+      },
+      {
+        "name": "DB_PORT_READER",
+        "value": null,
+        "description": "Port of the read instance; reads go to DB_HOST when unset",
+        "type": "DB",
+        "essential": false
+      },
+      {
+        "name": "DB_SERVER_PEM",
+        "value": null,
+        "description": "PEM certificate(s) to validate the PostgreSQL server; when set, TLSv1.3 is required",
+        "type": "DB",
+        "essential": false
+      },
+      {
+        "name": "DB_MAXPOOLSIZE",
+        "value": "20",
+        "description": "Maximum connections per tenant per instance. Value taken from bugfest; RMB default is 4",
+        "type": "DB",
+        "essential": false
+      },
+      {
+        "name": "DB_MAXSHAREDPOOLSIZE",
+        "value": null,
+        "description": "Maximum connections per instance shared by all tenants; when set, DB_MAXPOOLSIZE is ignored",
+        "type": "DB",
+        "essential": false
+      },
+      {
+        "name": "DB_CONNECTIONRELEASEDELAY",
+        "value": "60000",
+        "description": "Idle time in milliseconds after which a connection is closed (RMB default); 0 keeps idle connections open",
+        "type": "DB",
+        "essential": false
+      },
+      {
+        "name": "DB_MAX_LIFETIME",
+        "value": "1800000",
+        "description": "Maximum connection lifetime in milliseconds (RMB default); 0 means unlimited",
+        "type": "DB",
+        "essential": false
+      },
+      {
+        "name": "DB_RECONNECTATTEMPTS",
+        "value": "0",
+        "description": "Number of reconnect attempts when a database connection cannot be established (Vert.x default 0)",
+        "type": "DB",
+        "essential": false
+      },
+      {
+        "name": "DB_RECONNECTINTERVAL",
+        "value": "1000",
+        "description": "Interval in milliseconds between database reconnect attempts (Vert.x default)",
+        "type": "DB",
+        "essential": false
+      },
+      {
+        "name": "DB_EXPLAIN_QUERY_THRESHOLD",
+        "value": "300000",
+        "description": "Query duration in milliseconds above which RMB logs EXPLAIN ANALYZE. Value taken from bugfest; RMB default is 1000",
+        "type": "DB",
+        "essential": false
+      },
+      {
+        "name": "KAFKA_HOST",
+        "value": null,
+        "description": "Kafka broker host for the data-import event consumers and publisher",
+        "type": "KAFKA",
+        "essential": true
+      },
+      {
+        "name": "KAFKA_PORT",
+        "value": "9092",
+        "description": "Kafka broker port",
+        "type": "KAFKA",
+        "essential": true
+      },
+      {
+        "name": "REPLICATION_FACTOR",
+        "value": "2",
+        "description": "Replication factor for Kafka topics created by this module. Value taken from bugfest; module default is 1",
+        "type": "KAFKA",
+        "essential": false
+      },
+      {
+        "name": "MAX_REQUEST_SIZE",
+        "value": "4000000",
+        "description": "Kafka producer max.request.size in bytes (module default)",
+        "type": "KAFKA",
+        "essential": false
+      },
+      {
+        "name": "KAFKA_PRODUCER_TENANT_COLLECTION",
+        "value": "ALL",
+        "description": "Enables tenant collection topics ({ENV}.Default.{value}.{EVENT}); must be the same across all modules. Value taken from bugfest; per-tenant topics when unset",
+        "type": "KAFKA",
+        "essential": false
+      },
+      {
+        "name": "ENV",
+        "value": null,
+        "description": "Environment name used as the Kafka topic prefix; must match the other modules or data-import events are missed. Module default is folio",
+        "type": "CONFIG",
+        "essential": true
+      },
+      {
+        "name": "OKAPI_URL",
+        "value": null,
+        "description": "Okapi URL set on data-import events this module publishes; module default is http://okapi:9130. Not set on bugfest",
+        "type": "CONFIG",
+        "essential": false
+      },
+      {
+        "name": "SYSTEM_USER_ENABLED",
+        "value": false,
+        "description": "When false (Eureka), the event's token is not forwarded on data-import requests to other modules. Module default is true; bugfest sets false via -DSYSTEM_USER_ENABLED in JAVA_OPTS",
+        "type": "FUNCTIONAL",
+        "essential": false
+      },
+      {
+        "name": "dataimport.consumer.verticle.mandatory",
+        "value": "true",
+        "description": "Fails module start-up when the data-import Kafka consumers cannot be deployed. Value taken from bugfest; module default is false",
+        "type": "FUNCTIONAL",
+        "essential": false
+      },
+      {
+        "name": "mod.invoice.kafka.DataImportConsumerVerticle.instancesNumber",
+        "value": "1",
+        "description": "Number of data-import consumer verticle instances (module default)",
+        "type": "KAFKA",
+        "essential": false
+      },
+      {
+        "name": "mod.invoice.kafka.DataImportConsumer.loadLimit",
+        "value": "5",
+        "description": "Maximum in-flight data-import events per consumer before polling pauses (module default)",
+        "type": "KAFKA",
+        "essential": false
+      },
+      {
+        "name": "mod.invoice.kafka.DataImportConsumerVerticle.maxDistributionNumber",
+        "value": "100",
+        "description": "Maximum number of data-import events processed concurrently by a verticle (module default)",
+        "type": "KAFKA",
+        "essential": false
+      },
+      {
+        "name": "mod.invoice.kafka.CancelledJobConsumerVerticle.instancesNumber",
+        "value": "1",
+        "description": "Number of cancelled data-import job consumer verticle instances (module default)",
+        "type": "KAFKA",
+        "essential": false
+      },
+      {
+        "name": "mod.invoice.kafka.CancelledJobExecutionConsumer.loadLimit",
+        "value": "1000",
+        "description": "Maximum in-flight cancelled-job events per consumer before polling pauses (module default)",
+        "type": "KAFKA",
+        "essential": false
+      },
+      {
+        "name": "mod.invoice.cache.cancelled.jobs.expiration.minutes",
+        "value": "1440",
+        "description": "Retention in minutes of cancelled data-import job IDs in the local cache (module default)",
+        "type": "CACHE",
+        "essential": false
+      },
+      {
+        "name": "mod.invoice.profile-snapshot-cache.expiration.time.seconds",
+        "value": "3600",
+        "description": "Expiration in seconds of cached data-import job profile snapshots (module default)",
+        "type": "CACHE",
+        "essential": false
+      },
+      {
+        "name": "mod.invoice.cache.settings-entries.expiration-time.seconds",
+        "value": "30",
+        "description": "Expiration in seconds of cached settings entries (module default)",
+        "type": "CACHE",
+        "essential": false
+      },
+      {
+        "name": "mod.invoice.cache.settings-entries.bypass-cache",
+        "value": "false",
+        "description": "Bypasses the settings cache and reads settings on every request (module default false)",
+        "type": "CACHE",
+        "essential": false
+      },
+      {
+        "name": "mod.invoice.exchange-rate.expiration.time.seconds",
+        "value": "60",
+        "description": "Expiration in seconds of cached currency exchange rates (module default)",
+        "type": "CACHE",
+        "essential": false
+      },
+      {
+        "name": "mod.invoice.restclient.pool.size",
+        "value": null,
+        "description": "HTTP client connection pool size for calls to other modules; a built-in default applies when unset",
+        "type": "CONFIG",
+        "essential": false
+      },
+      {
+        "name": "JAVA_OPTIONS",
+        "value": "-Dhttp.port=8082",
+        "description": "JVM options for the module process. -Dhttp.port=8082 moves RMB off its default port 8081, which the Eureka sidecar uses; it must match the sidecar's MODULE_URL. Heap sizing comes from the java block.",
+        "type": "CONFIG",
+        "essential": false
+      },
+      {
+        "name": "LOG4J_CONFIGURATION_FILE",
+        "value": null,
+        "description": "External Log4j2 configuration overriding the bundled log4j2.properties (log4j2-json.properties is also bundled)",
+        "type": "CONFIG",
+        "essential": false
+      }
+    ]
+  },
+  "sidecarDefaults": {
+    "resources": [
+      {
+        "name": "cpu",
+        "value": "64",
+        "description": "CPU request/limit for the sidecar container"
+      },
+      {
+        "name": "memory",
+        "value": "1024",
+        "description": "Memory hard limit for the sidecar container in MiB"
+      },
+      {
+        "name": "memoryReservation",
+        "value": "512",
+        "description": "Memory reservation (soft limit) for the sidecar container in MiB"
+      }
+    ],
+    "java": [
+      {
+        "name": "xms",
+        "value": "128m",
+        "description": "Initial Java heap size"
+      },
+      {
+        "name": "xmx",
+        "value": "256m",
+        "description": "Maximum Java heap size"
+      },
+      {
+        "name": "MaxMetaspaceSize",
+        "value": "96m",
+        "description": "Maximum Java metaspace size"
+      },
+      {
+        "name": "UseZGC",
+        "value": "true",
+        "description": "Use the ZGC low-pause collector"
+      }
+    ],
+    "EnvVars": [
+      {
+        "name": "ENV",
+        "value": null,
+        "description": "Deployment environment identifier. Must match the module's ENV",
+        "type": "CONFIG",
+        "essential": true
+      },
+      {
+        "name": "MODULE_NAME",
+        "value": "mod-invoice",
+        "description": "Name of the backend module the sidecar fronts",
+        "type": "CONFIG",
+        "essential": true
+      },
+      {
+        "name": "MODULE_URL",
+        "value": null,
+        "description": "Internal URL (host:port) at which the mod-invoice container is reachable from its sidecar; the port must match -Dhttp.port",
+        "type": "CONFIG",
+        "essential": true
+      },
+      {
+        "name": "MODULE_VERSION",
+        "value": null,
+        "description": "Version of the mod-invoice module deployed alongside this sidecar",
+        "type": "CONFIG",
+        "essential": true
+      }
+    ]
+  }
+}

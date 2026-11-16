@@ -1,3 +1,11 @@
+## 6.1.4 - Released (Trillium R1 2026 Bug Fix)
+The primary focus of this release was to add DeployConfig.json (ADR-0013 Configuration Management).
+
+[Full Changelog](https://github.com/folio-org/mod-invoice/compare/v6.1.3...v6.1.4)
+
+### Tech Debts
+* [MODINVOICE-662](https://folio-org.atlassian.net/browse/MODINVOICE-662) - Add DeployConfig.json to mod-invoice (ADR-0013 Configuration Management)
+
 ## 6.1.3 - Released (Trillium R1 2026 Bug Fix)
 The primary focus of this release was to fix issue with encumbrance processing for PO lines with a single fund distribution and multiple expense classes.
 
